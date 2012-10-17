@@ -1,0 +1,19 @@
+/**
+ * Copyright 2012(c) Analog Devices, Inc.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ANALOG DEVICES "AS IS" AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, NON-INFRINGEMENT,
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ *
+ **/
+
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
+
+#ifndef PREFIX
+#	define PREFIX "/usr/local/"
+#endif
+
+#define OSC_GLADE_FILE_PATH PREFIX "/share/osc/"
+
+#endif
