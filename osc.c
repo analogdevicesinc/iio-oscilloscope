@@ -528,6 +528,7 @@ static void zoom_fit(GtkButton *btn, gpointer data)
 
 static void zoom_in(GtkButton *btn, gpointer data)
 {
+	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constalation_radio));
 	gfloat left, right, top, bottom;
 	gfloat width, height;
 
@@ -539,12 +540,98 @@ static void zoom_in(GtkButton *btn, gpointer data)
 	top += height * 0.25;
 	bottom -= height * 0.25;
 
+	if (fixed_aspect) {
+		gfloat diff;
+		width *= 0.5;
+		height *= -0.5;
+		if (height > width) {
+			diff = width - height;
+			left -= diff * 0.5;
+			right += diff * 0.5;
+		} else {
+			diff = height - width;
+			bottom += diff * 0.5;
+			top -= diff * 0.5;
+		}
+	}
+
 	gtk_databox_set_visible_limits(GTK_DATABOX(data), left, right, top, bottom);
 }
 
 static void zoom_out(GtkButton *btn, gpointer data)
 {
-	gtk_databox_zoom_out(GTK_DATABOX(data));
+	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constalation_radio));
+	gfloat left, right, top, bottom;
+	gfloat t_left, t_right, t_top, t_bottom;
+	gfloat width, height;
+
+	gtk_databox_get_visible_limits(GTK_DATABOX(data), &left, &right, &top, &bottom);
+	width = right - left;
+	height = bottom - top;
+	left -= width * 0.25;
+	right += width * 0.25;
+	top -= height * 0.25;
+	bottom += height * 0.25;
+
+	gtk_databox_get_total_limits(GTK_DATABOX(data), &t_left, &t_right, &t_top, &t_bottom);
+	if (left < right) {
+		if (left < t_left)
+			left = t_left;
+		if (right > t_right)
+			right = t_right;
+	} else {
+		if (left > t_left)
+			left = t_left;
+		if (right < t_right)
+			right = t_right;
+	}
+
+	if (top < bottom) {
+		if (top < t_top)
+			top = t_top;
+		if (bottom > t_bottom)
+			bottom = t_bottom;
+	} else {
+		if (top > t_top)
+			top = t_top;
+		if (bottom < t_bottom)
+			bottom = t_bottom;
+	}
+
+	if (fixed_aspect) {
+		gfloat diff;
+		width = right - left;
+		height = top - bottom;
+		if (height < width) {
+			diff = width - height;
+			bottom -= diff * 0.5;
+			top += diff * 0.5;
+			if (top < t_top) {
+				bottom += t_top - top;
+				top = t_top;
+			}
+			if (bottom > t_bottom) {
+				top -= bottom - t_bottom;
+				bottom = t_bottom;
+			}
+		} else {
+			diff = height - width;
+			left -= diff * 0.5;
+			right += diff * 0.5;
+			if (left < t_left) {
+				right += t_left - left;
+				left = t_left;
+			}
+			if (right > t_right) {
+				left -= right - t_right;
+				right = t_right;
+			}
+		}
+		width = right - left;
+		height = top - bottom;
+	}
+
+	gtk_databox_set_visible_limits(GTK_DATABOX(data), left, right, top, bottom);
 }
 
 static int compare_gain(const char *a, const char *b)
@@ -706,7 +793,7 @@ static void init_application (void)
 
 	add_grid();
 
-	gtk_widget_set_size_request(table, 800, 600);
+	gtk_widget_set_size_request(table, 800, 800);
 
 	g_builder_connect_signal(builder, "capture_button", "toggled",
 		G_CALLBACK(capture_button_clicked), NULL);
