@@ -76,6 +76,23 @@ static GdkColor color_background = {
 	.blue = 0,
 };
 
+#if DEBUG
+
+static int sample_iio_data(int16_t *data, unsigned num)
+{
+	int buf_len = num * sizeof(*data);
+	int i;
+
+	for (i = 0; i < buf_len / 2; i++) {
+		data[i*2] = 4096.0f * cos(i * G_PI / 100) + (rand() % 500 - 250);
+		data[i*2+1] = 4096.0f * sin(i * G_PI / 100);// + (rand() % 1000 - 500);
+	}
+
+	return 0;
+}
+
+#else
+
 static int sample_iio_data(int16_t *data, unsigned num)
 {
 	int buf_len = num * sizeof(*data) * 2;
@@ -124,6 +141,8 @@ error_disable:
 error_ret:
 	return ret;
 }
+
+#endif
 
 static int frame_counter;
 

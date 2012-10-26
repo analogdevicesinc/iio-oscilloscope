@@ -5,6 +5,8 @@ LDFLAGS=`pkg-config --libs gtk+-2.0 gtkdatabox`
 CFLAGS=`pkg-config --cflags gtk+-2.0 gtkdatabox`
 CFLAGS+=-Wall -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 
+#CFLAGS+=-DDEBUG
+
 osc: osc.c int_fft.c iio_utils.c iio_widget.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -o $@
 
