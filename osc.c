@@ -473,9 +473,10 @@ static unsigned int num_tx, num_rx;
 
 static void rx_update_labels(void)
 {
-	double freq = 0.0;
+	double freq = 2400000000.0;
 	char buf[100];
 	int i;
+	adc_freq = 246760000.0;
 
 	set_dev_paths("ad9523-lpc");
 	read_devattr_double("out_altvoltage2_ADC_CLK_frequency", &adc_freq);
