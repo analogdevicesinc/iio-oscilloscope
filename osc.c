@@ -242,7 +242,7 @@ static gboolean time_capture_func(GtkDatabox *box)
 
 static void add_grid(void)
 {
-	grid = gtk_databox_grid_new(15, 15, &color_grid, 2);
+	grid = gtk_databox_grid_new(15, 15, &color_grid, 1);
 	gtk_databox_graph_add(GTK_DATABOX(databox), grid);
 	gtk_databox_graph_set_hide(grid, !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(show_grid)));
 }
@@ -318,7 +318,7 @@ static void start_capture_fft(void)
 	}
 	is_fft_mode = true;
 
-	channel0_graph = gtk_databox_lines_new(num_samples / 2, X, channel0, &color_graph0, 2);
+	channel0_graph = gtk_databox_lines_new(num_samples / 2, X, channel0, &color_graph0, 1);
 	gtk_databox_graph_add(GTK_DATABOX(databox), channel0_graph);
 
 	add_grid();
@@ -354,16 +354,19 @@ static void start_capture_time(void)
 	is_fft_mode = false;
 
 	if (is_constalation) {
-			channel0_graph = gtk_databox_lines_new(num_samples, channel0, channel1, &color_graph0, 2);
+			channel0_graph = gtk_databox_lines_new(num_samples, channel0,
+					channel1, &color_graph0, 1);
 			gtk_databox_graph_add(GTK_DATABOX (databox), channel0_graph);
 	} else {
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(channel0_widget))) {
-			channel0_graph = gtk_databox_lines_new(num_samples, X, channel0, &color_graph0, 2);
+			channel0_graph = gtk_databox_lines_new(num_samples, X, channel0,
+					&color_graph0, 1);
 			gtk_databox_graph_add(GTK_DATABOX (databox), channel0_graph);
 		}
 
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(channel1_widget))) {
-			channel1_graph = gtk_databox_lines_new(num_samples, X, channel1, &color_graph1, 2);
+			channel1_graph = gtk_databox_lines_new(num_samples, X, channel1,
+					&color_graph1, 1);
 			gtk_databox_graph_add(GTK_DATABOX(databox), channel1_graph);
 		}
 	}
