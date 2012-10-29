@@ -20,6 +20,8 @@
 #include <stdbool.h>
 #include <malloc.h>
 
+#include <fftw3.h>
+
 #include "iio_widget.h"
 #include "iio_utils.h"
 #include "int_fft.h"
@@ -247,24 +249,19 @@ static void add_grid(void)
 	gtk_databox_graph_set_hide(grid, !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(show_grid)));
 }
 
-static gboolean fft_capture_func(GtkDatabox *box)
+#if NO_FFTW
+
+static void do_fft()
 {
 	short *fft_buf;
 	short *real, *imag, *amp;
 	unsigned int fft_size = num_samples;
-	unsigned int i, cnt;
-	int ret;
-
-	ret = sample_iio_data(data, fft_size);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to capture samples: %d\n", ret);
-		return FALSE;
-	}
+	unsigned int cnt, i;
 
 	fft_buf = malloc((fft_size * 2 + fft_size / 2) * sizeof(short));
 	if (fft_buf == NULL){
 		fprintf(stderr, "malloc failed (%d)\n", __LINE__);
-		return FALSE;
+		return;
 	}
 
 	real = fft_buf;
@@ -283,14 +280,80 @@ static gboolean fft_capture_func(GtkDatabox *box)
 	fix_fft(real, imag, (int)log2f(fft_size), 0);
 	fix_loud(amp, real, imag, fft_size / 2, 2); /* scale 14->16 bit */
 
-	for (i = 0; i < fft_size / 2; ++i) {
-		channel0[i] = amp[i];
-	}
+	for (i = 0; i < fft_size / 2; ++i)
+		channel1[i] = amp[i];
 
 	free(fft_buf);
+}
+
+#else
+
+static double win_hanning(int j, int n)
+{
+    double a = 2.0*M_PI/(n-1), w;
+
+    w = 0.5 * (1.0 - cos(a*j));
+
+    return (w);
+}
+
+static void do_fft(void)
+{
+	unsigned int fft_size = num_samples;
+	int i;
+	int cnt;
+	static double *in;
+	static double *win;
+	static fftw_complex *out;
+	static fftw_plan plan_forward;
+	static int cached_fft_size = -1;
+
+	if ((cached_fft_size == -1) || (cached_fft_size != fft_size)) {
+
+		if (cached_fft_size != -1) {
+			fftw_destroy_plan(plan_forward);
+			fftw_free(in);
+			fftw_free(win);
+			fftw_free(out);
+		}
+
+		in = fftw_malloc(sizeof(double) * fft_size);
+		win = fftw_malloc(sizeof(double) * fft_size);
+		out = fftw_malloc(sizeof(fftw_complex) * ((fft_size / 2) + 1));
+		plan_forward = fftw_plan_dft_r2c_1d(fft_size, in, out, FFTW_ESTIMATE);
+
+		for (i = 0; i < fft_size; i ++)
+			win[i] = win_hanning(i, fft_size);
+
+		cached_fft_size = fft_size;
+	}
+
+	for (cnt = 0, i = 0; i < fft_size * 2; i += 2) {
+		in[cnt] = data[i] * win[cnt];
+		cnt++;
+	}
+
+	fftw_execute(plan_forward);
+
+	for (i = 0; i < fft_size / 2; ++i)
+		channel0[i] = 10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (fft_size * fft_size)) - 50.0f;
+}
+
+#endif
+
+static gboolean fft_capture_func(GtkDatabox *box)
+{
+	unsigned int fft_size = num_samples;
+	int ret;
+
+	ret = sample_iio_data(data, fft_size);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to capture samples: %d\n", ret);
+		return FALSE;
+	}
+	do_fft();
 
 	auto_scale_databox(box);
-
 	gtk_widget_queue_draw(GTK_WIDGET(box));
 	usleep(50000);
 
