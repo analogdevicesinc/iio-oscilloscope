@@ -41,7 +41,7 @@ static GtkWidget *sample_count_widget;
 static GtkWidget *fft_size_widget;
 static GtkWidget *channel0_widget;
 static GtkWidget *channel1_widget;
-static GtkWidget *fft_radio, *time_radio, *constalation_radio;
+static GtkWidget *fft_radio, *time_radio, *constellation_radio;
 static GtkWidget *show_grid;
 static GtkWidget *enable_auto_scale;
 
@@ -164,7 +164,7 @@ static void fps_counter(void)
 
 static void rescale_databox(GtkDatabox *box, gfloat border)
 {
-	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constalation_radio));
+	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
 
 	if (fixed_aspect) {
 		gfloat min_x;
@@ -395,10 +395,10 @@ static void start_capture_fft(void)
 
 static void start_capture_time(void)
 {
-	gboolean is_constalation;
+	gboolean is_constellation;
 	int i;
 
-	is_constalation = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constalation_radio));
+	is_constellation = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
 
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 
@@ -416,7 +416,7 @@ static void start_capture_time(void)
 	}
 	is_fft_mode = false;
 
-	if (is_constalation) {
+	if (is_constellation) {
 			channel0_graph = gtk_databox_lines_new(num_samples, channel0,
 					channel1, &color_graph0, 1);
 			gtk_databox_graph_add(GTK_DATABOX (databox), channel0_graph);
@@ -435,7 +435,7 @@ static void start_capture_time(void)
 	}
 
 	add_grid();
-	if (is_constalation)
+	if (is_constellation)
 		gtk_databox_set_total_limits(GTK_DATABOX(databox), -8500.0, 8500.0, 8500.0, -8500.0);
 	else
 		gtk_databox_set_total_limits(GTK_DATABOX(databox), 0.0, num_samples, 8500.0, -8500.0);
@@ -528,7 +528,7 @@ static void zoom_fit(GtkButton *btn, gpointer data)
 
 static void zoom_in(GtkButton *btn, gpointer data)
 {
-	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constalation_radio));
+	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
 	gfloat left, right, top, bottom;
 	gfloat width, height;
 
@@ -560,7 +560,7 @@ static void zoom_in(GtkButton *btn, gpointer data)
 
 static void zoom_out(GtkButton *btn, gpointer data)
 {
-	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constalation_radio));
+	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
 	gfloat left, right, top, bottom;
 	gfloat t_left, t_right, t_top, t_bottom;
 	gfloat width, height;
@@ -678,7 +678,7 @@ static void init_application (void)
 	channel1_widget = GTK_WIDGET(gtk_builder_get_object(builder, "channel2"));
 	fft_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type_fft"));
 	time_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type"));
-	constalation_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type_constalation"));
+	constellation_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type_constellation"));
 	adc_freq_label = GTK_WIDGET(gtk_builder_get_object(builder, "adc_freq_label"));
 	rx_lo_freq_label = GTK_WIDGET(gtk_builder_get_object(builder, "rx_lo_freq_label"));
 	show_grid = GTK_WIDGET(gtk_builder_get_object(builder, "show_grid"));

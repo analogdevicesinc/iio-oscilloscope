@@ -320,8 +320,8 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkRadioButton" id="type_constalation">
-                                    <property name="label" translatable="yes">Constalation</property>
+                                  <object class="GtkRadioButton" id="type_constellation">
+                                    <property name="label" translatable="yes">Constellation</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
