@@ -298,8 +298,8 @@
                                     <property name="entry_text_column">0</property>
                                     <property name="id_column">1</property>
                                     <items>
-                                      <item translatable="yes">16192</item>
-                                      <item translatable="yes">8096</item>
+                                      <item translatable="yes">16384</item>
+                                      <item translatable="yes">8192</item>
                                       <item translatable="yes">4096</item>
                                       <item translatable="yes">2048</item>
                                       <item translatable="yes">1024</item>
