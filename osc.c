@@ -668,7 +668,8 @@ static void init_application (void)
 
 	builder = gtk_builder_new();
 
-	gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
+	if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL))
+		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
 
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
 	box2 = GTK_WIDGET(gtk_builder_get_object(builder, "box2"));
