@@ -54,6 +54,9 @@ static GtkDataboxGraph *grid;
 static double adc_freq;
 static bool is_fft_mode;
 
+static const char *adc_freq_device;
+static const char *adc_freq_file;
+
 static GdkColor color_graph0 = {
 	.red = 0,
 	.green = 60000,
@@ -478,8 +481,8 @@ static void rx_update_labels(void)
 	int i;
 	adc_freq = 246760000.0;
 
-	set_dev_paths("ad9523-lpc");
-	read_devattr_double("out_altvoltage2_ADC_CLK_frequency", &adc_freq);
+	set_dev_paths(adc_freq_device);
+	read_devattr_double(adc_freq_file, &adc_freq);
 	adc_freq /= 1000000.0;
 	snprintf(buf, sizeof(buf), "%.4f Mhz", adc_freq);
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
@@ -686,6 +689,14 @@ static void init_application (void)
 	enable_auto_scale = GTK_WIDGET(gtk_builder_get_object(builder, "auto_scale"));
 	printf("%p\n", enable_auto_scale);
 
+	if (iio_devattr_exists("cf-ad9643-core-lpc", "in_voltage_sampling_frequency")) { 
+		adc_freq_device = "cf-ad9643-core-lpc";
+		adc_freq_file = "in_voltage_sampling_frequency";
+	} else {
+		adc_freq_device = "ad9523-lpc";
+		adc_freq_file = "out_altvoltage2_ADC_CLK_frequency";
+	}
+
 	/* Bind the IIO device files to the GUI widgets */
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_raw",
@@ -746,7 +757,7 @@ static void init_application (void)
 			"adf4351-rx-lpc", "out_altvoltage0_frequency_resolution",
 			builder, "rx_lo_spacing", NULL);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			"ad9523-lpc", "out_altvoltage2_ADC_CLK_frequency",
+			adc_freq_device, adc_freq_file,
 			builder, "adc_freq", &mhz_scale);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			"cf-ad9643-core-lpc", "in_voltage0_calibbias",

@@ -642,4 +642,5 @@ int read_devattr_double(const char *attr, double *value);
 int write_devattr_double(const char *attr, double value);
 int write_devattr_int(const char *attr, unsigned long long val);
 int read_devattr_int(char *attr, int *val);
+bool iio_devattr_exists(const char *device, const char *attr);
 int iio_buffer_open(void);

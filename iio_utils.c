@@ -11,6 +11,9 @@
 #include <errno.h>
 #include <syslog.h>
 #include <stdbool.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "iio_utils.h"
 
@@ -162,6 +165,27 @@ int read_devattr_int(char *attr, int *val)
 	*val = ret;
 
 	return ret;
+}
+
+bool iio_devattr_exists(const char *device, const char *attr)
+{
+	char *temp;
+	struct stat s;
+
+	set_dev_paths(device);
+
+	temp = malloc(strlen(dev_dir_name) + strlen(attr) + 2);
+	if (temp == NULL) {
+		fprintf(stderr, "Memory allocation failed\n");
+		return -ENOMEM;
+	}
+	sprintf(temp, "%s/%s", dev_dir_name, attr);
+
+	stat(temp, &s);
+
+	free(temp);
+
+	return S_ISREG(s.st_mode);
 }
 
 int iio_buffer_open(void)
