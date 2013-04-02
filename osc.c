@@ -684,7 +684,6 @@ static void init_application (void)
 	rx_lo_freq_label = GTK_WIDGET(gtk_builder_get_object(builder, "rx_lo_freq_label"));
 	show_grid = GTK_WIDGET(gtk_builder_get_object(builder, "show_grid"));
 	enable_auto_scale = GTK_WIDGET(gtk_builder_get_object(builder, "auto_scale"));
-	printf("%p\n", enable_auto_scale);
 
 	/* Bind the IIO device files to the GUI widgets */
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
