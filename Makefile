@@ -8,7 +8,7 @@ CFLAGS+=-Wall -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
 
-osc: osc.c int_fft.c iio_utils.c iio_widget.c
+osc: osc.c int_fft.c iio_utils.c iio_widget.c fmcomms1.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -o $@
 
 install:

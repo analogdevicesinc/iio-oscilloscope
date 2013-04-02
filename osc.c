@@ -26,6 +26,7 @@
 #include "iio_utils.h"
 #include "int_fft.h"
 #include "config.h"
+#include "fmcomms1.h"
 
 static gfloat *X = NULL;
 static gfloat *channel0 = NULL;
@@ -51,7 +52,8 @@ static GtkDataboxGraph *channel0_graph;
 static GtkDataboxGraph *channel1_graph;
 static GtkDataboxGraph *grid;
 
-static double adc_freq;
+static double adc_freq = 246760000.0;
+
 static bool is_fft_mode;
 
 static GdkColor color_graph0 = {
@@ -171,7 +173,7 @@ static void rescale_databox(GtkDatabox *box, gfloat border)
 		gfloat max_x;
 		gfloat min_y;
 		gfloat max_y;
-        gfloat width;
+		gfloat width;
 
 		gint extrema_success = gtk_databox_calculate_extrema(box,
 				&min_x, &max_x, &min_y, &max_y);
@@ -182,15 +184,14 @@ static void rescale_databox(GtkDatabox *box, gfloat border)
 		if (max_x < max_y)
 			max_x = max_y;
 
-        width = max_x - min_x;
-        if (width == 0)
+		width = max_x - min_x;
+		if (width == 0)
 			width = max_x;
 
-        min_x -= border * width;
-        max_x += border * width;
+		min_x -= border * width;
+		max_x += border * width;
 
-		gtk_databox_set_total_limits(box, min_x, max_x, max_x,
-			min_x);
+		gtk_databox_set_total_limits(box, min_x, max_x, max_x, min_x);
 
 	} else {
 		gtk_databox_auto_rescale(box, border);
@@ -467,11 +468,7 @@ static void show_grid_toggled(GtkToggleButton *btn, gpointer data)
 	}
 }
 
-static struct iio_widget tx_widgets[100];
-static struct iio_widget rx_widgets[100];
-static unsigned int num_tx, num_rx;
-
-static void rx_update_labels(void)
+void rx_update_labels(void)
 {
 	double freq = 2400000000.0;
 	char buf[100];
@@ -491,34 +488,14 @@ static void rx_update_labels(void)
 	gtk_label_set_text(GTK_LABEL(rx_lo_freq_label), buf);
 
 	if (is_fft_mode) {
-		/* In FFT mode we need to scale the X-axis according to the selected
-		 * sampling frequency. */
+		/* 
+		 * In FFT mode we need to scale the X-axis according to the selected
+		 * sampling frequency.
+		 */
 		for (i = 0; i < num_samples / 2; i++)
 			X[i] = i * adc_freq / num_samples;
 		gtk_databox_set_total_limits(GTK_DATABOX(databox), 0.0, adc_freq / 2.0, 0.0, -75.0);
 	}
-}
-
-static void tx_update_values(void)
-{
-	iio_update_widgets(tx_widgets, num_tx);
-}
-
-static void rx_update_values(void)
-{
-	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels();
-}
-
-static void tx_save_button_clicked(GtkButton *btn, gpointer data)
-{
-	iio_save_widgets(tx_widgets, num_tx);
-}
-
-static void rx_save_button_clicked(GtkButton *btn, gpointer data)
-{
-	iio_save_widgets(rx_widgets, num_rx);
-	rx_update_labels();
 }
 
 static void zoom_fit(GtkButton *btn, gpointer data)
@@ -634,30 +611,6 @@ static void zoom_out(GtkButton *btn, gpointer data)
 	gtk_databox_set_visible_limits(GTK_DATABOX(data), left, right, top, bottom);
 }
 
-static int compare_gain(const char *a, const char *b)
-{
-	double val_a, val_b;
-	sscanf(a, "%lf", &val_a);
-	sscanf(b, "%lf", &val_b);
-
-	if (val_a < val_b)
-		return -1;
-	else if(val_a > val_b)
-		return 1;
-	else
-		return 0;
-}
-
-static void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
-	const gchar *signal, GCallback callback, gpointer data)
-{
-	GObject *tmp;
-	tmp = gtk_builder_get_object(builder, name);
-	g_signal_connect(tmp, signal, callback, data);
-}
-
-static const gdouble mhz_scale = 1000000.0;
-
 static void init_application (void)
 {
 	GtkWidget *window;
@@ -684,87 +637,6 @@ static void init_application (void)
 	rx_lo_freq_label = GTK_WIDGET(gtk_builder_get_object(builder, "rx_lo_freq_label"));
 	show_grid = GTK_WIDGET(gtk_builder_get_object(builder, "show_grid"));
 	enable_auto_scale = GTK_WIDGET(gtk_builder_get_object(builder, "auto_scale"));
-
-	/* Bind the IIO device files to the GUI widgets */
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage0_1A_raw",
-			builder, "dds_enable");
-	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage0_1A_frequency",
-			builder, "dds_tone1_freq", &mhz_scale);
-	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage2_2A_frequency",
-			builder, "dds_tone1_freq", &mhz_scale);
-	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage1_1B_frequency",
-			builder, "dds_tone2_freq", &mhz_scale);
-	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage3_2B_frequency",
-			builder, "dds_tone2_freq", &mhz_scale);
-	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage0_1A_scale",
-			builder, "dds_tone1_scale", compare_gain);
-	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage2_2A_scale",
-			builder, "dds_tone1_scale", compare_gain);
-	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage1_1B_scale",
-			builder, "dds_tone2_scale", compare_gain);
-	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage3_2B_scale",
-			builder, "dds_tone2_scale", compare_gain);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_voltage0_calibbias",
-			builder, "dac_calibbias0", NULL);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_voltage0_calibscale",
-			builder, "dac_calibscale0", NULL);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_voltage0_phase",
-			builder, "dac_calibphase0", NULL);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_voltage0_calibbias",
-			builder, "dac_calibbias1", NULL);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_voltage1_calibscale",
-			builder, "dac_calibscale1", NULL);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_voltage1_phase",
-			builder, "dac_calibphase1", NULL);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-			"adf4351-tx-lpc", "out_altvoltage0_frequency",
-			builder, "tx_lo_freq", &mhz_scale);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-			"adf4351-tx-lpc", "out_altvoltage0_frequency_resolution",
-			builder, "tx_lo_spacing", NULL);
-
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			"adf4351-rx-lpc", "out_altvoltage0_frequency",
-			builder, "rx_lo_freq", &mhz_scale);
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			"adf4351-rx-lpc", "out_altvoltage0_frequency_resolution",
-			builder, "rx_lo_spacing", NULL);
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			"ad9523-lpc", "out_altvoltage2_ADC_CLK_frequency",
-			builder, "adc_freq", &mhz_scale);
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			"cf-ad9643-core-lpc", "in_voltage0_calibbias",
-			builder, "adc_calibbias0", NULL);
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			"cf-ad9643-core-lpc", "in_voltage1_calibbias",
-			builder, "adc_calibbias1", NULL);
-	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
-			"cf-ad9643-core-lpc", "in_voltage0_calibscale",
-			builder, "adc_calibscale0", NULL);
-	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
-			"cf-ad9643-core-lpc", "in_voltage1_calibscale",
-			builder, "adc_calibscale1", NULL);
-	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
-			"ad8366-lpc", "out_voltage0_hardwaregain",
-			builder, "adc_gain0", NULL);
-	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
-			"ad8366-lpc", "out_voltage1_hardwaregain",
-			builder, "adc_gain1", NULL);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(fft_size_widget), 0);
 
@@ -797,10 +669,6 @@ static void init_application (void)
 
 	g_builder_connect_signal(builder, "capture_button", "toggled",
 		G_CALLBACK(capture_button_clicked), NULL);
-	g_builder_connect_signal(builder, "adc_settings_save", "clicked",
-		G_CALLBACK(rx_save_button_clicked), NULL);
-	g_builder_connect_signal(builder, "dds_settings_save", "clicked",
-		G_CALLBACK(tx_save_button_clicked), NULL);
 	g_builder_connect_signal(builder, "zoom_in", "clicked",
 		G_CALLBACK(zoom_in), databox);
 	g_builder_connect_signal(builder, "zoom_out", "clicked",
@@ -810,6 +678,9 @@ static void init_application (void)
 	g_signal_connect(G_OBJECT(show_grid), "toggled",
 		G_CALLBACK(show_grid_toggled), databox);
 
+
+	init_fmcomms1(builder);
+
 	gtk_widget_show_all(window);
 }
 
@@ -817,8 +688,7 @@ gint main(gint argc, char *argv[])
 {
 	gtk_init(&argc, &argv);
 	init_application();
-	tx_update_values();
-	rx_update_values();
+	fmcomms1_update();
 	gtk_main();
 
 	return 0;

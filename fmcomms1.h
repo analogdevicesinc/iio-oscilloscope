@@ -1,0 +1,16 @@
+/**
+ * Copyright 2012(c) Analog Devices, Inc.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ANALOG DEVICES "AS IS" AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, NON-INFRINGEMENT,
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ *
+ **/
+
+#ifndef __FMCOMMS1_H__
+#define __FMCOMMS1_H__
+
+void init_fmcomms1 (GtkBuilder *builder);
+void fmcomms1_update(void);
+
+#endif
