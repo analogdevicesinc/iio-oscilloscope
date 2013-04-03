@@ -3,7 +3,7 @@ PREFIX=/usr/local
 
 LDFLAGS=`pkg-config --libs gtk+-2.0 gtkdatabox fftw3`
 CFLAGS=`pkg-config --cflags gtk+-2.0 gtkdatabox fftw3`
-CFLAGS+=-Wall -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
+CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
