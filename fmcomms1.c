@@ -45,13 +45,9 @@ static void rx_update_values(void)
 	rx_update_labels();
 }
 
-static void tx_save_button_clicked(GtkButton *btn, gpointer data)
+static void save_button_clicked(GtkButton *btn, gpointer data)
 {
 	iio_save_widgets(tx_widgets, num_tx);
-}
-
-static void rx_save_button_clicked(GtkButton *btn, gpointer data)
-{
 	iio_save_widgets(rx_widgets, num_rx);
 	rx_update_labels();
 }
@@ -73,14 +69,50 @@ static int compare_gain(const char *a, const char *b)
 
 void init_fmcomms1 (GtkBuilder *builder)
 {
-	GtkWidget *window;
+	GtkWidget *window, *fmcomms1_panel;
+	GtkWidget *scale1, *scale2;
+	char *str, *str1, *str2, substr[10];
+	int tmp, i = 1, j;
 
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
+	scale1 =  GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone1_scale"));
+	scale2 = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone2_scale"));
+	fmcomms1_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms1_panel"));
+
+	if (set_dev_paths("cf-ad9122-core-lpc")) {
+		gtk_widget_hide(fmcomms1_panel);	
+		return;
+	}
+
+	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(scale1), 0);
+	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(scale2), 0);
+
+	tmp = read_devattr("out_altvoltage_1A_scale_available", &str);
+	str2 = str;
+	while(i) {
+		str1 = strstr(str2, " ");
+		memset(substr, 0, 10);
+		if (str1)
+			j = (int)(str1 - str2);
+		else {
+			j = strlen(str2);
+			i = 0;
+		}
+
+		strncpy(substr, str2, j);
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scale1),
+			 (const gchar *)substr);
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scale2),
+			(const gchar *)substr);
+
+		str2 = str1 + 1;
+	}
+	free (str);
 
 	/* Bind the IIO device files to the GUI widgets */
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_raw",
-			builder, "dds_enable");
+			builder, "tx_enable");
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_frequency",
 			builder, "dds_tone1_freq", &mhz_scale);
@@ -162,10 +194,8 @@ void init_fmcomms1 (GtkBuilder *builder)
 			 G_CALLBACK(gtk_main_quit), NULL);
 
 
-	g_builder_connect_signal(builder, "adc_settings_save", "clicked",
-		G_CALLBACK(rx_save_button_clicked), NULL);
-	g_builder_connect_signal(builder, "dds_settings_save", "clicked",
-		G_CALLBACK(tx_save_button_clicked), NULL);
+	g_builder_connect_signal(builder, "fmcomms1_settings_save", "clicked",
+		G_CALLBACK(save_button_clicked), NULL);
 
 	gtk_widget_show_all(window);
 }
