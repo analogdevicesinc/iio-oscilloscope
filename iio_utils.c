@@ -22,6 +22,9 @@ static char dev_dir_name[MAX_STR_LEN];
 static char buf_dir_name[MAX_STR_LEN];
 static char buffer_access[MAX_STR_LEN];
 static char last_device_name[MAX_STR_LEN];
+static char last_debug_name[MAX_STR_LEN];
+
+static char debug_dir_name[MAX_STR_LEN];
 
 int set_dev_paths(const char *device_name)
 {
@@ -52,6 +55,53 @@ int set_dev_paths(const char *device_name)
 	ret = 0;
 error_ret:
 	return ret;
+}
+
+int set_debugfs_paths(const char *device_name)
+{
+	int dev_num, ret;
+	FILE *debugfsfp;
+
+	if (strncmp(device_name, last_debug_name, MAX_STR_LEN) != 0) {
+		/* Find the device requested */
+		dev_num = find_type_by_name(device_name, "iio:device");
+		if (dev_num < 0) {
+			syslog(LOG_ERR, "%s failed to find the %s\n",
+				__func__, device_name);
+			ret = -ENODEV;
+			goto error_ret;
+		}
+		ret = snprintf(debug_dir_name, MAX_STR_LEN,"%siio:device%d/",
+		iio_debug_dir, dev_num);
+		if (ret >= MAX_STR_LEN) {
+			syslog(LOG_ERR, "%s failed (%d)\n", __func__, __LINE__);
+			ret = -EFAULT;
+			goto error_ret;
+		}
+		debugfsfp = fopen(debug_dir_name, "r");
+		if (!debugfsfp) {
+			syslog(LOG_ERR, "%s can't open %s\n", __func__, debug_dir_name);
+			ret = -ENODEV;
+			goto error_ret;
+		}
+	}
+	ret = 0;
+error_ret:
+	return ret;
+}
+
+int read_reg(unsigned int address)
+{
+	write_sysfs_int("direct_reg_access", debug_dir_name, address);
+	return read_sysfs_posint("direct_reg_access", debug_dir_name);
+}
+
+int write_reg(unsigned int address, unsigned int val)
+{
+	char temp[40];
+
+	sprintf(temp, "0x%x 0x%x\n", address, val);
+	return write_sysfs_string("direct_reg_access", debug_dir_name, temp);
 }
 
 int read_sysfs_string(const char *filename, const char *basedir, char **str)

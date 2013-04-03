@@ -22,6 +22,7 @@
 #define FORMAT_TYPE_FILE "%s_type"
 
 static const char *iio_dir = "/sys/bus/iio/devices/";
+static const char *iio_debug_dir = "/sys/kernel/debug/iio/";
 
 /**
  * iioutils_break_up_name() - extract generic name from full channel name
@@ -632,9 +633,19 @@ error_free:
 	return ret;
 }
 
+/*
+ * Used to quiet warnings
+ */
+static inline void dummy_funct_quiet(char *ptr)
+{
+	sprintf(ptr, "%s", iio_debug_dir);
+}
 
 int set_dev_paths(const char *device_name);
 int read_sysfs_string(const char *filename, const char *basedir, char **str);
+int set_debugfs_paths(const char *device_name);
+int read_sysfs_string(const char *filename, const char *basedir, char **str);
+int write_reg(unsigned int address, unsigned int val);
 int write_devattr(const char *attr, const char *str);
 int read_devattr(const char *attr, char **str);
 int read_devattr_bool(const char *attr, bool *value);
