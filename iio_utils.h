@@ -472,6 +472,55 @@ static inline int find_type_by_name(const char *name, const char *type)
 	return -ENODEV;
 }
 
+/**
+ *  * find_names() - function to find names installed on the system
+ *   * @name: null char delimited names
+ *    * return value is the number of entries
+ *     **/
+static inline int find_iio_names(char **names)
+{
+	DIR *dp;
+	const struct dirent *ent;
+	FILE *nameFile;
+	char *filename, *name_str=NULL;
+	char thisname[IIO_MAX_NAME_LENGTH];
+	int ret=0, i=0, j;
+
+	dp = opendir(iio_dir);
+	if (dp == NULL) {
+		fprintf(stderr, "No industrialio devices available\n");
+		return -ENODEV;
+	}
+
+	while (ent = readdir(dp), ent != NULL) {
+		if (strcmp(ent->d_name, ".") == 0 ||
+				strcmp(ent->d_name, "..") == 0)
+			continue;
+		filename = malloc(strlen(iio_dir) + strlen(ent->d_name) + 6);
+		if (filename == NULL)
+			return -ENOMEM;
+		sprintf(filename, "%s%s/name", iio_dir, ent->d_name);
+		nameFile = fopen(filename, "r");
+		if (!nameFile)
+			continue;
+
+		free(filename);
+		memset(thisname, 0, IIO_MAX_NAME_LENGTH);
+		fscanf(nameFile, "%s", thisname);
+
+		j = i;
+		i += strlen(thisname) + 1;
+
+		name_str = realloc(name_str, i);
+		sprintf(&name_str[j], "%s", thisname);
+		ret++;
+	}
+	*names = name_str;
+	return ret;
+}
+
+
+
 static inline int _write_sysfs_int(const char *filename, const char *basedir, int val, int verify, int type, int val2)
 {
 	int ret = 0;
