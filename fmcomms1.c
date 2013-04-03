@@ -1,0 +1,219 @@
+/**
+ * Copyright (C) 2012 Analog Devices, Inc.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ANALOG DEVICES "AS IS" AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, NON-INFRINGEMENT,
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ *
+ **/
+#include <stdio.h>
+
+#include <gtk/gtk.h>
+#include <gtkdatabox.h>
+#include <gtkdatabox_grid.h>
+#include <gtkdatabox_points.h>
+#include <gtkdatabox_lines.h>
+#include <math.h>
+#include <stdint.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdbool.h>
+#include <malloc.h>
+
+#include <fftw3.h>
+
+#include "iio_widget.h"
+#include "iio_utils.h"
+#include "int_fft.h"
+#include "config.h"
+
+static const gdouble mhz_scale = 1000000.0;
+
+static struct iio_widget tx_widgets[100];
+static struct iio_widget rx_widgets[100];
+static unsigned int num_tx, num_rx;
+
+const char *adc_freq_device;
+const char *adc_freq_file;
+
+static void tx_update_values(void)
+{
+	iio_update_widgets(tx_widgets, num_tx);
+}
+void rx_update_labels(void);
+
+static void rx_update_values(void)
+{
+	iio_update_widgets(rx_widgets, num_rx);
+	rx_update_labels();
+}
+
+static void save_button_clicked(GtkButton *btn, gpointer data)
+{
+	iio_save_widgets(tx_widgets, num_tx);
+	iio_save_widgets(rx_widgets, num_rx);
+	rx_update_labels();
+}
+
+
+static int compare_gain(const char *a, const char *b)
+{
+	double val_a, val_b;
+	sscanf(a, "%lf", &val_a);
+	sscanf(b, "%lf", &val_b);
+
+	if (val_a < val_b)
+		return -1;
+	else if(val_a > val_b)
+		return 1;
+	else
+		return 0;
+}
+
+void init_fmcomms1 (GtkBuilder *builder)
+{
+	GtkWidget *window, *fmcomms1_panel;
+	GtkWidget *scale1, *scale2;
+	char *str, *str1, *str2, substr[10];
+	int tmp, i = 1, j;
+
+	window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
+	scale1 =  GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone1_scale"));
+	scale2 = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone2_scale"));
+	fmcomms1_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms1_panel"));
+
+	if (set_dev_paths("cf-ad9122-core-lpc")) {
+		gtk_widget_hide(fmcomms1_panel);	
+		return;
+	}
+
+	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(scale1), 0);
+	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(scale2), 0);
+
+	tmp = read_devattr("out_altvoltage_1A_scale_available", &str);
+	str2 = str;
+	while(i) {
+		str1 = strstr(str2, " ");
+		memset(substr, 0, 10);
+		if (str1)
+			j = (int)(str1 - str2);
+		else {
+			j = strlen(str2);
+			i = 0;
+		}
+
+		strncpy(substr, str2, j);
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scale1),
+			 (const gchar *)substr);
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scale2),
+			(const gchar *)substr);
+
+		str2 = str1 + 1;
+	}
+	free (str);
+
+	if (iio_devattr_exists("cf-ad9643-core-lpc", "in_voltage_sampling_frequency")) { 
+		adc_freq_device = "cf-ad9643-core-lpc";
+		adc_freq_file = "in_voltage_sampling_frequency";
+	} else {
+		adc_freq_device = "ad9523-lpc";
+		adc_freq_file = "out_altvoltage2_ADC_CLK_frequency";
+	}
+
+	/* Bind the IIO device files to the GUI widgets */
+	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage0_1A_raw",
+			builder, "tx_enable");
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage0_1A_frequency",
+			builder, "dds_tone1_freq", &mhz_scale);
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage2_2A_frequency",
+			builder, "dds_tone1_freq", &mhz_scale);
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage1_1B_frequency",
+			builder, "dds_tone2_freq", &mhz_scale);
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage3_2B_frequency",
+			builder, "dds_tone2_freq", &mhz_scale);
+	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage0_1A_scale",
+			builder, "dds_tone1_scale", compare_gain);
+	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage2_2A_scale",
+			builder, "dds_tone1_scale", compare_gain);
+	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage1_1B_scale",
+			builder, "dds_tone2_scale", compare_gain);
+	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage3_2B_scale",
+			builder, "dds_tone2_scale", compare_gain);
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_voltage0_calibbias",
+			builder, "dac_calibbias0", NULL);
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_voltage0_calibscale",
+			builder, "dac_calibscale0", NULL);
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_voltage0_phase",
+			builder, "dac_calibphase0", NULL);
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_voltage0_calibbias",
+			builder, "dac_calibbias1", NULL);
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_voltage1_calibscale",
+			builder, "dac_calibscale1", NULL);
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_voltage1_phase",
+			builder, "dac_calibphase1", NULL);
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+			"adf4351-tx-lpc", "out_altvoltage0_frequency",
+			builder, "tx_lo_freq", &mhz_scale);
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+			"adf4351-tx-lpc", "out_altvoltage0_frequency_resolution",
+			builder, "tx_lo_spacing", NULL);
+
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+			"adf4351-rx-lpc", "out_altvoltage0_frequency",
+			builder, "rx_lo_freq", &mhz_scale);
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+			"adf4351-rx-lpc", "out_altvoltage0_frequency_resolution",
+			builder, "rx_lo_spacing", NULL);
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+			adc_freq_device, adc_freq_file,
+			builder, "adc_freq", &mhz_scale);
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+			"cf-ad9643-core-lpc", "in_voltage0_calibbias",
+			builder, "adc_calibbias0", NULL);
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+			"cf-ad9643-core-lpc", "in_voltage1_calibbias",
+			builder, "adc_calibbias1", NULL);
+	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
+			"cf-ad9643-core-lpc", "in_voltage0_calibscale",
+			builder, "adc_calibscale0", NULL);
+	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
+			"cf-ad9643-core-lpc", "in_voltage1_calibscale",
+			builder, "adc_calibscale1", NULL);
+	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
+			"ad8366-lpc", "out_voltage0_hardwaregain",
+			builder, "adc_gain0", NULL);
+	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
+			"ad8366-lpc", "out_voltage1_hardwaregain",
+			builder, "adc_gain1", NULL);
+
+	g_signal_connect(G_OBJECT(window), "destroy",
+			 G_CALLBACK(gtk_main_quit), NULL);
+
+
+	g_builder_connect_signal(builder, "fmcomms1_settings_save", "clicked",
+		G_CALLBACK(save_button_clicked), NULL);
+
+	gtk_widget_show_all(window);
+}
+
+void fmcomms1_update(void)
+{
+	tx_update_values();
+	rx_update_values();
+
+}

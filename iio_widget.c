@@ -15,6 +15,15 @@
 #include "iio_widget.h"
 #include "iio_utils.h"
 
+void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
+	const gchar *signal, GCallback callback, gpointer data)
+{
+	GObject *tmp;
+	tmp = gtk_builder_get_object(builder, name);
+	g_signal_connect(tmp, signal, callback, data);
+}
+
+
 static void iio_widget_init(struct iio_widget *widget, const char *device_name,
 	const char *attr_name, GtkWidget *gtk_widget, void *priv,
 	void (*update)(struct iio_widget *), void (*save)(struct iio_widget *))

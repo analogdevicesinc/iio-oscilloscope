@@ -20,6 +20,9 @@ struct iio_widget {
 	void (*update)(struct iio_widget *);
 };
 
+void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
+	const gchar *signal, GCallback callback, gpointer data);
+
 void iio_update_widgets(struct iio_widget *widgets, unsigned int num_widgets);
 void iio_save_widgets(struct iio_widget *widgets, unsigned int num_widgets);
 
