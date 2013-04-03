@@ -69,16 +69,20 @@ int read_sysfs_string(const char *filename, const char *basedir, char **str)
 		ret = -errno;
 		goto error_free;
 	}
-	ret = fscanf(sysfsfp, "%as", str);
+	*str = calloc(1024, 1);
+	ret = fread(*str, 1024, 1, sysfsfp);
+
 	if (ret < 0) {
-		if (NULL != str)
-			free(str);
+		if (NULL != *str)
+			free(*str);
 
 	}
+	ret = strlen(*str);
+
+	fclose(sysfsfp);
 
 error_free:
 	free(temp);
-
 	return ret;
 }
 
