@@ -477,14 +477,14 @@ static inline int find_type_by_name(const char *name, const char *type)
  *   * @name: null char delimited names
  *    * return value is the number of entries
  *     **/
-static inline int find_iio_names(char **names)
+static inline int find_iio_names(char **names, char *start, char *end)
 {
-	DIR *dp;
-	const struct dirent *ent;
+	DIR *dp, *idp;
+	const struct dirent *ent, *ient;
 	FILE *nameFile;
 	char *filename, *name_str=NULL;
 	char thisname[IIO_MAX_NAME_LENGTH];
-	int ret=0, i=0, j;
+	int ret=0, i=0, j, add;
 
 	dp = opendir(iio_dir);
 	if (dp == NULL) {
@@ -496,17 +496,44 @@ static inline int find_iio_names(char **names)
 		if (strcmp(ent->d_name, ".") == 0 ||
 				strcmp(ent->d_name, "..") == 0)
 			continue;
+
 		filename = malloc(strlen(iio_dir) + strlen(ent->d_name) + 6);
 		if (filename == NULL)
 			return -ENOMEM;
+
 		sprintf(filename, "%s%s/name", iio_dir, ent->d_name);
 		nameFile = fopen(filename, "r");
-		if (!nameFile)
+		if (!nameFile) {
+			free(filename);
 			continue;
+		}
+
+		add = 1;
+
+		if (start != NULL || end != NULL) {
+			add = 0;
+			sprintf(filename, "%s%s", iio_dir, ent->d_name);
+			idp =  opendir(filename);
+			 if (idp == NULL) {
+				continue;
+			 }
+			 while (ient = readdir(idp), ient != NULL) {
+				if (start != NULL && strstr(ient->d_name, start) == ient->d_name)
+					add = 1;
+				if (end != NULL && strstr(ient->d_name, end) == (ient->d_name + strlen(ient->d_name) - strlen(end)))
+					add = 1;
+			 }
+		}
 
 		free(filename);
+		if (!add) {
+			fclose(nameFile);
+			continue;
+		}
+
 		memset(thisname, 0, IIO_MAX_NAME_LENGTH);
 		fscanf(nameFile, "%s", thisname);
+		fclose(nameFile);
 
 		j = i;
 		i += strlen(thisname) + 1;
@@ -516,6 +543,7 @@ static inline int find_iio_names(char **names)
 		ret++;
 	}
 	*names = name_str;
+	closedir(dp);
 	return ret;
 }
 
