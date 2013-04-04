@@ -9,7 +9,8 @@ CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 #CFLAGS += -DNOFFTW
 
 PLUGINS=\
-	plugins/fmcomms1.so
+	plugins/fmcomms1.so\
+    plugins/pmodDA4.so
 
 all: osc $(PLUGINS)
 
