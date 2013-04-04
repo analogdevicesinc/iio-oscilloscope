@@ -132,6 +132,9 @@ int read_sysfs_string(const char *filename, const char *basedir, char **str)
 	}
 	ret = strlen(*str);
 
+	if ((*str)[ret - 1] == '\n')
+		(*str)[ret - 1] = '\0';
+
 	fclose(sysfsfp);
 
 error_free:
