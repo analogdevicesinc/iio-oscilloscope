@@ -722,6 +722,7 @@ int set_dev_paths(const char *device_name);
 int read_sysfs_string(const char *filename, const char *basedir, char **str);
 int set_debugfs_paths(const char *device_name);
 int read_sysfs_string(const char *filename, const char *basedir, char **str);
+int read_reg(unsigned int address);
 int write_reg(unsigned int address, unsigned int val);
 int write_devattr(const char *attr, const char *str);
 int read_devattr(const char *attr, char **str);
