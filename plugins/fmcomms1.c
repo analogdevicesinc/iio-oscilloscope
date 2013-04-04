@@ -20,12 +20,10 @@
 #include <stdbool.h>
 #include <malloc.h>
 
-#include <fftw3.h>
-
-#include "iio_widget.h"
-#include "iio_utils.h"
-#include "int_fft.h"
-#include "config.h"
+#include "../iio_widget.h"
+#include "../iio_utils.h"
+#include "../osc_plugin.h"
+#include "../config.h"
 
 static const gdouble mhz_scale = 1000000.0;
 
@@ -33,8 +31,8 @@ static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
 static unsigned int num_tx, num_rx;
 
-const char *adc_freq_device;
-const char *adc_freq_file;
+static const char *adc_freq_device;
+static const char *adc_freq_file;
 
 static void tx_update_values(void)
 {
@@ -55,7 +53,6 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	rx_update_labels();
 }
 
-
 static int compare_gain(const char *a, const char *b)
 {
 	double val_a, val_b;
@@ -70,29 +67,29 @@ static int compare_gain(const char *a, const char *b)
 		return 0;
 }
 
-void init_fmcomms1 (GtkBuilder *builder)
+static int fmcomms1_init(GtkWidget *notebook)
 {
-	GtkWidget *window, *fmcomms1_panel;
+	GtkBuilder *builder;
+	GtkWidget *fmcomms1_panel;
 	GtkWidget *scale1, *scale2;
 	char *str, *str1, *str2, substr[10];
 	int tmp, i = 1, j;
 
-	window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
+	builder = gtk_builder_new();
+
+	if (!gtk_builder_add_from_file(builder, "fmcomms1.glade", NULL))
+		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms1.glade", NULL);
+
 	scale1 =  GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone1_scale"));
 	scale2 = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone2_scale"));
 	fmcomms1_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms1_panel"));
-
-	if (set_dev_paths("cf-ad9122-core-lpc")) {
-		gtk_widget_hide(fmcomms1_panel);	
-		return;
-	}
 
 	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(scale1), 0);
 	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(scale2), 0);
 
 	tmp = read_devattr("out_altvoltage_1A_scale_available", &str);
 	str2 = str;
-	while(i) {
+	while(i && tmp >= 0) {
 		str1 = strstr(str2, " ");
 		memset(substr, 0, 10);
 		if (str1)
@@ -201,19 +198,26 @@ void init_fmcomms1 (GtkBuilder *builder)
 			"ad8366-lpc", "out_voltage1_hardwaregain",
 			builder, "adc_gain1", NULL);
 
-	g_signal_connect(G_OBJECT(window), "destroy",
-			 G_CALLBACK(gtk_main_quit), NULL);
-
-
 	g_builder_connect_signal(builder, "fmcomms1_settings_save", "clicked",
 		G_CALLBACK(save_button_clicked), NULL);
 
-	gtk_widget_show_all(window);
-}
-
-void fmcomms1_update(void)
-{
 	tx_update_values();
 	rx_update_values();
 
+	gtk_widget_unparent(fmcomms1_panel);
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms1_panel, NULL);
+	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms1_panel, "FMComms1");
+
+	return 0;
 }
+
+static bool fmcomms1_identify(void)
+{
+	return !set_dev_paths("cf-ad9122-core-lpc");
+}
+
+const struct osc_plugin plugin = {
+	.name = "FMComms1",
+	.identify = fmcomms1_identify,
+	.init = fmcomms1_init,
+};

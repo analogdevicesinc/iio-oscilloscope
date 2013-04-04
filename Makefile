@@ -8,15 +8,25 @@ CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
 
-osc: osc.c int_fft.c iio_utils.c iio_widget.c fmcomms1.c
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -o $@
+PLUGINS=\
+	plugins/fmcomms1.so
+
+all: osc $(PLUGINS)
+
+osc: osc.c int_fft.c iio_utils.c iio_widget.c
+	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -rdynamic -o $@
+
+%.so: %.c
+	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@
 
 install:
 	install -d $(DESTDIR)/bin
 	install -d $(DESTDIR)/share/osc/
+	install -d $(DESTDIR)/lib/osc/
 	install ./osc $(DESTDIR)/bin/
 	install ./osc.glade $(DESTDIR)/share/osc/
 	install ./icons/ADIlogo.png $(DESTDIR)/share/osc/
+	install $(PLUGINS) $(DESTDIR)/lib/osc/
 
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
 	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
@@ -27,4 +37,4 @@ install:
 	xdg-desktop-menu install adi-osc.desktop
 
 clean:
-	rm -rf osc *.o
+	rm -rf osc *.o plugins/*.so

@@ -15,5 +15,6 @@
 #endif
 
 #define OSC_GLADE_FILE_PATH PREFIX "/share/osc/"
+#define OSC_PLUGIN_PATH PREFIX "/lib/osc/"
 
 #endif

@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <malloc.h>
+#include <dlfcn.h>
 
 #include <fftw3.h>
 
@@ -26,7 +27,7 @@
 #include "iio_utils.h"
 #include "int_fft.h"
 #include "config.h"
-#include "fmcomms1.h"
+#include "osc_plugin.h"
 
 static gfloat *X = NULL;
 static gfloat *channel0 = NULL;
@@ -55,9 +56,6 @@ static GtkDataboxGraph *grid;
 static double adc_freq = 246760000.0;
 
 static bool is_fft_mode;
-
-extern const char *adc_freq_device;
-extern const char *adc_freq_file;
 
 static GdkColor color_graph0 = {
 	.red = 0,
@@ -477,12 +475,13 @@ void rx_update_labels(void)
 	char buf[100];
 	int i;
 	adc_freq = 246760000.0;
-
+#if 0
 	set_dev_paths(adc_freq_device);
 	read_devattr_double(adc_freq_file, &adc_freq);
 	adc_freq /= 1000000.0;
 	snprintf(buf, sizeof(buf), "%.4f Mhz", adc_freq);
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
+#endif
 
 	set_dev_paths("adf4351-rx-lpc");
 	read_devattr_double("out_altvoltage0_frequency", &freq);
@@ -614,12 +613,71 @@ static void zoom_out(GtkButton *btn, gpointer data)
 	gtk_databox_set_visible_limits(GTK_DATABOX(data), left, right, top, bottom);
 }
 
+static void load_plugin(const char *name, GtkWidget *notebook)
+{
+	const struct osc_plugin *plugin;
+	void *lib;
+
+	lib = dlopen(name, RTLD_LOCAL | RTLD_LAZY);
+	if (!lib) {
+		fprintf(stderr, "Failed to load plugin \"%s\": %s\n", name, dlerror());
+		return;
+	}
+
+	plugin = dlsym(lib, "plugin");
+	if (!plugin) {
+		fprintf(stderr, "Failed to load plugin \"%s\": Could not find plugin\n",
+				name);
+		return;
+	}
+
+	printf("Found plugin: %s\n", plugin->name);
+
+	if (!plugin->identify())
+		return;
+
+	plugin->init(notebook);
+
+	printf("Loaded plugin: %s\n", plugin->name);
+}
+
+static bool str_endswith(const char *str, const char *needle)
+{
+	const char *pos;
+	pos = strstr(str, needle);
+	if (pos == NULL)
+		return false;
+	return *(pos + strlen(needle)) == '\0';
+}
+
+static void load_plugins(GtkWidget *notebook)
+{
+	struct dirent *ent;
+	char buf[512];
+	DIR *d;
+
+	/* Check the local plugins folder first */
+	d = opendir("plugins");
+	if (!d)
+		d = opendir(OSC_PLUGIN_PATH);
+
+	while (ent = readdir(d)) {
+		if (ent->d_type != DT_REG)
+			continue;
+		if (!str_endswith(ent->d_name, ".so"))
+			continue;
+		snprintf(buf, sizeof(buf), "plugins/%s", ent->d_name);
+		load_plugin(buf, notebook);
+	}
+}
+
 static void init_application (void)
 {
 	GtkWidget *window;
 	GtkWidget *box2;
 	GtkWidget *table;
 	GtkWidget *tmp;
+	GtkWidget *notebook;
 	GtkBuilder *builder;
 
 	builder = gtk_builder_new();
@@ -640,6 +698,7 @@ static void init_application (void)
 	rx_lo_freq_label = GTK_WIDGET(gtk_builder_get_object(builder, "rx_lo_freq_label"));
 	show_grid = GTK_WIDGET(gtk_builder_get_object(builder, "show_grid"));
 	enable_auto_scale = GTK_WIDGET(gtk_builder_get_object(builder, "auto_scale"));
+	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(fft_size_widget), 0);
 
@@ -681,8 +740,10 @@ static void init_application (void)
 	g_signal_connect(G_OBJECT(show_grid), "toggled",
 		G_CALLBACK(show_grid_toggled), databox);
 
+	g_signal_connect(G_OBJECT(window), "destroy",
+			 G_CALLBACK(gtk_main_quit), NULL);
 
-	init_fmcomms1(builder);
+	load_plugins(notebook);
 
 	gtk_widget_show_all(window);
 }
@@ -691,7 +752,6 @@ gint main(gint argc, char *argv[])
 {
 	gtk_init(&argc, &argv);
 	init_application();
-	fmcomms1_update();
 	gtk_main();
 
 	return 0;
