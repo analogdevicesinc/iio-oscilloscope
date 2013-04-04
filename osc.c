@@ -661,7 +661,7 @@ static void load_plugins(GtkWidget *notebook)
 	if (!d)
 		d = opendir(OSC_PLUGIN_PATH);
 
-	while (ent = readdir(d)) {
+	while ((ent = readdir(d))) {
 		if (ent->d_type != DT_REG)
 			continue;
 		if (!str_endswith(ent->d_name, ".so"))
