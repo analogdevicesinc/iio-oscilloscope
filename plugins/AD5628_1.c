@@ -48,17 +48,17 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	rx_update_labels();
 }
 
-static int pmodDA4_init(GtkWidget *notebook)
+static int AD5628_1_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
-	GtkWidget *pmodDA4_panel;
+	GtkWidget *AD5628_1_panel;
 
 	builder = gtk_builder_new();
 
-	if (!gtk_builder_add_from_file(builder, "PmodDA4.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "PmodDA4.glade", NULL);
+	if (!gtk_builder_add_from_file(builder, "AD5628_1.glade", NULL))
+		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "AD5628_1.glade", NULL);
 
-	pmodDA4_panel = GTK_WIDGET(gtk_builder_get_object(builder, "tablePmodPanel"));
+	AD5628_1_panel = GTK_WIDGET(gtk_builder_get_object(builder, "tablePanelAD5628_1"));
 
 	/* Bind the IIO device files to the GUI widgets */
 	
@@ -148,21 +148,22 @@ static int pmodDA4_init(GtkWidget *notebook)
 	tx_update_values();
 	rx_update_values();
 
-	gtk_widget_unparent(pmodDA4_panel);
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), pmodDA4_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), pmodDA4_panel, "PmodDA4");
+	gtk_widget_unparent(AD5628_1_panel);
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), AD5628_1_panel, NULL);
+	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), AD5628_1_panel, "AD5628-1");
 
 	return 0;
 }
 
-static bool pmodDA4_identify(void)
+static bool AD5628_1_identify(void)
 {
 	
-    return !set_dev_paths("ad5628-1");
+    //return !set_dev_paths("ad5628-1");
+    return TRUE;
 }
 
 const struct osc_plugin plugin = {
-	.name = "PmodDA4",
-	.identify = pmodDA4_identify,
-	.init = pmodDA4_init,
+	.name = "AD5628-1",
+	.identify = AD5628_1_identify,
+	.init = AD5628_1_init,
 };

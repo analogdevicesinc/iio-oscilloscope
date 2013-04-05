@@ -62,7 +62,7 @@
   <object class="GtkWindow" id="window1">
     <property name="can_focus">False</property>
     <child>
-      <object class="GtkTable" id="tablePmodPanel">
+      <object class="GtkTable" id="tablePanelAD5628_1">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="n_rows">5</property>
