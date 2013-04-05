@@ -158,8 +158,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 static bool AD5628_1_identify(void)
 {
 	
-    //return !set_dev_paths("ad5628-1");
-    return TRUE;
+    return !set_dev_paths("ad5628-1");
 }
 
 const struct osc_plugin plugin = {
