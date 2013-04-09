@@ -15,7 +15,7 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.c int_fft.c iio_utils.c iio_widget.c
+osc: osc.c int_fft.c iio_utils.c iio_widget.c fru.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -rdynamic -o $@
 
 %.so: %.c
@@ -28,6 +28,7 @@ install:
 	install ./osc $(DESTDIR)/bin/
 	install ./osc.glade $(DESTDIR)/share/osc/
 	install ./icons/ADIlogo.png $(DESTDIR)/share/osc/
+	install ./icons/IIOlogo.png $(DESTDIR)/share/osc/
 	install $(PLUGINS) $(DESTDIR)/lib/osc/
 
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
