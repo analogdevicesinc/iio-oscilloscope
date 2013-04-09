@@ -18,7 +18,7 @@
 #include "iio_utils.h"
 
 #define MAX_STR_LEN		512
-static char dev_dir_name[MAX_STR_LEN];
+char dev_dir_name[MAX_STR_LEN];
 static char buf_dir_name[MAX_STR_LEN];
 static char buffer_access[MAX_STR_LEN];
 static char last_device_name[MAX_STR_LEN];

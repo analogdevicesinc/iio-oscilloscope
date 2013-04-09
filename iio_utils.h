@@ -54,6 +54,11 @@ static int iioutils_break_up_name(const char *full_name,
 	return 0;
 }
 
+enum iio_endian {
+	IIO_BE,
+	IIO_LE,
+};
+
 /**
  * struct iio_channel_info - information about a given channel
  * @name: channel name
@@ -78,7 +83,7 @@ struct iio_channel_info {
 	uint64_t mask;
 	unsigned is_signed;
 	unsigned enabled;
-	unsigned location;
+	enum iio_endian endianness;
 };
 
 /**
@@ -95,6 +100,7 @@ static inline int iioutils_get_type(unsigned *is_signed,
 			     unsigned *bits_used,
 			     unsigned *shift,
 			     uint64_t *mask,
+				 enum iio_endian *endianness,
 			     const char *device_dir,
 			     const char *name,
 			     const char *generic_name)
@@ -106,6 +112,7 @@ static inline int iioutils_get_type(unsigned *is_signed,
 	char signchar;
 	unsigned padint;
 	const struct dirent *ent;
+	char str_endianness[3];
 
 	ret = asprintf(&scan_el_dir, FORMAT_SCAN_ELEMENTS_DIR, device_dir);
 	if (ret < 0) {
@@ -147,6 +154,7 @@ static inline int iioutils_get_type(unsigned *is_signed,
 				ret = -errno;
 				goto error_free_filename;
 			}
+			fread(str_endianness, 3, 1, sysfsfp);
 			fscanf(sysfsfp,
 			       "%c%u/%u>>%u", &signchar, bits_used,
 			       &padint, shift);
@@ -159,6 +167,10 @@ static inline int iioutils_get_type(unsigned *is_signed,
 				*is_signed = 1;
 			else
 				*is_signed = 0;
+			if (strncmp(str_endianness, "be", 2) == 0)
+				*endianness = IIO_BE;
+			else
+				*endianness = IIO_LE;
 		}
 error_free_filename:
 	if (filename)
@@ -262,7 +274,7 @@ static inline void bsort_channel_array_by_index(struct iio_channel_info **ci_arr
  **/
 static inline int build_channel_array(const char *device_dir,
 			      struct iio_channel_info **ci_array,
-			      int *counter)
+			      unsigned int *counter)
 {
 	DIR *dp;
 	FILE *sysfsfp;
@@ -284,27 +296,12 @@ static inline int build_channel_array(const char *device_dir,
 		ret = -errno;
 		goto error_free_name;
 	}
-	while (ent = readdir(dp), ent != NULL)
+	while (ent = readdir(dp), ent != NULL) {
 		if (strcmp(ent->d_name + strlen(ent->d_name) - strlen("_en"),
 			   "_en") == 0) {
-			ret = asprintf(&filename,
-				       "%s/%s", scan_el_dir, ent->d_name);
-			if (ret < 0) {
-				ret = -ENOMEM;
-				goto error_close_dir;
-			}
-			sysfsfp = fopen(filename, "r");
-			if (sysfsfp == NULL) {
-				ret = -errno;
-				free(filename);
-				goto error_close_dir;
-			}
-			fscanf(sysfsfp, "%d", &ret);
-			if (ret == 1)
-				(*counter)++;
-			fclose(sysfsfp);
-			free(filename);
+			(*counter)++;
 		}
+	}
 	*ci_array = malloc(sizeof(**ci_array) * (*counter));
 	if (*ci_array == NULL) {
 		ret = -ENOMEM;
@@ -332,12 +329,6 @@ static inline int build_channel_array(const char *device_dir,
 			}
 			fscanf(sysfsfp, "%u", &current->enabled);
 			fclose(sysfsfp);
-
-			if (!current->enabled) {
-				free(filename);
-				count--;
-				continue;
-			}
 
 			current->scale = 1.0;
 			current->offset = 0;
@@ -389,6 +380,7 @@ static inline int build_channel_array(const char *device_dir,
 						&current->bits_used,
 						&current->shift,
 						&current->mask,
+						&current->endianness,
 						device_dir,
 						current->name,
 						current->generic_name);
@@ -411,6 +403,18 @@ error_free_name:
 	free(scan_el_dir);
 error_ret:
 	return ret;
+}
+
+static inline void free_channel_array(struct iio_channel_info *ci_array,
+			      int num_channels)
+{
+	int i;
+
+	for (i = 0;  i < num_channels; i++) {
+		free(ci_array[i].name);
+		free(ci_array[i].generic_name);
+	}
+	free(ci_array);
 }
 
 /**

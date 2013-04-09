@@ -29,7 +29,7 @@ static void iio_widget_init(struct iio_widget *widget, const char *device_name,
 	void (*update)(struct iio_widget *), void (*save)(struct iio_widget *))
 {
 	if (!gtk_widget)
-		printf("Missing widget: %s\n", attr_name);
+		printf("Missing widget for %s/%s\n", device_name, attr_name);
 
 	widget->device_name = device_name;
 	widget->attr_name = attr_name;
