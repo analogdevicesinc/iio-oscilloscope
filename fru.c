@@ -97,7 +97,7 @@ void dump_str(unsigned char * p, unsigned int size, unsigned int space)
 	k = 8 - space;
  	for (i = 0; i < size; i++) {
 		m = 0;
-		printf("%02i: %02x : ", i, *t);
+		printf("%02zi: %02x : ", i, *t);
 		for (shift = 0x80; shift > 0; shift >>= 1) {
 			printf("%s", ((*t & shift) == shift) ? "1" : "0");
 			j++, m++;
