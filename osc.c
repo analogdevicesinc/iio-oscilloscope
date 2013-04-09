@@ -491,9 +491,9 @@ static void start_capture_time(void)
 	capture_function = g_idle_add((GSourceFunc) time_capture_func, databox);
 }
 
-static void capture_button_clicked(GtkToggleButton *btn, gpointer data)
+static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 {
-	if (gtk_toggle_button_get_active(btn)) {
+	if (gtk_toggle_tool_button_get_active(btn)) {
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
 			start_capture_fft();
 		else
