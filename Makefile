@@ -15,7 +15,7 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.c int_fft.c iio_utils.c iio_widget.c fru.c
+osc: osc.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -rdynamic -o $@
 
 %.so: %.c
