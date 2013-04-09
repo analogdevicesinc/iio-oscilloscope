@@ -102,8 +102,6 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 
 }
 
-
-
 static int debug_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -159,7 +157,6 @@ static int debug_init(GtkWidget *notebook)
 	gtk_widget_hide(register_write);
 
 	/* Show the panel */
-	gtk_widget_unparent(debug_panel);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), debug_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), debug_panel, "Debug");
 

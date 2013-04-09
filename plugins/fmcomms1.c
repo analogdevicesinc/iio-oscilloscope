@@ -204,7 +204,6 @@ static int fmcomms1_init(GtkWidget *notebook)
 	tx_update_values();
 	rx_update_values();
 
-	gtk_widget_unparent(fmcomms1_panel);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms1_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms1_panel, "FMComms1");
 
