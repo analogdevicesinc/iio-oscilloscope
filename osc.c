@@ -1037,7 +1037,7 @@ static void init_application (void)
 {
 	GtkWidget *window;
 	GtkWidget *table;
-	GtkWidget *tmp, *tmp2;
+	GtkWidget *tmp;
 	GtkWidget *notebook;
 	GtkBuilder *builder;
 
@@ -1126,12 +1126,6 @@ static void init_application (void)
 	g_signal_connect(G_OBJECT(window), "destroy",
 			 G_CALLBACK(gtk_main_quit), NULL);
 
-	/* Bind some dialogs radio buttons to text/labels */
-	tmp2 = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
-	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_label"));
-	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
-	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
-	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
 
 	g_builder_bind_property(builder, "capture_button", "active",
 			"channel_list_view", "sensitive", G_BINDING_INVERT_BOOLEAN);

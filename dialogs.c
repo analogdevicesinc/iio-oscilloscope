@@ -230,6 +230,8 @@ G_MODULE_EXPORT void cb_quit(GtkButton *button, Dialogs *data)
 
 void dialogs_init(GtkBuilder *builder)
 {
+	GtkWidget *tmp, *tmp2;
+
 	dialogs.about = GTK_WIDGET(gtk_builder_get_object(builder, "About_dialog"));
 	dialogs.saveas = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	dialogs.connect = GTK_WIDGET(gtk_builder_get_object(builder, "connect_dialog"));
@@ -239,4 +241,10 @@ void dialogs_init(GtkBuilder *builder)
 	connect_fillin(&dialogs);
 	gtk_builder_connect_signals(builder, &dialogs);
 
+	/* Bind some dialogs radio buttons to text/labels */
+	tmp2 = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_label"));
+	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
+	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
 }
