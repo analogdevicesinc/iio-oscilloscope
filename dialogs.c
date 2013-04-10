@@ -224,8 +224,7 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 
 G_MODULE_EXPORT void cb_quit(GtkButton *button, Dialogs *data)
 {
-	/* Quit */
-	gtk_main_quit();
+	application_quit();
 }
 
 void dialogs_init(GtkBuilder *builder)

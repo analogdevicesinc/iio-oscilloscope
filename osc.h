@@ -11,6 +11,7 @@
 extern GtkWidget *capture_graph;
 
 void dialogs_init(GtkBuilder *builder);
+void application_quit (void);
 
 #endif
 

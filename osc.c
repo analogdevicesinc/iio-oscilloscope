@@ -1033,6 +1033,20 @@ void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer d
 	gtk_list_store_set(GTK_LIST_STORE (data), &iter, 1, enabled, -1);
 }
 
+void application_quit (void)
+{
+	if (capture_function > 0) {
+		g_source_remove(capture_function);
+		capture_function = 0;
+	}
+	if (buffer_fd >= 0) {
+		buffer_close(buffer_fd);
+		buffer_fd = -1;
+	}
+
+	gtk_main_quit();
+}
+
 static void init_application (void)
 {
 	GtkWidget *window;
@@ -1086,9 +1100,6 @@ static void init_application (void)
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(fft_size_widget), 0);
 
-	g_signal_connect(G_OBJECT(window), "destroy",
-			 G_CALLBACK(gtk_main_quit), NULL);
-
 	/* Bind the plot mode radio buttons to the sensitivity of the sample count
 	 * and FFT size widgets */
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size_label"));
@@ -1124,8 +1135,7 @@ static void init_application (void)
 		G_CALLBACK(show_grid_toggled), databox);
 
 	g_signal_connect(G_OBJECT(window), "destroy",
-			 G_CALLBACK(gtk_main_quit), NULL);
-
+			 G_CALLBACK(application_quit), NULL);
 
 	g_builder_bind_property(builder, "capture_button", "active",
 			"channel_list_view", "sensitive", G_BINDING_INVERT_BOOLEAN);
