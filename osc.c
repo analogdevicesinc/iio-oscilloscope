@@ -903,7 +903,7 @@ static bool is_input_device(const char *device)
 {
 	struct iio_channel_info *channels = NULL;
 	unsigned int num_channels;
-	bool is_input;
+	bool is_input = false;
 	int ret;
 	int i;
 
