@@ -556,11 +556,12 @@ static gboolean fft_capture_func(GtkDatabox *box)
 	return TRUE;
 }
 
-static void start_capture_fft(void)
+static int fft_capture_setup(void)
 {
 	int i;
 
-	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
+	if (num_active_channels != 1)
+		return -EINVAL;
 
 	num_samples = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
 	data_buffer.size = num_samples * bytes_per_sample;
@@ -579,26 +580,25 @@ static void start_capture_fft(void)
 	fft_graph = gtk_databox_lines_new(num_samples / 2, X, fft_channel, &color_graph[0], 1);
 	gtk_databox_graph_add(GTK_DATABOX(databox), fft_graph);
 
-	add_grid();
 	gtk_databox_set_total_limits(GTK_DATABOX(databox), -5.0, adc_freq / 2.0 + 5.0, 0.0, -75.0);
 
-	gtk_widget_queue_draw(GTK_WIDGET(databox));
-	frame_counter = 0;
+	return 0;
+}
 
+static void fft_capture_start(void)
+{
 	capture_function = g_idle_add((GSourceFunc) fft_capture_func, databox);
 }
 
-static void start_capture_time(void)
+static int time_capture_setup(void)
 {
 	gboolean is_constellation;
 	unsigned int i, j;
 
-	if (!current_device)
-		return;
-
-	set_dev_paths(current_device);
-
 	is_constellation = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
+
+	if (is_constellation && num_active_channels != 2)
+		return -EINVAL;
 
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 
@@ -638,16 +638,16 @@ static void start_capture_time(void)
 		}
 	}
 
-	add_grid();
 	if (is_constellation)
 		gtk_databox_set_total_limits(GTK_DATABOX(databox), -8500.0, 8500.0, 8500.0, -8500.0);
 	else
 		gtk_databox_set_total_limits(GTK_DATABOX(databox), 0.0, num_samples, 8500.0, -8500.0);
 
-	gtk_widget_queue_draw(GTK_WIDGET(databox));
+	return 0;
+}
 
-	frame_counter = 0;
-
+static void time_capture_start()
+{
 	capture_function = g_idle_add((GSourceFunc) time_capture_func, databox);
 }
 
@@ -657,6 +657,8 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 	int ret;
 
 	if (gtk_toggle_tool_button_get_active(btn)) {
+		gtk_databox_graph_remove_all(GTK_DATABOX(databox));
+
 		data_buffer.available = 0;
 		current_sample = 0;
 		num_active_channels = 0;
@@ -667,7 +669,18 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 				num_active_channels++;
 			}
 		}
+
 		if (num_active_channels == 0 || !current_device) {
+			gtk_toggle_tool_button_set_active(btn, FALSE);
+			return;
+		}
+
+		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
+			ret = fft_capture_setup();
+		else
+			ret = time_capture_setup();
+
+		if (ret) {
 			gtk_toggle_tool_button_set_active(btn, FALSE);
 			return;
 		}
@@ -680,10 +693,14 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			}
 		}
 
+		add_grid();
+		gtk_widget_queue_draw(GTK_WIDGET(databox));
+		frame_counter = 0;
+
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
-			start_capture_fft();
+			fft_capture_start();
 		else
-			start_capture_time();
+			time_capture_start();
 
 	} else {
 		if (capture_function > 0) {
