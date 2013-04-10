@@ -149,6 +149,62 @@ static bool is_oneshot_mode(void)
 	return false;
 }
 
+static int buffer_open(unsigned int length)
+{
+	int ret;
+	int fd;
+
+	if (!current_device)
+		return -ENODEV;
+
+	set_dev_paths(current_device);
+
+	fd = iio_buffer_open();
+	if (fd < 0) {
+		ret = -errno;
+		fprintf(stderr, "Failed to open buffer: %d\n", ret);
+		return ret;
+	}
+
+	/* Setup ring buffer parameters */
+	ret = write_devattr_int("buffer/length", length);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to set buffer length: %d\n", ret);
+		goto err_close;
+	}
+
+	/* Enable the buffer */
+	ret = write_devattr_int("buffer/enable", 1);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
+		goto err_close;
+	}
+
+	return fd;
+
+err_close:
+	close(fd);
+	return ret;
+}
+
+static void buffer_close(unsigned int fd)
+{
+	int ret;
+
+	if (!current_device)
+		return;
+
+	set_dev_paths(current_device);
+
+	/* Enable the buffer */
+	ret = write_devattr_int("buffer/enable", 0);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to disable buffer: %d\n", ret);
+	}
+
+	close(fd);
+}
+
 #if DEBUG
 
 static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
@@ -190,50 +246,16 @@ static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 
 static int sample_iio_data_oneshot(struct buffer *buf)
 {
-	int ret, ret2;
-	int fp;
+	int fd, ret;
 
-	if (!current_device)
-		return -ENODEV;
+	fd = buffer_open(buf->size);
+	if (fd < 0)
+		return fd;
 
-	set_dev_paths(current_device);
+	ret = sample_iio_data_continuous(fd, buf);
 
-	/* Setup ring buffer parameters */
-	ret = write_devattr_int("buffer/length", buf->size);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
-		goto error_ret;
-	}
+	buffer_close(fd);
 
-	/* Enable the buffer */
-	ret = write_devattr_int("buffer/enable", 1);
-	if (ret < 0) {
-		fprintf(stderr, "write_sysfs_int failed (%d)\n",__LINE__);
-		goto error_ret;
-	}
-
-	/* Attempt to open the event access dev */
-	fp = iio_buffer_open();
-	if (fp < 0) {
-		fprintf(stderr, "Failed to open buffer\n");
-		ret = -errno;
-		goto error_disable;
-	}
-
-	sample_iio_data_continuous(fp, buf);
-
-	ret = 0;
-
-	close(fp);
-
-error_disable:
-	/* Stop the ring buffer */
-	ret2 = write_devattr_int("buffer/enable", 0);
-	if (ret2 < 0) {
-		fprintf(stderr, "write_sysfs_int failed (%d)\n",__LINE__);
-	}
-
-error_ret:
 	return ret;
 }
 
@@ -651,22 +673,8 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		}
 
 		if (!is_oneshot_mode()) {
-			set_dev_paths(current_device);
-			/* Setup ring buffer parameters */
-			ret = write_devattr_int("buffer/length", num_samples);
-			if (ret < 0) {
-				fprintf(stderr, "Failed to enable buffer: %d\n", ret);
-			}
-
-			/* Enable the buffer */
-			ret = write_devattr_int("buffer/enable", 1);
-			if (ret < 0) {
-				fprintf(stderr, "write_sysfs_int failed (%d)\n",__LINE__);
-			}
-
-			buffer_fd = iio_buffer_open();
-			if (buffer_fd < 0) {
-				fprintf(stderr, "Failed to open buffer\n");
+			ret = buffer_open(num_samples);
+			if (ret) {
 				gtk_toggle_tool_button_set_active(btn, FALSE);
 				return;
 			}
@@ -676,16 +684,16 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			start_capture_fft();
 		else
 			start_capture_time();
+
 	} else {
 		if (capture_function > 0) {
 			g_source_remove(capture_function);
 			capture_function = 0;
 		}
 		if (buffer_fd >= 0) {
-			close(buffer_fd);
+			buffer_close(buffer_fd);
 			buffer_fd = -1;
 		}
-		write_devattr_int("buffer/enable", 0);
 	}
 }
 
