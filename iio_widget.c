@@ -1,9 +1,7 @@
 /**
- * Copyright 2012(c) Analog Devices, Inc.
+ * Copyright 2012-2013(c) Analog Devices, Inc.
  *
- * THIS SOFTWARE IS PROVIDED BY ANALOG DEVICES "AS IS" AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, NON-INFRINGEMENT,
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * Licensed under the GPL-2.
  *
  **/
 
@@ -21,6 +19,8 @@ void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
 	GObject *tmp;
 	tmp = gtk_builder_get_object(builder, name);
 	g_signal_connect(tmp, signal, callback, data);
+
+	g_object_unref(tmp);	
 }
 
 void g_builder_bind_property(GtkBuilder *builder,
@@ -39,11 +39,15 @@ void g_builder_bind_property(GtkBuilder *builder,
 	target_object = gtk_builder_get_object(builder, target_name);
 	if (!target_object) {
 		fprintf(stderr, "Couldn't find object \"%s\"\n", target_name);
+		g_object_unref(source_object);	
 		return;
 	}
 
 	g_object_bind_property(source_object, source_property, target_object,
 			target_property, flags);
+
+	g_object_unref(source_object);	
+	g_object_unref(target_object);	
 }
 
 
