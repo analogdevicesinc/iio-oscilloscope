@@ -23,6 +23,29 @@ void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
 	g_signal_connect(tmp, signal, callback, data);
 }
 
+void g_builder_bind_property(GtkBuilder *builder,
+	const gchar *source_name, const gchar *source_property,
+	const gchar *target_name, const gchar *target_property,
+	GBindingFlags flags)
+{
+	GObject *source_object, *target_object;
+
+	source_object = gtk_builder_get_object(builder, source_name);
+	if (!source_object) {
+		fprintf(stderr, "Couldn't find object \"%s\"\n", source_name);
+		return;
+	}
+
+	target_object = gtk_builder_get_object(builder, target_name);
+	if (!target_object) {
+		fprintf(stderr, "Couldn't find object \"%s\"\n", target_name);
+		return;
+	}
+
+	g_object_bind_property(source_object, source_property, target_object,
+			target_property, flags);
+}
+
 
 static void iio_widget_init(struct iio_widget *widget, const char *device_name,
 	const char *attr_name, GtkWidget *gtk_widget, void *priv,

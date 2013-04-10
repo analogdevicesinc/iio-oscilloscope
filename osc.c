@@ -1135,6 +1135,10 @@ static void init_application (void)
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
 	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
 
+	g_builder_bind_property(builder, "capture_button", "active",
+			"channel_list_view", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
+			"input_device_list", "sensitive", G_BINDING_INVERT_BOOLEAN);
 
 	load_plugins(notebook);
 	init_device_list();

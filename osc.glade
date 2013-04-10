@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
+  <object class="GtkToggleAction" id="toggleaction1"/>
   <object class="GtkAboutDialog" id="About_dialog">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -544,7 +545,6 @@ A GUI for Linux IIO devices</property>
       <column type="gpointer"/>
     </columns>
   </object>
-  <object class="GtkToggleAction" id="toggleaction1"/>
   <object class="GtkDialog" id="connect_dialog">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -1136,7 +1136,7 @@ Installed/Found IIO devices on this platform</property>
                                     <property name="can_focus">True</property>
                                     <property name="shadow_type">in</property>
                                     <child>
-                                      <object class="GtkTreeView" id="treeview1">
+                                      <object class="GtkTreeView" id="channel_list_view">
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="model">channel_list</property>

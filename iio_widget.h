@@ -22,6 +22,10 @@ struct iio_widget {
 
 void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
 	const gchar *signal, GCallback callback, gpointer data);
+void g_builder_bind_property(GtkBuilder *builder,
+	const gchar *source_name, const gchar *source_property,
+	const gchar *target_name, const gchar *target_property,
+	GBindingFlags flags);
 
 void iio_update_widgets(struct iio_widget *widgets, unsigned int num_widgets);
 void iio_save_widgets(struct iio_widget *widgets, unsigned int num_widgets);
