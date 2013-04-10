@@ -19,8 +19,6 @@ void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
 	GObject *tmp;
 	tmp = gtk_builder_get_object(builder, name);
 	g_signal_connect(tmp, signal, callback, data);
-
-	g_object_unref(tmp);	
 }
 
 void g_builder_bind_property(GtkBuilder *builder,
@@ -45,9 +43,6 @@ void g_builder_bind_property(GtkBuilder *builder,
 
 	g_object_bind_property(source_object, source_property, target_object,
 			target_property, flags);
-
-	g_object_unref(source_object);	
-	g_object_unref(target_object);	
 }
 
 
