@@ -684,8 +684,8 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		}
 
 		if (!is_oneshot_mode()) {
-			ret = buffer_open(num_samples);
-			if (ret) {
+			buffer_fd = buffer_open(num_samples);
+			if (buffer_fd < 0) {
 				gtk_toggle_tool_button_set_active(btn, FALSE);
 				return;
 			}
