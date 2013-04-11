@@ -144,6 +144,9 @@ static bool is_oneshot_mode(void)
 	if (strcmp(current_device, "cf-ad9643-core-lpc") == 0)
 		return true;
 
+	if (strncmp(current_device, "cf-ad9250", 9) == 0)
+		return true;
+
 	return false;
 }
 
@@ -741,7 +744,7 @@ void rx_update_labels(void)
 	gtk_label_set_text(GTK_LABEL(rx_lo_freq_label), buf);
 
 	if (is_fft_mode) {
-		/* 
+		/*
 		 * In FFT mode we need to scale the X-axis according to the selected
 		 * sampling frequency.
 		 */

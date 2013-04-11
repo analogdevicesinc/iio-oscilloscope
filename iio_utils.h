@@ -106,7 +106,7 @@ static inline int iioutils_get_type(unsigned *is_signed,
 			     const char *generic_name)
 {
 	FILE *sysfsfp;
-	int ret;
+	int ret, tmp;
 	DIR *dp;
 	char *scan_el_dir, *builtname, *builtname_generic, *filename = 0;
 	char signchar;
@@ -154,10 +154,18 @@ static inline int iioutils_get_type(unsigned *is_signed,
 				ret = -errno;
 				goto error_free_filename;
 			}
-			fread(str_endianness, 3, 1, sysfsfp);
-			fscanf(sysfsfp,
+			tmp = fread(str_endianness, 3, 1, sysfsfp);
+			if (tmp != 1) {
+				ret = -ENODEV;
+				goto error_free_filename;
+			}
+			tmp = fscanf(sysfsfp,
 			       "%c%u/%u>>%u", &signchar, bits_used,
 			       &padint, shift);
+			if (tmp != 4) {
+				ret = -ENODEV;
+				goto error_free_filename;
+			}
 			*bytes = padint / 8;
 			if (*bits_used == 64)
 				*mask = ~0;
@@ -194,7 +202,7 @@ static inline int iioutils_get_param_float(float *output,
 				    const char *generic_name)
 {
 	FILE *sysfsfp;
-	int ret;
+	int ret, tmp;
 	DIR *dp;
 	char *builtname, *builtname_generic;
 	char *filename = NULL;
@@ -230,7 +238,11 @@ static inline int iioutils_get_param_float(float *output,
 				ret = -errno;
 				goto error_free_filename;
 			}
-			fscanf(sysfsfp, "%f", output);
+			tmp = fscanf(sysfsfp, "%f", output);
+			if (tmp != 1) {
+				*output = 0.0f;
+				ret = -ENODEV;
+			}
 			break;
 		}
 error_free_filename:
@@ -278,7 +290,7 @@ static inline int build_channel_array(const char *device_dir,
 {
 	DIR *dp;
 	FILE *sysfsfp;
-	int count, i;
+	int count, i, tmp;
 	struct iio_channel_info *current;
 	int ret;
 	const struct dirent *ent;
@@ -327,8 +339,10 @@ static inline int build_channel_array(const char *device_dir,
 				ret = -errno;
 				goto error_cleanup_array;
 			}
-			fscanf(sysfsfp, "%u", &current->enabled);
+			tmp = fscanf(sysfsfp, "%u", &current->enabled);
 			fclose(sysfsfp);
+			if (tmp != 1) 
+				current->enabled = 0;
 
 			current->scale = 1.0;
 			current->offset = 0;
@@ -357,8 +371,12 @@ static inline int build_channel_array(const char *device_dir,
 				goto error_cleanup_array;
 			}
 			sysfsfp = fopen(filename, "r");
-			fscanf(sysfsfp, "%u", &current->index);
+			tmp = fscanf(sysfsfp, "%u", &current->index);
 			fclose(sysfsfp);
+			if (tmp != 1) {
+				current->enabled = 0;
+				current->index = -1;
+			}
 			free(filename);
 			/* Find the scale */
 			ret = iioutils_get_param_float(&current->scale,
@@ -427,7 +445,7 @@ static inline void free_channel_array(struct iio_channel_info *ci_array,
 static inline int find_type_by_name(const char *name, const char *type)
 {
 	const struct dirent *ent;
-	int number, numstrlen;
+	int number, numstrlen, tmp;
 
 	FILE *nameFile;
 	DIR *dp;
@@ -466,10 +484,12 @@ static inline int find_type_by_name(const char *name, const char *type)
 				if (!nameFile)
 					continue;
 				free(filename);
-				fscanf(nameFile, "%s", thisname);
+				tmp = fscanf(nameFile, "%s", thisname);
+				fclose(nameFile);
+				if (tmp != 1)
+					continue;
 				if (strcmp(name, thisname) == 0)
 					return number;
-				fclose(nameFile);
 			}
 		}
 	}
@@ -488,7 +508,7 @@ static inline int find_iio_names(char **names, char *start, char *end)
 	FILE *nameFile;
 	char *filename, *name_str=NULL;
 	char thisname[IIO_MAX_NAME_LENGTH];
-	int ret=0, i=0, j, add;
+	int ret=0, i=0, j, add, tmp;
 
 	dp = opendir(iio_dir);
 	if (dp == NULL) {
@@ -536,15 +556,17 @@ static inline int find_iio_names(char **names, char *start, char *end)
 		}
 
 		memset(thisname, 0, IIO_MAX_NAME_LENGTH);
-		fscanf(nameFile, "%s", thisname);
+		tmp = fscanf(nameFile, "%s", thisname);
 		fclose(nameFile);
 
-		j = i;
-		i += strlen(thisname) + 1;
+		if (tmp == 1) {
+			j = i;
+			i += strlen(thisname) + 1;
 
-		name_str = realloc(name_str, i);
-		sprintf(&name_str[j], "%s", thisname);
-		ret++;
+			name_str = realloc(name_str, i);
+			sprintf(&name_str[j], "%s", thisname);
+			ret++;
+		}
 	}
 	*names = name_str;
 	closedir(dp);
@@ -555,7 +577,7 @@ static inline int find_iio_names(char **names, char *start, char *end)
 
 static inline int _write_sysfs_int(const char *filename, const char *basedir, int val, int verify, int type, int val2)
 {
-	int ret = 0;
+	int ret = 0, tmp;
 	FILE *sysfsfp;
 	int test;
 	char *temp = malloc(strlen(basedir) + strlen(filename) + 2);
@@ -581,8 +603,8 @@ static inline int _write_sysfs_int(const char *filename, const char *basedir, in
 			ret = -errno;
 			goto error_free;
 		}
-		fscanf(sysfsfp, "%d", &test);
-		if (test != val) {
+		tmp = fscanf(sysfsfp, "%d", &test);
+		if (tmp != 1 || test != val) {
 			fprintf(stderr, "Possible failure in int write %d to %s%s\n",
 				val,
 				basedir,
@@ -612,7 +634,7 @@ static inline int write_sysfs_int2(const char *filename, const char *basedir, in
 
 static inline int _write_sysfs_string(const char *filename, const char *basedir, const char *val, int verify)
 {
-	int ret = 0;
+	int ret = 0, tmp;
 	FILE  *sysfsfp;
 	char *temp = malloc(strlen(basedir) + strlen(filename) + 2);
 	if (temp == NULL) {
@@ -635,8 +657,8 @@ static inline int _write_sysfs_string(const char *filename, const char *basedir,
 			ret = -errno;
 			goto error_free;
 		}
-		fscanf(sysfsfp, "%s", temp);
-		if (strcmp(temp, val) != 0) {
+		tmp = fscanf(sysfsfp, "%s", temp);
+		if (tmp != 1 || strcmp(temp, val) != 0) {
 			fprintf(stderr, "Possible failure in string write of %s "
 				"Should be %s "
 				"written to %s%s\n",
@@ -672,7 +694,7 @@ static inline int write_sysfs_string(const char *filename, const char *basedir, 
 
 static inline int read_sysfs_posint(const char *filename, const char *basedir)
 {
-	int ret;
+	int ret, tmp;
 	FILE  *sysfsfp;
 	char *temp = malloc(strlen(basedir) + strlen(filename) + 2);
 	if (temp == NULL) {
@@ -685,8 +707,12 @@ static inline int read_sysfs_posint(const char *filename, const char *basedir)
 		ret = -errno;
 		goto error_free;
 	}
-	fscanf(sysfsfp, "%i\n", &ret);
+	tmp = fscanf(sysfsfp, "%i\n", &ret);
+
 	fclose(sysfsfp);
+
+	if (tmp != 1)
+		ret = -ENODEV;
 error_free:
 	free(temp);
 	return ret;
