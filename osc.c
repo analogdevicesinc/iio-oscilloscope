@@ -864,6 +864,31 @@ static void zoom_out(GtkButton *btn, gpointer data)
 	gtk_databox_set_visible_limits(GTK_DATABOX(data), left, right, top, bottom);
 }
 
+static bool force_plugin(const char *name)
+{
+	const char *force_plugin = getenv("OSC_FORCE_PLUGIN");
+	const char *pos;
+
+	if (!force_plugin)
+		return false;
+
+	if (strcmp(force_plugin, "all") == 0)
+		return true;
+
+	pos = strcasestr(force_plugin, name);
+	if (pos) {
+		switch (*(pos + strlen(name))) {
+		case ' ':
+		case '\0':
+			return true;
+		default:
+			break;
+		}
+	}
+
+	return false;
+}
+
 static void load_plugin(const char *name, GtkWidget *notebook)
 {
 	const struct osc_plugin *plugin;
@@ -884,7 +909,7 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 
 	printf("Found plugin: %s\n", plugin->name);
 
-	if (!plugin->identify())
+	if (!plugin->identify() && !force_plugin(plugin->name))
 		return;
 
 	plugin->init(notebook);
