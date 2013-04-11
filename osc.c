@@ -1047,6 +1047,11 @@ void application_quit (void)
 	gtk_main_quit();
 }
 
+void sigterm (int signum)
+{
+	application_quit();
+}
+
 static void init_application (void)
 {
 	GtkWidget *window;
@@ -1151,6 +1156,9 @@ static void init_application (void)
 gint main(gint argc, char *argv[])
 {
 	gtk_init(&argc, &argv);
+	signal(SIGTERM, sigterm);
+	signal(SIGINT, sigterm);
+	signal(SIGHUP, sigterm);
 	init_application();
 	gtk_main();
 
