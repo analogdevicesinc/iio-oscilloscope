@@ -85,6 +85,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(scale1), 0);
 	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(scale2), 0);
 
+	str = NULL;
 	tmp = read_devattr("out_altvoltage_1A_scale_available", &str);
 	str2 = str;
 	while(i && tmp >= 0) {
@@ -105,7 +106,8 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 		str2 = str1 + 1;
 	}
-	free (str);
+	if (str)
+		free (str);
 
 	if (iio_devattr_exists("cf-ad9643-core-lpc", "in_voltage_sampling_frequency")) { 
 		adc_freq_device = "cf-ad9643-core-lpc";
