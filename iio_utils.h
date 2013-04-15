@@ -454,7 +454,7 @@ static inline int find_type_by_name(const char *name, const char *type)
 
 	dp = opendir(iio_dir);
 	if (dp == NULL) {
-		fprintf(stderr, "No industrialio devices available\n");
+		fprintf(stderr, "No Industrial IO devices available to %s\n", __func__);
 		return -ENODEV;
 	}
 
@@ -511,10 +511,8 @@ static inline int find_iio_names(char **names, char *start, char *end)
 	int ret=0, i=0, j, add, tmp;
 
 	dp = opendir(iio_dir);
-	if (dp == NULL) {
-		fprintf(stderr, "No industrialio devices available\n");
+	if (dp == NULL)
 		return -ENODEV;
-	}
 
 	while (ent = readdir(dp), ent != NULL) {
 		if (strcmp(ent->d_name, ".") == 0 ||

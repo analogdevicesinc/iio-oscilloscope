@@ -27,6 +27,15 @@ static char debug_dir_name[MAX_STR_LEN];
 int set_dev_paths(const char *device_name)
 {
 	int dev_num, ret;
+	struct stat *buf;
+
+	if (!device_name)
+		return -EFAULT;
+
+	ret = stat(iio_dir, buf);
+	if (ret)
+		return -EFAULT;
+
 	if (strncmp(device_name, last_device_name, MAX_STR_LEN) != 0) {
 	/* Find the device requested */
 		dev_num = find_type_by_name(device_name, "iio:device");

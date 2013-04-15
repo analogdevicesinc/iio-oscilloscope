@@ -743,7 +743,8 @@ static double read_sampling_frequency(void)
 	double freq = 1.0;
 	int ret;
 
-	set_dev_paths(current_device);
+	if (set_dev_paths(current_device) < 0)
+		return 0.0f;
 
 	if (iio_devattr_exists(current_device, "in_voltage_sampling_frequency")) {
 		read_devattr_double("in_voltage_sampling_frequency", &freq);
