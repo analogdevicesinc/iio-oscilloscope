@@ -59,12 +59,13 @@ static int AD5628_1_init(GtkWidget *notebook)
 	AD5628_1_panel = GTK_WIDGET(gtk_builder_get_object(builder, "tablePanelAD5628_1"));
 
 	/* Bind the IIO device files to the GUI widgets */
-	
+
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage0_raw",
-			builder, "spinbuttonRawValue0", NULL);	
+			builder, "spinbuttonRawValue0", NULL);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage0_powerdown_mode",
+			"out_voltage_powerdown_mode_available",
 			builder, "comboboxPwrDwnModes0", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage0_powerdown",
@@ -72,73 +73,80 @@ static int AD5628_1_init(GtkWidget *notebook)
 
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage1_raw",
-			builder, "spinbuttonRawValue1", NULL);	
+			builder, "spinbuttonRawValue1", NULL);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage1_powerdown_mode",
+			"out_voltage_powerdown_mode_available",
 			builder, "comboboxPwrDwnModes1", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage1_powerdown",
 			builder, "checkbuttonPowerdown1");
-            
+
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage2_raw",
-			builder, "spinbuttonRawValue2", NULL);	
+			builder, "spinbuttonRawValue2", NULL);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage2_powerdown_mode",
+			"out_voltage_powerdown_mode_available",
 			builder, "comboboxPwrDwnModes2", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage2_powerdown",
-			builder, "checkbuttonPowerdown2");    
+			builder, "checkbuttonPowerdown2");
 
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage3_raw",
-			builder, "spinbuttonRawValue3", NULL);	
+			builder, "spinbuttonRawValue3", NULL);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage3_powerdown_mode",
+			"out_voltage_powerdown_mode_available",
 			builder, "comboboxPwrDwnModes3", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage3_powerdown",
-			builder, "checkbuttonPowerdown3");      
-            
+			builder, "checkbuttonPowerdown3");
+
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage4_raw",
-			builder, "spinbuttonRawValue4", NULL);	
+			builder, "spinbuttonRawValue4", NULL);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage4_powerdown_mode",
+			"out_voltage_powerdown_mode_available",
 			builder, "comboboxPwrDwnModes4", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage4_powerdown",
-			builder, "checkbuttonPowerdown4");  
- 
+			builder, "checkbuttonPowerdown4");
+
  	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage5_raw",
-			builder, "spinbuttonRawValue5", NULL);	
+			builder, "spinbuttonRawValue5", NULL);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage5_powerdown_mode",
+			"out_voltage_powerdown_mode_available",
 			builder, "comboboxPwrDwnModes5", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage5_powerdown",
-			builder, "checkbuttonPowerdown5");      
-            
+			builder, "checkbuttonPowerdown5");
+
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage6_raw",
-			builder, "spinbuttonRawValue6", NULL);	
+			builder, "spinbuttonRawValue6", NULL);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage6_powerdown_mode",
+			"out_voltage_powerdown_mode_available",
 			builder, "comboboxPwrDwnModes6", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage6_powerdown",
-			builder, "checkbuttonPowerdown6");                                        
- 
+			builder, "checkbuttonPowerdown6");
+
  	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage7_raw",
-			builder, "spinbuttonRawValue7", NULL);	
+			builder, "spinbuttonRawValue7", NULL);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage7_powerdown_mode",
+			"out_voltage_powerdown_mode_available",
 			builder, "comboboxPwrDwnModes7", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage7_powerdown",
-			builder, "checkbuttonPowerdown7");                                        
+			builder, "checkbuttonPowerdown7");
 
 	g_builder_connect_signal(builder, "buttonSave", "clicked",
 		G_CALLBACK(save_button_clicked), NULL);
@@ -154,7 +162,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 
 static bool AD5628_1_identify(void)
 {
-	
+
     return !set_dev_paths("ad5628-1");
 }
 

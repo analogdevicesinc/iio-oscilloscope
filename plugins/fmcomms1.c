@@ -69,47 +69,15 @@ static int fmcomms1_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *fmcomms1_panel;
-	GtkWidget *scale1, *scale2;
-	char *str, *str1, *str2, substr[10];
-	int tmp, i = 1, j;
 
 	builder = gtk_builder_new();
 
 	if (!gtk_builder_add_from_file(builder, "fmcomms1.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms1.glade", NULL);
 
-	scale1 =  GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone1_scale"));
-	scale2 = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone2_scale"));
 	fmcomms1_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms1_panel"));
 
-	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(scale1), 0);
-	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(scale2), 0);
-
-	str = NULL;
-	tmp = read_devattr("out_altvoltage_1A_scale_available", &str);
-	str2 = str;
-	while(i && tmp >= 0) {
-		str1 = strstr(str2, " ");
-		memset(substr, 0, 10);
-		if (str1)
-			j = (int)(str1 - str2);
-		else {
-			j = strlen(str2);
-			i = 0;
-		}
-
-		strncpy(substr, str2, j);
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scale1),
-			 (const gchar *)substr);
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scale2),
-			(const gchar *)substr);
-
-		str2 = str1 + 1;
-	}
-	if (str)
-		free (str);
-
-	if (iio_devattr_exists("cf-ad9643-core-lpc", "in_voltage_sampling_frequency")) { 
+	if (iio_devattr_exists("cf-ad9643-core-lpc", "in_voltage_sampling_frequency")) {
 		adc_freq_device = "cf-ad9643-core-lpc";
 		adc_freq_file = "in_voltage_sampling_frequency";
 	} else {
@@ -135,15 +103,19 @@ static int fmcomms1_init(GtkWidget *notebook)
 			builder, "dds_tone2_freq", &mhz_scale);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_scale",
+			"out_altvoltage_1A_scale_available",
 			builder, "dds_tone1_scale", compare_gain);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage2_2A_scale",
+			"out_altvoltage_2A_scale_available",
 			builder, "dds_tone1_scale", compare_gain);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage1_1B_scale",
+			"out_altvoltage_1B_scale_available",
 			builder, "dds_tone2_scale", compare_gain);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage3_2B_scale",
+			"out_altvoltage_2B_scale_available",
 			builder, "dds_tone2_scale", compare_gain);
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_voltage0_calibbias",

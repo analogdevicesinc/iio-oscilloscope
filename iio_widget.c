@@ -37,7 +37,7 @@ void g_builder_bind_property(GtkBuilder *builder,
 	target_object = gtk_builder_get_object(builder, target_name);
 	if (!target_object) {
 		fprintf(stderr, "Couldn't find object \"%s\"\n", target_name);
-		g_object_unref(source_object);	
+		g_object_unref(source_object);
 		return;
 	}
 
@@ -47,7 +47,7 @@ void g_builder_bind_property(GtkBuilder *builder,
 
 
 static void iio_widget_init(struct iio_widget *widget, const char *device_name,
-	const char *attr_name, GtkWidget *gtk_widget, void *priv,
+	const char *attr_name, const char *attr_name_avail, GtkWidget *gtk_widget, void *priv,
 	void (*update)(struct iio_widget *), void (*save)(struct iio_widget *))
 {
 	if (!gtk_widget)
@@ -55,6 +55,7 @@ static void iio_widget_init(struct iio_widget *widget, const char *device_name,
 
 	widget->device_name = device_name;
 	widget->attr_name = attr_name;
+	widget->attr_name_avail = attr_name_avail;
 	widget->widget = gtk_widget;
 	widget->update = update;
 	widget->save = save;
@@ -95,7 +96,7 @@ static void iio_spin_button_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale)
 {
-	iio_widget_init(widget, device_name, attr_name, spin_button,
+	iio_widget_init(widget, device_name, attr_name, NULL, spin_button,
 		(void *)scale, iio_spin_button_update, iio_spin_button_save);
 }
 
@@ -103,7 +104,7 @@ static void iio_spin_button_int_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale)
 {
-	iio_widget_init(widget, device_name, attr_name, spin_button,
+	iio_widget_init(widget, device_name, attr_name, NULL, spin_button,
 		(void *)scale, iio_spin_button_update, iio_spin_button_int_save);
 }
 
@@ -129,7 +130,7 @@ static void iio_toggle_button_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkWidget *toggle_button)
 {
-	iio_widget_init(widget, device_name, attr_name, toggle_button, NULL,
+	iio_widget_init(widget, device_name, attr_name, NULL, toggle_button, NULL,
 		iio_toggle_button_update, iio_toggle_button_save);
 }
 
@@ -150,7 +151,8 @@ static void iio_combo_box_update(struct iio_widget *widget)
 	GtkComboBox *combo_box;
 	GtkTreeIter iter;
 	GtkTreeModel *model;
-	char *text, *item;
+	char *text, *item, *text2;
+	gchar **items_avail = NULL, **saveditems_avail;
 	gboolean has_iter;
 	int ret;
 
@@ -158,13 +160,33 @@ static void iio_combo_box_update(struct iio_widget *widget)
 	if (ret < 0)
 		return;
 
+	combo_box = GTK_COMBO_BOX(widget->widget);
+	model = gtk_combo_box_get_model(combo_box);
+
+	if (widget->attr_name_avail) {
+		ret = read_devattr(widget->attr_name_avail, &text2);
+		if (ret < 0)
+			return;
+
+		/* may use gtk_combo_box_text_remove_all gtk3 only */
+		gtk_list_store_clear (GTK_LIST_STORE (model));
+		saveditems_avail = items_avail = g_strsplit (text2, " ", 0);
+
+		for (; NULL != *items_avail; items_avail++) {
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(widget->widget),
+				*items_avail);
+		}
+
+		if (saveditems_avail)
+			g_strfreev(saveditems_avail);
+
+		free(text2);
+	}
+
 	if (widget->priv)
 		compare = widget->priv;
 	else
 		compare = strcmp;
-
-	combo_box = GTK_COMBO_BOX(widget->widget);
-	model = gtk_combo_box_get_model(combo_box);
 
 	has_iter = gtk_tree_model_get_iter_first(model, &iter);
 	while (has_iter) {
@@ -182,10 +204,10 @@ static void iio_combo_box_update(struct iio_widget *widget)
 }
 
 static void iio_combo_box_init(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	const char *device_name, const char *attr_name, const char *attr_name_avail,
 	GtkWidget *combo_box, int (*compare)(const char *a, const char *b))
 {
-	iio_widget_init(widget, device_name, attr_name, combo_box,
+	iio_widget_init(widget, device_name, attr_name, attr_name_avail, combo_box,
 		(void *)compare, iio_combo_box_update, iio_combo_box_save);
 }
 
@@ -237,11 +259,11 @@ void iio_spin_button_int_init_from_builder(struct iio_widget *widget,
 }
 
 void iio_combo_box_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	const char *device_name, const char *attr_name, const char *attr_name_avail,
 	GtkBuilder *builder, const char *widget_name,
 	int (*compare)(const char *a, const char *b))
 {
-	iio_combo_box_init(widget, device_name, attr_name,
+	iio_combo_box_init(widget, device_name, attr_name, attr_name_avail,
 		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)),
 		compare);
 }

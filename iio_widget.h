@@ -11,6 +11,7 @@
 struct iio_widget {
 	const char *device_name;
 	const char *attr_name;
+	const char *attr_name_avail;
 	GtkWidget *widget;
 	void *priv;
 
@@ -33,6 +34,7 @@ void iio_spin_button_init_from_builder(struct iio_widget *widget,
 	GtkBuilder *builder, const char *widget_name, const gdouble *scale);
 void iio_combo_box_init_from_builder(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
+	const char *attr_name_avail,
 	GtkBuilder *builder, const char *widget_name,
 	int (*compare)(const char *a, const char *b));
 void iio_toggle_button_init_from_builder(struct iio_widget *widget,
