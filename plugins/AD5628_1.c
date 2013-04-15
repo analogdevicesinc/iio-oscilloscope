@@ -69,7 +69,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 			builder, "comboboxPwrDwnModes0", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage0_powerdown",
-			builder, "checkbuttonPowerdown0");
+			builder, "checkbuttonPowerdown0", 0);
 
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage1_raw",
@@ -80,7 +80,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 			builder, "comboboxPwrDwnModes1", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage1_powerdown",
-			builder, "checkbuttonPowerdown1");
+			builder, "checkbuttonPowerdown1", 0);
 
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage2_raw",
@@ -91,7 +91,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 			builder, "comboboxPwrDwnModes2", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage2_powerdown",
-			builder, "checkbuttonPowerdown2");
+			builder, "checkbuttonPowerdown2", 0);
 
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage3_raw",
@@ -102,7 +102,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 			builder, "comboboxPwrDwnModes3", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage3_powerdown",
-			builder, "checkbuttonPowerdown3");
+			builder, "checkbuttonPowerdown3", 0);
 
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage4_raw",
@@ -113,7 +113,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 			builder, "comboboxPwrDwnModes4", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage4_powerdown",
-			builder, "checkbuttonPowerdown4");
+			builder, "checkbuttonPowerdown4", 0);
 
  	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage5_raw",
@@ -124,7 +124,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 			builder, "comboboxPwrDwnModes5", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage5_powerdown",
-			builder, "checkbuttonPowerdown5");
+			builder, "checkbuttonPowerdown5", 0);
 
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage6_raw",
@@ -135,7 +135,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 			builder, "comboboxPwrDwnModes6", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage6_powerdown",
-			builder, "checkbuttonPowerdown6");
+			builder, "checkbuttonPowerdown6", 0);
 
  	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage7_raw",
@@ -146,7 +146,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 			builder, "comboboxPwrDwnModes7", NULL);
     iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad5628-1", "out_voltage7_powerdown",
-			builder, "checkbuttonPowerdown7");
+			builder, "checkbuttonPowerdown7", 0);
 
 	g_builder_connect_signal(builder, "buttonSave", "clicked",
 		G_CALLBACK(save_button_clicked), NULL);

@@ -115,6 +115,7 @@ static void iio_toggle_button_save(struct iio_widget *widget)
 
 	active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (widget->widget));
 
+	active = widget->priv ? !active : active;
 	write_devattr(widget->attr_name, active ? "1" : "0");
 }
 
@@ -123,15 +124,16 @@ static void iio_toggle_button_update(struct iio_widget *widget)
 	bool active = false;
 
 	read_devattr_bool(widget->attr_name, &active);
+	active = widget->priv ? !active : active;
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (widget->widget), active);
 }
 
 static void iio_toggle_button_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
-	GtkWidget *toggle_button)
+	GtkWidget *toggle_button, const bool invert)
 {
-	iio_widget_init(widget, device_name, attr_name, NULL, toggle_button, NULL,
-		iio_toggle_button_update, iio_toggle_button_save);
+	iio_widget_init(widget, device_name, attr_name, NULL, toggle_button,
+		(void *)invert, iio_toggle_button_update, iio_toggle_button_save);
 }
 
 static void iio_combo_box_save(struct iio_widget *widget)
@@ -173,6 +175,8 @@ static void iio_combo_box_update(struct iio_widget *widget)
 		saveditems_avail = items_avail = g_strsplit (text2, " ", 0);
 
 		for (; NULL != *items_avail; items_avail++) {
+			if (*items_avail[0] == '\0')
+				continue;
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(widget->widget),
 				*items_avail);
 		}
@@ -270,8 +274,8 @@ void iio_combo_box_init_from_builder(struct iio_widget *widget,
 
 void iio_toggle_button_init_from_builder(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
-	GtkBuilder *builder, const char *widget_name)
+	GtkBuilder *builder, const char *widget_name, const bool invert)
 {
 	iio_toggle_button_init(widget, device_name, attr_name,
-		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)));
+		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)), invert);
 }

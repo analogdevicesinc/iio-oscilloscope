@@ -106,7 +106,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_raw",
-			builder, "tx_enable");
+			builder, "tx_enable", 0);
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_frequency",
 			builder, "dds_tone1_freq", &mhz_scale);
@@ -159,6 +159,10 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 			"adf4351-tx-lpc", "out_altvoltage0_frequency_resolution",
 			builder, "tx_lo_spacing", NULL);
+	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+			"adf4351-tx-lpc", "out_altvoltage0_powerdown",
+			builder, "tx_lo_powerdown", 1);
+
 
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			"adf4351-rx-lpc", "out_altvoltage0_frequency",
@@ -166,6 +170,9 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			"adf4351-rx-lpc", "out_altvoltage0_frequency_resolution",
 			builder, "rx_lo_spacing", NULL);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+			"adf4351-rx-lpc", "out_altvoltage0_powerdown",
+			builder, "rx_lo_powerdown", 1);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			adc_freq_device, adc_freq_file,
 			builder, "adc_freq", &mhz_scale);

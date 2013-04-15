@@ -63,17 +63,17 @@ static int AD7303_init(GtkWidget *notebook)
 	/* Bind the IIO device files to the GUI widgets */
     iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
             "ad7303", "out_voltage0_raw",
-            builder, "spinbuttonValueCh0", NULL);	
+            builder, "spinbuttonValueCh0", NULL);
     iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
             "ad7303", "out_voltage1_raw",
             builder, "spinbuttonValueCh1", NULL);
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"AD7303", "out_voltage0_powerdown",
-			builder, "checkbuttonPwrDwn0");
+			builder, "checkbuttonPwrDwn0", 0);
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"AD7303", "out_voltage1_powerdown",
-			builder, "checkbuttonPwrDwn1");            
-                                    
+			builder, "checkbuttonPwrDwn1", 0);
+
 	g_builder_connect_signal(builder, "buttonSave", "clicked",
 		G_CALLBACK(save_button_clicked), NULL);
 
@@ -88,7 +88,7 @@ static int AD7303_init(GtkWidget *notebook)
 
 static bool AD7303_identify(void)
 {
-	
+
     return !set_dev_paths("ad7303");
 }
 
