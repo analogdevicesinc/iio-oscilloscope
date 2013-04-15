@@ -53,6 +53,7 @@ static GtkWidget *fft_radio, *time_radio, *constellation_radio;
 static GtkWidget *show_grid;
 static GtkWidget *enable_auto_scale;
 static GtkWidget *device_list_widget;
+static GtkWidget *capture_button;
 
 GtkWidget *capture_graph;
 
@@ -239,6 +240,8 @@ static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 			buf->size - buf->available);
 	if (ret == 0)
 		return -1;
+	if (ret < 0)
+		return ret;
 
 	buf->available += ret;
 
@@ -396,6 +399,16 @@ static void demux_data_stream(void *data_in, gfloat **data_out,
 
 }
 
+static void abort_sampling(void)
+{
+	if (buffer_fd >= 0) {
+		buffer_close(buffer_fd);
+		buffer_fd = -1;
+	}
+	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button),
+			FALSE);
+}
+
 static gboolean time_capture_func(GtkDatabox *box)
 {
 	unsigned int n;
@@ -406,6 +419,7 @@ static gboolean time_capture_func(GtkDatabox *box)
 
 	ret = sample_iio_data(&data_buffer);
 	if (ret < 0) {
+		abort_sampling();
 		fprintf(stderr, "Failed to capture samples: %d\n", ret);
 		return FALSE;
 	}
@@ -540,6 +554,7 @@ static gboolean fft_capture_func(GtkDatabox *box)
 
 	ret = sample_iio_data(&data_buffer);
 	if (ret < 0) {
+		abort_sampling();
 		fprintf(stderr, "Failed to capture samples: %d\n", ret);
 		return FALSE;
 	}
@@ -1124,6 +1139,7 @@ static void init_application (void)
 	enable_auto_scale = GTK_WIDGET(gtk_builder_get_object(builder, "auto_scale"));
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 	device_list_widget = GTK_WIDGET(gtk_builder_get_object(builder, "input_device_list"));
+	capture_button = GTK_WIDGET(gtk_builder_get_object(builder, "capture_button"));
 
 	channel_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "channel_list"));
 	g_builder_connect_signal(builder, "channel_toggle", "toggled",
