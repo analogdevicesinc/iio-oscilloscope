@@ -738,19 +738,50 @@ static void show_grid_toggled(GtkToggleButton *btn, gpointer data)
 	}
 }
 
+static double read_sampling_frequency(void)
+{
+	double freq = 1.0;
+	int ret;
+
+	set_dev_paths(current_device);
+
+	if (iio_devattr_exists(current_device, "in_voltage_sampling_frequency")) {
+		read_devattr_double("in_voltage_sampling_frequency", &freq);
+	} else if (iio_devattr_exists(current_device, "sampling_frequency")) {
+		read_devattr_double("sampling_frequency", &freq);
+	} else {
+		char *trigger;
+
+		ret = read_devattr("trigger/current_trigger", &trigger);
+		if (ret >= 0) {
+			if (*trigger != '\0') {
+				set_dev_paths(trigger);
+				if (iio_devattr_exists(trigger, "frequency"))
+					read_devattr_double("frequency", &freq);
+			}
+		}
+
+		free(trigger);
+	}
+
+	return freq;
+}
+
 void rx_update_labels(void)
 {
 	double freq = 2400000000.0;
-	char buf[100];
+	char buf[20];
 	int i;
-	adc_freq = 246760000.0;
-#if 0
-	set_dev_paths(adc_freq_device);
-	read_devattr_double(adc_freq_file, &adc_freq);
-	adc_freq /= 1000000.0;
-	snprintf(buf, sizeof(buf), "%.4f Mhz", adc_freq);
+
+	adc_freq = read_sampling_frequency();
+	if (adc_freq >= 1000000)
+		snprintf(buf, sizeof(buf), "%.4f MHz", adc_freq / 1000000);
+	else if(adc_freq >= 1000)
+		snprintf(buf, sizeof(buf), "%.3f kHz", adc_freq / 1000);
+	else
+		snprintf(buf, sizeof(buf), "%.0f Hz", adc_freq);
+
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
-#endif
 
 	set_dev_paths("adf4351-rx-lpc");
 	read_devattr_double("out_altvoltage0_frequency", &freq);
@@ -1060,6 +1091,8 @@ void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer d
 	char buf[512];
 	FILE *f;
 
+	set_dev_paths(current_device);
+
 	gtk_tree_model_get_iter(GTK_TREE_MODEL (data), &iter, path);
 	gtk_tree_model_get(GTK_TREE_MODEL (data), &iter, 1, &enabled, 2, &channel, -1);
 	enabled = !enabled;
@@ -1191,8 +1224,9 @@ static void init_application (void)
 	g_builder_bind_property(builder, "capture_button", "active",
 			"input_device_list", "sensitive", G_BINDING_INVERT_BOOLEAN);
 
-	load_plugins(notebook);
 	init_device_list();
+	load_plugins(notebook);
+	rx_update_labels();
 
 	gtk_widget_show_all(window);
 }
