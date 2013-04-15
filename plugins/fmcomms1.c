@@ -85,7 +85,25 @@ static int fmcomms1_init(GtkWidget *notebook)
 		adc_freq_file = "out_altvoltage2_ADC_CLK_frequency";
 	}
 
+
 	/* Bind the IIO device files to the GUI widgets */
+
+	/* The next free frequency related widgets - keep in this order! */
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage_1A_sampling_frequency",
+			builder, "dac_data_clock", &mhz_scale);
+
+	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc", "out_altvoltage_interpolation_frequency",
+			"out_altvoltage_interpolation_frequency_available",
+			builder, "dac_interpolation_clock", NULL);
+
+	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
+			"cf-ad9122-core-lpc",
+			"out_altvoltage_interpolation_center_shift_frequency",
+			"out_altvoltage_interpolation_center_shift_frequency_available",
+			builder, "dac_fcenter_shift", NULL);
+
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_raw",
 			builder, "tx_enable");
