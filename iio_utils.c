@@ -30,24 +30,32 @@ int set_dev_paths(const char *device_name)
 	if (strncmp(device_name, last_device_name, MAX_STR_LEN) != 0) {
 	/* Find the device requested */
 		dev_num = find_type_by_name(device_name, "iio:device");
-		if (dev_num < 0) {
-			syslog(LOG_ERR, "set_dev_paths failed to find the %s\n",
-			       device_name);
-			ret = -ENODEV;
-			goto error_ret;
-		}
-		ret = snprintf(buf_dir_name, MAX_STR_LEN,"%siio:device%d/buffer",
-			       iio_dir, dev_num);
-		if (ret >= MAX_STR_LEN) {
-			syslog(LOG_ERR, "set_dev_paths failed (%d)\n", __LINE__);
-			ret = -EFAULT;
-			goto error_ret;
-		}
-		snprintf(dev_dir_name, MAX_STR_LEN, "%siio:device%d",
-			 iio_dir, dev_num);
-		snprintf(buffer_access, MAX_STR_LEN, "/dev/iio:device%d",
+		if (dev_num >= 0) {
+			ret = snprintf(buf_dir_name, MAX_STR_LEN,"%siio:device%d/buffer",
+					   iio_dir, dev_num);
+			if (ret >= MAX_STR_LEN) {
+				syslog(LOG_ERR, "set_dev_paths failed (%d)\n", __LINE__);
+				ret = -EFAULT;
+				goto error_ret;
+			}
+			snprintf(dev_dir_name, MAX_STR_LEN, "%siio:device%d",
+				 iio_dir, dev_num);
+			snprintf(buffer_access, MAX_STR_LEN, "/dev/iio:device%d",
 			 dev_num);
-		strcpy(last_device_name, device_name);
+			strcpy(last_device_name, device_name);
+		} else {
+			dev_num = find_type_by_name(device_name, "trigger");
+			if (dev_num >= 0) {
+				snprintf(dev_dir_name, MAX_STR_LEN, "%strigger%d",
+					 iio_dir, dev_num);
+				strcpy(last_device_name, device_name);
+			} else {
+				syslog(LOG_ERR, "set_dev_paths failed to find the %s\n",
+			       device_name);
+				ret = -ENODEV;
+				goto error_ret;
+			}
+		}
 	}
 
 	ret = 0;

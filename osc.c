@@ -53,6 +53,7 @@ static GtkWidget *fft_radio, *time_radio, *constellation_radio;
 static GtkWidget *show_grid;
 static GtkWidget *enable_auto_scale;
 static GtkWidget *device_list_widget;
+static GtkWidget *capture_button;
 
 GtkWidget *capture_graph;
 
@@ -239,6 +240,8 @@ static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 			buf->size - buf->available);
 	if (ret == 0)
 		return -1;
+	if (ret < 0)
+		return ret;
 
 	buf->available += ret;
 
@@ -396,6 +399,16 @@ static void demux_data_stream(void *data_in, gfloat **data_out,
 
 }
 
+static void abort_sampling(void)
+{
+	if (buffer_fd >= 0) {
+		buffer_close(buffer_fd);
+		buffer_fd = -1;
+	}
+	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button),
+			FALSE);
+}
+
 static gboolean time_capture_func(GtkDatabox *box)
 {
 	unsigned int n;
@@ -406,6 +419,7 @@ static gboolean time_capture_func(GtkDatabox *box)
 
 	ret = sample_iio_data(&data_buffer);
 	if (ret < 0) {
+		abort_sampling();
 		fprintf(stderr, "Failed to capture samples: %d\n", ret);
 		return FALSE;
 	}
@@ -540,6 +554,7 @@ static gboolean fft_capture_func(GtkDatabox *box)
 
 	ret = sample_iio_data(&data_buffer);
 	if (ret < 0) {
+		abort_sampling();
 		fprintf(stderr, "Failed to capture samples: %d\n", ret);
 		return FALSE;
 	}
@@ -723,19 +738,50 @@ static void show_grid_toggled(GtkToggleButton *btn, gpointer data)
 	}
 }
 
+static double read_sampling_frequency(void)
+{
+	double freq = 1.0;
+	int ret;
+
+	set_dev_paths(current_device);
+
+	if (iio_devattr_exists(current_device, "in_voltage_sampling_frequency")) {
+		read_devattr_double("in_voltage_sampling_frequency", &freq);
+	} else if (iio_devattr_exists(current_device, "sampling_frequency")) {
+		read_devattr_double("sampling_frequency", &freq);
+	} else {
+		char *trigger;
+
+		ret = read_devattr("trigger/current_trigger", &trigger);
+		if (ret >= 0) {
+			if (*trigger != '\0') {
+				set_dev_paths(trigger);
+				if (iio_devattr_exists(trigger, "frequency"))
+					read_devattr_double("frequency", &freq);
+			}
+		}
+
+		free(trigger);
+	}
+
+	return freq;
+}
+
 void rx_update_labels(void)
 {
 	double freq = 2400000000.0;
-	char buf[100];
+	char buf[20];
 	int i;
-	adc_freq = 246760000.0;
-#if 0
-	set_dev_paths(adc_freq_device);
-	read_devattr_double(adc_freq_file, &adc_freq);
-	adc_freq /= 1000000.0;
-	snprintf(buf, sizeof(buf), "%.4f Mhz", adc_freq);
+
+	adc_freq = read_sampling_frequency();
+	if (adc_freq >= 1000000)
+		snprintf(buf, sizeof(buf), "%.4f MHz", adc_freq / 1000000);
+	else if(adc_freq >= 1000)
+		snprintf(buf, sizeof(buf), "%.3f kHz", adc_freq / 1000);
+	else
+		snprintf(buf, sizeof(buf), "%.0f Hz", adc_freq);
+
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
-#endif
 
 	set_dev_paths("adf4351-rx-lpc");
 	read_devattr_double("out_altvoltage0_frequency", &freq);
@@ -1045,6 +1091,8 @@ void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer d
 	char buf[512];
 	FILE *f;
 
+	set_dev_paths(current_device);
+
 	gtk_tree_model_get_iter(GTK_TREE_MODEL (data), &iter, path);
 	gtk_tree_model_get(GTK_TREE_MODEL (data), &iter, 1, &enabled, 2, &channel, -1);
 	enabled = !enabled;
@@ -1124,6 +1172,7 @@ static void init_application (void)
 	enable_auto_scale = GTK_WIDGET(gtk_builder_get_object(builder, "auto_scale"));
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 	device_list_widget = GTK_WIDGET(gtk_builder_get_object(builder, "input_device_list"));
+	capture_button = GTK_WIDGET(gtk_builder_get_object(builder, "capture_button"));
 
 	channel_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "channel_list"));
 	g_builder_connect_signal(builder, "channel_toggle", "toggled",
@@ -1175,8 +1224,9 @@ static void init_application (void)
 	g_builder_bind_property(builder, "capture_button", "active",
 			"input_device_list", "sensitive", G_BINDING_INVERT_BOOLEAN);
 
-	load_plugins(notebook);
 	init_device_list();
+	load_plugins(notebook);
+	rx_update_labels();
 
 	gtk_widget_show_all(window);
 }
