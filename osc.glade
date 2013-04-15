@@ -946,8 +946,6 @@ Installed/Found IIO devices on this platform</property>
           <object class="GtkMenuBar" id="menubar1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="hexpand">True</property>
-            <property name="vexpand">True</property>
             <child>
               <object class="GtkMenuItem" id="menuitem1">
                 <property name="use_action_appearance">False</property>
@@ -1059,8 +1057,6 @@ Installed/Found IIO devices on this platform</property>
               <object class="GtkHBox" id="box4">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="halign">start</property>
-                <property name="valign">start</property>
                 <child>
                   <object class="GtkVBox" id="box5">
                     <property name="visible">True</property>
