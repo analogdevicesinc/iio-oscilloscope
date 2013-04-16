@@ -27,12 +27,12 @@ static char debug_dir_name[MAX_STR_LEN];
 int set_dev_paths(const char *device_name)
 {
 	int dev_num, ret;
-	struct stat *buf;
+	struct stat s;
 
 	if (!device_name)
 		return -EFAULT;
 
-	ret = stat(iio_dir, buf);
+	ret = stat(iio_dir, &s);
 	if (ret)
 		return -EFAULT;
 
