@@ -48,7 +48,7 @@ static unsigned int bytes_per_sample;
 
 static GtkWidget *databox;
 static GtkWidget *sample_count_widget;
-static GtkWidget *fft_size_widget;
+static GtkWidget *fft_size_widget, *fft_avg_widget;
 static GtkWidget *fft_radio, *time_radio, *constellation_radio;
 static GtkWidget *show_grid;
 static GtkWidget *enable_auto_scale;
@@ -464,6 +464,7 @@ static void do_fft()
 	unsigned int fft_size = num_samples;
 	short *real, *imag, *amp, *fft_buf;
 	unsigned int cnt, i;
+	double avg;
 
 	fft_buf = malloc((fft_size * 2 + fft_size / 2) * sizeof(short));
 	if (fft_buf == NULL){
@@ -487,8 +488,10 @@ static void do_fft()
 	fix_fft(real, imag, (int)log2f(fft_size), 0);
 	fix_loud(amp, real, imag, fft_size / 2, 2); /* scale 14->16 bit */
 
+	avg = 1.0f / gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
+
 	for (i = 0; i < fft_size / 2; ++i)
-		fft_channel[i] = amp[i];
+		fft_channel[i] = ((1 - avg) * fft_channel[i]) + (avg * amp[i]);
 
 	free(fft_buf);
 }
@@ -511,6 +514,7 @@ static void do_fft(struct buffer *buf)
 	int cnt;
 	static double *in;
 	static double *win;
+	double avg;
 	static fftw_complex *out;
 	static fftw_plan plan_forward;
 	static int cached_fft_size = -1;
@@ -541,9 +545,16 @@ static void do_fft(struct buffer *buf)
 	}
 
 	fftw_execute(plan_forward);
+	avg = 1.0f / gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
 
-	for (i = 0; i < fft_size / 2; ++i)
-		fft_channel[i] = 10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (fft_size * fft_size)) - 50.0f;
+	if (fft_channel[0] == 0.0f) {
+		for (i = 0; i < fft_size / 2; ++i)
+			fft_channel[i] = (10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (fft_size * fft_size)) - 50.0f);
+	} else {
+		for (i = 0; i < fft_size / 2; ++i)
+			fft_channel[i] = ((1 - avg) * fft_channel[i]) +
+				(avg * (10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (fft_size * fft_size)) - 50.0f));
+	}
 }
 
 #endif
@@ -1169,6 +1180,7 @@ static void init_application (void)
 	capture_graph = GTK_WIDGET(gtk_builder_get_object(builder, "display_capture"));
 	sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
+	fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
 	fft_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type_fft"));
 	time_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type"));
 	constellation_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type_constellation"));
@@ -1193,6 +1205,10 @@ static void init_application (void)
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size_label"));
 	g_object_bind_property(fft_radio, "active", tmp, "sensitive", 0);
 	g_object_bind_property(fft_radio, "active", fft_size_widget, "sensitive", 0);
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg_label"));
+	g_object_bind_property(fft_radio, "active", tmp, "sensitive", 0);
+	g_object_bind_property(fft_radio, "active", fft_avg_widget, "sensitive", 0);
+
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_label"));
 	g_object_bind_property(fft_radio, "active", tmp, "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_object_bind_property(fft_radio, "active", sample_count_widget, "sensitive", G_BINDING_INVERT_BOOLEAN);
