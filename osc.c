@@ -54,6 +54,7 @@ static GtkWidget *show_grid;
 static GtkWidget *enable_auto_scale;
 static GtkWidget *device_list_widget;
 static GtkWidget *capture_button;
+static GtkWidget *hor_scale;
 
 GtkWidget *capture_graph;
 
@@ -67,6 +68,7 @@ static GtkDataboxGraph **channel_graph;
 static GtkListStore *channel_list_store;
 
 static double adc_freq = 246760000.0;
+static char adc_scale[10];
 
 static bool is_fft_mode;
 
@@ -289,6 +291,54 @@ static void fps_counter(void)
 	}
 }
 
+/*
+ * Fill in an array, of about num times
+ */
+static void fill_axis(gfloat *buf, gfloat start, gfloat inc, int num)
+{
+	int i;
+	gfloat val = start;
+
+	for (i = 0; i < num; i++) {
+		buf[i] = val;
+		val += inc;
+	}
+
+}
+
+static void add_grid(void)
+{
+	static gfloat gridy[25], gridx[25];
+/*
+	This would be a better general solution, but it doesn't really work well
+	gfloat left, right, top, bottom;
+	int x, y;
+
+	gtk_databox_get_total_limits(GTK_DATABOX(databox), &left, &right, &top, &bottom);
+	y = fill_axis(gridy, top, bottom, 20);
+	x = fill_axis(gridx, left, right, 20);
+	grid = gtk_databox_grid_array_new (y, x, gridy, gridx, &color_grid, 1);
+*/
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
+		fill_axis(gridx, 0, 10, 15);
+		fill_axis(gridy, 10, -10, 15);
+		grid = gtk_databox_grid_array_new (15, 15, gridy, gridx, &color_grid, 1);
+	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(constellation_radio))) {
+		fill_axis(gridx, -80000, 10000, 18);
+		fill_axis(gridy, -80000, 10000, 18);
+		grid = gtk_databox_grid_array_new (18, 18, gridy, gridx, &color_grid, 1);
+	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(time_radio))) {
+		fill_axis(gridx, 0, 100, 5);
+		fill_axis(gridy, -80000, 10000, 18);
+		grid = gtk_databox_grid_array_new (18, 5, gridy, gridx, &color_grid, 1);
+	}
+
+	gtk_databox_graph_add(GTK_DATABOX(databox), grid);
+	gtk_databox_graph_set_hide(grid, !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(show_grid)));
+}
+
+
 static void rescale_databox(GtkDatabox *box, gfloat border)
 {
 	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
@@ -448,13 +498,6 @@ static gboolean time_capture_func(GtkDatabox *box)
 	fps_counter();
 
 	return TRUE;
-}
-
-static void add_grid(void)
-{
-	grid = gtk_databox_grid_new(15, 15, &color_grid, 1);
-	gtk_databox_graph_add(GTK_DATABOX(databox), grid);
-	gtk_databox_graph_set_hide(grid, !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(show_grid)));
 }
 
 #if NO_FFTW
@@ -700,10 +743,13 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		if (num_active_channels == 0 || !current_device)
 			goto play_err;
 
-		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
+		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
+			gtk_label_set_text(GTK_LABEL(hor_scale), adc_scale);
 			ret = fft_capture_setup();
-		else
+		} else {
+			gtk_label_set_text(GTK_LABEL(hor_scale), "Samples");
 			ret = time_capture_setup();
+		}
 
 		if (ret)
 			goto play_err;
@@ -789,14 +835,21 @@ void rx_update_labels(void)
 	int i;
 
 	adc_freq = read_sampling_frequency();
-	if (adc_freq >= 1000000)
-		snprintf(buf, sizeof(buf), "%.4f MHz", adc_freq / 1000000);
-	else if(adc_freq >= 1000)
-		snprintf(buf, sizeof(buf), "%.3f kHz", adc_freq / 1000);
-	else if(adc_freq >= 0)
-		snprintf(buf, sizeof(buf), "%.0f Hz", adc_freq);
-	else
-		snprintf(buf, sizeof(buf), "unknown");
+
+	if (adc_freq >= 1000000) {
+		sprintf(adc_scale, "MHz");
+		adc_freq /= 1000000;
+	} else if(adc_freq >= 1000) {
+		sprintf(adc_scale, "kHz");
+		adc_freq /= 1000;
+	} else if(adc_freq >= 0) {
+		sprintf(adc_scale, "Hz");
+	} else {
+		sprintf(adc_scale, "???");
+		adc_freq = 0;
+	}
+
+	snprintf(buf, sizeof(buf), "%.3f %s", adc_freq, adc_scale);
 
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
 
@@ -1191,6 +1244,7 @@ static void init_application (void)
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 	device_list_widget = GTK_WIDGET(gtk_builder_get_object(builder, "input_device_list"));
 	capture_button = GTK_WIDGET(gtk_builder_get_object(builder, "capture_button"));
+	hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
 
 	channel_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "channel_list"));
 	g_builder_connect_signal(builder, "channel_toggle", "toggled",

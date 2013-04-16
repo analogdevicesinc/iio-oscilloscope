@@ -1352,9 +1352,9 @@ Installed/Found IIO devices on this platform</property>
                                 </child>
                                 <child>
                                   <object class="GtkLabel" id="fft_avg_label">
-				    <property name="visible">True</property>
-				    <property name="sensitive">False</property>
-				    <property name="can_focus">False</property>
+                                    <property name="visible">True</property>
+                                    <property name="sensitive">False</property>
+                                    <property name="can_focus">False</property>
                                     <property name="xalign">0</property>
                                     <property name="label" translatable="yes">FFT Average</property>
                                   </object>
@@ -1368,8 +1368,8 @@ Installed/Found IIO devices on this platform</property>
                                 <child>
                                   <object class="GtkSpinButton" id="fft_avg">
                                     <property name="visible">True</property>
-				    <property name="can_focus">False</property>
-				    <property name="sensitive">False</property>
+                                    <property name="sensitive">False</property>
+                                    <property name="can_focus">False</property>
                                     <property name="invisible_char">•</property>
                                     <property name="adjustment">adjustment1</property>
                                     <property name="climb_rate">1</property>
@@ -1596,6 +1596,7 @@ Installed/Found IIO devices on this platform</property>
                             <property name="use_action_appearance">False</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="tooltip_text" translatable="yes">Capture/Stop</property>
                             <property name="use_action_appearance">False</property>
                             <property name="label" translatable="yes">Capture</property>
                             <property name="use_underline">True</property>
@@ -1611,6 +1612,7 @@ Installed/Found IIO devices on this platform</property>
                             <property name="use_action_appearance">False</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="tooltip_text" translatable="yes">Zoom In</property>
                             <property name="use_action_appearance">False</property>
                             <property name="label" translatable="yes">Zoom in</property>
                             <property name="use_underline">True</property>
@@ -1626,6 +1628,7 @@ Installed/Found IIO devices on this platform</property>
                             <property name="use_action_appearance">False</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="tooltip_text" translatable="yes">Zoom Out</property>
                             <property name="use_action_appearance">False</property>
                             <property name="label" translatable="yes">Zoom out</property>
                             <property name="use_underline">True</property>
@@ -1641,6 +1644,7 @@ Installed/Found IIO devices on this platform</property>
                             <property name="use_action_appearance">False</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="tooltip_text" translatable="yes">AutoZoom</property>
                             <property name="use_action_appearance">False</property>
                             <property name="label" translatable="yes">Zoom fit</property>
                             <property name="use_underline">True</property>
@@ -1648,6 +1652,27 @@ Installed/Found IIO devices on this platform</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
+                            <property name="homogeneous">True</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkToolItem" id="Scale">
+                            <property name="use_action_appearance">False</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="use_action_appearance">False</property>
+                            <child>
+                              <object class="GtkLabel" id="hor_scale">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">1</property>
+                                <property name="xpad">1</property>
+                                <property name="label" translatable="yes"> </property>
+                              </object>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="expand">True</property>
                             <property name="homogeneous">True</property>
                           </packing>
                         </child>
