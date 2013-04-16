@@ -686,39 +686,35 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			}
 		}
 
-		if (num_active_channels == 0 || !current_device) {
-			gtk_toggle_tool_button_set_active(btn, FALSE);
-			return;
-		}
+		if (num_active_channels == 0 || !current_device)
+			goto play_err;
 
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
 			ret = fft_capture_setup();
 		else
 			ret = time_capture_setup();
 
-		if (ret) {
-			gtk_toggle_tool_button_set_active(btn, FALSE);
-			return;
-		}
+		if (ret)
+			goto play_err;
 
 		if (!is_oneshot_mode()) {
 			buffer_fd = buffer_open(num_samples);
-			if (buffer_fd < 0) {
-				gtk_toggle_tool_button_set_active(btn, FALSE);
-				return;
-			}
+			if (buffer_fd < 0)
+				goto play_err;
 		}
 
 		add_grid();
 		gtk_widget_queue_draw(GTK_WIDGET(databox));
 		frame_counter = 0;
 
+		g_object_set(btn, "stock_id", "gtk-stop", NULL);
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
 			fft_capture_start();
 		else
 			time_capture_start();
 
 	} else {
+		g_object_set(btn, "stock_id", "gtk-media-play", NULL);
 		if (capture_function > 0) {
 			g_source_remove(capture_function);
 			capture_function = 0;
@@ -728,6 +724,13 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			buffer_fd = -1;
 		}
 	}
+
+	return;
+
+play_err:
+	gtk_toggle_tool_button_set_active(btn, FALSE);
+	g_object_set(btn, "stock_id", "gtk-media-play", NULL);
+
 }
 
 static void show_grid_toggled(GtkToggleButton *btn, gpointer data)
