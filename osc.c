@@ -744,7 +744,7 @@ static double read_sampling_frequency(void)
 	int ret;
 
 	if (set_dev_paths(current_device) < 0)
-		return 0.0f;
+		return -1.0f;
 
 	if (iio_devattr_exists(current_device, "in_voltage_sampling_frequency")) {
 		read_devattr_double("in_voltage_sampling_frequency", &freq);
@@ -760,9 +760,9 @@ static double read_sampling_frequency(void)
 				if (iio_devattr_exists(trigger, "frequency"))
 					read_devattr_double("frequency", &freq);
 			}
-		}
-
-		free(trigger);
+			free(trigger);
+		} else
+			freq = -1.0f;
 	}
 
 	return freq;
@@ -779,8 +779,10 @@ void rx_update_labels(void)
 		snprintf(buf, sizeof(buf), "%.4f MHz", adc_freq / 1000000);
 	else if(adc_freq >= 1000)
 		snprintf(buf, sizeof(buf), "%.3f kHz", adc_freq / 1000);
-	else
+	else if(adc_freq >= 0)
 		snprintf(buf, sizeof(buf), "%.0f Hz", adc_freq);
+	else
+		snprintf(buf, sizeof(buf), "unknown");
 
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
 
