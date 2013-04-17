@@ -58,7 +58,7 @@ static void connect_fillin(Dialogs *data)
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
 
-	num = 0;	
+	num = 0;
 	while(fgets(eprom_names, sizeof(eprom_names), fp) != NULL){
 		num++;
 		/* strip trailing new lines */
@@ -74,7 +74,7 @@ static void connect_fillin(Dialogs *data)
 			printf_err("Cannot open file %s\n%s\n", eprom_names, strerror(errsv));
 			return;
 		}
-                
+
 		raw_input_data = x_calloc(1, 1024);
 		bytes = fread(raw_input_data, 1024, 1, efp);
 		fclose(efp);
@@ -204,7 +204,7 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 							GDK_DRAWABLE(gtk_widget_get_window(capture_graph)));
 					gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
 						       &width, &height);
-					pixbuf = gdk_pixbuf_get_from_drawable(NULL, 
+					pixbuf = gdk_pixbuf_get_from_drawable(NULL,
 							GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
 							cmap, 0, 0, 0, 0, width, height);
 
