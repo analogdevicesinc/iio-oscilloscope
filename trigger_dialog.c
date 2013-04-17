@@ -30,14 +30,17 @@ static void trigger_change_trigger(void)
 	bool has_frequency;
 	GtkTreeIter iter;
 
-	gtk_combo_box_get_active_iter(GTK_COMBO_BOX(trigger_list_widget), &iter);
-	gtk_tree_model_get(GTK_TREE_MODEL(trigger_list_store), &iter, 0,
-		&current_trigger, -1);
+	if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(trigger_list_widget), &iter)) {
+		gtk_tree_model_get(GTK_TREE_MODEL(trigger_list_store), &iter, 0,
+			&current_trigger, -1);
 
-	if (strcmp(current_trigger, "None") == 0)
+		if (strcmp(current_trigger, "None") == 0)
+			has_frequency = false;
+		else
+			has_frequency = iio_devattr_exists(current_trigger, "frequency");
+	} else {
 		has_frequency = false;
-	else
-		has_frequency = iio_devattr_exists(current_trigger, "frequency");
+	}
 
 	gtk_widget_set_sensitive(frequency_spin_button, has_frequency);
 	gtk_widget_set_sensitive(frequency_spin_button_label, has_frequency);
@@ -105,12 +108,15 @@ static void trigger_save_settings()
 		!iio_devattr_exists(current_device, "trigger/current_trigger"))
 		return;
 
-	gtk_combo_box_get_active_iter(GTK_COMBO_BOX(trigger_list_widget), &iter);
-	gtk_tree_model_get(GTK_TREE_MODEL(trigger_list_store), &iter, 0,
-		&current_trigger, -1);
+	if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(trigger_list_widget), &iter)) {
+		gtk_tree_model_get(GTK_TREE_MODEL(trigger_list_store), &iter, 0,
+			&current_trigger, -1);
 
-	if (strcmp(current_trigger, "None") == 0)
+		if (strcmp(current_trigger, "None") == 0)
+			current_trigger = "";
+	} else {
 		current_trigger = "";
+	}
 
 	set_dev_paths(current_device);
 	write_devattr("trigger/current_trigger", current_trigger);
@@ -153,6 +159,9 @@ void trigger_dialog_init(GtkBuilder *builder)
 		"trigger_frequency_label"));
 	trigger_menu = GTK_WIDGET(gtk_builder_get_object(builder,
 		"trigger_menu"));
+
+	g_signal_connect(trigger_list_widget, "changed",
+		G_CALLBACK(trigger_change_trigger), NULL);
 
 	g_signal_connect(trigger_menu, "activate", G_CALLBACK(trigger_dialog_show),
 		NULL);
