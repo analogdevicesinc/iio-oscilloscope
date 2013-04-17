@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
+  <object class="GtkAdjustment" id="adjustment0">
+    <property name="lower">10</property>
+    <property name="upper">10000</property>
+    <property name="value">400</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment1">
+    <property name="lower">1</property>
+    <property name="upper">500</property>
+    <property name="value">1</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
   <object class="GtkToggleAction" id="toggleaction1"/>
   <object class="GtkAboutDialog" id="About_dialog">
     <property name="can_focus">False</property>
@@ -527,20 +541,6 @@ A GUI for Linux IIO devices</property>
         </child>
       </object>
     </child>
-  </object>
-  <object class="GtkAdjustment" id="adjustment0">
-    <property name="lower">10</property>
-    <property name="upper">10000</property>
-    <property name="value">400</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment1">
-    <property name="lower">1</property>
-    <property name="upper">500</property>
-    <property name="value">1</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
   </object>
   <object class="GtkListStore" id="channel_list">
     <columns>
@@ -1561,6 +1561,17 @@ Installed/Found IIO devices on this platform</property>
                       </packing>
                     </child>
                     <child>
+                      <object class="GtkTextView" id="marker_info">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">5</property>
+                      </packing>
+                    </child>
+                    <child>
                       <object class="GtkImage" id="ADI_logo">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
@@ -1571,7 +1582,7 @@ Installed/Found IIO devices on this platform</property>
                       <packing>
                         <property name="expand">True</property>
                         <property name="fill">True</property>
-                        <property name="position">5</property>
+                        <property name="position">6</property>
                       </packing>
                     </child>
                   </object>

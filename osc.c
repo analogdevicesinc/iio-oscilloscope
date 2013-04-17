@@ -11,6 +11,7 @@
 #include <gtkdatabox_grid.h>
 #include <gtkdatabox_points.h>
 #include <gtkdatabox_lines.h>
+#include <gtkdatabox_markers.h>
 #include <math.h>
 #include <stdint.h>
 #include <errno.h>
@@ -65,6 +66,14 @@ static GtkDataboxGraph *grid;
 
 static GtkDataboxGraph **channel_graph;
 
+#ifndef MAX_MARKERS
+#define MAX_MARKERS 4
+#endif
+
+static gfloat markX[MAX_MARKERS + 2], markY[MAX_MARKERS + 2];
+static GtkDataboxGraph *marker[MAX_MARKERS + 2];
+static GtkWidget *marker_label;
+
 static GtkListStore *channel_list_store;
 
 static double adc_freq = 246760000.0;
@@ -105,6 +114,12 @@ static GdkColor color_grid = {
 
 static GdkColor color_background = {
 	.red = 0,
+	.green = 0,
+	.blue = 0,
+};
+
+static GdkColor color_marker = {
+	.red = 0xFFFF,
 	.green = 0,
 	.blue = 0,
 };
@@ -553,7 +568,7 @@ static double win_hanning(int j, int n)
 static void do_fft(struct buffer *buf)
 {
 	unsigned int fft_size = num_samples;
-	int i;
+	int i, j, k;
 	int cnt;
 	static double *in;
 	static double *win;
@@ -561,6 +576,13 @@ static void do_fft(struct buffer *buf)
 	static fftw_complex *out;
 	static fftw_plan plan_forward;
 	static int cached_fft_size = -1;
+
+	unsigned int maxx[MAX_MARKERS + 1];
+	gfloat maxY[MAX_MARKERS + 1];
+
+	GtkTextBuffer *tbuf;
+	GtkTextIter iter;
+	char text[256];
 
 	if ((cached_fft_size == -1) || (cached_fft_size != fft_size)) {
 
@@ -590,13 +612,51 @@ static void do_fft(struct buffer *buf)
 	fftw_execute(plan_forward);
 	avg = 1.0f / gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
 
+	for (j = 0; j <= MAX_MARKERS; j++) {
+		maxx[j] = 0;
+		maxY[j] = -100.0f;
+	}
+
+	/*
+	 * don't average the first iterration, or it takes a long time for things to
+	 * drop to the "final" value, which looks wonky.
+	 */
 	if (fft_channel[0] == 0.0f) {
 		for (i = 0; i < fft_size / 2; ++i)
 			fft_channel[i] = (10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (fft_size * fft_size)) - 50.0f);
 	} else {
-		for (i = 0; i < fft_size / 2; ++i)
+		for (i = 0; i < fft_size / 2; ++i) {
 			fft_channel[i] = ((1 - avg) * fft_channel[i]) +
 				(avg * (10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (fft_size * fft_size)) - 50.0f));
+			if (MAX_MARKERS && i > 10) {
+				for (j = 0; j <= MAX_MARKERS; j++) {
+					if  ((fft_channel[i - 1] > maxY[j]) &&
+								((!((fft_channel[i - 2] > fft_channel[i - 1]) && (fft_channel[i - 1] > fft_channel[i]))) &&
+								 (!((fft_channel[i - 2] < fft_channel[i - 1]) && (fft_channel[i - 1] < fft_channel[i]))))) {
+						for (k = MAX_MARKERS; k > j; k--) {
+							maxY[k] = maxY[k - 1];
+							maxx[k] = maxx[k - 1];
+						}
+						maxY[j] = fft_channel[i - 1];
+						maxx[j] = i - 1;
+						break;
+					}
+				}
+			}
+		}
+		if (MAX_MARKERS) {
+			tbuf = gtk_text_buffer_new(NULL);
+			gtk_text_buffer_get_iter_at_offset(tbuf, &iter, 0);
+
+			for (j = 0; j <= MAX_MARKERS; j++) {
+				markX[j] = (gfloat)X[maxx[j]];
+				markY[j] = (gfloat)fft_channel[maxx[j]];
+
+				sprintf(text, "M%i: %2.2f dB @ %2.2f MHz\n", j, markY[j], markX[j]);
+				gtk_text_buffer_insert(tbuf, &iter, text, -1);
+			}
+			gtk_text_view_set_buffer(GTK_TEXT_VIEW(marker_label), tbuf);
+		}
 	}
 }
 
@@ -629,6 +689,7 @@ static gboolean fft_capture_func(GtkDatabox *box)
 static int fft_capture_setup(void)
 {
 	int i;
+	char buf[10];
 
 	if (num_active_channels != 1)
 		return -EINVAL;
@@ -646,6 +707,22 @@ static int fft_capture_setup(void)
 		fft_channel[i] = 0.0f;
 	}
 	is_fft_mode = true;
+
+	/*
+	 * Init markers
+	 */
+	if (MAX_MARKERS) {
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			markX[i] = 0.0f;
+			markY[i] = -100.0f;
+			marker[i] =  gtk_databox_markers_new(1, &markX[i], &markY[i], &color_marker, 
+					10, GTK_DATABOX_MARKERS_TRIANGLE);
+			sprintf(buf, "M%i", i);
+			gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(marker[i]), 0,
+					 GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+			gtk_databox_graph_add(GTK_DATABOX(databox), marker[i]);
+		}
+	}
 
 	fft_graph = gtk_databox_lines_new(num_samples / 2, X, fft_channel, &color_graph[0], 1);
 	gtk_databox_graph_add(GTK_DATABOX(databox), fft_graph);
@@ -1245,6 +1322,7 @@ static void init_application (void)
 	device_list_widget = GTK_WIDGET(gtk_builder_get_object(builder, "input_device_list"));
 	capture_button = GTK_WIDGET(gtk_builder_get_object(builder, "capture_button"));
 	hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
+	marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 
 	channel_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "channel_list"));
 	g_builder_connect_signal(builder, "channel_toggle", "toggled",
