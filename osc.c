@@ -1225,7 +1225,7 @@ static void init_device_list(void)
 	g_signal_connect(device_list_widget, "changed",
 			G_CALLBACK(device_list_cb), NULL);
 
-	num = find_iio_names(&devices, NULL, NULL);
+	num = find_iio_names(&devices);
 	if (devices == NULL)
 		return;
 

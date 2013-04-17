@@ -501,10 +501,10 @@ static inline int find_type_by_name(const char *name, const char *type)
  *   * @name: null char delimited names
  *    * return value is the number of entries
  *     **/
-static inline int find_iio_names(char **names, char *start, char *end)
+static inline int find_iio_names(char **names)
 {
-	DIR *dp, *idp;
-	const struct dirent *ent, *ient;
+	DIR *dp;
+	const struct dirent *ent;
 	FILE *nameFile;
 	char *filename, *name_str=NULL;
 	char thisname[IIO_MAX_NAME_LENGTH];
@@ -531,21 +531,6 @@ static inline int find_iio_names(char **names, char *start, char *end)
 		}
 
 		add = 1;
-
-		if (start != NULL || end != NULL) {
-			add = 0;
-			sprintf(filename, "%s%s", iio_dir, ent->d_name);
-			idp =  opendir(filename);
-			 if (idp == NULL) {
-				continue;
-			 }
-			 while (ient = readdir(idp), ient != NULL) {
-				if (start != NULL && strstr(ient->d_name, start) == ient->d_name)
-					add = 1;
-				if (end != NULL && strstr(ient->d_name, end) == (ient->d_name + strlen(ient->d_name) - strlen(end)))
-					add = 1;
-			 }
-		}
 
 		free(filename);
 		if (!add) {

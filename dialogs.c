@@ -127,7 +127,7 @@ static void connect_fillin(Dialogs *data)
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
 
-	num = find_iio_names(&devices, NULL, NULL);
+	num = find_iio_names(&devices);
 	device=devices;
 	if (num > 0) {
 		for (; num > 0; num--) {
