@@ -14,6 +14,7 @@
   </object>
   <object class="GtkAdjustment" id="adjustmentAmpl1">
     <property name="upper">3.2999999999999998</property>
+    <property name="value">3.2999999999999998</property>
     <property name="step_increment">0.01</property>
     <property name="page_increment">0.5</property>
   </object>
@@ -25,7 +26,9 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustmentFreq1">
+    <property name="lower">0.01</property>
     <property name="upper">100</property>
+    <property name="value">1</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -37,10 +40,16 @@
   </object>
   <object class="GtkAdjustment" id="adjustmentOffset1">
     <property name="upper">3.2999999999999998</property>
+    <property name="value">1.6499999999999999</property>
     <property name="step_increment">0.01</property>
     <property name="page_increment">0.5</property>
   </object>
   <object class="GtkAdjustment" id="adjustmentVal0">
+    <property name="upper">255</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustmentVal1">
     <property name="upper">255</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
@@ -253,7 +262,7 @@
                             <property name="invisible_char_set">True</property>
                             <property name="primary_icon_activatable">False</property>
                             <property name="secondary_icon_activatable">False</property>
-                            <property name="adjustment">adjustmentAmpl</property>
+                            <property name="adjustment">adjustmentVal1</property>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
