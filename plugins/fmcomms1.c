@@ -170,7 +170,7 @@ static int fmcomms1_cal_eeprom(void)
 {
 	char eprom_names[512];
 	FILE *efp, *fp;
-	int num;
+	int num, tmp;
 
 	/* flushes all open output streams */
 	fflush(NULL);
@@ -200,10 +200,10 @@ static int fmcomms1_cal_eeprom(void)
 			return -errno;
 
 		memset(cal_data, 0, FAB_SIZE_CAL_EEPROM);
-		fread(cal_data, FAB_SIZE_CAL_EEPROM, 1, efp);
+		tmp = fread(cal_data, FAB_SIZE_CAL_EEPROM, 1, efp);
 		fclose(efp);
 
-		if (cal_data->adi_magic0 != ADI_MAGIC_0 || cal_data->adi_magic1 != ADI_MAGIC_1) {
+		if (!tmp || cal_data->adi_magic0 != ADI_MAGIC_0 || cal_data->adi_magic1 != ADI_MAGIC_1) {
 			continue;
 		}
 
@@ -360,6 +360,8 @@ static int fmcomms1_init(GtkWidget *notebook)
 	if (fmcomms1_cal_eeprom() >= 0)
 		g_builder_connect_signal(builder, "fmcomms1_cal", "clicked",
 			G_CALLBACK(cal_button_clicked), NULL);
+	else
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms1_cal")));
 
 	tx_update_values();
 	rx_update_values();
