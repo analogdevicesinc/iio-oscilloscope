@@ -636,7 +636,7 @@ static inline int _write_sysfs_string(const char *filename, const char *basedir,
 		ret = -errno;
 		goto error_free;
 	}
-	fprintf(sysfsfp, "%s", val);
+	fprintf(sysfsfp, "%s\n", val);
 	fclose(sysfsfp);
 	if (verify) {
 		sysfsfp = fopen(temp, "r");
