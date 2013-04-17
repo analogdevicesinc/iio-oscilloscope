@@ -92,6 +92,16 @@ static void iio_spin_button_int_save(struct iio_widget *widget)
 	write_devattr_int(widget->attr_name, freq);
 }
 
+static void iio_spin_button_s64_save(struct iio_widget *widget)
+{
+	gdouble freq;
+	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
+
+	freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON (widget->widget));
+	freq *= scale;
+	write_devattr_slonglong(widget->attr_name, (long long) freq);
+}
+
 static void iio_spin_button_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale)
@@ -108,6 +118,13 @@ static void iio_spin_button_int_init(struct iio_widget *widget,
 		(void *)scale, iio_spin_button_update, iio_spin_button_int_save);
 }
 
+static void iio_spin_button_s64_init(struct iio_widget *widget,
+	const char *device_name, const char *attr_name,
+	GtkWidget *spin_button, const gdouble *scale)
+{
+	iio_widget_init(widget, device_name, attr_name, NULL, spin_button,
+		(void *)scale, iio_spin_button_update, iio_spin_button_s64_save);
+}
 
 static void iio_toggle_button_save(struct iio_widget *widget)
 {
@@ -258,6 +275,15 @@ void iio_spin_button_int_init_from_builder(struct iio_widget *widget,
 	GtkBuilder *builder, const char *widget_name, const gdouble *scale)
 {
 	iio_spin_button_int_init(widget, device_name, attr_name,
+		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)),
+		scale);
+}
+
+void iio_spin_button_s64_init_from_builder(struct iio_widget *widget,
+	const char *device_name, const char *attr_name,
+	GtkBuilder *builder, const char *widget_name, const gdouble *scale)
+{
+	iio_spin_button_s64_init(widget, device_name, attr_name,
 		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)),
 		scale);
 }

@@ -43,5 +43,7 @@ void iio_toggle_button_init_from_builder(struct iio_widget *widget,
 void iio_spin_button_int_init_from_builder(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkBuilder *builder, const char *widget_name, const gdouble *scale);
-
+void iio_spin_button_s64_init_from_builder(struct iio_widget *widget,
+	const char *device_name, const char *attr_name,
+	GtkBuilder *builder, const char *widget_name, const gdouble *scale);
 #endif
