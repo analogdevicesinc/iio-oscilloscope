@@ -853,14 +853,12 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		gtk_widget_queue_draw(GTK_WIDGET(databox));
 		frame_counter = 0;
 
-		g_object_set(btn, "stock_id", "gtk-stop", NULL);
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
 			fft_capture_start();
 		else
 			time_capture_start();
 
 	} else {
-		g_object_set(btn, "stock_id", "gtk-media-play", NULL);
 		if (capture_function > 0) {
 			g_source_remove(capture_function);
 			capture_function = 0;
@@ -875,8 +873,6 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 
 play_err:
 	gtk_toggle_tool_button_set_active(btn, FALSE);
-	g_object_set(btn, "stock_id", "gtk-media-play", NULL);
-
 }
 
 static void show_grid_toggled(GtkToggleButton *btn, gpointer data)
@@ -1272,6 +1268,17 @@ void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer d
 	gtk_list_store_set(GTK_LIST_STORE (data), &iter, 1, enabled, -1);
 }
 
+static gboolean capture_button_icon_transform(GBinding *binding,
+	const GValue *source_value, GValue *target_value, gpointer user_data)
+{
+	if (g_value_get_boolean(source_value))
+		g_value_set_static_string(target_value, "gtk-stop");
+	else
+		g_value_set_static_string(target_value, "gtk-media-play");
+
+	return TRUE;
+}
+
 void application_quit (void)
 {
 	if (capture_function > 0) {
@@ -1400,6 +1407,9 @@ static void init_application (void)
 			"channel_list_view", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
 			"input_device_list", "sensitive", G_BINDING_INVERT_BOOLEAN);
+
+	g_object_bind_property_full(capture_button, "active", capture_button,
+			"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
 
 	init_device_list();
 	load_plugins(notebook);
