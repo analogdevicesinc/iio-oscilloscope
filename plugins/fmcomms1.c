@@ -23,6 +23,7 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
+#include "../osc.h"
 
 static const gdouble mhz_scale = 1000000.0;
 
