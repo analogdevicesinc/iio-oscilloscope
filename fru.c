@@ -95,7 +95,7 @@ void dump_str(unsigned char * p, unsigned int size, unsigned int space)
 
 	t = p;
 	k = 8 - space;
- 	for (i = 0; i < size; i++) {
+	for (i = 0; i < size; i++) {
 		m = 0;
 		printf("%02zi: %02x : ", i, *t);
 		for (shift = 0x80; shift > 0; shift >>= 1) {
@@ -317,7 +317,7 @@ struct BOARD_INFO * parse_board_area(unsigned char *data)
 		len--;
 	if (len == 0 || data[len] != 0xC1) {
 		printf_err("BOARD INFO not terminated properly, walking backwards len: "
-			       "%i:0x%02x should be 0xC1\n", len, data[len]);
+				"%i:0x%02x should be 0xC1\n", len, data[len]);
 		goto err;
 	}
 
@@ -349,8 +349,8 @@ struct BOARD_INFO * parse_board_area(unsigned char *data)
 
 	if (*p != 0xC1) {
 		printf_err("BOARD INFO not terminated properly, "
-			       "offset %02i(0x%02x) : %02i(0x%02x) should be 0xC1\n",
-			       p - data, p - data, *p, *p);
+				"offset %02i(0x%02x) : %02i(0x%02x) should be 0xC1\n",
+				p - data, p - data, *p, *p);
 		goto err;
 	}
 
@@ -388,7 +388,7 @@ struct MULTIRECORD_INFO * parse_multiboard_area(unsigned char *data)
 		}
 		if (calc_zero_checksum(p, 4)) {
 			printf_err("MultiRecord Area %i (Record Type 0x%x): "
-				       "Header Checksum failed\n", i, p[0]);
+					"Header Checksum failed\n", i, p[0]);
 			return NULL;
 		}
 
@@ -434,8 +434,8 @@ struct MULTIRECORD_INFO * parse_multiboard_area(unsigned char *data)
 					case MULTIRECORD_I2C:
 						if (p[2] <= 5) {
 							printf_warn("I2C MultiRecord is too short (len:%i)\n"
-							    "	(at least 4 is needed for OUI and subtype)\n",
-							    p[2]);
+								"	(at least 4 is needed for OUI and subtype)\n",
+								p[2]);
 						} else {
 							/* see table 9 in FMC spec */
 							unsigned char *foo2;

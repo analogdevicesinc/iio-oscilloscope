@@ -22,24 +22,24 @@
 
 
 struct fmcomms1_calib_data {
-		char adi_magic0;
-		char adi_magic1;
-		char version;
-		unsigned char next;
-		unsigned short cal_frequency_MHz;
+	char adi_magic0;
+	char adi_magic1;
+	char version;
+	unsigned char next;
+	unsigned short cal_frequency_MHz;
 
-		/* DAC Calibration Data */
-                short i_phase_adj;      /* 10-bit */
-                short q_phase_adj;     /* 10-bit */
-                unsigned short i_dac_offset;      /* 16-bit */
-                unsigned short q_dac_offset;    /* 16-bit */
-                unsigned short i_dac_fs_adj;      /* 10-bit */
-                unsigned short q_dac_fs_adj;    /* 10-bit */
-                /* ADC Calibration Data */
-                short i_adc_offset_adj;                 /* 16-bit signed */
-                unsigned short i_adc_gain_adj; /* 16-bit fract 1.15 */
-                short q_adc_offset_adj;                                /* 16-bit signed */
-                unsigned short q_adc_gain_adj;               /* 16-bit fract 1.15 */
+	/* DAC Calibration Data */
+	short i_phase_adj;                      /* 10-bit */
+	short q_phase_adj;                      /* 10-bit */
+	unsigned short i_dac_offset;            /* 16-bit */
+	unsigned short q_dac_offset;            /* 16-bit */
+	unsigned short i_dac_fs_adj;            /* 10-bit */
+	unsigned short q_dac_fs_adj;            /* 10-bit */
+	/* ADC Calibration Data */
+	short i_adc_offset_adj;                 /* 16-bit signed */
+	unsigned short i_adc_gain_adj;          /* 16-bit fract 1.15 */
+	short q_adc_offset_adj;                 /* 16-bit signed */
+	unsigned short q_adc_gain_adj;          /* 16-bit fract 1.15 */
 } __attribute__((packed));
 
 #endif /* XCOMM_EEPROM_H_ */

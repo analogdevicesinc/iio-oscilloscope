@@ -203,7 +203,7 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 					cmap = gdk_window_get_colormap(
 							GDK_DRAWABLE(gtk_widget_get_window(capture_graph)));
 					gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
-						       &width, &height);
+							&width, &height);
 					pixbuf = gdk_pixbuf_get_from_drawable(NULL,
 							GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
 							cmap, 0, 0, 0, 0, width, height);
