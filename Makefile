@@ -27,7 +27,7 @@ install:
 	install -d $(DESTDIR)/share/osc/
 	install -d $(DESTDIR)/lib/osc/
 	install ./osc $(DESTDIR)/bin/
-	install ./osc.glade $(DESTDIR)/share/osc/
+	install ./*.glade $(DESTDIR)/share/osc/
 	install ./icons/ADIlogo.png $(DESTDIR)/share/osc/
 	install ./icons/IIOlogo.png $(DESTDIR)/share/osc/
 	install $(PLUGINS) $(DESTDIR)/lib/osc/

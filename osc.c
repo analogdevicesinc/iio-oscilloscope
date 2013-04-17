@@ -716,7 +716,7 @@ static int fft_capture_setup(void)
 		for (i = 0; i <= MAX_MARKERS; i++) {
 			markX[i] = 0.0f;
 			markY[i] = -100.0f;
-			marker[i] =  gtk_databox_markers_new(1, &markX[i], &markY[i], &color_marker, 
+			marker[i] =  gtk_databox_markers_new(1, &markX[i], &markY[i], &color_marker,
 					10, GTK_DATABOX_MARKERS_TRIANGLE);
 			sprintf(buf, "M%i", i);
 			gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(marker[i]), 0,
@@ -789,7 +789,7 @@ static int time_capture_setup(void)
 			else
 				channel_graph[j] = gtk_databox_lines_new(num_samples, X,
 					channel_data[j], &color_graph[i], 1);
-				
+
 			gtk_databox_graph_add(GTK_DATABOX(databox), channel_graph[j]);
 			j++;
 		}
@@ -1137,20 +1137,23 @@ static bool str_endswith(const char *str, const char *needle)
 static void load_plugins(GtkWidget *notebook)
 {
 	struct dirent *ent;
+	char *plugin_dir = "plugins";
 	char buf[512];
 	DIR *d;
 
 	/* Check the local plugins folder first */
-	d = opendir("plugins");
-	if (!d)
-		d = opendir(OSC_PLUGIN_PATH);
+	d = opendir(plugin_dir);
+	if (!d) {
+		plugin_dir = OSC_PLUGIN_PATH;
+		d = opendir(plugin_dir);
+	}
 
 	while ((ent = readdir(d))) {
 		if (ent->d_type != DT_REG)
 			continue;
 		if (!str_endswith(ent->d_name, ".so"))
 			continue;
-		snprintf(buf, sizeof(buf), "plugins/%s", ent->d_name);
+		snprintf(buf, sizeof(buf), "%s/%s", plugin_dir, ent->d_name);
 		load_plugin(buf, notebook);
 	}
 }
