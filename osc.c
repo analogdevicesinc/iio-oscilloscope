@@ -1249,6 +1249,7 @@ void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer d
 	unsigned int enabled;
 	char buf[512];
 	FILE *f;
+	int ret;
 
 	set_dev_paths(current_device);
 
@@ -1261,7 +1262,9 @@ void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer d
 	fprintf(f, "%u\n", enabled);
 	fclose(f);
 	f = fopen(buf, "r");
-	fscanf(f, "%u", &enabled);
+	ret = fscanf(f, "%u", &enabled);
+	if (ret != 1)
+		enabled = false;
 	fclose(f);
 
 	channel->enabled = enabled;
