@@ -8,6 +8,7 @@
   </object>
   <object class="GtkAdjustment" id="adjustmentAmpl">
     <property name="upper">3.2999999999999998</property>
+    <property name="value">3.2999999999999998</property>
     <property name="step_increment">0.01</property>
     <property name="page_increment">0.5</property>
   </object>
@@ -17,8 +18,10 @@
     <property name="page_increment">0.5</property>
   </object>
   <object class="GtkAdjustment" id="adjustmentFreq">
+    <property name="lower">0.0099999997764825821</property>
     <property name="upper">100</property>
-    <property name="step_increment">1</property>
+    <property name="value">1</property>
+    <property name="step_increment">0.10000000000000001</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustmentFreq1">
@@ -28,6 +31,7 @@
   </object>
   <object class="GtkAdjustment" id="adjustmentOffset">
     <property name="upper">3.2999999999999998</property>
+    <property name="value">1.6499999999999999</property>
     <property name="step_increment">0.01</property>
     <property name="page_increment">0.5</property>
   </object>

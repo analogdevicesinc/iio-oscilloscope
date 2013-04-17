@@ -67,6 +67,7 @@ static int buffer_open(unsigned int length)
 
 	set_dev_paths("ad7303");
 	write_devattr("trigger/current_trigger", "hrtimer-1");
+	write_devattr("scan_elements/out_voltage0_en", "1");
 
 	fd = iio_buffer_open(false);
 	if (fd < 0) {
@@ -127,7 +128,7 @@ static int FillSoftBuffer(int waveType, uint8_t* softBuffer)
         for(;sampleNr < bufferSize; sampleNr++)
         {
             
-            rawVal = (intAmpl/ 2) * sin(sampleNr * G_PI / 180) + intOffset;
+            rawVal = (intAmpl/ 2) * sin(2 * sampleNr * G_PI / bufferSize) + intOffset;
             if(rawVal < 0)
                 rawVal = 0;
             else if(rawVal > 255)
@@ -270,7 +271,7 @@ static gboolean fillBuffer(void)
     else
     {
         currentSample += ret;
-        if(currentSample == bufferSize)
+        if(currentSample >= bufferSize)
         {
             currentSample = 0;
         }
@@ -343,7 +344,7 @@ static int AD7303_init(GtkWidget *notebook)
     spinFreq = GTK_WIDGET(gtk_builder_get_object(builder, "spinFreq"));
     radioSingleVal = GTK_WIDGET(gtk_builder_get_object(builder, "radioSingleVal"));
     radioWaveform = GTK_WIDGET(gtk_builder_get_object(builder, "radioWaveform"));
-    
+   
 	/* Bind the IIO device files to the GUI widgets */
     iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
             "ad7303", "out_voltage0_raw",
