@@ -61,12 +61,12 @@ static int AD7303_init(GtkWidget *notebook)
 	AD7303_panel = GTK_WIDGET(gtk_builder_get_object(builder, "tablePanelAD7303"));
 
 	/* Bind the IIO device files to the GUI widgets */
-    iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-            "ad7303", "out_voltage0_raw",
-            builder, "spinbuttonValueCh0", NULL);
-    iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-            "ad7303", "out_voltage1_raw",
-            builder, "spinbuttonValueCh1", NULL);
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+			"ad7303", "out_voltage0_raw",
+			builder, "spinbuttonValueCh0", NULL);
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+			"ad7303", "out_voltage1_raw",
+			builder, "spinbuttonValueCh1", NULL);
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"AD7303", "out_voltage0_powerdown",
 			builder, "checkbuttonPwrDwn0", 0);
@@ -89,7 +89,7 @@ static int AD7303_init(GtkWidget *notebook)
 static bool AD7303_identify(void)
 {
 
-    return !set_dev_paths("ad7303");
+	return !set_dev_paths("ad7303");
 }
 
 const struct osc_plugin plugin = {

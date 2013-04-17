@@ -559,11 +559,11 @@ static void do_fft()
 
 static double win_hanning(int j, int n)
 {
-    double a = 2.0*M_PI/(n-1), w;
+	double a = 2.0*M_PI/(n-1), w;
 
-    w = 0.5 * (1.0 - cos(a*j));
+	w = 0.5 * (1.0 - cos(a*j));
 
-    return (w);
+	return (w);
 }
 
 static void do_fft(struct buffer *buf)
@@ -720,7 +720,7 @@ static int fft_capture_setup(void)
 					10, GTK_DATABOX_MARKERS_TRIANGLE);
 			sprintf(buf, "M%i", i);
 			gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(marker[i]), 0,
-					 GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+					GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
 			gtk_databox_graph_add(GTK_DATABOX(databox), marker[i]);
 		}
 	}
@@ -1369,7 +1369,7 @@ static void init_application (void)
 
 	/* Create a GtkDatabox widget along with scrollbars and rulers */
 	gtk_databox_create_box_with_scrollbars_and_rulers(&databox, &table,
-							  TRUE, TRUE, TRUE, TRUE);
+							TRUE, TRUE, TRUE, TRUE);
 	gtk_box_pack_start(GTK_BOX(capture_graph), table, TRUE, TRUE, 0);
 	gtk_widget_modify_bg(databox, GTK_STATE_NORMAL, &color_background);
 
@@ -1389,7 +1389,7 @@ static void init_application (void)
 		G_CALLBACK(show_grid_toggled), databox);
 
 	g_signal_connect(G_OBJECT(window), "destroy",
-			 G_CALLBACK(application_quit), NULL);
+			G_CALLBACK(application_quit), NULL);
 
 	g_builder_bind_property(builder, "capture_button", "active",
 			"channel_list_view", "sensitive", G_BINDING_INVERT_BOOLEAN);
