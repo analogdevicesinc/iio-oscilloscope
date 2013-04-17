@@ -126,7 +126,7 @@ static int debug_init(GtkWidget *notebook)
 	/* Put in the correct values */
 	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(device_list),
 			(const gchar *)"None");
-	num = find_iio_names(&devices);
+	num = find_iio_names(&devices, "iio:device");
 	device=devices;
 	for (; num > 0; num--) {
 		/* Make sure we can access things */
@@ -166,7 +166,7 @@ static bool debug_identify(void)
 	int num, i = 0;
 	char *devices=NULL, *device;
 
-	num = find_iio_names(&devices);
+	num = find_iio_names(&devices, "iio:device");
 	device=devices;
 	for (; num > 0; num--) {
 		/* Make sure we can access things */

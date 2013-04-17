@@ -497,11 +497,13 @@ static inline int find_type_by_name(const char *name, const char *type)
 }
 
 /**
- *  * find_names() - function to find names installed on the system
- *   * @name: null char delimited names
- *    * return value is the number of entries
- *     **/
-static inline int find_iio_names(char **names)
+ *  find_names() - function to find names installed on the system
+ *  @name: null char delimited names
+ *  @filter: Allows to filter by device type
+ *
+ *  Returns the number of devices found
+ **/
+static inline int find_iio_names(char **names, const char *filter)
 {
 	DIR *dp;
 	const struct dirent *ent;
@@ -517,6 +519,9 @@ static inline int find_iio_names(char **names)
 	while (ent = readdir(dp), ent != NULL) {
 		if (strcmp(ent->d_name, ".") == 0 ||
 				strcmp(ent->d_name, "..") == 0)
+			continue;
+
+		if (filter && strncmp(ent->d_name, filter, strlen(filter)) != 0)
 			continue;
 
 		filename = malloc(strlen(iio_dir) + strlen(ent->d_name) + 6);

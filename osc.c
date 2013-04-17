@@ -82,7 +82,7 @@ static char adc_scale[10];
 
 static bool is_fft_mode;
 
-static const char *current_device;
+const char *current_device;
 
 static GdkColor color_graph[] = {
 	{
@@ -1196,6 +1196,8 @@ static void device_list_cb(GtkWidget *widget, gpointer data)
 
 	current_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(device_list_widget));
 
+	trigger_update_current_device();
+
 	if (!current_device)
 		return;
 
@@ -1225,7 +1227,7 @@ static void init_device_list(void)
 	g_signal_connect(device_list_widget, "changed",
 			G_CALLBACK(device_list_cb), NULL);
 
-	num = find_iio_names(&devices);
+	num = find_iio_names(&devices, "iio:device");
 	if (devices == NULL)
 		return;
 
