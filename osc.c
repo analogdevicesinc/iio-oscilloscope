@@ -915,7 +915,7 @@ static double read_sampling_frequency(void)
 
 void rx_update_labels(void)
 {
-	double freq = 2400000000.0;
+	double freq = 0.0;
 	char buf[20];
 	int i;
 
