@@ -341,7 +341,7 @@ static inline int build_channel_array(const char *device_dir,
 			}
 			tmp = fscanf(sysfsfp, "%u", &current->enabled);
 			fclose(sysfsfp);
-			if (tmp != 1) 
+			if (tmp != 1)
 				current->enabled = 0;
 
 			current->scale = 1.0;
@@ -759,5 +759,7 @@ int read_devattr_double(const char *attr, double *value);
 int write_devattr_double(const char *attr, double value);
 int write_devattr_int(const char *attr, unsigned long long val);
 int read_devattr_int(char *attr, int *val);
+int read_devattr_slonglong(const char *attr, long long *value);
+int write_devattr_slonglong(const char *attr, long long value);
 bool iio_devattr_exists(const char *device, const char *attr);
 int iio_buffer_open(void);

@@ -219,6 +219,29 @@ int write_devattr_double(const char *attr, double value)
 	return write_devattr(attr, buf);
 }
 
+int read_devattr_slonglong(const char *attr, long long *value)
+{
+	char *buf;
+	int ret;
+
+	ret = read_devattr(attr, &buf);
+	if (ret < 0)
+		return ret;
+
+	sscanf(buf, "%lli", value);
+	free(buf);
+
+	return 0;
+}
+
+int write_devattr_slonglong(const char *attr, long long value)
+{
+	char buf[100];
+
+	snprintf(buf, 100, "%lld", value);
+	return write_devattr(attr, buf);
+}
+
 int write_devattr_int(const char *attr, unsigned long long value)
 {
 	char buf[100];
