@@ -56,6 +56,7 @@ static GtkWidget *enable_auto_scale;
 static GtkWidget *device_list_widget;
 static GtkWidget *capture_button;
 static GtkWidget *hor_scale;
+static GtkWidget *plot_type;
 
 GtkWidget *capture_graph;
 
@@ -679,7 +680,7 @@ static gboolean fft_capture_func(GtkDatabox *box)
 		gtk_widget_queue_draw(GTK_WIDGET(box));
 	}
 
-	usleep(50000);
+	usleep(5000);
 
 	fps_counter();
 
@@ -769,7 +770,11 @@ static int time_capture_setup(void)
 	}
 
 	if (is_constellation) {
-		fft_graph = gtk_databox_lines_new(num_samples, channel_data[0],
+		if (strcmp(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(plot_type)), "Lines"))
+			fft_graph = gtk_databox_points_new(num_samples, channel_data[0],
+					channel_data[1], &color_graph[0], 3);
+		else
+			fft_graph = gtk_databox_lines_new(num_samples, channel_data[0],
 					channel_data[1], &color_graph[0], 1);
 		gtk_databox_graph_add(GTK_DATABOX (databox), fft_graph);
 	} else {
@@ -778,8 +783,13 @@ static int time_capture_setup(void)
 			if (!channels[i].enabled)
 				continue;
 
-			channel_graph[j] = gtk_databox_lines_new(num_samples, X,
-				channel_data[j], &color_graph[i], 1);
+			if (strcmp(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(plot_type)), "Lines"))
+				channel_graph[j] = gtk_databox_points_new(num_samples, X,
+					channel_data[j], &color_graph[i], 3);
+			else
+				channel_graph[j] = gtk_databox_lines_new(num_samples, X,
+					channel_data[j], &color_graph[i], 1);
+				
 			gtk_databox_graph_add(GTK_DATABOX(databox), channel_graph[j]);
 			j++;
 		}
@@ -822,9 +832,11 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
 			gtk_label_set_text(GTK_LABEL(hor_scale), adc_scale);
+			gtk_widget_show(marker_label);
 			ret = fft_capture_setup();
 		} else {
 			gtk_label_set_text(GTK_LABEL(hor_scale), "Samples");
+			gtk_widget_hide(marker_label);
 			ret = time_capture_setup();
 		}
 
@@ -1323,6 +1335,7 @@ static void init_application (void)
 	capture_button = GTK_WIDGET(gtk_builder_get_object(builder, "capture_button"));
 	hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
 	marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
+	plot_type = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type"));
 
 	channel_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "channel_list"));
 	g_builder_connect_signal(builder, "channel_toggle", "toggled",
@@ -1335,15 +1348,20 @@ static void init_application (void)
 	/* Bind the plot mode radio buttons to the sensitivity of the sample count
 	 * and FFT size widgets */
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size_label"));
-	g_object_bind_property(fft_radio, "active", tmp, "sensitive", 0);
-	g_object_bind_property(fft_radio, "active", fft_size_widget, "sensitive", 0);
+	g_object_bind_property(fft_radio, "active", tmp, "visible", 0);
+	g_object_bind_property(fft_radio, "active", fft_size_widget, "visible", 0);
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg_label"));
-	g_object_bind_property(fft_radio, "active", tmp, "sensitive", 0);
-	g_object_bind_property(fft_radio, "active", fft_avg_widget, "sensitive", 0);
+	g_object_bind_property(fft_radio, "active", tmp, "visible", 0);
+	g_object_bind_property(fft_radio, "active", fft_avg_widget, "visible", 0);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_label"));
-	g_object_bind_property(fft_radio, "active", tmp, "sensitive", G_BINDING_INVERT_BOOLEAN);
-	g_object_bind_property(fft_radio, "active", sample_count_widget, "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_object_bind_property(fft_radio, "active", tmp, "visible", G_BINDING_INVERT_BOOLEAN);
+	g_object_bind_property(fft_radio, "active", sample_count_widget, "visible", G_BINDING_INVERT_BOOLEAN);
+
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type_label"));
+	g_object_bind_property(fft_radio, "active", tmp, "visible", G_BINDING_INVERT_BOOLEAN);
+	g_object_bind_property(fft_radio, "active", plot_type, "visible", G_BINDING_INVERT_BOOLEAN);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(plot_type), 0);
 
 	num_samples = 1;
 	X = g_renew(gfloat, X, num_samples);
@@ -1382,7 +1400,8 @@ static void init_application (void)
 	load_plugins(notebook);
 	rx_update_labels();
 
-	gtk_widget_show_all(window);
+	gtk_widget_show(window);
+	gtk_widget_show_all(capture_graph);
 }
 
 gint main(gint argc, char *argv[])
