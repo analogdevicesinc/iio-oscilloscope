@@ -653,7 +653,7 @@ static void do_fft(struct buffer *buf)
 				markX[j] = (gfloat)X[maxx[j]];
 				markY[j] = (gfloat)fft_channel[maxx[j]];
 
-				sprintf(text, "M%i: %2.2f dB @ %2.2f MHz\n", j, markY[j], markX[j]);
+				sprintf(text, "M%i: %2.2f dB @ %2.2f %s\n", j, markY[j], markX[j], adc_scale);
 				gtk_text_buffer_insert(tbuf, &iter, text, -1);
 			}
 			gtk_text_view_set_buffer(GTK_TEXT_VIEW(marker_label), tbuf);
