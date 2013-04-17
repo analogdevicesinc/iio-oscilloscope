@@ -752,4 +752,4 @@ int read_devattr_int(char *attr, int *val);
 int read_devattr_slonglong(const char *attr, long long *value);
 int write_devattr_slonglong(const char *attr, long long value);
 bool iio_devattr_exists(const char *device, const char *attr);
-int iio_buffer_open(void);
+int iio_buffer_open(bool read);

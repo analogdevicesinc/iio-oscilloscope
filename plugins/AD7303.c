@@ -25,16 +25,17 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 
-#define BUFFER_SIZE    360
+static unsigned int bufferSize = 360;
 
 #define SINEWAVE       0
 #define SQUAREWAVE     1
 #define TRIANGLE       2
 #define SAWTOOTH       3
 
-static short softBufferCh0[BUFFER_SIZE];
+static uint8_t *softBufferCh0;
 static int currentSample = 0;
 
+static int buffer_fd;
 
 static gint fill_buffer_function = 0;
 
@@ -52,6 +53,7 @@ static GtkWidget* radioTriangle1;
 static GtkWidget* radioSawtooth1;
 static GtkWidget* spinAmpl;
 static GtkWidget* spinOffset;
+static GtkWidget* spinFreq;
 static GtkWidget* radioSingleVal;
 static GtkWidget* radioWaveform;
 
@@ -64,8 +66,9 @@ static int buffer_open(unsigned int length)
 	int fd;
 
 	set_dev_paths("ad7303");
+	write_devattr("trigger/current_trigger", "hrtimer-1");
 
-	fd = iio_buffer_open();
+	fd = iio_buffer_open(false);
 	if (fd < 0) {
 		ret = -errno;
 		fprintf(stderr, "Failed to open buffer: %d\n", ret);
@@ -93,7 +96,23 @@ err_close:
 	return ret;
 }
 
-static int FillSoftBuffer(int waveType, short* softBuffer)
+static void buffer_close(unsigned int fd)
+{
+	int ret;
+
+	set_dev_paths("ad7303");
+
+	/* Enable the buffer */
+	ret = write_devattr_int("buffer/enable", 0);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to disable buffer: %d\n", ret);
+	}
+
+	close(fd);
+}
+
+
+static int FillSoftBuffer(int waveType, uint8_t* softBuffer)
 {
     int sampleNr = 0;
     int rawVal;
@@ -105,7 +124,7 @@ static int FillSoftBuffer(int waveType, short* softBuffer)
       
     switch(waveType){
     case SINEWAVE:
-        for(;sampleNr < BUFFER_SIZE; sampleNr++)
+        for(;sampleNr < bufferSize; sampleNr++)
         {
             
             rawVal = (intAmpl/ 2) * sin(sampleNr * G_PI / 180) + intOffset;
@@ -117,7 +136,7 @@ static int FillSoftBuffer(int waveType, short* softBuffer)
         }
         break;
     case SQUAREWAVE:
-        for(;sampleNr < BUFFER_SIZE / 2; sampleNr++)
+        for(;sampleNr < bufferSize / 2; sampleNr++)
         {
             rawVal = intOffset - (intAmpl/ 2);
             if(rawVal < 0)
@@ -127,7 +146,7 @@ static int FillSoftBuffer(int waveType, short* softBuffer)
             softBuffer[sampleNr] = rawVal;
             
         }
-        for(;sampleNr < BUFFER_SIZE; sampleNr++)
+        for(;sampleNr < bufferSize; sampleNr++)
         {
             rawVal = intOffset + (intAmpl/ 2);
             if(rawVal < 0)
@@ -138,29 +157,29 @@ static int FillSoftBuffer(int waveType, short* softBuffer)
         }
         break;
     case TRIANGLE:
-        for(;sampleNr < BUFFER_SIZE / 2; sampleNr++)
+        for(;sampleNr < bufferSize / 2; sampleNr++)
         {
-            rawVal = sampleNr * intAmpl / (BUFFER_SIZE / 2) + (intOffset - intAmpl / 2 );
+            rawVal = sampleNr * intAmpl / (bufferSize / 2) + (intOffset - intAmpl / 2 );
             if(rawVal < 0)
                 rawVal = 0;
             else if(rawVal > 255)
                 rawVal = 255;
             softBuffer[sampleNr] = rawVal;
         }
-        for(sampleNr = 0 ;sampleNr < BUFFER_SIZE / 2; sampleNr++)
+        for(sampleNr = 0 ;sampleNr < bufferSize / 2; sampleNr++)
         {
-            rawVal = intAmpl - sampleNr * intAmpl / (BUFFER_SIZE / 2) + (intOffset - intAmpl / 2 );
+            rawVal = intAmpl - sampleNr * intAmpl / (bufferSize / 2) + (intOffset - intAmpl / 2 );
             if(rawVal < 0)
                 rawVal = 0;
             else if(rawVal > 255)
                 rawVal = 255;
-            softBuffer[sampleNr] = rawVal;
+            softBuffer[sampleNr + bufferSize / 2] = rawVal;
         }
         break;
     case SAWTOOTH:
-        for(;sampleNr < BUFFER_SIZE; sampleNr++)
+        for(;sampleNr < bufferSize; sampleNr++)
         {
-            rawVal = sampleNr * intAmpl / BUFFER_SIZE + (intOffset - intAmpl / 2 );
+            rawVal = sampleNr * intAmpl / bufferSize + (intOffset - intAmpl / 2 );
             if(rawVal < 0)
                 rawVal = 0;
             else if(rawVal > 255)
@@ -178,9 +197,27 @@ static int FillSoftBuffer(int waveType, short* softBuffer)
 static void generateWavePeriod(void)
 {
     int waveType = 0;
+	int triggerFreq;
+	double waveFreq;
+
+	set_dev_paths("hrtimer-1");
+	read_devattr_int("frequency", &triggerFreq);
     
     waveAmpl = gtk_spin_button_get_value(GTK_SPIN_BUTTON(spinAmpl));
     waveOffset = gtk_spin_button_get_value(GTK_SPIN_BUTTON(spinOffset));
+    waveFreq = gtk_spin_button_get_value(GTK_SPIN_BUTTON(spinFreq));
+
+	bufferSize = (unsigned int)(triggerFreq / waveFreq);
+	if (bufferSize < 2)
+		bufferSize = 2;
+	else if(bufferSize > 10000)
+		bufferSize = 10000;
+	currentSample = 0;
+
+	softBufferCh0 = g_renew(uint8_t, softBufferCh0, bufferSize);
+
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(spinFreq), (double)triggerFreq / bufferSize);
+
     if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(radioSine)))
     {
         waveType = SINEWAVE;
@@ -198,6 +235,7 @@ static void generateWavePeriod(void)
         waveType = SAWTOOTH;
     }
     FillSoftBuffer(waveType, softBufferCh0);
+#if 0
     if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(radioSine1)))
     {
         waveType = SINEWAVE;
@@ -215,23 +253,24 @@ static void generateWavePeriod(void)
         waveType = SAWTOOTH;
     }
     FillSoftBuffer(waveType, softBufferCh0);
+#endif
 }
 
-static gboolean fillBuffer(int *fd)
+static gboolean fillBuffer(void)
 {
     int samplesToSend;
     int ret;
     
-    samplesToSend = BUFFER_SIZE - currentSample;
-    ret = write(*fd, softBufferCh0 + currentSample, samplesToSend);
+    samplesToSend = bufferSize - currentSample;
+    ret = write(buffer_fd, softBufferCh0 + currentSample, samplesToSend);
     if(ret < 0)
     {
-        printf("Error occured while writing to buffer\n");
+        printf("Error occured while writing to buffer: %d\n", errno);
     }
     else
     {
         currentSample += ret;
-        if(currentSample == BUFFER_SIZE)
+        if(currentSample == bufferSize)
         {
             currentSample = 0;
         }
@@ -241,9 +280,9 @@ static gboolean fillBuffer(int *fd)
     return TRUE;
 }
 
-void startWaveGeneration(int * fd)
+void startWaveGeneration(void)
 {
-    fill_buffer_function = g_idle_add((GSourceFunc)fillBuffer, fd);
+    fill_buffer_function = g_idle_add((GSourceFunc)fillBuffer, NULL);
 }
 
 static void tx_update_values(void)
@@ -260,7 +299,12 @@ static void rx_update_values(void)
 
 static void save_button_clicked(GtkButton *btn, gpointer data)
 {
-	int fd;
+	if (buffer_fd) {
+		g_source_remove(fill_buffer_function);
+		buffer_close(buffer_fd);
+		buffer_fd = -1;
+	}
+
     if(gtk_toggle_button_get_active((GtkToggleButton *)radioSingleVal))
     {
         iio_save_widgets(tx_widgets, num_tx);
@@ -269,9 +313,9 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
     }
     else if(gtk_toggle_button_get_active((GtkToggleButton *)radioWaveform))
     {
-        fd = buffer_open(BUFFER_SIZE * 10);
         generateWavePeriod();
-        startWaveGeneration(&fd);
+        buffer_fd = buffer_open(bufferSize * 10);
+        startWaveGeneration();
     }
 }
 
@@ -296,6 +340,7 @@ static int AD7303_init(GtkWidget *notebook)
     radioSawtooth1 = GTK_WIDGET(gtk_builder_get_object(builder, "radioSawtooth1"));
     spinAmpl = GTK_WIDGET(gtk_builder_get_object(builder, "spinAmpl"));
     spinOffset = GTK_WIDGET(gtk_builder_get_object(builder, "spinOffset"));
+    spinFreq = GTK_WIDGET(gtk_builder_get_object(builder, "spinFreq"));
     radioSingleVal = GTK_WIDGET(gtk_builder_get_object(builder, "radioSingleVal"));
     radioWaveform = GTK_WIDGET(gtk_builder_get_object(builder, "radioWaveform"));
     

@@ -47,7 +47,7 @@ static void trigger_change_trigger(void)
 
 	if (has_frequency) {
 		int freq;
-
+		set_dev_paths(current_trigger);
 		read_devattr_int("frequency", &freq);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(frequency_spin_button), freq);
 	} else {

@@ -179,7 +179,7 @@ static int buffer_open(unsigned int length)
 
 	set_dev_paths(current_device);
 
-	fd = iio_buffer_open();
+	fd = iio_buffer_open(true);
 	if (fd < 0) {
 		ret = -errno;
 		fprintf(stderr, "Failed to open buffer: %d\n", ret);
@@ -257,7 +257,7 @@ static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 	ret = read(buffer_fd, buf->data + buf->available,
 			buf->size - buf->available);
 	if (ret == 0)
-		return -1;
+		return 0;
 	if (ret < 0)
 		return ret;
 

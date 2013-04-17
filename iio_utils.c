@@ -283,7 +283,14 @@ bool iio_devattr_exists(const char *device, const char *attr)
 	return S_ISREG(s.st_mode);
 }
 
-int iio_buffer_open(void)
+int iio_buffer_open(bool read)
 {
-	return open(buffer_access, O_RDONLY | O_NONBLOCK);
+	int flags;
+
+	if (read)
+		flags = O_RDONLY;
+	else
+		flags = O_WRONLY;
+
+	return open(buffer_access, flags | O_NONBLOCK);
 }
