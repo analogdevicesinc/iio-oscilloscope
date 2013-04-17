@@ -1228,20 +1228,19 @@ static void init_device_list(void)
 			G_CALLBACK(device_list_cb), NULL);
 
 	num = find_iio_names(&devices, "iio:device");
-	if (devices == NULL)
-		return;
-
-	device = devices;
-	for (; num > 0; num--) {
-		if (is_input_device(device)) {
-			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(device_list_widget),
-					device);
+	if (devices != NULL) {
+		device = devices;
+		for (; num > 0; num--) {
+			if (is_input_device(device)) {
+				gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(device_list_widget),
+						device);
+			}
+			device += strlen(device) + 1;
 		}
-		device += strlen(device) + 1;
-	}
-	free(devices);
+		free(devices);
 
-	gtk_combo_box_set_active(GTK_COMBO_BOX(device_list_widget), 0);
+		gtk_combo_box_set_active(GTK_COMBO_BOX(device_list_widget), 0);
+	}
 
 	device_list_cb(device_list_widget, NULL);
 }
@@ -1347,6 +1346,7 @@ static void init_application (void)
 		G_CALLBACK(channel_toggled), channel_list_store);
 
 	dialogs_init(builder);
+	trigger_dialog_init(builder);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(fft_size_widget), 0);
 

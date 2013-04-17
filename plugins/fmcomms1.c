@@ -42,7 +42,6 @@ static void tx_update_values(void)
 {
 	iio_update_widgets(tx_widgets, num_tx);
 }
-void rx_update_labels(void);
 
 static void rx_update_values(void)
 {

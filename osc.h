@@ -9,8 +9,12 @@
 #define __OSC_H__
 
 extern GtkWidget *capture_graph;
+extern const char *current_device;
 
+void rx_update_labels(void);
 void dialogs_init(GtkBuilder *builder);
+void trigger_dialog_init(GtkBuilder *builder);
+void trigger_update_current_device(void);
 void application_quit (void);
 
 #endif
