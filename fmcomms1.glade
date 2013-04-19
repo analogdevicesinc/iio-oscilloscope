@@ -7,11 +7,11 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkAdjustment" id="adjustment10">
+  <object class="GtkAdjustment" id="adjustment_gch1">
     <property name="lower">4.5</property>
-    <property name="upper">20.5</property>
+    <property name="upper">20.439</property>
     <property name="value">4.5</property>
-    <property name="step_increment">0.25</property>
+    <property name="step_increment">0.253</property>
   </object>
   <object class="GtkAdjustment" id="adjustment11">
     <property name="lower">35</property>
@@ -104,11 +104,11 @@
     <property name="value">1</property>
     <property name="step_increment">0.001</property>
   </object>
-  <object class="GtkAdjustment" id="adjustment9">
+  <object class="GtkAdjustment" id="adjustment_gch0">
     <property name="lower">4.5</property>
-    <property name="upper">20.5</property>
+    <property name="upper">20.439</property>
     <property name="value">4.5</property>
-    <property name="step_increment">0.25</property>
+    <property name="step_increment">0.253</property>
   </object>
   <object class="GtkVBox" id="fmcomms1_panel">
     <property name="visible">True</property>
@@ -132,9 +132,6 @@
             <property name="fill">True</property>
             <property name="position">0</property>
           </packing>
-        </child>
-        <child>
-          <placeholder/>
         </child>
       </object>
       <packing>
@@ -430,20 +427,10 @@
                   <object class="GtkTable" id="grid3">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="n_rows">3</property>
+                    <property name="n_columns">2</property>
                     <property name="column_spacing">5</property>
                     <property name="row_spacing">5</property>
-                    <child>
-                      <object class="GtkLabel" id="label24">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
-                        <property name="label" translatable="yes">Channel 1 gain (dB):</property>
-                      </object>
-                      <packing>
-                        <property name="x_options">GTK_FILL</property>
-                        <property name="y_options">GTK_FILL</property>
-                      </packing>
-                    </child>
                     <child>
                       <object class="GtkLabel" id="label25">
                         <property name="visible">True</property>
@@ -452,22 +439,8 @@
                         <property name="label" translatable="yes">Channel 2 gain (dB):</property>
                       </object>
                       <packing>
-                        <property name="top_attach">1</property>
-                        <property name="x_options">GTK_FILL</property>
-                        <property name="y_options">GTK_FILL</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkSpinButton" id="adc_gain0">
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="invisible_char">●</property>
-                        <property name="invisible_char_set">True</property>
-                        <property name="adjustment">adjustment9</property>
-                        <property name="digits">2</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
+                        <property name="top_attach">2</property>
+                        <property name="bottom_attach">3</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
                       </packing>
@@ -478,12 +451,63 @@
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
                         <property name="invisible_char_set">True</property>
-                        <property name="adjustment">adjustment10</property>
-                        <property name="digits">2</property>
+                        <property name="adjustment">adjustment_gch1</property>
+                        <property name="digits">3</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
+                        <property name="right_attach">2</property>
+                        <property name="top_attach">2</property>
+                        <property name="bottom_attach">3</property>
+                        <property name="x_options">GTK_FILL</property>
+                        <property name="y_options">GTK_FILL</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label24">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">0</property>
+                        <property name="label" translatable="yes">Channel 1 gain (dB):</property>
+                      </object>
+                      <packing>
                         <property name="top_attach">1</property>
+                        <property name="bottom_attach">2</property>
+                        <property name="x_options">GTK_FILL</property>
+                        <property name="y_options">GTK_FILL</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkSpinButton" id="adc_gain0">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="invisible_char">●</property>
+                        <property name="invisible_char_set">True</property>
+                        <property name="adjustment">adjustment_gch0</property>
+                        <property name="digits">3</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="right_attach">2</property>
+                        <property name="top_attach">1</property>
+                        <property name="bottom_attach">2</property>
+                        <property name="x_options">GTK_FILL</property>
+                        <property name="y_options">GTK_FILL</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkCheckButton" id="gain_amp_together">
+                        <property name="label" translatable="yes">Lock Channels</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">False</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="xalign">0</property>
+                        <property name="draw_indicator">True</property>
+                        <signal name="toggled" handler="gain_amp_locked_cb" swapped="no"/>
+                      </object>
+                      <packing>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
                       </packing>
@@ -555,9 +579,6 @@
                       </packing>
                     </child>
                     <child>
-                      <placeholder/>
-                    </child>
-                    <child>
                       <object class="GtkSpinButton" id="rx_lo_freq">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -576,15 +597,6 @@
                       </packing>
                     </child>
                     <child>
-                      <placeholder/>
-                    </child>
-                    <child>
-                      <placeholder/>
-                    </child>
-                    <child>
-                      <placeholder/>
-                    </child>
-                    <child>
                       <object class="GtkSpinButton" id="rx_lo_spacing">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -600,12 +612,6 @@
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
                       </packing>
-                    </child>
-                    <child>
-                      <placeholder/>
-                    </child>
-                    <child>
-                      <placeholder/>
                     </child>
                     <child>
                       <object class="GtkCheckButton" id="rx_lo_powerdown">
@@ -668,9 +674,6 @@
             <property name="fill">True</property>
             <property name="position">0</property>
           </packing>
-        </child>
-        <child>
-          <placeholder/>
         </child>
       </object>
       <packing>

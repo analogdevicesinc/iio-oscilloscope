@@ -30,6 +30,9 @@ static const gdouble mhz_scale = 1000000.0;
 #define VERSION_SUPPORTED 0
 static struct fmcomms1_calib_data *cal_data;
 
+static GtkWidget *vga_gain0, *vga_gain1;
+static GtkAdjustment *adj_gain0, *adj_gain1;
+
 static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
 static unsigned int num_tx, num_rx;
@@ -156,6 +159,20 @@ static gdouble pll_get_freq(struct iio_widget *widget)
 	return freq;
 }
 
+
+static void gain_amp_locked_cb(GtkToggleButton *btn, gpointer data)
+{
+
+	if(gtk_toggle_button_get_active(btn)) {
+		gdouble tmp;
+		tmp = gtk_spin_button_get_value(GTK_SPIN_BUTTON(vga_gain0));
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(vga_gain1), tmp);
+		gtk_spin_button_set_adjustment(GTK_SPIN_BUTTON(vga_gain1), adj_gain0);
+	} else {
+		gtk_spin_button_set_adjustment(GTK_SPIN_BUTTON(vga_gain1), adj_gain1);
+	}
+}
+
 static void cal_button_clicked(GtkButton *btn, gpointer data)
 {
 	gdouble freq;
@@ -233,6 +250,10 @@ static int fmcomms1_init(GtkWidget *notebook)
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms1.glade", NULL);
 
 	fmcomms1_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms1_panel"));
+	vga_gain0 = GTK_WIDGET(gtk_builder_get_object(builder, "adc_gain0"));
+	adj_gain0 = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(vga_gain0));
+	vga_gain1 = GTK_WIDGET(gtk_builder_get_object(builder, "adc_gain1"));
+	adj_gain1 = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(vga_gain1));
 
 	if (iio_devattr_exists("cf-ad9643-core-lpc", "in_voltage_sampling_frequency")) {
 		adc_freq_device = "cf-ad9643-core-lpc";
@@ -362,6 +383,10 @@ static int fmcomms1_init(GtkWidget *notebook)
 			G_CALLBACK(cal_button_clicked), NULL);
 	else
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms1_cal")));
+
+	g_signal_connect(
+		GTK_WIDGET(gtk_builder_get_object(builder, "gain_amp_together")),
+		"toggled", G_CALLBACK(gain_amp_locked_cb), NULL);
 
 	tx_update_values();
 	rx_update_values();
