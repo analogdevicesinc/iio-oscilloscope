@@ -28,6 +28,10 @@ GtkWidget *register_address_hex, *register_value_hex;
 GtkWidget *register_write, *register_read;
 GtkWidget *device_list;
 
+GtkWidget *scanel_read, *scanel_write;
+GtkWidget *debug_scanel;
+GtkWidget *scanel_value;
+
 static void reg_read_clicked(GtkButton *btn, gpointer data)
 {
 	int i;
@@ -52,6 +56,57 @@ static void reg_write_clicked(GtkButton *btn, gpointer data)
 	write_reg((unsigned)gtk_spin_button_get_value(GTK_SPIN_BUTTON(register_address)),
 			 (unsigned)gtk_spin_button_get_value(GTK_SPIN_BUTTON(register_value)));
 
+}
+
+static void scanel_read_clicked(GtkButton *btn, gpointer data)
+{
+	char *scanel;
+	char *dev_name;
+	char *basedir;
+	char *buf = NULL;
+	int dev_num;
+
+	dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(device_list));
+	dev_num = find_type_by_name(dev_name, "iio:device");
+
+	if(dev_num >= 0) {
+		scanel = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(debug_scanel));
+		basedir = malloc (1024);
+	
+		sprintf(basedir,"%siio:device%i", iio_dir, dev_num);
+
+		read_sysfs_string(scanel, basedir, &buf);
+
+		if (buf) {
+			gtk_entry_set_text(GTK_ENTRY(scanel_value), buf);
+			free (buf);
+		}
+		free(basedir);
+	}
+
+}
+
+static void scanel_write_clicked(GtkButton *btn, gpointer data)
+{
+	char *scanel;
+	char *dev_name;
+	char *basedir;
+	const char *buf = NULL;
+	int dev_num;
+
+	dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(device_list));
+	dev_num = find_type_by_name(dev_name, "iio:device");
+	if (dev_num >= 0) {
+		scanel = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(debug_scanel));
+		basedir = malloc (1024);
+		sprintf(basedir,"%siio:device%i", iio_dir, dev_num);
+
+		buf = gtk_entry_get_text (GTK_ENTRY(scanel_value));
+		write_sysfs_string(scanel, basedir, buf);
+		free(basedir);
+	}
+	
+	scanel_read_clicked(btn, data);
 }
 
 static void debug_reg_add_change_value_cb(GtkButton *btn, gpointer data)
@@ -80,7 +135,10 @@ static void debug_reg_val_change_value_cb(GtkButton *btn, gpointer data)
 
 static void debug_device_list_cb(GtkButton *btn, gpointer data)
 {
-	char buf[10];
+	char buf[128];
+	char *current_device, *elements, *start, *end;
+	GtkListStore *store;
+	int i = 0;
 
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(register_value), (gdouble)0);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(register_address), (gdouble)0);
@@ -88,14 +146,51 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 
 	if (g_strcmp0("None\0",  
 			gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(device_list)))) {
-		gtk_widget_show(register_read);
+
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(register_value), (gdouble)0);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(register_address), (gdouble)0);
 		snprintf(buf, sizeof(buf), "<unknown>");
 		gtk_label_set_text(GTK_LABEL(register_value_hex), buf);
-		set_debugfs_paths(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(device_list)));
+
+		current_device = gtk_combo_box_text_get_active_text(
+				GTK_COMBO_BOX_TEXT(device_list));
+
+		if (!set_debugfs_paths(current_device)) {
+			gtk_widget_show(register_read);
+			gtk_widget_set_sensitive(register_value, true);
+			gtk_widget_set_sensitive(register_address, true);
+		} else {
+			gtk_widget_hide(register_read);
+			gtk_widget_set_sensitive(register_value, false);
+			gtk_widget_set_sensitive(register_address, false);
+		}
+
+		gtk_widget_show(scanel_read);
+		find_scan_elements(current_device, &elements);
+		start = elements;
+
+		store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(debug_scanel)));
+		gtk_list_store_clear (store);
+
+		while ((end = strchr(start, ' '))) {
+			sprintf(buf, "%.*s", end - start, start);
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(debug_scanel),
+				(const gchar *)buf);
+			start = end + 1;
+			if (!strcmp(buf, "name"))
+				gtk_combo_box_set_active(GTK_COMBO_BOX(debug_scanel), i);
+				gtk_entry_set_text(GTK_ENTRY(scanel_value), current_device);
+			i++;
+		}
 	} else {
+
+		store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(debug_scanel)));
+		gtk_list_store_clear (store);
+
 		gtk_widget_hide(register_read);
+		gtk_widget_hide(register_write);
+		gtk_widget_hide(scanel_read);
+		gtk_widget_hide(scanel_write);
 	}
 
 }
@@ -121,16 +216,28 @@ static int debug_init(GtkWidget *notebook)
 	register_read = GTK_WIDGET(gtk_builder_get_object(builder, "debug_read_reg"));
 	device_list =  GTK_WIDGET(gtk_builder_get_object(builder, "debug_device_list"));
 
+	debug_scanel =  GTK_WIDGET(gtk_builder_get_object(builder, "debug_scan_elements"));
+	scanel_read = GTK_WIDGET(gtk_builder_get_object(builder, "debug_read_scan"));
+	scanel_write = GTK_WIDGET(gtk_builder_get_object(builder, "debug_write_scan"));
+	scanel_value = GTK_WIDGET(gtk_builder_get_object(builder, "debug_scanel_value"));
+	
+
 	/* Gets rid of the dummy values */
 	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(device_list), 0);
+	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(debug_scanel), 0);
 	/* Put in the correct values */
 	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(device_list),
 			(const gchar *)"None");
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(debug_scanel),
+			(const gchar *)"None");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(debug_scanel), 0);
+
+	/* Fill in device list */
 	num = find_iio_names(&devices, "iio:device");
 	device=devices;
 	for (; num > 0; num--) {
-		/* Make sure we can access things */
-		if (!set_debugfs_paths(devices)) {
+		/* Make sure we can access things */ 
+		if (!set_debugfs_paths(devices) || find_scan_elements(devices, NULL) >= 0) {
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(device_list),
 					(const gchar *)devices);
 		}
@@ -151,6 +258,11 @@ static int debug_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "debug_device_list", "changed",
 			G_CALLBACK(debug_device_list_cb), NULL);
 
+	g_builder_connect_signal(builder, "debug_read_scan", "clicked", 
+			G_CALLBACK(scanel_read_clicked), NULL);
+	g_builder_connect_signal(builder, "debug_write_scan", "clicked",
+			G_CALLBACK(scanel_write_clicked), NULL);
+
 	gtk_widget_hide(register_read);
 	gtk_widget_hide(register_write);
 
@@ -165,13 +277,18 @@ static bool debug_identify(void)
 {
 	int num, i = 0;
 	char *devices=NULL, *device;
+	char *elements;
 
 	num = find_iio_names(&devices, "iio:device");
 	device=devices;
 	for (; num > 0; num--) {
 		/* Make sure we can access things */
-		if (!set_debugfs_paths(devices))
+		if (!set_debugfs_paths(devices) ||
+				find_scan_elements(devices, NULL) >= 0) {
 			i++;
+			break;
+		}
+		find_scan_elements(devices, &elements);
 		devices += strlen(devices) + 1;
 	}
 	free(device);

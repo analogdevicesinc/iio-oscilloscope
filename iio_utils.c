@@ -119,6 +119,48 @@ int write_reg(unsigned int address, unsigned int val)
 	return write_sysfs_string("direct_reg_access", debug_dir_name, temp);
 }
 
+int find_scan_elements(char *dev, char **relement)
+{
+	FILE *fp;
+	char elements[128], buf[128];
+	char *elem = NULL;
+	int num = 0;
+
+	/* flushes all open output streams */
+	 fflush(NULL);
+
+	sprintf(buf, "echo \"show %s . \" | iio_cmdsrv", dev);
+	fp = popen(buf, "r");
+	if(fp == NULL) {
+		fprintf(stderr, "Can't execute iio_cmdsrv\n");
+		return -ENODEV;
+	}
+	
+
+	elem = malloc(128);
+	memset (elem, 0, 128);
+
+	while(fgets(elements, sizeof(elements), fp) != NULL){
+		/* strip trailing new lines */
+		if (elements[strlen(elements) - 1] == '\n')
+			elements[strlen(elements) - 1] = '\0';
+
+		/* first thing returned is the return code */
+		if (num == 0) {
+			num ++;
+			continue;
+		}
+
+		elem = realloc(elem, strlen(elements) + strlen(elem) + 1);
+		strncat(elem, elements, 128);
+	}
+
+	if (relement && *relement)
+		*relement = elem;
+
+	return 1;
+}
+
 int read_sysfs_string(const char *filename, const char *basedir, char **str)
 {
 	int ret = 0;
