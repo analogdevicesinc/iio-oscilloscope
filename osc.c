@@ -401,8 +401,8 @@ static void auto_scale_databox(GtkDatabox *box)
 
 static int sign_extend(unsigned int val, unsigned int bits)
 {
-	bits -= 1;
-	return ((int)(val << (31 - bits))) >> bits;
+	unsigned int shift = 32 - bits;
+	return ((int)(val << shift)) >> shift;
 }
 
 static void demux_data_stream(void *data_in, gfloat **data_out,
