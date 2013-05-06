@@ -581,7 +581,7 @@ static void do_fft(struct buffer *buf)
 	unsigned int maxx[MAX_MARKERS + 1];
 	gfloat maxY[MAX_MARKERS + 1];
 
-	GtkTextBuffer *tbuf;
+	static GtkTextBuffer *tbuf = NULL;
 	GtkTextIter iter;
 	char text[256];
 
@@ -646,17 +646,24 @@ static void do_fft(struct buffer *buf)
 			}
 		}
 		if (MAX_MARKERS) {
-			tbuf = gtk_text_buffer_new(NULL);
-			gtk_text_buffer_get_iter_at_offset(tbuf, &iter, 0);
+			if (tbuf == NULL) {
+				tbuf = gtk_text_buffer_new(NULL);
+				gtk_text_view_set_buffer(GTK_TEXT_VIEW(marker_label), tbuf);
+			}
 
 			for (j = 0; j <= MAX_MARKERS; j++) {
 				markX[j] = (gfloat)X[maxx[j]];
 				markY[j] = (gfloat)fft_channel[maxx[j]];
 
 				sprintf(text, "M%i: %2.2f dB @ %2.2f %s\n", j, markY[j], markX[j], adc_scale);
-				gtk_text_buffer_insert(tbuf, &iter, text, -1);
+
+				if (j == 0) {
+					gtk_text_buffer_set_text(tbuf, text, -1);
+					gtk_text_buffer_get_iter_at_line(tbuf, &iter, 1);
+				} else {
+					gtk_text_buffer_insert(tbuf, &iter, text, -1);
+				}
 			}
-			gtk_text_view_set_buffer(GTK_TEXT_VIEW(marker_label), tbuf);
 		}
 	}
 }
