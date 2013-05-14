@@ -33,6 +33,7 @@ extern char dev_dir_name[512];
 
 static gfloat *X = NULL;
 static gfloat *fft_channel = NULL;
+static gfloat fft_corr = 0.0;
 
 static gint capture_function = 0;
 static int buffer_fd = -1;
@@ -568,6 +569,7 @@ static double win_hanning(int j, int n)
 static void do_fft(struct buffer *buf)
 {
 	unsigned int fft_size = num_samples;
+	unsigned int m = fft_size / 2;
 	int i, j, k;
 	int cnt;
 	static double *in;
@@ -595,7 +597,7 @@ static void do_fft(struct buffer *buf)
 
 		in = fftw_malloc(sizeof(double) * fft_size);
 		win = fftw_malloc(sizeof(double) * fft_size);
-		out = fftw_malloc(sizeof(fftw_complex) * ((fft_size / 2) + 1));
+		out = fftw_malloc(sizeof(fftw_complex) * (m + 1));
 		plan_forward = fftw_plan_dft_r2c_1d(fft_size, in, out, FFTW_ESTIMATE);
 
 		for (i = 0; i < fft_size; i ++)
@@ -605,6 +607,7 @@ static void do_fft(struct buffer *buf)
 	}
 
 	for (cnt = 0, i = 0; i < fft_size; i++) {
+		/* normalization and scaling see fft_corr */
 		in[cnt] = ((int16_t *)(buf->data))[i] * win[cnt];
 		cnt++;
 	}
@@ -622,12 +625,12 @@ static void do_fft(struct buffer *buf)
 	 * drop to the "final" value, which looks wonky.
 	 */
 	if (fft_channel[0] == 0.0f) {
-		for (i = 0; i < fft_size / 2; ++i)
-			fft_channel[i] = (10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (fft_size * fft_size)) - 50.0f);
+		for (i = 0; i < m; ++i)
+			fft_channel[i] = 10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (m * m)) + fft_corr;
 	} else {
-		for (i = 0; i < fft_size / 2; ++i) {
+		for (i = 0; i < m; ++i) {
 			fft_channel[i] = ((1 - avg) * fft_channel[i]) +
-				(avg * (10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (fft_size * fft_size)) - 50.0f));
+				(avg * (10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (m * m)) + fft_corr));
 			if (MAX_MARKERS && i > 10) {
 				for (j = 0; j <= MAX_MARKERS; j++) {
 					if  ((fft_channel[i - 1] > maxY[j]) &&
@@ -714,6 +717,9 @@ static int fft_capture_setup(void)
 		fft_channel[i] = 0.0f;
 	}
 	is_fft_mode = true;
+
+	/* Compute FFT normalization and scaling offset */
+	fft_corr = 20 * log10(20 / (1 << (channels[0].bits_used - 1)));
 
 	/*
 	 * Init markers
