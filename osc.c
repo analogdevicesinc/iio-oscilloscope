@@ -719,7 +719,7 @@ static int fft_capture_setup(void)
 	is_fft_mode = true;
 
 	/* Compute FFT normalization and scaling offset */
-	fft_corr = 20 * log10(20 / (1 << (channels[0].bits_used - 1)));
+	fft_corr = 20 * log10(2.0 / (1 << (channels[0].bits_used - 1)));
 
 	/*
 	 * Init markers
