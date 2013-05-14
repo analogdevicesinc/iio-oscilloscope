@@ -50,7 +50,7 @@ static unsigned int bytes_per_sample;
 
 static GtkWidget *databox;
 static GtkWidget *sample_count_widget;
-static GtkWidget *fft_size_widget, *fft_avg_widget;
+static GtkWidget *fft_size_widget, *fft_avg_widget, *fft_pwr_offset_widget;
 static GtkWidget *fft_radio, *time_radio, *constellation_radio;
 static GtkWidget *show_grid;
 static GtkWidget *enable_auto_scale;
@@ -574,7 +574,7 @@ static void do_fft(struct buffer *buf)
 	int cnt;
 	static double *in;
 	static double *win;
-	double avg;
+	double avg, pwr_offset;
 	static fftw_complex *out;
 	static fftw_plan plan_forward;
 	static int cached_fft_size = -1;
@@ -614,6 +614,7 @@ static void do_fft(struct buffer *buf)
 
 	fftw_execute(plan_forward);
 	avg = 1.0f / gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
+	pwr_offset = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget));
 
 	for (j = 0; j <= MAX_MARKERS; j++) {
 		maxx[j] = 0;
@@ -626,11 +627,11 @@ static void do_fft(struct buffer *buf)
 	 */
 	if (fft_channel[0] == 0.0f) {
 		for (i = 0; i < m; ++i)
-			fft_channel[i] = 10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (m * m)) + fft_corr;
+			fft_channel[i] = 10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (m * m)) + fft_corr + pwr_offset;
 	} else {
 		for (i = 0; i < m; ++i) {
 			fft_channel[i] = ((1 - avg) * fft_channel[i]) +
-				(avg * (10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (m * m)) + fft_corr));
+				(avg * (10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (m * m)) + fft_corr + pwr_offset));
 			if (MAX_MARKERS && i > 10) {
 				for (j = 0; j <= MAX_MARKERS; j++) {
 					if  ((fft_channel[i - 1] > maxY[j]) &&
@@ -1349,6 +1350,7 @@ static void init_application (void)
 	sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
+	fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
 	fft_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type_fft"));
 	time_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type"));
 	constellation_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type_constellation"));
@@ -1380,6 +1382,7 @@ static void init_application (void)
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg_label"));
 	g_object_bind_property(fft_radio, "active", tmp, "visible", 0);
 	g_object_bind_property(fft_radio, "active", fft_avg_widget, "visible", 0);
+	g_object_bind_property(fft_radio, "active", fft_pwr_offset_widget, "visible", 0);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_label"));
 	g_object_bind_property(fft_radio, "active", tmp, "visible", G_BINDING_INVERT_BOOLEAN);
