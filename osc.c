@@ -160,10 +160,9 @@ struct buffer {
 
 static bool is_oneshot_mode(void)
 {
-	if (strcmp(current_device, "cf-ad9643-core-lpc") == 0)
-		return true;
 
-	if (strncmp(current_device, "cf-ad9250", 9) == 0)
+
+	if (strncmp(current_device, "cf-ad9", 5) == 0)
 		return true;
 
 	return false;
