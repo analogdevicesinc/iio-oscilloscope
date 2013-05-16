@@ -574,6 +574,7 @@ static void do_fft(struct buffer *buf)
 	int cnt;
 	static double *in;
 	static double *win;
+	gfloat mag;
 	double avg, pwr_offset;
 	static fftw_complex *out;
 	static fftw_plan plan_forward;
@@ -613,7 +614,10 @@ static void do_fft(struct buffer *buf)
 	}
 
 	fftw_execute(plan_forward);
-	avg = 1.0f / gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
+	avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
+	if (avg && avg != 128 )
+		avg = 1.0f / avg;
+
 	pwr_offset = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget));
 
 	for (j = 0; j <= MAX_MARKERS; j++) {
@@ -621,51 +625,66 @@ static void do_fft(struct buffer *buf)
 		maxY[j] = -100.0f;
 	}
 
-	/*
-	 * don't average the first iterration, or it takes a long time for things to
-	 * drop to the "final" value, which looks wonky.
-	 */
-	if (fft_channel[0] == 0.0f) {
-		for (i = 0; i < m; ++i)
-			fft_channel[i] = 10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (m * m)) + fft_corr + pwr_offset;
-	} else {
-		for (i = 0; i < m; ++i) {
-			fft_channel[i] = ((1 - avg) * fft_channel[i]) +
-				(avg * (10 * log10((out[i][0] * out[i][0] + out[i][1] * out[i][1]) / (m * m)) + fft_corr + pwr_offset));
-			if (MAX_MARKERS && i > 10) {
-				for (j = 0; j <= MAX_MARKERS; j++) {
-					if  ((fft_channel[i - 1] > maxY[j]) &&
-								((!((fft_channel[i - 2] > fft_channel[i - 1]) && (fft_channel[i - 1] > fft_channel[i]))) &&
-								 (!((fft_channel[i - 2] < fft_channel[i - 1]) && (fft_channel[i - 1] < fft_channel[i]))))) {
-						for (k = MAX_MARKERS; k > j; k--) {
-							maxY[k] = maxY[k - 1];
-							maxx[k] = maxx[k - 1];
-						}
-						maxY[j] = fft_channel[i - 1];
-						maxx[j] = i - 1;
-						break;
+	for (i = 0; i < m; ++i) {
+		mag = 10 * log10((out[i][0] * out[i][0] + 
+				out[i][1] * out[i][1]) / (m * m)) +
+			fft_corr + 
+			pwr_offset;
+
+		/* it's better for performance to have seperate loops, 
+		 * rather than do these tests inside the loop, but it makes
+		 * the code harder to understand... Oh well...
+		 ***/
+		if (fft_channel[0] == FLT_MAX) {
+			/* Don't average the first iterration */
+			 fft_channel[i] = mag;
+		} else if (!avg) {
+			/* keep peaks */
+			if (fft_channel[i] <= mag)
+				fft_channel[i] = mag;
+		} else if (avg == 128) {
+			/* keep min */
+			if (fft_channel[i] >= mag)
+				fft_channel[i] = mag;
+		} else {
+			fft_channel[i] = ((1 - avg) * fft_channel[i]) + (avg * mag);
+		}
+		if (MAX_MARKERS && i > 10) {
+			for (j = 0; j <= MAX_MARKERS; j++) {
+				if  ((fft_channel[i - 1] > maxY[j]) &&
+					((!((fft_channel[i - 2] > fft_channel[i - 1]) &&
+					 (fft_channel[i - 1] > fft_channel[i]))) &&
+					 (!((fft_channel[i - 2] < fft_channel[i - 1]) &&
+					 (fft_channel[i - 1] < fft_channel[i]))))) {
+					for (k = MAX_MARKERS; k > j; k--) {
+						maxY[k] = maxY[k - 1];
+						maxx[k] = maxx[k - 1];
 					}
+					maxY[j] = fft_channel[i - 1];
+					maxx[j] = i - 1;
+					break;
 				}
 			}
 		}
-		if (MAX_MARKERS) {
-			if (tbuf == NULL) {
-				tbuf = gtk_text_buffer_new(NULL);
-				gtk_text_view_set_buffer(GTK_TEXT_VIEW(marker_label), tbuf);
-			}
+	}
+	if (MAX_MARKERS) {
+		if (tbuf == NULL) {
+			tbuf = gtk_text_buffer_new(NULL);
+			gtk_text_view_set_buffer(GTK_TEXT_VIEW(marker_label), tbuf);
+		}
 
-			for (j = 0; j <= MAX_MARKERS; j++) {
-				markX[j] = (gfloat)X[maxx[j]];
-				markY[j] = (gfloat)fft_channel[maxx[j]];
+		for (j = 0; j <= MAX_MARKERS; j++) {
+			markX[j] = (gfloat)X[maxx[j]];
+			markY[j] = (gfloat)fft_channel[maxx[j]];
 
-				sprintf(text, "M%i: %2.2f dB @ %2.2f %s\n", j, markY[j], markX[j], adc_scale);
+			sprintf(text, "M%i: %2.2f dB @ %2.2f %s\n",
+					j, markY[j], markX[j], adc_scale);
 
-				if (j == 0) {
-					gtk_text_buffer_set_text(tbuf, text, -1);
-					gtk_text_buffer_get_iter_at_line(tbuf, &iter, 1);
-				} else {
-					gtk_text_buffer_insert(tbuf, &iter, text, -1);
-				}
+			if (j == 0) {
+				gtk_text_buffer_set_text(tbuf, text, -1);
+				gtk_text_buffer_get_iter_at_line(tbuf, &iter, 1);
+			} else {
+				gtk_text_buffer_insert(tbuf, &iter, text, -1);
 			}
 		}
 	}
@@ -715,7 +734,7 @@ static int fft_capture_setup(void)
 	for (i = 0; i < num_samples / 2; i++)
 	{
 		X[i] = i * adc_freq / num_samples;
-		fft_channel[i] = 0.0f;
+		fft_channel[i] = FLT_MAX;
 	}
 	is_fft_mode = true;
 
