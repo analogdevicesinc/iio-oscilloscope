@@ -33,6 +33,11 @@ static struct fmcomms1_calib_data *cal_data;
 static GtkWidget *vga_gain0, *vga_gain1;
 static GtkAdjustment *adj_gain0, *adj_gain1;
 
+static GtkWidget *dds1_freq, *dds2_freq;
+static GtkWidget *dds1_scale, *dds2_scale;
+static GtkAdjustment *adj1_freq, *adj2_freq;
+static GtkWidget *dds_lock;
+
 static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
 static unsigned int num_tx, num_rx;
@@ -160,6 +165,31 @@ static gdouble pll_get_freq(struct iio_widget *widget)
 }
 
 
+static void dds_locked_cb(GtkToggleButton *btn, gpointer data)
+{
+	if(gtk_toggle_button_get_active(btn)) {
+		gdouble tmp;
+		tmp = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq));
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_freq), tmp);
+		gtk_spin_button_set_adjustment(GTK_SPIN_BUTTON(dds2_freq), adj1_freq);
+	} else {
+		gtk_spin_button_set_adjustment(GTK_SPIN_BUTTON(dds2_freq), adj2_freq);
+	}
+}
+
+static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer data)
+{
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dds_lock))) {
+		if (box == GTK_COMBO_BOX_TEXT(dds1_scale)) {
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds2_scale), 
+					gtk_combo_box_get_active(GTK_COMBO_BOX(dds1_scale)));
+		} else {
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds1_scale),
+					gtk_combo_box_get_active(GTK_COMBO_BOX(dds2_scale)));
+		}
+	}
+}
+
 static void gain_amp_locked_cb(GtkToggleButton *btn, gpointer data)
 {
 
@@ -254,6 +284,15 @@ static int fmcomms1_init(GtkWidget *notebook)
 	adj_gain0 = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(vga_gain0));
 	vga_gain1 = GTK_WIDGET(gtk_builder_get_object(builder, "adc_gain1"));
 	adj_gain1 = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(vga_gain1));
+
+	dds_lock  = GTK_WIDGET(gtk_builder_get_object(builder, "dds_together"));
+	dds1_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone1_freq"));
+	adj1_freq = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(dds1_freq));
+	dds2_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone2_freq"));
+	adj2_freq = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(dds2_freq));
+	dds1_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone1_scale"));
+	dds2_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone2_scale"));
+
 
 	if (iio_devattr_exists("cf-ad9643-core-lpc", "in_voltage_sampling_frequency")) {
 		adc_freq_device = "cf-ad9643-core-lpc";
@@ -387,6 +426,18 @@ static int fmcomms1_init(GtkWidget *notebook)
 	g_signal_connect(
 		GTK_WIDGET(gtk_builder_get_object(builder, "gain_amp_together")),
 		"toggled", G_CALLBACK(gain_amp_locked_cb), NULL);
+
+	g_signal_connect(
+		GTK_WIDGET(gtk_builder_get_object(builder, "dds_together")),
+		"toggled", G_CALLBACK(dds_locked_cb), NULL);
+
+	g_signal_connect(
+		GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone1_scale")),
+		"changed", G_CALLBACK(dds_locked_scale_cb), NULL);
+
+	g_signal_connect(
+		GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone2_scale")),
+		"changed", G_CALLBACK(dds_locked_scale_cb), NULL);
 
 	tx_update_values();
 	rx_update_values();

@@ -7,12 +7,6 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkAdjustment" id="adjustment_gch1">
-    <property name="lower">4.5</property>
-    <property name="upper">20.439</property>
-    <property name="value">4.5</property>
-    <property name="step_increment">0.253</property>
-  </object>
   <object class="GtkAdjustment" id="adjustment11">
     <property name="lower">35</property>
     <property name="upper">4400</property>
@@ -105,6 +99,12 @@
     <property name="step_increment">0.001</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_gch0">
+    <property name="lower">4.5</property>
+    <property name="upper">20.439</property>
+    <property name="value">4.5</property>
+    <property name="step_increment">0.253</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment_gch1">
     <property name="lower">4.5</property>
     <property name="upper">20.439</property>
     <property name="value">4.5</property>
@@ -726,6 +726,23 @@
                           </packing>
                         </child>
                         <child>
+                          <object class="GtkCheckButton" id="dds_together">
+                            <property name="label" translatable="yes">Lock Channels</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">False</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="xalign">0</property>
+                            <property name="draw_indicator">True</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">False</property>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                        <child>
                           <object class="GtkFrame" id="frame4">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -822,7 +839,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">True</property>
-                            <property name="position">1</property>
+                            <property name="position">2</property>
                           </packing>
                         </child>
                         <child>
@@ -916,7 +933,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">True</property>
-                            <property name="position">2</property>
+                            <property name="position">4</property>
                           </packing>
                         </child>
                       </object>
