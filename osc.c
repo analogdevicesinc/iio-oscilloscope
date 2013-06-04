@@ -635,7 +635,7 @@ static void do_fft(struct buffer *buf)
 		 * rather than do these tests inside the loop, but it makes
 		 * the code harder to understand... Oh well...
 		 ***/
-		if (fft_channel[0] == FLT_MAX) {
+		if (fft_channel[i] == FLT_MAX) {
 			/* Don't average the first iterration */
 			 fft_channel[i] = mag;
 		} else if (!avg) {
@@ -647,6 +647,7 @@ static void do_fft(struct buffer *buf)
 			if (fft_channel[i] >= mag)
 				fft_channel[i] = mag;
 		} else {
+			/* do an average */
 			fft_channel[i] = ((1 - avg) * fft_channel[i]) + (avg * mag);
 		}
 		if (MAX_MARKERS && i > 10) {
