@@ -2,7 +2,9 @@ DESTDIR=/usr/local
 PREFIX=/usr/local
 
 LDFLAGS=`pkg-config --libs gtk+-2.0 gtkdatabox fftw3`
+LDFLAGS+=`xml2-config --libs`
 CFLAGS=`pkg-config --cflags gtk+-2.0 gtkdatabox fftw3`
+CFLAGS+=`xml2-config --cflags`
 CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 
 #CFLAGS+=-DDEBUG
@@ -12,11 +14,11 @@ PLUGINS=\
 	plugins/fmcomms1.so \
 	plugins/debug.so \
 	plugins/AD5628_1.so \
-    plugins/AD7303.so
+	plugins/AD7303.so
 
 all: osc $(PLUGINS)
 
-osc: osc.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c
+osc: osc.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c xml_utils.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -rdynamic -o $@
 
 %.so: %.c
