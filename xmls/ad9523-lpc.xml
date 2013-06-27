@@ -1,4 +1,4 @@
-<ad9523>
+<ad9523_1>
 	<Register>
 		<Name>reg000</Name>
 		<Address>0x0000</Address>
@@ -19,8 +19,8 @@ Bit 3 = Bit 4.</Notes>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>Selects unidirectional or bidirectional data transfer mode. This bit is ignored in I2C mode.
-0: SDIO pin used for write and read;
-SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidirectional mode.</Notes>
+0: SDIO pin used for write and read; SDO is high impedance (default).
+1: SDO used for read; SDIO used for write; unidirectional mode.</Notes>
 			<Options>
 				<Option>
 					<Description>0 = SDO bidirectional</Description>
@@ -184,7 +184,7 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 			<Description>EEPROM customer version ID[7:0] (LSB)</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
-			<Notes>16-bit EEPROM ID, Bits[7:0]. This register, along with Register 0x006, allows the user to store a unique ID to identify which version of the AD9523 register settings is stored in the EEPROM. It does not affect AD9523 operation in any way (default: 0x00).</Notes>
+			<Notes>16-bit EEPROM ID, Bits[7:0]. This register, along with Register 0x006, allows the user to store a unique ID to identify which version of the AD9523-1 register settings is stored in the EEPROM. It does not affect AD9523-1 operation in any way (default: 0x00).</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>8</SliceWidth>
@@ -206,7 +206,7 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 			<Description>EEPROM customer version ID[15:8] (MSB)</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
-			<Notes>16-bit EEPROM ID, Bits[15:8]. This register, along with Register 0x005, allows the user to store a unique ID to identify which version of the AD9523 register settings is stored in the EEPROM. It does not affect AD9523 operation in any way (default: 0x00).</Notes>
+			<Notes>16-bit EEPROM ID, Bits[15:8]. This register, along with Register 0x005, allows the user to store a unique ID to identify which version of the AD9523-1 register settings is stored in the EEPROM. It does not affect AD9523-1 operation in any way (default: 0x00).</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>8</SliceWidth>
@@ -431,7 +431,7 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 					<Value>2</Value>
 				</Option>
 				<Option>
-					<Description>11 = normal</Description>
+					<Description>11 = normal(default)</Description>
 					<Value>3</Value>
 				</Option>
 			</Options>
@@ -449,19 +449,19 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 			<Notes>Controls the PFD antibacklash period. These bits are ineffective unless Register 0x019, Bit 4 = 1.</Notes>
 			<Options>
 				<Option>
-					<Description>Minimum</Description>
+					<Description>00 = Minimum(default)</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>Low</Description>
+					<Description>01 = Low</Description>
 					<Value>1</Value>
 				</Option>
 				<Option>
-					<Description>High</Description>
+					<Description>10 = High</Description>
 					<Value>2</Value>
 				</Option>
 				<Option>
-					<Description>Maximum</Description>
+					<Description>11 = Maximum</Description>
 					<Value>3</Value>
 				</Option>
 			</Options>
@@ -560,7 +560,7 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 			<Notes>Enables power-down control of the input receivers, REFA and REFB.</Notes>
 			<Options>
 				<Option>
-					<Description>0 =  both receivers enabled</Description>
+					<Description>0 = both receivers enabled</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -775,7 +775,7 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 = ZD_IN pin enabled</Description>
+					<Description>1 = /ZD_IN pin enabled</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -823,12 +823,56 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  internal zero delay mode</Description>
+					<Description>1 = internal zero delay mode</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
 			<BitOffset>0</BitOffset>
 			<RegOffset>5</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg01B_b6</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Bypass feedback divider</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes>Puts the divider into bypass mode (same as programming the divider word to 0 or 1).</Notes>
+			<Options>
+				<Option>
+					<Description>0 = divider normal operation</Description>
+					<Value>0</Value>
+				</Option>
+				<Option>
+					<Description>1 = divider in bypass mode (divide = 1)</Description>
+					<Value>1</Value>
+				</Option>
+			</Options>
+			<BitOffset>0</BitOffset>
+			<RegOffset>6</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg01B_b7</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Bypass REF_TEST divider</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes>Puts the divider into bypass mode (same as programming the divider word to 0 or 1).</Notes>
+			<Options>
+				<Option>
+					<Description>0 = divider normal operation</Description>
+					<Value>0</Value>
+				</Option>
+				<Option>
+					<Description>1 = divider in bypass mode (divide = 1)</Description>
+					<Value>1</Value>
+				</Option>
+			</Options>
+			<BitOffset>0</BitOffset>
+			<RegOffset>7</RegOffset>
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		</BitFields>
@@ -841,6 +885,50 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
+		<BitField>
+			<Name>reg01C_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Bypass REFA R divider</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes>Puts the divider into bypass mode (same as programming divider word to 0 or 1).</Notes>
+			<Options>
+				<Option>
+					<Description>0 = divider normal operation</Description>
+					<Value>0</Value>
+				</Option>
+				<Option>
+					<Description>1 = divider in bypass mode (divide = 1)</Description>
+					<Value>1</Value>
+				</Option>
+			</Options>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg01C_b1</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Bypass REFB R divider</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes>Puts the divider into bypass mode (same as programming divider word to 0 or 1).</Notes>
+			<Options>
+				<Option>
+					<Description>1 = divider in bypass mode (divide = 1)</Description>
+					<Value>1</Value>
+				</Option>
+				<Option>
+					<Description>0 = divider normal operation</Description>
+					<Value>0</Value>
+				</Option>
+			</Options>
+			<BitOffset>0</BitOffset>
+			<RegOffset>1</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
 		<BitField>
 			<Name>reg01C_b4_b2</Name>
 			<Access>R/W</Access>
@@ -1074,7 +1162,7 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 					<Value>2</Value>
 				</Option>
 				<Option>
-					<Description>11 = normal</Description>
+					<Description>11 = normal(default)</Description>
 					<Value>3</Value>
 				</Option>
 			</Options>
@@ -1092,7 +1180,7 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 			<Notes>Controls the PFD antibacklash period of PLL2. These bits are ineffective unless Register 0x0F2, Bit 4 = 1.</Notes>
 			<Options>
 				<Option>
-					<Description>00 = minimum(recommended setting)</Description>
+					<Description>00 = minimum(default)</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -1291,56 +1379,40 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg0F4_b2_b0</Name>
+			<Name>reg0F4_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO divider</Description>
+			<Description>VCO divider M1</Description>
 			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes>Note that the VCO divider connects to all output channels.</Notes>
+			<Width>2</Width>
+			<Notes>Note that the VCO Divider M1 connects to all output channels.</Notes>
 			<Options>
 				<Option>
-					<Description>000 = Divide-by-4</Description>
+					<Description>00 = Divide-by-3</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>001 = Divide-by-5</Description>
+					<Description>01 = Divide-by-4</Description>
 					<Value>1</Value>
 				</Option>
 				<Option>
-					<Description>010 = Divide-by-6</Description>
+					<Description>10 = Divide-by-5</Description>
 					<Value>2</Value>
 				</Option>
 				<Option>
-					<Description>011 = Divide-by-7</Description>
+					<Description>11 = Divide-by-3</Description>
 					<Value>3</Value>
-				</Option>
-				<Option>
-					<Description>100 = Divide-by-8</Description>
-					<Value>4</Value>
-				</Option>
-				<Option>
-					<Description>101 = Divide-by-9</Description>
-					<Value>5</Value>
-				</Option>
-				<Option>
-					<Description>110 = Divide-by-10</Description>
-					<Value>6</Value>
-				</Option>
-				<Option>
-					<Description>111 = Divide-by-11</Description>
-					<Value>7</Value>
 				</Option>
 			</Options>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>3</SliceWidth>
+			<SliceWidth>2</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg0F4_b3</Name>
+			<Name>reg0F4_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO divider power- down</Description>
+			<Description>VCO M1 divider power- down</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -1355,7 +1427,59 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 				</Option>
 			</Options>
 			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
+			<RegOffset>2</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg0F4_b5_b4</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>VCO divider M2</Description>
+			<Visibility>Public</Visibility>
+			<Width>2</Width>
+			<Notes>Note that the VCO Divider M2 connects to Output Channel 4 through Output Channel 9.</Notes>
+			<Options>
+				<Option>
+					<Description>00 = Divide-by-3</Description>
+					<Value>0</Value>
+				</Option>
+				<Option>
+					<Description>01 = Divide-by-4</Description>
+					<Value>1</Value>
+				</Option>
+				<Option>
+					<Description>10 = Divide-by-5</Description>
+					<Value>2</Value>
+				</Option>
+				<Option>
+					<Description>11 = Divide-by-3</Description>
+					<Value>3</Value>
+				</Option>
+			</Options>
+			<BitOffset>0</BitOffset>
+			<RegOffset>4</RegOffset>
+			<SliceWidth>2</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg0F4_b6</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>VCO M2 divider power- down</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<Options>
+				<Option>
+					<Description>0 = normal operation</Description>
+					<Value>0</Value>
+				</Option>
+				<Option>
+					<Description>1 = powers down the divider</Description>
+					<Value>1</Value>
+				</Option>
+			</Options>
+			<BitOffset>0</BitOffset>
+			<RegOffset>6</RegOffset>
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		</BitFields>
@@ -1515,6 +1639,29 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 		</BitFields>
 	</Register>
 	<Register>
+		<Name>reg0F7</Name>
+		<Address>0x00F7</Address>
+		<Description>PLL2 R2 divider</Description>
+		<Exists>True</Exists>
+		<Width>8</Width>
+		<Notes></Notes>
+		<BitFields>
+		<BitField>
+			<Name>reg0F7_b4_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>PLL R2 divider</Description>
+			<Visibility>Public</Visibility>
+			<Width>5</Width>
+			<Notes>Divide-by-1 to divide-by-31.
+00000, 00001: divide-by-1.</Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>5</SliceWidth>
+		</BitField>
+		</BitFields>
+	</Register>
+	<Register>
 		<Name>reg190</Name>
 		<Address>0x0190</Address>
 		<Description>Channel 0 control</Description>
@@ -1554,16 +1701,16 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -1604,7 +1751,7 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -1622,7 +1769,7 @@ SDO is high impedance (default).1: SDO used for read; SDIO used for write; unidi
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -1747,16 +1894,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -1797,7 +1944,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -1815,7 +1962,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -1940,16 +2087,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -1990,7 +2137,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -2008,7 +2155,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -2133,16 +2280,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -2183,7 +2330,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -2201,7 +2348,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -2326,16 +2473,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -2376,7 +2523,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -2394,7 +2541,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -2519,16 +2666,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -2569,7 +2716,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -2587,7 +2734,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -2712,16 +2859,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -2762,7 +2909,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -2780,7 +2927,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -2905,16 +3052,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -2955,7 +3102,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -2973,7 +3120,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -3098,16 +3245,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -3148,7 +3295,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -3166,7 +3313,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -3291,16 +3438,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -3341,7 +3488,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -3359,7 +3506,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -3484,16 +3631,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -3534,7 +3681,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -3552,7 +3699,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -3677,16 +3824,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -3727,7 +3874,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -3745,7 +3892,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -3870,16 +4017,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -3920,7 +4067,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -3938,7 +4085,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -4063,16 +4210,16 @@ Phase = 63: 31 period offset.</Notes>
 1011 = CMOS (both outputs in phase) 
             + Pin: complement phase relative to divider output 
             - Pin: complement phase relative to divider output
-1100 =  CMOS (both outputs out of phase) 
+1100 = CMOS (both outputs out of phase) 
             + Pin: complement phase relative to divider output 
             - Pin: true phase relative to divider output
 1101  = CMOS 
             + Pin: complement phase relative to divider output 
             - Pin: high-Z
-1110 =  CMOS 
+1110 = CMOS 
             + Pin: high-Z 
             - Pin: complement phase relative to divider output
-1111 Tristate output</Notes>
+1111 = Tristate output</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
@@ -4113,7 +4260,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1 =  powers down the entire channel</Description>
+					<Description>1 = powers down the entire channel</Description>
 					<Value>1</Value>
 				</Option>
 			</Options>
@@ -4131,7 +4278,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  obeys chip-level SYNC signal</Description>
+					<Description>0 = obeys chip-level SYNC signal</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -4238,7 +4385,7 @@ Phase = 63: 31 period offset.</Notes>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>0001 = divide-by-2</Description>
+					<Description>0001 = divide-by-2(default)</Description>
 					<Value>1</Value>
 				</Option>
 				<Option>
@@ -4278,6 +4425,23 @@ Phase = 63: 31 period offset.</Notes>
 			</Options>
 			<BitOffset>0</BitOffset>
 			<RegOffset>4</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg1BA_b7_b5</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>CLK2 select[2:0]</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes>Bits[2:0] of the VCO divider channel select.
+Bit 7 selects Channel Output 6.
+Bit 6 selects Channel Output 5.
+Bit 5 selects Channel Output 4.
+0: VCO Divider M1.
+1: VCO Divider M2.</Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>5</RegOffset>
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		</BitFields>
@@ -4377,6 +4541,23 @@ Phase = 63: 31 period offset.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>3</RegOffset>
 			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg1BB_b6_b5</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>CLK2 select[5:3]</Description>
+			<Visibility>Public</Visibility>
+			<Width>2</Width>
+			<Notes>Bits[5:3] of the VCO divider channel select.
+Bit 6 selects Channel Output 9.
+Bit 5 selects Channel Output 8.
+Bit 4 selects Channel Output 7.
+0: VCO Divider M1.
+1: VCO Divider M2.</Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>5</RegOffset>
+			<SliceWidth>2</SliceWidth>
 		</BitField>
 		<BitField>
 			<Name>reg1BB_b7</Name>
@@ -4898,7 +5079,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Name>reg232_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Sync dividers (manual control) 0: sync signal inactive 1: dividers held in sync (same as SYNC pin low)</Description>
+			<Description>Sync dividers (manual control)</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>Set bit to put dividers in sync; clear bit to release. Functions like /SYNC pin low.</Notes>
@@ -4993,7 +5174,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes>Powers down the distribution.</Notes>
 			<Options>
 				<Option>
-					<Description>0 =  normal operation.</Description>
+					<Description>0 = normal operation.</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -5015,7 +5196,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  normal operation.</Description>
+					<Description>0 = normal operation.</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -5037,7 +5218,7 @@ Phase = 63: 31 period offset.</Notes>
 			<Notes></Notes>
 			<Options>
 				<Option>
-					<Description>0 =  normal operation.</Description>
+					<Description>0 = normal operation.</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
@@ -5066,7 +5247,8 @@ Phase = 63: 31 period offset.</Notes>
 			<Description>IO_Update</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
-			<Notes>This bit must be set to 1 to transfer the contents of the buffer registers into the active registers, which happens on the next SCLK rising edge. This bit is self-clearing; that is, it does not have to be set back to 0. 1 (self-clearing): update all active registers to the contents of the buffer registers.</Notes>
+			<Notes>This bit must be set to 1 to transfer the contents of the buffer registers into the active registers, which happens on the next SCLK rising edge. This bit is self-clearing; that is, it does not have to be set back to 0.
+1 (self-clearing): update all active registers to the contents of the buffer registers.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>1</SliceWidth>
@@ -5711,4 +5893,4 @@ Phase = 63: 31 period offset.</Notes>
 		</BitField>
 		</BitFields>
 	</Register>
-</ad9523>
+</ad9523_1>
