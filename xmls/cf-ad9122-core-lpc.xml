@@ -649,11 +649,8 @@
 			<Visibility>Public</Visibility>
 			<Width>5</Width>
 			<Notes>Sets the nominal PLL charge pump current.
-
 00000 = lowest current setting.
-
 ...
-
 11111 = highest current setting.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
@@ -667,11 +664,8 @@
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes>Selects the PLL loop filter bandwidth.
-
 00 = widest bandwidth.
-
 ...
-
 11 = narrowest bandwidth.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>6</RegOffset>
@@ -865,35 +859,35 @@
 			<Notes>Sets the number of input samples that are averaged in determining the sync phase.</Notes>
 			<Options>
 				<Option>
-					<Description>1</Description>
+					<Description>000 = 1</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>2</Description>
+					<Description>001 = 2</Description>
 					<Value>1</Value>
 				</Option>
 				<Option>
-					<Description>4</Description>
+					<Description>010 = 4</Description>
 					<Value>2</Value>
 				</Option>
 				<Option>
-					<Description>8</Description>
+					<Description>011 = 8</Description>
 					<Value>3</Value>
 				</Option>
 				<Option>
-					<Description>16</Description>
+					<Description>100 = 16</Description>
 					<Value>4</Value>
 				</Option>
 				<Option>
-					<Description>32</Description>
+					<Description>101 = 32</Description>
 					<Value>5</Value>
 				</Option>
 				<Option>
-					<Description>64</Description>
+					<Description>110 = 64</Description>
 					<Value>6</Value>
 				</Option>
 				<Option>
-					<Description>128</Description>
+					<Description>111 = 128</Description>
 					<Value>7</Value>
 				</Option>
 			</Options>
@@ -975,13 +969,9 @@
 			<Visibility>Public</Visibility>
 			<Width>6</Width>
 			<Notes>This register sets the requested clock phase offset after sync. The offset unit is in DACCLK cycles. This register enables repositioning of the DAC output with respect to the sync input. The offset can also be used to skew the DAC outputs between the synchronized DACs.
-
 000000 = 0 DACCLK cycles.
-
 000001 = 1 DACCLK cycle.
-
 ...
-
 111111 = 63 DACCLK cycles.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
@@ -1039,15 +1029,10 @@
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes>Indicates the averaged sync phase offset (6.2 format). If this value differs from the Sync Phase Request[5:0] value in Register 0x11, a sync timing error has occurred. For more information, see the Sync Status Bits section.
-
 00000000 = 0.0.
-
 00000001 = 0.25.
-
 ...
-
 11111110 = 63.50.
-
 11111111 = 63.75.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
@@ -1091,7 +1076,7 @@
 			<Name>reg015_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>LVDS DCIlevel low</Description>
+			<Description>LVDS DCI level low</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>One or both LVDS DCI input signals have crossed below 0.7 V.</Notes>
@@ -1103,7 +1088,7 @@
 			<Name>reg015_b3</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>LVDS DCIlevel high</Description>
+			<Description>LVDS DCI level high</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>One or both LVDS DCI input signals have exceeded 1.7 V.</Notes>
@@ -1115,7 +1100,7 @@
 			<Name>reg015_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>LVDS FRAMElevel low</Description>
+			<Description>LVDS FRAME level low</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>One or both LVDS FRAME input signals have crossed below 0.7 V.</Notes>
@@ -1127,7 +1112,7 @@
 			<Name>reg015_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>LVDS FRAMElevel high</Description>
+			<Description>LVDS FRAME level high</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>One or both LVDS FRAME input signals have exceeded 1.7 V.</Notes>
@@ -1195,36 +1180,36 @@
 			<Notes>FIFO write pointer phase offset following FIFO reset. This is the difference between the read pointer and the write pointer values upon FIFO reset. The optimal value is nominally 4.</Notes>
 			<Options>
 				<Option>
-					<Description>0</Description>
+					<Description>000 = 0</Description>
 					<Value>0</Value>
 				</Option>
 				<Option>
-					<Description>1</Description>
-					<Value>0</Value>
+					<Description>001 = 1</Description>
+					<Value>1</Value>
 				</Option>
 				<Option>
-					<Description>2</Description>
-					<Value>0</Value>
+					<Description>010 = 2</Description>
+					<Value>2</Value>
 				</Option>
 				<Option>
-					<Description>3</Description>
-					<Value>0</Value>
+					<Description>011 = 3</Description>
+					<Value>3</Value>
 				</Option>
 				<Option>
-					<Description>4</Description>
-					<Value>0</Value>
+					<Description>100 = 4</Description>
+					<Value>4</Value>
 				</Option>
 				<Option>
-					<Description>5</Description>
-					<Value>0</Value>
+					<Description>101 = 5</Description>
+					<Value>5</Value>
 				</Option>
 				<Option>
-					<Description>6</Description>
-					<Value>0</Value>
+					<Description>110 = 6</Description>
+					<Value>6</Value>
 				</Option>
 				<Option>
-					<Description>7</Description>
-					<Value>0</Value>
+					<Description>111 = 7</Description>
+					<Value>7</Value>
 				</Option>
 			</Options>
 			<BitOffset>0</BitOffset>
@@ -1341,7 +1326,6 @@
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>0 = the modulator outputs the high-side image.
-
 1 = the modulator outputs the low-side image. The image is spectrally inverted compared to the input data.</Notes>
 			<Options>
 				<Option>
@@ -1377,7 +1361,6 @@
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>0 = no gain scaling is applied to the NCO input to the internal digital modulator (default).
-
 1 = gain scaling of 0.5 is applied to the NCO input to the internal digital modulator. Gain scaling can eliminate satu-ration of the modulator output for some combinations of data inputs and NCO signals.</Notes>
 			<Options>
 				<Option>
@@ -1459,13 +1442,9 @@
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes>Modulation mode for I Side Half-Band Filter 1.
-
 00 = input signal not modulated; filter pass band is from -0.4 to +0.4 of fIN1.
-
 01 = input signal not modulated; filter pass band is from 0.1 to 0.9 of fIN1.
-
 10 = input signal modulated by fIN1; filter pass band is from 0.6 to 1.4 of fIN1.
-
 11 = input signal modulated by fIN1; filter pass band is from 1.1 to 1.9 of fIN1.</Notes>
 			<Options>
 				<Option>
@@ -1519,21 +1498,13 @@
 			<Visibility>Public</Visibility>
 			<Width>6</Width>
 			<Notes>Modulation mode for I Side Half-Band Filter 2.
-
 0 = input signal not modulated; filter pass band is from -0.25 to +0.25 of fIN2.
-
 9 = input signal not modulated; filter pass band is from 0.0 to 0.5 of fIN2.
-
 18 = input signal not modulated; filter pass band is from 0.25 to 0.75 of fIN2.
-
 27 = input signal not modulated; filter pass band is from 0.5 to 1.0 of fIN2.
-
 36 = input signal modulated by fIN2; filter pass band is from 0.75 to 1.25 of fIN2.
-
 45 = input signal modulated by fIN2; filter pass band is from 1.0 to 1.5 of fIN2.
-
 54 = input signal modulated by fIN2; filter pass band is from 1.25 to 1.75 of fIN2.
-
 63 = input signal modulated by fIN2; filter pass band is from 1.5 to 2.0 of fIN2.</Notes>
 			<Options>
 				<Option>
@@ -1603,21 +1574,13 @@
 			<Visibility>Public</Visibility>
 			<Width>6</Width>
 			<Notes>Modulation mode for I Side Half-Band Filter 3.
-
 0 = input signal not modulated; filter pass band is from -0.2 to +0.2 of fIN3.
-
 9 = input signal not modulated; filter pass band is from 0.05 to 0.45 of fIN3.
-
 18 = input signal not modulated; filter pass band is from 0.3 to 0.7 of fIN3.
-
 27 = input signal not modulated; filter pass band is from 0.55 to 0.95 of fIN3.
-
 36 = input signal modulated by fIN3; filter pass band is from 0.8 to 1.2 of fIN3.
-
 45 = input signal modulated by fIN3; filter pass band is from 1.05 to 1.45 of fIN3.
-
 54 = input signal modulated by fIN3; filter pass band is from 1.3 to 1.7 of fIN3.
-
 64 = input signal modulated by fIN3; filter pass band is from 1.55 to 1.95 of fIN3.</Notes>
 			<Options>
 				<Option>
@@ -2085,15 +2048,10 @@
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes>I DAC FS Adj[9:0] sets the full-scale current of the I DAC. The full-scale current can be adjusted from 8.64 mA to 31.68 mA in step sizes of approximately 22.5 uA.
-
 0x000 = 8.64 mA.
-
 ...
-
 0x200 = 20.16 mA.
-
 ...
-
 0x3FF = 31.68 mA.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
@@ -2151,13 +2109,9 @@
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes>I Aux DAC[9:0] sets the magnitude of the auxiliary DAC current. The range is 0 mA to 2 mA, and the step size is 2 uA.
-
 0x000 = 0.000 mA.
-
 0x001 = 0.002 mA.
-
 ...
-
 0x3FF = 2.046 mA.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
@@ -2205,7 +2159,6 @@
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>0 = the I auxiliary DAC sign is positive, and the current is directed to the IOUT1P pin (Pin 67).
-
 1 = the I auxiliary DAC sign is negative, and the current is directed to the IOUT1N pin (Pin 66).</Notes>
 			<Options>
 				<Option>
@@ -2261,15 +2214,10 @@
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes>Q DAC FS Adj[9:0] sets the full-scale current of the Q DAC. The full-scale current can be adjusted from 8.64 mA to 31.68 mA in step sizes of approximately 22.5 uA.
-
 0x000 = 8.64 mA.
-
 ...
-
 0x200 = 20.16 mA.
-
 ...
-
 0x3FF = 31.68 mA.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
@@ -2327,13 +2275,9 @@
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes>Q Aux DAC[9:0] sets the magnitude of the auxiliary DAC current. The range is 0 mA to 2 mA, and the step size is 2 uA.
-
 0x000 = 0.000 mA.
-
 0x001 = 0.002 mA.
-
 ...
-
 0x3FF = 2.046 mA.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
@@ -2381,7 +2325,6 @@
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>0 = the Q auxiliary DAC sign is positive, and the current is directed to the IOUT2P pin (Pin 58).
-
 1 = the Q auxiliary DAC sign is negative, and the current is directed to the IOUT2N pin (Pin 59).</Notes>
 			<Options>
 				<Option>
@@ -2437,11 +2380,8 @@
 			<Visibility>Public</Visibility>
 			<Width>3</Width>
 			<Notes>Auxiliary ADC reference current.
-
 000 = lowest current.
-
 ...
-
 111 = highest current.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>1</RegOffset>
@@ -2455,11 +2395,8 @@
 			<Visibility>Public</Visibility>
 			<Width>3</Width>
 			<Notes>Auxiliary ADC full-scale current.
-
 000 = lowest current.
-
-…
-
+...
 111 = highest current.</Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>4</RegOffset>
@@ -2571,7 +2508,7 @@
 			<Name>reg067_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>SEDcompare enable</Description>
+			<Description>SED compare enable</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes>1 = enable the SED circuitry. None of the flags in this register or the values in Register 0x70 through Register 0x73 are significant if the SED is not enabled.</Notes>
