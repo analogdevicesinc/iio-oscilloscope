@@ -1079,9 +1079,6 @@ static int debug_init(GtkWidget *notebook)
 		set_xml_folder_path("./xmls");
 	}
 
-	/* Select the folder with the xml files */
-	set_xml_folder_path("xmls");
-
 	builder = gtk_builder_new();
 	if (!gtk_builder_add_from_file(builder, "debug.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "debug.glade", NULL);
