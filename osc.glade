@@ -3,7 +3,7 @@
   <!-- interface-requires gtk+ 3.0 -->
   <object class="GtkAdjustment" id="adjustment0">
     <property name="lower">10</property>
-    <property name="upper">10000</property>
+    <property name="upper">1000000</property>
     <property name="value">400</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
