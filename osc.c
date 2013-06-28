@@ -626,12 +626,12 @@ static void do_fft(struct buffer *buf)
 	}
 
 	for (i = 0; i < m; ++i) {
-		mag = 10 * log10((out[i][0] * out[i][0] + 
+		mag = 10 * log10((out[i][0] * out[i][0] +
 				out[i][1] * out[i][1]) / (m * m)) +
-			fft_corr + 
+			fft_corr +
 			pwr_offset;
 
-		/* it's better for performance to have seperate loops, 
+		/* it's better for performance to have seperate loops,
 		 * rather than do these tests inside the loop, but it makes
 		 * the code harder to understand... Oh well...
 		 ***/
@@ -925,6 +925,8 @@ static double read_sampling_frequency(void)
 
 	if (iio_devattr_exists(current_device, "in_voltage_sampling_frequency")) {
 		read_devattr_double("in_voltage_sampling_frequency", &freq);
+		if (freq < 0)
+			freq = ((double)4294967296) + freq;
 	} else if (iio_devattr_exists(current_device, "sampling_frequency")) {
 		read_devattr_double("sampling_frequency", &freq);
 	} else {
