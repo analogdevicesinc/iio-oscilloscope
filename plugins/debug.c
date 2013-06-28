@@ -1068,6 +1068,16 @@ static int debug_init(GtkWidget *notebook)
 	GtkWidget *vbox_scanel;
 	char *devices = NULL, *device;
 	int ret;
+	DIR *d;
+
+	/* Check the local xmls folder first */
+	d = opendir("./xmls");
+	if (!d) {
+		set_xml_folder_path(OSC_XML_PATH);
+	} else {
+		closedir(d);
+		set_xml_folder_path("./xmls");
+	}
 
 	/* Select the folder with the xml files */
 	set_xml_folder_path("xmls");

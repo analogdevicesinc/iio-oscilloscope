@@ -28,11 +28,13 @@ install:
 	install -d $(DESTDIR)/bin
 	install -d $(DESTDIR)/share/osc/
 	install -d $(DESTDIR)/lib/osc/
+	install -d $(DESTDIR)/lib/osc/xmls
 	install ./osc $(DESTDIR)/bin/
 	install ./*.glade $(DESTDIR)/share/osc/
 	install ./icons/ADIlogo.png $(DESTDIR)/share/osc/
 	install ./icons/IIOlogo.png $(DESTDIR)/share/osc/
 	install $(PLUGINS) $(DESTDIR)/lib/osc/
+	install ./xmls/* $(DESTDIR)/lib/osc/xmls
 
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
 	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
