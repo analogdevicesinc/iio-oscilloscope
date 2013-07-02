@@ -77,7 +77,7 @@ int open_xml_file(char *file_name, xmlNodePtr *root)
  * Pass to the caller the number of elements in the list, using list_size.
  * Return a pointer to the list.
  */
-char **get_xml_list(char *dir_path, int *list_size)
+char **get_xml_list(int *list_size)
 {
 	const struct dirent *ent;
 	DIR *d;
@@ -86,9 +86,9 @@ char **get_xml_list(char *dir_path, int *list_size)
 	int cnt = 0;
 	int n = 0;
 
-	d = opendir(dir_path);
+	d = opendir(buf_dir_name);
 	if (!d) {
-		printf("Cannot open dir %s\n", dir_path);
+		printf("Cannot open dir %s\n", buf_dir_name);
 		return NULL;
 	}
 
@@ -147,7 +147,7 @@ void find_device_xml_file(char *device_name, char *xml_name)
 	int size = 0;
 	int i;
 
-	xmls_list = get_xml_list("./xmls", &size);
+	xmls_list = get_xml_list(&size);
 	for(i = 0; i < size; i++) {
 		xml_elem = strstr(device_name, xmls_list[i]);
 		if (xml_elem != NULL) { /* if the element name from the xml list exist within the device name */
