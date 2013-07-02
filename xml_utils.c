@@ -6,6 +6,7 @@
  **/
 
 #include <stdio.h>
+#include <dirent.h>
 #include <string.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
@@ -28,7 +29,7 @@ void set_xml_folder_path(char *path)
 
 /*
  * Open a xml file with the given name and store in the root variable a pointer
- * to the first element of the xml file. Add extension to the filename if it 
+ * to the first element of the xml file. Add extension to the filename if it
  * does not have one.
  * Return 0 - when the file opened successfully or -1 otherwise.
  */
@@ -37,17 +38,17 @@ int open_xml_file(char *file_name, xmlNodePtr *root)
 	char *has_ext;
 	char *extension = ".xml";
 	char *temp;
-		
+
 	if ((root == NULL) || (file_name == NULL))
 		return -1;
-		
-	temp  = (char *)malloc(strlen(buf_dir_name) + strlen(file_name) + 
+
+	temp  = (char *)malloc(strlen(buf_dir_name) + strlen(file_name) +
 							strlen(extension) + 1);
 	if (temp == NULL) {
 		printf("Memory allocation failed");
 		return -1;
 	}
-	
+
 	/* Add extension to a path without one. */
 	has_ext = strstr(file_name, extension);
 	if (has_ext == NULL)
@@ -68,6 +69,97 @@ int open_xml_file(char *file_name, xmlNodePtr *root)
 	free(temp);
 
 	return 0;
+}
+
+/*
+ * Create a list of char arrays that hold the names of the xml files stored in
+ * the directory provided by the caller.
+ * Pass to the caller the number of elements in the list, using list_size.
+ * Return a pointer to the list.
+ */
+char **get_xml_list(char *dir_path, int *list_size)
+{
+	const struct dirent *ent;
+	DIR *d;
+	char **list;
+	char *extension_ptr;
+	int cnt = 0;
+	int n = 0;
+
+	d = opendir(dir_path);
+	if (!d) {
+		printf("Cannot open dir %s\n", dir_path);
+		return NULL;
+	}
+
+	list = (char **)malloc(sizeof(char *) * 0);
+	if (list == NULL) {
+		printf("Memory allocation failed\n");
+		return NULL;
+	}
+	while (ent = readdir(d), ent != NULL) {
+		if (ent->d_type == DT_REG) { /* if the entry is a regular file */
+			extension_ptr = strstr(ent->d_name, ".xml");
+			if (extension_ptr != NULL) { /* if the entry has a ".xml" extension */
+				cnt++;
+				list = (char **)realloc(list, sizeof(char *) * cnt);
+				n = extension_ptr - ent->d_name;
+				n += 1; /* 1 is for the termination character */
+				list[cnt - 1] = (char *)malloc(sizeof(char) * n);
+				if (list[cnt - 1] == NULL) {
+					printf("Memory allocation failed\n");
+					return NULL;
+				}
+				snprintf(list[cnt - 1], n,  "%s", ent->d_name);
+			}
+		}
+	}
+	closedir(d);
+	*list_size = cnt;
+
+	return list;
+}
+
+/*
+ * Free the memory allocated by get_xml_list().
+ */
+void free_xml_list(char **list, int list_size)
+{
+	int i;
+
+	for (i = 0; i < list_size; i++) {
+		free(list[i]);
+	}
+	free(list);
+}
+
+/*
+ * Search for the xml file designed for the device provided by the caller.
+ * This is done by checking if the name of the device contains the name
+ * of the xml file.
+ * Return none, but use xml_name to return the name of the xml file that
+ * is found.
+ */
+void find_device_xml_file(char *device_name, char *xml_name)
+{
+	char **xmls_list;
+	char *xml_elem;
+	int size = 0;
+	int i;
+
+	xmls_list = get_xml_list("./xmls", &size);
+	for(i = 0; i < size; i++) {
+		xml_elem = strstr(device_name, xmls_list[i]);
+		if (xml_elem != NULL) { /* if the element name from the xml list exist within the device name */
+			snprintf(xml_name, MAX_STR_LEN, "%s", xmls_list[i]);
+			break;
+		}
+	}
+	free_xml_list(xmls_list, size);
+	/* Empty the string if no names were found */
+	if (i >= size) {
+		snprintf(xml_name, MAX_STR_LEN, "%s", "");
+	}
 }
 
 /*
@@ -149,9 +241,9 @@ xmlXPathObjectPtr retrieve_all_elements(char *element)
 }
 
 /*
- * Search for the child with the specified name. The search stops at the first 
+ * Search for the child with the specified name. The search stops at the first
  * found child.
- * Return - the child reference or NULL when none are found. 
+ * Return - the child reference or NULL when none are found.
  */
 xmlNodePtr get_child_by_name(xmlNodePtr parent_node, char* tag_name)
 {

@@ -10,11 +10,12 @@
 
 void set_xml_folder_path(char *path);
 int open_xml_file(char *file_name, xmlNodePtr *root);
+void find_device_xml_file(char *device_name, char *xml_name);
 char* read_string_element(xmlNodePtr node, char *element);
 int read_integer_element(xmlNodePtr node, char *element);
 xmlXPathObjectPtr retrieve_all_elements(char *element);
 xmlNodePtr get_child_by_name(xmlNodePtr parent_node, char* tag_name);
-xmlNodePtr* get_children_by_name(xmlNodePtr parent_node, char* tag_name, 
+xmlNodePtr* get_children_by_name(xmlNodePtr parent_node, char* tag_name,
 							int *children_cnt);
 void close_current_xml_file(void);
 

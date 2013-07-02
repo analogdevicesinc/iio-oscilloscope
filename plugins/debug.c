@@ -154,7 +154,8 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 	if (g_strcmp0("None\0", current_device)) {
 		ret = set_debugfs_paths(current_device);
 		if (!ret) {
-			if (open_xml_file(current_device, &root) == 0) {
+			find_device_xml_file(current_device, buf);
+			if (open_xml_file(buf, &root) == 0) {
 				xml_file_opened = 1;
 				create_device_context();
 				g_signal_emit_by_name(spin_btn_reg_addr, "value-changed");
