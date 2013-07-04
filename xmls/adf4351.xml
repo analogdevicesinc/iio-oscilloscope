@@ -874,6 +874,30 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
+			<Name>reg005_b19</Name>
+			<Access>R/W</Access>
+			<DefaultValue>1</DefaultValue>
+			<Description>Reserved to 1</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>19</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg005_b20</Name>
+			<Access>R/W</Access>
+			<DefaultValue>1</DefaultValue>
+			<Description>Reserved to 1</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>20</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
 			<Name>reg005_b23_B22</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
