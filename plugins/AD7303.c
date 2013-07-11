@@ -206,11 +206,11 @@ static void generateWavePeriod(void)
 
 	/* Set the maximum frequency that user cand select to 10% of the input generator frequency. */
 	if (triggerFreq >= 10)
-		gtk_range_get_adjustment((GtkRange *)scale_freq)->upper = triggerFreq / 10;
+		gtk_range_set_range(GTK_RANGE(scale_freq), 0.01, triggerFreq / 10);
 
-	wave_ampl = gtk_range_get_adjustment((GtkRange *)scale_ampl)->value;
-	wave_offset = gtk_range_get_adjustment((GtkRange *)scale_offset)->value;
-	waveFreq = gtk_range_get_adjustment((GtkRange *)scale_freq)->value;
+	wave_ampl = gtk_range_get_value(GTK_RANGE(scale_ampl));
+	wave_offset = gtk_range_get_value(GTK_RANGE(scale_offset));
+	waveFreq = gtk_range_get_value(GTK_RANGE(scale_freq));
 	buffer_size = (unsigned int)round(triggerFreq / waveFreq);
 	if (buffer_size < 2)
 		buffer_size = 2;
@@ -220,8 +220,7 @@ static void generateWavePeriod(void)
 
 	soft_buffer_ch0 = g_renew(uint8_t, soft_buffer_ch0, buffer_size);
 
-	gtk_range_get_adjustment((GtkRange *)scale_freq)->value =
-						(double)triggerFreq / buffer_size;
+	gtk_range_set_value(GTK_RANGE(scale_freq), (double)triggerFreq / buffer_size);
 	gtk_widget_queue_draw(scale_freq);
 
 	if(gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(btn_sine)))
