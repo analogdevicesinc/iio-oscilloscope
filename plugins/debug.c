@@ -396,7 +396,7 @@ static void spin_or_combo_changed_cb(GtkSpinButton *spinbutton,
 }
 
 
-void debug_panel_destroy_cb(GtkObject *object, gpointer user_data)
+void debug_panel_destroy_cb(GObject *object, gpointer user_data)
 {
 	destroy_device_context();
 }
