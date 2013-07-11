@@ -89,7 +89,6 @@ static GtkWidget **bit_comboboxes;
 static GtkWidget **bit_no_read_lbl;
 static GtkWidget **bit_spinbuttons;
 static GtkWidget **bit_spin_adjustments;
-static GtkTooltips **tooltips;
 
 /* Register map variables */
 static int *reg_addr_list;     /* Pointer to the list of addresses of all registers */
@@ -421,7 +420,6 @@ static int alloc_widget_arrays(int reg_length)
 	bit_spin_adjustments = (GtkWidget **)malloc(sizeof(GtkWidget *) * reg_length);
 	combo_hid_list = (gulong*)malloc(sizeof(gulong) * reg_length);
 	spin_hid_list = (gulong*)malloc(sizeof(gulong) * reg_length);
-	tooltips = (GtkTooltips **)malloc(sizeof(GtkTooltips *) * reg_length);
 
 	return 0;
 }
@@ -442,7 +440,6 @@ static void free_widget_arrays(void)
 	free(bit_spin_adjustments);
 	free(combo_hid_list);
 	free(spin_hid_list);
-	free(tooltips);
 }
 
 /*
@@ -632,7 +629,6 @@ static int get_option_index(int option_value, bgroup *bit)
 	return -1;
 }
 
-
 /*
  * Helper function. Remove all elements of a combobox.
  */
@@ -669,7 +665,7 @@ static void draw_reg_map(int valid_register)
 		g_object_set(bit_comboboxes[i], "sensitive", TRUE, NULL);
 		gtk_widget_hide(bit_comboboxes[i]);
 		gtk_widget_hide(bit_spinbuttons[i]);
-		gtk_tooltips_set_tip(tooltips[i], vboxes[i], "", NULL);
+		gtk_widget_set_tooltip_text(vboxes[i], "");
 	}
 
 	/* Dispaly register information */
@@ -744,7 +740,7 @@ static void draw_reg_map(int valid_register)
 		}
 
 		/* Add tooltips with bit descriptions */
-		gtk_tooltips_set_tip(tooltips[p_bit->offset], vboxes[p_bit->offset], p_bit->description, NULL);
+		gtk_widget_set_tooltip_text(vboxes[p_bit->offset], p_bit->description);
 	}
 
 	/* Set default value of the combobox to 0 for all bits with "Reserved" tag. Also inactivate the combobox */
@@ -885,7 +881,6 @@ static void create_reg_map(void)
 			"changed", G_CALLBACK(spin_or_combo_changed_cb), NULL);
 		spin_hid_list[i] = g_signal_connect(G_OBJECT(bit_spinbuttons[i]),
 			"changed", G_CALLBACK(spin_or_combo_changed_cb), NULL);
-		tooltips[i] = gtk_tooltips_new();
 	}
 }
 
