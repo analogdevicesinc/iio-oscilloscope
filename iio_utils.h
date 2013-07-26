@@ -84,6 +84,7 @@ struct iio_channel_info {
 	unsigned is_signed;
 	unsigned enabled;
 	enum iio_endian endianness;
+	void *extra_field;
 };
 
 /**
