@@ -29,12 +29,16 @@ int set_dev_paths(const char *device_name)
 	int dev_num, ret;
 	struct stat s;
 
-	if (!device_name)
-		return -EFAULT;
+	if (!device_name) {
+		ret = -EFAULT;
+		goto error_ret;
+	}
 
 	ret = stat(iio_dir, &s);
-	if (ret)
-		return -EFAULT;
+	if (ret) {
+		ret = -EFAULT;
+		goto error_ret;
+	}
 
 	if (strncmp(device_name, last_device_name, MAX_STR_LEN) != 0) {
 	/* Find the device requested */
@@ -67,8 +71,11 @@ int set_dev_paths(const char *device_name)
 		}
 	}
 
-	ret = 0;
+	return 0;
+
 error_ret:
+	dev_dir_name[0] = '\0';
+	buffer_access[0] = '\0';
 	return ret;
 }
 
@@ -100,13 +107,18 @@ int set_debugfs_paths(const char *device_name)
 			goto error_ret;
 		}
 	}
-	ret = 0;
+	return 0;
+
 error_ret:
+	debug_dir_name[0] ='\0';
 	return ret;
 }
 
 int read_reg(unsigned int address)
 {
+	if (strlen(debug_dir_name) == 0)
+		return 0;
+
 	write_sysfs_int("direct_reg_access", debug_dir_name, address);
 	return read_sysfs_posint("direct_reg_access", debug_dir_name);
 }
@@ -114,6 +126,9 @@ int read_reg(unsigned int address)
 int write_reg(unsigned int address, unsigned int val)
 {
 	char temp[40];
+
+	if (strlen(debug_dir_name) == 0)
+		return 0;
 
 	sprintf(temp, "0x%x 0x%x\n", address, val);
 	return write_sysfs_string("direct_reg_access", debug_dir_name, temp);
@@ -201,7 +216,12 @@ error_free:
 
 int write_devattr(const char *attr, const char *str)
 {
-	int ret = write_sysfs_string(attr, dev_dir_name, str);
+	int ret;
+
+	if (strlen(dev_dir_name) == 0)
+		return -ENODEV;
+
+	ret = write_sysfs_string(attr, dev_dir_name, str);
 
 	if (ret < 0) {
 		syslog(LOG_ERR, "write_devattr failed (%d)\n", __LINE__);
@@ -212,7 +232,12 @@ int write_devattr(const char *attr, const char *str)
 
 int read_devattr(const char *attr, char **str)
 {
-	int ret = read_sysfs_string(attr, dev_dir_name, str);
+	int ret;
+
+	if (strlen(dev_dir_name) == 0)
+		return -ENODEV;
+
+	ret = read_sysfs_string(attr, dev_dir_name, str);
 	if (ret < 0) {
 		syslog(LOG_ERR, "read_devattr failed (%d)\n", __LINE__);
 	}
@@ -294,7 +319,12 @@ int write_devattr_int(const char *attr, unsigned long long value)
 
 int read_devattr_int(char *attr, int *val)
 {
-	int ret = read_sysfs_posint(attr, dev_dir_name);
+	int ret;
+
+	if (strlen(dev_dir_name) == 0)
+		return -ENODEV;
+
+	ret = read_sysfs_posint(attr, dev_dir_name);
 	if (ret < 0) {
 		syslog(LOG_ERR, "read_devattr failed (%d)\n", __LINE__);
 	}
@@ -310,6 +340,9 @@ bool iio_devattr_exists(const char *device, const char *attr)
 	struct stat s;
 
 	set_dev_paths(device);
+
+	if (strlen(dev_dir_name) == 0)
+		return -ENODEV;
 
 	temp = malloc(strlen(dev_dir_name) + strlen(attr) + 2);
 	if (temp == NULL) {
