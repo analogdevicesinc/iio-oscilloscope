@@ -826,6 +826,7 @@ static int time_capture_setup(void)
 {
 	gboolean is_constellation;
 	unsigned int i, j;
+	static int prev_num_active_ch = 0;
 
 	is_constellation = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
 
@@ -847,6 +848,10 @@ static int time_capture_setup(void)
 
 	is_fft_mode = false;
 
+	if (channel_data)
+		for (i = 0; i < prev_num_active_ch; i++)
+			g_free(channel_data[i]);
+
 	channel_data = g_renew(gfloat *, channel_data, num_active_channels);
 	channel_graph = g_renew(GtkDataboxGraph *, channel_graph, num_active_channels);
 	for (i = 0; i < num_active_channels; i++) {
@@ -854,6 +859,8 @@ static int time_capture_setup(void)
 		for (j = 0; j < num_samples; j++)
 			channel_data[i][j] = 0.0f;
 	}
+	
+	prev_num_active_ch = num_active_channels;
 
 	if (is_constellation) {
 		if (strcmp(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(plot_type)), "Lines"))
