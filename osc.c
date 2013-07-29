@@ -35,7 +35,7 @@ static gfloat *X = NULL;
 static gfloat *fft_channel = NULL;
 static gfloat fft_corr = 0.0;
 
-static gint capture_function = 0;
+gint capture_function = 0;
 static int buffer_fd = -1;
 
 static struct buffer data_buffer;
@@ -126,6 +126,8 @@ static GdkColor color_marker = {
 	.blue = 0,
 };
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
 {
@@ -155,6 +157,7 @@ void * x_calloc (size_t nmemb, size_t size)
 
 struct buffer {
 	void *data;
+	void *data_copy;
 	unsigned int available;
 	unsigned int size;
 };
@@ -285,10 +288,20 @@ static int sample_iio_data_oneshot(struct buffer *buf)
 
 static int sample_iio_data(struct buffer *buf)
 {
+	int ret;
+
 	if (is_oneshot_mode())
-		return sample_iio_data_oneshot(buf);
+		ret = sample_iio_data_oneshot(buf);
 	else
-		return sample_iio_data_continuous(buffer_fd, buf);
+		ret = sample_iio_data_continuous(buffer_fd, buf);
+
+	if ((buf->data_copy) && (buf->available == buf->size)) {
+		memcpy(buf->data_copy, buf->data, buf->size);
+		buf->data_copy = NULL;
+		pthread_mutex_unlock(&mutex);
+	}
+
+	return ret;
 }
 
 static int frame_counter;
@@ -729,6 +742,8 @@ static int fft_capture_setup(void)
 	data_buffer.size = num_samples * bytes_per_sample;
 
 	data_buffer.data = g_renew(int8_t, data_buffer.data, data_buffer.size);
+	data_buffer.data_copy = NULL;
+
 	X = g_renew(gfloat, X, num_samples / 2);
 	fft_channel = g_renew(gfloat, fft_channel, num_samples / 2);
 
@@ -771,6 +786,42 @@ static void fft_capture_start(void)
 	capture_function = g_idle_add((GSourceFunc) fft_capture_func, databox);
 }
 
+/*
+ * helper functions for plugins which want to look at data
+ */
+int plugin_data_capture_size(void)
+{
+	return data_buffer.size;
+}
+
+int plugin_data_capture_num_active_channels(void)
+{
+	return num_active_channels;
+}
+
+int plugin_data_capture_bytes_per_sample(void)
+{
+	return bytes_per_sample;
+}
+
+void plugin_data_capture_demux(void *buf, gfloat **cooked, unsigned int num_samples,
+	unsigned int num_channels)
+
+{
+	demux_data_stream(buf, cooked, num_samples, 0, num_samples, channels, num_channels);
+}
+
+int plugin_data_capture(void *buf)
+{
+	/* only one consumer at a time */
+	if (data_buffer.data_copy)
+		return false;
+
+	data_buffer.data_copy = buf;
+	return true;
+
+}
+
 static int time_capture_setup(void)
 {
 	gboolean is_constellation;
@@ -787,6 +838,8 @@ static int time_capture_setup(void)
 	data_buffer.size = num_samples * bytes_per_sample;
 
 	data_buffer.data = g_renew(int8_t, data_buffer.data, data_buffer.size);
+	data_buffer.data_copy = NULL;
+
 	X = g_renew(gfloat, X, num_samples);
 
 	for (i = 0; i < num_samples; i++)
@@ -848,6 +901,8 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 
 	if (gtk_toggle_tool_button_get_active(btn)) {
 		gtk_databox_graph_remove_all(GTK_DATABOX(databox));
+
+		pthread_mutex_unlock(&mutex);
 
 		data_buffer.available = 0;
 		current_sample = 0;
