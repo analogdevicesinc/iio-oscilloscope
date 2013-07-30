@@ -18,4 +18,3 @@ void trigger_update_current_device(void);
 void application_quit (void);
 
 #endif
-

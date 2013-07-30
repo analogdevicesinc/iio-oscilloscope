@@ -1,3 +1,9 @@
+/**
+ * Copyright (C) 2012-2013 Analog Devices, Inc.
+ *
+ * Licensed under the GPL-2.
+ *
+ **/
 #include <stdio.h>
 #include <gtk/gtk.h>
 #include <gtkdatabox.h>
@@ -12,11 +18,9 @@
 #include "iio_widget.h"
 #include "datatypes.h"
 
-extern gfloat x_axis_graph[10];
-
-extern void time_transform_test_function(gfloat *in_data, gfloat *out_data);
-extern void fft_transform_test_function(gfloat *in_data, gfloat *out_data);
-extern void constellation_transform_test_function(gfloat *in_data, gfloat *out_data);
+extern void time_transform_test_function(Transform *tr, gboolean init_transform);
+extern void fft_transform_test_function(Transform *tr, gboolean init_transform);
+extern void constellation_transform_test_function(Transform *tr, gboolean init_transform);
 
 extern struct _device_list *device_list;
 extern unsigned num_devices;
@@ -44,15 +48,13 @@ enum {
 	NUM_COL
 }; /* Columns of the device treestore */
 
-struct _user_data {
-	gpointer data1;
-	gpointer data2;
-};
-
 struct _OscPlotPrivate
 {
+	GtkBuilder *builder;
+	
 	/* Graphical User Interface */
 	GtkWidget *window;
+	GtkWidget *fft_settings_diag;
 	GtkWidget *databox;
 	GtkWidget *capture_graph;
 	GtkWidget *capture_button;
@@ -65,6 +67,7 @@ struct _OscPlotPrivate
 	
 	/* Active transform type for this window */
 	int active_transform_type;
+	Transform *selected_transform_for_setup;
 	
 	/* Databox data */
 	GtkDataboxGraph *grid;
@@ -178,7 +181,6 @@ static void osc_plot_init(OscPlot *plot)
 {	
 	plot->priv = G_TYPE_INSTANCE_GET_PRIVATE (plot, OSC_PLOT_TYPE, OscPlotPrivate);
 	
-	plot->x_axis_source = x_axis_graph;
 	create_plot(plot);
 	/* Create a empty list of transforms */
 	plot->priv->transform_list = TrList_new();
@@ -198,15 +200,17 @@ static void add_row_child(GtkTreeView *treeview, GtkTreeIter *parent, char *chil
 		TRANSFORM_ACTIVE, 1, ELEMENT_REFERENCE, tr,  -1);
 }
 
-static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel_info *ch, char *tr_name)
+static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_parent, 
+	struct iio_channel_info *ch0, struct iio_channel_info *ch1, char *tr_name)
 {
 	OscPlotPrivate *priv = plot->priv;
 	TrList *list = priv->transform_list;
 	Transform *transform;
+	struct _fft_settings *fft_settings;
+	struct _constellation_settings *constellation_settings;
 	
 	transform = Transform_new();
-	Transform_set_in_data_ref(transform, ch->extra_field);
-	Transform_resize_out_buffer(transform, 10);
+	Transform_set_in_data_ref(transform, ch0->extra_field, &ch_parent->sample_count);
 	if (!strcmp(tr_name, "TIME")) {
 		Transform_attach_function(transform, time_transform_test_function);
 		priv->active_transform_type = TIME_TRANSFORM;
@@ -214,9 +218,16 @@ static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel_info *
 			if (!strcmp(tr_name, "FFT")) {
 				Transform_attach_function(transform, fft_transform_test_function);
 				priv->active_transform_type = FFT_TRANSFORM;
+				fft_settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
+				Transform_attach_settings(transform, fft_settings);
 			} else {
 					if (!strcmp(tr_name, "CONSTELLATION")) {
 						Transform_attach_function(transform, constellation_transform_test_function);
+						constellation_settings = (struct _constellation_settings *)malloc(sizeof(struct _constellation_settings));
+						constellation_settings->ch0 = ch0;
+						constellation_settings->ch1 = ch1;
+						transform->x_axis = ch0->extra_field;
+						Transform_attach_settings(transform, constellation_settings);
 						priv->active_transform_type = CONSTELLATION_TRANSFORM;
 					}
 			}
@@ -242,25 +253,50 @@ static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 {
 	
 	OscPlot *plot = data;
+	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *tree_view;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
+	GtkTreeIter parent_iter;
 	Transform *tr;
 	char *ch_name;
 	char *tr_name;
-	char buf[32];
-	struct iio_channel_info *channel;
+	char buf[50];
+	struct iio_channel_info *channel0 = NULL, *channel1 = NULL;
+	struct _device_list *ch_parent0, *ch_parent1;
+	GList *path;
 	
-	tree_view = GTK_TREE_VIEW(plot->priv->channel_list_view);
-	/* Get the selected channel name and the transform name */
+	tree_view = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(tree_view);
-	//gtk_tree_model_get_iter(model, &iter, selected_path);
-	gtk_tree_model_get(model, &iter, ELEMENT_NAME, &ch_name, ELEMENT_REFERENCE, &channel, -1);	
+	/* Get the selected channel name */
+	path = g_list_first(priv->selected_rows_paths);
+	gtk_tree_model_get_iter(model, &iter, path->data);
+	gtk_tree_model_get(model, &iter, ELEMENT_NAME, &ch_name, ELEMENT_REFERENCE, &channel0, -1);	
+	/* Get the transform name */
 	tr_name = (char *)gtk_menu_item_get_label(menuitem);
 	snprintf(buf, sizeof(buf), "%s-%s", tr_name, ch_name);
 	g_free(ch_name);
-	/* Add a new transform to a list of transforms */
-	tr = add_transform_to_list(plot, channel, tr_name);
+	/* Get the parent reference of the channel0. */
+	gtk_tree_model_iter_parent(model, &parent_iter, &iter);
+	gtk_tree_model_get(model, &parent_iter, ELEMENT_REFERENCE, &ch_parent0, -1);	
+	
+	/* Get the second channel if two channel were selected. */
+	if (priv->num_selected_rows == 2) {
+		path = g_list_next(priv->selected_rows_paths);
+		gtk_tree_model_get_iter(model, &iter, path->data);
+		gtk_tree_model_get(model, &iter, ELEMENT_NAME, &ch_name, ELEMENT_REFERENCE, &channel1, -1);
+		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "-%s", ch_name);
+		g_free(ch_name);
+		/* Get the parent reference of the channel1. */
+		gtk_tree_model_iter_parent(model, &parent_iter, &iter);
+		gtk_tree_model_get(model, &parent_iter, ELEMENT_REFERENCE, &ch_parent1, -1);
+		/* Don't add a constellation for channels belonging to different devices */
+		if (ch_parent0 != ch_parent1)
+			return;
+	}
+	
+	/* Add a new transform to a list of transforms. */
+	tr = add_transform_to_list(plot, ch_parent0, channel0, channel1, tr_name);
 	/* Add the transfrom in the treeview */
 	add_row_child(tree_view, &iter, buf, tr);
 	g_object_set(G_OBJECT(tree_view), "sensitive", TRUE, NULL);
@@ -269,23 +305,71 @@ static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer data)
 {
 	OscPlot *plot = data;
+	OscPlotPrivate *priv  = plot->priv;
 	GtkTreeView *tree_view;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	Transform *tr;
+	GList *path;	
 	
-	tree_view = GTK_TREE_VIEW(plot->priv->channel_list_view);
+	tree_view = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(tree_view);
-	//gtk_tree_model_get_iter(model, &iter, selected_path);
+	path = g_list_first(priv->selected_rows_paths);
+	gtk_tree_model_get_iter(model, &iter, path->data);
 	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &tr, -1);
 	gtk_tree_store_remove(GTK_TREE_STORE(model), &iter);
 	remove_transform_from_list(plot, tr);
 }
 
+void set_fft_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_data)
+{
+	OscPlot *plot = user_data;
+	OscPlotPrivate *priv = plot->priv;
+	Transform *tr = priv->selected_transform_for_setup;
+	struct _fft_settings *fft_settings = tr->settings;
+	GtkBuilder *builder = priv->builder;
+	
+	GtkWidget *fft_size_widget;
+	GtkWidget *fft_avg_widget;
+	GtkWidget *fft_pwr_offset_widget;
+	
+	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
+	fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
+	fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
+	
+	if (response_id == 1) {
+		fft_settings->fft_size = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
+		fft_settings->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
+		fft_settings->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget));
+	}
+	g_object_set(G_OBJECT(priv->channel_list_view), "sensitive", TRUE, NULL);
+}
+
+static void fft_settings(GtkMenuItem* menuitem, gpointer data)
+{
+	OscPlot *plot = data;
+	OscPlotPrivate *priv  = plot->priv;
+	GtkTreeView *tree_view;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	Transform *tr;
+	GList *path;
+	
+	tree_view = GTK_TREE_VIEW(priv->channel_list_view);
+	model = gtk_tree_view_get_model(tree_view);
+	path = g_list_first(priv->selected_rows_paths);
+	gtk_tree_model_get_iter(model, &iter, path->data);
+	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &tr, -1);
+	priv->selected_transform_for_setup = tr;
+	g_object_set(G_OBJECT(tree_view), "sensitive", FALSE, NULL);
+	gtk_dialog_run(GTK_DIALOG(priv->fft_settings_diag));
+	gtk_widget_hide(priv->fft_settings_diag);
+}
+
 static void set_sample_count(GtkMenuItem* menuitem, gpointer data)
 {
 	struct _device_list *dev_list = data;
-	GtkBuilder *builder = dev_list->settings_window;
+	GtkBuilder *builder = dev_list->settings_dialog_builder;
 	GtkWidget *dialog;
 	
 	dialog = GTK_WIDGET(gtk_builder_get_object(builder, "Sample_count_dialog"));
@@ -313,15 +397,17 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 	gboolean is_transform;
 	gpointer *ref;
 	short i;
-	static const char *transforms[3] = {"TIME", "FFT", "CONSTELATTION"};
+	static const char *transforms[3] = {"TIME", "FFT", "CONSTELLATION"};
+	GList *path;
 	
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview));
-	//gtk_tree_model_get_iter(model, &iter, selected_path);
-	printf("%s\n", gtk_tree_path_to_string(priv->selected_rows_paths[0].data));
+	path = g_list_first(priv->selected_rows_paths);
+	gtk_tree_model_get_iter(model, &iter, path->data);
 	gtk_tree_model_get(model, &iter, IS_DEVICE, &is_device, IS_CHANNEL,
 		&is_channel, IS_TRANSFORM, &is_transform, ELEMENT_REFERENCE, &ref, -1);
 	
-	if (is_device == TRUE) {
+	
+	if ((is_device == TRUE) && (priv->num_selected_rows == 1)) {
 		menu = gtk_menu_new();
 		menuitem = gtk_menu_item_new_with_label("Sample Count");
 		g_signal_connect(menuitem, "activate",
@@ -331,36 +417,51 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 	}
 	
 	if (is_channel == TRUE) {
-		menu = gtk_menu_new();	
-		/* Show all transforms when no other transform were added to this plot */
-		if (priv->active_transform_type == NO_TRANSFORM_TYPE) {
-			if (priv->num_selected_rows == 2) {
+		menu = gtk_menu_new();
+		if (priv->num_selected_rows == 2) {
+			path = g_list_next(priv->selected_rows_paths);
+			gtk_tree_model_get_iter(model, &iter, path->data);
+			gtk_tree_model_get(model, &iter, IS_CHANNEL, &is_channel, ELEMENT_REFERENCE, &ref, -1);
+			if (is_channel == FALSE)
+				return;	
+			if ((priv->active_transform_type == NO_TRANSFORM_TYPE) ||
+				(priv->active_transform_type == CONSTELLATION_TRANSFORM)) {
 				menuitem = gtk_menu_item_new_with_label(transforms[2]);
 				g_signal_connect(menuitem, "activate",
 					(GCallback) add_transform_to_tree_store, data);
 				gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 				goto show_menu;
 			}
-			if(priv->num_selected_rows == 1) {
+		} else {
+			/* Show all transforms when no other transform were added to this plot */
+			if (priv->active_transform_type == NO_TRANSFORM_TYPE) {
 				for (i = 0; i < 2; i++) {
 					menuitem = gtk_menu_item_new_with_label(transforms[i]);
 					g_signal_connect(menuitem, "activate",
 						(GCallback) add_transform_to_tree_store, data);
 					gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 				}
+					goto show_menu;
+			} else {
+				if (priv->active_transform_type == CONSTELLATION_TRANSFORM)
+					return;
+				menuitem = gtk_menu_item_new_with_label(transforms[priv->active_transform_type - 1]);
+				g_signal_connect(menuitem, "activate",
+					(GCallback) add_transform_to_tree_store, data);
+				gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);				
 				goto show_menu;
 			}
-		} else {
-			menuitem = gtk_menu_item_new_with_label(transforms[priv->active_transform_type - 1]);
-			g_signal_connect(menuitem, "activate",
-				(GCallback) add_transform_to_tree_store, data);
-			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);				
-			goto show_menu;
 		}
-	}
+	}	
 	
-	if (is_transform == TRUE) {
+	if ((is_transform == TRUE) && (priv->num_selected_rows == 1)) {
 		menu = gtk_menu_new();
+		if (priv->active_transform_type == FFT_TRANSFORM) {
+			menuitem = gtk_menu_item_new_with_label("Settings");
+			g_signal_connect(menuitem, "activate",
+				(GCallback) fft_settings, data);
+		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+		}
 		menuitem = gtk_menu_item_new_with_label("Remove");
 		g_signal_connect(menuitem, "activate",
 			(GCallback) remove_transform_from_tree_store, data);
@@ -397,26 +498,15 @@ static gboolean right_click_on_ch_list_cb(GtkWidget *treeview, GdkEventButton *e
 		GtkTreeSelection *selection;
 
 		selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
-		
-		#if 0
-		if (gtk_tree_selection_count_selected_rows(selection)  == 1) {
-			GtkTreePath *path;
-
-			/* Get tree path for row that was clicked */
-			if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview),
-											 (gint) event->x, 
-											 (gint) event->y,
-											 &path, NULL, NULL, NULL)) {
-				gtk_tree_selection_unselect_all(selection);
-				gtk_tree_selection_select_path(selection, path);
-				show_right_click_menu(treeview, event, data);
-				gtk_tree_path_free(path);
-			}
-		}
-		#endif
 		int rows = gtk_tree_selection_count_selected_rows(selection);
 		if ((rows == 1) || (rows == 2)) {
 			GtkTreeModel *model;
+			
+			/* Remove the previous content of the path list */
+			if (priv->selected_rows_paths) {
+				g_list_foreach(priv->selected_rows_paths, (GFunc)gtk_tree_path_free, NULL);
+				g_list_free(priv->selected_rows_paths);
+			}
 			
 			model =  gtk_tree_view_get_model(GTK_TREE_VIEW(treeview));
 			priv->selected_rows_paths = gtk_tree_selection_get_selected_rows(selection, &model);
@@ -424,8 +514,6 @@ static gboolean right_click_on_ch_list_cb(GtkWidget *treeview, GdkEventButton *e
 			priv->num_selected_rows = rows;
 			g_list_foreach(priv->selected_rows_paths, highlight_selected_rows, selection);
 			show_right_click_menu(treeview, event, data);
-			g_list_foreach(priv->selected_rows_paths, (GFunc)gtk_tree_path_free, NULL);
-			g_list_free(priv->selected_rows_paths);
 		}
 	
 		return TRUE;
@@ -436,17 +524,31 @@ static gboolean right_click_on_ch_list_cb(GtkWidget *treeview, GdkEventButton *e
 
 static gboolean shift_f10_event_on_ch_list_cb(GtkWidget *treeview, gpointer data)
 {
+	OscPlot *plot = data;
+	OscPlotPrivate *priv = plot->priv;
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
-	GList *list;
+	int rows;
 	
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview));
-	list = gtk_tree_selection_get_selected_rows(selection, &model);
-	g_list_free_full(list, (GDestroyNotify) gtk_tree_path_free);
-	show_right_click_menu(treeview, NULL, data);
+	rows = gtk_tree_selection_count_selected_rows(selection);
 	
-	return TRUE;
+	if ((rows == 1) || (rows == 2)) {			
+			/* Remove the previous content of the path list */
+			if (priv->selected_rows_paths) {
+				g_list_foreach(priv->selected_rows_paths, (GFunc)gtk_tree_path_free, NULL);
+				g_list_free(priv->selected_rows_paths);
+			}
+			
+			model =  gtk_tree_view_get_model(GTK_TREE_VIEW(treeview));
+			priv->selected_rows_paths = gtk_tree_selection_get_selected_rows(selection, &model);
+			gtk_tree_selection_unselect_all(selection);
+			priv->num_selected_rows = rows;
+			g_list_foreach(priv->selected_rows_paths, highlight_selected_rows, selection);
+			show_right_click_menu(treeview, NULL, data);
+		}
+	
+		return TRUE;
 }
 
 static void call_all_transform_functions(OscPlotPrivate *priv)
@@ -468,7 +570,7 @@ static gboolean time_capture_func(OscPlotPrivate *priv)
 	return TRUE;
 }
 
-static void time_capture_start(OscPlotPrivate *priv)
+static void capture_start(OscPlotPrivate *priv)
 {
 	priv->capture_function = g_idle_add((GSourceFunc) time_capture_func, priv);
 }
@@ -479,16 +581,20 @@ static void plot_setup(OscPlot *plot)
 	TrList *tr_list = priv->transform_list;
 	Transform *transform;
 	gfloat *transform_output;
+	gfloat *transform_x_axis;
 	int i = 0;
 	
 	gtk_databox_graph_remove_all(GTK_DATABOX(priv->databox));
+	
 	for (; i < tr_list->size; i++) {
 		transform = tr_list->transforms[i];
-		transform_output = Transform_get_out_data_ref(transform);
+		Transform_setup(transform);
+		transform_output = Transform_get_out_data_ref(transform);		
+		transform_x_axis = Transform_get_x_axis_ref(transform);		
 		if (strcmp(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type)), "Lines"))
-			transform->graph = gtk_databox_points_new(10, plot->x_axis_source, transform_output, &color_graph[0], 2);
+			transform->graph = gtk_databox_points_new(transform->out_data_size, transform_x_axis, transform_output, &color_graph[0], 2);
 		else
-			transform->graph = gtk_databox_lines_new(10, plot->x_axis_source, transform_output, &color_graph[0], 2);
+			transform->graph = gtk_databox_lines_new(transform->out_data_size, transform_x_axis, transform_output, &color_graph[0], 2);
 		gtk_databox_graph_add(GTK_DATABOX(priv->databox), transform->graph);
 	}
 	gtk_databox_auto_rescale(GTK_DATABOX(priv->databox), 0);
@@ -501,9 +607,11 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 	gboolean button_state;
 	
 	button_state = gtk_toggle_tool_button_get_active(btn);
+	g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, button_state);
+	
  	if (button_state) {
 		plot_setup(plot);
-		time_capture_start(priv);
+		capture_start(priv);
 		add_grid(plot);
 	} else {
 			if (priv->capture_function > 0) {
@@ -511,8 +619,6 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 				priv->capture_button = 0;
 			}
 	}
-	
-	g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, button_state);
 }
 
 static void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer data)
@@ -550,7 +656,9 @@ static void transform_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, g
 	gtk_tree_model_get(model, &iter, TRANSFORM_ACTIVE, &active, ELEMENT_REFERENCE, &tr, -1);
 	active = !active;
 	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, TRANSFORM_ACTIVE, active, -1);
-	gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(tr->graph), !active);
+	if (tr->graph)
+		gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(tr->graph), !active);
+	gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
 }
 
 static void create_channel_list_view(OscPlotPrivate *priv)
@@ -836,6 +944,7 @@ static void create_plot(OscPlot *plot)
 	GtkBuilder *builder = NULL;
 	GError *error = NULL;	
 	GtkTreeSelection *tree_selection;
+	GtkWidget *fft_size_widget;
 	
 	/* Get the GUI from a glade file. */
 	builder = gtk_builder_new();
@@ -843,16 +952,19 @@ static void create_plot(OscPlot *plot)
 		g_warning("%s", error->message);
 		g_free(error);
 	}
+	priv->builder = builder;
 	priv->window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
+	priv->fft_settings_diag = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_FFT_settings"));
 	priv->capture_graph = GTK_WIDGET(gtk_builder_get_object(builder, "display_capture"));
 	priv->capture_button = GTK_WIDGET(gtk_builder_get_object(builder, "capture_button"));
 	priv->channel_list_view = GTK_WIDGET(gtk_builder_get_object(builder, "channel_list_view"));
 	priv->show_grid = GTK_WIDGET(gtk_builder_get_object(builder, "show_grid"));
 	priv->plot_type = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type"));
+	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	
 	/* Create a GtkDatabox widget along with scrollbars and rulers */
 	gtk_databox_create_box_with_scrollbars_and_rulers(&priv->databox, &table,
-							TRUE, TRUE, TRUE, TRUE);
+		TRUE, TRUE, TRUE, TRUE);
 	gtk_box_pack_start(GTK_BOX(priv->capture_graph), table, TRUE, TRUE, 0);
 	gtk_widget_modify_bg(priv->databox, GTK_STATE_NORMAL, &color_background);
 	gtk_widget_set_size_request(table, 600, 600);
@@ -863,9 +975,11 @@ static void create_plot(OscPlot *plot)
 	g_signal_connect(priv->capture_button, "toggled",
 		G_CALLBACK(capture_button_clicked_cb), plot);
 	g_signal_connect(priv->channel_list_view, "button-press-event",
-		(GCallback) right_click_on_ch_list_cb, plot);
+		G_CALLBACK(right_click_on_ch_list_cb), plot);
     g_signal_connect(priv->channel_list_view, "popup-menu", 
-		(GCallback) shift_f10_event_on_ch_list_cb, plot);
+		G_CALLBACK(shift_f10_event_on_ch_list_cb), plot);
+	g_signal_connect(priv->fft_settings_diag, "response",
+		G_CALLBACK(set_fft_settings_cb), plot);
 	
 	g_builder_connect_signal(builder, "zoom_in", "clicked",
 		G_CALLBACK(zoom_in), plot);
@@ -878,8 +992,9 @@ static void create_plot(OscPlot *plot)
 	
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,
-			"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
+		"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
 
+	gtk_combo_box_set_active(GTK_COMBO_BOX(fft_size_widget), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_type), 0);
 	tree_selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->channel_list_view));
 	gtk_tree_selection_set_mode(tree_selection, GTK_SELECTION_MULTIPLE);

@@ -1,3 +1,9 @@
+/**
+ * Copyright (C) 2012-2013 Analog Devices, Inc.
+ *
+ * Licensed under the GPL-2.
+ *
+ **/
 #ifndef __OSC_PLOT__
 #define __OSC_PLOT__
 

@@ -1,3 +1,9 @@
+/**
+ * Copyright (C) 2012-2013 Analog Devices, Inc.
+ *
+ * Licensed under the GPL-2.
+ *
+ **/
 #include <gtk/gtk.h>
 #include <gtkdatabox.h>
 #include <gtkdatabox_grid.h>
@@ -25,8 +31,6 @@ struct buffer {
 	unsigned int size;
 };
 
-gfloat x_axis_graph[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-
 struct _device_list *device_list;
 unsigned num_devices = 0;
 
@@ -49,35 +53,60 @@ static int capture_start_flag = 0;
 static GList *plot_list = NULL;
 
 
-void time_transform_test_function(gfloat *in_data, gfloat *out_data)
+void time_transform_test_function(Transform *tr, gboolean init_transform)
 {
 	int i;
+	unsigned axis_length = *tr->in_data_size;
 	
-	for (i = 0; i < 10; i++)
-		if (i == 5)
-			out_data[i] = in_data[i] + 0;
-		else
-			out_data[i] = in_data[i];
+	if (init_transform) {
+		tr->x_axis = g_renew(gfloat, tr->x_axis, axis_length);
+		for (i = 0; i < axis_length; i++)
+			tr->x_axis[i] = i;
+		Transform_resize_out_buffer(tr, axis_length);
+		
+		return;
+	}
+	
+	for (i = 0; i < axis_length; i++)
+		tr->out_data[i] = tr->in_data[i];
 }
 
-void fft_transform_test_function(gfloat *in_data, gfloat *out_data)
+void fft_transform_test_function(Transform *tr, gboolean init_transform)
 {
 	int i;
+	unsigned axis_length = *tr->in_data_size;
 	
-	for (i = 0; i < 10; i++) {
+	if (init_transform) {
+		tr->x_axis = g_renew(gfloat, tr->x_axis, axis_length);
+		for (i = 0; i < axis_length; i++)
+			tr->x_axis[i] = i;
+		Transform_resize_out_buffer(tr, axis_length);
+		
+		return;
+	}
+	
+	for (i = 0; i < axis_length; i++) {
 		if (i == 5)
-			out_data[i] = in_data[i] * 1.41;
+			tr->out_data[i] = tr->in_data[i] * 1.41;
 		else
-			out_data[i] = in_data[i];
+			tr->out_data[i] = tr->in_data[i];
 	}
 }
 
-void constellation_transform_test_function(gfloat *in_data, gfloat *out_data)
+void constellation_transform_test_function(Transform *tr, gboolean init_transform)
 {
+	//struct _constellation_settings settings = tr->settings;
 	int i;
+	unsigned axis_length = *tr->in_data_size;
 	
-	for (i = 0; i < 10; i++)
-		out_data[i] = in_data[9 - i];
+	if (init_transform) {
+		Transform_resize_out_buffer(tr, axis_length);
+		
+		return;
+	}
+	
+	for (i = 0; i < axis_length; i++)
+		tr->out_data[i] = tr->in_data[9 - i];
 }
 
 /* End Debug only */
@@ -100,9 +129,10 @@ void start(OscPlot *plot, gboolean start_event, gpointer databox)
 		capture_start_flag++;
 	else
 		capture_start_flag--;
-		
-	if (start_event)
-		print_channel_status();
+
+/* Debug only */
+//	if (start_event)
+//		print_channel_status();
 }
 
 static void btn_capture_cb(GtkButton *button, gpointer user_data)
@@ -129,7 +159,7 @@ void sigterm (int signum)
 void set_sample_count_cb (GtkDialog *dialog, gint response_id, gpointer user_data)
 {
 	struct _device_list *dev_list = user_data;
-	GtkBuilder *builder = dev_list->settings_window;
+	GtkBuilder *builder = dev_list->settings_dialog_builder;
 	GtkAdjustment *sample_count;
 	
 	if (response_id == 1) { /* OK button was pressed */
@@ -148,6 +178,7 @@ void init_device_list(void)
 	device_list[0].channel_list = ch_devA;
 	device_list[0].num_channels = 3;
 	device_list[0].device_name = "DeviceA";
+	device_list[0].sample_count = 10;
 	device_list[0].channel_list[0].extra_field = data_buffer_devA_ch0;
 	device_list[0].channel_list[1].extra_field = data_buffer_devA_ch1;
 	device_list[0].channel_list[2].extra_field = data_buffer_devA_ch2;
@@ -155,6 +186,7 @@ void init_device_list(void)
 	device_list[1].channel_list = ch_devB;
 	device_list[1].num_channels = 2;
 	device_list[1].device_name = "DeviceB";
+	device_list[1].sample_count = 10;
 	device_list[1].channel_list[0].extra_field = data_buffer_devB_ch0;
 	device_list[1].channel_list[1].extra_field = data_buffer_devB_ch1;
 	
@@ -178,7 +210,7 @@ void init_device_list(void)
 			g_warning("%s", error->message);
 			g_free(error);
 		}
-		device_list[i].settings_window = builder;
+		device_list[i].settings_dialog_builder = builder;
 		dialog = GTK_WIDGET(gtk_builder_get_object(builder, "Sample_count_dialog"));
 		g_signal_connect(dialog, "response", G_CALLBACK(set_sample_count_cb), &device_list[i]);
 		gtk_window_set_title(GTK_WINDOW(dialog), (gchar *)device_list[i].device_name);
