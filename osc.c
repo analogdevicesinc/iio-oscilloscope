@@ -499,7 +499,7 @@ static gboolean time_capture_func(GtkDatabox *box)
 	ret = sample_iio_data(&data_buffer);
 	if (ret < 0) {
 		abort_sampling();
-		fprintf(stderr, "Failed to capture samples: %d\n", ret);
+		fprintf(stderr, "Failed to capture samples: %s\n", strerror(-ret));
 		return FALSE;
 	}
 
@@ -1356,13 +1356,17 @@ void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer d
 
 	snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_dir_name, channel->name);
 	f = fopen(buf, "w");
-	fprintf(f, "%u\n", enabled);
-	fclose(f);
-	f = fopen(buf, "r");
-	ret = fscanf(f, "%u", &enabled);
-	if (ret != 1)
+	if (f) {
+		fprintf(f, "%u\n", enabled);
+		fclose(f);
+
+		f = fopen(buf, "r");
+		ret = fscanf(f, "%u", &enabled);
+		if (ret != 1)
+			enabled = false;
+		fclose(f);
+	} else
 		enabled = false;
-	fclose(f);
 
 	channel->enabled = enabled;
 	gtk_list_store_set(GTK_LIST_STORE (data), &iter, 1, enabled, -1);

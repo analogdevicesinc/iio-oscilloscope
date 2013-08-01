@@ -76,6 +76,7 @@ int set_dev_paths(const char *device_name)
 error_ret:
 	dev_dir_name[0] = '\0';
 	buffer_access[0] = '\0';
+	last_device_name[0] = '\0';
 	return ret;
 }
 
