@@ -961,28 +961,28 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_scale",
-			"out_altvoltage0_TX1_I_F1_scale_available", dds1_scale, compare_gain);
+			"out_altvoltage_TX1_I_F1_scale_available", dds1_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_scale",
-			"out_altvoltage0_TX1_I_F2_scale_available", dds2_scale, compare_gain);
+			"out_altvoltage_TX1_I_F2_scale_available", dds2_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_scale",
-			"out_altvoltage0_TX1_Q_F1_scale_available", dds3_scale, compare_gain);
+			"out_altvoltage_TX1_Q_F1_scale_available", dds3_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_scale",
-			"out_altvoltage0_TX1_Q_F2_scale_available", dds4_scale, compare_gain);
+			"out_altvoltage_TX1_Q_F2_scale_available", dds4_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_scale",
-			"out_altvoltage0_TX2_I_F1_scale_available", dds5_scale, compare_gain);
+			"out_altvoltage_TX2_I_F1_scale_available", dds5_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_scale",
-			"out_altvoltage0_TX2_I_F2_scale_available", dds6_scale, compare_gain);
+			"out_altvoltage_TX2_I_F2_scale_available", dds6_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_scale",
-			"out_altvoltage0_TX2_Q_F1_scale_available", dds7_scale, compare_gain);
+			"out_altvoltage_TX2_Q_F1_scale_available", dds7_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_scale",
-			"out_altvoltage0_TX2_Q_F2_scale_available", dds8_scale, compare_gain);
+			"out_altvoltage_TX2_Q_F2_scale_available", dds8_scale, compare_gain);
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_phase",
