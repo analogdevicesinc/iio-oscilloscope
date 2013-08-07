@@ -134,10 +134,30 @@ static void create_device_context(void);
 static void destroy_device_context(void);
 static void destroy_regmap_widgets(void);
 
+/* returns true if needle is inside haystack */
+static inline bool element_substr(const char *haystack, const char *needle)
+{
+	int i;
+	char ssub[256], esub[256];
+
+	if (!strcmp(haystack, needle))
+		return true;
+
+	/* split the string, and look for it */
+	for (i = 0; i < strlen(needle); i++) {
+		sprintf(ssub, "%.*s", i, needle);
+		sprintf(esub, "%.*s", strlen(needle) - i, needle + i);
+		if ((strstr(haystack, ssub) == haystack) && 
+		    ((strstr(haystack, esub) + strlen(esub)) == (haystack + strlen(haystack))))
+			return true;
+	}
+	return false;
+}
+
 void scan_elements_sort(char **elements)
 {
 	int len, i, j, k, num = 0, swap;
-	char *start, *next, *loop, temp[256];
+	char *start, *next, *loop, *last, temp[256], temp2[256];
 
 	next = start = *elements;
 	len = strlen(start);
@@ -200,6 +220,65 @@ void scan_elements_sort(char **elements)
 			start += strlen(start) + 1;
 			next = start + strlen(start) + 1;
 		}
+	}
+
+	last = start = *elements;
+
+	/* 
+	 * make sure the _available is right after the control
+	 * IIO core doesn't make this happen in a normal sort
+	 * since we can have indexes sometimes missing:
+	 * out_altvoltage_1B_scale_available links to
+	 * out_altvoltage1_1B_scale  and
+	 * one _available, linking to multiple elements:
+	 * in_voltage_test_mode_available links to both:
+	 * hit in_voltage0_test_mode and in_voltage1_test_mode
+	 */
+	for (i = 0; i < num; i++) {
+		next = strstr(start, "_available");
+		if(next){
+			strcpy(temp2, start);
+			/*
+			 * find where this belongs, and put it there 
+			 * if we are lucky (sometimes) it will be the one
+			 * we just past
+			 */
+			sprintf(temp, "%.*s", next - start, start);
+			if (!element_substr(last, temp)) {
+				/* no such luck, so we need to:
+				 *  - find out where it goes (can go multiple places)
+				 *  - add it to all the places where it needs to go
+				 *  - update the pointers, since we may have realloc'ed things
+				 */
+				next = *elements;
+				loop = NULL;
+				k = 0;
+				for (j = 0; j < num; j++) {
+					if (element_substr(next, temp)) {
+						if (!loop) {
+							loop = next + strlen(next) + 1;
+							memmove(loop + strlen(temp2) + 1, loop, start - loop - 1);
+							strcpy(loop, temp2);
+							next += strlen(next) + 1;
+						} else {
+							k = next - *elements;
+							*elements = realloc(*elements, len + strlen(temp2) + 1);
+							next = *elements + k;
+							loop = next + strlen(next) + 1;
+							memmove(loop + strlen(temp2) + 1, loop, *elements + len - loop);
+							strcpy(loop, temp2);
+							num++;
+							len += strlen(temp2) + 1;
+						}
+						start -= 1;
+						next += strlen(next) + 1;
+					}
+					next += strlen(next) + 1;
+				}
+			}
+		}
+		last = start;
+		start += strlen(start) + 1;
 	}
 
 	start = *elements;
