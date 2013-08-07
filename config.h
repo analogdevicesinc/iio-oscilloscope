@@ -15,5 +15,6 @@
 #define OSC_GLADE_FILE_PATH PREFIX "/share/osc/"
 #define OSC_PLUGIN_PATH PREFIX "/lib/osc/"
 #define OSC_XML_PATH PREFIX "/lib/osc/xmls"
+#define OSC_FILTER_FILE_PATH PREFIX "/lib/osc/filters"
 
 #endif

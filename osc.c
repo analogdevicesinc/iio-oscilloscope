@@ -859,7 +859,7 @@ static int time_capture_setup(void)
 		for (j = 0; j < num_samples; j++)
 			channel_data[i][j] = 0.0f;
 	}
-	
+
 	prev_num_active_ch = num_active_channels;
 
 	if (is_constellation) {
@@ -1035,8 +1035,11 @@ void rx_update_labels(void)
 
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
 
-	set_dev_paths("adf4351-rx-lpc");
-	read_devattr_double("out_altvoltage0_frequency", &freq);
+	if (!set_dev_paths("adf4351-rx-lpc"))
+		read_devattr_double("out_altvoltage0_frequency", &freq);
+	else if (!set_dev_paths("ad9361-phy"));
+		read_devattr_double("out_altvoltage0_RX_LO_frequency", &freq);
+
 	freq /= 1000000.0;
 	snprintf(buf, sizeof(buf), "%.4f Mhz", freq);
 	gtk_label_set_text(GTK_LABEL(rx_lo_freq_label), buf);

@@ -7,7 +7,7 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_TX1_I1_phase">
-    <property name="upper">100</property>
+    <property name="upper">360</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -17,7 +17,7 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_TX1_I2_phase">
-    <property name="upper">100</property>
+    <property name="upper">360</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -27,7 +27,7 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_TX1_Q1_phase">
-    <property name="upper">100</property>
+    <property name="upper">360</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -37,7 +37,7 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_TX1_Q2_phase">
-    <property name="upper">100</property>
+    <property name="upper">360</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -47,7 +47,7 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_TX2_I1_phase">
-    <property name="upper">100</property>
+    <property name="upper">360</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -57,7 +57,7 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_TX2_I2_phase">
-    <property name="upper">100</property>
+    <property name="upper">360</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -67,7 +67,7 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_TX2_Q1_phase">
-    <property name="upper">100</property>
+    <property name="upper">360</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -77,7 +77,7 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_TX2_Q2_phase">
-    <property name="upper">100</property>
+    <property name="upper">360</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -92,14 +92,12 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_tx1">
-    <property name="lower">-200</property>
-    <property name="upper">100</property>
+    <property name="lower">-100</property>
     <property name="step_increment">0.25</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_tx2">
-    <property name="lower">-200</property>
-    <property name="upper">100</property>
+    <property name="lower">-100</property>
     <property name="step_increment">0.25</property>
     <property name="page_increment">10</property>
   </object>
@@ -114,7 +112,8 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_rx_lo_freq">
-    <property name="upper">100</property>
+    <property name="lower">40</property>
+    <property name="upper">6200</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -129,7 +128,8 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_tx_lo_freq">
-    <property name="upper">100</property>
+    <property name="lower">40</property>
+    <property name="upper">6200</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -393,6 +393,7 @@ configuration:</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="orientation">vertical</property>
+                        <signal name="file-set" handler="filter_fir_config_file_set_cb" swapped="no"/>
                       </object>
                     </child>
                   </object>
@@ -664,7 +665,7 @@ configuration:</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">•</property>
-                        <property name="adjustment">adjustment_rf_bw_rx</property>
+                        <property name="adjustment">adjustment_rf_bw_tx</property>
                         <property name="digits">3</property>
                       </object>
                     </child>
@@ -704,7 +705,7 @@ configuration:</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">•</property>
-                        <property name="adjustment">adjustment_sampl_freq_rx</property>
+                        <property name="adjustment">adjustment_sampl_freq_tx</property>
                         <property name="digits">3</property>
                       </object>
                     </child>
@@ -745,7 +746,7 @@ configuration:</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">•</property>
                         <property name="adjustment">adjustment_rx_lo_freq</property>
-                        <property name="digits">3</property>
+                        <property name="digits">6</property>
                       </object>
                     </child>
                   </object>
@@ -1039,7 +1040,7 @@ configuration:</property>
                     <property name="can_focus">True</property>
                     <property name="invisible_char">•</property>
                     <property name="adjustment">adjustment_tx_lo_freq</property>
-                    <property name="digits">3</property>
+                    <property name="digits">6</property>
                   </object>
                   <packing>
                     <property name="left_attach">3</property>
@@ -1306,6 +1307,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX1_I1_freq</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1350,6 +1352,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX1_I1_phase</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1426,6 +1429,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX1_I2_freq</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1453,6 +1457,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX1_I2_phase</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1580,6 +1585,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX1_Q1_freq</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1607,6 +1613,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX1_Q1_phase</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1700,6 +1707,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX1_Q2_freq</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1727,6 +1735,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX1_Q2_phase</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1917,6 +1926,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX2_I1_freq</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1944,6 +1954,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX2_I1_phase</property>
+                                                <property name="digits">2</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -2037,6 +2048,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX2_I2_freq</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -2051,6 +2063,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX2_I2_phase</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -2191,6 +2204,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX2_Q1_freq</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -2218,6 +2232,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX2_Q1_phase</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -2311,6 +2326,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX2_Q2_freq</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -2338,6 +2354,7 @@ configuration:</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjustment_TX2_Q2_phase</property>
+                                                <property name="digits">3</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>

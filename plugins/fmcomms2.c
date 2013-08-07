@@ -26,6 +26,8 @@
 #include "../eeprom.h"
 #include "../osc.h"
 
+extern char dev_dir_name[512];
+
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
 
@@ -41,12 +43,15 @@ static GtkWidget *calib_mode;
 static GtkWidget *calib_mode_available;
 static GtkWidget *trx_rate_governor;
 static GtkWidget *trx_rate_governor_available;
+static GtkWidget *filter_fir_config;
 
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control;
 static GtkWidget *rx_gain_control_modes;
 static GtkWidget *rx1_rssi;
 static GtkWidget *rx2_rssi;
+static GtkWidget *rx_path_rates;
+static GtkWidget *tx_path_rates;
 
 /* Widgets for Receive Settings */
 static GtkWidget *dds_mode;
@@ -91,7 +96,7 @@ static void glb_settings_update_labels(void)
 {
 	char *buf = NULL;
 	int ret;
-	
+
 	set_dev_paths("ad9361-phy");
 	ret = read_devattr("ensm_mode", &buf);
 	if (ret >= 0)
@@ -102,7 +107,7 @@ static void glb_settings_update_labels(void)
 		free(buf);
 		buf = NULL;
 	}
-	
+
 	ret = read_devattr("calib_mode", &buf);
 	if (ret >= 0)
 		gtk_label_set_text(GTK_LABEL(calib_mode), buf);
@@ -112,7 +117,7 @@ static void glb_settings_update_labels(void)
 		free(buf);
 		buf = NULL;
 	}
-	
+
 	ret = read_devattr("trx_rate_governor", &buf);
 	if (ret >= 0)
 		gtk_label_set_text(GTK_LABEL(trx_rate_governor), buf);
@@ -122,15 +127,59 @@ static void glb_settings_update_labels(void)
 		free(buf);
 		buf = NULL;
 	}
-		
+
 	ret = read_devattr("in_voltage_gain_control_mode", &buf);
 	if (ret >= 0)
 		gtk_label_set_text(GTK_LABEL(rx_gain_control), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(rx_gain_control), "<error>");
 	if (buf)
-		free(buf);	
-		
+		free(buf);
+
+	ret = read_devattr("rx_path_rates", &buf);
+	if (ret >= 0)
+		gtk_label_set_text(GTK_LABEL(rx_path_rates), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx_path_rates), "<error>");
+	if (buf)
+		free(buf);
+
+	ret = read_devattr("tx_path_rates", &buf);
+	if (ret >= 0)
+		gtk_label_set_text(GTK_LABEL(tx_path_rates), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(tx_path_rates), "<error>");
+	if (buf)
+		free(buf);
+
+}
+
+static void rssi_update_labels(void)
+{
+	char *buf = NULL;
+	int ret;
+
+	set_dev_paths("ad9361-phy");
+	ret = read_devattr("in_voltage0_rssi", &buf);
+	if (ret >= 0)
+		gtk_label_set_text(GTK_LABEL(rx1_rssi), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx1_rssi), "<error>");
+	if (buf) {
+		free(buf);
+		buf = NULL;
+	}
+
+	ret = read_devattr("in_voltage1_rssi", &buf);
+	if (ret >= 0)
+		gtk_label_set_text(GTK_LABEL(rx2_rssi), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx2_rssi), "<error>");
+	if (buf) {
+		free(buf);
+		buf = NULL;
+	}
+
 }
 
 static void save_button_clicked(GtkButton *btn, gpointer data)
@@ -140,6 +189,22 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	iio_save_widgets(rx_widgets, num_rx);
 	rx_update_labels();
 	glb_settings_update_labels();
+	rssi_update_labels();
+}
+
+
+void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+{
+	char str[4096];
+	int ret;
+
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+
+	set_dev_paths("ad9361-phy");
+	sprintf(str, "cat %s > %s/filter_fir_config ", file_name, dev_dir_name);
+	ret = system(str);
+	if (ret < 0)
+		fprintf(stderr, "FIR filter config failed\n");
 }
 
 static int compare_gain(const char *a, const char *b)
@@ -219,7 +284,7 @@ static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer data)
 	gint scale2 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds2_scale));
 	gint scale5 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds5_scale));
 	gint scale6 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds6_scale));
-	
+
 
 	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode))) {
 		case 1:
@@ -373,7 +438,7 @@ static void show_all_I_and_Q(void)
 static void enable_dds(bool on_off)
 {
 	set_dev_paths("cf-ad9361-dds-core-lpc");
-	write_devattr_int("out_altvoltage0_TX1_I_F1_raw ", on_off ? 1 : 0);
+	write_devattr_int("out_altvoltage0_TX1_I_F1_raw", on_off ? 1 : 0);
 }
 
 static void manage_dds_mode()
@@ -452,7 +517,7 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q_TX2_l);
 		gtk_widget_hide(dds_Q1_TX2_l);
 		gtk_widget_hide(dds_Q2_TX2_l);
-		
+
 		if (!dds1_scale_hid)
 			dds1_scale_hid = g_signal_connect(dds1_scale , "changed",
 					G_CALLBACK(dds_locked_scale_cb), NULL);
@@ -508,7 +573,7 @@ static void manage_dds_mode()
 			g_signal_handler_disconnect(dds6_phase, dds6_phase_hid);
 			dds6_phase_hid = 0;
 		}
-		
+
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds1_phase), 0.0);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_phase), 0.0);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), 90.0);
@@ -517,7 +582,7 @@ static void manage_dds_mode()
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds6_phase), 0.0);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_phase), 90.0);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_phase), 90.0);
-		
+
 		break;
 	case 2:
 		/* Two tones */
@@ -584,7 +649,7 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q_TX2_l);
 		gtk_widget_hide(dds_Q1_TX2_l);
 		gtk_widget_hide(dds_Q2_TX2_l);
-		
+
 		if (!dds1_scale_hid)
 			dds1_scale_hid = g_signal_connect(dds1_scale , "changed",
 					G_CALLBACK(dds_locked_scale_cb), NULL);
@@ -597,7 +662,7 @@ static void manage_dds_mode()
 		if (!dds6_scale_hid)
 			dds6_scale_hid = g_signal_connect(dds6_scale , "changed",
 					G_CALLBACK(dds_locked_scale_cb), NULL);
-					
+
 		if (!dds1_freq_hid)
 			dds1_freq_hid = g_signal_connect(dds1_freq , "changed",
 					G_CALLBACK(dds_locked_freq_cb), NULL);
@@ -622,7 +687,7 @@ static void manage_dds_mode()
 		if (!dds6_phase_hid)
 			dds6_phase_hid = g_signal_connect(dds6_phase , "changed",
 					G_CALLBACK(dds_locked_phase_cb), NULL);
-		
+
 		break;
 	case 3:
 		/* Independant/Individual control */
@@ -630,7 +695,7 @@ static void manage_dds_mode()
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX1_l),"<b>Channel I</b>");
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX2_l),"<b>Channel I</b>");
 		show_all_I_and_Q();
-		
+
 		if (dds1_scale_hid) {
 			g_signal_handler_disconnect(dds1_scale, dds1_scale_hid);
 			dds1_scale_hid = 0;
@@ -683,7 +748,7 @@ static void manage_dds_mode()
 			g_signal_handler_disconnect(dds6_phase, dds6_phase_hid);
 			dds6_phase_hid = 0;
 		}
-		
+
 		break;
 	case 4:
 		/* Buffer */
@@ -706,7 +771,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	if (!gtk_builder_add_from_file(builder, "fmcomms2.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms2.glade", NULL);
 
-	fmcomms2_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms2_panel"));	
+	fmcomms2_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms2_panel"));
 	/* Global settings */
 	ensm_mode = GTK_WIDGET(gtk_builder_get_object(builder, "ensm_mode"));
 	ensm_mode_available = GTK_WIDGET(gtk_builder_get_object(builder, "ensm_mode_available"));
@@ -714,6 +779,10 @@ static int fmcomms2_init(GtkWidget *notebook)
 	calib_mode_available = GTK_WIDGET(gtk_builder_get_object(builder, "calib_mode_available"));
 	trx_rate_governor = GTK_WIDGET(gtk_builder_get_object(builder, "trx_rate_governor"));
 	trx_rate_governor_available = GTK_WIDGET(gtk_builder_get_object(builder, "trx_rate_governor_available"));
+	tx_path_rates = GTK_WIDGET(gtk_builder_get_object(builder, "label_tx_path"));
+	rx_path_rates = GTK_WIDGET(gtk_builder_get_object(builder, "label_rx_path"));
+	filter_fir_config = GTK_WIDGET(gtk_builder_get_object(builder, "filter_fir_config"));
+
 	/* Receive Chain */
 	rx_gain_control = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode"));
 	rx_gain_control_modes = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_available"));
@@ -721,7 +790,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	rx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx2"));
 	/* Transmit Chain */
 	dds_mode = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode"));
-	
+
 	dds1_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_freq"));
 	dds2_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_freq"));
 	dds3_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_freq"));
@@ -730,7 +799,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	dds6_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_freq"));
 	dds7_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_freq"));
 	dds8_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_freq"));
-	
+
 	dds1_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_scale"));
 	dds2_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_scale"));
 	dds3_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_scale"));
@@ -739,7 +808,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	dds6_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_scale"));
 	dds7_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_scale"));
 	dds8_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_scale"));
-	
+
 	dds1_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_phase"));
 	dds2_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_phase"));
 	dds3_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_phase"));
@@ -748,7 +817,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	dds6_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_phase"));
 	dds7_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_phase"));
 	dds8_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_phase"));
-	
+
 	adj1_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_I1_freq"));
 	adj2_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_I2_freq"));
 	adj3_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_Q1_freq"));
@@ -757,7 +826,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	adj6_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_I2_freq"));
 	adj7_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_Q1_freq"));
 	adj8_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_Q2_freq"));
-	
+
 	dds1_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_freq_txt"));
 	dds2_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_freq_txt"));
 	dds3_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_freq_txt"));
@@ -766,7 +835,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	dds6_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_freq_txt"));
 	dds7_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_freq_txt"));
 	dds8_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_freq_txt"));
-	
+
 	dds1_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_scale_txt"));
 	dds2_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_scale_txt"));
 	dds3_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_scale_txt"));
@@ -775,7 +844,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	dds6_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_scale_txt"));
 	dds7_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_scale_txt"));
 	dds8_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_scale_txt"));
-	
+
 	dds1_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_phase_txt"));
 	dds2_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_phase_txt"));
 	dds3_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_phase_txt"));
@@ -784,7 +853,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	dds6_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_phase_txt"));
 	dds7_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_phase_txt"));
 	dds8_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_phase_txt"));
-	
+
 	dds_I_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_I_TX1_l"));
 	dds_I1_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_TX1_l"));
 	dds_I2_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_TX1_l"));
@@ -797,69 +866,74 @@ static int fmcomms2_init(GtkWidget *notebook)
     dds_Q_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_Q_TX2_l"));
     dds_Q1_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_TX2_l"));
     dds_Q2_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_TX2_l"));
-	
+
 	gtk_combo_box_set_active(GTK_COMBO_BOX(ensm_mode_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(trx_rate_governor_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
-	
+
 	/* Bind the IIO device files to the GUI widgets */
-	
+
 	/* Global settings */
-	iio_combo_box_init(&glb_widgets[num_glb++], 
-		"ad9361-phy", "ensm_mode", "ensm_mode_available", 
+	iio_combo_box_init(&glb_widgets[num_glb++],
+		"ad9361-phy", "ensm_mode", "ensm_mode_available",
 		ensm_mode_available, NULL);
-	iio_combo_box_init(&glb_widgets[num_glb++], 
-		"ad9361-phy", "calib_mode", "calib_mode_available", 
+	iio_combo_box_init(&glb_widgets[num_glb++],
+		"ad9361-phy", "calib_mode", "calib_mode_available",
 		calib_mode_available, NULL);
-	iio_combo_box_init(&glb_widgets[num_glb++], 
-		"ad9361-phy", "trx_rate_governor", "trx_rate_governor_available", 
+	iio_combo_box_init(&glb_widgets[num_glb++],
+		"ad9361-phy", "trx_rate_governor", "trx_rate_governor_available",
 		trx_rate_governor_available, NULL);
-	
+
 	/* Receive Chain */
-	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	"ad9361-phy", "in_voltage_filter_fir_en", builder,
-	"enable_fir_filter_rx", 1);
-	iio_combo_box_init(&rx_widgets[num_rx++], 
+
+
+	iio_combo_box_init(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage_gain_control_mode",
 		"in_voltage_gain_control_mode_availabl",
 		rx_gain_control_modes, NULL);
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-	"ad9361-phy", "in_voltage_rf_bandwidth", builder, "rf_bandwidth_rx",
-	&mhz_scale);
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage_sampling_frequency", builder,
-		"sampling_freq_rx", &mhz_scale);
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "out_altvoltage0_RX_LO_frequency", builder,
-		"rx_lo_freq", &mhz_scale);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage0_hardwaregain", builder,
 		"hardware_gain_rx1", NULL);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage1_hardwaregain", builder,
 		"hardware_gain_rx2", NULL);
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+		"ad9361-phy", "in_voltage_sampling_frequency", builder,
+		"sampling_freq_rx", &mhz_scale);
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+	"ad9361-phy", "in_voltage_rf_bandwidth", builder, "rf_bandwidth_rx",
+	&mhz_scale);
+	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
+		"ad9361-phy", "out_altvoltage0_RX_LO_frequency", builder,
+		"rx_lo_freq", &mhz_scale);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+	"ad9361-phy", "in_voltage_filter_fir_en", builder,
+	"enable_fir_filter_rx", 0);
+
+
 
 	/* Transmit Chain */
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_voltage_filter_fir_en", builder,
-		"fir_filter_en_tx", 1);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_voltage_rf_bandwidth", builder,
-		"rf_bandwidth_tx", &mhz_scale);
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+		"ad9361-phy", "out_voltage0_hardwaregain", builder,
+		"hardware_gain_tx1", NULL);
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+		"ad9361-phy", "out_voltage1_hardwaregain", builder,
+		"hardware_gain_tx2", NULL);
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_voltage_sampling_frequency", builder,
 		"sampling_freq_tx", &mhz_scale);
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+		"ad9361-phy", "out_voltage_rf_bandwidth", builder,
+		"rf_bandwidth_tx", &mhz_scale);
+	iio_spin_button_s64_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_altvoltage1_TX_LO_frequency", builder,
 		"tx_lo_freq", &mhz_scale);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_voltage0_hardwaregain", builder,
-		"hardware_gain_tx1", NULL);
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_voltage1_hardwaregain", builder,
-		"hardware_gain_tx2", NULL);
-		
+	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+		"ad9361-phy", "out_voltage_filter_fir_en", builder,
+		"fir_filter_en_tx", 0);
+
+
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_frequency",
 			dds1_freq, &mhz_scale);
@@ -912,42 +986,50 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_phase",
-			dds1_phase, NULL);
+			dds1_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_phase",
-			dds2_phase, NULL);
+			dds2_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_phase",
-			dds3_phase, NULL);
+			dds3_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_phase",
-			dds4_phase, NULL);
+			dds4_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_phase",
-			dds5_phase, NULL);
+			dds5_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_phase",
-			dds6_phase, NULL);
+			dds6_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_phase",
-			dds7_phase, NULL);
+			dds7_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_phase",
-			dds8_phase, NULL);
-	
+			dds8_phase, &khz_scale);
+
 	manage_dds_mode();
-	
+
 	/* Signals connect */
 	g_signal_connect(dds_mode, "changed", G_CALLBACK(manage_dds_mode),
 		NULL);
 	g_builder_connect_signal(builder, "fmcomms2_settings_save", "clicked",
 		G_CALLBACK(save_button_clicked), NULL);
-	
+
+	g_builder_connect_signal(builder, "filter_fir_config", "file-set",
+		G_CALLBACK(filter_fir_config_file_set_cb), NULL);
+
+
 	tx_update_values();
 	rx_update_values();
 
+	glb_settings_update_labels();
+	rssi_update_labels();
+
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2_panel, "FMComms2");
+	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
 
 	return 0;
 }
