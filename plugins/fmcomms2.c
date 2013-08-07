@@ -260,17 +260,17 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer data)
 	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode))) {
 		case 1:
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_phase), phase1);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), phase1 + 90.0);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), phase1 + 90.0);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), phase1 - 90.0);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), phase1 - 90.0);
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds6_phase), phase5);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_phase), phase5 + 90.0);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_phase), phase5 + 90.0);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_phase), phase5 - 90.0);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_phase), phase5 - 90.0);
 			break;
 		case 2:
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), phase1 + 90.0);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), phase2 + 90.0);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_phase), phase5 + 90.0);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_phase), phase6 + 90.0);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), phase1 - 90.0);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), phase2 - 90.0);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_phase), phase5 - 90.0);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_phase), phase6 - 90.0);
 			break;
 		default:
 			printf("%s: error\n", __func__);
