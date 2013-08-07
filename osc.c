@@ -663,20 +663,25 @@ static void do_fft(struct buffer *buf)
 			/* do an average */
 			fft_channel[i] = ((1 - avg) * fft_channel[i]) + (avg * mag);
 		}
-		if (MAX_MARKERS && i > 10) {
-			for (j = 0; j <= MAX_MARKERS; j++) {
-				if  ((fft_channel[i - 1] > maxY[j]) &&
-					((!((fft_channel[i - 2] > fft_channel[i - 1]) &&
-					 (fft_channel[i - 1] > fft_channel[i]))) &&
-					 (!((fft_channel[i - 2] < fft_channel[i - 1]) &&
-					 (fft_channel[i - 1] < fft_channel[i]))))) {
-					for (k = MAX_MARKERS; k > j; k--) {
-						maxY[k] = maxY[k - 1];
-						maxx[k] = maxx[k - 1];
+		if (MAX_MARKERS) {
+			if (i == 0) {
+				maxx[0] = 0;
+				maxY[0] = fft_channel[0];
+			} else {
+				for (j = 0; j <= MAX_MARKERS; j++) {
+					if  ((fft_channel[i - 1] > maxY[j]) &&
+						((!((fft_channel[i - 2] > fft_channel[i - 1]) &&
+						 (fft_channel[i - 1] > fft_channel[i]))) &&
+						 (!((fft_channel[i - 2] < fft_channel[i - 1]) &&
+						 (fft_channel[i - 1] < fft_channel[i]))))) {
+						for (k = MAX_MARKERS; k > j; k--) {
+							maxY[k] = maxY[k - 1];
+							maxx[k] = maxx[k - 1];
+						}
+						maxY[j] = fft_channel[i - 1];
+						maxx[j] = i - 1;
+						break;
 					}
-					maxY[j] = fft_channel[i - 1];
-					maxx[j] = i - 1;
-					break;
 				}
 			}
 		}
