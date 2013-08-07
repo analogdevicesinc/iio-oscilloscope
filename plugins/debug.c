@@ -134,6 +134,88 @@ static void create_device_context(void);
 static void destroy_device_context(void);
 static void destroy_regmap_widgets(void);
 
+void scan_elements_sort(char **elements)
+{
+	int len, i, j, k, num = 0, swap;
+	char *start, *next, *loop, temp[256];
+
+	next = start = *elements;
+	len = strlen(start);
+
+	/* strip everything apart, to make it easier to work on */
+	next = strtok(start, " ");
+	while (next) {
+		num++;
+		next = strtok(NULL, " ");
+	}
+
+	/*
+	 * sort things using bubble sort
+	 * there are plenty ways more efficent to do this - knock yourself out
+	 */
+	for (j = 0; j < num - 1; j++) {
+		start = *elements;
+		/* make sure dev, name, uevent are first (if they exist) */
+		while (!strcmp(start, "name") || !strcmp(start, "dev") || !strcmp(start, "uevent")) {
+			start += strlen(start) + 1;
+		}
+
+		loop = start;
+		next = start + strlen(start) + 1;
+		for (i = j; (i < num - 1) && (strlen(start)) && (strlen(next)); i++) {
+			if (!strcmp(next, "name") || !strcmp(next, "dev") || !strcmp(next, "uevent")) {
+				strcpy(temp, next);
+				memmove(loop + strlen(temp) + 1, loop, next - loop - 1);
+				strcpy(loop, temp);
+				loop += strlen(temp) + 1;
+			} else {
+				swap = 0;
+				/* Can't use strcmp, since it doesn't sort numerically */
+				for (k = 0; k < strlen(start) && k < strlen(next); k++) {
+					if (start[k] == next[k])
+						continue;
+
+					/* sort LABEL0_ LABEL10_ as zero and ten */
+					if ((isdigit(start[k]) && isdigit(next[k])) &&
+					    (isdigit(start[k+1]) || isdigit(next[k+1]))){ 
+					    	if (atoi(&start[k]) >= atoi(&next[k])) {
+							swap = 1;
+						}
+					} else if (start[k] >= next[k]) {
+						swap = 1;
+					}
+
+					break;	
+				}
+				if (k == strlen(next))
+					swap = 1;
+
+				if (swap) {
+					strcpy(temp, start);
+					strcpy(start, next);
+					next = start + strlen(start) + 1;
+					strcpy(next, temp);
+				} 
+			}
+			start += strlen(start) + 1;
+			next = start + strlen(start) + 1;
+		}
+	}
+
+	start = *elements;
+
+	/* put everything back together */
+	for (i = 0; i < len; i++) {
+		if (start[i] == 0)
+			start[i] = ' ';
+	}
+	start[len] = 0;
+
+	if (len != strlen(start))
+		fprintf(stderr, "error in sort routine (%s)\n", __func__);
+
+}
+
 /******************************************************************************/
 /******************************** Callbacks ***********************************/
 /******************************************************************************/
@@ -170,6 +252,7 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 
 		gtk_widget_show(scanel_read);
 		find_scan_elements(current_device, &elements);
+		scan_elements_sort(&elements);
 		start = elements;
 		store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(combobox_debug_scanel)));
 		gtk_list_store_clear (store);
