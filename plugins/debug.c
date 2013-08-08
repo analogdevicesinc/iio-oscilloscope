@@ -25,6 +25,8 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 
+#define AVAILABLE_TOKEN "_available"
+
 typedef struct _reg reg;
 typedef struct _bgroup bgroup;
 typedef struct _option option;
@@ -75,6 +77,9 @@ static GtkWidget *scanel_read;
 static GtkWidget *scanel_write;
 static GtkWidget *scanel_value;
 static GtkWidget *combobox_debug_scanel;
+static GtkWidget *scanel_options;
+static gulong debug_scanel_hid;
+char *current_elements;
 
 /* Register map widgets */
 static GtkWidget *scrollwin_regmap;
@@ -160,6 +165,7 @@ void scan_elements_sort(char **elements)
 	char *start, *next, *loop, *last, temp[256], temp2[256];
 
 	next = start = *elements;
+
 	len = strlen(start);
 
 	/* strip everything apart, to make it easier to work on */
@@ -235,7 +241,7 @@ void scan_elements_sort(char **elements)
 	 * hit in_voltage0_test_mode and in_voltage1_test_mode
 	 */
 	for (i = 0; i < num; i++) {
-		next = strstr(start, "_available");
+		next = strstr(start, AVAILABLE_TOKEN);
 		if(next){
 			strcpy(temp2, start);
 			/*
@@ -298,13 +304,104 @@ void scan_elements_sort(char **elements)
 /******************************************************************************/
 /******************************** Callbacks ***********************************/
 /******************************************************************************/
+static void scanel_read_clicked(GtkButton *btn, gpointer data)
+{
+	char *scanel;
+	char *dev_name;
+	char *basedir;
+	char *buf = NULL, *buf2 = NULL;
+	char *start, *end, cal_name[256], tmp[256];
+	int dev_num, i;
+	GtkListStore *store;
+
+	dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_device_list));
+	dev_num = find_type_by_name(dev_name, "iio:device");
+
+	if (dev_num >= 0) {
+		scanel = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel));
+		basedir = malloc (1024);
+		sprintf(basedir,"%siio:device%i", iio_dir, dev_num);
+
+		if (scanel[strlen(scanel) - 1] != ' ') {
+			gtk_widget_show(scanel_value);
+			gtk_widget_hide(scanel_options);
+			read_sysfs_string(scanel, basedir, &buf);
+			if (buf) {
+				gtk_entry_set_text(GTK_ENTRY(scanel_value), buf);
+				free (buf);
+			}
+		} else {
+			gtk_widget_show(scanel_options);
+			gtk_widget_hide(scanel_value);
+
+			scanel[strlen(scanel) - 1] = 0;
+			start = strstr(current_elements, scanel);
+			start = strchr(start, ' ') + 1;
+			end = strchr(start, ' ');
+			sprintf(cal_name, "%.*s", end - start, start);
+			read_sysfs_string(scanel, basedir, &buf2);
+			read_sysfs_string(cal_name, basedir, &buf);
+			if (buf && buf2) {
+				store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(scanel_options)));
+				gtk_list_store_clear (store);
+				start = buf;
+				i = 0;
+				while ((end = strchr(start, ' '))) {
+					sprintf(tmp, "%.*s", end - start, start);
+					gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scanel_options),
+						 (const gchar *)tmp);
+					start = end + 1;
+					if (!strcmp(buf2, tmp)) {
+						gtk_combo_box_set_active(GTK_COMBO_BOX(scanel_options), i);
+					}
+					i++;
+				}
+				free(buf);
+				free(buf2);
+			}
+			
+		}
+		free(basedir);
+	}
+
+}
+
+static void scanel_write_clicked(GtkButton *btn, gpointer data)
+{
+	char *scanel;
+	char *dev_name;
+	char *basedir;
+	const char *buf = NULL;
+	int dev_num;
+
+	dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_device_list));
+	dev_num = find_type_by_name(dev_name, "iio:device");
+	if (dev_num >= 0) {
+		scanel = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel));
+		basedir = malloc (1024);
+		sprintf(basedir,"%siio:device%i", iio_dir, dev_num);
+
+		if (scanel[strlen(scanel) - 1] != ' ')
+			buf = gtk_entry_get_text (GTK_ENTRY(scanel_value));
+		else {
+			buf = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(scanel_options));
+			scanel[strlen(scanel) - 1] = 0;
+		}
+		write_sysfs_string(scanel, basedir, buf);
+		free(basedir);
+	}
+
+	scanel_read_clicked(btn, data);
+}
+
+
 static void debug_device_list_cb(GtkButton *btn, gpointer data)
 {
 	char buf[128];
-	char *current_device, *elements, *start, *end;
+	char *current_device, *elements, *start, *end, *next, *avail;
 	GtkListStore *store;
 	int ret = 0;
-	int i = 0;
+	int i = 0, j;
 
 	destroy_regmap_widgets();
 	destroy_device_context();
@@ -332,11 +429,27 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		gtk_widget_show(scanel_read);
 		find_scan_elements(current_device, &elements);
 		scan_elements_sort(&elements);
-		start = elements;
+		current_elements = start = elements;
+		if (debug_scanel_hid)
+			g_signal_handler_disconnect(G_OBJECT(combobox_debug_scanel),debug_scanel_hid);
 		store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(combobox_debug_scanel)));
 		gtk_list_store_clear (store);
+		j = 0;
 		while ((end = strchr(start, ' '))) {
-			sprintf(buf, "%.*s", end - start, start);
+			if (j) {
+				start = end + 1;
+				j = 0;
+				continue;
+			}
+			avail = strstr(end + 1, AVAILABLE_TOKEN);
+			next = strchr(end + 1, ' ' );
+			if(avail && avail <= next) {
+				sprintf(buf, "%.*s ", end - start, start);
+				j = 1;
+			} else {
+				sprintf(buf, "%.*s", end - start, start);
+				j = 0;
+			}
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel),
 				(const gchar *)buf);
 			start = end + 1;
@@ -345,6 +458,10 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 				gtk_entry_set_text(GTK_ENTRY(scanel_value), current_device);
 			i++;
 		}
+		debug_scanel_hid = g_signal_connect(G_OBJECT(combobox_debug_scanel),
+			 "changed",G_CALLBACK(scanel_read_clicked), NULL);
+		gtk_widget_show(scanel_value);
+		gtk_widget_hide(scanel_options);
 	} else {
 		gtk_widget_hide(btn_read_reg);
 		gtk_widget_hide(btn_write_reg);
@@ -381,57 +498,6 @@ static void reg_write_clicked(GtkButton *button, gpointer user_data)
 {
 	write_reg((unsigned)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_addr)),
 			(unsigned)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_value)));
-}
-
-static void scanel_read_clicked(GtkButton *btn, gpointer data)
-{
-	char *scanel;
-	char *dev_name;
-	char *basedir;
-	char *buf = NULL;
-	int dev_num;
-
-	dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_device_list));
-	dev_num = find_type_by_name(dev_name, "iio:device");
-
-	if (dev_num >= 0) {
-		scanel = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel));
-		basedir = malloc (1024);
-
-		sprintf(basedir,"%siio:device%i", iio_dir, dev_num);
-
-		read_sysfs_string(scanel, basedir, &buf);
-
-		if (buf) {
-			gtk_entry_set_text(GTK_ENTRY(scanel_value), buf);
-			free (buf);
-		}
-		free(basedir);
-	}
-
-}
-
-static void scanel_write_clicked(GtkButton *btn, gpointer data)
-{
-	char *scanel;
-	char *dev_name;
-	char *basedir;
-	const char *buf = NULL;
-	int dev_num;
-
-	dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_device_list));
-	dev_num = find_type_by_name(dev_name, "iio:device");
-	if (dev_num >= 0) {
-		scanel = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel));
-		basedir = malloc (1024);
-		sprintf(basedir,"%siio:device%i", iio_dir, dev_num);
-
-		buf = gtk_entry_get_text (GTK_ENTRY(scanel_value));
-		write_sysfs_string(scanel, basedir, buf);
-		free(basedir);
-	}
-
-	scanel_read_clicked(btn, data);
 }
 
 static void reg_address_value_changed_cb(GtkSpinButton *spinbutton,
@@ -1260,6 +1326,7 @@ static int debug_init(GtkWidget *notebook)
 	scanel_read = GTK_WIDGET(gtk_builder_get_object(builder, "debug_read_scan"));
 	scanel_write = GTK_WIDGET(gtk_builder_get_object(builder, "debug_write_scan"));
 	scanel_value = GTK_WIDGET(gtk_builder_get_object(builder, "debug_scanel_value"));
+	scanel_options = GTK_WIDGET(gtk_builder_get_object(builder, "debug_scanel_options"));
 
 	/* Create comboboxes for the Device List and for the Scan Elements */
 	combobox_device_list = gtk_combo_box_text_new();
