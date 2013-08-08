@@ -453,6 +453,8 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 			}
 			avail = strstr(end + 1, AVAILABLE_TOKEN);
 			next = strchr(end + 1, ' ' );
+			if (!next)
+				next = end + 1 + strlen(end + 1);
 			if(avail && avail <= next) {
 				sprintf(buf, "%.*s ", end - start, start);
 				j = 1;
