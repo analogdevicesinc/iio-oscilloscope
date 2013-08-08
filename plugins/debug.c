@@ -342,11 +342,16 @@ static void scanel_read_clicked(GtkButton *btn, gpointer data)
 			read_sysfs_string(scanel, basedir, &buf2);
 			read_sysfs_string(cal_name, basedir, &buf);
 			if (buf && buf2) {
+				while(isspace(buf[strlen(buf) - 1]))
+					buf[strlen(buf) - 1] = 0;
 				store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(scanel_options)));
 				gtk_list_store_clear (store);
 				start = buf;
 				i = 0;
-				while ((end = strchr(start, ' '))) {
+				while (start[0] != 0) {
+					end = strchr(start, ' ');
+					if (!end)
+						end = buf + strlen(buf);
 					sprintf(tmp, "%.*s", end - start, start);
 					gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scanel_options),
 						 (const gchar *)tmp);
@@ -429,13 +434,18 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		gtk_widget_show(scanel_read);
 		find_scan_elements(current_device, &elements);
 		scan_elements_sort(&elements);
+		while(isspace(elements[strlen(elements) - 1]))
+			elements[strlen(elements) - 1] = 0;
 		current_elements = start = elements;
 		if (debug_scanel_hid)
 			g_signal_handler_disconnect(G_OBJECT(combobox_debug_scanel),debug_scanel_hid);
 		store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(combobox_debug_scanel)));
 		gtk_list_store_clear (store);
 		j = 0;
-		while ((end = strchr(start, ' '))) {
+		while (start[0] != 0) {
+			end = strchr(start, ' ');
+			if (!end)
+				end = start + strlen(start);
 			if (j) {
 				start = end + 1;
 				j = 0;
