@@ -69,7 +69,16 @@ unsigned char calc_zero_checksum (unsigned char *data, unsigned int len)
 }
 
 /*
- *
+ * FRU Board Area Mfg. Date / Time is the
+ * number of _minutes_ from 0:00 hrs 01Jan1996
+ * Max is 0xFFFFFF (3 bytes worth) or 
+ * 16777215 minutes; or 
+ *   279620 hours, 15 minutes; or
+ *   11650 days, 20 hours, 15 minutes; or
+ *   31 years, 328 days, 7 hours, 56 minutes (assuming 525949 minutes in a year); or
+ *   up to : Wed Nov 24 07:56 2027
+ * See:
+ *   section 11, Platform Management FRU Information Storage Definition
  */
 time_t min2date(unsigned int mins)
 {
@@ -85,6 +94,7 @@ time_t min2date(unsigned int mins)
 	return tmp;
 }
 
+#ifdef DEBUG
 /*
  * Used for debugging
  */
@@ -115,7 +125,7 @@ void dump_str(unsigned char * p, unsigned int size, unsigned int space)
 		printf("\n");
 	}
 }
-
+#endif
 /*
  * 6-bit ASCII Packing
  * Platform Management FRU Information Storage Definition:  Section 13.[23]
@@ -357,6 +367,13 @@ struct BOARD_INFO * parse_board_area(unsigned char *data)
 	return fru;
 
 err:
+	free(fru->manufacturer);
+	free(fru->product_name);
+	free(fru->serial_number);
+	free(fru->part_number);
+	free(fru->FRU_file_ID);
+	for( j = 0; j < CUSTOM_FIELDS; j++)
+		free(fru->custom[j]);
 	free(fru);
 	return NULL;
 }
@@ -529,6 +546,28 @@ struct FRU_DATA * parse_FRU (unsigned char *data)
 err:
 	free(fru);
 	return NULL;
+
+}
+
+void free_FRU(struct FRU_DATA *fru)
+{
+	int j;
+
+	free(fru->Board_Area->manufacturer);
+	free(fru->Board_Area->product_name);
+	free(fru->Board_Area->serial_number);
+	free(fru->Board_Area->part_number);
+	free(fru->Board_Area->FRU_file_ID);
+	for(j = 0; j < CUSTOM_FIELDS; j++)
+		free(fru->Board_Area->custom[j]);
+	free(fru->Board_Area);
+
+	for(j = 0; j < NUM_SUPPLIES; j++)
+		free(fru->MultiRecord_Area->supplies[j]);
+	free(fru->MultiRecord_Area->connector);
+	free(fru->MultiRecord_Area);
+
+	free(fru);
 
 }
 
