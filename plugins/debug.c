@@ -421,6 +421,8 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 				xml_file_opened = 1;
 				create_device_context();
 				g_signal_emit_by_name(spin_btn_reg_addr, "value-changed");
+			} else {
+				printf("Cannot find or load the xml file for the %s device\n", current_device);
 			}
 			gtk_widget_show(btn_read_reg);
 			gtk_widget_set_sensitive(spin_btn_reg_value, true);
