@@ -110,7 +110,7 @@ void iio_spin_button_init(struct iio_widget *widget,
 		(void *)scale, iio_spin_button_update, iio_spin_button_save);
 }
 
-static void iio_spin_button_int_init(struct iio_widget *widget,
+void iio_spin_button_int_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale)
 {
@@ -118,7 +118,7 @@ static void iio_spin_button_int_init(struct iio_widget *widget,
 		(void *)scale, iio_spin_button_update, iio_spin_button_int_save);
 }
 
-static void iio_spin_button_s64_init(struct iio_widget *widget,
+void iio_spin_button_s64_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale)
 {
