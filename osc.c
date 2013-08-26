@@ -1257,6 +1257,8 @@ static void load_plugins(GtkWidget *notebook)
 		snprintf(buf, sizeof(buf), "%s/%s", plugin_dir, ent->d_name);
 		load_plugin(buf, notebook);
 	}
+
+	free(d);
 }
 
 static bool is_input_device(const char *device)
@@ -1437,8 +1439,10 @@ static void init_application (void)
 		g_object_set(logo, "file","./icons/IIOlogo.png", NULL);
 		about = GTK_ABOUT_DIALOG(gtk_builder_get_object(builder, "About_dialog"));
 		pixbuf = gdk_pixbuf_new_from_file("./icons/osc128.png", &err);
-		if (pixbuf)
+		if (pixbuf) {
 			g_object_set(about, "logo", pixbuf,  NULL);
+			g_object_unref(pixbuf);
+		}
 	}
 
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
