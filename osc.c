@@ -126,7 +126,7 @@ static GdkColor color_marker = {
 	.blue = 0,
 };
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t buffer_full = PTHREAD_MUTEX_INITIALIZER;
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
@@ -298,7 +298,7 @@ static int sample_iio_data(struct buffer *buf)
 	if ((buf->data_copy) && (buf->available == buf->size)) {
 		memcpy(buf->data_copy, buf->data, buf->size);
 		buf->data_copy = NULL;
-		pthread_mutex_unlock(&mutex);
+		pthread_mutex_unlock(&buffer_full);
 	}
 
 	return ret;
@@ -486,6 +486,7 @@ static void abort_sampling(void)
 	}
 	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button),
 			FALSE);
+	pthread_mutex_unlock(&buffer_full);
 }
 
 static gboolean time_capture_func(GtkDatabox *box)
@@ -914,7 +915,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 	if (gtk_toggle_tool_button_get_active(btn)) {
 		gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 
-		pthread_mutex_unlock(&mutex);
+		pthread_mutex_unlock(&buffer_full);
 
 		data_buffer.available = 0;
 		current_sample = 0;
@@ -962,6 +963,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		if (capture_function > 0) {
 			g_source_remove(capture_function);
 			capture_function = 0;
+			pthread_mutex_unlock(&buffer_full);
 		}
 		if (buffer_fd >= 0) {
 			buffer_close(buffer_fd);
@@ -1398,6 +1400,7 @@ void application_quit (void)
 	if (capture_function > 0) {
 		g_source_remove(capture_function);
 		capture_function = 0;
+		pthread_mutex_unlock(&buffer_full);
 	}
 	if (buffer_fd >= 0) {
 		buffer_close(buffer_fd);
