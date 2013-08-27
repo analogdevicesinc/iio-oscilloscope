@@ -34,6 +34,8 @@
       <column type="gboolean"/>
       <!-- column-name TRANSFORM_ACTIVE -->
       <column type="gboolean"/>
+      <!-- column-name MARKER_ENABLED -->
+      <column type="gboolean"/>
       <!-- column-name ELEMENT_REFERENCE -->
       <column type="gpointer"/>
     </columns>
@@ -526,6 +528,40 @@
                       </packing>
                     </child>
                     <child>
+                      <object class="GtkFrame" id="frame2">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label_xalign">0</property>
+                        <property name="shadow_type">none</property>
+                        <child>
+                          <object class="GtkAlignment" id="alignment2">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="left_padding">12</property>
+                            <child>
+                              <object class="GtkTextView" id="marker_info">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child type="label">
+                          <object class="GtkLabel" id="label2">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="label" translatable="yes">&lt;b&gt;Info&lt;/b&gt;</property>
+                            <property name="use_markup">True</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">3</property>
+                      </packing>
+                    </child>
+                    <child>
                       <object class="GtkImage" id="ADI_logo">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
@@ -536,7 +572,7 @@
                       <packing>
                         <property name="expand">True</property>
                         <property name="fill">True</property>
-                        <property name="position">3</property>
+                        <property name="position">4</property>
                       </packing>
                     </child>
                   </object>

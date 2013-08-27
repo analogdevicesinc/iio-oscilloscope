@@ -11,12 +11,16 @@ Transform* Transform_new(void)
 {
 	Transform *tr = (Transform *)malloc(sizeof(Transform));
 	
+	tr->channel_parent = NULL;
 	tr->in_data = NULL;
 	tr->out_data = NULL;
 	tr->x_axis = NULL;
 	tr->in_data_size = NULL;
 	tr->out_data_size = 0;
+	tr->destroy_out_buf = false;
 	tr->graph = NULL;
+	tr->graph_active = false;
+	tr->has_the_marker = false;
 	tr->settings = NULL;
 	tr->transform_function = NULL;
 	
@@ -26,7 +30,7 @@ Transform* Transform_new(void)
 void Transform_destroy(Transform *tr)
 {
 	if (tr) {
-		if (tr->out_data)
+		if (tr->out_data && tr->destroy_out_buf)
 			free(tr->out_data);
 		if (tr->settings)
 			free(tr->settings);
@@ -36,11 +40,12 @@ void Transform_destroy(Transform *tr)
 
 void Transform_resize_out_buffer(Transform *tr, int new_size)
 {
+	tr->destroy_out_buf = true;
 	tr->out_data_size = (new_size >= 0) ? new_size : 0;
 	tr->out_data = (gfloat *)realloc(tr->out_data, sizeof(gfloat) * tr->out_data_size);
 }
 
-void Transform_set_in_data_ref(Transform *tr, gfloat *data_ref, unsigned *in_data_size)
+void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref, unsigned *in_data_size)
 {
 	tr->in_data = data_ref;
 	tr->in_data_size = in_data_size;
