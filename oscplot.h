@@ -42,7 +42,7 @@ struct _OscPlotClass
 GType         osc_plot_get_type      (void);
 GtkWidget*    osc_plot_new           (void);
 void          osc_plot_data_update   (OscPlot *plot);
-void          osc_plot_restart  (OscPlot *plot);
+void          osc_plot_restart       (OscPlot *plot);
 
 G_END_DECLS
 

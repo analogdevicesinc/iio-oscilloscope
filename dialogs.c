@@ -20,7 +20,6 @@ typedef struct _Dialogs Dialogs;
 struct _Dialogs
 {
 	GtkWidget *about;
-	GtkWidget *saveas;
 	GtkWidget *connect;
 	GtkWidget *connect_fru;
 	GtkWidget *connect_iio;
@@ -182,51 +181,6 @@ G_MODULE_EXPORT void cb_show_about(GtkButton *button, Dialogs *data)
 	gtk_widget_hide(data->about);
 }
 
-G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
-{
-	/* Save as Dialog */
-	gint ret;
-	char *filename;
-
-	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (data->saveas), "~/");
-	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(data->saveas), true);
-	ret = gtk_dialog_run(GTK_DIALOG(data->saveas));
-	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (data->saveas));
-	if (filename) {
-		switch(ret) {
-			/* Response Codes encoded in glade file */
-			case GTK_RESPONSE_CANCEL:
-			break;
-			case 3:
-			case 2:	{
-					GdkPixbuf *pixbuf;
-					GError *err=NULL;
-					GdkColormap *cmap;
-					gint width, height;
-					gboolean ret = true;
-
-					cmap = gdk_window_get_colormap(
-							GDK_DRAWABLE(gtk_widget_get_window(capture_graph)));
-					gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
-							&width, &height);
-					pixbuf = gdk_pixbuf_get_from_drawable(NULL,
-							GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
-							cmap, 0, 0, 0, 0, width, height);
-
-					if (pixbuf)
-						ret = gdk_pixbuf_save(pixbuf, filename, "png", &err, NULL);
-					if (!pixbuf || !ret)
-						printf("error creating %s\n", filename);
-				}
-				break;
-			default:
-				printf("ret : %i\n", ret);
-		}
-		g_free(filename);
-	}
-	gtk_widget_hide(data->saveas);
-}
-
 G_MODULE_EXPORT void cb_quit(GtkButton *button, Dialogs *data)
 {
 	application_quit();
@@ -237,7 +191,6 @@ void dialogs_init(GtkBuilder *builder)
 	GtkWidget *tmp, *tmp2;
 
 	dialogs.about = GTK_WIDGET(gtk_builder_get_object(builder, "About_dialog"));
-	dialogs.saveas = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	dialogs.connect = GTK_WIDGET(gtk_builder_get_object(builder, "connect_dialog"));
 	dialogs.connect_fru = GTK_WIDGET(gtk_builder_get_object(builder, "fru_info"));
 	dialogs.connect_iio = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_devices"));

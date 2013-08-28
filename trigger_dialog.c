@@ -19,10 +19,14 @@
 
 static GtkWidget *trigger_dialog;
 static GtkWidget *trigger_list_widget;
+static GtkWidget *device_list_widget;
 static GtkListStore *trigger_list_store;
+static GtkListStore *device_list_store;
 static GtkWidget *frequency_spin_button;
 static GtkWidget *frequency_spin_button_label;
 static GtkWidget *trigger_menu;
+
+static char *crt_device;
 
 static void trigger_change_trigger(void)
 {
@@ -55,6 +59,30 @@ static void trigger_change_trigger(void)
 	}
 }
 
+static void load_device_list(void)
+{
+	char *devices = NULL, *device;
+	unsigned int num;
+	GtkTreeIter iter;
+	
+	gtk_list_store_clear(device_list_store);
+	
+	gtk_list_store_append(device_list_store, &iter);
+	gtk_list_store_set(device_list_store, &iter, 0, "None", -1);
+	gtk_combo_box_set_active_iter(GTK_COMBO_BOX(device_list_widget), &iter);
+	
+	num = find_iio_names(&devices, "iio:device");
+	if (devices != NULL) {
+		device = devices;
+		for (; num > 0; num--) {
+			gtk_list_store_append(device_list_store, &iter);
+			gtk_list_store_set(device_list_store, &iter, 0, device, -1);
+			device += strlen(device) + 1;
+		}
+	}
+	free(devices);
+}
+
 static void trigger_load_settings(void)
 {
 	char *devices = NULL, *device;
@@ -63,11 +91,13 @@ static void trigger_load_settings(void)
 	unsigned int num;
 	int ret;
 
-	if (!current_device ||
-		!iio_devattr_exists(current_device, "trigger/current_trigger"))
+	gtk_list_store_clear(trigger_list_store);
+	
+	if (!crt_device ||
+		!iio_devattr_exists(crt_device, "trigger/current_trigger"))
 		return;
 
-	set_dev_paths(current_device);
+	set_dev_paths(crt_device);
 	ret = read_devattr("trigger/current_trigger", &current_trigger);
 	if (ret < 0)
 		return;
@@ -75,8 +105,6 @@ static void trigger_load_settings(void)
 	num = find_iio_names(&devices, "trigger");
 	if (devices == NULL)
 		return;
-
-	gtk_list_store_clear(trigger_list_store);
 
 	gtk_list_store_append(trigger_list_store, &iter);
 	gtk_list_store_set(trigger_list_store, &iter, 0, "None", -1);
@@ -104,8 +132,8 @@ static void trigger_save_settings()
 	GtkTreeIter iter;
 	int freq;
 
-	if (!current_device ||
-		!iio_devattr_exists(current_device, "trigger/current_trigger"))
+	if (!crt_device ||
+		!iio_devattr_exists(crt_device, "trigger/current_trigger"))
 		return;
 
 	if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(trigger_list_widget), &iter)) {
@@ -118,7 +146,7 @@ static void trigger_save_settings()
 		current_trigger = "";
 	}
 
-	set_dev_paths(current_device);
+	set_dev_paths(crt_device);
 	write_devattr("trigger/current_trigger", current_trigger);
 
 	if (*current_trigger && iio_devattr_exists(current_trigger, "frequency")) {
@@ -129,10 +157,31 @@ static void trigger_save_settings()
 	rx_update_labels();
 }
 
+static void device_change_trigger(void)
+{
+	char *crt_dev;
+	GtkTreeIter iter;
+	
+	gtk_combo_box_get_active_iter(GTK_COMBO_BOX(device_list_widget), &iter);
+	gtk_tree_model_get(GTK_TREE_MODEL(device_list_store), &iter, 0, &crt_dev, -1);
+	if (strcmp(crt_dev, "None") != 0){
+		crt_device = realloc(crt_device, strlen(crt_dev) + 1);
+		snprintf(crt_device, strlen(crt_dev) + 1, "%s", crt_dev);
+		g_free(crt_dev);
+	} else {
+		g_free(crt_dev);
+		free(crt_device);
+		crt_device = NULL;
+	}
+	
+	trigger_load_settings();
+}
+
 static void trigger_dialog_show(void)
 {
 	int ret;
 
+	load_device_list();
 	trigger_load_settings();
 	ret = gtk_dialog_run(GTK_DIALOG(trigger_dialog));
 	switch(ret) {
@@ -152,7 +201,9 @@ void trigger_dialog_init(GtkBuilder *builder)
 {
 	trigger_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "trigger_dialog"));
 	trigger_list_widget = GTK_WIDGET(gtk_builder_get_object(builder, "trigger_list_combobox"));
+	device_list_widget = GTK_WIDGET(gtk_builder_get_object(builder, "device_list_combobox"));
 	trigger_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "trigger_list"));
+	device_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "device_list"));
 	frequency_spin_button = GTK_WIDGET(gtk_builder_get_object(builder,
 		"trigger_frequency"));
 	frequency_spin_button_label = GTK_WIDGET(gtk_builder_get_object(builder,
@@ -160,6 +211,8 @@ void trigger_dialog_init(GtkBuilder *builder)
 	trigger_menu = GTK_WIDGET(gtk_builder_get_object(builder,
 		"trigger_menu"));
 
+	g_signal_connect(device_list_widget, "changed",
+		G_CALLBACK(device_change_trigger), NULL);
 	g_signal_connect(trigger_list_widget, "changed",
 		G_CALLBACK(trigger_change_trigger), NULL);
 
@@ -171,8 +224,8 @@ void trigger_update_current_device(void)
 {
 	bool has_trigger;
 
-	if (current_device)
-		has_trigger = iio_devattr_exists(current_device, "trigger/current_trigger");
+	if (crt_device)
+		has_trigger = iio_devattr_exists(crt_device, "trigger/current_trigger");
 	else
 		has_trigger = false;
 	gtk_widget_set_sensitive(trigger_menu, has_trigger);

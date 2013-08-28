@@ -66,6 +66,9 @@ struct _OscPlotPrivate
 	GtkWidget *enable_auto_scale;
 	GtkWidget *hor_scale;
 	GtkWidget *marker_label;
+	GtkWidget *saveas_menu;
+	GtkWidget *saveas_dialog;
+	
 	
 	GtkTextBuffer* tbuf;
 	
@@ -256,7 +259,6 @@ static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_p
 	TrList *list = priv->transform_list;
 	Transform *transform;
 	struct _fft_settings *fft_settings;
-	struct _constellation_settings *constellation_settings;
 	struct extra_info *ch_info;
 	
 	transform = Transform_new();
@@ -281,11 +283,10 @@ static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_p
 				priv->active_transform_type = FFT_TRANSFORM;
 			} else {
 					if (!strcmp(tr_name, "CONSTELLATION")) {
+						transform->channel_parent2 = ch1;
 						Transform_attach_function(transform, constellation_transform_function);
-						constellation_settings = (struct _constellation_settings *)malloc(sizeof(struct _constellation_settings));
 						ch_info = ch1->extra_field;
-						constellation_settings->y_axis = (gfloat**)&ch_info->data_ref;
-						Transform_attach_settings(transform, constellation_settings);
+						ch_info->shadow_of_enabled++;
 						priv->active_transform_type = CONSTELLATION_TRANSFORM;
 					}
 			}
@@ -304,6 +305,11 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	gtk_databox_graph_remove(GTK_DATABOX(priv->databox), tr->graph);
 	gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
 	ch_info->shadow_of_enabled--;
+	if (priv->active_transform_type == CONSTELLATION_TRANSFORM) {
+		ch_info = tr->channel_parent2->extra_field;
+		ch_info->shadow_of_enabled--;
+	}
+		
 	TrList_remove_transform(list, tr);
 	Transform_destroy(tr);
 	if (list->size == 0) {
@@ -1213,6 +1219,60 @@ static void zoom_out(GtkButton *btn, gpointer data)
 	gtk_databox_set_visible_limits(GTK_DATABOX(priv->databox), left, right, top, bottom);
 }
 
+static void cb_saveas(GtkMenuItem *menuitem, OscPlot *data)
+{
+	OscPlotPrivate *priv = data->priv;
+
+	gtk_widget_show(priv->saveas_dialog);
+	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (priv->saveas_dialog), "~/");
+	gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
+}
+
+void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
+{
+	/* Save as Dialog */
+	OscPlotPrivate *priv = data->priv;
+	gint ret;
+	char *filename;
+		
+	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (priv->saveas_dialog), "~/");
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->saveas_dialog), true);
+	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
+	if (filename) {
+		switch(response_id) {
+			/* Response Codes encoded in glade file */
+			case GTK_RESPONSE_CANCEL:
+			break;
+			case 3:
+			case 2:	{
+					GdkPixbuf *pixbuf;
+					GError *err=NULL;
+					GdkColormap *cmap;
+					gint width, height;
+					gboolean ret = true;
+
+					cmap = gdk_window_get_colormap(
+							GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)));
+					gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
+							&width, &height);
+					pixbuf = gdk_pixbuf_get_from_drawable(NULL,
+							GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
+							cmap, 0, 0, 0, 0, width, height);
+
+					if (pixbuf)
+						ret = gdk_pixbuf_save(pixbuf, filename, "png", &err, NULL);
+					if (!pixbuf || !ret)
+						printf("error creating %s\n", filename);
+				}
+				break;
+			default:
+				printf("ret : %i\n", ret);
+		}
+		g_free(filename);
+	}
+	gtk_widget_hide(priv->saveas_dialog);
+}
+
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -1240,6 +1300,8 @@ static void create_plot(OscPlot *plot)
 	priv->enable_auto_scale = GTK_WIDGET(gtk_builder_get_object(builder, "auto_scale"));
 	priv->hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
+	priv->saveas_menu = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_saveas"));
+	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	priv->tbuf = NULL;
 	
@@ -1261,6 +1323,11 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(shift_f10_event_on_ch_list_cb), plot);
 	g_signal_connect(priv->fft_settings_diag, "response",
 		G_CALLBACK(set_fft_settings_cb), plot);
+	g_signal_connect(priv->saveas_menu, "activate",
+		G_CALLBACK(cb_saveas), plot);
+	g_signal_connect(priv->saveas_dialog, "response", 
+		G_CALLBACK(cb_saveas_response), plot);
+	
 	
 	g_builder_connect_signal(builder, "zoom_in", "clicked",
 		G_CALLBACK(zoom_in), plot);
@@ -1280,6 +1347,7 @@ static void create_plot(OscPlot *plot)
 	tree_selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->channel_list_view));
 	gtk_tree_selection_set_mode(tree_selection, GTK_SELECTION_MULTIPLE);
 	add_grid(plot);
+	
 	gtk_widget_show(priv->window);
 	gtk_widget_show_all(priv->capture_graph);
 }

@@ -9,8 +9,7 @@
 #define __OSC_H__
 
 extern GtkWidget *capture_graph;
-extern gint capture_function;
-extern const char *current_device;
+extern gint capture_function_id;
 extern pthread_mutex_t buffer_full;
 
 void rx_update_labels(void);

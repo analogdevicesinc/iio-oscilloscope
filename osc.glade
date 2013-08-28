@@ -530,19 +530,6 @@ A GUI for Linux IIO devices</property>
       </object>
     </child>
   </object>
-  <object class="GtkAdjustment" id="adjustmentTrigger">
-    <property name="lower">1</property>
-    <property name="upper">1000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_sample_count">
-    <property name="lower">10</property>
-    <property name="upper">1000000</property>
-    <property name="value">400</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
   <object class="GtkDialog" id="Sample_count_dialog">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -639,6 +626,19 @@ A GUI for Linux IIO devices</property>
       <action-widget response="0">buttonCancel</action-widget>
       <action-widget response="1">buttonOK</action-widget>
     </action-widgets>
+  </object>
+  <object class="GtkAdjustment" id="adjustmentTrigger">
+    <property name="lower">1</property>
+    <property name="upper">1000</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment_sample_count">
+    <property name="lower">10</property>
+    <property name="upper">1000000</property>
+    <property name="value">400</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkDialog" id="connect_dialog">
     <property name="can_focus">False</property>
@@ -935,6 +935,12 @@ Installed/Found IIO devices on this platform</property>
       <action-widget response="-5">button3</action-widget>
     </action-widgets>
   </object>
+  <object class="GtkListStore" id="device_list">
+    <columns>
+      <!-- column-name name -->
+      <column type="gchararray"/>
+    </columns>
+  </object>
   <object class="GtkWindow" id="main_menu">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">ADI IIO Oscilloscope</property>
@@ -942,80 +948,164 @@ Installed/Found IIO devices on this platform</property>
     <property name="default_width">640</property>
     <property name="default_height">480</property>
     <child>
-      <object class="GtkAlignment" id="alignment1">
+      <object class="GtkVBox" id="box2">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="top_padding">100</property>
-        <property name="bottom_padding">100</property>
-        <property name="left_padding">100</property>
-        <property name="right_padding">100</property>
         <child>
-          <object class="GtkTable" id="table1">
+          <object class="GtkMenuBar" id="menubar1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="n_rows">2</property>
-            <property name="n_columns">2</property>
-            <property name="column_spacing">5</property>
-            <property name="row_spacing">5</property>
-            <property name="homogeneous">True</property>
             <child>
-              <object class="GtkButton" id="button_capture">
-                <property name="label" translatable="yes">Capture</property>
+              <object class="GtkMenuItem" id="menuitem1">
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_action_appearance">False</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">_File</property>
+                <property name="use_underline">True</property>
+                <child type="submenu">
+                  <object class="GtkMenu" id="menu1">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <child>
+                      <object class="GtkImageMenuItem" id="imagemenuitem1">
+                        <property name="label">gtk-quit</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="use_underline">True</property>
+                        <property name="use_stock">True</property>
+                        <signal name="activate" handler="cb_quit" swapped="no"/>
+                      </object>
+                    </child>
+                  </object>
+                </child>
               </object>
             </child>
             <child>
-              <object class="GtkButton" id="button_settings">
-                <property name="label" translatable="yes">Settings</property>
+              <object class="GtkMenuItem" id="menuitem2">
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_action_appearance">False</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">_Settings</property>
+                <property name="use_underline">True</property>
+                <child type="submenu">
+                  <object class="GtkMenu" id="menu2">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <child>
+                      <object class="GtkImageMenuItem" id="imagemenuitem2">
+                        <property name="label">gtk-connect</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="use_underline">True</property>
+                        <property name="use_stock">True</property>
+                        <signal name="activate" handler="cb_connect" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuItem" id="trigger_menu">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Impulse generator</property>
+                        <property name="use_underline">True</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
               </object>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">2</property>
-              </packing>
             </child>
             <child>
-              <object class="GtkButton" id="button_generator">
-                <property name="label" translatable="yes">Generator</property>
+              <object class="GtkMenuItem" id="menuitem3">
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_action_appearance">False</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">_Help</property>
+                <property name="use_underline">True</property>
+                <child type="submenu">
+                  <object class="GtkMenu" id="menu3">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <child>
+                      <object class="GtkImageMenuItem" id="imagemenuitem3">
+                        <property name="label">gtk-about</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="use_underline">True</property>
+                        <property name="use_stock">True</property>
+                        <signal name="activate" handler="cb_show_about" swapped="no"/>
+                      </object>
+                    </child>
+                  </object>
+                </child>
               </object>
-              <packing>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button_about">
-                <property name="label" translatable="yes">About</property>
-                <property name="use_action_appearance">False</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_action_appearance">False</property>
-              </object>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">2</property>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
-              </packing>
             </child>
           </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkAlignment" id="alignment1">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="top_padding">100</property>
+            <property name="bottom_padding">100</property>
+            <property name="left_padding">100</property>
+            <property name="right_padding">100</property>
+            <child>
+              <object class="GtkTable" id="table1">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="n_rows">2</property>
+                <property name="column_spacing">5</property>
+                <property name="row_spacing">5</property>
+                <property name="homogeneous">True</property>
+                <child>
+                  <object class="GtkButton" id="button_capture">
+                    <property name="label" translatable="yes">Capture</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="use_action_appearance">False</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="button_generator">
+                    <property name="label" translatable="yes">Generator</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="use_action_appearance">False</property>
+                  </object>
+                  <packing>
+                    <property name="top_attach">1</property>
+                    <property name="bottom_attach">2</property>
+                  </packing>
+                </child>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
         </child>
       </object>
     </child>
+  </object>
+  <object class="GtkListStore" id="trigger_list">
+    <columns>
+      <!-- column-name name -->
+      <column type="gchararray"/>
+    </columns>
   </object>
   <object class="GtkDialog" id="trigger_dialog">
     <property name="can_focus">False</property>
@@ -1038,7 +1128,7 @@ Installed/Found IIO devices on this platform</property>
           <object class="GtkTable" id="table2">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="n_rows">2</property>
+            <property name="n_rows">3</property>
             <property name="n_columns">2</property>
             <property name="column_spacing">5</property>
             <property name="row_spacing">5</property>
@@ -1057,6 +1147,8 @@ Installed/Found IIO devices on this platform</property>
               <packing>
                 <property name="left_attach">1</property>
                 <property name="right_attach">2</property>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
                 <property name="x_options">GTK_FILL</property>
                 <property name="y_options">GTK_FILL</property>
               </packing>
@@ -1070,6 +1162,8 @@ Installed/Found IIO devices on this platform</property>
                 <property name="label" translatable="yes">Impulse generator:</property>
               </object>
               <packing>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
                 <property name="x_options">GTK_FILL</property>
                 <property name="y_options">GTK_FILL</property>
               </packing>
@@ -1083,8 +1177,8 @@ Installed/Found IIO devices on this platform</property>
                 <property name="label" translatable="yes">Frequency:</property>
               </object>
               <packing>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
                 <property name="x_options">GTK_FILL</property>
                 <property name="y_options">GTK_FILL</property>
               </packing>
@@ -1103,8 +1197,40 @@ Installed/Found IIO devices on this platform</property>
               <packing>
                 <property name="left_attach">1</property>
                 <property name="right_attach">2</property>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
+                <property name="x_options">GTK_FILL</property>
+                <property name="y_options">GTK_FILL</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="label_device_sel">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="xalign">0</property>
+                <property name="xpad">5</property>
+                <property name="label" translatable="yes">IIO Device:</property>
+              </object>
+              <packing>
+                <property name="x_options">GTK_FILL</property>
+                <property name="y_options">GTK_FILL</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="device_list_combobox">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="model">device_list</property>
+                <child>
+                  <object class="GtkCellRendererText" id="cellrenderertext2"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
                 <property name="x_options">GTK_FILL</property>
                 <property name="y_options">GTK_FILL</property>
               </packing>
@@ -1170,11 +1296,5 @@ Installed/Found IIO devices on this platform</property>
       <action-widget response="-6">buttonCancel1</action-widget>
       <action-widget response="-5">buttonOK1</action-widget>
     </action-widgets>
-  </object>
-  <object class="GtkListStore" id="trigger_list">
-    <columns>
-      <!-- column-name name -->
-      <column type="gchararray"/>
-    </columns>
   </object>
 </interface>

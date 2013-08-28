@@ -60,6 +60,7 @@ struct _device_list {
 
 struct _transform {
 	struct iio_channel_info *channel_parent;
+	struct iio_channel_info *channel_parent2;
 	gfloat **in_data;
 	gfloat *out_data;
 	gfloat *x_axis;
@@ -78,6 +79,10 @@ struct _tr_list {
 	int size;
 };
 
+struct _time_settings {
+
+};
+
 struct _fft_settings {
 	int fft_size;
 	int fft_avg;
@@ -89,7 +94,7 @@ struct _fft_settings {
 };
 
 struct _constellation_settings {
-	gfloat **y_axis;
+
 };
 
 Transform* Transform_new(void);

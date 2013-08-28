@@ -8,10 +8,6 @@ CFLAGS+=`xml2-config --cflags`
 CFLAGS+=-pthread
 CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 
-<<<<<<< HEAD
-osc: osc.c oscplot.c iio_widget.c iio_utils.c datatypes.c
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -o $@
-=======
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
 
@@ -24,7 +20,7 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c xml_utils.c ./ini/ini.c 
+osc: osc.c oscplot.c datatypes.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c xml_utils.c ./ini/ini.c 
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -rdynamic -o $@
 
 %.so: %.c
@@ -52,7 +48,6 @@ install:
 	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc
 #	xdg-icon-resource install --size scalable ./osc.svg adi-osc
 	xdg-desktop-menu install adi-osc.desktop
->>>>>>> master
 
 clean:
-	rm -rf osc *.o
+	rm -rf osc *.o plugins/*.so

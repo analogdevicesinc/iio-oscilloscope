@@ -403,7 +403,7 @@ static void display_cal(void *ptr)
 	bool show = false;
 
 	while (!kill_thread) {
-		while (!kill_thread && !capture_function) {
+		while (!kill_thread && !capture_function_id) {
 			/* Wait 1/2 second */
 			usleep(500000);
 		}
@@ -847,7 +847,7 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 
 	kill_thread = 1;
 
-	if (capture_function)
+	if (capture_function_id)
 		pthread_mutex_unlock(&buffer_full);
 
 	if (filename)
