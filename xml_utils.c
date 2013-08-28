@@ -42,8 +42,13 @@ int open_xml_file(char *file_name, xmlNodePtr *root)
 	if ((root == NULL) || (file_name == NULL))
 		return -1;
 
+	if (strlen(file_name) == 0)
+		return -1;
+
 	temp  = (char *)malloc(strlen(buf_dir_name) + strlen(file_name) +
-							strlen(extension) + 1);
+							strlen(extension) +
+							1 + /* for the "/" character between buf_dir_name and file_name */
+							1); /* for the null terminator */
 	if (temp == NULL) {
 		printf("Memory allocation failed");
 		return -1;

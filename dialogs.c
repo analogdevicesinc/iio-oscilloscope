@@ -28,7 +28,7 @@ struct _Dialogs
 
 static Dialogs dialogs;
 
-static void connect_fillin(Dialogs *data)
+void connect_fillin(Dialogs *data)
 {
 	char eprom_names[128];
 	unsigned char *raw_input_data = NULL;
@@ -116,13 +116,16 @@ static void connect_fillin(Dialogs *data)
 			gtk_text_buffer_insert(buf, &iter, text, -1);
 		}
 
+		free (raw_input_data);
 	}
 	pclose(fp);
+
 	if (!num) {
 		sprintf(text, "No eeprom files found in /sys/\n");
 		gtk_text_buffer_insert(buf, &iter, text, -1);
 	}
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_fru), buf);
+	g_object_unref(buf);
 
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
@@ -141,7 +144,9 @@ static void connect_fillin(Dialogs *data)
 	}
 	free(device);
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_iio), buf);
+	g_object_unref(buf);
 
+	return;
 }
 
 G_MODULE_EXPORT void cb_connect(GtkButton *button, Dialogs *data)

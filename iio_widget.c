@@ -102,7 +102,7 @@ static void iio_spin_button_s64_save(struct iio_widget *widget)
 	write_devattr_slonglong(widget->attr_name, (long long) freq);
 }
 
-static void iio_spin_button_init(struct iio_widget *widget,
+void iio_spin_button_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale)
 {
@@ -110,7 +110,7 @@ static void iio_spin_button_init(struct iio_widget *widget,
 		(void *)scale, iio_spin_button_update, iio_spin_button_save);
 }
 
-static void iio_spin_button_int_init(struct iio_widget *widget,
+void iio_spin_button_int_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale)
 {
@@ -118,7 +118,7 @@ static void iio_spin_button_int_init(struct iio_widget *widget,
 		(void *)scale, iio_spin_button_update, iio_spin_button_int_save);
 }
 
-static void iio_spin_button_s64_init(struct iio_widget *widget,
+void iio_spin_button_s64_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale)
 {
@@ -224,7 +224,7 @@ static void iio_combo_box_update(struct iio_widget *widget)
 	free(text);
 }
 
-static void iio_combo_box_init(struct iio_widget *widget,
+void iio_combo_box_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name, const char *attr_name_avail,
 	GtkWidget *combo_box, int (*compare)(const char *a, const char *b))
 {
