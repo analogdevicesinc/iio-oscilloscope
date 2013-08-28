@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include <gtk/gtk.h>
+#include <glib/gthread.h>
 #include <gtkdatabox.h>
 #include <gtkdatabox_grid.h>
 #include <gtkdatabox_points.h>
@@ -126,7 +127,7 @@ static GdkColor color_marker = {
 	.blue = 0,
 };
 
-pthread_mutex_t buffer_full = PTHREAD_MUTEX_INITIALIZER;
+G_LOCK_DEFINE(buffer_full);
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
@@ -298,7 +299,7 @@ static int sample_iio_data(struct buffer *buf)
 	if ((buf->data_copy) && (buf->available == buf->size)) {
 		memcpy(buf->data_copy, buf->data, buf->size);
 		buf->data_copy = NULL;
-		pthread_mutex_unlock(&buffer_full);
+		G_UNLOCK(buffer_full);
 	}
 
 	return ret;
@@ -486,7 +487,7 @@ static void abort_sampling(void)
 	}
 	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button),
 			FALSE);
-	pthread_mutex_unlock(&buffer_full);
+	G_UNLOCK(buffer_full);
 }
 
 static gboolean time_capture_func(GtkDatabox *box)
@@ -915,7 +916,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 	if (gtk_toggle_tool_button_get_active(btn)) {
 		gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 
-		pthread_mutex_unlock(&buffer_full);
+		G_UNLOCK(buffer_full);
 
 		data_buffer.available = 0;
 		current_sample = 0;
@@ -963,7 +964,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		if (capture_function > 0) {
 			g_source_remove(capture_function);
 			capture_function = 0;
-			pthread_mutex_unlock(&buffer_full);
+			G_UNLOCK(buffer_full);
 		}
 		if (buffer_fd >= 0) {
 			buffer_close(buffer_fd);
@@ -1400,7 +1401,7 @@ void application_quit (void)
 	if (capture_function > 0) {
 		g_source_remove(capture_function);
 		capture_function = 0;
-		pthread_mutex_unlock(&buffer_full);
+		G_UNLOCK(buffer_full);
 	}
 	if (buffer_fd >= 0) {
 		buffer_close(buffer_fd);
@@ -1542,12 +1543,18 @@ static void init_application (void)
 
 gint main(gint argc, char *argv[])
 {
+	g_thread_init (NULL);
+	gdk_threads_init ();
 	gtk_init(&argc, &argv);
+
 	signal(SIGTERM, sigterm);
 	signal(SIGINT, sigterm);
 	signal(SIGHUP, sigterm);
+
+	gdk_threads_enter();
 	init_application();
 	gtk_main();
+	gdk_threads_leave();
 
 	return 0;
 }

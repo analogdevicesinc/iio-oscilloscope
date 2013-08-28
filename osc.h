@@ -11,7 +11,7 @@
 extern GtkWidget *capture_graph;
 extern gint capture_function;
 extern const char *current_device;
-extern pthread_mutex_t buffer_full;
+G_LOCK_EXTERN (buffer_full);
 
 void rx_update_labels(void);
 void dialogs_init(GtkBuilder *builder);
