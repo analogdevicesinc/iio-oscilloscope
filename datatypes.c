@@ -12,12 +12,15 @@ Transform* Transform_new(void)
 	Transform *tr = (Transform *)malloc(sizeof(Transform));
 	
 	tr->channel_parent = NULL;
+	tr->channel_parent2 = NULL;
 	tr->in_data = NULL;
-	tr->out_data = NULL;
 	tr->x_axis = NULL;
+	tr->y_axis = NULL;
 	tr->in_data_size = NULL;
-	tr->out_data_size = 0;
-	tr->destroy_out_buf = false;
+	tr->x_axis_size = 0;
+	tr->y_axis_size = 0;
+	tr->destroy_x_axis = false;
+	tr->destroy_y_axis = false;
 	tr->graph = NULL;
 	tr->graph_active = false;
 	tr->has_the_marker = false;
@@ -30,19 +33,28 @@ Transform* Transform_new(void)
 void Transform_destroy(Transform *tr)
 {
 	if (tr) {
-		if (tr->out_data && tr->destroy_out_buf)
-			free(tr->out_data);
+		if (tr->x_axis && tr->destroy_x_axis)
+			free(tr->x_axis);
+		if (tr->y_axis && tr->destroy_y_axis)
+			free(tr->y_axis);
 		if (tr->settings)
 			free(tr->settings);
 		free(tr);
 	}
 }
 
-void Transform_resize_out_buffer(Transform *tr, int new_size)
+void Transform_resize_x_axis(Transform *tr, int new_size)
 {
-	tr->destroy_out_buf = true;
-	tr->out_data_size = (new_size >= 0) ? new_size : 0;
-	tr->out_data = (gfloat *)realloc(tr->out_data, sizeof(gfloat) * tr->out_data_size);
+	tr->destroy_x_axis = true;
+	tr->x_axis_size = (new_size >= 0) ? new_size : 0;
+	tr->x_axis = (gfloat *)realloc(tr->x_axis, sizeof(gfloat) * tr->x_axis_size);
+}
+
+void Transform_resize_y_axis(Transform *tr, int new_size)
+{
+	tr->destroy_y_axis = true;
+	tr->y_axis_size = (new_size >= 0) ? new_size : 0;
+	tr->y_axis = (gfloat *)realloc(tr->y_axis, sizeof(gfloat) * tr->y_axis_size);
 }
 
 void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref, unsigned *in_data_size)
@@ -51,14 +63,14 @@ void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref, unsigned *in_da
 	tr->in_data_size = in_data_size;
 }
 
-gfloat* Transform_get_out_data_ref(Transform *tr)
-{
-	return tr->out_data;
-}
-
 gfloat* Transform_get_x_axis_ref(Transform *tr)
 {
 	return tr->x_axis;
+}
+
+gfloat* Transform_get_y_axis_ref(Transform *tr)
+{
+	return tr->y_axis;
 }
 
 void Transform_attach_settings(Transform *tr, void *settings)

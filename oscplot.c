@@ -831,8 +831,8 @@ static void plot_setup(OscPlot *plot)
 	TrList *tr_list = priv->transform_list;
 	Transform *transform;
 	struct extra_info *ch_info;
-	gfloat *transform_output;
 	gfloat *transform_x_axis;
+	gfloat *transform_y_axis;
 	int max_x_axis = 0;
 	gfloat max_adc_freq = 0;
 	int i;
@@ -842,17 +842,17 @@ static void plot_setup(OscPlot *plot)
 	for (i = 0; i < tr_list->size; i++) {
 		transform = tr_list->transforms[i];		
 		Transform_setup(transform);
-		transform_output = Transform_get_out_data_ref(transform);
 		transform_x_axis = Transform_get_x_axis_ref(transform);
+		transform_y_axis = Transform_get_y_axis_ref(transform);
 				
 		if (strcmp(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type)), "Lines"))
-			transform->graph = gtk_databox_points_new(transform->out_data_size, transform_x_axis, transform_output, &color_graph[i], 3);
+			transform->graph = gtk_databox_points_new(transform->y_axis_size, transform_x_axis, transform_y_axis, &color_graph[i], 3);
 		else
-			transform->graph = gtk_databox_lines_new(transform->out_data_size, transform_x_axis, transform_output, &color_graph[i], 1);
+			transform->graph = gtk_databox_lines_new(transform->y_axis_size, transform_x_axis, transform_y_axis, &color_graph[i], 1);
 		
 		ch_info = transform->channel_parent->extra_field;
-		if (transform->out_data_size > max_x_axis)
-			max_x_axis = transform->out_data_size;
+		if (transform->y_axis_size > max_x_axis)
+			max_x_axis = transform->y_axis_size;
 		if (ch_info->device_parent->adc_freq > max_adc_freq)
 			max_adc_freq = ch_info->device_parent->adc_freq;
 			

@@ -62,11 +62,13 @@ struct _transform {
 	struct iio_channel_info *channel_parent;
 	struct iio_channel_info *channel_parent2;
 	gfloat **in_data;
-	gfloat *out_data;
 	gfloat *x_axis;
+	gfloat *y_axis;
 	unsigned *in_data_size;
-	unsigned out_data_size;
-	bool destroy_out_buf;
+	unsigned x_axis_size;
+	unsigned y_axis_size;	
+	bool destroy_x_axis;
+	bool destroy_y_axis;
 	void *graph;
 	bool graph_active;
 	bool has_the_marker;
@@ -99,10 +101,11 @@ struct _constellation_settings {
 
 Transform* Transform_new(void);
 void Transform_destroy(Transform *tr);
-void Transform_resize_out_buffer(Transform *tr, int new_size);
+void Transform_resize_x_axis(Transform *tr, int new_size);
+void Transform_resize_y_axis(Transform *tr, int new_size);
 void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref, unsigned *in_data_size);
-gfloat* Transform_get_out_data_ref(Transform *tr);
 gfloat* Transform_get_x_axis_ref(Transform *tr);
+gfloat* Transform_get_y_axis_ref(Transform *tr);
 void Transform_attach_settings(Transform *tr, void *settings);
 void Transform_attach_function(Transform *tr, void (*f)(Transform *tr , gboolean init_transform));
 void Transform_setup(Transform *tr);

@@ -31,7 +31,6 @@ extern char dev_dir_name[512];
 struct _device_list *device_list = NULL;
 unsigned num_devices = 0;
 gint capture_function_id = 0;
-static int capture_start_flag = 0;
 static GList *plot_list = NULL;
 static const char *current_device;
 
@@ -74,7 +73,7 @@ static void do_fft(Transform *tr)
 	struct _fft_settings *settings = tr->settings;
 	struct _fft_alg_data *fft = &settings->fft_alg_data;
 	gfloat *in_data = *tr->in_data;
-	gfloat *out_data = tr->out_data;
+	gfloat *out_data = tr->y_axis;
 	unsigned int fft_size = settings->fft_size;
 	unsigned int m = fft_size / 2;
 	int i, j, k;
@@ -185,18 +184,14 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 	int i;
 	
 	if (init_transform) {
-		tr->x_axis = g_renew(gfloat, tr->x_axis, axis_length);
+		Transform_resize_x_axis(tr, axis_length);
 		for (i = 0; i < axis_length; i++)
 			tr->x_axis[i] = i;
-		tr->out_data_size = axis_length;
-		Transform_resize_out_buffer(tr, tr->out_data_size);
-		memcpy(tr->out_data, (*tr->in_data), tr->out_data_size * sizeof(gfloat));
+		tr->y_axis_size = axis_length;
+		tr->y_axis = *tr->in_data;
 
 		return;
 	}
-	
-	tr->out_data_size = axis_length;
-	memcpy(tr->out_data, (*tr->in_data), tr->out_data_size * sizeof(gfloat));
 }
 
 void fft_transform_function(Transform *tr, gboolean init_transform)
@@ -209,13 +204,13 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 	int i;
 
 	if (init_transform) {		
-		tr->x_axis = g_renew(gfloat, tr->x_axis, axis_length);
-		Transform_resize_out_buffer(tr, axis_length);
+		Transform_resize_x_axis(tr, axis_length);
+		Transform_resize_y_axis(tr, axis_length);
 		for (i = 0; i < axis_length; i++) {
 			tr->x_axis[i] = i * device->adc_freq / num_samples;
-			tr->out_data[i] = FLT_MAX;
+			tr->y_axis[i] = FLT_MAX;
 		}
-		tr->out_data_size = axis_length;
+		tr->y_axis_size = axis_length;
 		
 		/* Compute FFT normalization and scaling offset */
 		settings->fft_alg_data.fft_corr = 20 * log10(2.0 / (1 << (tr->channel_parent->bits_used - 1)));
@@ -231,17 +226,12 @@ void constellation_transform_function(Transform *tr, gboolean init_transform)
 	unsigned axis_length = *tr->in_data_size;
 	
 	if (init_transform) {
-		tr->x_axis = g_renew(gfloat, tr->x_axis, axis_length);
-		tr->out_data_size = axis_length;
-		Transform_resize_out_buffer(tr, tr->out_data_size);
-		memcpy(tr->x_axis, y_axis, axis_length * sizeof(gfloat));
-		memcpy(tr->out_data, (*tr->in_data), tr->out_data_size * sizeof(gfloat));
-		
+		tr->y_axis_size = axis_length;
+		tr->x_axis = *tr->in_data;
+		tr->y_axis = y_axis;
+				
 		return;
 	}
-	
-	memcpy(tr->x_axis, y_axis, axis_length * sizeof(gfloat));
-	memcpy(tr->out_data, (*tr->in_data), tr->out_data_size * sizeof(gfloat));
 }
 
 static void gfunc_update_plot(gpointer data, gpointer user_data)
@@ -263,7 +253,7 @@ static void update_all_plots(void)
 	g_list_foreach(plot_list, gfunc_update_plot, NULL);
 }
 
-static void restart_all_plots(void)
+static void restart_all_running_plots(void)
 {
 	g_list_foreach(plot_list, gfunc_restart_plot, NULL);
 }
@@ -575,7 +565,7 @@ static void resize_device_data(struct _device_list *device)
 		enable = set_channel_attr_enable(device->device_name, channel, enable);
 		if (enable) {
 			device->bytes_per_sample += channel->bytes;
-		}
+		}		
 	}
 
 	/* Reallocate memory for the active channels of the device */
@@ -618,24 +608,19 @@ static void capture_start(void)
 }
 
 static void start(OscPlot *plot, gboolean start_event, gpointer databox)
-{
-	if (start_event)
-		capture_start_flag++;
-	else
-		capture_start_flag--;
-	
-	/* Stop the capture process to allow settings to be updated */
-	if (capture_function_id > 0) {
-		g_source_remove(capture_function_id);
-		capture_function_id = 0;
-	}
-	close_active_buffers();
-	
-	/* Start capture process if at least one window requests it. */
-	if (capture_start_flag > 0) {
+{	
+	if (start_event) {
+		/* Stop the capture process to allow settings to be updated */
+		if (capture_function_id > 0) {
+			g_source_remove(capture_function_id);
+			capture_function_id = 0;
+		}
+		close_active_buffers();
+		
+		/* Start the capture process */
 		capture_setup();
 		capture_start();
-		restart_all_plots();
+		restart_all_running_plots();
 	}
 }
 
