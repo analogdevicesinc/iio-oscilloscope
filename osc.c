@@ -180,7 +180,8 @@ static void do_fft(Transform *tr)
 
 void time_transform_function(Transform *tr, gboolean init_transform)
 {
-	unsigned axis_length = *tr->in_data_size;
+	struct _time_settings *settings = tr->settings;
+	unsigned axis_length = settings->num_samples;
 	int i;
 	
 	if (init_transform) {
@@ -216,14 +217,15 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 		settings->fft_alg_data.fft_corr = 20 * log10(2.0 / (1 << (tr->channel_parent->bits_used - 1)));
 		return;
 	}
-		do_fft(tr);
+	do_fft(tr);
 }
 
 void constellation_transform_function(Transform *tr, gboolean init_transform)
 {
 	struct extra_info *ch_info = tr->channel_parent2->extra_field;
 	gfloat *y_axis = ch_info->data_ref;
-	unsigned axis_length = *tr->in_data_size;
+	struct _constellation_settings *settings = tr->settings;
+	unsigned axis_length = settings->num_samples;
 	
 	if (init_transform) {
 		tr->y_axis_size = axis_length;
@@ -714,7 +716,7 @@ static struct _device_list *add_device(struct _device_list *dev_list, const char
 		
 	for (j = 0; j < dev_list[n].num_channels; j++) {
 		ch_info  = (struct extra_info *)malloc(sizeof(struct extra_info));
-		ch_info->device_parent = &dev_list[n];
+		ch_info->device_parent = NULL; /* Don't add the device parrent yet(dev_list addresses may change due to realloc) */
 		ch_info->data_ref = NULL;
 		ch_info->shadow_of_enabled = 0;
 		dev_list[n].channel_list[j].extra_field = ch_info;
@@ -724,7 +726,7 @@ static struct _device_list *add_device(struct _device_list *dev_list, const char
 	dev_list[n].sample_count = 400;
 	dev_list[n].shadow_of_sample_count = 400;
 	dev_list[n].buffer_fd = -1;
-	
+		
 	return dev_list;
 }
 
@@ -748,12 +750,13 @@ static void init_device_list(void)
 	}
 	free(devices);
 	
-	/* Disable all channels */
+	/* Disable all channels and parent references to channels*/
 	for (i = 0;  i < num_devices; i++) {
 		for (j = 0; j < device_list[i].num_channels; j++) {
 			channel = &device_list[i].channel_list[j];
 			set_channel_attr_enable(device_list[i].device_name, channel, 0);
 			channel->enabled = 0;
+			((struct extra_info *)channel->extra_field)->device_parent = &device_list[i];
 		}
 	}
 }

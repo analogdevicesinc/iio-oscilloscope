@@ -56,7 +56,9 @@ struct _OscPlotPrivate
 	
 	/* Graphical User Interface */
 	GtkWidget *window;
+	GtkWidget *time_settings_diag;
 	GtkWidget *fft_settings_diag;
+	GtkWidget *constellation_settings_diag;
 	GtkWidget *databox;
 	GtkWidget *capture_graph;
 	GtkWidget *capture_button;
@@ -258,7 +260,9 @@ static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_p
 	OscPlotPrivate *priv = plot->priv;
 	TrList *list = priv->transform_list;
 	Transform *transform;
+	struct _time_settings *time_settings;
 	struct _fft_settings *fft_settings;
+	struct _constellation_settings *constellation_settings;
 	struct extra_info *ch_info;
 	
 	transform = Transform_new();
@@ -269,27 +273,28 @@ static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_p
 	Transform_set_in_data_ref(transform, (gfloat **)&ch_info->data_ref, &ch_parent->sample_count);
 	if (!strcmp(tr_name, "TIME")) {
 		Transform_attach_function(transform, time_transform_function);
+		time_settings = (struct _time_settings *)malloc(sizeof(struct _time_settings));
+		time_settings->num_samples = 10;
+		Transform_attach_settings(transform, time_settings);
 		priv->active_transform_type = TIME_TRANSFORM;
-	} else {
-			if (!strcmp(tr_name, "FFT")) {
-				Transform_attach_function(transform, fft_transform_function);
-				fft_settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
-				fft_settings->fft_size = 16384;
-				fft_settings->fft_avg = 1;
-				fft_settings->fft_pwr_off = 0.0;
-				fft_settings->fft_alg_data.cached_fft_size = -1;
-				ch_info->device_parent->shadow_of_sample_count = fft_settings->fft_size;
-				Transform_attach_settings(transform, fft_settings);
-				priv->active_transform_type = FFT_TRANSFORM;
-			} else {
-					if (!strcmp(tr_name, "CONSTELLATION")) {
-						transform->channel_parent2 = ch1;
-						Transform_attach_function(transform, constellation_transform_function);
-						ch_info = ch1->extra_field;
-						ch_info->shadow_of_enabled++;
-						priv->active_transform_type = CONSTELLATION_TRANSFORM;
-					}
-			}
+	} else if (!strcmp(tr_name, "FFT")) {
+		Transform_attach_function(transform, fft_transform_function);
+		fft_settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
+		fft_settings->fft_size = 8;
+		fft_settings->fft_avg = 1;
+		fft_settings->fft_pwr_off = 0.0;
+		fft_settings->fft_alg_data.cached_fft_size = -1;
+		Transform_attach_settings(transform, fft_settings);
+		priv->active_transform_type = FFT_TRANSFORM;
+	} else if (!strcmp(tr_name, "CONSTELLATION")) {
+		transform->channel_parent2 = ch1;
+		Transform_attach_function(transform, constellation_transform_function);
+		constellation_settings = (struct _constellation_settings *)malloc(sizeof(struct _constellation_settings));
+		constellation_settings->num_samples = 10;
+		Transform_attach_settings(transform, constellation_settings);
+		ch_info = ch1->extra_field;
+		ch_info->shadow_of_enabled++;
+		priv->active_transform_type = CONSTELLATION_TRANSFORM;
 	}
 	TrList_add_transform(list, transform);
 	
@@ -389,13 +394,28 @@ static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer dat
 	remove_transform_from_list(plot, tr);
 }
 
+void set_time_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_data)
+{
+	OscPlot *plot = user_data;
+	OscPlotPrivate *priv = plot->priv;
+	Transform *tr = priv->selected_transform_for_setup;
+	struct _time_settings *time_settings = tr->settings;
+	GtkBuilder *builder = priv->builder;
+	GtkWidget *time_sample_count_widget;
+	
+	time_sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "time_sample_count"));
+	if (response_id == 1) {
+		time_settings->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(time_sample_count_widget));
+	}
+	g_object_set(G_OBJECT(priv->channel_list_view), "sensitive", TRUE, NULL);
+}
+
 void set_fft_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_data)
 {
 	OscPlot *plot = user_data;
 	OscPlotPrivate *priv = plot->priv;
 	Transform *tr = priv->selected_transform_for_setup;
 	struct _fft_settings *fft_settings = tr->settings;
-	struct extra_info *ch_info;
 	GtkBuilder *builder = priv->builder;
 	
 	GtkWidget *fft_size_widget;
@@ -410,13 +430,99 @@ void set_fft_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_dat
 		fft_settings->fft_size = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
 		fft_settings->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
 		fft_settings->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget));
-		ch_info = tr->channel_parent->extra_field;
-		ch_info->device_parent->shadow_of_sample_count = fft_settings->fft_size;
 	}
 	g_object_set(G_OBJECT(priv->channel_list_view), "sensitive", TRUE, NULL);
 }
 
-static void fft_settings(GtkMenuItem* menuitem, gpointer data)
+void set_constellation_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_data)
+{
+	OscPlot *plot = user_data;
+	OscPlotPrivate *priv = plot->priv;
+	Transform *tr = priv->selected_transform_for_setup;
+	struct _constellation_settings *constellation_settings = tr->settings;
+	GtkBuilder *builder = priv->builder;
+	GtkWidget *constellation_sample_count_widget;
+	
+	constellation_sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "constellation_sample_count"));
+	if (response_id == 1) {
+		constellation_settings->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(constellation_sample_count_widget));
+	}
+	g_object_set(G_OBJECT(priv->channel_list_view), "sensitive", TRUE, NULL);
+}
+
+static void rebuild_fft_size_list(GtkWidget *fft_size_widget, unsigned int sample_count)
+{
+	unsigned int min_fft_size = 32;
+	unsigned int max_fft_size = 16384;
+	unsigned int fft_size;
+	GtkTreeIter iter;
+	GtkListStore *fft_size_list;
+	char buf[10];
+	
+	fft_size_list = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(fft_size_widget)));
+	gtk_list_store_clear(fft_size_list);
+	if (sample_count < min_fft_size) {
+		gtk_list_store_append(fft_size_list, &iter);
+		gtk_list_store_set(fft_size_list, &iter, 0, "Sample count too small", -1);
+		gtk_combo_box_set_active_iter(GTK_COMBO_BOX(fft_size_widget), &iter);
+		return;
+	}
+	fft_size = min_fft_size;
+	while ((fft_size <= sample_count) && (fft_size <= max_fft_size)) {
+		gtk_list_store_prepend(fft_size_list, &iter);
+		snprintf(buf, sizeof(buf), "%d", fft_size);
+		gtk_list_store_set(fft_size_list, &iter, 0, buf, -1);
+		fft_size *= 2;
+	}
+	gtk_combo_box_set_active_iter(GTK_COMBO_BOX(fft_size_widget), &iter);
+}
+
+static void default_time_setting(OscPlot *plot, Transform *tr)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct extra_info *ch_info;
+	GtkAdjustment *time_sample_count_adj;
+	GtkBuilder *builder = priv->builder;
+	
+	ch_info = tr->channel_parent->extra_field;
+	time_sample_count_adj = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_time_sample_count"));
+	gtk_adjustment_set_upper(time_sample_count_adj, (gdouble)ch_info->device_parent->shadow_of_sample_count);
+	gtk_adjustment_set_value(time_sample_count_adj, gtk_adjustment_get_lower(time_sample_count_adj));
+}
+
+static void default_fft_setting(OscPlot *plot, Transform *tr)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct extra_info *ch_info;
+	GtkBuilder *builder = priv->builder;
+	GtkWidget *fft_size_widget;
+	GtkWidget *fft_avg_widget;
+	GtkWidget *fft_pwr_offset_widget;
+	
+	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
+	fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
+	fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
+
+	ch_info = tr->channel_parent->extra_field;
+	rebuild_fft_size_list(fft_size_widget, ch_info->device_parent->shadow_of_sample_count);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_avg_widget), 1.0);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget), 0.0);
+}
+
+static void default_constellation_setting(OscPlot *plot, Transform *tr)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct extra_info *ch_info;
+	GtkAdjustment *constellation_sample_count_adj;
+	GtkBuilder *builder = priv->builder;
+	
+	ch_info = tr->channel_parent->extra_field;
+	constellation_sample_count_adj = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_constellation_sample_count"));
+	gtk_adjustment_set_upper(constellation_sample_count_adj, (gdouble)ch_info->device_parent->shadow_of_sample_count);
+	gtk_adjustment_set_value(constellation_sample_count_adj, gtk_adjustment_get_lower(constellation_sample_count_adj));
+}
+
+static void show_time_settings(GtkMenuItem* menuitem, gpointer data)
 {
 	OscPlot *plot = data;
 	OscPlotPrivate *priv  = plot->priv;
@@ -433,8 +539,53 @@ static void fft_settings(GtkMenuItem* menuitem, gpointer data)
 	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &tr, -1);
 	priv->selected_transform_for_setup = tr;
 	g_object_set(G_OBJECT(tree_view), "sensitive", FALSE, NULL);
+	default_time_setting(plot, tr);
+	gtk_dialog_run(GTK_DIALOG(priv->time_settings_diag));
+	gtk_widget_hide(priv->time_settings_diag);
+}
+
+static void show_fft_settings(GtkMenuItem* menuitem, gpointer data)
+{
+	OscPlot *plot = data;
+	OscPlotPrivate *priv  = plot->priv;
+	GtkTreeView *tree_view;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	Transform *tr;
+	GList *path;
+	
+	tree_view = GTK_TREE_VIEW(priv->channel_list_view);
+	model = gtk_tree_view_get_model(tree_view);
+	path = g_list_first(priv->selected_rows_paths);
+	gtk_tree_model_get_iter(model, &iter, path->data);
+	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &tr, -1);
+	priv->selected_transform_for_setup = tr;
+	g_object_set(G_OBJECT(tree_view), "sensitive", FALSE, NULL);
+	default_fft_setting(plot, tr);
 	gtk_dialog_run(GTK_DIALOG(priv->fft_settings_diag));
 	gtk_widget_hide(priv->fft_settings_diag);
+}
+
+static void show_constellation_settings(GtkMenuItem* menuitem, gpointer data)
+{
+	OscPlot *plot = data;
+	OscPlotPrivate *priv  = plot->priv;
+	GtkTreeView *tree_view;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	Transform *tr;
+	GList *path;
+	
+	tree_view = GTK_TREE_VIEW(priv->channel_list_view);
+	model = gtk_tree_view_get_model(tree_view);
+	path = g_list_first(priv->selected_rows_paths);
+	gtk_tree_model_get_iter(model, &iter, path->data);
+	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &tr, -1);
+	priv->selected_transform_for_setup = tr;
+	g_object_set(G_OBJECT(tree_view), "sensitive", FALSE, NULL);
+	default_constellation_setting(plot, tr);
+	gtk_dialog_run(GTK_DIALOG(priv->constellation_settings_diag));
+	gtk_widget_hide(priv->constellation_settings_diag);
 }
 
 static void clear_marker_flag(GtkTreeView *treeview)
@@ -493,7 +644,7 @@ static void apply_marker(GtkMenuItem* menuitem, gpointer data)
 	tr->has_the_marker = true;
 }
 
-static void set_sample_count(GtkMenuItem* menuitem, gpointer data)
+static void show_sample_count_dialog(GtkMenuItem* menuitem, gpointer data)
 {
 	struct _device_list *dev_list = data;
 	GtkBuilder *builder = dev_list->settings_dialog_builder;
@@ -541,7 +692,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 		menu = gtk_menu_new();
 		menuitem = gtk_menu_item_new_with_label("Sample Count");
 		g_signal_connect(menuitem, "activate",
-					(GCallback) set_sample_count, ref);
+					(GCallback) show_sample_count_dialog, ref);
 		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 		goto show_menu;
 	}
@@ -586,14 +737,24 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 	
 	if ((is_transform == TRUE) && (priv->num_selected_rows == 1)) {
 		menu = gtk_menu_new();
-		if (priv->active_transform_type == FFT_TRANSFORM) {
+		if (priv->active_transform_type == TIME_TRANSFORM) {
 			menuitem = gtk_menu_item_new_with_label("Settings");
 			g_signal_connect(menuitem, "activate",
-				(GCallback) fft_settings, data);
+				(GCallback) show_time_settings, data);
+			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+		} else if (priv->active_transform_type == FFT_TRANSFORM) {
+			menuitem = gtk_menu_item_new_with_label("Settings");
+			g_signal_connect(menuitem, "activate",
+				(GCallback) show_fft_settings, data);
 			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 			menuitem = gtk_menu_item_new_with_label("Apply Marker");
 			g_signal_connect(menuitem, "activate",
 				(GCallback) apply_marker, data);
+			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+		} else if (priv->active_transform_type == CONSTELLATION_TRANSFORM) {
+			menuitem = gtk_menu_item_new_with_label("Settings");
+			g_signal_connect(menuitem, "activate",
+				(GCallback) show_constellation_settings, data);
 			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 		}
 		menuitem = gtk_menu_item_new_with_label("Remove");
@@ -1232,7 +1393,6 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 {
 	/* Save as Dialog */
 	OscPlotPrivate *priv = data->priv;
-	gint ret;
 	char *filename;
 		
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (priv->saveas_dialog), "~/");
@@ -1266,7 +1426,7 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 				}
 				break;
 			default:
-				printf("ret : %i\n", ret);
+				printf("response_id : %i\n", response_id);
 		}
 		g_free(filename);
 	}
@@ -1291,7 +1451,9 @@ static void create_plot(OscPlot *plot)
 	}
 	priv->builder = builder;
 	priv->window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
+	priv->time_settings_diag = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_TIME_settings"));
 	priv->fft_settings_diag = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_FFT_settings"));
+	priv->constellation_settings_diag = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_CONSTELLATION_settings"));
 	priv->capture_graph = GTK_WIDGET(gtk_builder_get_object(builder, "display_capture"));
 	priv->capture_button = GTK_WIDGET(gtk_builder_get_object(builder, "capture_button"));
 	priv->channel_list_view = GTK_WIDGET(gtk_builder_get_object(builder, "channel_list_view"));
@@ -1321,8 +1483,12 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(right_click_on_ch_list_cb), plot);
     g_signal_connect(priv->channel_list_view, "popup-menu", 
 		G_CALLBACK(shift_f10_event_on_ch_list_cb), plot);
+	g_signal_connect(priv->time_settings_diag, "response",
+		G_CALLBACK(set_time_settings_cb), plot);
 	g_signal_connect(priv->fft_settings_diag, "response",
 		G_CALLBACK(set_fft_settings_cb), plot);
+	g_signal_connect(priv->constellation_settings_diag, "response",
+		G_CALLBACK(set_constellation_settings_cb), plot);
 	g_signal_connect(priv->saveas_menu, "activate",
 		G_CALLBACK(cb_saveas), plot);
 	g_signal_connect(priv->saveas_dialog, "response", 

@@ -82,12 +82,12 @@ struct _tr_list {
 };
 
 struct _time_settings {
-
+	unsigned int num_samples;
 };
 
 struct _fft_settings {
-	int fft_size;
-	int fft_avg;
+	unsigned int fft_size;
+	unsigned int fft_avg;
 	gfloat fft_pwr_off;
 	struct _fft_alg_data fft_alg_data;
 	gfloat markX[MAX_MARKERS + 2];
@@ -96,7 +96,7 @@ struct _fft_settings {
 };
 
 struct _constellation_settings {
-
+	unsigned int num_samples;
 };
 
 Transform* Transform_new(void);
