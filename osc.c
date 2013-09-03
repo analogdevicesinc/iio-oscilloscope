@@ -5,6 +5,7 @@
  *
  **/
 #include <gtk/gtk.h>
+#include <glib/gthread.h>
 #include <gtkdatabox.h>
 #include <gtkdatabox_grid.h>
 #include <gtkdatabox_points.h>
@@ -34,6 +35,105 @@ gint capture_function_id = 0;
 static GList *plot_list = NULL;
 static const char *current_device;
 
+<<<<<<< HEAD
+=======
+static gfloat *X = NULL;
+static gfloat *fft_channel = NULL;
+static gfloat fft_corr = 0.0;
+
+gint capture_function = 0;
+static int buffer_fd = -1;
+
+static struct buffer data_buffer;
+static unsigned int num_samples;
+
+static struct iio_channel_info *channels;
+static unsigned int num_active_channels;
+static unsigned int num_channels;
+static gfloat **channel_data;
+static unsigned int current_sample;
+static unsigned int bytes_per_sample;
+
+static GtkWidget *databox;
+static GtkWidget *sample_count_widget;
+static GtkWidget *fft_size_widget, *fft_avg_widget, *fft_pwr_offset_widget;
+static GtkWidget *fft_radio, *time_radio, *constellation_radio;
+static GtkWidget *show_grid;
+static GtkWidget *enable_auto_scale;
+static GtkWidget *device_list_widget;
+static GtkWidget *capture_button;
+static GtkWidget *hor_scale;
+static GtkWidget *plot_type;
+
+GtkWidget *capture_graph;
+
+static GtkWidget *rx_lo_freq_label, *adc_freq_label;
+
+static GtkDataboxGraph *fft_graph;
+static GtkDataboxGraph *grid;
+
+static GtkDataboxGraph **channel_graph;
+
+#ifndef MAX_MARKERS
+#define MAX_MARKERS 4
+#endif
+
+static gfloat markX[MAX_MARKERS + 2], markY[MAX_MARKERS + 2];
+static GtkDataboxGraph *marker[MAX_MARKERS + 2];
+static GtkWidget *marker_label;
+
+static GtkListStore *channel_list_store;
+
+static double adc_freq = 246760000.0;
+static char adc_scale[10];
+
+static bool is_fft_mode;
+
+const char *current_device;
+
+static GdkColor color_graph[] = {
+	{
+		.red = 0,
+		.green = 60000,
+		.blue = 0,
+	},
+	{
+		.red = 60000,
+		.green = 0,
+		.blue = 0,
+	},
+	{
+		.red = 0,
+		.green = 0,
+		.blue = 60000,
+	},
+	{
+		.red = 0,
+		.green = 60000,
+		.blue = 60000,
+	},
+};
+
+static GdkColor color_grid = {
+	.red = 51000,
+	.green = 51000,
+	.blue = 0,
+};
+
+static GdkColor color_background = {
+	.red = 0,
+	.green = 0,
+	.blue = 0,
+};
+
+static GdkColor color_marker = {
+	.red = 0xFFFF,
+	.green = 0,
+	.blue = 0,
+};
+
+G_LOCK_DEFINE(buffer_full);
+>>>>>>> master
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
@@ -204,6 +304,7 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 	unsigned num_samples = device->sample_count;
 	int i;
 
+<<<<<<< HEAD
 	if (init_transform) {		
 		Transform_resize_x_axis(tr, axis_length);
 		Transform_resize_y_axis(tr, axis_length);
@@ -216,6 +317,12 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 		/* Compute FFT normalization and scaling offset */
 		settings->fft_alg_data.fft_corr = 20 * log10(2.0 / (1 << (tr->channel_parent->bits_used - 1)));
 		return;
+=======
+	if ((buf->data_copy) && (buf->available == buf->size)) {
+		memcpy(buf->data_copy, buf->data, buf->size);
+		buf->data_copy = NULL;
+		G_UNLOCK(buffer_full);
+>>>>>>> master
 	}
 	do_fft(tr);
 }
@@ -324,6 +431,21 @@ static void demux_data_stream(void *data_in, unsigned int num_samples,
 				ch_data[n] = val;
 		}
 	}
+<<<<<<< HEAD
+=======
+
+}
+
+static void abort_sampling(void)
+{
+	if (buffer_fd >= 0) {
+		buffer_close(buffer_fd);
+		buffer_fd = -1;
+	}
+	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button),
+			FALSE);
+	G_UNLOCK(buffer_full);
+>>>>>>> master
 }
 
 static int buffer_open(unsigned int length)
@@ -515,6 +637,7 @@ static gboolean capture_function(void)
 {
 	unsigned int n;
 	int ret;
+<<<<<<< HEAD
 	int i;
 	
 	for (i = 0; i < num_devices; i++) {
@@ -526,6 +649,65 @@ static gboolean capture_function(void)
 			abort_sampling();
 			fprintf(stderr, "Failed to capture samples: %s\n", strerror(-ret));
 			return FALSE;
+=======
+
+	if (gtk_toggle_tool_button_get_active(btn)) {
+		gtk_databox_graph_remove_all(GTK_DATABOX(databox));
+
+		G_UNLOCK(buffer_full);
+
+		data_buffer.available = 0;
+		current_sample = 0;
+		num_active_channels = 0;
+		bytes_per_sample = 0;
+		for (i = 0; i < num_channels; i++) {
+			if (channels[i].enabled) {
+				bytes_per_sample += channels[i].bytes;
+				num_active_channels++;
+			}
+		}
+
+		if (num_active_channels == 0 || !current_device)
+			goto play_err;
+
+		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
+			gtk_label_set_text(GTK_LABEL(hor_scale), adc_scale);
+			gtk_widget_show(marker_label);
+			ret = fft_capture_setup();
+		} else {
+			gtk_label_set_text(GTK_LABEL(hor_scale), "Samples");
+			gtk_widget_hide(marker_label);
+			ret = time_capture_setup();
+		}
+
+		if (ret)
+			goto play_err;
+
+		if (!is_oneshot_mode()) {
+			buffer_fd = buffer_open(num_samples);
+			if (buffer_fd < 0)
+				goto play_err;
+		}
+
+		add_grid();
+		gtk_widget_queue_draw(GTK_WIDGET(databox));
+		frame_counter = 0;
+
+		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
+			fft_capture_start();
+		else
+			time_capture_start();
+
+	} else {
+		if (capture_function > 0) {
+			g_source_remove(capture_function);
+			capture_function = 0;
+			G_UNLOCK(buffer_full);
+		}
+		if (buffer_fd >= 0) {
+			buffer_close(buffer_fd);
+			buffer_fd = -1;
+>>>>>>> master
 		}
 	}
 
@@ -817,6 +999,7 @@ void rx_update_labels(void)
 {
 	int i;
 
+<<<<<<< HEAD
 	for (i = 0; i < num_devices; i++) {
 		device_list[i].adc_freq = read_sampling_frequency(device_list[i].device_name);
 		if (device_list[i].adc_freq >= 1000000) {
@@ -831,6 +1014,18 @@ void rx_update_labels(void)
 			sprintf(device_list[i].adc_scale, "???");
 			device_list[i].adc_freq = 0;
 		}
+=======
+void application_quit (void)
+{
+	if (capture_function > 0) {
+		g_source_remove(capture_function);
+		capture_function = 0;
+		G_UNLOCK(buffer_full);
+	}
+	if (buffer_fd >= 0) {
+		buffer_close(buffer_fd);
+		buffer_fd = -1;
+>>>>>>> master
 	}
 }
 
@@ -865,13 +1060,27 @@ static void init_application (void)
 
 gint main (int argc, char **argv)
 {
+<<<<<<< HEAD
 	gtk_init (&argc, &argv);
+=======
+	g_thread_init (NULL);
+	gdk_threads_init ();
+	gtk_init(&argc, &argv);
+
+>>>>>>> master
 	signal(SIGTERM, sigterm);
 	signal(SIGINT, sigterm);
 	signal(SIGHUP, sigterm);
+
+	gdk_threads_enter();
 	init_application();
 	gtk_main();
+<<<<<<< HEAD
 	
+=======
+	gdk_threads_leave();
+
+>>>>>>> master
 	return 0;
 }
 

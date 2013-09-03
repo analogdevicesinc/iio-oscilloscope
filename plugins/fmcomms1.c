@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include <gtk/gtk.h>
+#include <glib/gthread.h>
 #include <gtkdatabox.h>
 #include <gtkdatabox_grid.h>
 #include <gtkdatabox_points.h>
@@ -451,7 +452,7 @@ static void display_cal(void *ptr)
 			}
 
 			/* Wait til the buffer is full */
-			pthread_mutex_lock(&buffer_full);
+			G_LOCK(buffer_full);
 
 			/* If the lock is broken, then wait nicely */
 			if (kill_thread) {
@@ -508,6 +509,8 @@ static void display_cal(void *ptr)
 			else
 				show = false;
 
+			gdk_threads_enter ();
+
 			sprintf(cbuf, "avg: %3.0f | mid : %3.0f", avg_y, (min_y + max_y)/2);
 			gtk_label_set_text(GTK_LABEL(avg_I), cbuf);
 
@@ -551,6 +554,7 @@ static void display_cal(void *ptr)
 					(span_I + span_Q)/(2.0 * span_Q));
 				cal_save_values();
 			}
+			gdk_threads_leave ();
 		}
 	}
 	g_free(buf);
@@ -790,12 +794,12 @@ void save_cal(char * resfile)
 G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 {
 	gint ret;
-	pthread_t thread;
 	char *filename = NULL;
 
 	kill_thread = 0;
 
-	pthread_create(&thread, NULL, (void *) &display_cal, NULL);
+	g_thread_new("Display_thread", (void *) &display_cal, NULL);
+
 	gtk_widget_show(dialogs.calibrate);
 
 	gtk_widget_hide(cal_rx);
@@ -848,7 +852,7 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 	kill_thread = 1;
 
 	if (capture_function_id)
-		pthread_mutex_unlock(&buffer_full);
+		G_UNLOCK(buffer_full);
 
 	if (filename)
 		g_free(filename);
