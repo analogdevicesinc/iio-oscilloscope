@@ -530,6 +530,13 @@ A GUI for Linux IIO devices</property>
       </object>
     </child>
   </object>
+  <object class="GtkAdjustment" id="adjustment_sample_count">
+    <property name="lower">10</property>
+    <property name="upper">1000000</property>
+    <property name="value">400</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
   <object class="GtkDialog" id="Sample_count_dialog">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -630,13 +637,6 @@ A GUI for Linux IIO devices</property>
   <object class="GtkAdjustment" id="adjustmentTrigger">
     <property name="lower">1</property>
     <property name="upper">1000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_sample_count">
-    <property name="lower">10</property>
-    <property name="upper">1000000</property>
-    <property name="value">400</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -1050,46 +1050,62 @@ Installed/Found IIO devices on this platform</property>
           </packing>
         </child>
         <child>
-          <object class="GtkAlignment" id="alignment1">
+          <object class="GtkNotebook" id="notebook">
             <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="top_padding">100</property>
-            <property name="bottom_padding">100</property>
-            <property name="left_padding">100</property>
-            <property name="right_padding">100</property>
+            <property name="can_focus">True</property>
             <child>
-              <object class="GtkTable" id="table1">
+              <object class="GtkAlignment" id="alignment1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="n_rows">2</property>
-                <property name="column_spacing">5</property>
-                <property name="row_spacing">5</property>
-                <property name="homogeneous">True</property>
+                <property name="top_padding">100</property>
+                <property name="bottom_padding">100</property>
+                <property name="left_padding">100</property>
+                <property name="right_padding">100</property>
                 <child>
-                  <object class="GtkButton" id="button_capture">
-                    <property name="label" translatable="yes">Capture</property>
-                    <property name="use_action_appearance">False</property>
+                  <object class="GtkTable" id="table1">
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                    <property name="use_action_appearance">False</property>
+                    <property name="can_focus">False</property>
+                    <property name="n_rows">2</property>
+                    <property name="column_spacing">5</property>
+                    <property name="row_spacing">5</property>
+                    <property name="homogeneous">True</property>
+                    <child>
+                      <object class="GtkButton" id="button_capture">
+                        <property name="label" translatable="yes">Capture</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="use_action_appearance">False</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="button_generator">
+                        <property name="label" translatable="yes">Generator</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="use_action_appearance">False</property>
+                      </object>
+                      <packing>
+                        <property name="top_attach">1</property>
+                        <property name="bottom_attach">2</property>
+                      </packing>
+                    </child>
                   </object>
-                </child>
-                <child>
-                  <object class="GtkButton" id="button_generator">
-                    <property name="label" translatable="yes">Generator</property>
-                    <property name="use_action_appearance">False</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                    <property name="use_action_appearance">False</property>
-                  </object>
-                  <packing>
-                    <property name="top_attach">1</property>
-                    <property name="bottom_attach">2</property>
-                  </packing>
                 </child>
               </object>
+            </child>
+            <child type="tab">
+              <object class="GtkLabel" id="label1">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">Main</property>
+              </object>
+              <packing>
+                <property name="tab_fill">False</property>
+              </packing>
             </child>
           </object>
           <packing>
@@ -1100,12 +1116,6 @@ Installed/Found IIO devices on this platform</property>
         </child>
       </object>
     </child>
-  </object>
-  <object class="GtkListStore" id="trigger_list">
-    <columns>
-      <!-- column-name name -->
-      <column type="gchararray"/>
-    </columns>
   </object>
   <object class="GtkDialog" id="trigger_dialog">
     <property name="can_focus">False</property>
@@ -1296,5 +1306,11 @@ Installed/Found IIO devices on this platform</property>
       <action-widget response="-6">buttonCancel1</action-widget>
       <action-widget response="-5">buttonOK1</action-widget>
     </action-widgets>
+  </object>
+  <object class="GtkListStore" id="trigger_list">
+    <columns>
+      <!-- column-name name -->
+      <column type="gchararray"/>
+    </columns>
   </object>
 </interface>
