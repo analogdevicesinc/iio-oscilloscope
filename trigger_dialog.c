@@ -69,7 +69,6 @@ static void trigger_load_settings(void)
 	unsigned int num;
 	int ret;
 
-	g_signal_handler_block(trigger_list_widget, trigger_change_handler_id);
 	gtk_list_store_clear(trigger_list_store);
 	
 	if (!crt_device ||
@@ -89,6 +88,7 @@ static void trigger_load_settings(void)
 	if (devices == NULL)
 		return;
 
+	g_signal_handler_block(trigger_list_widget, trigger_change_handler_id);
 	gtk_list_store_append(trigger_list_store, &iter);
 	gtk_list_store_set(trigger_list_store, &iter, 0, "None", -1);
 	gtk_combo_box_set_active_iter(GTK_COMBO_BOX(trigger_list_widget), &iter);
