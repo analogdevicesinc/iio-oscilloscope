@@ -33,6 +33,7 @@ unsigned num_devices = 0;
 gint capture_function_id = 0;
 static GList *plot_list = NULL;
 static const char *current_device;
+G_LOCK_DEFINE(buffer_full);
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
