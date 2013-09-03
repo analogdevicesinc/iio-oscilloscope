@@ -87,6 +87,7 @@ struct _OscPlotPrivate
 	/* Databox data */
 	GtkDataboxGraph *grid;
 	GtkDataboxGraph *time_graph;
+	gfloat gridy[25], gridx[25];
 	
 	gint redraw_function;
 	
@@ -1176,7 +1177,6 @@ static void fill_axis(gfloat *buf, gfloat start, gfloat inc, int num)
 static void add_grid(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
-	static gfloat gridy[25], gridx[25];
 	
 	/*
 	This would be a better general solution, but it doesn't really work well
@@ -1188,31 +1188,30 @@ static void add_grid(OscPlot *plot)
 	x = fill_axis(gridx, left, right, 20);
 	grid = gtk_databox_grid_array_new (y, x, gridy, gridx, &color_grid, 1);
 	*/
-	
+
 	if (priv->active_transform_type == FFT_TRANSFORM) {
-		fill_axis(gridx, 0, 10, 15);
-		fill_axis(gridy, 10, -10, 15);
-		priv->grid = gtk_databox_grid_array_new (15, 15, gridy, gridx, &color_grid, 1);
+		fill_axis(priv->gridx, 0, 10, 15);
+		fill_axis(priv->gridy, 10, -10, 15);
+		priv->grid = gtk_databox_grid_array_new (15, 15, priv->gridy, priv->gridx, &color_grid, 1);
 	} else if (priv->active_transform_type == CONSTELLATION_TRANSFORM) {
-		fill_axis(gridx, -80000, 10000, 18);
-		fill_axis(gridy, -80000, 10000, 18);
-		priv->grid = gtk_databox_grid_array_new (18, 18, gridy, gridx, &color_grid, 1);
+		fill_axis(priv->gridx, -80000, 10000, 18);
+		fill_axis(priv->gridy, -80000, 10000, 18);
+		priv->grid = gtk_databox_grid_array_new (18, 18, priv->gridy, priv->gridx, &color_grid, 1);
 	} else if (priv->active_transform_type == TIME_TRANSFORM) {
-		fill_axis(gridx, 0, 100, 5);
-		fill_axis(gridy, -80000, 10000, 18);
-		priv->grid = gtk_databox_grid_array_new (18, 5, gridy, gridx, &color_grid, 1);
+		fill_axis(priv->gridx, 0, 100, 5);
+		fill_axis(priv->gridy, -80000, 10000, 18);
+		priv->grid = gtk_databox_grid_array_new (18, 5, priv->gridy, priv->gridx, &color_grid, 1);
 	} else if (priv->active_transform_type == NO_TRANSFORM_TYPE) {
 		gfloat left, right, top, bottom;
 
 		gtk_databox_get_total_limits(GTK_DATABOX(priv->databox), &left, &right, &top, &bottom);
-		fill_axis(gridy, top, bottom, 20);
-		fill_axis(gridx, left, right, 20);
-		priv->grid = gtk_databox_grid_array_new (18, 5, gridy, gridx, &color_grid, 1);
+		fill_axis(priv->gridy, top, bottom, 20);
+		fill_axis(priv->gridx, left, right, 20);
+		priv->grid = gtk_databox_grid_array_new (18, 5, priv->gridy, priv->gridx, &color_grid, 1);
 	}
-	
+
 	gtk_databox_graph_add(GTK_DATABOX(priv->databox), priv->grid);
 	gtk_databox_graph_set_hide(priv->grid, !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->show_grid)));
-
 }
 
 static void show_grid_toggled(GtkToggleButton *btn, gpointer data)
