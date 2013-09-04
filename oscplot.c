@@ -208,7 +208,6 @@ void osc_plot_restart (OscPlot *plot)
 		gtk_widget_queue_draw(priv->databox);
 		priv->frame_counter = 0;
 		capture_start(priv);
-		rescale_databox(priv, GTK_DATABOX(priv->databox), 0.5);
 	}
 }
 
