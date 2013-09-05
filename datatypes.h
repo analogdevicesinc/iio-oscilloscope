@@ -30,6 +30,7 @@ struct extra_info {
 
 struct buffer {
 	void *data;
+	void *data_copy;
 	unsigned int available;
 	unsigned int size;
 };
@@ -53,8 +54,10 @@ struct _device_list {
 	char adc_scale[10];
 	void *settings_dialog_builder;
 	struct buffer data_buffer;
+	unsigned int num_active_channels;
 	unsigned int bytes_per_sample;
 	unsigned int current_sample;
+	gfloat **channel_data;
 	int buffer_fd;
 };
 

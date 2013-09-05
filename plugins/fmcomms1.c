@@ -88,6 +88,8 @@ static GtkWidget *Q_adc_offset_adj, *Q_adc_gain_adj;
 static int kill_thread;
 static int fmcomms1_cal_eeprom(void);
 
+static void *device_ref;
+
 static int oneover(const gchar *num)
 {
 	float close;
@@ -412,9 +414,9 @@ static void display_cal(void *ptr)
 		if (kill_thread) {
 			size = 0;
 		} else {
-			size = plugin_data_capture_size();
-			channels = plugin_data_capture_num_active_channels();
-			num_samples = size / plugin_data_capture_bytes_per_sample();
+			size = plugin_data_capture_size(device_ref);
+			channels = plugin_data_capture_num_active_channels(device_ref);
+			num_samples = size / plugin_data_capture_bytes_per_sample(device_ref);
 		}
 
 		if (size != 0 && channels == 2) {
@@ -446,7 +448,7 @@ static void display_cal(void *ptr)
 			}
 
 			/* tell the other thread where to put the data */
-			while (!plugin_data_capture(buf) && !kill_thread) {
+			while (!plugin_data_capture(device_ref, buf) && !kill_thread) {
 				/* Wait 10ms */
 				usleep(10000);
 			}
@@ -456,13 +458,13 @@ static void display_cal(void *ptr)
 
 			/* If the lock is broken, then wait nicely */
 			if (kill_thread) {
-				while(!plugin_data_capture(NULL))
+				while(!plugin_data_capture(device_ref, NULL))
 					usleep(10000);
 				break;
 			}
 
 			/* Process the data in the buffer */
-			plugin_data_capture_demux(buf, cooked_data, size/4, channels);
+			plugin_data_capture_demux(device_ref, buf, cooked_data, size/4, channels);
 
 			avg_x = avg_y = 0.0;
 			max_x = max_y = -MAXFLOAT;
@@ -795,7 +797,7 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 {
 	gint ret;
 	char *filename = NULL;
-
+	
 	kill_thread = 0;
 
 	g_thread_new("Display_thread", (void *) &display_cal, NULL);
@@ -1463,6 +1465,8 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	g_signal_connect(cal_rx, "clicked", G_CALLBACK(cal_rx_button_clicked), NULL);
 
+	device_ref = plugin_get_device_by_reference("cf-ad9643-core-lpc");
+	
 	fmcomms1_cal_eeprom();
 	tx_update_values();
 	rx_update_values();

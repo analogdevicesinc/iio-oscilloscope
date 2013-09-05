@@ -275,17 +275,17 @@ static int sign_extend(unsigned int val, unsigned int bits)
 	return ((int )(val << shift)) >> shift;
 }
 
-static void demux_data_stream(void *data_in, unsigned int num_samples,
-	unsigned int offset, unsigned int data_out_size,
+static void demux_data_stream(void *data_in, gfloat **data_out,
+	unsigned int num_samples, unsigned int offset, unsigned int data_out_size,
 	struct iio_channel_info *channels, unsigned int num_channels)
 {
-	struct extra_info *ch_info;
 	unsigned int i, j, n;
 	unsigned int val;
-	gfloat *ch_data;
-	
+	unsigned int k;
+
 	for (i = 0; i < num_samples; i++) {
 		n = (offset + i) % data_out_size;
+		k = 0;
 		for (j = 0; j < num_channels; j++) {
 			if (!channels[j].enabled)
 				continue;
@@ -325,14 +325,14 @@ static void demux_data_stream(void *data_in, unsigned int num_samples,
 			data_in += channels[j].bytes;
 			val >>= channels[j].shift;
 			val &= channels[j].mask;
-			ch_info = channels[j].extra_field;
-			ch_data = (gfloat *)ch_info->data_ref;
 			if (channels[j].is_signed)
-				ch_data[n] = sign_extend(val, channels[j].bits_used);
+				data_out[k][n] = sign_extend(val, channels[j].bits_used);
 			else
-				ch_data[n] = val;
+				data_out[k][n] = val;
+			k++;
 		}
 	}
+
 }
 
 static int buffer_open(unsigned int length)
@@ -408,6 +408,7 @@ static void abort_sampling(void)
 	close_active_buffers();
 	/* !!! The line that follows should be replaced with a stop function for all plots !!! */
 	//gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button), FALSE);
+	G_UNLOCK(buffer_full);
 }
 
 unsigned int set_channel_attr_enable(const char *device_name, struct iio_channel_info *channel, unsigned enable)
@@ -480,6 +481,12 @@ static int sample_iio_data(struct _device_list *device)
 		ret = sample_iio_data_oneshot(buf);
 	else
 		ret = sample_iio_data_continuous(device->buffer_fd, buf);
+	
+	if ((buf->data_copy) && (buf->available == buf->size)) {
+		memcpy(buf->data_copy, buf->data, buf->size);
+		buf->data_copy = NULL;
+		G_UNLOCK(buffer_full);
+	}
 		
 	return ret;
 }
@@ -487,36 +494,52 @@ static int sample_iio_data(struct _device_list *device)
 /*
  * helper functions for plugins which want to look at data
  */
-int plugin_data_capture_size(void)
+
+void * plugin_get_device_by_reference(const char * device_name)
 {
-	//return data_buffer.size;
+	int i;
+	
+	for (i = 0; i < num_devices; i++) {
+		if (strcmp(device_name, device_list[i].device_name) == 0)
+			return (void *)&device_list[i];
+	}
+	
+	return NULL;
 }
 
-int plugin_data_capture_num_active_channels(void)
+int plugin_data_capture_size(void *device)
 {
-	//return num_active_channels;
+	return ((struct _device_list *)device)->data_buffer.size;
 }
 
-int plugin_data_capture_bytes_per_sample(void)
+int plugin_data_capture_num_active_channels(void *device)
 {
-	//return bytes_per_sample;
+	return ((struct _device_list *)device)->num_active_channels;
 }
 
-void plugin_data_capture_demux(void *buf, gfloat **cooked, unsigned int num_samples,
+int plugin_data_capture_bytes_per_sample(void *device)
+{
+	return ((struct _device_list *)device)->bytes_per_sample;
+}
+
+void plugin_data_capture_demux(void *device, void *buf, gfloat **cooked, unsigned int num_samples,
 	unsigned int num_channels)
 
 {
-	//demux_data_stream(buf, cooked, num_samples, 0, num_samples, channels, num_channels);
+	demux_data_stream(buf, cooked, num_samples, 0, num_samples,
+		((struct _device_list *)device)->channel_list, num_channels);
 }
 
-int plugin_data_capture(void *buf)
+int plugin_data_capture(void *device, void *buf)
 {
+	struct _device_list *_device = (struct _device_list *)device;
+	
 	/* only one consumer at a time */
-	//if (data_buffer.data_copy)
-		//return false;
+	if (_device->data_buffer.data_copy)
+		return false;
 
-	//data_buffer.data_copy = buf;
-	//return true;
+	_device->data_buffer.data_copy = buf;
+	return true;
 }
 
 static bool force_plugin(const char *name)
@@ -610,7 +633,7 @@ static gboolean capture_function(void)
 	unsigned int n;
 	int ret;
 	int i;
-	
+
 	for (i = 0; i < num_devices; i++) {
 		if (device_list[i].bytes_per_sample == 0)
 			continue;
@@ -625,9 +648,10 @@ static gboolean capture_function(void)
 
 	for (i = 0; i < num_devices; i++) {
 		if (device_list[i].bytes_per_sample == 0)
-			continue;
+			continue;	
+		
 		n = device_list[i].data_buffer.available / device_list[i].bytes_per_sample;
-		demux_data_stream(device_list[i].data_buffer.data, n, device_list[i].current_sample,
+		demux_data_stream(device_list[i].data_buffer.data, device_list[i].channel_data, n, device_list[i].current_sample,
 			device_list[i].sample_count, device_list[i].channel_list, device_list[i].num_channels);
 		device_list[i].current_sample = (device_list[i].current_sample + n) % device_list[i].sample_count;
 		device_list[i].data_buffer.available -= n * device_list[i].bytes_per_sample;
@@ -653,6 +677,7 @@ static void resize_device_data(struct _device_list *device)
 	
 	/* Check the enable status of the channels from all windows and update the channels enable attributes. */
 	device->bytes_per_sample = 0;
+	device->num_active_channels = 0;
 	for (i = 0; i < device->num_channels; i++) {
 		channel = &device->channel_list[i];
 		ch_info = channel->extra_field;
@@ -661,6 +686,7 @@ static void resize_device_data(struct _device_list *device)
 		enable = set_channel_attr_enable(device->device_name, channel, enable);
 		if (enable) {
 			device->bytes_per_sample += channel->bytes;
+			device->num_active_channels++;
 		}		
 	}
 
@@ -676,6 +702,8 @@ static void resize_device_data(struct _device_list *device)
 			if (ch_info->data_ref)
 				g_free(ch_info->data_ref);
 			ch_info->data_ref = (gfloat *)g_new0(gfloat, device->sample_count);
+			/* Copy the channel data address to <channel_data> variable */
+			device->channel_data[i] = ch_info->data_ref;
 		}
 	}
 }
@@ -711,10 +739,12 @@ static void start(OscPlot *plot, gboolean start_event, gpointer databox)
 		if (capture_function_id > 0) {
 			g_source_remove(capture_function_id);
 			capture_function_id = 0;
+			G_UNLOCK(buffer_full);
 		}
 		close_active_buffers();
 		
 		/* Start the capture process */
+		G_UNLOCK(buffer_full);
 		capture_setup();
 		capture_start();
 		restart_all_running_plots();
@@ -724,6 +754,7 @@ static void start(OscPlot *plot, gboolean start_event, gpointer databox)
 			if (capture_function_id > 0) {
 			g_source_remove(capture_function_id);
 			capture_function_id = 0;
+			G_UNLOCK(buffer_full);
 		}
 	}
 }
@@ -743,6 +774,7 @@ void application_quit (void)
 	if (capture_function_id > 0) {
 		g_source_remove(capture_function_id);
 		capture_function_id = 0;
+		G_UNLOCK(buffer_full);
 	}
 	close_active_buffers();
 	
@@ -825,8 +857,10 @@ static struct _device_list *add_device(struct _device_list *dev_list, const char
 	}
 	
 	dev_list[n].data_buffer.data = NULL;
+	dev_list[n].data_buffer.data_copy = NULL;
 	dev_list[n].sample_count = 400;
 	dev_list[n].shadow_of_sample_count = 400;
+	dev_list[n].channel_data = (gfloat **)malloc(sizeof(gfloat *) * dev_list[n].num_channels);
 	dev_list[n].buffer_fd = -1;
 		
 	return dev_list;
@@ -970,12 +1004,18 @@ static void init_application (void)
 
 gint main (int argc, char **argv)
 {
+	g_thread_init (NULL);
+	gdk_threads_init ();
 	gtk_init (&argc, &argv);
+	
 	signal(SIGTERM, sigterm);
 	signal(SIGINT, sigterm);
 	signal(SIGHUP, sigterm);
+	
+	gdk_threads_enter();
 	init_application();
 	gtk_main();
+	gdk_threads_leave();
 	
 	return 0;
 }
