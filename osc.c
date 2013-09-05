@@ -33,6 +33,7 @@ unsigned num_devices = 0;
 gint capture_function_id = 0;
 static GList *plot_list = NULL;
 static const char *current_device;
+static int num_capturing_plots;
 G_LOCK_DEFINE(buffer_full);
 
 /* Couple helper functions from fru parsing */
@@ -698,6 +699,7 @@ static void capture_start(void)
 static void start(OscPlot *plot, gboolean start_event, gpointer databox)
 {	
 	if (start_event) {
+		num_capturing_plots++;
 		/* Stop the capture process to allow settings to be updated */
 		if (capture_function_id > 0) {
 			g_source_remove(capture_function_id);
@@ -709,6 +711,13 @@ static void start(OscPlot *plot, gboolean start_event, gpointer databox)
 		capture_setup();
 		capture_start();
 		restart_all_running_plots();
+	} else {
+		num_capturing_plots--;
+		if (num_capturing_plots == 0)
+			if (capture_function_id > 0) {
+			g_source_remove(capture_function_id);
+			capture_function_id = 0;
+		}
 	}
 }
 
