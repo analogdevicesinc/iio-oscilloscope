@@ -71,11 +71,15 @@ struct _OscPlotPrivate
 	GtkWidget *saveas_menu;
 	GtkWidget *saveas_dialog;
 	
-	
 	GtkTextBuffer* tbuf;
 	
 	int frame_counter;
 	time_t last_update;
+	
+	int do_a_rescale_flag;
+	
+	/* A reference to the device holding the most recent created transform */
+	struct _device_list *current_device;
 	
 	/* List of transforms for this plot */
 	TrList *transform_list;
@@ -161,6 +165,9 @@ static void rescale_databox(OscPlotPrivate *priv, GtkDatabox *box, gfloat border
 static void call_all_transform_functions(OscPlotPrivate *priv);
 static void capture_start(OscPlotPrivate *priv);
 
+/* Helpers */
+#define GET_CHANNEL_PARENT(ch) ((struct extra_info *)(((struct iio_channel_info *)(ch))->extra_field))->device_parent
+
 /******************   Public Methods Definitions   ********************/
 GType osc_plot_get_type(void)
 {
@@ -192,6 +199,24 @@ GtkWidget *osc_plot_new(void)
 void osc_plot_data_update (OscPlot *plot)
 {	
 	call_all_transform_functions(plot->priv);
+}
+
+void osc_plot_update_rx_lbl(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	TrList *tr_list = priv->transform_list;
+	int i;
+	
+	if (priv->active_transform_type == FFT_TRANSFORM) {
+		gtk_label_set_text(GTK_LABEL(priv->hor_scale), priv->current_device->adc_scale);
+		/* In FFT mode we need to scale the x-axis according to the selected sampling freequency */
+		for (i = 0; i < tr_list->size; i++)
+			Transform_setup(tr_list->transforms[i]);
+		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), 0.0, priv->current_device->adc_freq / 2.0, 0.0, -75.0);
+		priv->do_a_rescale_flag = 1;
+	} else {
+		gtk_label_set_text(GTK_LABEL(priv->hor_scale), "Samples");
+	}
 }
 
 void osc_plot_restart (OscPlot *plot)
@@ -270,6 +295,7 @@ static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_p
 	transform->channel_parent = ch0;
 	transform->graph_active = TRUE;
 	ch_info->shadow_of_enabled++;
+	priv->current_device = GET_CHANNEL_PARENT(ch0);
 	Transform_set_in_data_ref(transform, (gfloat **)&ch_info->data_ref, &ch_parent->sample_count);
 	if (!strcmp(tr_name, "TIME")) {
 		Transform_attach_function(transform, time_transform_function);
@@ -307,8 +333,10 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	TrList *list = priv->transform_list;
 	struct extra_info *ch_info = tr->channel_parent->extra_field;
 	
-	gtk_databox_graph_remove(GTK_DATABOX(priv->databox), tr->graph);
-	gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
+	if (tr->graph) {
+		gtk_databox_graph_remove(GTK_DATABOX(priv->databox), tr->graph);
+		gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
+	}
 	ch_info->shadow_of_enabled--;
 	if (priv->active_transform_type == CONSTELLATION_TRANSFORM) {
 		ch_info = tr->channel_parent2->extra_field;
@@ -319,6 +347,7 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	Transform_destroy(tr);
 	if (list->size == 0) {
 		priv->active_transform_type = NO_TRANSFORM_TYPE;
+		priv->current_device = NULL;
 	}
 }
 
@@ -687,7 +716,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 	gtk_tree_model_get(model, &iter, IS_DEVICE, &is_device, IS_CHANNEL,
 		&is_channel, IS_TRANSFORM, &is_transform, ELEMENT_REFERENCE, &ref, -1);
 	
-	
+	/* Right-click menu for devices */
 	if ((is_device == TRUE) && (priv->num_selected_rows == 1)) {
 		menu = gtk_menu_new();
 		menuitem = gtk_menu_item_new_with_label("Sample Count");
@@ -697,6 +726,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 		goto show_menu;
 	}
 	
+	/* Right-click menu for channels */
 	if (is_channel == TRUE) {
 		menu = gtk_menu_new();
 		if (priv->num_selected_rows == 2) {
@@ -722,10 +752,15 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 						(GCallback) add_transform_to_tree_store, data);
 					gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 				}
-					goto show_menu;
+				goto show_menu;
 			} else {
 				if (priv->active_transform_type == CONSTELLATION_TRANSFORM)
 					return;
+					
+				struct _device_list *device = GET_CHANNEL_PARENT(ref);
+				if ((priv->active_transform_type == FFT_TRANSFORM) && (device != priv->current_device))
+					return;
+					
 				menuitem = gtk_menu_item_new_with_label(transforms[priv->active_transform_type - 1]);
 				g_signal_connect(menuitem, "activate",
 					(GCallback) add_transform_to_tree_store, data);
@@ -735,6 +770,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 		}
 	}	
 	
+	/* Right-click menu for transforms */
 	if ((is_transform == TRUE) && (priv->num_selected_rows == 1)) {
 		menu = gtk_menu_new();
 		if (priv->active_transform_type == TIME_TRANSFORM) {
@@ -932,8 +968,10 @@ static void auto_scale_databox(OscPlotPrivate *priv, GtkDatabox *box)
 		return;
 
 	/* Auto scale every 10 seconds */
-	if (priv->frame_counter == 0)
+	if ((priv->frame_counter == 0) || (priv->do_a_rescale_flag == 1)) {
+		priv->do_a_rescale_flag = 0;
 		rescale_databox(priv, box, 0.05);
+	}
 }
 
 static void fps_counter(OscPlotPrivate *priv)
@@ -1031,6 +1069,8 @@ static void plot_setup(OscPlot *plot)
 		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), 0.0, max_x_axis, 8500.0, -8500.0);
 	else if (priv->active_transform_type == FFT_TRANSFORM)
 		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -5.0, max_adc_freq / 2.0 + 5.0, 0.0, -75.0);
+		
+	osc_plot_update_rx_lbl(plot);
 }
 
 static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)

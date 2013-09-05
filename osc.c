@@ -245,6 +245,13 @@ static void gfunc_update_plot(gpointer data, gpointer user_data)
 	osc_plot_data_update(OSC_PLOT(plot));
 }
 
+static void gfunc_update_rx_lbl_plot(gpointer data, gpointer user_data)
+{
+	GtkWidget *plot = data;
+
+	osc_plot_update_rx_lbl(OSC_PLOT(plot));
+}
+
 static void gfunc_restart_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
@@ -927,6 +934,8 @@ void rx_update_labels(void)
 			device_list[i].adc_freq = 0;
 		}
 	}
+	
+	g_list_foreach(plot_list, gfunc_update_rx_lbl_plot, NULL);
 }
 
 static void init_application (void)
