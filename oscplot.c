@@ -289,6 +289,34 @@ static void add_row_child(GtkTreeView *treeview, GtkTreeIter *parent, char *chil
 		TRANSFORM_ACTIVE, 1, ELEMENT_REFERENCE, tr,  -1);
 }
 
+static void time_settings_init(struct _time_settings *settings)
+{
+	if (settings) {
+		settings->num_samples = 10;
+	}
+}
+
+static void fft_settings_init(struct _fft_settings *settings)
+{
+	int i;
+	
+	if (settings) {
+		settings->fft_size = 8;
+		settings->fft_avg = 1;
+		settings->fft_pwr_off = 0.0;
+		settings->fft_alg_data.cached_fft_size = -1;
+		for (i = 0; i < MAX_MARKERS + 2; i++)
+			settings->marker[i] = NULL;
+	}
+}
+
+static void constellation_settings_init(struct _constellation_settings *settings)
+{
+	if (settings) {
+		settings->num_samples = 10;
+	}
+}
+
 static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_parent, 
 	struct iio_channel_info *ch0, struct iio_channel_info *ch1, char *tr_name)
 {
@@ -310,23 +338,20 @@ static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_p
 	if (!strcmp(tr_name, "TIME")) {
 		Transform_attach_function(transform, time_transform_function);
 		time_settings = (struct _time_settings *)malloc(sizeof(struct _time_settings));
-		time_settings->num_samples = 10;
+		time_settings_init(time_settings);
 		Transform_attach_settings(transform, time_settings);
 		priv->active_transform_type = TIME_TRANSFORM;
 	} else if (!strcmp(tr_name, "FFT")) {
 		Transform_attach_function(transform, fft_transform_function);
 		fft_settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
-		fft_settings->fft_size = 8;
-		fft_settings->fft_avg = 1;
-		fft_settings->fft_pwr_off = 0.0;
-		fft_settings->fft_alg_data.cached_fft_size = -1;
+		fft_settings_init(fft_settings);
 		Transform_attach_settings(transform, fft_settings);
 		priv->active_transform_type = FFT_TRANSFORM;
 	} else if (!strcmp(tr_name, "CONSTELLATION")) {
 		transform->channel_parent2 = ch1;
 		Transform_attach_function(transform, constellation_transform_function);
 		constellation_settings = (struct _constellation_settings *)malloc(sizeof(struct _constellation_settings));
-		constellation_settings->num_samples = 10;
+		constellation_settings_init(constellation_settings);
 		Transform_attach_settings(transform, constellation_settings);
 		ch_info = ch1->extra_field;
 		ch_info->shadow_of_enabled++;
@@ -1160,12 +1185,15 @@ static void transform_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, g
 	active = !active;
 	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, TRANSFORM_ACTIVE, active, -1);
 	tr->graph_active = (active != 0) ? TRUE : FALSE;
+	gtk_tree_path_free(path);
+	
 	if (tr->graph) {
 		gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(tr->graph), !active);
 		settings = tr->settings;
 		if (tr->has_the_marker)
 			for (m = 0; m <= MAX_MARKERS; m++)
-				gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(settings->marker[m]), !active);
+				if (settings->marker[m])
+					gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(settings->marker[m]), !active);
 		gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
 	}
 }
