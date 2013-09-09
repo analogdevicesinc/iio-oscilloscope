@@ -28,6 +28,7 @@ extern unsigned num_devices;
 
 enum {
 	CAPTURE_EVENT_SIGNAL,
+	DESTROY_EVENT_SIGNAL,
 	LAST_SIGNAL
 };
 
@@ -242,7 +243,7 @@ static void osc_plot_class_init(OscPlotClass *klass)
 {
 	GObjectClass *gobject_class  = G_OBJECT_CLASS (klass);
 
-	oscplot_signals[CAPTURE_EVENT_SIGNAL] = g_signal_new("capture-event",
+	oscplot_signals[CAPTURE_EVENT_SIGNAL] = g_signal_new("osc-capture-event",
 			G_TYPE_FROM_CLASS (klass),
 			G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION,
 			G_STRUCT_OFFSET (OscPlotClass, capture_event),
@@ -250,6 +251,15 @@ static void osc_plot_class_init(OscPlotClass *klass)
 			NULL,
 			g_cclosure_marshal_VOID__VOID,
 			G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
+	
+	oscplot_signals[DESTROY_EVENT_SIGNAL] = g_signal_new("osc-destroy-event",
+			G_TYPE_FROM_CLASS (klass),
+			G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION,
+			G_STRUCT_OFFSET (OscPlotClass, destroy_event),
+			NULL,
+			NULL,
+			g_cclosure_marshal_VOID__VOID,
+			G_TYPE_NONE, 0);
 	
 	g_type_class_add_private (gobject_class, sizeof (OscPlotPrivate));
 }
@@ -332,11 +342,7 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	OscPlotPrivate *priv = plot->priv;
 	TrList *list = priv->transform_list;
 	struct extra_info *ch_info = tr->channel_parent->extra_field;
-	
-	if (tr->graph) {
-		gtk_databox_graph_remove(GTK_DATABOX(priv->databox), tr->graph);
-		gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
-	}
+
 	ch_info->shadow_of_enabled--;
 	if (priv->active_transform_type == CONSTELLATION_TRANSFORM) {
 		ch_info = tr->channel_parent2->extra_field;
@@ -420,6 +426,10 @@ static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer dat
 	gtk_tree_model_get_iter(model, &iter, path->data);
 	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &tr, -1);
 	gtk_tree_store_remove(GTK_TREE_STORE(model), &iter);
+	if (tr->graph) {
+		gtk_databox_graph_remove(GTK_DATABOX(priv->databox), tr->graph);
+		gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
+	}
 	remove_transform_from_list(plot, tr);
 }
 
@@ -962,6 +972,14 @@ static gboolean active_channels_check(GtkTreeView *treeview)
 	
 }
 
+static void remove_all_transforms(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	
+	while (priv->transform_list->size)
+		remove_transform_from_list(plot, priv->transform_list->transforms[0]);
+}
+
 static void auto_scale_databox(OscPlotPrivate *priv, GtkDatabox *box)
 {
 	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
@@ -987,7 +1005,7 @@ static void fps_counter(OscPlotPrivate *priv)
 	}
 }
 
-static gboolean osc_plot_redraw(OscPlotPrivate *priv)
+static gboolean plot_redraw(OscPlotPrivate *priv)
 {
 	auto_scale_databox(priv, GTK_DATABOX(priv->databox));
 	gtk_widget_queue_draw(priv->databox);
@@ -999,7 +1017,7 @@ static gboolean osc_plot_redraw(OscPlotPrivate *priv)
 
 static void capture_start(OscPlotPrivate *priv)
 {
-	priv->redraw_function = g_idle_add((GSourceFunc) osc_plot_redraw, priv);
+	priv->redraw_function = g_idle_add((GSourceFunc) plot_redraw, priv);
 }
 
 static void add_markers(OscPlot *plot, Transform *transform)
@@ -1024,6 +1042,23 @@ static void add_markers(OscPlot *plot, Transform *transform)
 	
 }
 
+static void check_transform_settings(Transform *tr, int transform_type)
+{
+	struct _device_list *device = GET_CHANNEL_PARENT(tr->channel_parent);
+	gfloat sample_count  = device->shadow_of_sample_count;
+	
+	if (transform_type == TIME_TRANSFORM) {
+		if (((struct _time_settings *)tr->settings)->num_samples > sample_count)
+			((struct _time_settings *)tr->settings)->num_samples = sample_count;
+	} else if(transform_type == FFT_TRANSFORM) {
+		while (((struct _fft_settings *)tr->settings)->fft_size > sample_count)
+			((struct _fft_settings *)tr->settings)->fft_size /= 2;
+	} else if(transform_type == CONSTELLATION_TRANSFORM) {
+		if (((struct _constellation_settings *)tr->settings)->num_samples > sample_count)
+			((struct _constellation_settings *)tr->settings)->num_samples = sample_count;
+	}
+}
+
 static void plot_setup(OscPlot *plot)
 {	
 	OscPlotPrivate *priv = plot->priv;
@@ -1039,7 +1074,8 @@ static void plot_setup(OscPlot *plot)
 	gtk_databox_graph_remove_all(GTK_DATABOX(priv->databox));
 	
 	for (i = 0; i < tr_list->size; i++) {
-		transform = tr_list->transforms[i];		
+		transform = tr_list->transforms[i];
+		check_transform_settings(transform, priv->active_transform_type);
 		Transform_setup(transform);
 		transform_x_axis = Transform_get_x_axis_ref(transform);
 		transform_y_axis = Transform_get_y_axis_ref(transform);
@@ -1050,8 +1086,8 @@ static void plot_setup(OscPlot *plot)
 			transform->graph = gtk_databox_lines_new(transform->y_axis_size, transform_x_axis, transform_y_axis, &color_graph[i], 1);
 		
 		ch_info = transform->channel_parent->extra_field;
-		if (transform->y_axis_size > max_x_axis)
-			max_x_axis = transform->y_axis_size;
+		if (transform->x_axis_size > max_x_axis)
+			max_x_axis = transform->x_axis_size;
 		if (ch_info->device_parent->adc_freq > max_adc_freq)
 			max_adc_freq = ch_info->device_parent->adc_freq;
 			
@@ -1471,6 +1507,17 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 	gtk_widget_hide(priv->saveas_dialog);
 }
 
+static void plot_destroyed (GtkWidget *object, OscPlot *plot)
+{
+	remove_all_transforms(plot);
+	g_signal_emit(plot, oscplot_signals[DESTROY_EVENT_SIGNAL], 0);
+	if (plot->priv->redraw_function > 0) {
+			g_source_remove(plot->priv->redraw_function);
+			plot->priv->redraw_function = 0;
+			g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, FALSE);
+	}
+}
+
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -1515,6 +1562,8 @@ static void create_plot(OscPlot *plot)
 	fill_channel_list(plot);
 	
 	/* Connect Signals */
+	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);
+	
 	g_signal_connect(priv->capture_button, "toggled",
 		G_CALLBACK(capture_button_clicked_cb), plot);
 	g_signal_connect(priv->channel_list_view, "button-press-event",

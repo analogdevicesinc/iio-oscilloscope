@@ -37,6 +37,7 @@ struct _OscPlotClass
 	GtkBinClass parent_class;
 	
 	void (* capture_event) (OscPlot *plot, gboolean start_event);
+	void (* destroy_event) (OscPlot *plot);
 };
 
 GType         osc_plot_get_type      (void);

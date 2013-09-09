@@ -405,10 +405,12 @@ static void close_active_buffers(void)
 
 static void abort_sampling(void)
 {
+	if (capture_function_id > 0) {
+		g_source_remove(capture_function_id);
+		capture_function_id = 0;
+		G_UNLOCK(buffer_full);
+	}
 	close_active_buffers();
-	/* !!! The line that follows should be replaced with a stop function for all plots !!! */
-	//gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button), FALSE);
-	G_UNLOCK(buffer_full);
 }
 
 unsigned int set_channel_attr_enable(const char *device_name, struct iio_channel_info *channel, unsigned enable)
@@ -674,6 +676,7 @@ static void resize_device_data(struct _device_list *device)
 	struct extra_info *ch_info;
 	unsigned enable;
 	int i;
+	int k;
 	
 	/* Check the enable status of the channels from all windows and update the channels enable attributes. */
 	device->bytes_per_sample = 0;
@@ -687,7 +690,7 @@ static void resize_device_data(struct _device_list *device)
 		if (enable) {
 			device->bytes_per_sample += channel->bytes;
 			device->num_active_channels++;
-		}		
+		}
 	}
 
 	/* Reallocate memory for the active channels of the device */
@@ -695,6 +698,7 @@ static void resize_device_data(struct _device_list *device)
 	device->data_buffer.data = g_renew(int8_t, device->data_buffer.data, device->data_buffer.size);
 	device->data_buffer.available = 0;
 	device->current_sample = 0;
+	k = 0;
 	for (i = 0; i < device->num_channels; i++) {
 		channel = &device->channel_list[i];
 		if (channel->enabled) {
@@ -703,7 +707,7 @@ static void resize_device_data(struct _device_list *device)
 				g_free(ch_info->data_ref);
 			ch_info->data_ref = (gfloat *)g_new0(gfloat, device->sample_count);
 			/* Copy the channel data address to <channel_data> variable */
-			device->channel_data[i] = ch_info->data_ref;
+			device->channel_data[k++] = ch_info->data_ref;
 		}
 	}
 }
@@ -731,7 +735,7 @@ static void capture_start(void)
 	capture_function_id = g_idle_add((GSourceFunc) capture_function, NULL);
 }
 
-static void start(OscPlot *plot, gboolean start_event, gpointer databox)
+static void start(OscPlot *plot, gboolean start_event)
 {	
 	if (start_event) {
 		num_capturing_plots++;
@@ -752,11 +756,20 @@ static void start(OscPlot *plot, gboolean start_event, gpointer databox)
 		num_capturing_plots--;
 		if (num_capturing_plots == 0)
 			if (capture_function_id > 0) {
-			g_source_remove(capture_function_id);
-			capture_function_id = 0;
-			G_UNLOCK(buffer_full);
-		}
+				g_source_remove(capture_function_id);
+				capture_function_id = 0;
+				G_UNLOCK(buffer_full);
+			}
 	}
+}
+
+static void plot_destroyed_cb(OscPlot *plot)
+{	
+	plot_list = g_list_remove(plot_list, link);
+	abort_sampling();
+	capture_setup();
+	capture_start();
+	restart_all_running_plots();
 }
 
 static void btn_capture_cb(GtkButton *button, gpointer user_data)
@@ -765,7 +778,8 @@ static void btn_capture_cb(GtkButton *button, gpointer user_data)
 	
 	plot = osc_plot_new();
 	plot_list = g_list_append(plot_list, plot);
-	g_signal_connect(plot, "capture-event", G_CALLBACK(start), NULL);
+	g_signal_connect(plot, "osc-capture-event", G_CALLBACK(start), NULL);
+	g_signal_connect(plot, "osc-destroy-event", G_CALLBACK(plot_destroyed_cb), NULL);
 	gtk_widget_show(plot);
 }
 
@@ -886,7 +900,7 @@ static void init_device_list(void)
 	}
 	free(devices);
 	
-	/* Disable all channels and parent references to channels*/
+	/* Disable all channels. Link parent references to channels*/
 	for (i = 0;  i < num_devices; i++) {
 		for (j = 0; j < device_list[i].num_channels; j++) {
 			channel = &device_list[i].channel_list[j];
