@@ -491,6 +491,7 @@ configuration:</property>
           <packing>
             <property name="expand">True</property>
             <property name="fill">True</property>
+            <property name="padding">5</property>
             <property name="position">0</property>
           </packing>
         </child>
@@ -581,7 +582,7 @@ configuration:</property>
                                 <property name="can_focus">True</property>
                                 <property name="invisible_char">•</property>
                                 <property name="invisible_char_set">True</property>
-                                <property name="adjustment">adjustment_rf_bw_tx</property>
+                                <property name="adjustment">adjustment_rf_bw_rx</property>
                                 <property name="digits">3</property>
                               </object>
                             </child>
@@ -1036,6 +1037,7 @@ configuration:</property>
       <packing>
         <property name="expand">True</property>
         <property name="fill">True</property>
+        <property name="padding">5</property>
         <property name="position">1</property>
       </packing>
     </child>
@@ -1049,6 +1051,7 @@ configuration:</property>
           <object class="GtkAlignment" id="alignment15">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="bottom_padding">5</property>
             <property name="left_padding">12</property>
             <child>
               <object class="GtkHBox" id="box_transmit_settings">
@@ -2520,6 +2523,7 @@ configuration:</property>
                       <packing>
                         <property name="expand">True</property>
                         <property name="fill">True</property>
+                        <property name="padding">5</property>
                         <property name="position">3</property>
                       </packing>
                     </child>
@@ -2547,6 +2551,7 @@ configuration:</property>
       <packing>
         <property name="expand">True</property>
         <property name="fill">True</property>
+        <property name="padding">5</property>
         <property name="position">3</property>
       </packing>
     </child>
