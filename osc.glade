@@ -530,6 +530,12 @@ A GUI for Linux IIO devices</property>
       </object>
     </child>
   </object>
+  <object class="GtkAdjustment" id="adjustmentTrigger">
+    <property name="lower">1</property>
+    <property name="upper">1000</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
   <object class="GtkAdjustment" id="adjustment_sample_count">
     <property name="lower">10</property>
     <property name="upper">1000000</property>
@@ -553,12 +559,13 @@ A GUI for Linux IIO devices</property>
             <property name="layout_style">end</property>
             <child>
               <object class="GtkButton" id="buttonCancel">
-                <property name="label" translatable="yes">Cancel</property>
+                <property name="label">gtk-cancel</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -568,12 +575,13 @@ A GUI for Linux IIO devices</property>
             </child>
             <child>
               <object class="GtkButton" id="buttonOK">
-                <property name="label" translatable="yes">OK</property>
+                <property name="label">gtk-ok</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -630,15 +638,9 @@ A GUI for Linux IIO devices</property>
       </object>
     </child>
     <action-widgets>
-      <action-widget response="0">buttonCancel</action-widget>
-      <action-widget response="1">buttonOK</action-widget>
+      <action-widget response="-6">buttonCancel</action-widget>
+      <action-widget response="-5">buttonOK</action-widget>
     </action-widgets>
-  </object>
-  <object class="GtkAdjustment" id="adjustmentTrigger">
-    <property name="lower">1</property>
-    <property name="upper">1000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
   </object>
   <object class="GtkDialog" id="connect_dialog">
     <property name="can_focus">False</property>
@@ -1117,6 +1119,12 @@ Installed/Found IIO devices on this platform</property>
       </object>
     </child>
   </object>
+  <object class="GtkListStore" id="trigger_list">
+    <columns>
+      <!-- column-name name -->
+      <column type="gchararray"/>
+    </columns>
+  </object>
   <object class="GtkDialog" id="trigger_dialog">
     <property name="can_focus">False</property>
     <property name="has_tooltip">True</property>
@@ -1306,11 +1314,5 @@ Installed/Found IIO devices on this platform</property>
       <action-widget response="-6">buttonCancel1</action-widget>
       <action-widget response="-5">buttonOK1</action-widget>
     </action-widgets>
-  </object>
-  <object class="GtkListStore" id="trigger_list">
-    <columns>
-      <!-- column-name name -->
-      <column type="gchararray"/>
-    </columns>
   </object>
 </interface>

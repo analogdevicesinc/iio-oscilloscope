@@ -480,7 +480,7 @@ void set_time_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_da
 	GtkWidget *time_sample_count_widget;
 	
 	time_sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "time_sample_count"));
-	if (response_id == 1) {
+	if (response_id == GTK_RESPONSE_OK) {
 		time_settings->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(time_sample_count_widget));
 	}
 	g_object_set(G_OBJECT(priv->channel_list_view), "sensitive", TRUE, NULL);
@@ -502,7 +502,7 @@ void set_fft_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_dat
 	fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
 	fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
 	
-	if (response_id == 1) {
+	if (response_id == GTK_RESPONSE_OK) {
 		fft_settings->fft_size = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
 		fft_settings->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
 		fft_settings->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget));
@@ -520,7 +520,7 @@ void set_constellation_settings_cb (GtkDialog *dialog, gint response_id, gpointe
 	GtkWidget *constellation_sample_count_widget;
 	
 	constellation_sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "constellation_sample_count"));
-	if (response_id == 1) {
+	if (response_id == GTK_RESPONSE_OK) {
 		constellation_settings->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(constellation_sample_count_widget));
 	}
 	g_object_set(G_OBJECT(priv->channel_list_view), "sensitive", TRUE, NULL);
@@ -1494,6 +1494,17 @@ static void zoom_out(GtkButton *btn, gpointer data)
 	gtk_databox_set_visible_limits(GTK_DATABOX(priv->databox), left, right, top, bottom);
 }
 
+#define ENTER_KEY_CODE 0xFF0D
+
+gboolean save_settings_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
+{
+	if ((event->type == GDK_KEY_RELEASE) && (event->keyval == ENTER_KEY_CODE)) {
+		g_signal_emit_by_name(widget, "response", GTK_RESPONSE_OK, 0);
+	}
+	
+	return FALSE;
+}
+
 static void cb_saveas(GtkMenuItem *menuitem, OscPlot *data)
 {
 	OscPlotPrivate *priv = data->priv;
@@ -1620,7 +1631,12 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(cb_saveas), plot);
 	g_signal_connect(priv->saveas_dialog, "response", 
 		G_CALLBACK(cb_saveas_response), plot);
-	
+	g_signal_connect(priv->time_settings_diag, "key_release_event",
+		G_CALLBACK(save_settings_cb), NULL);
+	g_signal_connect(priv->fft_settings_diag, "key_release_event",
+		G_CALLBACK(save_settings_cb), NULL);
+	g_signal_connect(priv->constellation_settings_diag, "key_release_event",
+		G_CALLBACK(save_settings_cb), NULL);
 	
 	g_builder_connect_signal(builder, "zoom_in", "clicked",
 		G_CALLBACK(zoom_in), plot);

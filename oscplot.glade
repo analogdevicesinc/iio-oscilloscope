@@ -68,12 +68,13 @@
             <property name="layout_style">end</property>
             <child>
               <object class="GtkButton" id="buttonCancel1">
-                <property name="label" translatable="yes">Cancel</property>
+                <property name="label">gtk-cancel</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -83,12 +84,13 @@
             </child>
             <child>
               <object class="GtkButton" id="buttonOK1">
-                <property name="label" translatable="yes">OK</property>
+                <property name="label">gtk-ok</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -146,8 +148,8 @@
       </object>
     </child>
     <action-widgets>
-      <action-widget response="0">buttonCancel1</action-widget>
-      <action-widget response="1">buttonOK1</action-widget>
+      <action-widget response="-6">buttonCancel1</action-widget>
+      <action-widget response="-5">buttonOK1</action-widget>
     </action-widgets>
   </object>
   <object class="GtkDialog" id="dialog_FFT_settings">
@@ -167,12 +169,13 @@
             <property name="layout_style">end</property>
             <child>
               <object class="GtkButton" id="button_cancel">
-                <property name="label" translatable="yes">Cancel</property>
+                <property name="label">gtk-cancel</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -182,12 +185,13 @@
             </child>
             <child>
               <object class="GtkButton" id="button_apply">
-                <property name="label" translatable="yes">Apply</property>
+                <property name="label">gtk-ok</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -309,8 +313,8 @@
       </object>
     </child>
     <action-widgets>
-      <action-widget response="0">button_cancel</action-widget>
-      <action-widget response="1">button_apply</action-widget>
+      <action-widget response="-6">button_cancel</action-widget>
+      <action-widget response="-5">button_apply</action-widget>
     </action-widgets>
   </object>
   <object class="GtkDialog" id="dialog_TIME_settings">
@@ -329,12 +333,13 @@
             <property name="layout_style">end</property>
             <child>
               <object class="GtkButton" id="buttonCancel">
-                <property name="label" translatable="yes">Cancel</property>
+                <property name="label">gtk-cancel</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -344,12 +349,13 @@
             </child>
             <child>
               <object class="GtkButton" id="buttonOK">
-                <property name="label" translatable="yes">OK</property>
+                <property name="label">gtk-ok</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -407,8 +413,8 @@
       </object>
     </child>
     <action-widgets>
-      <action-widget response="0">buttonCancel</action-widget>
-      <action-widget response="1">buttonOK</action-widget>
+      <action-widget response="-6">buttonCancel</action-widget>
+      <action-widget response="-5">buttonOK</action-widget>
     </action-widgets>
   </object>
   <object class="GtkFileChooserDialog" id="saveas_dialog">
