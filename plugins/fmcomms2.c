@@ -46,8 +46,10 @@ static GtkWidget *trx_rate_governor_available;
 static GtkWidget *filter_fir_config;
 
 /* Widgets for Receive Settings */
-static GtkWidget *rx_gain_control;
-static GtkWidget *rx_gain_control_modes;
+static GtkWidget *rx_gain_control_rx1;
+static GtkWidget *rx_gain_control_modes_rx1;
+static GtkWidget *rx_gain_control_rx2;
+static GtkWidget *rx_gain_control_modes_rx2;
 static GtkWidget *rx1_rssi;
 static GtkWidget *rx2_rssi;
 static GtkWidget *rx_path_rates;
@@ -128,11 +130,19 @@ static void glb_settings_update_labels(void)
 		buf = NULL;
 	}
 
-	ret = read_devattr("in_voltage_gain_control_mode", &buf);
+	ret = read_devattr("in_voltage0_gain_control_mode", &buf);
 	if (ret >= 0)
-		gtk_label_set_text(GTK_LABEL(rx_gain_control), buf);
+		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx1), buf);
 	else
-		gtk_label_set_text(GTK_LABEL(rx_gain_control), "<error>");
+		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx1), "<error>");
+	if (buf)
+		free(buf);
+
+	ret = read_devattr("in_voltage1_gain_control_mode", &buf);
+	if (ret >= 0)
+		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx2), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx2), "<error>");
 	if (buf)
 		free(buf);
 
@@ -784,8 +794,10 @@ static int fmcomms2_init(GtkWidget *notebook)
 	filter_fir_config = GTK_WIDGET(gtk_builder_get_object(builder, "filter_fir_config"));
 
 	/* Receive Chain */
-	rx_gain_control = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode"));
-	rx_gain_control_modes = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_available"));
+	rx_gain_control_rx1 = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_rx1"));
+	rx_gain_control_rx2 = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_rx2"));
+	rx_gain_control_modes_rx1 = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_available_rx1"));
+	rx_gain_control_modes_rx2 = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_available_rx2"));
 	rx1_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx1"));
 	rx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx2"));
 	/* Transmit Chain */
@@ -857,19 +869,20 @@ static int fmcomms2_init(GtkWidget *notebook)
 	dds_I_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_I_TX1_l"));
 	dds_I1_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_TX1_l"));
 	dds_I2_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_TX1_l"));
-    dds_I_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_I_TX2_l"));
-    dds_I1_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_TX2_l"));
-    dds_I2_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_TX2_l"));
-    dds_Q_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_Q_TX1_l"));
-    dds_Q1_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_TX1_l"));
-    dds_Q2_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_TX1_l"));
-    dds_Q_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_Q_TX2_l"));
-    dds_Q1_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_TX2_l"));
-    dds_Q2_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_TX2_l"));
+	dds_I_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_I_TX2_l"));
+	dds_I1_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_TX2_l"));
+	dds_I2_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_TX2_l"));
+	dds_Q_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_Q_TX1_l"));
+	dds_Q1_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_TX1_l"));
+	dds_Q2_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_TX1_l"));
+	dds_Q_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_Q_TX2_l"));
+	dds_Q1_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_TX2_l"));
+	dds_Q2_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_TX2_l"));
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(ensm_mode_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(trx_rate_governor_available), 0);
-	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes_rx1), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes_rx2), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
 
 	/* Bind the IIO device files to the GUI widgets */
@@ -889,9 +902,13 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 
 	iio_combo_box_init(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage_gain_control_mode",
-		"in_voltage_gain_control_mode_availabl",
-		rx_gain_control_modes, NULL);
+		"ad9361-phy", "in_voltage0_gain_control_mode",
+		"in_voltage_gain_control_mode_available",
+		rx_gain_control_modes_rx1, NULL);
+	iio_combo_box_init(&rx_widgets[num_rx++],
+		"ad9361-phy", "in_voltage1_gain_control_mode",
+		"in_voltage_gain_control_mode_available",
+		rx_gain_control_modes_rx2, NULL);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage0_hardwaregain", builder,
 		"hardware_gain_rx1", NULL);
