@@ -259,6 +259,13 @@ static void gfunc_restart_plot(gpointer data, gpointer user_data)
 	osc_plot_restart(OSC_PLOT(plot));
 }
 
+static void gfunc_close_plot(gpointer data, gpointer user_data)
+{
+	GtkWidget *plot = data;
+	
+	osc_plot_draw_stop(OSC_PLOT(plot));
+}
+
 static void update_all_plots(void)
 {
 	g_list_foreach(plot_list, gfunc_update_plot, NULL);
@@ -267,6 +274,11 @@ static void update_all_plots(void)
 static void restart_all_running_plots(void)
 {
 	g_list_foreach(plot_list, gfunc_restart_plot, NULL);
+}
+
+static void close_all_plots(void)
+{
+	g_list_foreach(plot_list, gfunc_close_plot, NULL);
 }
 
 static int sign_extend(unsigned int val, unsigned int bits)
@@ -403,7 +415,7 @@ static void close_active_buffers(void)
 		}
 }
 
-static void abort_sampling(void)
+static void stop_sampling(void)
 {
 	if (capture_function_id > 0) {
 		g_source_remove(capture_function_id);
@@ -411,6 +423,12 @@ static void abort_sampling(void)
 		G_UNLOCK(buffer_full);
 	}
 	close_active_buffers();
+}
+
+static void abort_sampling(void)
+{
+	stop_sampling();
+	close_all_plots();
 }
 
 unsigned int set_channel_attr_enable(const char *device_name, struct iio_channel_info *channel, unsigned enable)
@@ -766,7 +784,7 @@ static void start(OscPlot *plot, gboolean start_event)
 static void plot_destroyed_cb(OscPlot *plot)
 {	
 	plot_list = g_list_remove(plot_list, link);
-	abort_sampling();
+	stop_sampling();
 	capture_setup();
 	capture_start();
 	restart_all_running_plots();

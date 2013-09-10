@@ -237,6 +237,18 @@ void osc_plot_restart (OscPlot *plot)
 	}
 }
 
+void osc_plot_draw_stop (OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	
+	if (priv->redraw_function > 0)
+	{
+		g_source_remove(priv->redraw_function);
+		priv->redraw_function = 0;
+		gtk_toggle_tool_button_set_active((GtkToggleToolButton *)priv->capture_button, FALSE);
+	}
+}
+
 /*******************   Private Methods Definitions   ******************/
 
 static void osc_plot_class_init(OscPlotClass *klass)

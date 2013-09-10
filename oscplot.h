@@ -45,6 +45,7 @@ GtkWidget*    osc_plot_new           (void);
 void          osc_plot_data_update   (OscPlot *plot);
 void          osc_plot_update_rx_lbl (OscPlot *plot);
 void          osc_plot_restart       (OscPlot *plot);
+void          osc_plot_draw_stop     (OscPlot *plot);
 
 G_END_DECLS
 
