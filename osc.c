@@ -943,16 +943,14 @@ gboolean save_sample_count_cb(GtkWidget *widget, GdkEventKey *event, gpointer da
 static void create_sample_count_dialogs(void)
 {
 	GtkBuilder *builder = NULL;
-	GError *error = NULL;    
 	GtkWidget *dialog;
 	int i;
 	
 	for (i = 0; i < num_devices; i++) {
 		builder = gtk_builder_new();
-		if (!gtk_builder_add_from_file(builder, "osc.glade", &error)) {
-			g_warning("%s", error->message);
-			g_free(error);
-		}
+		if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL))
+			gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
+		
 		device_list[i].settings_dialog_builder = builder;
 		dialog = GTK_WIDGET(gtk_builder_get_object(builder, "Sample_count_dialog"));
 		g_signal_connect(dialog, "response", G_CALLBACK(set_sample_count_cb), &device_list[i]);
@@ -1020,16 +1018,33 @@ void rx_update_labels(void)
 static void init_application (void)
 {
 	GtkBuilder *builder = NULL;
-	GError     *error   = NULL;    
 	GtkWidget  *window;
 	GtkWidget  *notebook;
 	GtkWidget  *btn_capture;
 	
 	builder = gtk_builder_new();
-	if (!gtk_builder_add_from_file(builder, "osc.glade", &error)) {
-		g_warning("%s", error->message);
-		g_free(error);
+
+	if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL)) {
+		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
+	} else {
+		GtkImage *logo;
+		GtkAboutDialog *about;
+		GdkPixbuf *pixbuf;
+		GError *err = NULL;
+
+		/* We are running locally, so load the local files */
+		logo = GTK_IMAGE(gtk_builder_get_object(builder, "about_ADI_logo"));
+		g_object_set(logo, "file","./icons/ADIlogo.png", NULL);
+		logo = GTK_IMAGE(gtk_builder_get_object(builder, "about_IIO_logo"));
+		g_object_set(logo, "file","./icons/IIOlogo.png", NULL);
+		about = GTK_ABOUT_DIALOG(gtk_builder_get_object(builder, "About_dialog"));
+		pixbuf = gdk_pixbuf_new_from_file("./icons/osc128.png", &err);
+		if (pixbuf) {
+			g_object_set(about, "logo", pixbuf,  NULL);
+			g_object_unref(pixbuf);
+		}
 	}
+	
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "main_menu"));
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "button_capture"));

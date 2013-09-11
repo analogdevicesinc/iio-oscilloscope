@@ -16,6 +16,7 @@
 #include <malloc.h>
 
 #include "oscplot.h"
+#include "config.h"
 #include "iio_widget.h"
 #include "datatypes.h"
 
@@ -1575,16 +1576,20 @@ static void create_plot(OscPlot *plot)
 	
 	GtkWidget *table;
 	GtkBuilder *builder = NULL;
-	GError *error = NULL;	
 	GtkTreeSelection *tree_selection;
 	GtkWidget *fft_size_widget;
 	
 	/* Get the GUI from a glade file. */
 	builder = gtk_builder_new();
-	if (!gtk_builder_add_from_file(builder, "oscplot.glade", &error)) {
-		g_warning("%s", error->message);
-		g_free(error);
+	if (!gtk_builder_add_from_file(builder, "./oscplot.glade", NULL))
+		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "oscplot.glade", NULL);
+	else {
+		GtkImage *logo;
+		/* We are running locally, so load the local files */
+		logo = GTK_IMAGE(gtk_builder_get_object(builder, "ADI_logo"));
+		g_object_set(logo, "file","./icons/ADIlogo.png", NULL);
 	}
+	
 	priv->builder = builder;
 	priv->window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
 	priv->time_settings_diag = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_TIME_settings"));
