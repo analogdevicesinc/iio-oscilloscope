@@ -71,6 +71,7 @@ struct _OscPlotPrivate
 	GtkWidget *hor_scale;
 	GtkWidget *marker_label;
 	GtkWidget *saveas_menu;
+	GtkWidget *quit_menu;
 	GtkWidget *saveas_dialog;
 	
 	GtkTextBuffer* tbuf;
@@ -1107,10 +1108,15 @@ static void plot_setup(OscPlot *plot)
 	gfloat *transform_y_axis;
 	int max_x_axis = 0;
 	gfloat max_adc_freq = 0;
+	const char *empty_text = " ";
 	int i;
 
 	gtk_databox_graph_remove_all(GTK_DATABOX(priv->databox));
 	
+	/* Remove FFT Marker info */
+	if (priv->tbuf)
+		gtk_text_buffer_set_text(priv->tbuf, empty_text, -1);
+		
 	for (i = 0; i < tr_list->size; i++) {
 		transform = tr_list->transforms[i];
 		check_transform_settings(transform, priv->active_transform_type);
@@ -1495,6 +1501,17 @@ static void zoom_out(GtkButton *btn, gpointer data)
 	gtk_databox_set_visible_limits(GTK_DATABOX(priv->databox), left, right, top, bottom);
 }
 
+static void plot_destroyed (GtkWidget *object, OscPlot *plot)
+{
+	remove_all_transforms(plot);
+	g_signal_emit(plot, oscplot_signals[DESTROY_EVENT_SIGNAL], 0);
+	if (plot->priv->redraw_function > 0) {
+			g_source_remove(plot->priv->redraw_function);
+			plot->priv->redraw_function = 0;
+			g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, FALSE);
+	}
+}
+
 #define ENTER_KEY_CODE 0xFF0D
 
 gboolean save_settings_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
@@ -1513,6 +1530,14 @@ static void cb_saveas(GtkMenuItem *menuitem, OscPlot *data)
 	gtk_widget_show(priv->saveas_dialog);
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (priv->saveas_dialog), "~/");
 	gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
+}
+
+static void cb_quit(GtkMenuItem *menuitem, OscPlot *data)
+{
+	OscPlotPrivate *priv = data->priv;
+
+	plot_destroyed(priv->window, data);
+	gtk_main_quit();
 }
 
 void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
@@ -1559,17 +1584,6 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 	gtk_widget_hide(priv->saveas_dialog);
 }
 
-static void plot_destroyed (GtkWidget *object, OscPlot *plot)
-{
-	remove_all_transforms(plot);
-	g_signal_emit(plot, oscplot_signals[DESTROY_EVENT_SIGNAL], 0);
-	if (plot->priv->redraw_function > 0) {
-			g_source_remove(plot->priv->redraw_function);
-			plot->priv->redraw_function = 0;
-			g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, FALSE);
-	}
-}
-
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -1604,6 +1618,7 @@ static void create_plot(OscPlot *plot)
 	priv->hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	priv->saveas_menu = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_saveas"));
+	priv->quit_menu = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_quit"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	priv->tbuf = NULL;
@@ -1634,6 +1649,8 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(set_constellation_settings_cb), plot);
 	g_signal_connect(priv->saveas_menu, "activate",
 		G_CALLBACK(cb_saveas), plot);
+	g_signal_connect(priv->quit_menu, "activate",
+		G_CALLBACK(cb_quit), plot);
 	g_signal_connect(priv->saveas_dialog, "response", 
 		G_CALLBACK(cb_saveas_response), plot);
 	g_signal_connect(priv->time_settings_diag, "key_release_event",
