@@ -783,7 +783,7 @@ static void start(OscPlot *plot, gboolean start_event)
 
 static void plot_destroyed_cb(OscPlot *plot)
 {	
-	plot_list = g_list_remove(plot_list, link);
+	plot_list = g_list_remove(plot_list, plot);
 	stop_sampling();
 	capture_setup();
 	capture_start();

@@ -1537,7 +1537,7 @@ static void cb_quit(GtkMenuItem *menuitem, OscPlot *data)
 	OscPlotPrivate *priv = data->priv;
 
 	plot_destroyed(priv->window, data);
-	gtk_main_quit();
+	gtk_widget_destroy(priv->window);
 }
 
 void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
