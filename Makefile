@@ -36,6 +36,8 @@ install:
 	install ./icons/ADIlogo.png $(DESTDIR)/share/osc/
 	install ./icons/IIOlogo.png $(DESTDIR)/share/osc/
 	install ./icons/osc128.png $(DESTDIR)/share/osc/
+	install ./icons/osc_capture.png $(DESTDIR)/share/osc/
+	install ./icons/osc_generator.png $(DESTDIR)/share/osc/
 	install $(PLUGINS) $(DESTDIR)/lib/osc/
 	install ./xmls/* $(DESTDIR)/lib/osc/xmls
 	install ./filters/* $(DESTDIR)/lib/osc/filters

@@ -1038,6 +1038,10 @@ static void init_application (void)
 		logo = GTK_IMAGE(gtk_builder_get_object(builder, "about_IIO_logo"));
 		g_object_set(logo, "file","./icons/IIOlogo.png", NULL);
 		about = GTK_ABOUT_DIALOG(gtk_builder_get_object(builder, "About_dialog"));
+		logo = GTK_IMAGE(gtk_builder_get_object(builder, "image_capture"));
+		g_object_set(logo, "file","./icons/osc_capture.png", NULL);
+		logo = GTK_IMAGE(gtk_builder_get_object(builder, "image_generator"));
+		g_object_set(logo, "file","./icons/osc_generator.png", NULL);
 		pixbuf = gdk_pixbuf_new_from_file("./icons/osc128.png", &err);
 		if (pixbuf) {
 			g_object_set(about, "logo", pixbuf,  NULL);
