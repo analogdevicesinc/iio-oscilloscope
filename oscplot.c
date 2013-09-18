@@ -282,7 +282,7 @@ static void add_row_child(GtkTreeView *treeview, GtkTreeIter *parent, char *chil
 static void time_settings_init(struct _time_settings *settings)
 {
 	if (settings) {
-		settings->num_samples = 10;
+		settings->num_samples = 400;
 	}
 }
 
@@ -291,7 +291,7 @@ static void fft_settings_init(struct _fft_settings *settings)
 	int i;
 	
 	if (settings) {
-		settings->fft_size = 8;
+		settings->fft_size = 256;
 		settings->fft_avg = 1;
 		settings->fft_pwr_off = 0.0;
 		settings->fft_alg_data.cached_fft_size = -1;
@@ -303,7 +303,7 @@ static void fft_settings_init(struct _fft_settings *settings)
 static void constellation_settings_init(struct _constellation_settings *settings)
 {
 	if (settings) {
-		settings->num_samples = 10;
+		settings->num_samples = 400;
 	}
 }
 
@@ -504,12 +504,13 @@ void set_constellation_settings_cb (GtkDialog *dialog, gint response_id, gpointe
 	g_object_set(G_OBJECT(priv->channel_list_view), "sensitive", TRUE, NULL);
 }
 
-static void rebuild_fft_size_list(GtkWidget *fft_size_widget, unsigned int sample_count)
+static void rebuild_fft_size_list(GtkWidget *fft_size_widget, unsigned int sample_count, unsigned int set_value)
 {
 	unsigned int min_fft_size = 32;
 	unsigned int max_fft_size = 16384;
 	unsigned int fft_size;
 	GtkTreeIter iter;
+	GtkTreeIter set_iter;
 	GtkListStore *fft_size_list;
 	char buf[10];
 	
@@ -522,32 +523,39 @@ static void rebuild_fft_size_list(GtkWidget *fft_size_widget, unsigned int sampl
 		return;
 	}
 	fft_size = min_fft_size;
+	set_iter = iter;
 	while ((fft_size <= sample_count) && (fft_size <= max_fft_size)) {
 		gtk_list_store_prepend(fft_size_list, &iter);
 		snprintf(buf, sizeof(buf), "%d", fft_size);
 		gtk_list_store_set(fft_size_list, &iter, 0, buf, -1);
+		/* Save the iter that holds a value equal to the set_value */
+		if (fft_size == set_value)
+			set_iter = iter;
 		fft_size *= 2;
 	}
-	gtk_combo_box_set_active_iter(GTK_COMBO_BOX(fft_size_widget), &iter);
+	gtk_combo_box_set_active_iter(GTK_COMBO_BOX(fft_size_widget), &set_iter);
 }
 
 static void default_time_setting(OscPlot *plot, Transform *tr)
 {
 	OscPlotPrivate *priv = plot->priv;
 	struct extra_info *ch_info;
+	struct _time_settings *settings;
 	GtkAdjustment *time_sample_count_adj;
 	GtkBuilder *builder = priv->builder;
 	
 	ch_info = tr->channel_parent->extra_field;
+	settings = (struct _time_settings *)tr->settings;
 	time_sample_count_adj = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_time_sample_count"));
 	gtk_adjustment_set_upper(time_sample_count_adj, (gdouble)ch_info->device_parent->shadow_of_sample_count);
-	gtk_adjustment_set_value(time_sample_count_adj, gtk_adjustment_get_lower(time_sample_count_adj));
+	gtk_adjustment_set_value(time_sample_count_adj, (gdouble)settings->num_samples);
 }
 
 static void default_fft_setting(OscPlot *plot, Transform *tr)
 {
 	OscPlotPrivate *priv = plot->priv;
 	struct extra_info *ch_info;
+	struct _fft_settings *settings;
 	GtkBuilder *builder = priv->builder;
 	GtkWidget *fft_size_widget;
 	GtkWidget *fft_avg_widget;
@@ -558,22 +566,25 @@ static void default_fft_setting(OscPlot *plot, Transform *tr)
 	fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
 
 	ch_info = tr->channel_parent->extra_field;
-	rebuild_fft_size_list(fft_size_widget, ch_info->device_parent->shadow_of_sample_count);
-	gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_avg_widget), 1.0);
-	gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget), 0.0);
+	settings = (struct _fft_settings *)tr->settings;
+	rebuild_fft_size_list(fft_size_widget, ch_info->device_parent->shadow_of_sample_count, settings->fft_size);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_avg_widget), settings->fft_avg);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget), settings->fft_pwr_off);
 }
 
 static void default_constellation_setting(OscPlot *plot, Transform *tr)
 {
 	OscPlotPrivate *priv = plot->priv;
 	struct extra_info *ch_info;
+	struct _constellation_settings *settings;
 	GtkAdjustment *constellation_sample_count_adj;
 	GtkBuilder *builder = priv->builder;
 	
 	ch_info = tr->channel_parent->extra_field;
+	settings = (struct _constellation_settings *)tr->settings;
 	constellation_sample_count_adj = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_constellation_sample_count"));
 	gtk_adjustment_set_upper(constellation_sample_count_adj, (gdouble)ch_info->device_parent->shadow_of_sample_count);
-	gtk_adjustment_set_value(constellation_sample_count_adj, gtk_adjustment_get_lower(constellation_sample_count_adj));
+	gtk_adjustment_set_value(constellation_sample_count_adj, (gdouble)settings->num_samples);
 }
 
 static void show_time_settings(GtkMenuItem* menuitem, gpointer data)
