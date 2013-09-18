@@ -27,12 +27,25 @@ extern void constellation_transform_function(Transform *tr, gboolean init_transf
 extern struct _device_list *device_list;
 extern unsigned num_devices;
 
+static void create_plot (OscPlot *plot);
+static void plot_setup(OscPlot *plot);
+static void capture_button_clicked_cb (GtkToggleToolButton *btn, gpointer data);
+static void add_grid(OscPlot *plot);
+static void rescale_databox(OscPlotPrivate *priv, GtkDatabox *box, gfloat border);
+static void call_all_transform_functions(OscPlotPrivate *priv);
+static void capture_start(OscPlotPrivate *priv);
+
+/* IDs of signals */
 enum {
 	CAPTURE_EVENT_SIGNAL,
 	DESTROY_EVENT_SIGNAL,
 	LAST_SIGNAL
 };
 
+/* signals will be configured during class init */
+static guint oscplot_signals[LAST_SIGNAL] = { 0 };
+
+/* Types of transforms */
 enum {
 	NO_TRANSFORM_TYPE,
 	TIME_TRANSFORM,
@@ -40,6 +53,7 @@ enum {
 	CONSTELLATION_TRANSFORM
 };
 
+/* Columns of the device treestore */
 enum {
 	ELEMENT_NAME,
 	IS_DEVICE,
@@ -50,59 +64,7 @@ enum {
 	MARKER_ENABLED,
 	ELEMENT_REFERENCE,
 	NUM_COL
-}; /* Columns of the device treestore */
-
-struct _OscPlotPrivate
-{
-	GtkBuilder *builder;
-	
-	/* Graphical User Interface */
-	GtkWidget *window;
-	GtkWidget *time_settings_diag;
-	GtkWidget *fft_settings_diag;
-	GtkWidget *constellation_settings_diag;
-	GtkWidget *databox;
-	GtkWidget *capture_graph;
-	GtkWidget *capture_button;
-	GtkWidget *channel_list_view;
-	GtkWidget *show_grid;
-	GtkWidget *plot_type;
-	GtkWidget *enable_auto_scale;
-	GtkWidget *hor_scale;
-	GtkWidget *marker_label;
-	GtkWidget *saveas_menu;
-	GtkWidget *quit_menu;
-	GtkWidget *saveas_dialog;
-	
-	GtkTextBuffer* tbuf;
-	
-	int frame_counter;
-	time_t last_update;
-	
-	int do_a_rescale_flag;
-	
-	/* A reference to the device holding the most recent created transform */
-	struct _device_list *current_device;
-	
-	/* List of transforms for this plot */
-	TrList *transform_list;
-	
-	/* Active transform type for this window */
-	int active_transform_type;
-	Transform *selected_transform_for_setup;
-	
-	/* Databox data */
-	GtkDataboxGraph *grid;
-	GtkDataboxGraph *time_graph;
-	gfloat gridy[25], gridx[25];
-	
-	gint redraw_function;
-	
-	GList *selected_rows_paths;
-	gint num_selected_rows;
 };
-
-/***********************  Class Private Members   *********************/
 
 static GdkColor color_graph[] = {
 	{
@@ -155,43 +117,97 @@ static GdkColor color_marker = {
 	.blue = 0,
 };
 
-static guint oscplot_signals[LAST_SIGNAL] = { 0 };
-
-/*****************   Private Methods Prototypes   *********************/
-static void osc_plot_class_init (OscPlotClass *klass);
-static void osc_plot_init (OscPlot *plot);
-static void create_plot (OscPlot *plot);
-static void plot_setup(OscPlot *plot);
-static void capture_button_clicked_cb (GtkToggleToolButton *btn, gpointer data);
-static void add_grid(OscPlot *plot);
-static void rescale_databox(OscPlotPrivate *priv, GtkDatabox *box, gfloat border);
-static void call_all_transform_functions(OscPlotPrivate *priv);
-static void capture_start(OscPlotPrivate *priv);
-
 /* Helpers */
 #define GET_CHANNEL_PARENT(ch) ((struct extra_info *)(((struct iio_channel_info *)(ch))->extra_field))->device_parent
 
-/******************   Public Methods Definitions   ********************/
-GType osc_plot_get_type(void)
+struct _OscPlotPrivate
 {
-	static GType osc_plot_type = 0;
+	GtkBuilder *builder;
+	
+	/* Graphical User Interface */
+	GtkWidget *window;
+	GtkWidget *time_settings_diag;
+	GtkWidget *fft_settings_diag;
+	GtkWidget *constellation_settings_diag;
+	GtkWidget *databox;
+	GtkWidget *capture_graph;
+	GtkWidget *capture_button;
+	GtkWidget *channel_list_view;
+	GtkWidget *show_grid;
+	GtkWidget *plot_type;
+	GtkWidget *enable_auto_scale;
+	GtkWidget *hor_scale;
+	GtkWidget *marker_label;
+	GtkWidget *saveas_menu;
+	GtkWidget *quit_menu;
+	GtkWidget *saveas_dialog;
+	
+	GtkTextBuffer* tbuf;
+	
+	int frame_counter;
+	time_t last_update;
+	
+	int do_a_rescale_flag;
+	
+	/* A reference to the device holding the most recent created transform */
+	struct _device_list *current_device;
+	
+	/* List of transforms for this plot */
+	TrList *transform_list;
+	
+	/* Active transform type for this window */
+	int active_transform_type;
+	Transform *selected_transform_for_setup;
+	
+	/* Databox data */
+	GtkDataboxGraph *grid;
+	GtkDataboxGraph *time_graph;
+	gfloat gridy[25], gridx[25];
+	
+	gint redraw_function;
+	
+	GList *selected_rows_paths;
+	gint num_selected_rows;
+};
 
-	if (!osc_plot_type) {
-		const GTypeInfo osc_plot_info = {
-			sizeof(OscPlotClass),
-			NULL,
-			NULL,
-			(GClassInitFunc)osc_plot_class_init,
-			NULL,
-			NULL,
-			sizeof(OscPlot),
-			0,
-			(GInstanceInitFunc)osc_plot_init,
-		};
-		osc_plot_type = g_type_register_static(GTK_TYPE_BIN, "OscPlot", &osc_plot_info, 0);
-	}
+G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
 
-	return osc_plot_type;
+static void osc_plot_class_init(OscPlotClass *klass)
+{
+	GObjectClass *gobject_class  = G_OBJECT_CLASS (klass);
+
+	oscplot_signals[CAPTURE_EVENT_SIGNAL] = g_signal_new("osc-capture-event",
+			G_TYPE_FROM_CLASS (klass),
+			G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION,
+			G_STRUCT_OFFSET (OscPlotClass, capture_event),
+			NULL,
+			NULL,
+			g_cclosure_marshal_VOID__VOID,
+			G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
+	
+	oscplot_signals[DESTROY_EVENT_SIGNAL] = g_signal_new("osc-destroy-event",
+			G_TYPE_FROM_CLASS (klass),
+			G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION,
+			G_STRUCT_OFFSET (OscPlotClass, destroy_event),
+			NULL,
+			NULL,
+			g_cclosure_marshal_VOID__VOID,
+			G_TYPE_NONE, 0);
+	
+	g_type_class_add_private (gobject_class, sizeof (OscPlotPrivate));
+}
+
+static void osc_plot_init(OscPlot *plot)
+{	
+	plot->priv = G_TYPE_INSTANCE_GET_PRIVATE (plot, OSC_PLOT_TYPE, OscPlotPrivate);
+	
+	create_plot(plot);
+	
+	/* Create a empty list of transforms */
+	plot->priv->transform_list = TrList_new();
+	
+	/* No active transforms by default */
+	plot->priv->active_transform_type = NO_TRANSFORM_TYPE;
 }
 
 GtkWidget *osc_plot_new(void)
@@ -249,46 +265,6 @@ void osc_plot_draw_stop (OscPlot *plot)
 		priv->redraw_function = 0;
 		gtk_toggle_tool_button_set_active((GtkToggleToolButton *)priv->capture_button, FALSE);
 	}
-}
-
-/*******************   Private Methods Definitions   ******************/
-
-static void osc_plot_class_init(OscPlotClass *klass)
-{
-	GObjectClass *gobject_class  = G_OBJECT_CLASS (klass);
-
-	oscplot_signals[CAPTURE_EVENT_SIGNAL] = g_signal_new("osc-capture-event",
-			G_TYPE_FROM_CLASS (klass),
-			G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION,
-			G_STRUCT_OFFSET (OscPlotClass, capture_event),
-			NULL,
-			NULL,
-			g_cclosure_marshal_VOID__VOID,
-			G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
-	
-	oscplot_signals[DESTROY_EVENT_SIGNAL] = g_signal_new("osc-destroy-event",
-			G_TYPE_FROM_CLASS (klass),
-			G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION,
-			G_STRUCT_OFFSET (OscPlotClass, destroy_event),
-			NULL,
-			NULL,
-			g_cclosure_marshal_VOID__VOID,
-			G_TYPE_NONE, 0);
-	
-	g_type_class_add_private (gobject_class, sizeof (OscPlotPrivate));
-}
-
-static void osc_plot_init(OscPlot *plot)
-{	
-	plot->priv = G_TYPE_INSTANCE_GET_PRIVATE (plot, OSC_PLOT_TYPE, OscPlotPrivate);
-	
-	create_plot(plot);
-	
-	/* Create a empty list of transforms */
-	plot->priv->transform_list = TrList_new();
-	
-	/* No active transforms by default */
-	plot->priv->active_transform_type = NO_TRANSFORM_TYPE;
 }
 
 static void add_row_child(GtkTreeView *treeview, GtkTreeIter *parent, char *child_name, Transform *tr)

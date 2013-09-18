@@ -25,13 +25,13 @@ typedef struct _OscPlotClass       OscPlotClass;
 
 struct _OscPlot
 {
-	GtkBin bin;
+	GtkWidget widget;
 	OscPlotPrivate *priv;
 };
 
 struct _OscPlotClass
 {
-	GtkBinClass parent_class;
+	GtkWidgetClass parent_class;
 	
 	void (* capture_event) (OscPlot *plot, gboolean start_event);
 	void (* destroy_event) (OscPlot *plot);
