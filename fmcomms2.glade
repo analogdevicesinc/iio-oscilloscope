@@ -382,6 +382,7 @@ configuration:</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="orientation">vertical</property>
+                                <property name="width_chars">12</property>
                                 <signal name="file-set" handler="filter_fir_config_file_set_cb" swapped="no"/>
                               </object>
                             </child>
@@ -1036,7 +1037,6 @@ configuration:</property>
                           <object class="GtkVBox" id="box1">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="orientation">vertical</property>
                             <property name="spacing">2</property>
                             <child>
                               <object class="GtkCheckButton" id="quad">
@@ -1328,6 +1328,19 @@ configuration:</property>
                                 <property name="expand">False</property>
                                 <property name="fill">True</property>
                                 <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkFileChooserButton" id="dac_buffer">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="orientation">vertical</property>
+                                <property name="width_chars">12</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">2</property>
                               </packing>
                             </child>
                           </object>

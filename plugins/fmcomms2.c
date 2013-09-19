@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <values.h>
+#include <sys/stat.h>
 
 #include "../iio_widget.h"
 #include "../iio_utils.h"
@@ -30,6 +31,8 @@ extern char dev_dir_name[512];
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
+
+static bool dac_data_loaded = false;
 
 static struct iio_widget glb_widgets[50];
 static struct iio_widget tx_widgets[50];
@@ -44,6 +47,7 @@ static GtkWidget *calib_mode_available;
 static GtkWidget *trx_rate_governor;
 static GtkWidget *trx_rate_governor_available;
 static GtkWidget *filter_fir_config;
+static GtkWidget *dac_buffer;
 
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control_rx1;
@@ -217,6 +221,50 @@ void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 		fprintf(stderr, "FIR filter config failed\n");
 }
 
+void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+{
+	int ret, fd;
+	struct stat st;
+	char *buf;
+	FILE *infile;
+
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+
+	stat(file_name, &st);
+	buf = malloc(st.st_size);
+	if (buf == NULL)
+		return;
+
+	set_dev_paths("cf-ad9361-dds-core-lpc");
+	write_devattr_int("buffer/enable", 0);
+
+	fd = iio_buffer_open(false);
+	if (fd < 0) {
+		free(buf);
+		return;
+	}
+
+	infile = fopen(file_name, "r");
+
+	ret = fread(buf, 1, st.st_size, infile);
+	fclose(infile);
+	ret = write(fd, buf, ret);
+	if (ret != st.st_size) {
+		fprintf(stderr, "Loading wavefrom failed%d\n", ret);
+	}
+
+	close(fd);
+	free(buf);
+
+	ret = write_devattr_int("buffer/enable", 1);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
+	}
+
+	dac_data_loaded = true;
+}
+
+
 static int compare_gain(const char *a, const char *b)
 {
 	double val_a, val_b;
@@ -312,7 +360,6 @@ static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer data)
 			gtk_combo_box_set_active(GTK_COMBO_BOX(dds8_scale), scale6);
 			break;
 		default:
-			printf("%s: error\n", __func__);
 			break;
 	}
 }
@@ -447,8 +494,18 @@ static void show_all_I_and_Q(void)
 
 static void enable_dds(bool on_off)
 {
+	int ret;
+
 	set_dev_paths("cf-ad9361-dds-core-lpc");
 	write_devattr_int("out_altvoltage0_TX1_I_F1_raw", on_off ? 1 : 0);
+
+	if (on_off || dac_data_loaded) {
+		ret = write_devattr_int("buffer/enable", !on_off);
+		if (ret < 0) {
+			fprintf(stderr, "Failed to enable buffer: %d\n", ret);
+
+		}
+	}
 }
 
 static void manage_dds_mode()
@@ -461,10 +518,12 @@ static void manage_dds_mode()
 		/* Disabled */
 		enable_dds(false);
 		hide_all_I_and_Q();
+		gtk_widget_hide(dac_buffer);
 		break;
 	case 1:
 		/* One tone */
 		enable_dds(true);
+		gtk_widget_hide(dac_buffer);
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX1_l),"<b>Single Tone</b>");
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX2_l),"<b>Single Tone</b>");
 		gtk_widget_show(dds1_freq);
@@ -597,6 +656,7 @@ static void manage_dds_mode()
 	case 2:
 		/* Two tones */
 		enable_dds(true);
+		gtk_widget_hide(dac_buffer);
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX1_l),"<b>Two Tones</b>");
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX2_l),"<b>Two Tones</b>");
 		gtk_widget_show(dds1_freq);
@@ -702,6 +762,7 @@ static void manage_dds_mode()
 	case 3:
 		/* Independant/Individual control */
 		enable_dds(true);
+		gtk_widget_hide(dac_buffer);
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX1_l),"<b>Channel I</b>");
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX2_l),"<b>Channel I</b>");
 		show_all_I_and_Q();
@@ -762,6 +823,7 @@ static void manage_dds_mode()
 		break;
 	case 4:
 		/* Buffer */
+		gtk_widget_show(dac_buffer);
 		enable_dds(false);
 		hide_all_I_and_Q();
 		break;
@@ -878,6 +940,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	dds_Q_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_Q_TX2_l"));
 	dds_Q1_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_TX2_l"));
 	dds_Q2_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_TX2_l"));
+	dac_buffer = GTK_WIDGET(gtk_builder_get_object(builder, "dac_buffer"));
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(ensm_mode_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(trx_rate_governor_available), 0);
@@ -1044,6 +1107,8 @@ static int fmcomms2_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "filter_fir_config", "file-set",
 		G_CALLBACK(filter_fir_config_file_set_cb), NULL);
 
+	g_builder_connect_signal(builder, "dac_buffer", "file-set",
+		G_CALLBACK(dac_buffer_config_file_set_cb), NULL);
 
 	tx_update_values();
 	rx_update_values();
@@ -1054,6 +1119,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2_panel, "FMComms2");
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
+	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
 
 	return 0;
 }
