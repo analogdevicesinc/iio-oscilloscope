@@ -927,8 +927,15 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
 	"ad9361-phy", "in_voltage_filter_fir_en", builder,
 	"enable_fir_filter_rx", 0);
-
-
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+	"ad9361-phy", "in_voltage_quadrature_tracking_en", builder,
+	"quad", 0);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+	"ad9361-phy", "in_voltage_rf_dc_offset_tracking_en", builder,
+	"rfdc", 0);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+	"ad9361-phy", "in_voltage_bb_dc_offset_tracking_en", builder,
+	"bbdc", 0);
 
 	/* Transmit Chain */
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
