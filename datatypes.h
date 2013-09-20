@@ -72,6 +72,7 @@ struct _transform {
 	unsigned y_axis_size;	
 	bool destroy_x_axis;
 	bool destroy_y_axis;
+	bool local_output_buf;
 	void *graph;
 	bool graph_active;
 	bool has_the_marker;
@@ -86,6 +87,11 @@ struct _tr_list {
 
 struct _time_settings {
 	unsigned int num_samples;
+	gboolean apply_inverse_funct;
+	gboolean apply_multiply_funct;
+	gboolean apply_add_funct;
+	gfloat multiply_value;
+	gfloat add_value;
 };
 
 struct _fft_settings {

@@ -141,6 +141,8 @@ struct _OscPlotPrivate
 	GtkWidget *saveas_menu;
 	GtkWidget *quit_menu;
 	GtkWidget *saveas_dialog;
+	GtkWidget *y_axis_max;
+	GtkWidget *y_axis_min;
 	
 	GtkTextBuffer* tbuf;
 	
@@ -283,6 +285,11 @@ static void time_settings_init(struct _time_settings *settings)
 {
 	if (settings) {
 		settings->num_samples = 400;
+		settings->apply_inverse_funct = false;
+		settings->apply_multiply_funct = false;
+		settings->apply_add_funct = false;
+		settings->multiply_value = 0.0;
+		settings->add_value = 0.0;
 	}
 }
 
@@ -455,11 +462,21 @@ void set_time_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_da
 	Transform *tr = priv->selected_transform_for_setup;
 	struct _time_settings *time_settings = tr->settings;
 	GtkBuilder *builder = priv->builder;
-	GtkWidget *time_sample_count_widget;
+	GtkWidget *widget;
 	
-	time_sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "time_sample_count"));
 	if (response_id == GTK_RESPONSE_OK) {
-		time_settings->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(time_sample_count_widget));
+		widget = GTK_WIDGET(gtk_builder_get_object(builder, "time_sample_count"));
+		time_settings->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+		widget = GTK_WIDGET(gtk_builder_get_object(builder, "time_multiply_value"));
+		time_settings->multiply_value = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+		widget = GTK_WIDGET(gtk_builder_get_object(builder, "time_add_value"));
+		time_settings->add_value = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+		widget = GTK_WIDGET(gtk_builder_get_object(builder, "checkbtn_inverse_fct"));
+		time_settings->apply_inverse_funct = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+		widget = GTK_WIDGET(gtk_builder_get_object(builder, "checkbtn_multiply"));
+		time_settings->apply_multiply_funct = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+		widget = GTK_WIDGET(gtk_builder_get_object(builder, "checkbtn_add_to"));
+		time_settings->apply_add_funct = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
 	}
 	g_object_set(G_OBJECT(priv->channel_list_view), "sensitive", TRUE, NULL);
 }
@@ -541,14 +558,25 @@ static void default_time_setting(OscPlot *plot, Transform *tr)
 	OscPlotPrivate *priv = plot->priv;
 	struct extra_info *ch_info;
 	struct _time_settings *settings;
-	GtkAdjustment *time_sample_count_adj;
+	GtkAdjustment *adj;
+	GtkToggleButton *check_btn;
 	GtkBuilder *builder = priv->builder;
 	
 	ch_info = tr->channel_parent->extra_field;
 	settings = (struct _time_settings *)tr->settings;
-	time_sample_count_adj = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_time_sample_count"));
-	gtk_adjustment_set_upper(time_sample_count_adj, (gdouble)ch_info->device_parent->shadow_of_sample_count);
-	gtk_adjustment_set_value(time_sample_count_adj, (gdouble)settings->num_samples);
+	adj = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_time_sample_count"));
+	gtk_adjustment_set_upper(adj, (gdouble)ch_info->device_parent->shadow_of_sample_count);
+	gtk_adjustment_set_value(adj, (gdouble)settings->num_samples);
+	adj = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_time_multiply_sample"));
+	gtk_adjustment_set_value(adj, settings->multiply_value);
+	adj = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_time_add_to_sample"));
+	gtk_adjustment_set_value(adj, settings->add_value);
+	check_btn = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder, "checkbtn_inverse_fct"));
+	gtk_toggle_button_set_active(check_btn, settings->apply_inverse_funct);
+	check_btn = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder, "checkbtn_multiply"));
+	gtk_toggle_button_set_active(check_btn, settings->apply_multiply_funct);
+	check_btn = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder, "checkbtn_add_to"));
+	gtk_toggle_button_set_active(check_btn, settings->apply_add_funct);
 }
 
 static void default_fft_setting(OscPlot *plot, Transform *tr)
@@ -1129,14 +1157,6 @@ static void plot_setup(OscPlot *plot)
 		gtk_databox_graph_add(GTK_DATABOX(priv->databox), transform->graph);
 		gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(transform->graph), !transform->graph_active);
 	}
-	
-	if (priv->active_transform_type == CONSTELLATION_TRANSFORM)
-		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -8500.0, 8500.0, 8500.0, -8500.0);
-	else if (priv->active_transform_type == TIME_TRANSFORM)
-		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), 0.0, max_x_axis, 8500.0, -8500.0);
-	else if (priv->active_transform_type == FFT_TRANSFORM)
-		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -5.0, max_adc_freq / 2.0 + 5.0, 0.0, -75.0);
-		
 	osc_plot_update_rx_lbl(plot);
 }
 
@@ -1571,6 +1591,38 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 	gtk_widget_hide(priv->saveas_dialog);
 }
 
+static void max_y_axis_cb(GtkSpinButton *spinbutton, OscPlot *plot)
+{
+	GtkDatabox *box;
+	gfloat min_x;
+	gfloat max_x;
+	gfloat min_y;
+	gfloat max_y;
+	
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(plot->priv->enable_auto_scale), false);
+	box = GTK_DATABOX(plot->priv->databox);
+	gtk_databox_get_total_limits(box, &min_x, &max_x, &max_y, &min_y);
+	max_y = gtk_spin_button_get_value(spinbutton);
+	min_y = gtk_spin_button_get_value(GTK_SPIN_BUTTON(plot->priv->y_axis_min));
+	gtk_databox_set_total_limits(box, min_x, max_x, max_y, min_y);
+}
+
+static void min_y_axis_cb(GtkSpinButton *spinbutton, OscPlot *plot)
+{
+	GtkDatabox *box;
+	gfloat min_x;
+	gfloat max_x;
+	gfloat min_y;
+	gfloat max_y;
+	
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(plot->priv->enable_auto_scale), false);
+	box = GTK_DATABOX(plot->priv->databox);
+	gtk_databox_get_total_limits(box, &min_x, &max_x, &max_y, &min_y);
+	min_y = gtk_spin_button_get_value(spinbutton);
+	max_y = gtk_spin_button_get_value(GTK_SPIN_BUTTON(plot->priv->y_axis_max));
+	gtk_databox_set_total_limits(box, min_x, max_x, max_y, min_y);
+}
+
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -1607,6 +1659,8 @@ static void create_plot(OscPlot *plot)
 	priv->saveas_menu = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_saveas"));
 	priv->quit_menu = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_quit"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
+	priv->y_axis_max = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_max"));
+	priv->y_axis_min = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_min"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	priv->tbuf = NULL;
 	
@@ -1640,6 +1694,10 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(cb_quit), plot);
 	g_signal_connect(priv->saveas_dialog, "response", 
 		G_CALLBACK(cb_saveas_response), plot);
+	g_signal_connect(priv->y_axis_max, "value-changed",
+		G_CALLBACK(max_y_axis_cb), plot);
+	g_signal_connect(priv->y_axis_min, "value-changed",
+		G_CALLBACK(min_y_axis_cb), plot);
 	g_signal_connect(priv->time_settings_diag, "key_release_event",
 		G_CALLBACK(save_settings_cb), NULL);
 	g_signal_connect(priv->fft_settings_diag, "key_release_event",

@@ -21,6 +21,7 @@ Transform* Transform_new(void)
 	tr->y_axis_size = 0;
 	tr->destroy_x_axis = false;
 	tr->destroy_y_axis = false;
+	tr->local_output_buf = false;
 	tr->graph = NULL;
 	tr->graph_active = false;
 	tr->has_the_marker = false;
@@ -33,13 +34,20 @@ Transform* Transform_new(void)
 void Transform_destroy(Transform *tr)
 {
 	if (tr) {
-		if (tr->x_axis && tr->destroy_x_axis)
+		if (tr->x_axis && tr->destroy_x_axis) {
 			free(tr->x_axis);
-		if (tr->y_axis && tr->destroy_y_axis)
+			tr->x_axis = NULL;
+		}
+		if (tr->y_axis && tr->destroy_y_axis) {
 			free(tr->y_axis);
-		if (tr->settings)
+			tr->y_axis = NULL;
+		}
+		if (tr->settings) {
 			free(tr->settings);
+			tr->settings = NULL;
+		}
 		free(tr);
+		tr = NULL;
 	}
 }
 
@@ -52,6 +60,8 @@ void Transform_resize_x_axis(Transform *tr, int new_size)
 
 void Transform_resize_y_axis(Transform *tr, int new_size)
 {
+	if (tr->destroy_y_axis == false)
+		tr->y_axis = NULL;
 	tr->destroy_y_axis = true;
 	tr->y_axis_size = (new_size >= 0) ? new_size : 0;
 	tr->y_axis = (gfloat *)realloc(tr->y_axis, sizeof(gfloat) * tr->y_axis_size);

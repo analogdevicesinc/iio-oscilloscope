@@ -184,15 +184,39 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 	struct _time_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
 	int i;
-	
+		
 	if (init_transform) {
 		Transform_resize_x_axis(tr, axis_length);
 		for (i = 0; i < axis_length; i++)
 			tr->x_axis[i] = i;
 		tr->y_axis_size = axis_length;
-		tr->y_axis = *tr->in_data;
-
+		
+		if (settings->apply_inverse_funct || settings->apply_multiply_funct || settings->apply_add_funct) {
+			Transform_resize_y_axis(tr, tr->y_axis_size);
+			tr->local_output_buf = true;
+		} else {
+			tr->y_axis = *tr->in_data;
+			tr->local_output_buf = false;
+		}
+		
 		return;
+	}
+	if (!tr->local_output_buf)
+		return;
+		
+	for (i = 0; i < tr->y_axis_size; i++) {
+		if (settings->apply_inverse_funct) {
+			if ((*tr->in_data)[i] != 0)
+				tr->y_axis[i] = 1 / (*tr->in_data)[i];
+			else
+				tr->y_axis[i] = 65535;
+		} else {
+			tr->y_axis[i] = (*tr->in_data)[i];
+		}
+		if (settings->apply_multiply_funct)
+			tr->y_axis[i] *= settings->multiply_value;
+		if (settings->apply_add_funct)
+			tr->y_axis[i] += settings->add_value;
 	}
 }
 

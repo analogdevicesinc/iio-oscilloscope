@@ -1,29 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
-  <object class="GtkAdjustment" id="adjustment0">
-    <property name="lower">10</property>
-    <property name="upper">1000000</property>
-    <property name="value">400</property>
+  <object class="GtkAdjustment" id="adjustmentYmax">
+    <property name="lower">-65535</property>
+    <property name="upper">65535</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkAdjustment" id="adjustment1">
-    <property name="upper">128</property>
-    <property name="value">1</property>
+  <object class="GtkAdjustment" id="adjustmentYmin">
+    <property name="lower">-65536</property>
+    <property name="upper">65535</property>
     <property name="step_increment">1</property>
-    <property name="page_increment">1</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment2">
-    <property name="lower">-99</property>
-    <property name="upper">99</property>
-    <property name="step_increment">0.10000000000000001</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_constellation_sample_count">
     <property name="lower">10</property>
     <property name="upper">1000000</property>
     <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment_fft_avg">
+    <property name="upper">128</property>
+    <property name="value">1</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">1</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment_fft_pwr_off">
+    <property name="lower">-99</property>
+    <property name="upper">99</property>
+    <property name="step_increment">0.10000000000000001</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment_time_add_to_sample">
+    <property name="lower">-4294967296</property>
+    <property name="upper">4294967295</property>
+    <property name="step_increment">0.001</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment_time_multiply_sample">
+    <property name="lower">-4294967296</property>
+    <property name="upper">4294967295</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_time_sample_count">
@@ -111,31 +127,37 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
-              <object class="GtkLabel" id="labelConstellationSampleCount">
+              <object class="GtkTable" id="table1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Sample count:</property>
+                <property name="n_columns">2</property>
+                <child>
+                  <object class="GtkLabel" id="labelConstellationSampleCount">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">Sample count:</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkSpinButton" id="constellation_sample_count">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="invisible_char">•</property>
+                    <property name="invisible_char_set">True</property>
+                    <property name="primary_icon_activatable">False</property>
+                    <property name="secondary_icon_activatable">False</property>
+                    <property name="adjustment">adjustment_constellation_sample_count</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="right_attach">2</property>
+                  </packing>
+                </child>
               </object>
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
                 <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSpinButton" id="constellation_sample_count">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="invisible_char">•</property>
-                <property name="invisible_char_set">True</property>
-                <property name="primary_icon_activatable">False</property>
-                <property name="secondary_icon_activatable">False</property>
-                <property name="adjustment">adjustment_constellation_sample_count</property>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
               </packing>
             </child>
           </object>
@@ -274,7 +296,7 @@
                 <property name="can_focus">True</property>
                 <property name="invisible_char">•</property>
                 <property name="invisible_char_set">True</property>
-                <property name="adjustment">adjustment1</property>
+                <property name="adjustment">adjustment_fft_avg</property>
                 <property name="climb_rate">1</property>
                 <property name="numeric">True</property>
               </object>
@@ -291,7 +313,7 @@
                 <property name="can_focus">True</property>
                 <property name="invisible_char">•</property>
                 <property name="invisible_char_set">True</property>
-                <property name="adjustment">adjustment2</property>
+                <property name="adjustment">adjustment_fft_pwr_off</property>
                 <property name="climb_rate">0.10000000000000001</property>
                 <property name="digits">2</property>
                 <property name="numeric">True</property>
@@ -376,31 +398,123 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
-              <object class="GtkLabel" id="labelTimeSampleCount">
+              <object class="GtkTable" id="table3">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Sample count:</property>
+                <property name="n_rows">4</property>
+                <property name="n_columns">2</property>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="labelTimeSampleCount">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">Sample count:</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkSpinButton" id="time_sample_count">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="invisible_char">•</property>
+                    <property name="invisible_char_set">True</property>
+                    <property name="primary_icon_activatable">False</property>
+                    <property name="secondary_icon_activatable">False</property>
+                    <property name="adjustment">adjustment_time_sample_count</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="right_attach">2</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="checkbtn_inverse_fct">
+                    <property name="label" translatable="yes">1 / sample</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="xalign">0</property>
+                    <property name="draw_indicator">True</property>
+                  </object>
+                  <packing>
+                    <property name="top_attach">1</property>
+                    <property name="bottom_attach">2</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="checkbtn_multiply">
+                    <property name="label" translatable="yes">x</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="xalign">0</property>
+                    <property name="draw_indicator">True</property>
+                  </object>
+                  <packing>
+                    <property name="top_attach">2</property>
+                    <property name="bottom_attach">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="checkbtn_add_to">
+                    <property name="label" translatable="yes">+</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="xalign">0</property>
+                    <property name="draw_indicator">True</property>
+                  </object>
+                  <packing>
+                    <property name="top_attach">3</property>
+                    <property name="bottom_attach">4</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkSpinButton" id="time_multiply_value">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="invisible_char">•</property>
+                    <property name="invisible_char_set">True</property>
+                    <property name="adjustment">adjustment_time_multiply_sample</property>
+                    <property name="climb_rate">10</property>
+                    <property name="digits">3</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="right_attach">2</property>
+                    <property name="top_attach">2</property>
+                    <property name="bottom_attach">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkSpinButton" id="time_add_value">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="invisible_char">•</property>
+                    <property name="invisible_char_set">True</property>
+                    <property name="adjustment">adjustment_time_add_to_sample</property>
+                    <property name="climb_rate">10</property>
+                    <property name="digits">3</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="right_attach">2</property>
+                    <property name="top_attach">3</property>
+                    <property name="bottom_attach">4</property>
+                  </packing>
+                </child>
               </object>
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
                 <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSpinButton" id="time_sample_count">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="invisible_char">•</property>
-                <property name="invisible_char_set">True</property>
-                <property name="primary_icon_activatable">False</property>
-                <property name="secondary_icon_activatable">False</property>
-                <property name="adjustment">adjustment_time_sample_count</property>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
               </packing>
             </child>
           </object>
@@ -609,7 +723,7 @@
                           <object class="GtkLabel" id="label14">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="label" translatable="yes">Active channels</property>
+                            <property name="label" translatable="yes">Active channel</property>
                             <property name="use_markup">True</property>
                             <attributes>
                               <attribute name="weight" value="bold"/>
@@ -921,6 +1035,111 @@
                         <property name="fill">True</property>
                         <property name="position">0</property>
                       </packing>
+                    </child>
+                    <child>
+                      <object class="GtkExpander" id="expander1">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <child>
+                          <object class="GtkHBox" id="box7">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <child>
+                              <object class="GtkTable" id="table4">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="n_rows">2</property>
+                                <property name="n_columns">2</property>
+                                <child>
+                                  <object class="GtkLabel" id="labelYMax">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="label" translatable="yes">Y Max:</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="spin_Y_max">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">•</property>
+                                    <property name="invisible_char_set">True</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">adjustmentYmax</property>
+                                    <property name="climb_rate">10</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">1</property>
+                                    <property name="right_attach">2</property>
+                                    <property name="x_padding">5</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="spin_Y_min">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">•</property>
+                                    <property name="invisible_char_set">True</property>
+                                    <property name="adjustment">adjustmentYmin</property>
+                                    <property name="climb_rate">10</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">1</property>
+                                    <property name="right_attach">2</property>
+                                    <property name="top_attach">1</property>
+                                    <property name="bottom_attach">2</property>
+                                    <property name="x_padding">5</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel" id="labelYMin">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="label" translatable="yes">Y Min:</property>
+                                  </object>
+                                  <packing>
+                                    <property name="top_attach">1</property>
+                                    <property name="bottom_attach">2</property>
+                                  </packing>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkHBox" id="box8">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="expand">True</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                        </child>
+                        <child type="label">
+                          <object class="GtkLabel" id="label3">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <placeholder/>
                     </child>
                   </object>
                   <packing>
