@@ -221,11 +221,16 @@ void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 		fprintf(stderr, "FIR filter config failed\n");
 }
 
+short convert(float val)
+{
+	return (short) (val * 0x7FFF);
+}
+
 void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 {
-	int ret, fd;
+	int ret, fd, i = 0, size;
 	struct stat st;
-	char *buf;
+	char *buf, line[40];
 	FILE *infile;
 
 	char *file_name = gtk_file_chooser_get_filename(chooser);
@@ -246,11 +251,34 @@ void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 
 	infile = fopen(file_name, "r");
 
-	ret = fread(buf, 1, st.st_size, infile);
+	size = fread(buf, 1, st.st_size, infile);
+
+	if (strncmp(buf, "TEXT", 4) == 0) {
+		double i1, q1, i2, q2;
+		unsigned long long *sample = buf;
+		rewind(infile);
+
+		if (fgets(line, 40, infile) != NULL)
+		if (strncmp(line, "TEXT", 4) == 0) {
+			size = 0;
+			while (fgets(line, 40, infile)) {
+				ret = sscanf(line, "%lf,%lf,%lf,%lf", &i1, &q1, &i2, &q2);
+				if (ret == 4) {
+					sample[i++] = ((unsigned long long)convert(q2) << 48) +
+						((unsigned long long)convert(i2) << 32) +
+						(convert(q1) << 16) +
+						(convert(i1) << 0);
+
+					size +=8;
+				}
+			}
+		}
+	}
+
 	fclose(infile);
-	ret = write(fd, buf, ret);
-	if (ret != st.st_size) {
-		fprintf(stderr, "Loading wavefrom failed%d\n", ret);
+	ret = write(fd, buf, size);
+	if (ret != size) {
+		fprintf(stderr, "Loading waveform failed %d\n", ret);
 	}
 
 	close(fd);
@@ -263,7 +291,6 @@ void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 
 	dac_data_loaded = true;
 }
-
 
 static int compare_gain(const char *a, const char *b)
 {

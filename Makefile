@@ -19,7 +19,7 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c xml_utils.c ./ini/ini.c 
+osc: osc.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c xml_utils.c ./ini/ini.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -rdynamic -o $@
 
 %.so: %.c
@@ -31,6 +31,7 @@ install:
 	install -d $(DESTDIR)/lib/osc/
 	install -d $(DESTDIR)/lib/osc/xmls
 	install -d $(DESTDIR)/lib/osc/filters
+	install -d $(DESTDIR)/lib/osc/waveforms
 	install ./osc $(DESTDIR)/bin/
 	install ./*.glade $(DESTDIR)/share/osc/
 	install ./icons/ADIlogo.png $(DESTDIR)/share/osc/
@@ -39,6 +40,7 @@ install:
 	install $(PLUGINS) $(DESTDIR)/lib/osc/
 	install ./xmls/* $(DESTDIR)/lib/osc/xmls
 	install ./filters/* $(DESTDIR)/lib/osc/filters
+	install ./waveforms/* $(DESTDIR)/lib/osc/waveforms
 
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
 	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
