@@ -29,6 +29,8 @@
 
 extern char dev_dir_name[512];
 
+static bool is_2rx_2tx;
+
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
 
@@ -142,13 +144,15 @@ static void glb_settings_update_labels(void)
 	if (buf)
 		free(buf);
 
-	ret = read_devattr("in_voltage1_gain_control_mode", &buf);
-	if (ret >= 0)
-		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx2), buf);
-	else
-		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx2), "<error>");
-	if (buf)
-		free(buf);
+	if (is_2rx_2tx) {
+		ret = read_devattr("in_voltage1_gain_control_mode", &buf);
+		if (ret >= 0)
+			gtk_label_set_text(GTK_LABEL(rx_gain_control_rx2), buf);
+		else
+			gtk_label_set_text(GTK_LABEL(rx_gain_control_rx2), "<error>");
+		if (buf)
+			free(buf);
+	}
 
 	ret = read_devattr("rx_path_rates", &buf);
 	if (ret >= 0)
@@ -183,6 +187,9 @@ static void rssi_update_labels(void)
 		free(buf);
 		buf = NULL;
 	}
+
+	if (!is_2rx_2tx)
+		return;
 
 	ret = read_devattr("in_voltage1_rssi", &buf);
 	if (ret >= 0)
@@ -221,24 +228,130 @@ void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 		fprintf(stderr, "FIR filter config failed\n");
 }
 
-short convert(float val)
+short convert(double scale, float val)
 {
-	return (short) (val * 0x7FFF);
+	return (short) (val * scale);
+}
+
+int analyse_wavefile(char *file_name, char **buf, int *count)
+{
+	int ret, j, i = 0, size, rep, tx;
+	double max = 0.0, val[4], scale;
+	double i1, q1, i2, q2;
+	char line[80];
+
+	FILE *infile = fopen(file_name, "r");
+	if (infile == NULL)
+		return -3;
+
+	if (fgets(line, 80, infile) != NULL) {
+	if (strncmp(line, "TEXT", 4) == 0) {
+		ret = sscanf(line, "TEXT REPEAT %d TX %d", &rep, &tx);
+		if (ret != 2) {
+			rep = 1;
+			tx = 2;
+		}
+		size = 0;
+		while (fgets(line, 80, infile)) {
+			ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
+				     &val[0], &val[1], &val[2], &val[3]);
+
+			if (!(ret == 4 || ret == 2)) {
+				fclose(infile);
+				return -2;
+			}
+
+			for (i = 0; i < ret; i++)
+				if (fabs(val[i]) > max)
+					max = fabs(val[i]);
+
+			size += ((tx == 2) ? 8 : 4);
+
+
+		}
+
+	size *= rep;
+	scale = 32767.0 / max;
+
+	*buf = malloc(size);
+	if (*buf == NULL)
+		return 0;
+
+	unsigned long long *sample = *buf;
+	unsigned int *sample_32 = *buf;
+
+	rewind(infile);
+
+	if (fgets(line, 80, infile) != NULL) {
+		if (strncmp(line, "TEXT", 4) == 0) {
+			size = 0;
+			i = 0;
+			while (fgets(line, 80, infile)) {
+
+				ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
+					     &i1, &q1, &i2, &q2);
+				for (j = 0; j < rep; j++) {
+					if (ret == 4 && tx == 2) {
+						sample[i++] = ((unsigned long long)convert(scale, q2) << 48) +
+							((unsigned long long)convert(scale, i2) << 32) +
+							(convert(scale, q1) << 16) +
+							(convert(scale, i1) << 0);
+
+						size += 8;
+					}
+					if (ret == 2 && tx == 2) {
+						sample[i++] = ((unsigned long long)convert(scale, q1) << 48) +
+							((unsigned long long)convert(scale, i1) << 32) +
+							(convert(scale, q1) << 16) +
+							(convert(scale, i1) << 0);
+
+						size += 8;
+					}
+					if (tx == 1) {
+						sample_32[i++] = (convert(scale, q1) << 16) +
+							(convert(scale, i1) << 0);
+
+						size += 4;
+					}
+				}
+			}
+		}
+	}
+
+	fclose(infile);
+	*count = size;
+
+	}} else {
+		fclose(infile);
+		*buf = NULL;
+		return -1;
+	}
+
+	return 0;
 }
 
 void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 {
-	int ret, fd, i = 0, size;
+	int ret, fd, size;
 	struct stat st;
-	char *buf, line[40];
+	char *buf;
 	FILE *infile;
 
 	char *file_name = gtk_file_chooser_get_filename(chooser);
-
-	stat(file_name, &st);
-	buf = malloc(st.st_size);
-	if (buf == NULL)
+	ret = analyse_wavefile(file_name, &buf, &size);
+	if (ret == -3)
 		return;
+
+	if (ret == -1 || buf == NULL) {
+
+		stat(file_name, &st);
+		buf = malloc(st.st_size);
+		if (buf == NULL)
+			return;
+		infile = fopen(file_name, "r");
+		size = fread(buf, 1, st.st_size, infile);
+		fclose(infile);
+	}
 
 	set_dev_paths("cf-ad9361-dds-core-lpc");
 	write_devattr_int("buffer/enable", 0);
@@ -249,33 +362,6 @@ void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 		return;
 	}
 
-	infile = fopen(file_name, "r");
-
-	size = fread(buf, 1, st.st_size, infile);
-
-	if (strncmp(buf, "TEXT", 4) == 0) {
-		double i1, q1, i2, q2;
-		unsigned long long *sample = buf;
-		rewind(infile);
-
-		if (fgets(line, 40, infile) != NULL)
-		if (strncmp(line, "TEXT", 4) == 0) {
-			size = 0;
-			while (fgets(line, 40, infile)) {
-				ret = sscanf(line, "%lf,%lf,%lf,%lf", &i1, &q1, &i2, &q2);
-				if (ret == 4) {
-					sample[i++] = ((unsigned long long)convert(q2) << 48) +
-						((unsigned long long)convert(i2) << 32) +
-						(convert(q1) << 16) +
-						(convert(i1) << 0);
-
-					size +=8;
-				}
-			}
-		}
-	}
-
-	fclose(infile);
 	ret = write(fd, buf, size);
 	if (ret != size) {
 		fprintf(stderr, "Loading waveform failed %d\n", ret);
@@ -870,6 +956,8 @@ static int fmcomms2_init(GtkWidget *notebook)
 	if (!gtk_builder_add_from_file(builder, "fmcomms2.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms2.glade", NULL);
 
+	is_2rx_2tx = iio_devattr_exists("ad9361-phy", "in_voltage1_hardwaregain");
+
 	fmcomms2_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms2_panel"));
 	/* Global settings */
 	ensm_mode = GTK_WIDGET(gtk_builder_get_object(builder, "ensm_mode"));
@@ -995,45 +1083,51 @@ static int fmcomms2_init(GtkWidget *notebook)
 		"ad9361-phy", "in_voltage0_gain_control_mode",
 		"in_voltage_gain_control_mode_available",
 		rx_gain_control_modes_rx1, NULL);
-	iio_combo_box_init(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage1_gain_control_mode",
-		"in_voltage_gain_control_mode_available",
-		rx_gain_control_modes_rx2, NULL);
+
+	if (is_2rx_2tx)
+		iio_combo_box_init(&rx_widgets[num_rx++],
+			"ad9361-phy", "in_voltage1_gain_control_mode",
+			"in_voltage_gain_control_mode_available",
+			rx_gain_control_modes_rx2, NULL);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage0_hardwaregain", builder,
 		"hardware_gain_rx1", NULL);
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage1_hardwaregain", builder,
-		"hardware_gain_rx2", NULL);
+
+	if (is_2rx_2tx)
+		iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+			"ad9361-phy", "in_voltage1_hardwaregain", builder,
+			"hardware_gain_rx2", NULL);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage_sampling_frequency", builder,
 		"sampling_freq_rx", &mhz_scale);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-	"ad9361-phy", "in_voltage_rf_bandwidth", builder, "rf_bandwidth_rx",
-	&mhz_scale);
+		"ad9361-phy", "in_voltage_rf_bandwidth", builder, "rf_bandwidth_rx",
+		&mhz_scale);
 	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "out_altvoltage0_RX_LO_frequency", builder,
 		"rx_lo_freq", &mhz_scale);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	"ad9361-phy", "in_voltage_filter_fir_en", builder,
-	"enable_fir_filter_rx", 0);
+		"ad9361-phy", "in_voltage_filter_fir_en", builder,
+		"enable_fir_filter_rx", 0);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	"ad9361-phy", "in_voltage_quadrature_tracking_en", builder,
-	"quad", 0);
+		"ad9361-phy", "in_voltage_quadrature_tracking_en", builder,
+		"quad", 0);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	"ad9361-phy", "in_voltage_rf_dc_offset_tracking_en", builder,
-	"rfdc", 0);
+		"ad9361-phy", "in_voltage_rf_dc_offset_tracking_en", builder,
+		"rfdc", 0);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	"ad9361-phy", "in_voltage_bb_dc_offset_tracking_en", builder,
-	"bbdc", 0);
+		"ad9361-phy", "in_voltage_bb_dc_offset_tracking_en", builder,
+		"bbdc", 0);
 
 	/* Transmit Chain */
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_voltage0_hardwaregain", builder,
 		"hardware_gain_tx1", NULL);
-	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_voltage1_hardwaregain", builder,
-		"hardware_gain_tx2", NULL);
+
+	if (is_2rx_2tx)
+		iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+			"ad9361-phy", "out_voltage1_hardwaregain", builder,
+			"hardware_gain_tx2", NULL);
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_voltage_sampling_frequency", builder,
 		"sampling_freq_tx", &mhz_scale);
@@ -1072,7 +1166,6 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_frequency",
 			dds8_freq, &mhz_scale);
-
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_scale",
 			"out_altvoltage_TX1_I_F1_scale_available", dds1_scale, compare_gain);
@@ -1097,7 +1190,6 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_scale",
 			"out_altvoltage_TX2_Q_F2_scale_available", dds8_scale, compare_gain);
-
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_phase",
 			dds1_phase, &khz_scale);
@@ -1110,6 +1202,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_phase",
 			dds4_phase, &khz_scale);
+
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_phase",
 			dds5_phase, &khz_scale);
