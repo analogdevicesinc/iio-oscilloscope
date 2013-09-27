@@ -213,6 +213,15 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	rssi_update_labels();
 }
 
+static void reload_button_clicked(GtkButton *btn, gpointer data)
+{
+	iio_update_widgets(glb_widgets, num_glb);
+	iio_update_widgets(tx_widgets, num_tx);
+	iio_update_widgets(rx_widgets, num_rx);
+	rx_update_labels();
+	glb_settings_update_labels();
+	rssi_update_labels();
+}
 
 void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 {
@@ -1224,12 +1233,17 @@ static int fmcomms2_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "fmcomms2_settings_save", "clicked",
 		G_CALLBACK(save_button_clicked), NULL);
 
+	g_builder_connect_signal(builder, "fmcomms2_settings_reload", "clicked",
+		G_CALLBACK(reload_button_clicked), NULL);
+
 	g_builder_connect_signal(builder, "filter_fir_config", "file-set",
 		G_CALLBACK(filter_fir_config_file_set_cb), NULL);
 
 	g_builder_connect_signal(builder, "dac_buffer", "file-set",
 		G_CALLBACK(dac_buffer_config_file_set_cb), NULL);
 
+
+	iio_update_widgets(glb_widgets, num_glb);
 	tx_update_values();
 	rx_update_values();
 

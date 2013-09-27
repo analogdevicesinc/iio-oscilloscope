@@ -2661,8 +2661,24 @@ configuration:</property>
       <object class="GtkHBox" id="boxSaveSettings">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="spacing">10</property>
+        <property name="spacing">5</property>
         <property name="homogeneous">True</property>
+        <child>
+          <object class="GtkButton" id="fmcomms2_settings_reload">
+            <property name="label">Reload Settings</property>
+            <property name="use_action_appearance">False</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">True</property>
+            <property name="use_action_appearance">False</property>
+            <property name="xalign">0</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
         <child>
           <object class="GtkButton" id="fmcomms2_settings_save">
             <property name="label">Save Settings</property>
