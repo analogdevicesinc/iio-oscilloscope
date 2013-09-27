@@ -203,7 +203,6 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
@@ -230,7 +229,6 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                           </object>
                           <packing>
                             <property name="left_attach">3</property>
@@ -257,7 +255,6 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                           </object>
                           <packing>
                             <property name="left_attach">5</property>
@@ -811,7 +808,6 @@ configuration:</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="entry_text_column">0</property>
-                                            <property name="id_column">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -969,7 +965,6 @@ configuration:</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="entry_text_column">0</property>
-                                            <property name="id_column">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -1315,7 +1310,6 @@ configuration:</property>
                                 <property name="can_focus">False</property>
                                 <property name="active">1</property>
                                 <property name="entry_text_column">0</property>
-                                <property name="id_column">1</property>
                                 <items>
                                   <item translatable="yes">Disabled</item>
                                   <item translatable="yes">One CW Tone</item>
@@ -1486,7 +1480,6 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="entry_text_column">0</property>
-                                                            <property name="id_column">1</property>
                                                             <items>
                                                             <item translatable="yes">0.5</item>
                                                             </items>
@@ -1639,7 +1632,6 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="entry_text_column">0</property>
-                                                            <property name="id_column">1</property>
                                                             <items>
                                                             <item translatable="yes">0.5</item>
                                                             </items>
@@ -1796,7 +1788,6 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="entry_text_column">0</property>
-                                                            <property name="id_column">1</property>
                                                             <items>
                                                             <item translatable="yes">0.5</item>
                                                             </items>
@@ -1919,7 +1910,6 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="entry_text_column">0</property>
-                                                            <property name="id_column">1</property>
                                                             <items>
                                                             <item translatable="yes">0.5</item>
                                                             </items>
@@ -2148,7 +2138,6 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="entry_text_column">0</property>
-                                                            <property name="id_column">1</property>
                                                             <items>
                                                             <item translatable="yes">0.5</item>
                                                             </items>
@@ -2271,7 +2260,6 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="entry_text_column">0</property>
-                                                            <property name="id_column">1</property>
                                                             <items>
                                                             <item translatable="yes">0.5</item>
                                                             </items>
@@ -2428,7 +2416,6 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="entry_text_column">0</property>
-                                                            <property name="id_column">1</property>
                                                             <items>
                                                             <item translatable="yes">0.5</item>
                                                             </items>
@@ -2551,7 +2538,6 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="entry_text_column">0</property>
-                                                            <property name="id_column">1</property>
                                                             <items>
                                                             <item translatable="yes">0.5</item>
                                                             </items>
