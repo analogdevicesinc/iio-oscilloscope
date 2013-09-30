@@ -440,16 +440,29 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer data)
 	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode))) {
 		case 1:
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_phase), phase1);
+			if ((phase1 - 90) < 0)
+				phase1 += 360;
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), phase1 - 90.0);
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), phase1 - 90.0);
+
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds6_phase), phase5);
+			if ((phase5 - 90) < 0)
+				phase5 += 360;
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_phase), phase5 - 90.0);
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_phase), phase5 - 90.0);
 			break;
 		case 2:
+			if ((phase1 - 90) < 0)
+				phase1 += 360;
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), phase1 - 90.0);
+			if ((phase2 - 90) < 0)
+				phase2 += 360;
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), phase2 - 90.0);
+			if ((phase5 - 90) < 0)
+				phase5 += 360;
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_phase), phase5 - 90.0);
+			if ((phase6 - 90) < 0)
+				phase6 += 360;
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_phase), phase6 - 90.0);
 			break;
 		default:
@@ -664,11 +677,11 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds6_scale);
 		gtk_widget_hide(dds7_scale);
 		gtk_widget_hide(dds8_scale);
-		gtk_widget_show(dds1_phase);
+		gtk_widget_hide(dds1_phase);
 		gtk_widget_hide(dds2_phase);
 		gtk_widget_hide(dds3_phase);
 		gtk_widget_hide(dds4_phase);
-		gtk_widget_show(dds5_phase);
+		gtk_widget_hide(dds5_phase);
 		gtk_widget_hide(dds6_phase);
 		gtk_widget_hide(dds7_phase);
 		gtk_widget_hide(dds8_phase);
@@ -688,11 +701,11 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds6_scale_l);
 		gtk_widget_hide(dds7_scale_l);
 		gtk_widget_hide(dds8_scale_l);
-		gtk_widget_show(dds1_phase_l);
+		gtk_widget_hide(dds1_phase_l);
 		gtk_widget_hide(dds2_phase_l);
 		gtk_widget_hide(dds3_phase_l);
 		gtk_widget_hide(dds4_phase_l);
-		gtk_widget_show(dds5_phase_l);
+		gtk_widget_hide(dds5_phase_l);
 		gtk_widget_hide(dds6_phase_l);
 		gtk_widget_hide(dds7_phase_l);
 		gtk_widget_hide(dds8_phase_l);
@@ -709,6 +722,7 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q1_TX2_l);
 		gtk_widget_hide(dds_Q2_TX2_l);
 
+		/* Connect the widgets that are showing (1 & 5) */
 		if (!dds1_scale_hid)
 			dds1_scale_hid = g_signal_connect(dds1_scale , "changed",
 					G_CALLBACK(dds_locked_scale_cb), NULL);
@@ -724,12 +738,13 @@ static void manage_dds_mode()
 					G_CALLBACK(dds_locked_freq_cb), NULL);
 
 		if (!dds1_phase_hid)
-			dds1_freq_hid = g_signal_connect(dds1_freq , "changed",
+			dds1_phase_hid = g_signal_connect(dds1_phase , "changed",
 					G_CALLBACK(dds_locked_phase_cb), NULL);
 		if (!dds5_phase_hid)
-			dds5_freq_hid = g_signal_connect(dds5_freq , "changed",
+			dds5_phase_hid = g_signal_connect(dds5_phase , "changed",
 					G_CALLBACK(dds_locked_phase_cb), NULL);
 
+		/* Disconnect the rest (2 & 6) */
 		if (dds2_scale_hid) {
 			g_signal_handler_disconnect(dds2_scale, dds2_scale_hid);
 			dds2_scale_hid = 0;
@@ -748,32 +763,19 @@ static void manage_dds_mode()
 			dds6_freq_hid = 0;
 		}
 
-		if (dds1_phase_hid) {
-			g_signal_handler_disconnect(dds1_phase, dds1_phase_hid);
-			dds1_phase_hid = 0;
-		}
 		if (dds2_phase_hid) {
 			g_signal_handler_disconnect(dds2_phase, dds2_phase_hid);
 			dds2_phase_hid = 0;
-		}
-		if (dds5_phase_hid) {
-			g_signal_handler_disconnect(dds5_phase, dds5_phase_hid);
-			dds5_phase_hid = 0;
 		}
 		if (dds6_phase_hid) {
 			g_signal_handler_disconnect(dds6_phase, dds6_phase_hid);
 			dds6_phase_hid = 0;
 		}
 
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds1_phase), 0.0);
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_phase), 0.0);
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), 90.0);
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), 90.0);
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds5_phase), 0.0);
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds6_phase), 0.0);
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_phase), 90.0);
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_phase), 90.0);
-
+		dds_locked_scale_cb(NULL, NULL);
+		dds_locked_freq_cb(NULL, NULL);
+		dds_locked_phase_cb(NULL, NULL);
+		
 		break;
 	case 2:
 		/* Two tones */
@@ -879,6 +881,11 @@ static void manage_dds_mode()
 		if (!dds6_phase_hid)
 			dds6_phase_hid = g_signal_connect(dds6_phase , "changed",
 					G_CALLBACK(dds_locked_phase_cb), NULL);
+
+		/* Force sync */
+		dds_locked_scale_cb(NULL, NULL);
+		dds_locked_freq_cb(NULL, NULL);
+		dds_locked_phase_cb(NULL, NULL);
 
 		break;
 	case 3:
