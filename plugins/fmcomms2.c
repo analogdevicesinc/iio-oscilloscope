@@ -286,8 +286,8 @@ int analyse_wavefile(char *file_name, char **buf, int *count)
 	if (*buf == NULL)
 		return 0;
 
-	unsigned long long *sample = *buf;
-	unsigned int *sample_32 = *buf;
+	unsigned long long *sample = *((unsigned long long **)buf);
+	unsigned int *sample_32 = *((unsigned int **)buf);
 
 	rewind(infile);
 
