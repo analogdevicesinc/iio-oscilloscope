@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <malloc.h>
 
+#include "osc.h"
 #include "oscplot.h"
 #include "config.h"
 #include "iio_widget.h"
@@ -780,6 +781,11 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 		menuitem = gtk_menu_item_new_with_label("Sample Count");
 		g_signal_connect(menuitem, "activate",
 					(GCallback) show_sample_count_dialog, ref);
+		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+		menuitem = gtk_menu_item_new_with_label("Input Generator");
+		gtk_widget_set_sensitive(GTK_WIDGET(menuitem), trigger_update_current_device( ((struct _device_list *)ref)->device_name ));
+		g_signal_connect(menuitem, "activate",
+					(GCallback) trigger_dialog_show, NULL);
 		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 		goto show_menu;
 	}

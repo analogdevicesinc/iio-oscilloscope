@@ -15,7 +15,8 @@ G_LOCK_EXTERN (buffer_full);
 void rx_update_labels(void);
 void dialogs_init(GtkBuilder *builder);
 void trigger_dialog_init(GtkBuilder *builder);
-void trigger_update_current_device(void);
+void trigger_dialog_show(void);
+bool trigger_update_current_device(char *device);
 void application_quit (void);
 
 void * plugin_get_device_by_reference(const char *device_name);
