@@ -35,6 +35,7 @@ static GList *plot_list = NULL;
 static const char *current_device;
 static int num_capturing_plots;
 G_LOCK_DEFINE(buffer_full);
+static gboolean stop_capture;
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
@@ -441,11 +442,8 @@ static void close_active_buffers(void)
 
 static void stop_sampling(void)
 {
-	if (capture_function_id > 0) {
-		g_source_remove(capture_function_id);
-		capture_function_id = 0;
-		G_UNLOCK(buffer_full);
-	}
+	stop_capture = TRUE;
+	G_UNLOCK(buffer_full);
 	close_active_buffers();
 }
 
@@ -707,9 +705,10 @@ static gboolean capture_function(void)
 	}
 	
 	update_all_plots();
-	usleep(50000);
+	if (stop_capture == TRUE)
+		capture_function_id = 0;
 	
-	return TRUE;
+	return !stop_capture;
 }
 
 static void resize_device_data(struct _device_list *device)
@@ -774,7 +773,13 @@ static int capture_setup(void)
 
 static void capture_start(void)
 {
-	capture_function_id = g_idle_add((GSourceFunc) capture_function, NULL);
+	if (capture_function_id) {
+		stop_capture = FALSE;
+	}
+	else {
+		stop_capture = FALSE;
+		capture_function_id = g_timeout_add(50, (GSourceFunc) capture_function, NULL);
+	}
 }
 
 static void start(OscPlot *plot, gboolean start_event)
@@ -782,11 +787,8 @@ static void start(OscPlot *plot, gboolean start_event)
 	if (start_event) {
 		num_capturing_plots++;
 		/* Stop the capture process to allow settings to be updated */
-		if (capture_function_id > 0) {
-			g_source_remove(capture_function_id);
-			capture_function_id = 0;
-			G_UNLOCK(buffer_full);
-		}
+		stop_capture = TRUE;
+		G_UNLOCK(buffer_full);
 		close_active_buffers();
 		
 		/* Start the capture process */
@@ -796,12 +798,10 @@ static void start(OscPlot *plot, gboolean start_event)
 		restart_all_running_plots();
 	} else {
 		num_capturing_plots--;
-		if (num_capturing_plots == 0)
-			if (capture_function_id > 0) {
-				g_source_remove(capture_function_id);
-				capture_function_id = 0;
-				G_UNLOCK(buffer_full);
-			}
+		if (num_capturing_plots == 0) {
+			stop_capture = TRUE;
+			G_UNLOCK(buffer_full);
+		}
 	}
 }
 
@@ -810,7 +810,8 @@ static void plot_destroyed_cb(OscPlot *plot)
 	plot_list = g_list_remove(plot_list, plot);
 	stop_sampling();
 	capture_setup();
-	capture_start();
+	if (num_capturing_plots)
+		capture_start();
 	restart_all_running_plots();
 }
 
@@ -827,11 +828,8 @@ static void btn_capture_cb(GtkButton *button, gpointer user_data)
 
 void application_quit (void)
 {
-	if (capture_function_id > 0) {
-		g_source_remove(capture_function_id);
-		capture_function_id = 0;
-		G_UNLOCK(buffer_full);
-	}
+	stop_capture = TRUE;
+	G_UNLOCK(buffer_full);
 	close_active_buffers();
 	
 	g_list_free(plot_list);

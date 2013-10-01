@@ -138,8 +138,7 @@ struct _OscPlotPrivate
 	GtkWidget *enable_auto_scale;
 	GtkWidget *hor_scale;
 	GtkWidget *marker_label;
-	GtkWidget *saveas_menu;
-	GtkWidget *quit_menu;
+	GtkWidget *saveas_button;
 	GtkWidget *saveas_dialog;
 	GtkWidget *y_axis_max;
 	GtkWidget *y_axis_min;
@@ -167,6 +166,7 @@ struct _OscPlotPrivate
 	gfloat gridy[25], gridx[25];
 	
 	gint redraw_function;
+	gint stop_redraw;
 	
 	GList *selected_rows_paths;
 	gint num_selected_rows;
@@ -246,9 +246,7 @@ void osc_plot_restart (OscPlot *plot)
 	
 	if (priv->redraw_function > 0)
 	{
-		g_source_remove(priv->redraw_function);
-		priv->redraw_function = 0;
-		
+		priv->stop_redraw = TRUE;
 		plot_setup(plot);
 		add_grid(plot);
 		gtk_widget_queue_draw(priv->databox);
@@ -261,12 +259,8 @@ void osc_plot_draw_stop (OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 	
-	if (priv->redraw_function > 0)
-	{
-		g_source_remove(priv->redraw_function);
-		priv->redraw_function = 0;
-		gtk_toggle_tool_button_set_active((GtkToggleToolButton *)priv->capture_button, FALSE);
-	}
+	priv->stop_redraw = TRUE;
+	gtk_toggle_tool_button_set_active((GtkToggleToolButton *)priv->capture_button, FALSE);
 }
 
 static void add_row_child(GtkTreeView *treeview, GtkTreeIter *parent, char *child_name, Transform *tr)
@@ -1023,7 +1017,6 @@ static gboolean active_channels_check(GtkTreeView *treeview)
 	}
 	
 	return !no_active_channels;
-	
 }
 
 static void remove_all_transforms(OscPlot *plot)
@@ -1061,17 +1054,25 @@ static void fps_counter(OscPlotPrivate *priv)
 
 static gboolean plot_redraw(OscPlotPrivate *priv)
 {
+	if (!GTK_IS_DATABOX(priv->databox))
+		return FALSE;
 	auto_scale_databox(priv, GTK_DATABOX(priv->databox));
 	gtk_widget_queue_draw(priv->databox);
-	usleep(50000);
 	fps_counter(priv);
+	if (priv->stop_redraw == TRUE)
+		priv->redraw_function = 0;
 	
-	return TRUE;
+	return !priv->stop_redraw;
 }
 
 static void capture_start(OscPlotPrivate *priv)
 {
-	priv->redraw_function = g_idle_add((GSourceFunc) plot_redraw, priv);
+	if (priv->redraw_function) {
+		priv->stop_redraw = FALSE;
+	} else {
+		priv->stop_redraw = FALSE;
+		priv->redraw_function = g_timeout_add(50, (GSourceFunc) plot_redraw, priv);
+	}
 }
 
 static void add_markers(OscPlot *plot, Transform *transform)
@@ -1181,11 +1182,8 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 		priv->frame_counter = 0;
 		capture_start(priv);
 	} else {
-		if (priv->redraw_function > 0) {
-			g_source_remove(priv->redraw_function);
-			priv->redraw_function = 0;
-			g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, button_state);
-		}
+		priv->stop_redraw = TRUE;
+		g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, button_state);
 	}
 	
 	return;
@@ -1511,12 +1509,12 @@ static void zoom_out(GtkButton *btn, gpointer data)
 static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 {
 	remove_all_transforms(plot);
-	g_signal_emit(plot, oscplot_signals[DESTROY_EVENT_SIGNAL], 0);
-	if (plot->priv->redraw_function > 0) {
-			g_source_remove(plot->priv->redraw_function);
-			plot->priv->redraw_function = 0;
-			g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, FALSE);
+	plot->priv->stop_redraw = TRUE;
+	if (plot->priv->redraw_function) {
+		g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, FALSE);
 	}
+	g_signal_emit(plot, oscplot_signals[DESTROY_EVENT_SIGNAL], 0);
+	gtk_widget_destroy(plot->priv->window);
 }
 
 #define ENTER_KEY_CODE 0xFF0D
@@ -1530,21 +1528,13 @@ gboolean save_settings_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
 	return FALSE;
 }
 
-static void cb_saveas(GtkMenuItem *menuitem, OscPlot *data)
+static void cb_saveas(GtkToolButton *toolbutton, OscPlot *data)
 {
 	OscPlotPrivate *priv = data->priv;
 
 	gtk_widget_show(priv->saveas_dialog);
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (priv->saveas_dialog), "~/");
 	gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
-}
-
-static void cb_quit(GtkMenuItem *menuitem, OscPlot *data)
-{
-	OscPlotPrivate *priv = data->priv;
-
-	plot_destroyed(priv->window, data);
-	gtk_widget_destroy(priv->window);
 }
 
 void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
@@ -1591,36 +1581,18 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 	gtk_widget_hide(priv->saveas_dialog);
 }
 
-static void max_y_axis_cb(GtkSpinButton *spinbutton, OscPlot *plot)
+static void enable_auto_scale_cb(GtkToggleButton *button, OscPlot *plot)
 {
-	GtkDatabox *box;
-	gfloat min_x;
-	gfloat max_x;
-	gfloat min_y;
-	gfloat max_y;
+	OscPlotPrivate *priv = plot->priv;
 	
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(plot->priv->enable_auto_scale), false);
-	box = GTK_DATABOX(plot->priv->databox);
-	gtk_databox_get_total_limits(box, &min_x, &max_x, &max_y, &min_y);
-	max_y = gtk_spin_button_get_value(spinbutton);
-	min_y = gtk_spin_button_get_value(GTK_SPIN_BUTTON(plot->priv->y_axis_min));
-	gtk_databox_set_total_limits(box, min_x, max_x, max_y, min_y);
-}
-
-static void min_y_axis_cb(GtkSpinButton *spinbutton, OscPlot *plot)
-{
-	GtkDatabox *box;
-	gfloat min_x;
-	gfloat max_x;
-	gfloat min_y;
-	gfloat max_y;
-	
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(plot->priv->enable_auto_scale), false);
-	box = GTK_DATABOX(plot->priv->databox);
-	gtk_databox_get_total_limits(box, &min_x, &max_x, &max_y, &min_y);
-	min_y = gtk_spin_button_get_value(spinbutton);
-	max_y = gtk_spin_button_get_value(GTK_SPIN_BUTTON(plot->priv->y_axis_max));
-	gtk_databox_set_total_limits(box, min_x, max_x, max_y, min_y);
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale))) {
+		gtk_widget_set_sensitive(plot->priv->y_axis_max, FALSE);
+		gtk_widget_set_sensitive(plot->priv->y_axis_min, FALSE);
+	} else
+	{
+		gtk_widget_set_sensitive(plot->priv->y_axis_max, TRUE);
+		gtk_widget_set_sensitive(plot->priv->y_axis_min, TRUE);
+	}
 }
 
 static void create_plot(OscPlot *plot)
@@ -1631,6 +1603,7 @@ static void create_plot(OscPlot *plot)
 	GtkBuilder *builder = NULL;
 	GtkTreeSelection *tree_selection;
 	GtkWidget *fft_size_widget;
+	GtkDataboxRuler *ruler_y;
 	
 	/* Get the GUI from a glade file. */
 	builder = gtk_builder_new();
@@ -1656,8 +1629,7 @@ static void create_plot(OscPlot *plot)
 	priv->enable_auto_scale = GTK_WIDGET(gtk_builder_get_object(builder, "auto_scale"));
 	priv->hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
-	priv->saveas_menu = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_saveas"));
-	priv->quit_menu = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_quit"));
+	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	priv->y_axis_max = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_max"));
 	priv->y_axis_min = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_min"));
@@ -1669,7 +1641,8 @@ static void create_plot(OscPlot *plot)
 		TRUE, TRUE, TRUE, TRUE);
 	gtk_box_pack_start(GTK_BOX(priv->capture_graph), table, TRUE, TRUE, 0);
 	gtk_widget_modify_bg(priv->databox, GTK_STATE_NORMAL, &color_background);
-	gtk_widget_set_size_request(table, 600, 600);
+	gtk_widget_set_size_request(table, 320, 240);
+	ruler_y = gtk_databox_get_ruler_y(GTK_DATABOX(priv->databox));
 	
 	fill_channel_list(plot);
 	
@@ -1688,16 +1661,12 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(set_fft_settings_cb), plot);
 	g_signal_connect(priv->constellation_settings_diag, "response",
 		G_CALLBACK(set_constellation_settings_cb), plot);
-	g_signal_connect(priv->saveas_menu, "activate",
+	g_signal_connect(priv->saveas_button, "clicked",
 		G_CALLBACK(cb_saveas), plot);
-	g_signal_connect(priv->quit_menu, "activate",
-		G_CALLBACK(cb_quit), plot);
 	g_signal_connect(priv->saveas_dialog, "response", 
 		G_CALLBACK(cb_saveas_response), plot);
-	g_signal_connect(priv->y_axis_max, "value-changed",
-		G_CALLBACK(max_y_axis_cb), plot);
-	g_signal_connect(priv->y_axis_min, "value-changed",
-		G_CALLBACK(min_y_axis_cb), plot);
+	g_signal_connect(priv->enable_auto_scale, "toggled",
+		G_CALLBACK(enable_auto_scale_cb), plot);
 	g_signal_connect(priv->time_settings_diag, "key_release_event",
 		G_CALLBACK(save_settings_cb), NULL);
 	g_signal_connect(priv->fft_settings_diag, "key_release_event",
@@ -1717,6 +1686,8 @@ static void create_plot(OscPlot *plot)
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,
 		"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
+	g_object_bind_property(ruler_y, "lower", priv->y_axis_max, "value", G_BINDING_BIDIRECTIONAL);
+	g_object_bind_property(ruler_y, "upper", priv->y_axis_min, "value", G_BINDING_BIDIRECTIONAL);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(fft_size_widget), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_type), 0);
