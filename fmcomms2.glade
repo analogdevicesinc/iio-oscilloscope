@@ -625,7 +625,7 @@ configuration:</property>
                                 <property name="invisible_char">•</property>
                                 <property name="invisible_char_set">True</property>
                                 <property name="adjustment">adjustment_sampl_freq_tx</property>
-                                <property name="digits">3</property>
+                                <property name="digits">6</property>
                               </object>
                             </child>
                           </object>
@@ -1223,7 +1223,7 @@ configuration:</property>
                             <property name="invisible_char">•</property>
                             <property name="invisible_char_set">True</property>
                             <property name="adjustment">adjustment_sampl_freq_tx</property>
-                            <property name="digits">3</property>
+                            <property name="digits">6</property>
                           </object>
                           <packing>
                             <property name="left_attach">2</property>
