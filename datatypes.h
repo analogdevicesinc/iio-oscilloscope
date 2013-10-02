@@ -74,6 +74,7 @@ struct _transform {
 	bool destroy_y_axis;
 	bool local_output_buf;
 	void *graph;
+	void *graph_color;
 	bool graph_active;
 	bool has_the_marker;
 	void *settings;

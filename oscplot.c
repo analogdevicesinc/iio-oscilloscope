@@ -64,6 +64,7 @@ enum {
 	TRANSFORM_ACTIVE,
 	MARKER_ENABLED,
 	ELEMENT_REFERENCE,
+	COLOR_REF,
 	NUM_COL
 };
 
@@ -171,6 +172,8 @@ struct _OscPlotPrivate
 	
 	GList *selected_rows_paths;
 	gint num_selected_rows;
+	
+	GList *available_graph_colors;
 };
 
 G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
@@ -264,16 +267,35 @@ void osc_plot_draw_stop (OscPlot *plot)
 	gtk_toggle_tool_button_set_active((GtkToggleToolButton *)priv->capture_button, FALSE);
 }
 
-static void add_row_child(GtkTreeView *treeview, GtkTreeIter *parent, char *child_name, Transform *tr)
+static void add_row_child(OscPlot *plot, GtkTreeIter *parent, char *child_name, Transform *tr)
 {
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeView *treeview;
 	GtkTreeStore *treestore;
 	GtkTreeIter child;
-	
+	GdkColor *transform_color;
+	GList *first_element;
+	int i;
+
+	treeview = (GtkTreeView *)priv->channel_list_view;
 	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
+
+get_color:
+	if (g_list_length(priv->available_graph_colors)) {
+		first_element = g_list_first(priv->available_graph_colors);
+		transform_color = first_element->data;
+		priv->available_graph_colors = g_list_delete_link(priv->available_graph_colors, first_element);
+	} else {
+		 /* Fill the list again */
+		for (i = sizeof(color_graph) / sizeof(color_graph[0]) - 1; i >= 0; i--)
+		priv->available_graph_colors = g_list_prepend(priv->available_graph_colors, &color_graph[i]);
+		goto get_color;
+	}
+	tr->graph_color = transform_color;
 	gtk_tree_store_append(treestore, &child, parent);
-	gtk_tree_store_set(treestore, &child, ELEMENT_NAME, child_name, 
-		IS_DEVICE, FALSE, IS_CHANNEL, FALSE, IS_TRANSFORM, TRUE, 
-		TRANSFORM_ACTIVE, 1, ELEMENT_REFERENCE, tr,  -1);
+	gtk_tree_store_set(treestore, &child, ELEMENT_NAME, child_name,
+		IS_DEVICE, FALSE, IS_CHANNEL, FALSE, IS_TRANSFORM, TRUE,
+		TRANSFORM_ACTIVE, 1, ELEMENT_REFERENCE, tr, COLOR_REF, transform_color, -1);
 }
 
 static void time_settings_init(struct _time_settings *settings)
@@ -376,7 +398,6 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 
 static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 {
-	
 	OscPlot *plot = data;
 	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *tree_view;
@@ -399,31 +420,32 @@ static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 	gtk_tree_model_get(model, &iter, ELEMENT_NAME, &ch_name, ELEMENT_REFERENCE, &channel0, -1);	
 	/* Get the transform name */
 	tr_name = (char *)gtk_menu_item_get_label(menuitem);
-	snprintf(buf, sizeof(buf), "%s-%s", tr_name, ch_name);
-	g_free(ch_name);
+	snprintf(buf, sizeof(buf), "%s", tr_name);
 	/* Get the parent reference of the channel0. */
 	gtk_tree_model_iter_parent(model, &parent_iter, &iter);
 	gtk_tree_model_get(model, &parent_iter, ELEMENT_REFERENCE, &ch_parent0, -1);	
 	
 	/* Get the second channel if two channel were selected. */
 	if (priv->num_selected_rows == 2) {
+		snprintf(buf, sizeof(buf), "%s with %s", tr_name, ch_name);
+		g_free(ch_name);
 		path = g_list_next(priv->selected_rows_paths);
 		gtk_tree_model_get_iter(model, &iter, path->data);
-		gtk_tree_model_get(model, &iter, ELEMENT_NAME, &ch_name, ELEMENT_REFERENCE, &channel1, -1);
-		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "-%s", ch_name);
-		g_free(ch_name);
+		gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &channel1, -1);
 		/* Get the parent reference of the channel1. */
 		gtk_tree_model_iter_parent(model, &parent_iter, &iter);
 		gtk_tree_model_get(model, &parent_iter, ELEMENT_REFERENCE, &ch_parent1, -1);
 		/* Don't add a constellation for channels belonging to different devices */
 		if (ch_parent0 != ch_parent1)
 			return;
+	} else {
+		g_free(ch_name);
 	}
 	
 	/* Add a new transform to a list of transforms. */
 	tr = add_transform_to_list(plot, ch_parent0, channel0, channel1, tr_name);
 	/* Add the transfrom in the treeview */
-	add_row_child(tree_view, &iter, buf, tr);
+	add_row_child(plot, &iter, buf, tr);
 	g_object_set(G_OBJECT(tree_view), "sensitive", TRUE, NULL);
 }
 
@@ -443,6 +465,7 @@ static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer dat
 	gtk_tree_model_get_iter(model, &iter, path->data);
 	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &tr, -1);
 	gtk_tree_store_remove(GTK_TREE_STORE(model), &iter);
+	priv->available_graph_colors = g_list_prepend(priv->available_graph_colors, tr->graph_color);
 	if (tr->graph) {
 		gtk_databox_graph_remove(GTK_DATABOX(priv->databox), tr->graph);
 		gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
@@ -1147,9 +1170,9 @@ static void plot_setup(OscPlot *plot)
 		transform_y_axis = Transform_get_y_axis_ref(transform);
 				
 		if (strcmp(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type)), "Lines"))
-			transform->graph = gtk_databox_points_new(transform->y_axis_size, transform_x_axis, transform_y_axis, &color_graph[i], 3);
+			transform->graph = gtk_databox_points_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, 3);
 		else
-			transform->graph = gtk_databox_lines_new(transform->y_axis_size, transform_x_axis, transform_y_axis, &color_graph[i], 1);
+			transform->graph = gtk_databox_lines_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, 1);
 		
 		ch_info = transform->channel_parent->extra_field;
 		if (transform->x_axis_size > max_x_axis)
@@ -1235,6 +1258,7 @@ static void create_channel_list_view(OscPlotPrivate *priv)
 	GtkCellRenderer *renderer_ch_name;
 	GtkCellRenderer *renderer_tr_toggle;
 	GtkCellRenderer *renderer_tr_has_marker;
+	GtkCellRenderer *renderer_tr_color;
 	
 	col = gtk_tree_view_column_new();
 	gtk_tree_view_column_set_title(col, "Channels");
@@ -1243,16 +1267,23 @@ static void create_channel_list_view(OscPlotPrivate *priv)
 	renderer_ch_name = gtk_cell_renderer_text_new();
 	renderer_tr_toggle = gtk_cell_renderer_toggle_new();
 	renderer_tr_has_marker = gtk_cell_renderer_text_new();
+	renderer_tr_color = gtk_cell_renderer_pixbuf_new();
 	
 	gtk_tree_view_column_pack_end(col, renderer_ch_name, FALSE);
+	gtk_tree_view_column_pack_end(col, renderer_tr_color, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_tr_has_marker, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_tr_toggle, FALSE);
 	
 	gtk_tree_view_column_add_attribute(col, renderer_ch_name, "text", ELEMENT_NAME);
 	gtk_tree_view_column_add_attribute(col, renderer_tr_toggle, "visible", IS_TRANSFORM);
+	gtk_tree_view_column_add_attribute(col, renderer_tr_color, "visible", IS_TRANSFORM);
 	gtk_tree_view_column_add_attribute(col, renderer_tr_toggle, "active", TRANSFORM_ACTIVE);
 	gtk_tree_view_column_add_attribute(col, renderer_tr_has_marker, "visible", MARKER_ENABLED);
+	gtk_tree_view_column_add_attribute(col, renderer_tr_color, "cell-background-gdk", COLOR_REF);
 	g_object_set(renderer_tr_has_marker, "text", "M :", NULL);
+	
+	g_object_set(renderer_tr_color, "width", 15, NULL);
+	g_object_set(renderer_tr_color, "mode", GTK_CELL_RENDERER_MODE_EDITABLE, NULL);
 	
 	g_signal_connect(G_OBJECT(renderer_tr_toggle), "toggled", G_CALLBACK(transform_toggled), priv);	
 }
@@ -1610,6 +1641,8 @@ static void create_plot(OscPlot *plot)
 	GtkTreeSelection *tree_selection;
 	GtkWidget *fft_size_widget;
 	GtkDataboxRuler *ruler_y;
+	GtkTreeStore *tree_store;
+	int i;
 	
 	/* Get the GUI from a glade file. */
 	builder = gtk_builder_new();
@@ -1650,7 +1683,23 @@ static void create_plot(OscPlot *plot)
 	gtk_widget_set_size_request(table, 320, 240);
 	ruler_y = gtk_databox_get_ruler_y(GTK_DATABOX(priv->databox));
 	
+	/* Create a Tree Store that holds information about devices */
+	tree_store = gtk_tree_store_new(NUM_COL,
+									G_TYPE_STRING,
+									G_TYPE_BOOLEAN,
+									G_TYPE_BOOLEAN,
+									G_TYPE_BOOLEAN,
+									G_TYPE_BOOLEAN,
+									G_TYPE_BOOLEAN,
+									G_TYPE_BOOLEAN,
+									G_TYPE_POINTER,
+									GDK_TYPE_COLOR);
+	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 	fill_channel_list(plot);
+	
+	/* Fill the color list with the available colors for the graph */
+	for (i = sizeof(color_graph) / sizeof(color_graph[0]) - 1; i >= 0; i--)
+		priv->available_graph_colors = g_list_prepend(priv->available_graph_colors, &color_graph[i]);
 	
 	/* Connect Signals */
 	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);
@@ -1702,5 +1751,5 @@ static void create_plot(OscPlot *plot)
 	add_grid(plot);
 	
 	gtk_widget_show(priv->window);
-	gtk_widget_show_all(priv->capture_graph);
+	gtk_widget_show_all(priv->capture_graph);	
 }

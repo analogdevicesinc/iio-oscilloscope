@@ -23,6 +23,7 @@ Transform* Transform_new(void)
 	tr->destroy_y_axis = false;
 	tr->local_output_buf = false;
 	tr->graph = NULL;
+	tr->graph_color = NULL;
 	tr->graph_active = false;
 	tr->has_the_marker = false;
 	tr->settings = NULL;
