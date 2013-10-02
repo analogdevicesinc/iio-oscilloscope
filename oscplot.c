@@ -1743,6 +1743,8 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(cb_saveas), plot);
 	g_signal_connect(priv->saveas_dialog, "response", 
 		G_CALLBACK(cb_saveas_response), plot);
+	g_signal_connect(priv->saveas_dialog, "delete-event",
+		G_CALLBACK(gtk_widget_hide_on_delete), plot);
 	g_signal_connect(priv->fullscreen_button, "toggled",
 		G_CALLBACK(fullscreen_button_clicked_cb), plot);
 	g_signal_connect(priv->enable_auto_scale, "toggled",
@@ -1777,6 +1779,7 @@ static void create_plot(OscPlot *plot)
 	gtk_tree_selection_set_mode(tree_selection, GTK_SELECTION_MULTIPLE);
 	add_grid(plot);
 	
+	gtk_window_set_modal(GTK_WINDOW(priv->saveas_dialog), FALSE);
 	gtk_widget_show(priv->window);
 	gtk_widget_show_all(priv->capture_graph);	
 }
