@@ -142,6 +142,7 @@ struct _OscPlotPrivate
 	GtkWidget *marker_label;
 	GtkWidget *saveas_button;
 	GtkWidget *saveas_dialog;
+	GtkWidget *fullscreen_button;
 	GtkWidget *y_axis_max;
 	GtkWidget *y_axis_min;
 	
@@ -1191,7 +1192,7 @@ static void plot_setup(OscPlot *plot)
 }
 
 static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
-{	
+{
 	OscPlot *plot = data;
 	OscPlotPrivate *priv = plot->priv;
 	gboolean button_state;
@@ -1219,6 +1220,16 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 	
 play_err:
 	gtk_toggle_tool_button_set_active(btn, FALSE);
+}
+
+static void fullscreen_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
+{
+	OscPlot *plot = data;
+	
+	if (gtk_toggle_tool_button_get_active(btn))
+		gtk_window_fullscreen(GTK_WINDOW(plot->priv->window));
+	else
+		gtk_window_unfullscreen(GTK_WINDOW(plot->priv->window));
 }
 
 static void transform_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer data)
@@ -1319,6 +1330,17 @@ static gboolean capture_button_icon_transform(GBinding *binding,
 		g_value_set_static_string(target_value, "gtk-stop");
 	else
 		g_value_set_static_string(target_value, "gtk-media-play");
+
+	return TRUE;
+}
+
+static gboolean fullscreen_button_icon_transform(GBinding *binding,
+	const GValue *source_value, GValue *target_value, gpointer user_data)
+{
+	if (g_value_get_boolean(source_value))
+		g_value_set_static_string(target_value, "gtk-leave-fullscreen");
+	else
+		g_value_set_static_string(target_value, "gtk-fullscreen");
 
 	return TRUE;
 }
@@ -1670,6 +1692,7 @@ static void create_plot(OscPlot *plot)
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
+	priv->fullscreen_button = GTK_WIDGET(gtk_builder_get_object(builder, "fullscreen_toggle"));
 	priv->y_axis_max = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_max"));
 	priv->y_axis_min = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_min"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
@@ -1720,6 +1743,8 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(cb_saveas), plot);
 	g_signal_connect(priv->saveas_dialog, "response", 
 		G_CALLBACK(cb_saveas_response), plot);
+	g_signal_connect(priv->fullscreen_button, "toggled",
+		G_CALLBACK(fullscreen_button_clicked_cb), plot);
 	g_signal_connect(priv->enable_auto_scale, "toggled",
 		G_CALLBACK(enable_auto_scale_cb), plot);
 	g_signal_connect(priv->time_settings_diag, "key_release_event",
@@ -1741,6 +1766,8 @@ static void create_plot(OscPlot *plot)
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,
 		"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
+	g_object_bind_property_full(priv->fullscreen_button, "active", priv->fullscreen_button,
+		"stock-id", 0, fullscreen_button_icon_transform, NULL, NULL, NULL);
 	g_object_bind_property(ruler_y, "lower", priv->y_axis_max, "value", G_BINDING_BIDIRECTIONAL);
 	g_object_bind_property(ruler_y, "upper", priv->y_axis_min, "value", G_BINDING_BIDIRECTIONAL);
 
