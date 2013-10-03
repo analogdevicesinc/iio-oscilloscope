@@ -25,6 +25,7 @@ extern void time_transform_function(Transform *tr, gboolean init_transform);
 extern void fft_transform_function(Transform *tr, gboolean init_transform);
 extern void constellation_transform_function(Transform *tr, gboolean init_transform);
 
+extern char dev_dir_name[512];
 extern struct _device_list *device_list;
 extern unsigned num_devices;
 
@@ -332,6 +333,83 @@ static void constellation_settings_init(struct _constellation_settings *settings
 	}
 }
 
+static gboolean check_channel_is_writable(struct iio_channel_info *channel)
+{
+	struct _device_list *device = GET_CHANNEL_PARENT(channel);
+	struct iio_channel_info *ch;
+	unsigned old_val;
+	unsigned old_values[32];
+	unsigned enable;
+	char buf[512];
+	FILE *f;
+	int ret;
+	int i;
+	
+	set_dev_paths(device->device_name);
+	
+	/* Enable/disable all the channels using the shadowed enable state */
+	for (i = 0; i < device->num_channels; i++) {
+		ch = &device->channel_list[i];
+		snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_dir_name, ch->name);
+		/* Remember the old value */
+		f = fopen(buf, "r");
+		ret = fscanf(f, "%u", &old_values[i]);
+		fclose(f);
+		if (ret != 1) {
+			old_values[i] = 0;
+		}
+		/* Set the channel enable state */
+		f = fopen(buf, "w");
+		if (f) {
+			fprintf(f, "%u\n", ((struct extra_info *)ch->extra_field)->shadow_of_enabled);
+			fclose(f);
+		}
+	} 
+	
+	snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_dir_name, channel->name);
+	/* Remember the old value */
+	f = fopen(buf, "r");
+	ret = fscanf(f, "%u", &old_val);
+	fclose(f);
+	if (ret != 1) {
+		old_val = 0;
+	}
+	/* Enable the channel and make sure the write is performed. */
+	enable = 1;
+	f = fopen(buf, "w");
+	if (f) {
+		fprintf(f, "%u\n", enable);
+		fclose(f);
+		f = fopen(buf, "r");
+		ret = fscanf(f, "%u", &enable);
+		if (ret != 1)
+			enable = 0;
+		fclose(f);
+	} else {
+		enable = 0;
+	}
+	
+	/* Write back the old value */
+	f = fopen(buf, "w");
+	if (f) {
+		fprintf(f, "%u\n", old_val);
+		fclose(f);
+	}
+
+	/* Restore the old states of all channels */
+	for (i = 0; i < device->num_channels; i++) {
+		ch = &device->channel_list[i];
+		snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_dir_name, ch->name);
+		f = fopen(buf, "w");
+		if (f) {
+			fprintf(f, "%u\n", old_values[i]);
+			fclose(f);
+		}
+	}
+	
+	return enable;
+}
+
 static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_parent, 
 	struct iio_channel_info *ch0, struct iio_channel_info *ch1, char *tr_name)
 {
@@ -424,8 +502,12 @@ static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 	snprintf(buf, sizeof(buf), "%s", tr_name);
 	/* Get the parent reference of the channel0. */
 	gtk_tree_model_iter_parent(model, &parent_iter, &iter);
-	gtk_tree_model_get(model, &parent_iter, ELEMENT_REFERENCE, &ch_parent0, -1);	
-	
+	gtk_tree_model_get(model, &parent_iter, ELEMENT_REFERENCE, &ch_parent0, -1);		
+	/* Check if the channel can be enabled. (Some devices don't allow specific channels to be enabled at the same time) */
+	if (!check_channel_is_writable(channel0)) {
+		g_free(ch_name);
+		goto abort_adding_transform;
+	}
 	/* Get the second channel if two channel were selected. */
 	if (priv->num_selected_rows == 2) {
 		snprintf(buf, sizeof(buf), "%s with %s", tr_name, ch_name);
@@ -438,16 +520,20 @@ static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 		gtk_tree_model_get(model, &parent_iter, ELEMENT_REFERENCE, &ch_parent1, -1);
 		/* Don't add a constellation for channels belonging to different devices */
 		if (ch_parent0 != ch_parent1)
-			return;
+			goto abort_adding_transform;
+		if (!check_channel_is_writable(channel1))
+			goto abort_adding_transform;
 	} else {
 		g_free(ch_name);
 	}
-	
 	/* Add a new transform to a list of transforms. */
 	tr = add_transform_to_list(plot, ch_parent0, channel0, channel1, tr_name);
 	/* Add the transfrom in the treeview */
 	add_row_child(plot, &iter, buf, tr);
 	g_object_set(G_OBJECT(tree_view), "sensitive", TRUE, NULL);
+
+abort_adding_transform:
+	return;
 }
 
 static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer data)
@@ -1645,6 +1731,7 @@ static void enable_auto_scale_cb(GtkToggleButton *button, OscPlot *plot)
 	OscPlotPrivate *priv = plot->priv;
 	
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale))) {
+		priv->do_a_rescale_flag = 1;
 		gtk_widget_set_sensitive(plot->priv->y_axis_max, FALSE);
 		gtk_widget_set_sensitive(plot->priv->y_axis_min, FALSE);
 	} else
@@ -1652,6 +1739,40 @@ static void enable_auto_scale_cb(GtkToggleButton *button, OscPlot *plot)
 		gtk_widget_set_sensitive(plot->priv->y_axis_max, TRUE);
 		gtk_widget_set_sensitive(plot->priv->y_axis_min, TRUE);
 	}
+}
+
+static void max_y_axis_cb(GtkSpinButton *btn, OscPlot *plot)
+{
+	GtkDatabox *box;
+	gfloat min_x;
+	gfloat max_x;
+	gfloat min_y;
+	gfloat max_y;
+	
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(plot->priv->enable_auto_scale)))
+		return;
+	box = GTK_DATABOX(plot->priv->databox);
+	gtk_databox_get_total_limits(box, &min_x, &max_x, &max_y, &min_y);
+	max_y = gtk_spin_button_get_value(btn);
+	min_y = gtk_spin_button_get_value(GTK_SPIN_BUTTON(plot->priv->y_axis_min));
+	gtk_databox_set_total_limits(box, min_x, max_x, max_y, min_y);
+}
+
+static void min_y_axis_cb(GtkSpinButton *btn, OscPlot *plot)
+{
+	GtkDatabox *box;
+	gfloat min_x;
+	gfloat max_x;
+	gfloat min_y;
+	gfloat max_y;
+	
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(plot->priv->enable_auto_scale)))
+		return;
+	box = GTK_DATABOX(plot->priv->databox);
+	gtk_databox_get_total_limits(box, &min_x, &max_x, &max_y, &min_y);
+	min_y = gtk_spin_button_get_value(btn);
+	max_y = gtk_spin_button_get_value(GTK_SPIN_BUTTON(plot->priv->y_axis_max));
+	gtk_databox_set_total_limits(box, min_x, max_x, max_y, min_y);
 }
 
 static void create_plot(OscPlot *plot)
@@ -1708,15 +1829,15 @@ static void create_plot(OscPlot *plot)
 	
 	/* Create a Tree Store that holds information about devices */
 	tree_store = gtk_tree_store_new(NUM_COL,
-									G_TYPE_STRING,
-									G_TYPE_BOOLEAN,
-									G_TYPE_BOOLEAN,
-									G_TYPE_BOOLEAN,
-									G_TYPE_BOOLEAN,
-									G_TYPE_BOOLEAN,
-									G_TYPE_BOOLEAN,
-									G_TYPE_POINTER,
-									GDK_TYPE_COLOR);
+									G_TYPE_STRING,    /* ELEMENT_NAME */
+									G_TYPE_BOOLEAN,   /* IS_DEVICE */
+									G_TYPE_BOOLEAN,   /* IS_CHANNEL */
+									G_TYPE_BOOLEAN,   /* IS_TRANSFORM */
+									G_TYPE_BOOLEAN,   /* CHANNEL_ACTIVE */
+									G_TYPE_BOOLEAN,   /* TRANSFORM_ACTIVE */
+									G_TYPE_BOOLEAN,   /* MARKER_ENABLED */
+									G_TYPE_POINTER,   /* ELEMENT_REFERENCE */
+									GDK_TYPE_COLOR);  /* COLOR_REF */
 	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 	fill_channel_list(plot);
 	
@@ -1755,6 +1876,10 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(save_settings_cb), NULL);
 	g_signal_connect(priv->constellation_settings_diag, "key_release_event",
 		G_CALLBACK(save_settings_cb), NULL);
+	g_signal_connect(priv->y_axis_max, "value-changed",
+		G_CALLBACK(max_y_axis_cb), plot);
+	g_signal_connect(priv->y_axis_min, "value-changed",
+		G_CALLBACK(min_y_axis_cb), plot);
 	
 	g_builder_connect_signal(builder, "zoom_in", "clicked",
 		G_CALLBACK(zoom_in), plot);

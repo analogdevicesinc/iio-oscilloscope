@@ -428,31 +428,6 @@ static void buffer_close(unsigned int fd)
 	close(fd);
 }
 
-static void close_active_buffers(void)
-{
-	int i;
-	
-	for (i = 0; i < num_devices; i++)
-		if (device_list[i].buffer_fd >= 0) {
-			current_device = device_list[i].device_name;
-			buffer_close(device_list[i].buffer_fd);
-			device_list[i].buffer_fd = -1;
-		}
-}
-
-static void stop_sampling(void)
-{
-	stop_capture = TRUE;
-	G_UNLOCK(buffer_full);
-	close_active_buffers();
-}
-
-static void abort_sampling(void)
-{
-	stop_sampling();
-	close_all_plots();
-}
-
 unsigned int set_channel_attr_enable(const char *device_name, struct iio_channel_info *channel, unsigned enable)
 {
 	char buf[512];
@@ -476,6 +451,41 @@ unsigned int set_channel_attr_enable(const char *device_name, struct iio_channel
 	}
 	
 	return enable;
+}
+
+static void disable_all_channels(void)
+{
+	int i, j;
+	
+	for (i = 0; i < num_devices; i++)
+		for (j = 0; j < device_list[i].num_channels; j++)
+			set_channel_attr_enable(device_list[i].device_name, &device_list[i].channel_list[j], 0);
+}
+
+static void close_active_buffers(void)
+{
+	int i;
+	
+	for (i = 0; i < num_devices; i++)
+		if (device_list[i].buffer_fd >= 0) {
+			current_device = device_list[i].device_name;
+			buffer_close(device_list[i].buffer_fd);
+			device_list[i].buffer_fd = -1;
+		}
+	disable_all_channels();
+}
+
+static void stop_sampling(void)
+{
+	stop_capture = TRUE;
+	G_UNLOCK(buffer_full);
+	close_active_buffers();
+}
+
+static void abort_sampling(void)
+{
+	stop_sampling();
+	close_all_plots();
 }
 
 static bool is_oneshot_mode(void)
