@@ -8,6 +8,7 @@
 
 #include <gtk/gtk.h>
 #include <gtkdatabox.h>
+#include <glib/gthread.h>
 #include <gtkdatabox_grid.h>
 #include <gtkdatabox_points.h>
 #include <gtkdatabox_lines.h>
@@ -39,6 +40,7 @@ static bool dac_data_loaded = false;
 static struct iio_widget glb_widgets[50];
 static struct iio_widget tx_widgets[50];
 static struct iio_widget rx_widgets[50];
+static unsigned int rx1_gain, rx2_gain;
 static unsigned int num_glb, num_tx, num_rx;
 
 /* Widgets for Global Settings */
@@ -88,6 +90,9 @@ static GtkWidget *dds_Q_TX1_l, *dds_Q1_TX1_l, *dds_Q2_TX1_l,
 static gulong dds1_freq_hid = 0, dds2_freq_hid = 0, dds5_freq_hid = 0, dds6_freq_hid = 0;
 static gulong dds1_scale_hid = 0, dds2_scale_hid = 0, dds5_scale_hid = 0, dds6_scale_hid = 0;
 static gulong dds1_phase_hid = 0, dds2_phase_hid = 0, dds5_phase_hid = 0, dds6_phase_hid = 0;
+
+static gint this_page;
+static GtkNotebook *nbook;
 
 static void tx_update_values(void)
 {
@@ -202,6 +207,23 @@ static void rssi_update_labels(void)
 	}
 
 }
+
+static void update_display (void *ptr)
+{
+	/* This thread never exists, and just updates the control frame */
+	while (1) {
+		if (this_page == gtk_notebook_get_current_page(nbook)) {
+			gdk_threads_enter();
+			rssi_update_labels();
+			iio_widget_update(&rx_widgets[rx1_gain]);
+			if (is_2rx_2tx)
+				iio_widget_update(&rx_widgets[rx2_gain]);
+			gdk_threads_leave();
+		}
+		sleep(1);
+	}
+}
+
 
 static void save_button_clicked(GtkButton *btn, gpointer data)
 {
@@ -968,6 +990,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	GtkWidget *fmcomms2_panel;
 
 	builder = gtk_builder_new();
+	nbook = GTK_NOTEBOOK(notebook);
 
 	if (!gtk_builder_add_from_file(builder, "fmcomms2.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms2.glade", NULL);
@@ -1105,14 +1128,17 @@ static int fmcomms2_init(GtkWidget *notebook)
 			"ad9361-phy", "in_voltage1_gain_control_mode",
 			"in_voltage_gain_control_mode_available",
 			rx_gain_control_modes_rx2, NULL);
+	rx1_gain = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage0_hardwaregain", builder,
 		"hardware_gain_rx1", NULL);
 
-	if (is_2rx_2tx)
+	if (is_2rx_2tx) {
+		rx2_gain = num_rx;
 		iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			"ad9361-phy", "in_voltage1_hardwaregain", builder,
 			"hardware_gain_rx2", NULL);
+	}
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage_sampling_frequency", builder,
 		"sampling_freq_rx", &mhz_scale);
@@ -1257,10 +1283,12 @@ static int fmcomms2_init(GtkWidget *notebook)
 	glb_settings_update_labels();
 	rssi_update_labels();
 
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2_panel, NULL);
+	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2_panel, "FMComms2");
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
+
+	g_thread_new("Update_thread", (void *) &update_display, NULL);
 
 	return 0;
 }
