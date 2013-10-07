@@ -475,8 +475,10 @@ static inline int find_type_by_name(const char *name, const char *type)
 						+ strlen(type)
 						+ numstrlen
 						+ 6);
-				if (filename == NULL)
+				if (filename == NULL) {
+					closedir(dp);
 					return -ENOMEM;
+				}
 				sprintf(filename, "%s%s%d/name",
 					iio_dir,
 					type,
@@ -489,11 +491,15 @@ static inline int find_type_by_name(const char *name, const char *type)
 				fclose(nameFile);
 				if (tmp != 1)
 					continue;
-				if (strcmp(name, thisname) == 0)
+				if (strcmp(name, thisname) == 0) {
+					closedir(dp);
 					return number;
+				}
 			}
 		}
 	}
+	closedir(dp);
+	
 	return -ENODEV;
 }
 
