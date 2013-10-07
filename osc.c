@@ -40,12 +40,12 @@ gint capture_function = 0;
 static int buffer_fd = -1;
 
 static struct buffer data_buffer;
-static unsigned int num_samples;
+unsigned int num_samples;
 
 static struct iio_channel_info *channels;
-static unsigned int num_active_channels;
+unsigned int num_active_channels;
 static unsigned int num_channels;
-static gfloat **channel_data;
+gfloat **channel_data;
 static unsigned int current_sample;
 static unsigned int bytes_per_sample;
 
@@ -420,14 +420,14 @@ static int sign_extend(unsigned int val, unsigned int bits)
 }
 
 static void demux_data_stream(void *data_in, gfloat **data_out,
-	unsigned int num_samples, unsigned int offset, unsigned int data_out_size,
+	unsigned int num_sam, unsigned int offset, unsigned int data_out_size,
 	struct iio_channel_info *channels, unsigned int num_channels)
 {
 	unsigned int i, j, n;
 	unsigned int val;
 	unsigned int k;
 
-	for (i = 0; i < num_samples; i++) {
+	for (i = 0; i < num_sam; i++) {
 		n = (offset + i) % data_out_size;
 		k = 0;
 		for (j = 0; j < num_channels; j++) {
@@ -811,11 +811,11 @@ int plugin_data_capture_bytes_per_sample(void)
 	return bytes_per_sample;
 }
 
-void plugin_data_capture_demux(void *buf, gfloat **cooked, unsigned int num_samples,
+void plugin_data_capture_demux(void *buf, gfloat **cooked, unsigned int num_sam,
 	unsigned int num_channels)
 
 {
-	demux_data_stream(buf, cooked, num_samples, 0, num_samples, channels, num_channels);
+	demux_data_stream(buf, cooked, num_sam, 0, num_sam, channels, num_channels);
 }
 
 int plugin_data_capture(void *buf)

@@ -908,8 +908,8 @@ Installed/Found IIO devices on this platform</property>
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="save_txt">
-                <property name="label" translatable="yes">Save as .txt</property>
+              <object class="GtkButton" id="save_csv">
+                <property name="label" translatable="yes">Save as .csv</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -952,7 +952,7 @@ Installed/Found IIO devices on this platform</property>
     </child>
     <action-widgets>
       <action-widget response="-6">save_cancel</action-widget>
-      <action-widget response="2">save_txt</action-widget>
+      <action-widget response="2">save_csv</action-widget>
       <action-widget response="3">save_png</action-widget>
     </action-widgets>
   </object>

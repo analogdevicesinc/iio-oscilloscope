@@ -16,6 +16,11 @@
 #include "osc.h"
 #include "iio_utils.h"
 
+extern gfloat **channel_data;
+extern unsigned int num_samples;
+extern unsigned int num_active_channels;
+extern const char *current_device;
+
 typedef struct _Dialogs Dialogs;
 struct _Dialogs
 {
@@ -174,7 +179,6 @@ G_MODULE_EXPORT void cb_connect(GtkButton *button, Dialogs *data)
 	gtk_widget_hide(data->connect);
 
 }
-
 G_MODULE_EXPORT void cb_show_about(GtkButton *button, Dialogs *data)
 {
 	/* About dialog */
@@ -186,19 +190,59 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 {
 	/* Save as Dialog */
 	gint ret;
-	char *filename;
+	static char *filename = NULL, *name;
 
-	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (data->saveas), "~/");
-	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(data->saveas), true);
+	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (data->saveas), GTK_FILE_CHOOSER_ACTION_SAVE);
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(data->saveas), TRUE);
+	
+	if(!filename) {
+		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (data->saveas), getenv("HOME"));
+		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER (data->saveas), current_device);
+	} else {
+		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (data->saveas), filename);
+		g_free(filename);
+	}
+		
 	ret = gtk_dialog_run(GTK_DIALOG(data->saveas));
+
 	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (data->saveas));
 	if (filename) {
+		name = malloc(strlen(filename) + 4);
 		switch(ret) {
 			/* Response Codes encoded in glade file */
+			case GTK_RESPONSE_DELETE_EVENT:
 			case GTK_RESPONSE_CANCEL:
-			break;
+				break;
+			case 2:
+				sprintf(name, "%s.csv", filename);
+				/* save comma seperated valus (csv) */
+				{
+					FILE *fp;
+					unsigned int i, j;
+
+					fp = fopen(name, "w");
+					if (!fp)
+						break;
+					if (channel_data && num_active_channels) {
+						for (j = 0; j < num_samples; j++) {
+							for (i = 0; i < num_active_channels ; i++) {
+								fprintf(fp, "%g", channel_data[i][j]);
+								if (i < (num_active_channels - 1))
+									fprintf(fp, ", ");
+							}
+							fprintf(fp, "\n");
+						}
+						fprintf(fp, "\n");
+					} else {
+						fprintf(fp, "No data\n");
+					}
+					fclose(fp);
+				}
+				break;
 			case 3:
-			case 2:	{
+				/* save_png */
+				sprintf(name, "%s.png", filename);
+				{
 					GdkPixbuf *pixbuf;
 					GError *err=NULL;
 					GdkColormap *cmap;
@@ -214,15 +258,14 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 							cmap, 0, 0, 0, 0, width, height);
 
 					if (pixbuf)
-						ret = gdk_pixbuf_save(pixbuf, filename, "png", &err, NULL);
+						ret = gdk_pixbuf_save(pixbuf, name, "png", &err, NULL);
 					if (!pixbuf || !ret)
-						printf("error creating %s\n", filename);
+						printf("error creating %s\n", name);
 				}
 				break;
 			default:
 				printf("ret : %i\n", ret);
 		}
-		g_free(filename);
 	}
 	gtk_widget_hide(data->saveas);
 }
