@@ -232,7 +232,7 @@ void iio_combo_box_init(struct iio_widget *widget,
 		(void *)compare, iio_combo_box_update, iio_combo_box_save);
 }
 
-static void iio_widget_update(struct iio_widget *widget)
+void iio_widget_update(struct iio_widget *widget)
 {
 	set_dev_paths(widget->device_name);
 	widget->update(widget);
