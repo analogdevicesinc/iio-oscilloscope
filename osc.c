@@ -1027,13 +1027,13 @@ void rx_update_labels(void)
 	adc_freq = read_sampling_frequency();
 
 	if (adc_freq >= 1000000) {
-		sprintf(adc_scale, "MHz");
+		sprintf(adc_scale, "MSPS");
 		adc_freq /= 1000000;
 	} else if(adc_freq >= 1000) {
-		sprintf(adc_scale, "kHz");
+		sprintf(adc_scale, "kSPS");
 		adc_freq /= 1000;
 	} else if(adc_freq >= 0) {
-		sprintf(adc_scale, "Hz");
+		sprintf(adc_scale, "SPS");
 	} else {
 		sprintf(adc_scale, "???");
 		adc_freq = 0;

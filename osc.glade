@@ -1608,7 +1608,7 @@ Installed/Found IIO devices on this platform</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="xalign">0</property>
-                                    <property name="label" translatable="yes">ADC frequency:</property>
+                                    <property name="label" translatable="yes">ADC sample rate:</property>
                                   </object>
                                   <packing>
                                     <property name="x_options">GTK_FILL</property>

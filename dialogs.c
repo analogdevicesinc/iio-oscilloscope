@@ -235,9 +235,9 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 					fprintf(fp, "InputRange\t1\n");
 					fprintf(fp, "InputRefImped\t50\n");
 					fprintf(fp, "XStart\t0\n");
-					if (!strcmp(adc_scale, "MHz"))
+					if (!strcmp(adc_scale, "MSPS"))
 						freq = adc_freq * 1000000;
-					else if (!strcmp(adc_scale, "kHz"))
+					else if (!strcmp(adc_scale, "kSPS"))
 						freq = adc_freq * 1000;
 					else {
 						printf("error in writing\n");
