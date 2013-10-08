@@ -193,7 +193,8 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 {
 	/* Save as Dialog */
 	gint ret;
-	static char *filename = NULL, *name;
+	static char *filename = NULL;
+	char *name;
 
 	if (!channel_data || !num_active_channels)
 		return;
@@ -337,6 +338,7 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 			default:
 				printf("ret : %i\n", ret);
 		}
+		free(name);
 	}
 	gtk_widget_hide(data->saveas);
 }
