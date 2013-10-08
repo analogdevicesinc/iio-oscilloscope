@@ -79,8 +79,8 @@ static GtkWidget *marker_label;
 
 static GtkListStore *channel_list_store;
 
-static double adc_freq = 246760000.0;
-static char adc_scale[10];
+double adc_freq = 246760000.0;
+char adc_scale[10];
 
 static bool is_fft_mode;
 

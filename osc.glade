@@ -1,33 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
-  <object class="GtkAdjustment" id="adjustment0">
-    <property name="lower">10</property>
-    <property name="upper">1000000</property>
-    <property name="value">400</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment1">
-    <property name="lower">0</property>
-    <property name="upper">128</property>
-    <property name="value">1</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">1</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment2">
-    <property name="lower">-99</property>
-    <property name="upper">99</property>
-    <property name="step_increment">0.10000000000000001</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustmentTrigger">
-    <property name="lower">1</property>
-    <property name="upper">1000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkToggleAction" id="toggleaction1"/>
   <object class="GtkAboutDialog" id="About_dialog">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -557,6 +530,32 @@ A GUI for Linux IIO devices</property>
       </object>
     </child>
   </object>
+  <object class="GtkAdjustment" id="adjustment0">
+    <property name="lower">10</property>
+    <property name="upper">1000000</property>
+    <property name="value">400</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment1">
+    <property name="upper">128</property>
+    <property name="value">1</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">1</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment2">
+    <property name="lower">-99</property>
+    <property name="upper">99</property>
+    <property name="step_increment">0.10000000000000001</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustmentTrigger">
+    <property name="lower">1</property>
+    <property name="upper">1000</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkToggleAction" id="toggleaction1"/>
   <object class="GtkListStore" id="channel_list">
     <columns>
       <!-- column-name name -->
@@ -923,6 +922,36 @@ Installed/Found IIO devices on this platform</property>
               </packing>
             </child>
             <child>
+              <object class="GtkButton" id="save_vsa">
+                <property name="label" translatable="yes">Save as Agilent VSA</property>
+                <property name="use_action_appearance">False</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_action_appearance">False</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="save_mat">
+                <property name="label" translatable="yes">Save as .mat</property>
+                <property name="use_action_appearance">False</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_action_appearance">False</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
               <object class="GtkButton" id="save_png">
                 <property name="label" translatable="yes">Save as .png</property>
                 <property name="use_action_appearance">False</property>
@@ -934,7 +963,7 @@ Installed/Found IIO devices on this platform</property>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">2</property>
+                <property name="position">4</property>
               </packing>
             </child>
           </object>
@@ -953,6 +982,8 @@ Installed/Found IIO devices on this platform</property>
     <action-widgets>
       <action-widget response="-6">save_cancel</action-widget>
       <action-widget response="2">save_csv</action-widget>
+      <action-widget response="4">save_mat</action-widget>
+      <action-widget response="5">save_vsa</action-widget>
       <action-widget response="3">save_png</action-widget>
     </action-widgets>
   </object>

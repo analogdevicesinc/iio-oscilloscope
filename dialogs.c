@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 #include <gtk/gtk.h>
+#include <matio.h>
 
 #include "fru.h"
 #include "osc.h"
@@ -20,6 +21,8 @@ extern gfloat **channel_data;
 extern unsigned int num_samples;
 extern unsigned int num_active_channels;
 extern const char *current_device;
+extern double adc_freq;
+extern char adc_scale[10];
 
 typedef struct _Dialogs Dialogs;
 struct _Dialogs
@@ -192,9 +195,12 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 	gint ret;
 	static char *filename = NULL, *name;
 
+	if (!channel_data || !num_active_channels)
+		return;
+
 	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (data->saveas), GTK_FILE_CHOOSER_ACTION_SAVE);
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(data->saveas), TRUE);
-	
+
 	if(!filename) {
 		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (data->saveas), getenv("HOME"));
 		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER (data->saveas), current_device);
@@ -202,7 +208,7 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (data->saveas), filename);
 		g_free(filename);
 	}
-		
+
 	ret = gtk_dialog_run(GTK_DIALOG(data->saveas));
 
 	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (data->saveas));
@@ -212,6 +218,74 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 			/* Response Codes encoded in glade file */
 			case GTK_RESPONSE_DELETE_EVENT:
 			case GTK_RESPONSE_CANCEL:
+				break;
+			case 5:
+				/* Save as Agilent VSA formatted file */
+				sprintf(name, "%s.txt", filename);
+				{
+					FILE *fp;
+					unsigned int i, j;
+					double freq;
+
+					fp = fopen(name, "w");
+					if (!fp)
+						break;
+					fprintf(fp, "InputZoom\tTRUE\n");
+					fprintf(fp, "InputCenter\t0\n");
+					fprintf(fp, "InputRange\t1\n");
+					fprintf(fp, "InputRefImped\t50\n");
+					fprintf(fp, "XStart\t0\n");
+					if (!strcmp(adc_scale, "MHz"))
+						freq = adc_freq * 1000000;
+					else if (!strcmp(adc_scale, "kHz"))
+						freq = adc_freq * 1000;
+					else {
+						printf("error in writing\n");
+						break;
+					}
+
+					fprintf(fp, "XDelta\t%-.17f\n", 1.0/freq);
+					fprintf(fp, "XDomain\t2\n");
+					fprintf(fp, "XUnit\tSec\n");
+					fprintf(fp, "YUnit\tV\n");
+					fprintf(fp, "FreqValidMax\t%e\n", freq / 2);
+					fprintf(fp, "FreqValidMin\t-%e\n", freq / 2);
+					fprintf(fp, "Y\n");
+
+					for (j = 0; j < num_samples; j++) {
+						for (i = 0; i < num_active_channels ; i++) {
+							fprintf(fp, "%g", channel_data[i][j]);
+							if (i < (num_active_channels - 1))
+								fprintf(fp, "\t");
+						}
+						fprintf(fp, "\n");
+					}
+					fprintf(fp, "\n");
+					fclose(fp);
+				}
+				break;
+
+			case 4:
+				sprintf(name, "%s.mat", filename);
+				/* Matlab file
+				 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
+				 */
+				{
+					mat_t *mat;
+					matvar_t *matvar;
+					int dims[2];
+
+					dims[0] = num_active_channels;
+					dims[1] = num_samples;
+
+					mat = Mat_Open(name, MAT_ACC_RDWR);
+					if(mat) {
+						matvar = Mat_VarCreate("IIO_vec",MAT_C_DOUBLE,MAT_T_DOUBLE,2,dims,channel_data,0);
+						Mat_VarWrite( mat, matvar, 0);
+						Mat_VarFree(matvar);
+						Mat_Close(mat);
+					}
+				}
 				break;
 			case 2:
 				sprintf(name, "%s.csv", filename);
@@ -223,19 +297,16 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 					fp = fopen(name, "w");
 					if (!fp)
 						break;
-					if (channel_data && num_active_channels) {
-						for (j = 0; j < num_samples; j++) {
-							for (i = 0; i < num_active_channels ; i++) {
-								fprintf(fp, "%g", channel_data[i][j]);
-								if (i < (num_active_channels - 1))
-									fprintf(fp, ", ");
-							}
-							fprintf(fp, "\n");
+
+					for (j = 0; j < num_samples; j++) {
+						for (i = 0; i < num_active_channels ; i++) {
+							fprintf(fp, "%g", channel_data[i][j]);
+							if (i < (num_active_channels - 1))
+								fprintf(fp, ", ");
 						}
 						fprintf(fp, "\n");
-					} else {
-						fprintf(fp, "No data\n");
 					}
+					fprintf(fp, "\n");
 					fclose(fp);
 				}
 				break;
