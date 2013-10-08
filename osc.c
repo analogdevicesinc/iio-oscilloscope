@@ -5,7 +5,6 @@
  *
  **/
 #include <stdio.h>
-
 #include <gtk/gtk.h>
 #include <glib/gthread.h>
 #include <gtkdatabox.h>
@@ -41,9 +40,10 @@ static int buffer_fd = -1;
 
 static struct buffer data_buffer;
 unsigned int num_samples;
-
+unsigned int num_samples_ploted;
 static struct iio_channel_info *channels;
 unsigned int num_active_channels;
+int cached_num_active_channels = -1;
 static unsigned int num_channels;
 gfloat **channel_data;
 static unsigned int current_sample;
@@ -584,10 +584,11 @@ static double win_hanning(int j, int n)
 static void do_fft(struct buffer *buf)
 {
 	unsigned int fft_size = num_samples;
-	unsigned int m = fft_size / 2;
+	static unsigned int m;
 	int i, j, k;
 	int cnt;
 	static double *in;
+	static fftw_complex *in_c;
 	static double *win;
 	gfloat mag;
 	double avg, pwr_offset;
@@ -602,30 +603,58 @@ static void do_fft(struct buffer *buf)
 	GtkTextIter iter;
 	char text[256];
 
-	if ((cached_fft_size == -1) || (cached_fft_size != fft_size)) {
+	if ((cached_fft_size == -1) || (cached_fft_size != fft_size) ||
+		(cached_num_active_channels != num_active_channels)) {
 
 		if (cached_fft_size != -1) {
 			fftw_destroy_plan(plan_forward);
-			fftw_free(in);
 			fftw_free(win);
 			fftw_free(out);
+			if (in != NULL)
+				fftw_free(in);
+			if (in_c != NULL)
+				fftw_free(in_c);
+			in_c = NULL;
+			in = NULL;
 		}
 
-		in = fftw_malloc(sizeof(double) * fft_size);
 		win = fftw_malloc(sizeof(double) * fft_size);
-		out = fftw_malloc(sizeof(fftw_complex) * (m + 1));
-		plan_forward = fftw_plan_dft_r2c_1d(fft_size, in, out, FFTW_ESTIMATE);
+
+		if (num_active_channels == 2) {
+			m = fft_size;
+			in_c = fftw_malloc(sizeof(fftw_complex) * fft_size);
+			in = NULL;
+			out = fftw_malloc(sizeof(fftw_complex) * (m + 1));
+			plan_forward = fftw_plan_dft_1d(fft_size, in_c, out, FFTW_FORWARD, FFTW_ESTIMATE);
+
+		} else {
+			m = fft_size / 2;
+			out = fftw_malloc(sizeof(fftw_complex) * (m + 1));
+			in_c = NULL;
+			in = fftw_malloc(sizeof(double) * fft_size);
+			plan_forward = fftw_plan_dft_r2c_1d(fft_size, in, out, FFTW_ESTIMATE);
+		}
 
 		for (i = 0; i < fft_size; i ++)
 			win[i] = win_hanning(i, fft_size);
 
 		cached_fft_size = fft_size;
+		cached_num_active_channels = num_active_channels;
 	}
 
-	for (cnt = 0, i = 0; i < fft_size; i++) {
-		/* normalization and scaling see fft_corr */
-		in[cnt] = ((int16_t *)(buf->data))[i] * win[cnt];
-		cnt++;
+	if (num_active_channels == 2) {
+		for (cnt = 0, i = 0; cnt < fft_size; cnt++) {
+			/* normalization and scaling see fft_corr */
+			in_c[cnt][0] = ((int16_t *)(buf->data))[i++] * win[cnt];
+			in_c[cnt][1] = ((int16_t *)(buf->data))[i++] * win[cnt];
+		}
+
+	} else  {
+		for (cnt = 0, i = 0; i < fft_size; i++) {
+			/* normalization and scaling see fft_corr */
+			in[cnt] = ((int16_t *)(buf->data))[i] * win[cnt];
+			cnt++;
+		}
 	}
 
 	fftw_execute(plan_forward);
@@ -641,8 +670,18 @@ static void do_fft(struct buffer *buf)
 	}
 
 	for (i = 0; i < m; ++i) {
-		mag = 10 * log10((out[i][0] * out[i][0] +
-				out[i][1] * out[i][1]) / (m * m)) +
+
+		if (num_active_channels == 2) {
+			if (i < (m / 2))
+				j = i + (m / 2);
+			else
+				j = i - (m / 2);
+		} else {
+			j = i;
+		}
+
+		mag = 10 * log10((out[j][0] * out[j][0] +
+				out[j][1] * out[j][1]) / (m * m)) +
 			fft_corr +
 			pwr_offset;
 
@@ -737,28 +776,49 @@ static gboolean fft_capture_func(GtkDatabox *box)
 	return TRUE;
 }
 
+static void fft_update_scale(void)
+{
+	double corr;
+	int i;
+
+	if (num_active_channels == 2) {
+		corr =  adc_freq / 2;
+	} else {
+		corr = 0;
+	}
+
+	for (i = 0; i < num_samples_ploted; i++)
+	{
+		X[i] = (i * adc_freq / num_samples) - corr;
+		fft_channel[i] = FLT_MAX;
+	}
+
+	gtk_databox_set_total_limits(GTK_DATABOX(databox), -5.0 - corr, adc_freq / 2.0 + 5.0, 0.0, -75.0);
+
+}
+
+
 static int fft_capture_setup(void)
 {
 	int i;
 	char buf[10];
 
-	if (num_active_channels != 1)
+	if (!(num_active_channels == 1 || num_active_channels == 2))
 		return -EINVAL;
 
 	num_samples = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
-	data_buffer.size = num_samples * bytes_per_sample;
 
+	data_buffer.size = num_samples * bytes_per_sample * num_active_channels;
 	data_buffer.data = g_renew(int8_t, data_buffer.data, data_buffer.size);
 	data_buffer.data_copy = NULL;
 
-	X = g_renew(gfloat, X, num_samples / 2);
-	fft_channel = g_renew(gfloat, fft_channel, num_samples / 2);
+	num_samples_ploted = num_samples * num_active_channels / 2;
 
-	for (i = 0; i < num_samples / 2; i++)
-	{
-		X[i] = i * adc_freq / num_samples;
-		fft_channel[i] = FLT_MAX;
-	}
+	X = g_renew(gfloat, X, num_samples_ploted);
+	fft_channel = g_renew(gfloat, fft_channel, num_samples_ploted);
+
+	fft_update_scale();
+
 	is_fft_mode = true;
 
 	/* Compute FFT normalization and scaling offset */
@@ -780,10 +840,8 @@ static int fft_capture_setup(void)
 		}
 	}
 
-	fft_graph = gtk_databox_lines_new(num_samples / 2, X, fft_channel, &color_graph[0], 1);
+	fft_graph = gtk_databox_lines_new(num_samples_ploted, X, fft_channel, &color_graph[0], 1);
 	gtk_databox_graph_add(GTK_DATABOX(databox), fft_graph);
-
-	gtk_databox_set_total_limits(GTK_DATABOX(databox), -5.0, adc_freq / 2.0 + 5.0, 0.0, -75.0);
 
 	return 0;
 }
@@ -1022,7 +1080,6 @@ void rx_update_labels(void)
 {
 	double freq = 0.0;
 	char buf[20];
-	int i;
 
 	adc_freq = read_sampling_frequency();
 
@@ -1057,9 +1114,7 @@ void rx_update_labels(void)
 		 * In FFT mode we need to scale the X-axis according to the selected
 		 * sampling frequency.
 		 */
-		for (i = 0; i < num_samples / 2; i++)
-			X[i] = i * adc_freq / num_samples;
-		gtk_databox_set_total_limits(GTK_DATABOX(databox), 0.0, adc_freq / 2.0, 0.0, -75.0);
+		fft_update_scale();
 	}
 }
 
