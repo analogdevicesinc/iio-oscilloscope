@@ -151,7 +151,7 @@ static inline bool element_substr(const char *haystack, const char *needle)
 	/* split the string, and look for it */
 	for (i = 0; i < strlen(needle); i++) {
 		sprintf(ssub, "%.*s", i, needle);
-		sprintf(esub, "%.*s", strlen(needle) - i, needle + i);
+		sprintf(esub, "%.*s", (int)(strlen(needle) - i), needle + i);
 		if ((strstr(haystack, ssub) == haystack) && 
 		    ((strstr(haystack, esub) + strlen(esub)) == (haystack + strlen(haystack))))
 			return true;
@@ -249,7 +249,7 @@ void scan_elements_sort(char **elements)
 			 * if we are lucky (sometimes) it will be the one
 			 * we just past
 			 */
-			sprintf(temp, "%.*s", next - start, start);
+			sprintf(temp, "%.*s", (int)(next - start), start);
 			if (!element_substr(last, temp)) {
 				/* no such luck, so we need to:
 				 *  - find out where it goes (can go multiple places)
@@ -338,7 +338,7 @@ static void scanel_read_clicked(GtkButton *btn, gpointer data)
 			start = strstr(current_elements, scanel);
 			start = strchr(start, ' ') + 1;
 			end = strchr(start, ' ');
-			sprintf(cal_name, "%.*s", end - start, start);
+			sprintf(cal_name, "%.*s", (int)(end - start), start);
 			read_sysfs_string(scanel, basedir, &buf2);
 			read_sysfs_string(cal_name, basedir, &buf);
 			if (buf && buf2) {
@@ -352,7 +352,7 @@ static void scanel_read_clicked(GtkButton *btn, gpointer data)
 					end = strchr(start, ' ');
 					if (!end)
 						end = buf + strlen(buf);
-					sprintf(tmp, "%.*s", end - start, start);
+					sprintf(tmp, "%.*s", (int)(end - start), start);
 					gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scanel_options),
 						 (const gchar *)tmp);
 					start = end + 1;
@@ -458,10 +458,10 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 			if (!next)
 				next = end + 1 + strlen(end + 1);
 			if(avail && avail <= next) {
-				sprintf(buf, "%.*s ", end - start, start);
+				sprintf(buf, "%.*s ", (int)(end - start), start);
 				j = 1;
 			} else {
-				sprintf(buf, "%.*s", end - start, start);
+				sprintf(buf, "%.*s", (int)(end - start), start);
 				j = 0;
 			}
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel),
