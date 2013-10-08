@@ -208,6 +208,8 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 	} else {
 		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (data->saveas), filename);
 		g_free(filename);
+		filename = NULL;
+
 	}
 
 	ret = gtk_dialog_run(GTK_DIALOG(data->saveas));
