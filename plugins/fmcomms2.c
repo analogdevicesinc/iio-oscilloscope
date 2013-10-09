@@ -215,9 +215,16 @@ static void update_display (void *ptr)
 		if (this_page == gtk_notebook_get_current_page(nbook)) {
 			gdk_threads_enter();
 			rssi_update_labels();
-			iio_widget_update(&rx_widgets[rx1_gain]);
-			if (is_2rx_2tx)
+
+			if (strcmp(gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes_rx1)),
+						"manual"))
+				iio_widget_update(&rx_widgets[rx1_gain]);
+
+			if (is_2rx_2tx &&
+					strcmp(gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes_rx1)),
+					"manual"))
 				iio_widget_update(&rx_widgets[rx2_gain]);
+
 			gdk_threads_leave();
 		}
 		sleep(1);
