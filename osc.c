@@ -737,7 +737,7 @@ static void do_fft(struct buffer *buf)
 			markX[j] = (gfloat)X[maxx[j]];
 			markY[j] = (gfloat)fft_channel[maxx[j]];
 
-			sprintf(text, "M%i: %2.2f dB @ %2.2f %s\n",
+			sprintf(text, "M%i: %2.2f dB @ %2.2f %sHz\n",
 					j, markY[j], markX[j], adc_scale);
 
 			if (j == 0) {
@@ -970,6 +970,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 {
 	unsigned int i;
 	int ret;
+	char buf[10];
 
 	if (gtk_toggle_tool_button_get_active(btn)) {
 		gtk_databox_graph_remove_all(GTK_DATABOX(databox));
@@ -991,7 +992,8 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			goto play_err;
 
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
-			gtk_label_set_text(GTK_LABEL(hor_scale), adc_scale);
+			sprintf(buf, "%sHz", adc_scale);
+			gtk_label_set_text(GTK_LABEL(hor_scale), buf);
 			gtk_widget_show(marker_label);
 			ret = fft_capture_setup();
 		} else {
@@ -1084,19 +1086,19 @@ void rx_update_labels(void)
 	adc_freq = read_sampling_frequency();
 
 	if (adc_freq >= 1000000) {
-		sprintf(adc_scale, "MSPS");
+		sprintf(adc_scale, "M");
 		adc_freq /= 1000000;
 	} else if(adc_freq >= 1000) {
-		sprintf(adc_scale, "kSPS");
+		sprintf(adc_scale, "k");
 		adc_freq /= 1000;
 	} else if(adc_freq >= 0) {
-		sprintf(adc_scale, "SPS");
+		sprintf(adc_scale, " ");
 	} else {
-		sprintf(adc_scale, "???");
+		sprintf(adc_scale, "?");
 		adc_freq = 0;
 	}
 
-	snprintf(buf, sizeof(buf), "%.3f %s", adc_freq, adc_scale);
+	snprintf(buf, sizeof(buf), "%.3f %sSPS", adc_freq, adc_scale);
 
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
 
