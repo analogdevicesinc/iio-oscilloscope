@@ -1533,7 +1533,7 @@ static void init_application (void)
 	dialogs_init(builder);
 	trigger_dialog_init(builder);
 
-	gtk_combo_box_set_active(GTK_COMBO_BOX(fft_size_widget), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(fft_size_widget), 2);
 
 	/* Bind the plot mode radio buttons to the sensitivity of the sample count
 	 * and FFT size widgets */
