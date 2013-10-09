@@ -496,6 +496,8 @@ static void reg_read_clicked(GtkButton *button, gpointer user_data)
 	i = read_reg(address);
 	if (i >= 0) {
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), i);
+		if (i == 0)
+			g_signal_emit_by_name(spin_btn_reg_value, "value-changed");
 		snprintf(buf, sizeof(buf), "0x%03X", i);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_value), buf);
 		if (xml_file_opened)
