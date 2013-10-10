@@ -543,14 +543,17 @@ static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer dat
 	GtkTreeView *tree_view;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
+	gboolean is_tr;
 	Transform *tr;
-	GList *path;	
+	GList *path;
 	
 	tree_view = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(tree_view);
 	path = g_list_first(priv->selected_rows_paths);
 	gtk_tree_model_get_iter(model, &iter, path->data);
-	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &tr, -1);
+	gtk_tree_model_get(model, &iter, IS_TRANSFORM, &is_tr, ELEMENT_REFERENCE, &tr, -1);
+	if (!is_tr)
+		return;
 	gtk_tree_store_remove(GTK_TREE_STORE(model), &iter);
 	priv->available_graph_colors = g_list_prepend(priv->available_graph_colors, tr->graph_color);
 	if (tr->graph) {
@@ -856,11 +859,26 @@ static void show_sample_count_dialog(GtkMenuItem* menuitem, gpointer data)
 	gtk_widget_hide(dialog);
 }
 
-void get_pop_menu_position(GtkMenu *menu, gint *x, gint *y, gboolean *push_in, gpointer user_data)
+void get_pop_menu_position(GtkMenu *menu, gint *x, gint *y, gboolean *push_in, gpointer data)
 {
-	// Don't know how to do this...yet
-	*x = 3000;
-	*y = 140;
+	OscPlot *plot = data;
+	GdkRectangle trw_rectangle; /* Tree View Rectangle */
+	GdkRectangle sel_rectangle; /* Selection Rectangle */
+	GdkWindow *window;
+	gint tx, ty;                /* translated coordinates */
+	gint ox, oy;                /* origin coordinates */
+	gint x_offset;              /* x offset for the popup menu */
+	
+	gtk_tree_view_get_visible_rect((GtkTreeView *)plot->priv->channel_list_view, &trw_rectangle);
+	gtk_tree_view_get_cell_area((GtkTreeView *)plot->priv->channel_list_view, g_list_first(plot->priv->selected_rows_paths)->data, NULL, &sel_rectangle);
+	gtk_widget_translate_coordinates(plot->priv->channel_list_view, plot->priv->window, 0, 0, &tx, &ty);
+	x_offset = trw_rectangle.width / 2;
+	window = gtk_widget_get_parent_window(plot->priv->channel_list_view);
+	gdk_window_get_root_origin(window, &ox, &oy);
+
+	/* Calculate the horizontal and vertical position where the menu shall be drawn. */
+	*x = ox + tx + sel_rectangle.x + x_offset;
+	*y = oy + ty + sel_rectangle.y;
 	*push_in = TRUE;
 }
 
@@ -884,6 +902,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 	gtk_tree_model_get_iter(model, &iter, path->data);
 	gtk_tree_model_get(model, &iter, IS_DEVICE, &is_device, IS_CHANNEL,
 		&is_channel, IS_TRANSFORM, &is_transform, ELEMENT_REFERENCE, &ref, -1);
+	gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview)));
 	
 	/* Right-click menu for devices */
 	if ((is_device == TRUE) && (priv->num_selected_rows == 1)) {
@@ -979,7 +998,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 show_menu:
 	gtk_widget_show_all(menu);
 	gtk_menu_popup(GTK_MENU(menu), NULL, NULL, 
-			(event != NULL) ? NULL : get_pop_menu_position, NULL,
+			(event != NULL) ? NULL : get_pop_menu_position, data,
 			(event != NULL) ? event->button : 0, 
 			gdk_event_get_time((GdkEvent*)event));
 
@@ -1030,7 +1049,10 @@ static gboolean right_click_on_ch_list_cb(GtkWidget *treeview, GdkEventButton *e
 	return FALSE;
 }
 
-static gboolean shift_f10_event_on_ch_list_cb(GtkWidget *treeview, gpointer data)
+#define ENTER_KEY_CODE 0xFF0D
+#define DELETE_KEY_CODE 0xFFFF
+
+static gboolean enter_key_press_cb(GtkWidget *treeview, GdkEventKey *event, gpointer data)
 {
 	OscPlot *plot = data;
 	OscPlotPrivate *priv = plot->priv;
@@ -1040,11 +1062,14 @@ static gboolean shift_f10_event_on_ch_list_cb(GtkWidget *treeview, gpointer data
 	
 	if (priv->redraw_function > 0)
 		return TRUE;
+			
+	if (((event->type != GDK_KEY_RELEASE) || (event->keyval != ENTER_KEY_CODE)) && (event->keyval != DELETE_KEY_CODE))
+		return TRUE;
 	
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
 	rows = gtk_tree_selection_count_selected_rows(selection);
 	
-	if ((rows == 1) || (rows == 2)) {			
+	if ((rows == 1) || (rows == 2)) {
 			/* Remove the previous content of the path list */
 			if (priv->selected_rows_paths) {
 				g_list_foreach(priv->selected_rows_paths, (GFunc)gtk_tree_path_free, NULL);
@@ -1056,7 +1081,10 @@ static gboolean shift_f10_event_on_ch_list_cb(GtkWidget *treeview, gpointer data
 			gtk_tree_selection_unselect_all(selection);
 			priv->num_selected_rows = rows;
 			g_list_foreach(priv->selected_rows_paths, highlight_selected_rows, selection);
-			show_right_click_menu(treeview, NULL, data);
+			if (event->keyval == DELETE_KEY_CODE)
+				remove_transform_from_tree_store(NULL, plot);
+			else
+				show_right_click_menu(treeview, NULL, data);
 		}
 	
 		return TRUE;
@@ -1662,8 +1690,6 @@ static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 	gtk_widget_destroy(plot->priv->window);
 }
 
-#define ENTER_KEY_CODE 0xFF0D
-
 gboolean save_settings_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
 	if ((event->type == GDK_KEY_RELEASE) && (event->keyval == ENTER_KEY_CODE)) {
@@ -1687,7 +1713,7 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 	/* Save as Dialog */
 	OscPlotPrivate *priv = data->priv;
 	char *filename;
-		
+
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (priv->saveas_dialog), "~/");
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->saveas_dialog), true);
 	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
@@ -1818,7 +1844,7 @@ static void create_plot(OscPlot *plot)
 	priv->y_axis_min = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_min"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	priv->tbuf = NULL;
-	
+
 	/* Create a GtkDatabox widget along with scrollbars and rulers */
 	gtk_databox_create_box_with_scrollbars_and_rulers(&priv->databox, &table,
 		TRUE, TRUE, TRUE, TRUE);
@@ -1852,8 +1878,8 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(capture_button_clicked_cb), plot);
 	g_signal_connect(priv->channel_list_view, "button-press-event",
 		G_CALLBACK(right_click_on_ch_list_cb), plot);
-    g_signal_connect(priv->channel_list_view, "popup-menu", 
-		G_CALLBACK(shift_f10_event_on_ch_list_cb), plot);
+	g_signal_connect(priv->channel_list_view, "key-release-event", 
+		G_CALLBACK(enter_key_press_cb), plot);
 	g_signal_connect(priv->time_settings_diag, "response",
 		G_CALLBACK(set_time_settings_cb), plot);
 	g_signal_connect(priv->fft_settings_diag, "response",
