@@ -246,10 +246,11 @@ static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 
 	return 0;
 }
+static int sample_iio_data(struct buffer *buf);
 
 static int sample_iio_data_oneshot(struct buffer *buf)
 {
-	return sample_iio_data(0, buf);
+	return sample_iio_data(buf);
 }
 
 #else
@@ -1286,7 +1287,7 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 	printf("Loaded plugin: %s\n", plugin->name);
 }
 
-static bool str_endswith(const char *str, const char *needle)
+bool str_endswith(const char *str, const char *needle)
 {
 	const char *pos;
 	pos = strstr(str, needle);
