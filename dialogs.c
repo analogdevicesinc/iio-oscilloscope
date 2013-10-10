@@ -11,6 +11,8 @@
 #include <string.h>
 #include <errno.h>
 #include <gtk/gtk.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <matio.h>
 
 #include "fru.h"
@@ -32,26 +34,216 @@ struct _Dialogs
 	GtkWidget *connect;
 	GtkWidget *connect_fru;
 	GtkWidget *connect_iio;
+	GtkWidget *serial_num;
 };
 
 static Dialogs dialogs;
+static GtkWidget *serial_num;
+static GtkWidget *fru_date;
+static GtkWidget *fru_file_list;
+
+#ifdef FRU_FILES
+static time_t mins_since_jan_1_1996(void)
+{
+	struct tm j;
+	time_t now;
+
+	j.tm_year= 1996 - 1900;
+	j.tm_mon= 0;
+	j.tm_mday=1;
+	j.tm_hour=0;
+	j.tm_min= 0;
+	j.tm_sec= 0;
+	j.tm_isdst=0;
+
+	time(&now);
+
+	return (time_t) (now - (time_t)mktime(&j)) / 60;
+}
+
+
+static size_t write_fru(char *eeprom)
+{
+	gint result;
+	const char *serial, *file;
+	char *ser_num;
+	time_t frutime;
+	FILE *fp = NULL;
+	size_t i;
+	time_t tmp;
+	struct tm *tmp2;
+	char buf[256];
+	struct dirent *ent;
+	DIR *d;
+	GtkListStore *store;
+
+	d = opendir(FRU_FILES);
+	/* No fru files, don't bother */
+	if (!d) {
+		printf("didn't find FRU_Files in %s at %s(%s)\n", FRU_FILES, __FILE__, __func__);
+		return 0;
+	}
+
+	g_object_set(dialogs.serial_num, "secondary_text", eeprom, NULL);
+
+	ser_num = malloc (128);
+	memset(ser_num, 0, 128);
+
+	fp = fopen(".serialnum", "r");
+	if (fp) {
+		i = fread(ser_num, 1, 128, fp);
+		if (i >= 0)
+			gtk_entry_set_text(GTK_ENTRY(serial_num), (const gchar*)&ser_num[1]);
+		fclose(fp);
+	}
+
+	store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(fru_file_list)));
+	gtk_list_store_clear (store);
+
+	while ((ent = readdir(d))) {
+		if (ent->d_type != DT_REG)
+			continue;
+		if (!str_endswith(ent->d_name, ".bin"))
+			continue;
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(fru_file_list), ent->d_name);
+	}
+
+	gtk_combo_box_set_active(GTK_COMBO_BOX(fru_file_list), ser_num[0]);
+	free(ser_num);
+
+	frutime = mins_since_jan_1_1996();
+	tmp = min2date(frutime);
+	tmp2 = gmtime(&tmp);
+
+	strftime(buf, sizeof(buf), "%d %b %C %H:%M", tmp2);
+
+	gtk_entry_set_text(GTK_ENTRY(fru_date), buf);
+
+	result = gtk_dialog_run(GTK_DIALOG(dialogs.serial_num));
+
+	i = 0;
+	switch (result) {
+		case GTK_RESPONSE_OK:
+			file = gtk_combo_box_get_active_text(GTK_COMBO_BOX(fru_file_list));
+			serial = gtk_entry_get_text(GTK_ENTRY(serial_num));
+			fflush(NULL);
+			sprintf(buf, "fru-dump -i " FRU_FILES "%s -o %s -s %s -d %d 2>&1",
+					file, eeprom, serial, (unsigned int)frutime);
+#if DEBUG
+			printf("%s\n", buf);
+#else
+			fp = popen(buf, "r");
+#endif
+			if (!fp) {
+				printf("can't execute \"%s\"\n", buf);
+			} else {
+				i = 0;
+				while(fgets(buf, sizeof(buf), fp) != NULL){
+					/* fru-dump not installed */
+					if (strstr(buf, "not found"))
+						printf("no fru-tools installed\n");
+					if (strstr(buf, "wrote") && strstr(buf, "bytes to") && strstr(buf, eeprom))
+						i = 1;
+				}
+				pclose(fp);
+			}
+			fp = fopen(".serialnum", "w");
+			if (fp) {
+				fprintf(fp, "%c%s", gtk_combo_box_get_active(GTK_COMBO_BOX(fru_file_list)), serial);
+				fclose(fp);
+			}
+			break;
+		case GTK_RESPONSE_DELETE_EVENT:
+			break;
+		default:
+			printf("unknown response %d in %s\n", result, __func__);
+			break;
+	}
+	gtk_widget_hide(GTK_WIDGET(dialogs.serial_num));
+
+	return i;
+}
+#else
+static size_t write_fru(char *eeprom) {
+
+	return;
+}
+#endif
+
+static int is_eeprom_fru(char *eeprom_file, GtkTextBuffer *buf, GtkTextIter *iter)
+{
+	FILE *fp;
+	unsigned char *raw_input_data = NULL;
+	size_t bytes;
+	struct FRU_DATA *fru = NULL;
+	char text[256];
+
+	fp = fopen(eeprom_file, "rb");
+	if(fp == NULL) {
+		int errsv = errno;
+		printf_err("Cannot open file %s\n%s\n", eeprom_file, strerror(errsv));
+		return 0;
+	}
+
+	raw_input_data = x_calloc(1, 1024);
+	bytes = fread(raw_input_data, 1024, 1, fp);
+	fclose(fp);
+
+	/* Since EOF should be reached, bytes should be zero */
+	if (!bytes)
+		fru = parse_FRU(raw_input_data);
+
+	if (fru) {
+		sprintf(text, "Found %s:\n", eeprom_file);
+		gtk_text_buffer_insert(buf, iter, text, -1);
+
+		if (fru->Board_Area->manufacturer && fru->Board_Area->manufacturer[0] & 0x3F) {
+			sprintf(text, "FMC Manufacture : %s\n", &fru->Board_Area->manufacturer[1]);
+			gtk_text_buffer_insert(buf, iter, text, -1);
+		}
+		if (fru->Board_Area->product_name && fru->Board_Area->product_name[0] & 0x3F) {
+			sprintf(text, "Product Name: %s\n", &fru->Board_Area->product_name[1]);
+			gtk_text_buffer_insert(buf, iter, text, -1);
+		}
+		if (fru->Board_Area->part_number && fru->Board_Area->part_number[0] & 0x3F) {
+			sprintf(text, "Part Number : %s\n", &fru->Board_Area->part_number[1]);
+			gtk_text_buffer_insert(buf, iter, text, -1);
+		}
+		if (fru->Board_Area->serial_number && fru->Board_Area->serial_number[0] & 0x3F) {
+			sprintf(text, "Serial Number : %s\n", &fru->Board_Area->serial_number[1]);
+			gtk_text_buffer_insert(buf, iter, text, -1);
+		}
+		if (fru->Board_Area->mfg_date) {
+			time_t tmp = min2date(fru->Board_Area->mfg_date);
+			sprintf(text, "Date of Man : %s", ctime(&tmp));
+			gtk_text_buffer_insert(buf, iter, text, -1);
+		}
+
+		sprintf(text, "\n");
+		gtk_text_buffer_insert(buf, iter, text, -1);
+
+		free(fru);
+		fru = NULL;
+
+		return 1;
+	}
+	return 0;
+}
 
 void connect_fillin(Dialogs *data)
 {
 	char eprom_names[128];
 	unsigned char *raw_input_data = NULL;
-	struct FRU_DATA *fru = NULL;
 	FILE *efp, *fp;
 	GtkTextBuffer *buf;
 	GtkTextIter iter;
-	size_t bytes;
 	char text[256];
-	int num;
+	int num, i;
 	char *devices=NULL, *device;
+	struct stat st;
 
 	/* flushes all open output streams */
 	fflush(NULL);
-
 #if DEBUG
 	fp = popen("find ./ -name \"fru*.bin\"", "r");
 #else
@@ -67,61 +259,51 @@ void connect_fillin(Dialogs *data)
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
 
 	num = 0;
+
 	while(fgets(eprom_names, sizeof(eprom_names), fp) != NULL){
 		num++;
 		/* strip trailing new lines */
 		if (eprom_names[strlen(eprom_names) - 1] == '\n')
 			eprom_names[strlen(eprom_names) - 1] = '\0';
 
-		sprintf(text, "Found %s:\n", eprom_names);
-		gtk_text_buffer_insert(buf, &iter, text, -1);
-
-		efp = fopen(eprom_names, "rb");
-		if(efp == NULL) {
-			int errsv = errno;
-			printf_err("Cannot open file %s\n%s\n", eprom_names, strerror(errsv));
-			return;
+		/* FRU EEPROMS are exactly 256 */
+		if(stat(eprom_names, &st) !=0)
+			continue;
+		if(st.st_size != 256) {
+			printf("skipping %s (size == %d)\n", eprom_names, (int)st.st_size);
+			continue;
 		}
 
-		raw_input_data = x_calloc(1, 1024);
-		bytes = fread(raw_input_data, 1024, 1, efp);
-		fclose(efp);
+		i = 0;
+		if (!is_eeprom_fru(eprom_names, buf, &iter)) {
+			/* Wasn't a FRU file, but is it a blank, writeable EEPROM? */
+			efp = fopen(eprom_names, "w+");
+			if (efp) {
+				i = fread(text, 1, 256, efp);
+				if (i == 256) {
+					for (i = 0; i < 256; i++){
+						if (!(text[i] == 0x00 || text[i] == 0xFF)) {
+							i = 0;
+							break;
+						}
+					}
+				}
+				fclose(efp);
 
-		/* Since EOF should be reached, bytes should be zero */
-		if (!bytes)
-			fru = parse_FRU(raw_input_data);
-
-		if (fru) {
-			if (fru->Board_Area->manufacturer && fru->Board_Area->manufacturer[0] & 0x3F) {
-				sprintf(text, "FMC Manufacture : %s\n", &fru->Board_Area->manufacturer[1]);
+				/* dump the info into it */
+				if (i == 256) {
+					if (write_fru(eprom_names))
+						if(!is_eeprom_fru(eprom_names, buf, &iter))
+							i = 0;
+				}
+			} else {
+				int errsv = errno;
+				printf("Can't open %s in %s\n%s\n", eprom_names, __func__, strerror(errsv));
+			}
+			if (i == 0) {
+				sprintf(text, "No FRU information in %s\n", eprom_names);
 				gtk_text_buffer_insert(buf, &iter, text, -1);
 			}
-			if (fru->Board_Area->product_name && fru->Board_Area->product_name[0] & 0x3F) {
-				sprintf(text, "Product Name: %s\n", &fru->Board_Area->product_name[1]);
-				gtk_text_buffer_insert(buf, &iter, text, -1);
-			}
-			if (fru->Board_Area->part_number && fru->Board_Area->part_number[0] & 0x3F) {
-				sprintf(text, "Part Number : %s\n", &fru->Board_Area->part_number[1]);
-				gtk_text_buffer_insert(buf, &iter, text, -1);
-			}
-			if (fru->Board_Area->serial_number && fru->Board_Area->serial_number[0] & 0x3F) {
-				sprintf(text, "Serial Number : %s\n", &fru->Board_Area->serial_number[1]);
-				gtk_text_buffer_insert(buf, &iter, text, -1);
-			}
-			if (fru->Board_Area->mfg_date) {
-				time_t tmp = min2date(fru->Board_Area->mfg_date);
-				sprintf(text, "Date of Man : %s", ctime(&tmp));
-				gtk_text_buffer_insert(buf, &iter, text, -1);
-			}
-
-			sprintf(text, "\n");
-			gtk_text_buffer_insert(buf, &iter, text, -1);
-
-			free(fru);
-			fru = NULL;
-		} else {
-			sprintf(text, "Not a FRU file\n");
-			gtk_text_buffer_insert(buf, &iter, text, -1);
 		}
 
 		free (raw_input_data);
@@ -162,6 +344,8 @@ G_MODULE_EXPORT void cb_connect(GtkButton *button, Dialogs *data)
 	/* Connect Dialog */
 	gint ret;
 
+	connect_fillin(data);
+
 	do {
 		ret = gtk_dialog_run(GTK_DIALOG(data->connect));
 		if (ret == GTK_RESPONSE_APPLY)
@@ -170,13 +354,14 @@ G_MODULE_EXPORT void cb_connect(GtkButton *button, Dialogs *data)
 
 	switch(ret) {
 		case GTK_RESPONSE_CANCEL:
+		case GTK_RESPONSE_DELETE_EVENT:
 			printf("Cancel\n");
 			break;
 		case GTK_RESPONSE_OK:
 			printf("OK\n");
 			break;
 		default:
-			printf("unknown: %i\n", ret);
+			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
 			break;
 	}
 	gtk_widget_hide(data->connect);
@@ -358,14 +543,18 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.saveas = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	dialogs.connect = GTK_WIDGET(gtk_builder_get_object(builder, "connect_dialog"));
 	dialogs.connect_fru = GTK_WIDGET(gtk_builder_get_object(builder, "fru_info"));
+	dialogs.serial_num = GTK_WIDGET(gtk_builder_get_object(builder, "serial_number_popup"));
 	dialogs.connect_iio = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_devices"));
 
-	connect_fillin(&dialogs);
 	gtk_builder_connect_signals(builder, &dialogs);
 
 	/* Bind some dialogs radio buttons to text/labels */
 	tmp2 = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_label"));
+	serial_num = GTK_WIDGET(gtk_builder_get_object(builder, "serial_number"));
+	fru_date = GTK_WIDGET(gtk_builder_get_object(builder, "fru_date"));
+	fru_file_list = GTK_WIDGET(gtk_builder_get_object(builder, "FRU_files"));
+
 	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
 	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
