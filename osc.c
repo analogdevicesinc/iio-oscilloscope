@@ -857,8 +857,13 @@ static void set_sample_count_cb (GtkDialog *dialog, gint response_id, gpointer u
 	struct _device_list *dev_list = user_data;
 	GtkBuilder *builder = dev_list->settings_dialog_builder;
 	GtkAdjustment *sample_count;
+	GtkWidget *response_btn;
 	
 	if (response_id == GTK_RESPONSE_OK) {
+		/* By passing the focus from the spinbutton to others, the spinbutton gets updated */
+		response_btn = gtk_dialog_get_widget_for_response(dialog, response_id);
+		gtk_widget_grab_focus(response_btn);
+		/* Get data from widget and store it */
 		sample_count = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_sample_count"));
 		dev_list->shadow_of_sample_count = gtk_adjustment_get_value(sample_count);
 	}
@@ -965,7 +970,7 @@ static void init_device_list(void)
 
 gboolean save_sample_count_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
-	if ((event->type == GDK_KEY_RELEASE) && (event->keyval == ENTER_KEY_CODE)) {
+	if (event->keyval == ENTER_KEY_CODE) {
 		g_signal_emit_by_name(widget, "response", GTK_RESPONSE_OK, 0);
 	}
 	
@@ -986,7 +991,7 @@ static void create_sample_count_dialogs(void)
 		device_list[i].settings_dialog_builder = builder;
 		dialog = GTK_WIDGET(gtk_builder_get_object(builder, "Sample_count_dialog"));
 		g_signal_connect(dialog, "response", G_CALLBACK(set_sample_count_cb), &device_list[i]);
-		g_signal_connect(dialog, "key_release_event", G_CALLBACK(save_sample_count_cb), NULL);
+		g_signal_connect(dialog, "key_press_event", G_CALLBACK(save_sample_count_cb), NULL);
 		
 		gtk_window_set_title(GTK_WINDOW(dialog), (gchar *)device_list[i].device_name);
 	}
