@@ -75,6 +75,7 @@ struct _transform {
 	bool local_output_buf;
 	void *graph;
 	void *graph_color;
+	int* integer_id;
 	bool graph_active;
 	bool has_the_marker;
 	void *settings;

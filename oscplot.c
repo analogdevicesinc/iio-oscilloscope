@@ -176,6 +176,9 @@ struct _OscPlotPrivate
 	gint num_selected_rows;
 	
 	GList *available_graph_colors;
+	
+	GList *available_tr_numbers;
+	gint num_created_tr;
 };
 
 G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
@@ -269,19 +272,14 @@ void osc_plot_draw_stop (OscPlot *plot)
 	gtk_toggle_tool_button_set_active((GtkToggleToolButton *)priv->capture_button, FALSE);
 }
 
-static void add_row_child(OscPlot *plot, GtkTreeIter *parent, char *child_name, Transform *tr)
+static void set_transform_attributes(OscPlot *plot, Transform *tr)
 {
 	OscPlotPrivate *priv = plot->priv;
-	GtkTreeView *treeview;
-	GtkTreeStore *treestore;
-	GtkTreeIter child;
 	GdkColor *transform_color;
 	GList *first_element;
 	int i;
 
-	treeview = (GtkTreeView *)priv->channel_list_view;
-	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
-
+	/* Give transform a color */
 get_color:
 	if (g_list_length(priv->available_graph_colors)) {
 		first_element = g_list_first(priv->available_graph_colors);
@@ -294,10 +292,34 @@ get_color:
 		goto get_color;
 	}
 	tr->graph_color = transform_color;
+
+	/* Give transform a number */
+	gint *tr_id;
+	if (g_list_length(priv->available_tr_numbers) == 0) {
+		tr_id = g_new(gint, 1);
+		*tr_id = priv->num_created_tr++;
+		tr->integer_id = tr_id;
+	} else {
+		first_element = g_list_first(priv->available_tr_numbers);
+		tr->integer_id = first_element->data;
+		priv->available_tr_numbers = g_list_delete_link(priv->available_tr_numbers, first_element);
+	}
+}
+
+static void add_row_child(OscPlot *plot, GtkTreeIter *parent, char *child_name, Transform *tr)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeView *treeview;
+	GtkTreeStore *treestore;
+	GtkTreeIter child;
+
+	treeview = (GtkTreeView *)priv->channel_list_view;
+	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
+
 	gtk_tree_store_append(treestore, &child, parent);
 	gtk_tree_store_set(treestore, &child, ELEMENT_NAME, child_name,
 		IS_DEVICE, FALSE, IS_CHANNEL, FALSE, IS_TRANSFORM, TRUE,
-		TRANSFORM_ACTIVE, 1, ELEMENT_REFERENCE, tr, COLOR_REF, transform_color, -1);
+		TRANSFORM_ACTIVE, 1, ELEMENT_REFERENCE, tr, COLOR_REF, (GdkColor *)tr->graph_color, -1);
 }
 
 static void time_settings_init(struct _time_settings *settings)
@@ -475,6 +497,11 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	}
 }
 
+gint tr_id_compare(gconstpointer a, gconstpointer b)
+{
+	return *((gint *)a) - *((int *)b);
+}
+
 static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 {
 	OscPlot *plot = data;
@@ -528,6 +555,9 @@ static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 	}
 	/* Add a new transform to a list of transforms. */
 	tr = add_transform_to_list(plot, ch_parent0, channel0, channel1, tr_name);
+	/* Create transform attributes(color, number id, etc) */
+	set_transform_attributes(plot, tr);
+	snprintf(buf + strlen(buf), sizeof(buf), " %d", *((int *)tr->integer_id));
 	/* Add the transfrom in the treeview */
 	add_row_child(plot, &iter, buf, tr);
 	g_object_set(G_OBJECT(tree_view), "sensitive", TRUE, NULL);
@@ -556,6 +586,10 @@ static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer dat
 		return;
 	gtk_tree_store_remove(GTK_TREE_STORE(model), &iter);
 	priv->available_graph_colors = g_list_prepend(priv->available_graph_colors, tr->graph_color);
+	if (tr->integer_id) {
+		priv->available_tr_numbers = g_list_insert_sorted(priv->available_tr_numbers,
+			tr->integer_id, (GCompareFunc)tr_id_compare);
+	}
 	if (tr->graph) {
 		gtk_databox_graph_remove(GTK_DATABOX(priv->databox), tr->graph);
 		gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
@@ -802,6 +836,12 @@ static void show_constellation_settings(GtkMenuItem* menuitem, gpointer data)
 	default_constellation_setting(plot, tr);
 	gtk_dialog_run(GTK_DIALOG(priv->constellation_settings_diag));
 	gtk_widget_hide(priv->constellation_settings_diag);
+}
+
+static void destroy_tr_id(gpointer data)
+{
+	g_free(data);
+	data = NULL;
 }
 
 static void clear_marker_flag(GtkTreeView *treeview)
@@ -1182,8 +1222,10 @@ static void remove_all_transforms(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 	
-	while (priv->transform_list->size)
+	while (priv->transform_list->size) {
+		destroy_tr_id(priv->transform_list->transforms[0]->integer_id);
 		remove_transform_from_list(plot, priv->transform_list->transforms[0]);
+	}
 }
 
 static void auto_scale_databox(OscPlotPrivate *priv, GtkDatabox *box)
@@ -1361,9 +1403,37 @@ static void fullscreen_button_clicked_cb(GtkToggleToolButton *btn, gpointer data
 		gtk_window_unfullscreen(GTK_WINDOW(plot->priv->window));
 }
 
-static void transform_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer data)
+static void transform_edited(GtkCellRendererToggle* renderer, gchar* pathStr, gchar *new_text, gpointer plot)
 {
-	OscPlotPrivate *priv = data;
+	OscPlotPrivate *priv = ((OscPlot *)plot)->priv;
+	GtkTreePath* path = gtk_tree_path_new_from_string(pathStr);
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	Transform *tr;
+	gchar *tr_name;
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->channel_list_view));
+	gtk_tree_model_get_iter(model, &iter, path);
+	gtk_tree_model_get(model, &iter, ELEMENT_NAME, &tr_name, ELEMENT_REFERENCE, &tr, -1);
+
+	if (strcmp(tr_name, new_text) == 0)
+		return;	
+	if (strcmp(new_text, "") == 0)
+		return;	
+	
+	/* Give up the number id, since the transform is getting a new name. */
+	if (tr->integer_id) {
+		priv->available_tr_numbers = g_list_insert_sorted(priv->available_tr_numbers,
+			tr->integer_id, (GCompareFunc)tr_id_compare);
+		tr->integer_id = NULL;
+	}
+	
+	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, ELEMENT_NAME, new_text, -1);
+}
+
+static void transform_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer plot)
+{
+	OscPlotPrivate *priv = ((OscPlot *)plot)->priv;
 	GtkTreePath* path = gtk_tree_path_new_from_string(pathStr);
 	GtkTreeModel *model;
 	GtkTreeIter iter;
@@ -1391,8 +1461,9 @@ static void transform_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, g
 	}
 }
 
-static void create_channel_list_view(OscPlotPrivate *priv)
+static void create_channel_list_view(OscPlot *plot)
 {
+	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	GtkTreeViewColumn *col;
 	GtkCellRenderer *renderer_ch_name;
@@ -1415,6 +1486,7 @@ static void create_channel_list_view(OscPlotPrivate *priv)
 	gtk_tree_view_column_pack_end(col, renderer_tr_toggle, FALSE);
 	
 	gtk_tree_view_column_add_attribute(col, renderer_ch_name, "text", ELEMENT_NAME);
+	gtk_tree_view_column_add_attribute(col, renderer_ch_name, "editable", IS_TRANSFORM);
 	gtk_tree_view_column_add_attribute(col, renderer_tr_toggle, "visible", IS_TRANSFORM);
 	gtk_tree_view_column_add_attribute(col, renderer_tr_color, "visible", IS_TRANSFORM);
 	gtk_tree_view_column_add_attribute(col, renderer_tr_toggle, "active", TRANSFORM_ACTIVE);
@@ -1425,7 +1497,8 @@ static void create_channel_list_view(OscPlotPrivate *priv)
 	g_object_set(renderer_tr_color, "width", 15, NULL);
 	g_object_set(renderer_tr_color, "mode", GTK_CELL_RENDERER_MODE_EDITABLE, NULL);
 	
-	g_signal_connect(G_OBJECT(renderer_tr_toggle), "toggled", G_CALLBACK(transform_toggled), priv);	
+	g_signal_connect(G_OBJECT(renderer_ch_name), "edited", G_CALLBACK(transform_edited), plot);
+	g_signal_connect(G_OBJECT(renderer_tr_toggle), "toggled", G_CALLBACK(transform_toggled), plot);
 }
 
 static void fill_channel_list(OscPlot *plot)
@@ -1449,7 +1522,7 @@ static void fill_channel_list(OscPlot *plot)
 				}
 		}
 	}	
-	create_channel_list_view(priv);
+	create_channel_list_view(plot);
 }
 
 static gboolean capture_button_icon_transform(GBinding *binding,
@@ -1697,6 +1770,7 @@ static void zoom_out(GtkButton *btn, gpointer data)
 static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 {
 	remove_all_transforms(plot);
+	g_list_free_full(plot->priv->available_tr_numbers, (GDestroyNotify)destroy_tr_id);
 	plot->priv->stop_redraw = TRUE;
 	if (plot->priv->redraw_function) {
 		g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, FALSE);
