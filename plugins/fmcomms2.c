@@ -221,6 +221,7 @@ static void update_display (void *ptr)
 			if (gain_mode && strcmp(gain_mode, "manual"))
 				iio_widget_update(&rx_widgets[rx1_gain]);
 
+			gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes_rx2));
 			if (is_2rx_2tx && gain_mode && strcmp(gain_mode, "manual"))
 				iio_widget_update(&rx_widgets[rx2_gain]);
 			gdk_threads_leave();
