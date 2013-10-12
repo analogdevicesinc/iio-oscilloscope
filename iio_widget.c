@@ -18,7 +18,10 @@ void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
 {
 	GObject *tmp;
 	tmp = gtk_builder_get_object(builder, name);
-	g_signal_connect(tmp, signal, callback, data);
+	if (tmp == NULL)
+		fprintf(stderr, "Couldn't find object \"%s\".\n", name);
+	else
+		g_signal_connect(tmp, signal, callback, data);
 }
 
 void g_builder_bind_property(GtkBuilder *builder,
