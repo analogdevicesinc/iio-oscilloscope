@@ -1322,7 +1322,7 @@ static void load_plugins(GtkWidget *notebook)
 	free(d);
 }
 
-static bool is_input_device(const char *device)
+bool is_input_device(const char *device)
 {
 	struct iio_channel_info *channels = NULL;
 	unsigned int num_channels;
