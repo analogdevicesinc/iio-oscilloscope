@@ -124,7 +124,7 @@ static GdkColor color_background = {
 static GdkColor color_marker = {
 	.red = 0xFFFF,
 	.green = 0,
-	.blue = 0,
+	.blue = 0xFFFF,
 };
 
 G_LOCK_DEFINE(buffer_full);
