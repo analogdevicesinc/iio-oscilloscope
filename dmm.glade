@@ -167,8 +167,6 @@
                           <object class="GtkTreeView" id="channel_list_view">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
-                            <property name="hscroll_policy">natural</property>
-                            <property name="vscroll_policy">natural</property>
                             <property name="model">channel_list</property>
                             <property name="headers_visible">False</property>
                             <property name="headers_clickable">False</property>
@@ -286,7 +284,6 @@
           <object class="GtkTextView" id="dmm_results">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="vscroll_policy">natural</property>
             <property name="editable">False</property>
             <property name="cursor_visible">False</property>
           </object>
