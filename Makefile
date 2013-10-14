@@ -11,7 +11,7 @@ LDFLAGS=`pkg-config --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3`
 LDFLAGS+=`xml2-config --libs`
 CFLAGS=`pkg-config --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3`
 CFLAGS+=`xml2-config --cflags`
-CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' -lmatio -lz
+CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O0 -DPREFIX='"$(PREFIX)"' -lmatio -lz
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
@@ -21,7 +21,8 @@ PLUGINS=\
 	plugins/fmcomms2.so \
 	plugins/debug.so \
 	plugins/AD5628_1.so \
-	plugins/AD7303.so
+	plugins/AD7303.so \
+	plugins/dmm.so
 
 all: osc $(PLUGINS)
 
