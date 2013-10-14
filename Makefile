@@ -1,12 +1,18 @@
 TMP = temp_resources
 DESTDIR=/usr/local
 PREFIX=/usr/local
+PSHARE=$(PREFIX)/share/osc
+PLIB=$(PREFIX)/lib/osc
+
+# this is where the master fru files are (assuming they are installed at all)
+FRU_FILES=$(PREFIX)/lib/fmc-tools/
+
 
 LDFLAGS=`pkg-config --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3`
 LDFLAGS+=`xml2-config --libs`
 CFLAGS=`pkg-config --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3`
 CFLAGS+=`xml2-config --cflags`
-CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
+CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O0 -DPREFIX='"$(PREFIX)"' -lmatio -lz
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
@@ -16,12 +22,13 @@ PLUGINS=\
 	plugins/fmcomms2.so \
 	plugins/debug.so \
 	plugins/AD5628_1.so \
-	plugins/AD7303.so
+	plugins/AD7303.so \
+	plugins/dmm.so
 
 all: multiosc $(PLUGINS)
 
 multiosc: osc.c oscplot.c datatypes.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c xml_utils.c ./ini/ini.c 
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -rdynamic -o $@
+	$(CC) $+ $(CFLAGS) $(LDFLAGS) -DFRU_FILES=\"$(FRU_FILES)\" -ldl -rdynamic -o $@
 
 %.so: %.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@
