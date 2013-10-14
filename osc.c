@@ -80,6 +80,7 @@ static GtkWidget *marker_label;
 static GtkListStore *channel_list_store;
 
 double adc_freq = 246760000.0;
+static double lo_freq = 0.0;
 char adc_scale[10];
 
 static bool is_fft_mode;
@@ -739,7 +740,7 @@ static void do_fft(struct buffer *buf)
 			markY[j] = (gfloat)fft_channel[maxx[j]];
 
 			sprintf(text, "M%i: %2.2f dB @ %2.2f %sHz\n",
-					j, markY[j], markX[j], adc_scale);
+					j, markY[j], lo_freq + markX[j], adc_scale);
 
 			if (j == 0) {
 				gtk_text_buffer_set_text(tbuf, text, -1);
@@ -1081,7 +1082,6 @@ static double read_sampling_frequency(void)
 
 void rx_update_labels(void)
 {
-	double freq = 0.0;
 	char buf[20];
 
 	adc_freq = read_sampling_frequency();
@@ -1104,13 +1104,15 @@ void rx_update_labels(void)
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
 
 	if (!set_dev_paths("adf4351-rx-lpc"))
-		read_devattr_double("out_altvoltage0_frequency", &freq);
+		read_devattr_double("out_altvoltage0_frequency", &lo_freq);
 	else if (!set_dev_paths("ad9361-phy"));
-		read_devattr_double("out_altvoltage0_RX_LO_frequency", &freq);
+		read_devattr_double("out_altvoltage0_RX_LO_frequency", &lo_freq);
 
-	freq /= 1000000.0;
-	snprintf(buf, sizeof(buf), "%.4f Mhz", freq);
-	gtk_label_set_text(GTK_LABEL(rx_lo_freq_label), buf);
+	if (lo_freq) {
+		lo_freq /= 1000000.0;
+		snprintf(buf, sizeof(buf), "%.4f Mhz", lo_freq);
+		gtk_label_set_text(GTK_LABEL(rx_lo_freq_label), buf);
+	}
 
 	if (is_fft_mode) {
 		/*
