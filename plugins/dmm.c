@@ -29,6 +29,7 @@
 extern char dev_dir_name[512];
 
 static GtkWidget *dmm_results;
+static GtkWidget *select_all_channels;
 static GtkWidget *dmm_button;
 static GtkWidget *device_list_widget;
 static GtkListStore *device_list_store;
@@ -43,7 +44,7 @@ static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpoi
 	unsigned int enabled;
 	char *device, *elements, *start, *strt, *end, *next, *scale;
 	char buf[128], buf2[128], pretty[128];
-	gboolean loop;
+	gboolean loop, all = FALSE;
 	
 	gtk_tree_model_get_iter(GTK_TREE_MODEL (data), &iter, path);
 	gtk_tree_model_get(GTK_TREE_MODEL (data), &iter, 0, &device, 1, &enabled, -1);
@@ -56,6 +57,7 @@ static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpoi
 	while (loop) {
 		gtk_tree_model_get(GTK_TREE_MODEL (data), &iter, 0, &device, 1, &enabled, -1);
 		if (enabled && find_scan_elements(device, &elements)) {
+			all = true;
 			scan_elements_sort(&elements);
 			scan_elements_insert(&elements, SCALE_TOKEN, "_raw");
 			while(isspace(elements[strlen(elements) - 1]))
@@ -110,6 +112,11 @@ static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpoi
 		}
 		loop = gtk_tree_model_iter_next(GTK_TREE_MODEL (data), &iter);
 	}
+
+	if(all)
+		gtk_widget_show(select_all_channels);
+	else
+		gtk_widget_hide(select_all_channels);
 }
 
 void channel_toggle(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer data)
@@ -123,6 +130,22 @@ void channel_toggle(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer da
 	gtk_tree_model_get(GTK_TREE_MODEL (data), &iter, 0, &device, 1, &enabled, 2, &name, -1);
 	enabled = !enabled;
 	gtk_list_store_set(GTK_LIST_STORE (data), &iter, 1, enabled, -1);
+
+}
+
+static void pick_all_channels(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer data)
+{
+	gboolean loop;
+	unsigned int enabled;
+	GtkTreeIter iter;
+
+	loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(channel_list_store), &iter);
+	while (loop) {
+		gtk_tree_model_get(GTK_TREE_MODEL (channel_list_store), &iter, 1, &enabled, -1);
+		enabled = true;
+		gtk_list_store_set(GTK_LIST_STORE (channel_list_store), &iter, 1, enabled, -1);
+		loop = gtk_tree_model_iter_next(GTK_TREE_MODEL (channel_list_store), &iter);
+	}
 
 }
 
@@ -255,11 +278,14 @@ static int dmm_init(GtkWidget *notebook)
 	channel_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "channel_list"));
 
 	dmm_results = GTK_WIDGET(gtk_builder_get_object(builder, "dmm_results"));
+	select_all_channels = GTK_WIDGET(gtk_builder_get_object(builder, "all_channels"));
 
 	g_builder_connect_signal(builder, "device_toggle", "toggled",
 			G_CALLBACK(device_toggled), device_list_store);
 	g_builder_connect_signal(builder, "channel_toggle", "toggled",
 			G_CALLBACK(channel_toggle), channel_list_store);
+	g_builder_connect_signal(builder, "all_channels", "clicked",
+			G_CALLBACK(pick_all_channels), channel_list_store);
 
 	 g_builder_connect_signal(builder, "dmm_button", "toggled",
 			G_CALLBACK(dmm_button_clicked), channel_list_store);
@@ -275,6 +301,8 @@ static int dmm_init(GtkWidget *notebook)
 
 
 	gtk_widget_show_all(dmm_panel);
+	gtk_widget_hide(select_all_channels);
+
 	/* Show the panel */
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), dmm_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), dmm_panel, "DMM");
