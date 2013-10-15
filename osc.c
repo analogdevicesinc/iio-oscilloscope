@@ -59,6 +59,7 @@ static GtkWidget *device_list_widget;
 static GtkWidget *capture_button;
 static GtkWidget *hor_scale;
 static GtkWidget *plot_type;
+static GtkWidget *warn_sign;
 
 GtkWidget *capture_graph;
 
@@ -85,6 +86,8 @@ char adc_scale[10];
 int do_a_rescale_flag;
 
 static bool is_fft_mode;
+
+char warning_text[100];
 
 const char *current_device;
 
@@ -803,14 +806,50 @@ static void fft_update_scale(void)
 	
 }
 
+/* Check for a valid two channels combination (ch0->ch1, ch2->ch3, ...)
+ * 
+ * char* ch_name - output parameter: stores references to the enabled
+ *                 channels.
+ * Return 1 if the channel combination is valid
+ * Return 0 if the combination is not valid
+ */
+int channel_combination_check(char **ch_names)
+{
+	bool consecutive_ch = FALSE;
+	int i, k = 0;
+	
+	for (i = 0; i < num_channels; i++)
+		if (channels[i].enabled) {
+			ch_names[k++] = channels[i].name;
+			if (i > 0)
+				if (channels[i - 1].enabled) {
+					consecutive_ch = TRUE;
+					break;
+				}
+		}
+	if (!consecutive_ch)
+		return 0;
+		
+	if (!(i & 0x1))
+		return 0;
+	
+	return 1;
+}
 
 static int fft_capture_setup(void)
 {
 	int i;
 	char buf[10];
+	char *ch_names[2];
 
-	if (!(num_active_channels == 1 || num_active_channels == 2))
+	if (!(num_active_channels == 1 || num_active_channels == 2)) {
+		snprintf(warning_text, sizeof(warning_text), "%s", "Too many channels enabled for FFT!");
 		return -EINVAL;
+	}
+	if (!channel_combination_check(ch_names)) {
+		snprintf(warning_text, sizeof(warning_text), "Combination between %s and %s is invalid!", ch_names[0], ch_names[1]);
+		return -EINVAL;
+	}
 
 	num_samples = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
 
@@ -898,12 +937,20 @@ static int time_capture_setup(void)
 	gboolean is_constellation;
 	unsigned int i, j;
 	static int prev_num_active_ch = 0;
+	char *ch_names[2];
 
 	is_constellation = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
 
-	if (is_constellation && num_active_channels != 2)
+	if (is_constellation && num_active_channels != 2) {
+		snprintf(warning_text, sizeof(warning_text), "%s", "Exactly two channels are required for Constellation!");
 		return -EINVAL;
+	}
 
+	if (!channel_combination_check(ch_names)) {
+		snprintf(warning_text, sizeof(warning_text), "Combination between %s and %s is invalid!", ch_names[0], ch_names[1]);
+		return -EINVAL;
+	}
+	
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 
 	num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(sample_count_widget));
@@ -994,8 +1041,10 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			}
 		}
 
-		if (num_active_channels == 0 || !current_device)
+		if (num_active_channels == 0 || !current_device) {
+			snprintf(warning_text, sizeof(warning_text), "%s", "No channels are enabled!");
 			goto play_err;
+		}
 
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
 			sprintf(buf, "%sHz", adc_scale);
@@ -1037,11 +1086,14 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			buffer_fd = -1;
 		}
 	}
+	gtk_widget_hide(warn_sign);
 
 	return;
 
 play_err:
 	gtk_toggle_tool_button_set_active(btn, FALSE);
+	gtk_widget_show(warn_sign);
+	gtk_widget_set_tooltip_text(warn_sign, warning_text);
 }
 
 static void show_grid_toggled(GtkToggleButton *btn, gpointer data)
@@ -1538,7 +1590,8 @@ static void init_application (void)
 	hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
 	marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	plot_type = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type"));
-
+	warn_sign= GTK_WIDGET(gtk_builder_get_object(builder, "image_warning_sign"));
+	
 	channel_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "channel_list"));
 	g_builder_connect_signal(builder, "channel_toggle", "toggled",
 		G_CALLBACK(channel_toggled), channel_list_store);

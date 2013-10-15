@@ -1040,10 +1040,6 @@ Installed/Found IIO devices on this platform</property>
                 <property name="can_focus">False</property>
                 <property name="label" translatable="yes">Master FRU File :</property>
               </object>
-              <packing>
-                <property name="left_attach">0</property>
-                <property name="top_attach">0</property>
-              </packing>
             </child>
             <child>
               <object class="GtkLabel" id="label19">
@@ -1052,7 +1048,6 @@ Installed/Found IIO devices on this platform</property>
                 <property name="label" translatable="yes">Date :</property>
               </object>
               <packing>
-                <property name="left_attach">0</property>
                 <property name="top_attach">1</property>
               </packing>
             </child>
@@ -1063,7 +1058,6 @@ Installed/Found IIO devices on this platform</property>
                 <property name="label" translatable="yes">Serial Number: </property>
               </object>
               <packing>
-                <property name="left_attach">0</property>
                 <property name="top_attach">2</property>
               </packing>
             </child>
@@ -1087,7 +1081,6 @@ Installed/Found IIO devices on this platform</property>
               </object>
               <packing>
                 <property name="left_attach">1</property>
-                <property name="top_attach">0</property>
               </packing>
             </child>
             <child>
@@ -1805,6 +1798,7 @@ Installed/Found IIO devices on this platform</property>
                       <object class="GtkTextView" id="marker_info">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="editable">False</property>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -1933,6 +1927,19 @@ Installed/Found IIO devices on this platform</property>
                             <property name="position">1</property>
                           </packing>
                         </child>
+                        <child>
+                          <object class="GtkImage" id="image_warning_sign">
+                            <property name="can_focus">True</property>
+                            <property name="no_show_all">True</property>
+                            <property name="stock">gtk-dialog-warning</property>
+                            <property name="icon-size">3</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">2</property>
+                          </packing>
+                        </child>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -1968,12 +1975,6 @@ Installed/Found IIO devices on this platform</property>
         </child>
       </object>
     </child>
-  </object>
-  <object class="GtkListStore" id="trigger_list">
-    <columns>
-      <!-- column-name name -->
-      <column type="gchararray"/>
-    </columns>
   </object>
   <object class="GtkDialog" id="trigger_dialog">
     <property name="can_focus">False</property>
@@ -2125,5 +2126,11 @@ Installed/Found IIO devices on this platform</property>
       <action-widget response="-6">buttonCancel</action-widget>
       <action-widget response="-5">buttonOK</action-widget>
     </action-widgets>
+  </object>
+  <object class="GtkListStore" id="trigger_list">
+    <columns>
+      <!-- column-name name -->
+      <column type="gchararray"/>
+    </columns>
   </object>
 </interface>
