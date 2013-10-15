@@ -946,7 +946,7 @@ static int time_capture_setup(void)
 		return -EINVAL;
 	}
 
-	if (!channel_combination_check(ch_names)) {
+	if (is_constellation && !channel_combination_check(ch_names)) {
 		snprintf(warning_text, sizeof(warning_text), "Combination between %s and %s is invalid!", ch_names[0], ch_names[1]);
 		return -EINVAL;
 	}
