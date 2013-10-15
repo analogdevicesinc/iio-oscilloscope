@@ -461,16 +461,25 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 				{
 					mat_t *mat;
 					matvar_t *matvar;
-					int dims[2];
+					int dims[2], i;
+					char tmp[20];
 
-					dims[0] = num_active_channels;
-					dims[1] = num_samples;
+					dims[1] = 1;
+					dims[0] = num_samples;
 
 					mat = Mat_Open(name, MAT_ACC_RDWR);
 					if(mat) {
-						matvar = Mat_VarCreate("IIO_vec",MAT_C_DOUBLE,MAT_T_DOUBLE,2,dims,channel_data,0);
-						Mat_VarWrite( mat, matvar, 0);
-						Mat_VarFree(matvar);
+						for (i = 0; i < num_active_channels; i++) {
+							sprintf(tmp, "in_voltage%d", i);
+							matvar = Mat_VarCreate(tmp, MAT_C_SINGLE,
+								MAT_T_SINGLE , 2, dims, channel_data[i], 0);
+							if (!matvar)
+								printf("error creating matvar on channel %i\n", i);
+							else {
+								Mat_VarWrite(mat, matvar, 0);
+								Mat_VarFree(matvar);
+							}
+						}
 						Mat_Close(mat);
 					}
 				}
