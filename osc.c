@@ -745,7 +745,7 @@ static void do_fft(struct buffer *buf)
 			markX[j] = (gfloat)X[maxx[j]];
 			markY[j] = (gfloat)fft_channel[maxx[j]];
 
-			sprintf(text, "M%i: %2.2f dBFS @ %2.2f %sHz\n",
+			sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz\n",
 					j, markY[j], lo_freq + markX[j], adc_scale);
 
 			if (j == 0) {
