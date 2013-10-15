@@ -846,10 +846,11 @@ static int fft_capture_setup(void)
 		snprintf(warning_text, sizeof(warning_text), "%s", "Too many channels enabled for FFT!");
 		return -EINVAL;
 	}
-	if (!channel_combination_check(ch_names)) {
-		snprintf(warning_text, sizeof(warning_text), "Combination between %s and %s is invalid!", ch_names[0], ch_names[1]);
-		return -EINVAL;
-	}
+	if (num_active_channels == 2)
+		if (!channel_combination_check(ch_names)) {
+			snprintf(warning_text, sizeof(warning_text), "Combination between %s and %s is invalid!", ch_names[0], ch_names[1]);
+			return -EINVAL;
+		}
 
 	num_samples = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
 
