@@ -82,6 +82,7 @@ static GtkListStore *channel_list_store;
 double adc_freq = 246760000.0;
 static double lo_freq = 0.0;
 char adc_scale[10];
+int do_a_rescale_flag;
 
 static bool is_fft_mode;
 
@@ -411,8 +412,10 @@ static void auto_scale_databox(GtkDatabox *box)
 		return;
 
 	/* Auto scale every 10 seconds */
-	if (frame_counter == 0)
+	if ((frame_counter == 0) || (do_a_rescale_flag == 1)) {
+		do_a_rescale_flag = 0;
 		rescale_databox(box, 0.05);
+	}
 }
 
 static int sign_extend(unsigned int val, unsigned int bits)
@@ -796,7 +799,8 @@ static void fft_update_scale(void)
 	}
 
 	gtk_databox_set_total_limits(GTK_DATABOX(databox), -5.0 - corr, adc_freq / 2.0 + 5.0, 0.0, -75.0);
-
+	do_a_rescale_flag = 1;
+	
 }
 
 
@@ -1046,6 +1050,12 @@ static void show_grid_toggled(GtkToggleButton *btn, gpointer data)
 		gtk_databox_graph_set_hide(grid, !gtk_toggle_button_get_active(btn));
 		gtk_widget_queue_draw(GTK_WIDGET (data));
 	}
+}
+
+static void enable_auto_scale_cb(GtkToggleButton *btn, gpointer data)
+{
+	if (gtk_toggle_button_get_active(btn))
+		do_a_rescale_flag = 1;
 }
 
 static double read_sampling_frequency(void)
@@ -1581,6 +1591,8 @@ static void init_application (void)
 		G_CALLBACK(zoom_fit), databox);
 	g_signal_connect(G_OBJECT(show_grid), "toggled",
 		G_CALLBACK(show_grid_toggled), databox);
+	g_signal_connect(enable_auto_scale, "toggled",
+		G_CALLBACK(enable_auto_scale_cb), NULL);
 
 	g_signal_connect(G_OBJECT(window), "destroy",
 			G_CALLBACK(application_quit), NULL);
