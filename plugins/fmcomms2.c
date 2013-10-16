@@ -34,6 +34,7 @@ static bool is_2rx_2tx;
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
+static const gdouble inv_scale = -1.0;
 
 static bool dac_data_loaded = false;
 
@@ -1201,12 +1202,12 @@ static int fmcomms2_init(GtkWidget *notebook)
 	/* Transmit Chain */
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_voltage0_hardwaregain", builder,
-		"hardware_gain_tx1", NULL);
+		"hardware_gain_tx1", &inv_scale);
 
 	if (is_2rx_2tx)
 		iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad9361-phy", "out_voltage1_hardwaregain", builder,
-			"hardware_gain_tx2", NULL);
+			"hardware_gain_tx2", &inv_scale);
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_voltage_sampling_frequency", builder,
 		"sampling_freq_tx", &mhz_scale);
