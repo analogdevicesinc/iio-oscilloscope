@@ -26,6 +26,7 @@
   <object class="GtkHBox" id="dmm_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
+    <property name="border_width">5</property>
     <property name="spacing">5</property>
     <child>
       <object class="GtkVBox" id="box5">

@@ -741,7 +741,7 @@ static void manage_dds_mode()
 		gtk_widget_show(dds_I1_TX1_l);
 		gtk_widget_hide(dds_I2_TX1_l);
 		gtk_widget_show(dds_I_TX2_l);
-		gtk_widget_hide(dds_I1_TX2_l);
+		gtk_widget_show(dds_I1_TX2_l);
 		gtk_widget_hide(dds_I2_TX2_l);
 		gtk_widget_hide(dds_Q_TX1_l);
 		gtk_widget_hide(dds_Q1_TX1_l);

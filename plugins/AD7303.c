@@ -60,7 +60,15 @@ static GdkColor color_prev_graph = {
 	.green = 65535,
 	.blue = 0,
 };
+
+static GdkColor color_prev_graph_dots = {
+	.red = 65535,
+	.green = 0,
+	.blue = 0,
+};
+
 static GtkDataboxGraph *databox_graph;
+static GtkDataboxGraph *databox_graph_dots;
 static gfloat *X = NULL;
 static gfloat *float_soft_buff;
 
@@ -223,13 +231,13 @@ static void generateWavePeriod(void)
 	gtk_range_set_value(GTK_RANGE(scale_freq), (double)triggerFreq / buffer_size);
 	gtk_widget_queue_draw(scale_freq);
 
-	if(gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(btn_sine)))
+	if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn_sine)))
 		waveType = SINEWAVE;
-	else if (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(btn_square)))
+	else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn_square)))
 		waveType = SQUAREWAVE;
-	else if (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(btn_triangle)))
+	else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn_triangle)))
 		waveType = TRIANGLE;
-	else if (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(btn_sawtooth)))
+	else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn_sawtooth)))
 		waveType = SAWTOOTH;
 	FillSoftBuffer(waveType, soft_buffer_ch0);
 
@@ -243,8 +251,11 @@ static void generateWavePeriod(void)
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 	databox_graph = gtk_databox_lines_new((2 * buffer_size), X, float_soft_buff,
 							&color_prev_graph, 2);
+	databox_graph_dots = gtk_databox_points_new((2 * buffer_size), X, float_soft_buff,
+							&color_prev_graph_dots, 5);
+	gtk_databox_graph_add(GTK_DATABOX(databox), databox_graph_dots);
 	gtk_databox_graph_add(GTK_DATABOX(databox), databox_graph);
-	gtk_databox_set_total_limits(GTK_DATABOX(databox), 0, (i - 1), 3.5, 0);
+	gtk_databox_set_total_limits(GTK_DATABOX(databox), -0.2, (i - 1), 3.5, -0.2);
 }
 
 static gboolean fillBuffer(void)
@@ -281,59 +292,6 @@ static void rx_update_values(void)
 {
 	iio_update_widgets(rx_widgets, num_rx);
 	rx_update_labels();
-}
-
-static void sine_button_toggled(GtkToggleToolButton *btn,
-							gpointer user_data)
-{
-	if (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(btn))){
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_square),
-									FALSE);
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_triangle),
-									FALSE);
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_sawtooth),
-									FALSE);
-		generateWavePeriod();
-	}
-}
-static void square_button_toggled(GtkToggleToolButton *togglebutton,
-							gpointer user_data)
-{
-	if (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(togglebutton))){
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_sine),
-									FALSE);
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_triangle),
-									FALSE);
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_sawtooth),
-									FALSE);
-		generateWavePeriod();
-	}
-}
-static void triangle_button_toggled(GtkToggleToolButton *togglebutton,
-							gpointer user_data)
-{
-	if (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(togglebutton))){
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_sine),
-									FALSE);
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_square),
-									FALSE);
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_sawtooth),
-									FALSE);
-		generateWavePeriod();
-	}
-}
-static void sawtooth_button_toggled(GtkToggleToolButton *togglebutton,
-							gpointer user_data)
-{
-	if (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(togglebutton))){
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_sine),
-									FALSE);
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_triangle),
-									FALSE);
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(btn_square),
-									FALSE);
-		generateWavePeriod();
-	}
 }
 
 static void wave_param_changed(GtkRange *range, gpointer user_data)
@@ -397,14 +355,15 @@ static int AD7303_init(GtkWidget *notebook)
 			"AD7303", "out_voltage1_powerdown",
 			builder, "checkbuttonPwrDwn1", 0);
 
-	g_signal_connect(btn_sine, "toggled", G_CALLBACK(sine_button_toggled),
-									NULL);
-	g_signal_connect(btn_square, "toggled", G_CALLBACK(square_button_toggled),
-									NULL);
-	g_signal_connect(btn_triangle, "toggled",
-				G_CALLBACK(triangle_button_toggled), NULL);
-	g_signal_connect(btn_sawtooth, "toggled",
-				G_CALLBACK(sawtooth_button_toggled), NULL);
+	g_signal_connect(btn_sine, "toggled", G_CALLBACK(wave_param_changed),
+		NULL);
+	g_signal_connect(btn_square, "toggled",  G_CALLBACK(wave_param_changed),
+		NULL);
+	g_signal_connect(btn_triangle, "toggled", G_CALLBACK(wave_param_changed),
+		NULL);
+	g_signal_connect(btn_sawtooth, "toggled", G_CALLBACK(wave_param_changed),
+		NULL);
+
 	g_signal_connect(scale_ampl, "value-changed",
 				G_CALLBACK(wave_param_changed), NULL);
 	g_signal_connect(scale_offset, "value-changed",
@@ -416,7 +375,7 @@ static int AD7303_init(GtkWidget *notebook)
 	/* Create a GtkDatabox widget */
 	gtk_databox_create_box_with_scrollbars_and_rulers(&databox, &table,
 						TRUE, TRUE, TRUE, TRUE);
-	gtk_box_pack_start(GTK_BOX(preview_graph), table, TRUE, TRUE, 0);
+	gtk_container_add(GTK_CONTAINER(preview_graph), table);
 	gtk_widget_modify_bg(databox, GTK_STATE_NORMAL, &color_background);
 	gtk_widget_set_size_request(table, 450, 300);
 
