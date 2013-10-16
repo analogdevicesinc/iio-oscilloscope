@@ -989,6 +989,38 @@ static void manage_dds_mode()
 	}
 }
 
+/* Check for a valid two channels combination (ch0->ch1, ch2->ch3, ...)
+ * 
+ * struct iio_channel_info *chanels - list of channels of a device
+ * int ch_count - number of channel in the list
+ * char* ch_name - output parameter: stores references to the enabled
+ *                 channels.
+ * Return 1 if the channel combination is valid
+ * Return 0 if the combination is not valid
+ */
+int channel_combination_check(struct iio_channel_info *channels, int ch_count, char **ch_names)
+{
+	bool consecutive_ch = FALSE;
+	int i, k = 0;
+	
+	for (i = 0; i < ch_count; i++)
+		if (channels[i].enabled) {
+			ch_names[k++] = channels[i].name;
+			if (i > 0)
+				if (channels[i - 1].enabled) {
+					consecutive_ch = TRUE;
+					break;
+				}
+		}
+	if (!consecutive_ch)
+		return 0;
+		
+	if (!(i & 0x1))
+		return 0;
+	
+	return 1;
+}
+
 static int fmcomms2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -1287,6 +1319,8 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	glb_settings_update_labels();
 	rssi_update_labels();
+
+	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
 
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2_panel, "FMComms2");
