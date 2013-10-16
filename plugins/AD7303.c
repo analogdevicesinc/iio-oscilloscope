@@ -84,7 +84,7 @@ static int buffer_open(unsigned int length)
 	write_devattr("trigger/current_trigger", "hrtimer-1");
 	write_devattr("scan_elements/out_voltage0_en", "1");
 
-	fd = iio_buffer_open(false);
+	fd = iio_buffer_open(false, 0);
 	if (fd < 0) {
 		ret = -errno;
 		fprintf(stderr, "Failed to open buffer: %d\n", ret);

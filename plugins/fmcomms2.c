@@ -393,7 +393,7 @@ void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 	set_dev_paths("cf-ad9361-dds-core-lpc");
 	write_devattr_int("buffer/enable", 0);
 
-	fd = iio_buffer_open(false);
+	fd = iio_buffer_open(false, 0);
 	if (fd < 0) {
 		free(buf);
 		return;

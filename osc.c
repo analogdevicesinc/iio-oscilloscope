@@ -173,15 +173,13 @@ struct buffer {
 
 static bool is_oneshot_mode(void)
 {
-
-
 	if (strncmp(current_device, "cf-ad9", 5) == 0)
 		return true;
 
 	return false;
 }
 
-static int buffer_open(unsigned int length)
+static int buffer_open(unsigned int length, int flags)
 {
 	int ret;
 	int fd;
@@ -191,7 +189,7 @@ static int buffer_open(unsigned int length)
 
 	set_dev_paths(current_device);
 
-	fd = iio_buffer_open(true);
+	fd = iio_buffer_open(true, flags);
 	if (fd < 0) {
 		ret = -errno;
 		fprintf(stderr, "Failed to open buffer: %d\n", ret);
@@ -283,7 +281,7 @@ static int sample_iio_data_oneshot(struct buffer *buf)
 {
 	int fd, ret;
 
-	fd = buffer_open(buf->size);
+	fd = buffer_open(buf->size, 0);
 	if (fd < 0)
 		return fd;
 
@@ -1008,7 +1006,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			goto play_err;
 
 		if (!is_oneshot_mode()) {
-			buffer_fd = buffer_open(num_samples);
+			buffer_fd = buffer_open(num_samples, O_NONBLOCK);
 			if (buffer_fd < 0)
 				goto play_err;
 		}
