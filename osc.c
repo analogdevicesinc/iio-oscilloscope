@@ -750,8 +750,9 @@ static void do_fft(struct buffer *buf)
 			markX[j] = (gfloat)X[maxx[j]];
 			markY[j] = (gfloat)fft_channel[maxx[j]];
 
-			sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz\n",
-					j, markY[j], lo_freq + markX[j], adc_scale);
+			sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz%c",
+					j, markY[j], lo_freq + markX[j], adc_scale,
+					j != MAX_MARKERS ? '\n' : '\0');
 
 			if (j == 0) {
 				gtk_text_buffer_set_text(tbuf, text, -1);
