@@ -92,12 +92,12 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_tx1">
-    <property name="lower">-100</property>
+    <property name="upper">89.75</property>
     <property name="step_increment">0.25</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_tx2">
-    <property name="lower">-100</property>
+    <property name="upper">89.75</property>
     <property name="step_increment">0.25</property>
     <property name="page_increment">10</property>
   </object>
