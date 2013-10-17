@@ -1028,7 +1028,7 @@ static void manage_dds_mode()
 }
 
 /* Check for a valid two channels combination (ch0->ch1, ch2->ch3, ...)
- * 
+ *
  * struct iio_channel_info *chanels - list of channels of a device
  * int ch_count - number of channel in the list
  * char* ch_name - output parameter: stores references to the enabled
@@ -1040,7 +1040,7 @@ int channel_combination_check(struct iio_channel_info *channels, int ch_count, c
 {
 	bool consecutive_ch = FALSE;
 	int i, k = 0;
-	
+
 	for (i = 0; i < ch_count; i++)
 		if (channels[i].enabled) {
 			ch_names[k++] = channels[i].name;
@@ -1052,10 +1052,10 @@ int channel_combination_check(struct iio_channel_info *channels, int ch_count, c
 		}
 	if (!consecutive_ch)
 		return 0;
-		
+
 	if (!(i & 0x1))
 		return 0;
-	
+
 	return 1;
 }
 
@@ -1191,6 +1191,13 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_combo_box_init(&glb_widgets[num_glb++],
 		"ad9361-phy", "trx_rate_governor", "trx_rate_governor_available",
 		trx_rate_governor_available, NULL);
+
+	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
+		"ad9361-phy", "dcxo_tune_coarse", builder, "dcxo_coarse_tune",
+		0);
+	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
+		"ad9361-phy", "dcxo_tune_fine", builder, "dcxo_fine_tune",
+		0);
 
 	/* Receive Chain */
 
