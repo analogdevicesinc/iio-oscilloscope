@@ -647,7 +647,7 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 	printf("Loaded plugin: %s\n", plugin->name);
 }
 
-static bool str_endswith(const char *str, const char *needle)
+bool str_endswith(const char *str, const char *needle)
 {
 	const char *pos;
 	pos = strstr(str, needle);
@@ -869,7 +869,7 @@ static void set_sample_count_cb (GtkDialog *dialog, gint response_id, gpointer u
 	}
 }
 
-static bool is_input_device(const char *device)
+bool is_input_device(const char *device)
 {
 	struct iio_channel_info *channels = NULL;
 	unsigned int num_channels;

@@ -10,6 +10,8 @@
 
 extern GtkWidget *capture_graph;
 extern gint capture_function_id;
+extern bool str_endswith(const char *str, const char *needle);
+extern bool is_input_device(const char *device);
 G_LOCK_EXTERN (buffer_full);
 
 void rx_update_labels(void);
