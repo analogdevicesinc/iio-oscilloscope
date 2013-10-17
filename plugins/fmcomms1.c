@@ -512,22 +512,22 @@ static void display_cal(void *ptr)
 			gdk_threads_enter ();
 
 			sprintf(cbuf, "avg: %3.0f | mid : %3.0f", avg_y, (min_y + max_y)/2);
-			gtk_label_set_text(GTK_LABEL(avg_I), cbuf);
+			gtk_label_set_markup(GTK_LABEL(avg_I), cbuf);
 
 			sprintf(cbuf, "avg: %3.0f | mid : %3.0f", avg_x, (min_x + max_x)/2);
-			gtk_label_set_text(GTK_LABEL(avg_Q), cbuf);
+			gtk_label_set_markup(GTK_LABEL(avg_Q), cbuf);
 
 			sprintf(cbuf, "%3.0f <-> %3.0f (%3.0f)", max_y, min_y, (max_y - min_y));
-			gtk_label_set_text(GTK_LABEL(span_I), cbuf);
+			gtk_label_set_markup(GTK_LABEL(span_I), cbuf);
 
 			sprintf(cbuf, "%3.0f <-> %3.0f (%3.0f)", max_x, min_x, (max_x - min_x));
-			gtk_label_set_text(GTK_LABEL(span_Q), cbuf);
+			gtk_label_set_markup(GTK_LABEL(span_Q), cbuf);
 
 			sprintf(cbuf, "max: %3.0f | min: %3.0f", max_r, min_r);
-			gtk_label_set_text(GTK_LABEL(radius_IQ), cbuf);
+			gtk_label_set_markup(GTK_LABEL(radius_IQ), cbuf);
 
 			sprintf(cbuf, "max: %0.3f | min: %0.3f", max_theta * 180 / M_PI, min_theta * 180 / M_PI);
-			gtk_label_set_text(GTK_LABEL(angle_IQ), cbuf);
+			gtk_label_set_markup(GTK_LABEL(angle_IQ), cbuf);
 
 			for (i = 0; i < channels; i++)
 				g_free(cooked_data[i]);
@@ -935,8 +935,8 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds3_phase_l);
 		gtk_widget_hide(dds4_phase_l);
 		gtk_widget_show(dds_I_l);
-		gtk_label_set_text(GTK_LABEL(dds_I_l), "Single Tone");
-		gtk_widget_hide(dds_I1_l);
+		gtk_label_set_markup(GTK_LABEL(dds_I_l), "<b>Single Tone</b>");
+		gtk_widget_show(dds_I1_l);
 		gtk_widget_hide(dds_I2_l);
 		gtk_widget_hide(dds_Q_l);
 		gtk_widget_hide(dds_Q1_l);
@@ -1008,7 +1008,7 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds3_phase_l);
 		gtk_widget_hide(dds4_phase_l);
 		gtk_widget_show(dds_I_l);
-		gtk_label_set_text(GTK_LABEL(dds_I_l), "Two Tones");
+		gtk_label_set_markup(GTK_LABEL(dds_I_l), "<b>Two Tones</b>");
 		gtk_widget_show(dds_I1_l);
 		gtk_widget_show(dds_I2_l);
 		gtk_widget_hide(dds_Q_l);
@@ -1065,7 +1065,7 @@ static void manage_dds_mode()
 		gtk_widget_show(dds3_phase_l);
 		gtk_widget_show(dds4_phase_l);
 		gtk_widget_show(dds_I_l);
-		gtk_label_set_text(GTK_LABEL(dds_I_l), "Channel I");
+		gtk_label_set_markup(GTK_LABEL(dds_I_l), "<b>Channel I</b>");
 		gtk_widget_show(dds_I1_l);
 		gtk_widget_show(dds_I2_l);
 		gtk_widget_show(dds_Q_l);

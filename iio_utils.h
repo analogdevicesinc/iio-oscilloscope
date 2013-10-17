@@ -762,7 +762,7 @@ int read_devattr_int(char *attr, int *val);
 int read_devattr_slonglong(const char *attr, long long *value);
 int write_devattr_slonglong(const char *attr, long long value);
 bool iio_devattr_exists(const char *device, const char *attr);
-int iio_buffer_open(bool read);
+int iio_buffer_open(bool read, int flags);
 int find_scan_elements(char *dev, char **elements);
 void scan_elements_sort(char **elements);
 void scan_elements_insert(char **elements, char *token, char *end);

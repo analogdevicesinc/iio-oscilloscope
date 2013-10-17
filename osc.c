@@ -29,6 +29,9 @@
 #include "osc_plugin.h"
 #include "osc.h"
 
+#define SAMPLE_COUNT_MIN_VALUE 10
+#define SAMPLE_COUNT_MAX_VALUE 1000000ul
+
 extern char dev_dir_name[512];
 
 static gfloat *X = NULL;
@@ -50,6 +53,7 @@ static unsigned int current_sample;
 static unsigned int bytes_per_sample;
 
 static GtkWidget *databox;
+static GtkWidget *time_interval_widget;
 static GtkWidget *sample_count_widget;
 static GtkWidget *fft_size_widget, *fft_avg_widget, *fft_pwr_offset_widget;
 static GtkWidget *fft_radio, *time_radio, *constellation_radio;
@@ -59,7 +63,9 @@ static GtkWidget *device_list_widget;
 static GtkWidget *capture_button;
 static GtkWidget *hor_scale;
 static GtkWidget *plot_type;
-static GtkWidget *warn_sign;
+static GtkWidget *time_unit_lbl;
+static gulong capture_button_hid = 0;
+static GBinding *capture_button_bind;
 
 GtkWidget *capture_graph;
 
@@ -81,13 +87,16 @@ static GtkWidget *marker_label;
 static GtkListStore *channel_list_store;
 
 double adc_freq = 246760000.0;
+static double adc_freq_raw;
 static double lo_freq = 0.0;
 char adc_scale[10];
 int do_a_rescale_flag;
+int deactivate_capture_btn_flag;
 
 static bool is_fft_mode;
-
-char warning_text[100];
+static int (*plugin_setup_validation_fct)(struct iio_channel_info*, int, char **) = NULL;
+static struct plugin_check_fct *setup_check_functions;
+static int num_check_fcts = 0;
 
 const char *current_device;
 
@@ -170,15 +179,13 @@ struct buffer {
 
 static bool is_oneshot_mode(void)
 {
-
-
 	if (strncmp(current_device, "cf-ad9", 5) == 0)
 		return true;
 
 	return false;
 }
 
-static int buffer_open(unsigned int length)
+static int buffer_open(unsigned int length, int flags)
 {
 	int ret;
 	int fd;
@@ -188,7 +195,7 @@ static int buffer_open(unsigned int length)
 
 	set_dev_paths(current_device);
 
-	fd = iio_buffer_open(true);
+	fd = iio_buffer_open(true, flags);
 	if (fd < 0) {
 		ret = -errno;
 		fprintf(stderr, "Failed to open buffer: %d\n", ret);
@@ -268,8 +275,12 @@ static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 			buf->size - buf->available);
 	if (ret == 0)
 		return 0;
-	if (ret < 0)
-		return ret;
+	if (ret < 0) {
+		if (errno == EAGAIN)
+			return 0;
+		else
+			return -errno;
+	}
 
 	buf->available += ret;
 
@@ -280,7 +291,7 @@ static int sample_iio_data_oneshot(struct buffer *buf)
 {
 	int fd, ret;
 
-	fd = buffer_open(buf->size);
+	fd = buffer_open(buf->size, 0);
 	if (fd < 0)
 		return fd;
 
@@ -745,8 +756,9 @@ static void do_fft(struct buffer *buf)
 			markX[j] = (gfloat)X[maxx[j]];
 			markY[j] = (gfloat)fft_channel[maxx[j]];
 
-			sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz\n",
-					j, markY[j], lo_freq + markX[j], adc_scale);
+			sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz%c",
+					j, markY[j], lo_freq + markX[j], adc_scale,
+					j != MAX_MARKERS ? '\n' : '\0');
 
 			if (j == 0) {
 				gtk_text_buffer_set_text(tbuf, text, -1);
@@ -806,52 +818,11 @@ static void fft_update_scale(void)
 	
 }
 
-/* Check for a valid two channels combination (ch0->ch1, ch2->ch3, ...)
- * 
- * char* ch_name - output parameter: stores references to the enabled
- *                 channels.
- * Return 1 if the channel combination is valid
- * Return 0 if the combination is not valid
- */
-int channel_combination_check(char **ch_names)
-{
-	bool consecutive_ch = FALSE;
-	int i, k = 0;
-	
-	for (i = 0; i < num_channels; i++)
-		if (channels[i].enabled) {
-			ch_names[k++] = channels[i].name;
-			if (i > 0)
-				if (channels[i - 1].enabled) {
-					consecutive_ch = TRUE;
-					break;
-				}
-		}
-	if (!consecutive_ch)
-		return 0;
-		
-	if (!(i & 0x1))
-		return 0;
-	
-	return 1;
-}
-
 static int fft_capture_setup(void)
 {
 	int i;
 	char buf[10];
-	char *ch_names[2];
-
-	if (!(num_active_channels == 1 || num_active_channels == 2)) {
-		snprintf(warning_text, sizeof(warning_text), "%s", "Too many channels enabled for FFT!");
-		return -EINVAL;
-	}
-	if (num_active_channels == 2)
-		if (!channel_combination_check(ch_names)) {
-			snprintf(warning_text, sizeof(warning_text), "Combination between %s and %s is invalid!", ch_names[0], ch_names[1]);
-			return -EINVAL;
-		}
-
+	
 	num_samples = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
 
 	data_buffer.size = num_samples * bytes_per_sample * num_active_channels;
@@ -938,22 +909,11 @@ static int time_capture_setup(void)
 	gboolean is_constellation;
 	unsigned int i, j;
 	static int prev_num_active_ch = 0;
-	char *ch_names[2];
 
 	is_constellation = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
-
-	if (is_constellation && num_active_channels != 2) {
-		snprintf(warning_text, sizeof(warning_text), "%s", "Exactly two channels are required for Constellation!");
-		return -EINVAL;
-	}
-
-	if (is_constellation && !channel_combination_check(ch_names)) {
-		snprintf(warning_text, sizeof(warning_text), "Combination between %s and %s is invalid!", ch_names[0], ch_names[1]);
-		return -EINVAL;
-	}
 	
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
-
+	
 	num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(sample_count_widget));
 	data_buffer.size = num_samples * bytes_per_sample;
 
@@ -1042,11 +1002,6 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			}
 		}
 
-		if (num_active_channels == 0 || !current_device) {
-			snprintf(warning_text, sizeof(warning_text), "%s", "No channels are enabled!");
-			goto play_err;
-		}
-
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
 			sprintf(buf, "%sHz", adc_scale);
 			gtk_label_set_text(GTK_LABEL(hor_scale), buf);
@@ -1062,7 +1017,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			goto play_err;
 
 		if (!is_oneshot_mode()) {
-			buffer_fd = buffer_open(num_samples);
+			buffer_fd = buffer_open(num_samples, O_NONBLOCK);
 			if (buffer_fd < 0)
 				goto play_err;
 		}
@@ -1087,14 +1042,11 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			buffer_fd = -1;
 		}
 	}
-	gtk_widget_hide(warn_sign);
 
 	return;
 
 play_err:
 	gtk_toggle_tool_button_set_active(btn, FALSE);
-	gtk_widget_show(warn_sign);
-	gtk_widget_set_tooltip_text(warn_sign, warning_text);
 }
 
 static void show_grid_toggled(GtkToggleButton *btn, gpointer data)
@@ -1143,12 +1095,28 @@ static double read_sampling_frequency(void)
 	return freq;
 }
 
+void time_interval_adjust(void)
+{
+	GtkAdjustment *adj;
+	gdouble min_time;
+	gdouble max_time;
+	
+	adj = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(time_interval_widget));
+	
+	min_time = (SAMPLE_COUNT_MIN_VALUE / adc_freq_raw) * 1000000;
+	max_time = (SAMPLE_COUNT_MAX_VALUE / adc_freq_raw) * 1000000;
+	
+	gtk_adjustment_set_lower(adj, min_time);
+	gtk_adjustment_set_upper(adj, max_time);
+}
+
 void rx_update_labels(void)
 {
 	char buf[20];
 
 	adc_freq = read_sampling_frequency();
-
+	adc_freq_raw = adc_freq;
+	time_interval_adjust();
 	if (adc_freq >= 1000000) {
 		sprintf(adc_scale, "M");
 		adc_freq /= 1000000;
@@ -1165,7 +1133,7 @@ void rx_update_labels(void)
 	snprintf(buf, sizeof(buf), "%.3f %sSPS", adc_freq, adc_scale);
 
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
-
+		
 	if (!set_dev_paths("adf4351-rx-lpc"))
 		read_devattr_double("out_altvoltage0_frequency", &lo_freq);
 	else if (!set_dev_paths("ad9361-phy"));
@@ -1413,6 +1381,43 @@ bool is_input_device(const char *device)
 	return is_input;
 }
 
+struct plugin_check_fct {
+	void *fct_pointer;
+	char *dev_name;
+};
+
+void add_ch_setup_check_fct(char *device_name, void *fp)
+{	
+	int n;
+	
+	setup_check_functions = (struct plugin_check_fct *)g_renew(struct plugin_check_fct, setup_check_functions, ++num_check_fcts);
+	n = num_check_fcts - 1;
+	setup_check_functions[n].fct_pointer = fp;
+	setup_check_functions[n].dev_name = (char *)g_new(char, strlen(device_name) + 1);
+	strcpy(setup_check_functions[n].dev_name, device_name);
+}
+
+void *find_setup_check_fct_by_devname(const char *dev_name)
+{
+	int i;
+	
+	for (i = 0; i < num_check_fcts; i++)
+		if (strcmp(dev_name, setup_check_functions[i].dev_name) == 0)
+			return setup_check_functions[i].fct_pointer;
+
+	return NULL;
+}
+
+void free_setup_check_fct_list(void)
+{
+	int i;
+	
+	for (i = 0; i < num_check_fcts; i++) {
+		g_free(setup_check_functions[i].dev_name);
+	}
+	g_free(setup_check_functions);
+}
+
 static void device_list_cb(GtkWidget *widget, gpointer data)
 {
 	GtkTreeIter iter;
@@ -1431,6 +1436,7 @@ static void device_list_cb(GtkWidget *widget, gpointer data)
 		return;
 
 	set_dev_paths(current_device);
+	plugin_setup_validation_fct = find_setup_check_fct_by_devname(current_device);
 
 	ret = build_channel_array(dev_dir_name, &channels, &num_channels);
 	if (ret)
@@ -1511,11 +1517,123 @@ void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer d
 static gboolean capture_button_icon_transform(GBinding *binding,
 	const GValue *source_value, GValue *target_value, gpointer user_data)
 {
+	if (deactivate_capture_btn_flag == 1)
+		return FALSE;
+	
 	if (g_value_get_boolean(source_value))
 		g_value_set_static_string(target_value, "gtk-stop");
 	else
 		g_value_set_static_string(target_value, "gtk-media-play");
 
+	return TRUE;
+}
+
+static gboolean check_valid_setup()
+{
+	GtkTreeIter iter;
+	int j = 0;
+	gboolean loop, enabled;
+	char warning_text[100];
+	char *ch_names[2];
+
+	loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(channel_list_store), &iter);
+	while (loop) {
+		gtk_tree_model_get(GTK_TREE_MODEL(channel_list_store), &iter, 1, &enabled, -1);
+		if (enabled)
+			j++;
+		loop = gtk_tree_model_iter_next(GTK_TREE_MODEL (channel_list_store), &iter);
+	}
+	
+	/* Additional validation rules provided by the plugin of the device */
+	if (plugin_setup_validation_fct)
+		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)) || 
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(constellation_radio)))
+			if (j == 2)
+				if(!(*plugin_setup_validation_fct)(channels, num_channels, ch_names)) {
+					snprintf(warning_text, sizeof(warning_text),
+						"Combination bewteen %s and %s is invalid", ch_names[0], ch_names[1]);
+					gtk_widget_set_tooltip_text(capture_button, warning_text);
+					goto capture_button_err;
+				}
+		
+	
+	/* Basic validation rules */
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
+		if (j != 2 && j != 1) {
+			gtk_widget_set_tooltip_text(capture_button, "FFT needs 2 channels or less");
+			goto capture_button_err;
+		} else {
+			goto reset_capture_button;
+		}
+	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(constellation_radio))) {
+		if (j != 2) {
+			gtk_widget_set_tooltip_text(capture_button, "Constellation needs 2 channels");
+			goto capture_button_err;
+		} else {
+			goto reset_capture_button;
+		}
+	} else {
+		/* time domain */
+		if (j == 0) {
+			gtk_widget_set_tooltip_text(capture_button, "No channels are enabled");
+			goto capture_button_err;
+		}
+		goto reset_capture_button;
+	}
+
+capture_button_err:
+	g_object_set(capture_button, "stock-id", "gtk-dialog-warning", NULL);
+	if (capture_button_hid) {
+		g_signal_handler_disconnect(capture_button, capture_button_hid);
+		deactivate_capture_btn_flag = 1;
+	}
+	capture_button_hid = 0;
+
+	return false;
+
+reset_capture_button:
+	g_object_set(capture_button, "stock-id", "gtk-media-play", NULL);
+	gtk_widget_set_tooltip_text(capture_button, "Capture / Stop");
+	if (!capture_button_hid) {
+		capture_button_hid = g_signal_connect(capture_button, "toggled",
+				G_CALLBACK(capture_button_clicked), NULL);
+		deactivate_capture_btn_flag = 0;
+	}
+	
+	return false;
+}
+
+gboolean time_to_samples(GBinding *binding, const GValue *source_val,
+	GValue *target_val, gpointer data)
+{
+	gdouble time;
+	gdouble samples;
+
+	time = g_value_get_double(source_val);
+	/* Microseconds to seconds */
+	time /= 1000000.0;
+	samples = time * adc_freq_raw;
+	if (samples < 10)
+		samples = 10;
+	else if (samples > 1000000)
+		samples = 1000000;
+	g_value_set_double(target_val, samples);
+	
+	return TRUE;
+}
+
+gboolean samples_to_time(GBinding *binding, const GValue *source_val,
+	GValue *target_val, gpointer data)
+{
+	gdouble time;
+	gdouble samples;
+	
+	samples = g_value_get_double(source_val);
+	time = samples / adc_freq_raw;
+	/* Seconds to microseconds */
+	time *= 1000000;
+	g_value_set_double(target_val, time);
+	
 	return TRUE;
 }
 
@@ -1530,7 +1648,8 @@ void application_quit (void)
 		buffer_close(buffer_fd);
 		buffer_fd = -1;
 	}
-
+	free_setup_check_fct_list();
+	
 	gtk_main_quit();
 }
 
@@ -1574,6 +1693,7 @@ static void init_application (void)
 
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
 	capture_graph = GTK_WIDGET(gtk_builder_get_object(builder, "display_capture"));
+	time_interval_widget = GTK_WIDGET(gtk_builder_get_object(builder, "time_interval"));
 	sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
@@ -1591,7 +1711,7 @@ static void init_application (void)
 	hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
 	marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	plot_type = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type"));
-	warn_sign= GTK_WIDGET(gtk_builder_get_object(builder, "image_warning_sign"));
+	time_unit_lbl = GTK_WIDGET(gtk_builder_get_object(builder, "time_unit_label"));
 	
 	channel_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "channel_list"));
 	g_builder_connect_signal(builder, "channel_toggle", "toggled",
@@ -1611,10 +1731,19 @@ static void init_application (void)
 	g_object_bind_property(fft_radio, "active", tmp, "visible", 0);
 	g_object_bind_property(fft_radio, "active", fft_avg_widget, "visible", 0);
 	g_object_bind_property(fft_radio, "active", fft_pwr_offset_widget, "visible", 0);
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset_label"));
+	g_object_bind_property(fft_radio, "active", tmp, "visible", 0);
+
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "time_interval_label"));
+	g_object_bind_property(time_radio, "active", tmp, "visible", 0);
+	g_object_bind_property(time_radio, "active", time_interval_widget, "visible", 0);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_label"));
 	g_object_bind_property(fft_radio, "active", tmp, "visible", G_BINDING_INVERT_BOOLEAN);
 	g_object_bind_property(fft_radio, "active", sample_count_widget, "visible", G_BINDING_INVERT_BOOLEAN);
+	
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "time_unit_label"));
+	g_object_bind_property(time_radio, "active", tmp, "visible", 0);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type_label"));
 	g_object_bind_property(fft_radio, "active", tmp, "visible", G_BINDING_INVERT_BOOLEAN);
@@ -1635,8 +1764,6 @@ static void init_application (void)
 
 	gtk_widget_set_size_request(table, 600, 600);
 
-	g_builder_connect_signal(builder, "capture_button", "toggled",
-		G_CALLBACK(capture_button_clicked), NULL);
 	g_builder_connect_signal(builder, "zoom_in", "clicked",
 		G_CALLBACK(zoom_in), databox);
 	g_builder_connect_signal(builder, "zoom_out", "clicked",
@@ -1647,7 +1774,27 @@ static void init_application (void)
 		G_CALLBACK(show_grid_toggled), databox);
 	g_signal_connect(enable_auto_scale, "toggled",
 		G_CALLBACK(enable_auto_scale_cb), NULL);
+	
+	g_builder_connect_signal(builder, "type", "released",
+		G_CALLBACK(check_valid_setup), NULL);
+	g_builder_connect_signal(builder, "type", "key-release-event",
+		G_CALLBACK(check_valid_setup), NULL);
+	g_builder_connect_signal(builder, "type_fft", "released",
+		G_CALLBACK(check_valid_setup), NULL);
+	g_builder_connect_signal(builder, "type_fft", "key-release-event",
+		G_CALLBACK(check_valid_setup), NULL);
+	g_builder_connect_signal(builder, "type_constellation", "released",
+		G_CALLBACK(check_valid_setup), NULL);
+	g_builder_connect_signal(builder, "type_constellation", "key-release-event",
+		G_CALLBACK(check_valid_setup), NULL);
+	g_builder_connect_signal(builder, "channel_list_view", "button_release_event",
+		G_CALLBACK(check_valid_setup), NULL);
+	g_builder_connect_signal(builder, "channel_list_view", "key-release-event",
+		G_CALLBACK(check_valid_setup), NULL);
 
+	capture_button_hid = g_signal_connect(capture_button, "toggled",
+		G_CALLBACK(capture_button_clicked), NULL);
+		
 	g_signal_connect(G_OBJECT(window), "destroy",
 			G_CALLBACK(application_quit), NULL);
 
@@ -1656,11 +1803,30 @@ static void init_application (void)
 	g_builder_bind_property(builder, "capture_button", "active",
 			"input_device_list", "sensitive", G_BINDING_INVERT_BOOLEAN);
 
-	g_object_bind_property_full(capture_button, "active", capture_button,
-			"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
+	g_builder_bind_property(builder, "capture_button", "active",
+			"type", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
+			"type_fft", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
+			"type_constellation", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
+			"fft_size", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
+			"plot_type", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
+			"sample_count", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
+			"time_interval", "sensitive", G_BINDING_INVERT_BOOLEAN);
+ 
+	capture_button_bind = g_object_bind_property_full(capture_button, "active", capture_button,
+ 			"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
+ 	g_object_bind_property_full(time_interval_widget, "value", sample_count_widget,
+		"value", G_BINDING_BIDIRECTIONAL, time_to_samples, samples_to_time, NULL, NULL);
 
 	init_device_list();
 	load_plugins(notebook);
+	plugin_setup_validation_fct = find_setup_check_fct_by_devname(current_device);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(sample_count_widget), 500);
 	rx_update_labels();
 
 	gtk_widget_show(window);

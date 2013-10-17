@@ -22,6 +22,8 @@ void trigger_dialog_init(GtkBuilder *builder);
 void trigger_update_current_device(void);
 void application_quit (void);
 
+void add_ch_setup_check_fct(char * device_name, void *fp);
+
 int plugin_data_capture_size(void);
 int plugin_data_capture(void *buf);
 int plugin_data_capture_num_active_channels(void);
