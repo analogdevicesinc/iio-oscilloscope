@@ -1815,6 +1815,8 @@ static void init_application (void)
 			"plot_type", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
 			"sample_count", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
+			"time_interval", "sensitive", G_BINDING_INVERT_BOOLEAN);
  
 	capture_button_bind = g_object_bind_property_full(capture_button, "active", capture_button,
  			"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
@@ -1824,6 +1826,7 @@ static void init_application (void)
 	init_device_list();
 	load_plugins(notebook);
 	plugin_setup_validation_fct = find_setup_check_fct_by_devname(current_device);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(sample_count_widget), 500);
 	rx_update_labels();
 
 	gtk_widget_show(window);
