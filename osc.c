@@ -30,7 +30,7 @@
 extern char dev_dir_name[512];
 struct _device_list *device_list = NULL;
 unsigned num_devices = 0;
-gint capture_function_id = 0;
+gint capture_function = 0;
 static GList *plot_list = NULL;
 static const char *current_device;
 static int num_capturing_plots;
@@ -680,7 +680,7 @@ static void load_plugins(GtkWidget *notebook)
 	}
 }
 
-static gboolean capture_function(void)
+static gboolean capture_proccess(void)
 {
 	unsigned int n;
 	int ret;
@@ -716,7 +716,7 @@ static gboolean capture_function(void)
 	
 	update_all_plots();
 	if (stop_capture == TRUE)
-		capture_function_id = 0;
+		capture_function = 0;
 	
 	return !stop_capture;
 }
@@ -783,12 +783,12 @@ static int capture_setup(void)
 
 static void capture_start(void)
 {
-	if (capture_function_id) {
+	if (capture_function) {
 		stop_capture = FALSE;
 	}
 	else {
 		stop_capture = FALSE;
-		capture_function_id = g_timeout_add(50, (GSourceFunc) capture_function, NULL);
+		capture_function = g_timeout_add(50, (GSourceFunc) capture_proccess, NULL);
 	}
 }
 
