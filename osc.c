@@ -37,6 +37,7 @@ extern char dev_dir_name[512];
 static gfloat *X = NULL;
 static gfloat *fft_channel = NULL;
 static gfloat fft_corr = 0.0;
+gfloat plugin_fft_corr = 0.0;
 
 gint capture_function = 0;
 static int buffer_fd = -1;
@@ -701,8 +702,7 @@ static void do_fft(struct buffer *buf)
 
 		mag = 10 * log10((out[j][0] * out[j][0] +
 				out[j][1] * out[j][1]) / (m * m)) +
-			fft_corr +
-			pwr_offset;
+			fft_corr + pwr_offset + plugin_fft_corr;
 
 		/* it's better for performance to have seperate loops,
 		 * rather than do these tests inside the loop, but it makes
@@ -815,14 +815,14 @@ static void fft_update_scale(void)
 
 	gtk_databox_set_total_limits(GTK_DATABOX(databox), -5.0 - corr, adc_freq / 2.0 + 5.0, 0.0, -75.0);
 	do_a_rescale_flag = 1;
-	
+
 }
 
 static int fft_capture_setup(void)
 {
 	int i;
 	char buf[10];
-	
+
 	num_samples = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
 
 	data_buffer.size = num_samples * bytes_per_sample * num_active_channels;
@@ -911,9 +911,9 @@ static int time_capture_setup(void)
 	static int prev_num_active_ch = 0;
 
 	is_constellation = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
-	
+
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
-	
+
 	num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(sample_count_widget));
 	data_buffer.size = num_samples * bytes_per_sample;
 
@@ -1100,12 +1100,12 @@ void time_interval_adjust(void)
 	GtkAdjustment *adj;
 	gdouble min_time;
 	gdouble max_time;
-	
+
 	adj = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(time_interval_widget));
-	
+
 	min_time = (SAMPLE_COUNT_MIN_VALUE / adc_freq_raw) * 1000000;
 	max_time = (SAMPLE_COUNT_MAX_VALUE / adc_freq_raw) * 1000000;
-	
+
 	gtk_adjustment_set_lower(adj, min_time);
 	gtk_adjustment_set_upper(adj, max_time);
 }
@@ -1133,7 +1133,7 @@ void rx_update_labels(void)
 	snprintf(buf, sizeof(buf), "%.3f %sSPS", adc_freq, adc_scale);
 
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
-		
+
 	if (!set_dev_paths("adf4351-rx-lpc"))
 		read_devattr_double("out_altvoltage0_frequency", &lo_freq);
 	else if (!set_dev_paths("ad9361-phy"));
@@ -1387,9 +1387,9 @@ struct plugin_check_fct {
 };
 
 void add_ch_setup_check_fct(char *device_name, void *fp)
-{	
+{
 	int n;
-	
+
 	setup_check_functions = (struct plugin_check_fct *)g_renew(struct plugin_check_fct, setup_check_functions, ++num_check_fcts);
 	n = num_check_fcts - 1;
 	setup_check_functions[n].fct_pointer = fp;
@@ -1400,7 +1400,7 @@ void add_ch_setup_check_fct(char *device_name, void *fp)
 void *find_setup_check_fct_by_devname(const char *dev_name)
 {
 	int i;
-	
+
 	for (i = 0; i < num_check_fcts; i++)
 		if (strcmp(dev_name, setup_check_functions[i].dev_name) == 0)
 			return setup_check_functions[i].fct_pointer;
@@ -1411,7 +1411,7 @@ void *find_setup_check_fct_by_devname(const char *dev_name)
 void free_setup_check_fct_list(void)
 {
 	int i;
-	
+
 	for (i = 0; i < num_check_fcts; i++) {
 		g_free(setup_check_functions[i].dev_name);
 	}
@@ -1519,7 +1519,7 @@ static gboolean capture_button_icon_transform(GBinding *binding,
 {
 	if (deactivate_capture_btn_flag == 1)
 		return FALSE;
-	
+
 	if (g_value_get_boolean(source_value))
 		g_value_set_static_string(target_value, "gtk-stop");
 	else
@@ -1543,10 +1543,10 @@ static gboolean check_valid_setup()
 			j++;
 		loop = gtk_tree_model_iter_next(GTK_TREE_MODEL (channel_list_store), &iter);
 	}
-	
+
 	/* Additional validation rules provided by the plugin of the device */
 	if (plugin_setup_validation_fct)
-		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)) || 
+		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)) ||
 			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(constellation_radio)))
 			if (j == 2)
 				if(!(*plugin_setup_validation_fct)(channels, num_channels, ch_names)) {
@@ -1555,8 +1555,8 @@ static gboolean check_valid_setup()
 					gtk_widget_set_tooltip_text(capture_button, warning_text);
 					goto capture_button_err;
 				}
-		
-	
+
+
 	/* Basic validation rules */
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
 		if (j != 2 && j != 1) {
@@ -1599,7 +1599,7 @@ reset_capture_button:
 				G_CALLBACK(capture_button_clicked), NULL);
 		deactivate_capture_btn_flag = 0;
 	}
-	
+
 	return false;
 }
 
@@ -1618,7 +1618,7 @@ gboolean time_to_samples(GBinding *binding, const GValue *source_val,
 	else if (samples > 1000000)
 		samples = 1000000;
 	g_value_set_double(target_val, samples);
-	
+
 	return TRUE;
 }
 
@@ -1627,13 +1627,13 @@ gboolean samples_to_time(GBinding *binding, const GValue *source_val,
 {
 	gdouble time;
 	gdouble samples;
-	
+
 	samples = g_value_get_double(source_val);
 	time = samples / adc_freq_raw;
 	/* Seconds to microseconds */
 	time *= 1000000;
 	g_value_set_double(target_val, time);
-	
+
 	return TRUE;
 }
 
@@ -1649,7 +1649,7 @@ void application_quit (void)
 		buffer_fd = -1;
 	}
 	free_setup_check_fct_list();
-	
+
 	gtk_main_quit();
 }
 
@@ -1712,7 +1712,7 @@ static void init_application (void)
 	marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	plot_type = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type"));
 	time_unit_lbl = GTK_WIDGET(gtk_builder_get_object(builder, "time_unit_label"));
-	
+
 	channel_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "channel_list"));
 	g_builder_connect_signal(builder, "channel_toggle", "toggled",
 		G_CALLBACK(channel_toggled), channel_list_store);
@@ -1741,7 +1741,7 @@ static void init_application (void)
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_label"));
 	g_object_bind_property(fft_radio, "active", tmp, "visible", G_BINDING_INVERT_BOOLEAN);
 	g_object_bind_property(fft_radio, "active", sample_count_widget, "visible", G_BINDING_INVERT_BOOLEAN);
-	
+
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "time_unit_label"));
 	g_object_bind_property(time_radio, "active", tmp, "visible", 0);
 
@@ -1774,7 +1774,7 @@ static void init_application (void)
 		G_CALLBACK(show_grid_toggled), databox);
 	g_signal_connect(enable_auto_scale, "toggled",
 		G_CALLBACK(enable_auto_scale_cb), NULL);
-	
+
 	g_builder_connect_signal(builder, "type", "released",
 		G_CALLBACK(check_valid_setup), NULL);
 	g_builder_connect_signal(builder, "type", "key-release-event",
@@ -1794,7 +1794,7 @@ static void init_application (void)
 
 	capture_button_hid = g_signal_connect(capture_button, "toggled",
 		G_CALLBACK(capture_button_clicked), NULL);
-		
+
 	g_signal_connect(G_OBJECT(window), "destroy",
 			G_CALLBACK(application_quit), NULL);
 
@@ -1817,7 +1817,7 @@ static void init_application (void)
 			"sample_count", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
 			"time_interval", "sensitive", G_BINDING_INVERT_BOOLEAN);
- 
+
 	capture_button_bind = g_object_bind_property_full(capture_button, "active", capture_button,
  			"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
  	g_object_bind_property_full(time_interval_widget, "value", sample_count_widget,
