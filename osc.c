@@ -29,6 +29,9 @@
 #include "osc_plugin.h"
 #include "osc.h"
 
+#define SAMPLE_COUNT_MIN_VALUE 10
+#define SAMPLE_COUNT_MAX_VALUE 1000000ul
+
 extern char dev_dir_name[512];
 
 static gfloat *X = NULL;
@@ -50,6 +53,7 @@ static unsigned int current_sample;
 static unsigned int bytes_per_sample;
 
 static GtkWidget *databox;
+static GtkWidget *time_interval_widget;
 static GtkWidget *sample_count_widget;
 static GtkWidget *fft_size_widget, *fft_avg_widget, *fft_pwr_offset_widget;
 static GtkWidget *fft_radio, *time_radio, *constellation_radio;
@@ -59,6 +63,7 @@ static GtkWidget *device_list_widget;
 static GtkWidget *capture_button;
 static GtkWidget *hor_scale;
 static GtkWidget *plot_type;
+static GtkWidget *time_unit_lbl;
 static gulong capture_button_hid = 0;
 static GBinding *capture_button_bind;
 
@@ -82,6 +87,7 @@ static GtkWidget *marker_label;
 static GtkListStore *channel_list_store;
 
 double adc_freq = 246760000.0;
+static double adc_freq_raw;
 static double lo_freq = 0.0;
 char adc_scale[10];
 int do_a_rescale_flag;
@@ -904,7 +910,7 @@ static int time_capture_setup(void)
 	is_constellation = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
 	
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
-
+	
 	num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(sample_count_widget));
 	data_buffer.size = num_samples * bytes_per_sample;
 
@@ -1086,12 +1092,28 @@ static double read_sampling_frequency(void)
 	return freq;
 }
 
+void time_interval_adjust(void)
+{
+	GtkAdjustment *adj;
+	gdouble min_time;
+	gdouble max_time;
+	
+	adj = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(time_interval_widget));
+	
+	min_time = (SAMPLE_COUNT_MIN_VALUE / adc_freq_raw) * 1000000;
+	max_time = (SAMPLE_COUNT_MAX_VALUE / adc_freq_raw) * 1000000;
+	
+	gtk_adjustment_set_lower(adj, min_time);
+	gtk_adjustment_set_upper(adj, max_time);
+}
+
 void rx_update_labels(void)
 {
 	char buf[20];
 
 	adc_freq = read_sampling_frequency();
-
+	adc_freq_raw = adc_freq;
+	time_interval_adjust();
 	if (adc_freq >= 1000000) {
 		sprintf(adc_scale, "M");
 		adc_freq /= 1000000;
@@ -1108,7 +1130,7 @@ void rx_update_labels(void)
 	snprintf(buf, sizeof(buf), "%.3f %sSPS", adc_freq, adc_scale);
 
 	gtk_label_set_text(GTK_LABEL(adc_freq_label), buf);
-
+		
 	if (!set_dev_paths("adf4351-rx-lpc"))
 		read_devattr_double("out_altvoltage0_frequency", &lo_freq);
 	else if (!set_dev_paths("ad9361-phy"));
@@ -1578,6 +1600,40 @@ reset_capture_button:
 	return false;
 }
 
+gboolean time_to_samples(GBinding *binding, const GValue *source_val,
+	GValue *target_val, gpointer data)
+{
+	gdouble time;
+	gdouble samples;
+
+	time = g_value_get_double(source_val);
+	/* Microseconds to seconds */
+	time /= 1000000.0;
+	samples = time * adc_freq_raw;
+	if (samples < 10)
+		samples = 10;
+	else if (samples > 1000000)
+		samples = 1000000;
+	g_value_set_double(target_val, samples);
+	
+	return TRUE;
+}
+
+gboolean samples_to_time(GBinding *binding, const GValue *source_val,
+	GValue *target_val, gpointer data)
+{
+	gdouble time;
+	gdouble samples;
+	
+	samples = g_value_get_double(source_val);
+	time = samples / adc_freq_raw;
+	/* Seconds to microseconds */
+	time *= 1000000;
+	g_value_set_double(target_val, time);
+	
+	return TRUE;
+}
+
 void application_quit (void)
 {
 	if (capture_function > 0) {
@@ -1634,6 +1690,7 @@ static void init_application (void)
 
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
 	capture_graph = GTK_WIDGET(gtk_builder_get_object(builder, "display_capture"));
+	time_interval_widget = GTK_WIDGET(gtk_builder_get_object(builder, "time_interval"));
 	sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
@@ -1651,6 +1708,7 @@ static void init_application (void)
 	hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
 	marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	plot_type = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type"));
+	time_unit_lbl = GTK_WIDGET(gtk_builder_get_object(builder, "time_unit_label"));
 	
 	channel_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "channel_list"));
 	g_builder_connect_signal(builder, "channel_toggle", "toggled",
@@ -1670,10 +1728,19 @@ static void init_application (void)
 	g_object_bind_property(fft_radio, "active", tmp, "visible", 0);
 	g_object_bind_property(fft_radio, "active", fft_avg_widget, "visible", 0);
 	g_object_bind_property(fft_radio, "active", fft_pwr_offset_widget, "visible", 0);
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset_label"));
+	g_object_bind_property(fft_radio, "active", tmp, "visible", 0);
+
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "time_interval_label"));
+	g_object_bind_property(time_radio, "active", tmp, "visible", 0);
+	g_object_bind_property(time_radio, "active", time_interval_widget, "visible", 0);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_label"));
 	g_object_bind_property(fft_radio, "active", tmp, "visible", G_BINDING_INVERT_BOOLEAN);
 	g_object_bind_property(fft_radio, "active", sample_count_widget, "visible", G_BINDING_INVERT_BOOLEAN);
+	
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "time_unit_label"));
+	g_object_bind_property(time_radio, "active", tmp, "visible", 0);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type_label"));
 	g_object_bind_property(fft_radio, "active", tmp, "visible", G_BINDING_INVERT_BOOLEAN);
@@ -1748,6 +1815,8 @@ static void init_application (void)
  
 	capture_button_bind = g_object_bind_property_full(capture_button, "active", capture_button,
  			"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
+ 	g_object_bind_property_full(time_interval_widget, "value", sample_count_widget,
+		"value", G_BINDING_BIDIRECTIONAL, time_to_samples, samples_to_time, NULL, NULL);
 
 	init_device_list();
 	load_plugins(notebook);
