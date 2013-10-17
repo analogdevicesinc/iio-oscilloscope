@@ -66,6 +66,8 @@ static GtkWidget *rx1_rssi;
 static GtkWidget *rx2_rssi;
 static GtkWidget *rx_path_rates;
 static GtkWidget *tx_path_rates;
+static GtkWidget *fir_filter_en_tx;
+static GtkWidget *enable_fir_filter_rx;
 
 /* Widgets for Receive Settings */
 static GtkWidget *dds_mode;
@@ -234,10 +236,42 @@ static void update_display (void *ptr)
 	}
 }
 
+void filter_fir_update(void)
+{
+	bool rx, tx;
+
+	set_dev_paths("ad9361-phy");
+	read_devattr_bool("in_voltage_filter_fir_en", &rx);
+	read_devattr_bool("out_voltage_filter_fir_en", &tx);
+
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx), rx);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx), tx);
+}
+
+void filter_fir_enable(void)
+{
+	bool rx, tx;
+
+	rx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx));
+	tx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx));
+
+	set_dev_paths("ad9361-phy");
+
+	if (rx == tx) {
+		write_devattr("in_out_voltage_filter_fir_en", rx ? "1" : "0");
+	} else {
+		write_devattr("out_voltage_filter_fir_en", tx ? "1" : "0");
+		write_devattr("in_voltage_filter_fir_en", rx ? "1" : "0");
+
+	}
+
+	filter_fir_update();
+}
 
 static void save_button_clicked(GtkButton *btn, gpointer data)
 {
 	iio_save_widgets(glb_widgets, num_glb);
+	filter_fir_enable();
 	iio_save_widgets(tx_widgets, num_tx);
 	iio_save_widgets(rx_widgets, num_rx);
 	rx_update_labels();
@@ -250,6 +284,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	iio_update_widgets(glb_widgets, num_glb);
 	iio_update_widgets(tx_widgets, num_tx);
 	iio_update_widgets(rx_widgets, num_rx);
+	filter_fir_update();
 	rx_update_labels();
 	glb_settings_update_labels();
 	rssi_update_labels();
@@ -1056,7 +1091,9 @@ static int fmcomms2_init(GtkWidget *notebook)
 	rx_gain_control_modes_rx2 = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_available_rx2"));
 	rx1_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx1"));
 	rx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx2"));
+	enable_fir_filter_rx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_rx"));
 	/* Transmit Chain */
+	fir_filter_en_tx = GTK_WIDGET(gtk_builder_get_object(builder, "fir_filter_en_tx"));
 	dds_mode = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode"));
 
 	dds1_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_freq"));
@@ -1189,9 +1226,6 @@ static int fmcomms2_init(GtkWidget *notebook)
 		"ad9361-phy", "out_altvoltage0_RX_LO_frequency", builder,
 		"rx_lo_freq", &mhz_scale);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage_filter_fir_en", builder,
-		"enable_fir_filter_rx", 0);
-	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage_quadrature_tracking_en", builder,
 		"quad", 0);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
@@ -1219,10 +1253,6 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_s64_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_altvoltage1_TX_LO_frequency", builder,
 		"tx_lo_freq", &mhz_scale);
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_voltage_filter_fir_en", builder,
-		"fir_filter_en_tx", 0);
-
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_frequency",
