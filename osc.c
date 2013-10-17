@@ -179,15 +179,13 @@ struct buffer {
 
 static bool is_oneshot_mode(void)
 {
-
-
 	if (strncmp(current_device, "cf-ad9", 5) == 0)
 		return true;
 
 	return false;
 }
 
-static int buffer_open(unsigned int length)
+static int buffer_open(unsigned int length, int flags)
 {
 	int ret;
 	int fd;
@@ -197,7 +195,7 @@ static int buffer_open(unsigned int length)
 
 	set_dev_paths(current_device);
 
-	fd = iio_buffer_open(true);
+	fd = iio_buffer_open(true, flags);
 	if (fd < 0) {
 		ret = -errno;
 		fprintf(stderr, "Failed to open buffer: %d\n", ret);
@@ -277,8 +275,12 @@ static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 			buf->size - buf->available);
 	if (ret == 0)
 		return 0;
-	if (ret < 0)
-		return ret;
+	if (ret < 0) {
+		if (errno == EAGAIN)
+			return 0;
+		else
+			return -errno;
+	}
 
 	buf->available += ret;
 
@@ -289,7 +291,7 @@ static int sample_iio_data_oneshot(struct buffer *buf)
 {
 	int fd, ret;
 
-	fd = buffer_open(buf->size);
+	fd = buffer_open(buf->size, 0);
 	if (fd < 0)
 		return fd;
 
@@ -754,8 +756,9 @@ static void do_fft(struct buffer *buf)
 			markX[j] = (gfloat)X[maxx[j]];
 			markY[j] = (gfloat)fft_channel[maxx[j]];
 
-			sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz\n",
-					j, markY[j], lo_freq + markX[j], adc_scale);
+			sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz%c",
+					j, markY[j], lo_freq + markX[j], adc_scale,
+					j != MAX_MARKERS ? '\n' : '\0');
 
 			if (j == 0) {
 				gtk_text_buffer_set_text(tbuf, text, -1);
@@ -1014,7 +1017,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			goto play_err;
 
 		if (!is_oneshot_mode()) {
-			buffer_fd = buffer_open(num_samples);
+			buffer_fd = buffer_open(num_samples, O_NONBLOCK);
 			if (buffer_fd < 0)
 				goto play_err;
 		}
