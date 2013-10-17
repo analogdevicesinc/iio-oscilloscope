@@ -955,7 +955,7 @@ Installed/Found IIO devices on this platform</property>
   </object>
   <object class="GtkWindow" id="main_menu">
     <property name="can_focus">False</property>
-    <property name="title" translatable="yes">ADI IIO oscilloscope</property>
+    <property name="title" translatable="yes">ADI IIO multi plot oscilloscope</property>
     <property name="default_width">640</property>
     <property name="default_height">480</property>
     <property name="icon_name">adi-osc</property>

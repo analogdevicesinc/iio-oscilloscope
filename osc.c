@@ -986,7 +986,7 @@ static void create_sample_count_dialogs(void)
 	for (i = 0; i < num_devices; i++) {
 		builder = gtk_builder_new();
 		if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL))
-			gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
+			gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "multi_plot_osc.glade", NULL);
 		
 		device_list[i].settings_dialog_builder = builder;
 		dialog = GTK_WIDGET(gtk_builder_get_object(builder, "Sample_count_dialog"));
@@ -1062,7 +1062,7 @@ static void init_application (void)
 	builder = gtk_builder_new();
 
 	if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL)) {
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
+		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "multi_plot_osc.glade", NULL);
 	} else {
 		GtkImage *logo;
 		GtkAboutDialog *about;

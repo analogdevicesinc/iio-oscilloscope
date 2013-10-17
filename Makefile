@@ -1,3 +1,4 @@
+TMP = temp_resources
 DESTDIR=/usr/local
 PREFIX=/usr/local
 
@@ -17,23 +18,28 @@ PLUGINS=\
 	plugins/AD5628_1.so \
 	plugins/AD7303.so
 
-all: osc $(PLUGINS)
+all: multiosc $(PLUGINS)
 
-osc: osc.c oscplot.c datatypes.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c xml_utils.c ./ini/ini.c 
+multiosc: osc.c oscplot.c datatypes.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c xml_utils.c ./ini/ini.c 
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -rdynamic -o $@
 
 %.so: %.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@
 
 install:
+	mkdir -p $(TMP)
+	cp ./*.glade ./$(TMP)
+	cp ./*.desktop ./$(TMP)
+	mv $(TMP)/osc.glade $(TMP)/multi_plot_osc.glade
+	mv $(TMP)/adi-osc.desktop $(TMP)/adi-multi_plot_osc.desktop
 	install -d $(DESTDIR)/bin
 	install -d $(DESTDIR)/share/osc/
 	install -d $(DESTDIR)/lib/osc/
 	install -d $(DESTDIR)/lib/osc/xmls
 	install -d $(DESTDIR)/lib/osc/filters
 	install -d $(DESTDIR)/lib/osc/waveforms
-	install ./osc $(DESTDIR)/bin/
-	install ./*.glade $(DESTDIR)/share/osc/
+	install ./multiosc $(DESTDIR)/bin/
+	install ./$(TMP)/*.glade $(DESTDIR)/share/osc/
 	install ./icons/ADIlogo.png $(DESTDIR)/share/osc/
 	install ./icons/IIOlogo.png $(DESTDIR)/share/osc/
 	install ./icons/osc128.png $(DESTDIR)/share/osc/
@@ -42,7 +48,7 @@ install:
 	install $(PLUGINS) $(DESTDIR)/lib/osc/
 	install ./xmls/* $(DESTDIR)/lib/osc/xmls
 	install ./filters/* $(DESTDIR)/lib/osc/filters
-	install ./waveforms/* $(DESTDIR)/lib/osc/waveforms
+#	install ./waveforms/* $(DESTDIR)/lib/osc/waveforms
 
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
 	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
@@ -50,7 +56,9 @@ install:
 	xdg-icon-resource install --noupdate --size 128 ./icons/osc128.png adi-osc
 	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc
 #	xdg-icon-resource install --size scalable ./osc.svg adi-osc
-	xdg-desktop-menu install adi-osc.desktop
-
+	xdg-desktop-menu install ./$(TMP)/adi-multi_plot_osc.desktop
+	
+	rm -r $(TMP)
+	
 clean:
-	rm -rf osc *.o plugins/*.so
+	rm -rf multi_plot_osc *.o plugins/*.so
