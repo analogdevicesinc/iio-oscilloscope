@@ -45,7 +45,7 @@ static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpoi
 	char *device, *elements, *start, *strt, *end, *next, *scale;
 	char buf[128], buf2[128], pretty[128];
 	gboolean loop, all = FALSE;
-	
+
 	gtk_tree_model_get_iter(GTK_TREE_MODEL (data), &iter, path);
 	gtk_tree_model_get(GTK_TREE_MODEL (data), &iter, 0, &device, 1, &enabled, -1);
 	enabled = !enabled;
@@ -56,7 +56,7 @@ static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpoi
 
 	while (loop) {
 		gtk_tree_model_get(GTK_TREE_MODEL (data), &iter, 0, &device, 1, &enabled, -1);
-		if (enabled && find_scan_elements(device, &elements)) {
+		if (enabled && find_scan_elements(device, &elements, ACCESS_NORM)) {
 			all = true;
 			scan_elements_sort(&elements);
 			scan_elements_insert(&elements, SCALE_TOKEN, "_raw");
@@ -89,7 +89,7 @@ static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpoi
 				}
 
 
-				/* if it doesn't start with "in_" or includes the scale, 
+				/* if it doesn't start with "in_" or includes the scale,
 				 * skip it */
 				if (strncmp("in_", buf, 3) || (strstr(buf, SCALE_TOKEN)))
 					continue;
@@ -162,7 +162,7 @@ static void init_device_list(void)
 		device = devices;
 		for (; num > 0; num--) {
 			if (!is_input_device(device)) {
-				if (find_scan_elements(device, &elements)) {
+				if (find_scan_elements(device, &elements, ACCESS_NORM)) {
 					if (strstr(elements, "in_")) {
 						gtk_list_store_append(device_list_store, &iter);
 						gtk_list_store_set(device_list_store, &iter, 0, device,  1, 0, -1);
@@ -210,14 +210,14 @@ static void dmm_update_thread(void)
 						read_devattr_double(scale, &sca);
 					else
 						sca = 1.0;
-	
+
 					if(strstr(name, "voltage"))
 						sprintf(tmp, "%s = %f Volts\n", name, value * sca / 1000.0);
 					else if (strstr(name, "temp"))
 						sprintf(tmp, "%s = %f Celsius\n", name, value * sca / 1000.0);
 					else
 						sprintf(tmp, "%s = %f\n", name, value * sca / 1000.0);
-	
+
 					gtk_text_buffer_insert(buf, &text_iter, tmp, -1);
 				}
 				loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(channel_list_store), &tree_iter);
