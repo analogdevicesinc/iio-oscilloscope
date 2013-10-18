@@ -68,4 +68,4 @@ install:
 	rm -r $(TMP)
 	
 clean:
-	rm -rf multi_plot_osc *.o plugins/*.so
+	rm -rf multiosc *.o plugins/*.so
