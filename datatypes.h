@@ -39,9 +39,13 @@ struct _fft_alg_data{
 	gfloat fft_corr;
 	double *in;
 	double *win;
+	unsigned int m;
+	fftw_complex *in_c;
 	fftw_complex *out;
 	fftw_plan plan_forward;
 	int cached_fft_size;
+	int cached_num_active_channels;
+	int num_active_channels;
 };
 
 struct _device_list {

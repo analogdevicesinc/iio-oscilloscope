@@ -75,12 +75,13 @@ static double win_hanning(int j, int n)
 
 static void do_fft(Transform *tr)
 {
+	struct extra_info *ch_info;
 	struct _fft_settings *settings = tr->settings;
 	struct _fft_alg_data *fft = &settings->fft_alg_data;
 	gfloat *in_data = *tr->in_data;
+	gfloat *in_data_c;
 	gfloat *out_data = tr->y_axis;
 	unsigned int fft_size = settings->fft_size;
-	unsigned int m = fft_size / 2;
 	int i, j, k;
 	int cnt;
 	gfloat mag;
@@ -91,30 +92,57 @@ static void do_fft(Transform *tr)
 	unsigned int maxx[MAX_MARKERS + 1];
 	gfloat maxY[MAX_MARKERS + 1];
 
-	if ((fft->cached_fft_size == -1) || (fft->cached_fft_size != fft_size)) {
+	if ((fft->cached_fft_size == -1) || (fft->cached_fft_size != fft_size) ||
+		(fft->cached_num_active_channels != fft->num_active_channels)) {
 
 		if (fft->cached_fft_size != -1) {
 			fftw_destroy_plan(fft->plan_forward);
-			fftw_free(fft->in);
 			fftw_free(fft->win);
 			fftw_free(fft->out);
+			if (fft->in != NULL)
+				fftw_free(fft->in);
+			if (fft->in_c != NULL)
+				fftw_free(fft->in_c);
+			fft->in_c = NULL;
+			fft->in = NULL;
+		}	
+
+		fft->win = fftw_malloc(sizeof(fftw_complex) * fft_size);
+		if (fft->num_active_channels == 2) {
+			fft->m = fft_size;
+			fft->in_c = fftw_malloc(sizeof(fftw_complex) * fft_size);
+			fft->in = NULL;
+			fft->out = fftw_malloc(sizeof(fftw_complex) * (fft->m + 1));
+			fft->plan_forward = fftw_plan_dft_1d(fft_size, fft->in_c, fft->out, FFTW_FORWARD, FFTW_ESTIMATE);
+		} else {
+			fft->m = fft_size / 2;
+			fft->out = fftw_malloc(sizeof(fftw_complex) * (fft->m + 1));
+			fft->in_c = NULL;
+			fft->in = fftw_malloc(sizeof(double) * fft_size);
+			fft->plan_forward = fftw_plan_dft_r2c_1d(fft_size, fft->in, fft->out, FFTW_ESTIMATE);
 		}
-
-		fft->in = fftw_malloc(sizeof(double) * fft_size);
-		fft->win = fftw_malloc(sizeof(double) * fft_size);
-		fft->out = fftw_malloc(sizeof(fftw_complex) * (m + 1));
-		fft->plan_forward = fftw_plan_dft_r2c_1d(fft_size, fft->in, fft->out, FFTW_ESTIMATE);
-
+		
 		for (i = 0; i < fft_size; i ++)
 			fft->win[i] = win_hanning(i, fft_size);
 
 		fft->cached_fft_size = fft_size;
+		fft->cached_num_active_channels = fft->num_active_channels;
 	}
-
-	for (cnt = 0, i = 0; i < fft_size; i++) {
-		/* normalization and scaling see fft_corr */
-		fft->in[cnt] = in_data[i] * fft->win[cnt];
-		cnt++;
+	
+	if (fft->num_active_channels == 2) {
+		ch_info = tr->channel_parent2->extra_field;
+		in_data_c = ch_info->data_ref;
+		for (cnt = 0, i = 0; cnt < fft_size; cnt++) {
+			/* normalization and scaling see fft_corr */
+			fft->in_c[cnt][0] = in_data[i] * fft->win[cnt];
+			fft->in_c[cnt][1] = in_data_c[i++] * fft->win[cnt];
+		}
+	} else {
+		for (cnt = 0, i = 0; i < fft_size; i++) {
+			/* normalization and scaling see fft_corr */
+			fft->in[cnt] = in_data[i] * fft->win[cnt];
+			cnt++;
+		}
 	}
 
 	fftw_execute(fft->plan_forward);
@@ -129,9 +157,18 @@ static void do_fft(Transform *tr)
 		maxY[j] = -100.0f;
 	}
 
-	for (i = 0; i < m; ++i) {
+	for (i = 0; i < fft->m; ++i) {
+		if (fft->num_active_channels == 2) {
+			if (i < (fft->m / 2))
+				j = i + (fft->m / 2);
+			else
+				j = i - (fft->m / 2);
+		} else {
+				j = i;
+		}
+		
 		mag = 10 * log10((fft->out[i][0] * fft->out[i][0] +
-				fft->out[i][1] * fft->out[i][1]) / (m * m)) +
+				fft->out[i][1] * fft->out[i][1]) / (fft->m * fft->m)) +
 			fft->fft_corr +
 			pwr_offset;
 		/* it's better for performance to have seperate loops,
@@ -229,16 +266,22 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 	struct extra_info *ch_info = tr->channel_parent->extra_field;
 	struct _fft_settings *settings = tr->settings;
 	struct _device_list *device = ch_info->device_parent;
-	unsigned axis_length = settings->fft_size / 2;
+	unsigned axis_length;
 	unsigned num_samples = device->sample_count;
+	double corr;
 	int i;
 
-	if (init_transform) {		
+	if (init_transform) {
+		axis_length = settings->fft_size * settings->fft_alg_data.num_active_channels / 2;
 		Transform_resize_x_axis(tr, axis_length);
 		Transform_resize_y_axis(tr, axis_length);
 		tr->y_axis_size = axis_length;
+		if (settings->fft_alg_data.num_active_channels == 2)
+			corr = device->adc_freq / 2;
+		else
+			corr = 0;
 		for (i = 0; i < axis_length; i++) {
-			tr->x_axis[i] = i * device->adc_freq / num_samples;
+			tr->x_axis[i] = i * device->adc_freq / num_samples - corr;
 			tr->y_axis[i] = FLT_MAX;
 		}
 		

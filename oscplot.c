@@ -52,7 +52,8 @@ enum {
 	NO_TRANSFORM_TYPE,
 	TIME_TRANSFORM,
 	FFT_TRANSFORM,
-	CONSTELLATION_TRANSFORM
+	CONSTELLATION_TRANSFORM,
+	COMPLEX_FFT_TRANSFORM
 };
 
 /* Columns of the device treestore */
@@ -235,14 +236,19 @@ void osc_plot_update_rx_lbl(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 	TrList *tr_list = priv->transform_list;
+	double corr;
 	int i;
 	
-	if (priv->active_transform_type == FFT_TRANSFORM) {
+	if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
 		gtk_label_set_text(GTK_LABEL(priv->hor_scale), priv->current_device->adc_scale);
 		/* In FFT mode we need to scale the x-axis according to the selected sampling freequency */
 		for (i = 0; i < tr_list->size; i++)
 			Transform_setup(tr_list->transforms[i]);
-		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), 0.0, priv->current_device->adc_freq / 2.0, 0.0, -75.0);
+		if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM)
+			corr = priv->current_device->adc_freq / 2.0;
+		else
+			corr = 0;
+		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -5.0 - corr, priv->current_device->adc_freq / 2.0 + 5.0, 0.0, -75.0);
 		priv->do_a_rescale_flag = 1;
 	} else {
 		gtk_label_set_text(GTK_LABEL(priv->hor_scale), "Samples");
@@ -322,7 +328,7 @@ static void add_row_child(OscPlot *plot, GtkTreeIter *parent, char *child_name, 
 		TRANSFORM_ACTIVE, 1, ELEMENT_REFERENCE, tr, COLOR_REF, (GdkColor *)tr->graph_color, -1);
 }
 
-static void time_settings_init(struct _time_settings *settings)
+static void time_settings_init(Transform *tr, struct _time_settings *settings)
 {
 	if (settings) {
 		settings->num_samples = 400;
@@ -334,7 +340,7 @@ static void time_settings_init(struct _time_settings *settings)
 	}
 }
 
-static void fft_settings_init(struct _fft_settings *settings)
+static void fft_settings_init(Transform *tr, struct _fft_settings *settings)
 {
 	int i;
 	
@@ -343,12 +349,17 @@ static void fft_settings_init(struct _fft_settings *settings)
 		settings->fft_avg = 1;
 		settings->fft_pwr_off = 0.0;
 		settings->fft_alg_data.cached_fft_size = -1;
+		settings->fft_alg_data.cached_num_active_channels = -1;
+		if (tr->channel_parent2 != NULL)
+			settings->fft_alg_data.num_active_channels = 2;
+		else
+			settings->fft_alg_data.num_active_channels = 1;
 		for (i = 0; i < MAX_MARKERS + 2; i++)
 			settings->marker[i] = NULL;
 	}
 }
 
-static void constellation_settings_init(struct _constellation_settings *settings)
+static void constellation_settings_init(Transform *tr, struct _constellation_settings *settings)
 {
 	if (settings) {
 		settings->num_samples = 400;
@@ -453,24 +464,33 @@ static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_p
 	if (!strcmp(tr_name, "TIME")) {
 		Transform_attach_function(transform, time_transform_function);
 		time_settings = (struct _time_settings *)malloc(sizeof(struct _time_settings));
-		time_settings_init(time_settings);
+		time_settings_init(transform, time_settings);
 		Transform_attach_settings(transform, time_settings);
 		priv->active_transform_type = TIME_TRANSFORM;
 	} else if (!strcmp(tr_name, "FFT")) {
 		Transform_attach_function(transform, fft_transform_function);
 		fft_settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
-		fft_settings_init(fft_settings);
+		fft_settings_init(transform, fft_settings);
 		Transform_attach_settings(transform, fft_settings);
 		priv->active_transform_type = FFT_TRANSFORM;
 	} else if (!strcmp(tr_name, "CONSTELLATION")) {
 		transform->channel_parent2 = ch1;
 		Transform_attach_function(transform, constellation_transform_function);
 		constellation_settings = (struct _constellation_settings *)malloc(sizeof(struct _constellation_settings));
-		constellation_settings_init(constellation_settings);
+		constellation_settings_init(transform, constellation_settings);
 		Transform_attach_settings(transform, constellation_settings);
 		ch_info = ch1->extra_field;
 		ch_info->shadow_of_enabled++;
 		priv->active_transform_type = CONSTELLATION_TRANSFORM;
+	} else if (!strcmp(tr_name, "COMPLEX FFT")) {
+		transform->channel_parent2 = ch1;
+		Transform_attach_function(transform, fft_transform_function);
+		fft_settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
+		fft_settings_init(transform, fft_settings);
+		Transform_attach_settings(transform, fft_settings);
+		ch_info = ch1->extra_field;
+		ch_info->shadow_of_enabled++;
+		priv->active_transform_type = COMPLEX_FFT_TRANSFORM;
 	}
 	TrList_add_transform(list, transform);
 	
@@ -484,7 +504,8 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	struct extra_info *ch_info = tr->channel_parent->extra_field;
 
 	ch_info->shadow_of_enabled--;
-	if (priv->active_transform_type == CONSTELLATION_TRANSFORM) {
+	if (priv->active_transform_type == CONSTELLATION_TRANSFORM ||
+		priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
 		ch_info = tr->channel_parent2->extra_field;
 		ch_info->shadow_of_enabled--;
 	}
@@ -949,7 +970,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 	gboolean is_transform;
 	gpointer *ref;
 	short i;
-	static const char *transforms[3] = {"TIME", "FFT", "CONSTELLATION"};
+	static const char *transforms[4] = {"TIME", "FFT", "CONSTELLATION", "COMPLEX FFT"};
 	GList *path;
 	
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview));
@@ -983,14 +1004,31 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 			gtk_tree_model_get(model, &iter, IS_CHANNEL, &is_channel, ELEMENT_REFERENCE, &ref, -1);
 			if (is_channel == FALSE)
 				return;	
-			if ((priv->active_transform_type == NO_TRANSFORM_TYPE) ||
-				(priv->active_transform_type == CONSTELLATION_TRANSFORM)) {
-				menuitem = gtk_menu_item_new_with_label(transforms[2]);
-				g_signal_connect(menuitem, "activate",
-					(GCallback) add_transform_to_tree_store, data);
-				gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-				goto show_menu;
+			switch (priv->active_transform_type) {
+				case NO_TRANSFORM_TYPE:
+					for (i = 2; i < 4; i++) {
+						menuitem = gtk_menu_item_new_with_label(transforms[i]);
+						g_signal_connect(menuitem, "activate",
+							(GCallback) add_transform_to_tree_store, data);
+						gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+					}
+					break;
+				case CONSTELLATION_TRANSFORM:
+					menuitem = gtk_menu_item_new_with_label(transforms[2]);
+					g_signal_connect(menuitem, "activate",
+						(GCallback) add_transform_to_tree_store, data);
+					gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+					break;
+				case COMPLEX_FFT_TRANSFORM:
+					menuitem = gtk_menu_item_new_with_label(transforms[3]);
+					g_signal_connect(menuitem, "activate",
+						(GCallback) add_transform_to_tree_store, data);
+					gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+					break;
+				default:
+					return;
 			}
+			goto show_menu;
 		} else {
 			/* Show all transform options when no other transform were added to this plot */
 			if (priv->active_transform_type == NO_TRANSFORM_TYPE) {
@@ -1002,7 +1040,10 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 				}
 				goto show_menu;
 			} else {
+				/* Add menu display restrictions */
 				if (priv->active_transform_type == CONSTELLATION_TRANSFORM)
+					return;
+				if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM)
 					return;
 					
 				struct _device_list *device = GET_CHANNEL_PARENT(ref);
@@ -1026,7 +1067,8 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 			g_signal_connect(menuitem, "activate",
 				(GCallback) show_time_settings, data);
 			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
-		} else if (priv->active_transform_type == FFT_TRANSFORM) {
+		} else if (priv->active_transform_type == FFT_TRANSFORM ||
+				priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
 			menuitem = gtk_menu_item_new_with_label("Settings");
 			g_signal_connect(menuitem, "activate",
 				(GCallback) show_fft_settings, data);
@@ -1041,6 +1083,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 				(GCallback) show_constellation_settings, data);
 			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 		}
+		
 		menuitem = gtk_menu_item_new_with_label("Remove");
 		g_signal_connect(menuitem, "activate",
 			(GCallback) remove_transform_from_tree_store, data);
@@ -1306,7 +1349,7 @@ static void check_transform_settings(Transform *tr, int transform_type)
 	if (transform_type == TIME_TRANSFORM) {
 		if (((struct _time_settings *)tr->settings)->num_samples > sample_count)
 			((struct _time_settings *)tr->settings)->num_samples = sample_count;
-	} else if(transform_type == FFT_TRANSFORM) {
+	} else if(transform_type == FFT_TRANSFORM || transform_type == COMPLEX_FFT_TRANSFORM) {
 		while (((struct _fft_settings *)tr->settings)->fft_size > sample_count)
 			((struct _fft_settings *)tr->settings)->fft_size /= 2;
 	} else if(transform_type == CONSTELLATION_TRANSFORM) {
@@ -1352,7 +1395,7 @@ static void plot_setup(OscPlot *plot)
 		if (ch_info->device_parent->adc_freq > max_adc_freq)
 			max_adc_freq = ch_info->device_parent->adc_freq;
 			
-		if (priv->active_transform_type == FFT_TRANSFORM)
+		if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM)
 			if (transform->has_the_marker)
 				add_markers(plot, transform);
 		
@@ -1577,7 +1620,7 @@ static void add_grid(OscPlot *plot)
 	grid = gtk_databox_grid_array_new (y, x, gridy, gridx, &color_grid, 1);
 	*/
 
-	if (priv->active_transform_type == FFT_TRANSFORM) {
+	if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
 		fill_axis(priv->gridx, 0, 10, 15);
 		fill_axis(priv->gridy, 10, -10, 15);
 		priv->grid = gtk_databox_grid_array_new (15, 15, priv->gridy, priv->gridx, &color_grid, 1);
