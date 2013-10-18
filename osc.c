@@ -36,7 +36,6 @@ static const char *current_device;
 static int num_capturing_plots;
 G_LOCK_DEFINE(buffer_full);
 static gboolean stop_capture;
-static int (*plugin_setup_validation_fct)(struct iio_channel_info*, int, char **) = NULL;
 static struct plugin_check_fct *setup_check_functions;
 static int num_check_fcts = 0;
 
@@ -882,6 +881,43 @@ static void btn_capture_cb(GtkButton *button, gpointer user_data)
 	gtk_widget_show(plot);
 }
 
+struct plugin_check_fct {
+	void *fct_pointer;
+	char *dev_name;
+};
+
+void add_ch_setup_check_fct(char *device_name, void *fp)
+{	
+	int n;
+	
+	setup_check_functions = (struct plugin_check_fct *)g_renew(struct plugin_check_fct, setup_check_functions, ++num_check_fcts);
+	n = num_check_fcts - 1;
+	setup_check_functions[n].fct_pointer = fp;
+	setup_check_functions[n].dev_name = (char *)g_new(char, strlen(device_name) + 1);
+	strcpy(setup_check_functions[n].dev_name, device_name);
+}
+
+void *find_setup_check_fct_by_devname(const char *dev_name)
+{
+	int i;
+	
+	for (i = 0; i < num_check_fcts; i++)
+		if (strcmp(dev_name, setup_check_functions[i].dev_name) == 0)
+			return setup_check_functions[i].fct_pointer;
+
+	return NULL;
+}
+
+static void free_setup_check_fct_list(void)
+{
+	int i;
+	
+	for (i = 0; i < num_check_fcts; i++) {
+		g_free(setup_check_functions[i].dev_name);
+	}
+	g_free(setup_check_functions);
+}
+
 void application_quit (void)
 {
 	stop_capture = TRUE;
@@ -889,6 +925,7 @@ void application_quit (void)
 	close_active_buffers();
 	
 	g_list_free(plot_list);
+	free_setup_check_fct_list();
 	
 	gtk_main_quit();
 }
@@ -938,43 +975,6 @@ bool is_input_device(const char *device)
 	free_channel_array(channels, num_channels);
 	
 	return is_input;
-}
-
-struct plugin_check_fct {
-	void *fct_pointer;
-	char *dev_name;
-};
-
-void add_ch_setup_check_fct(char *device_name, void *fp)
-{	
-	int n;
-	
-	setup_check_functions = (struct plugin_check_fct *)g_renew(struct plugin_check_fct, setup_check_functions, ++num_check_fcts);
-	n = num_check_fcts - 1;
-	setup_check_functions[n].fct_pointer = fp;
-	setup_check_functions[n].dev_name = (char *)g_new(char, strlen(device_name) + 1);
-	strcpy(setup_check_functions[n].dev_name, device_name);
-}
-
-void *find_setup_check_fct_by_devname(const char *dev_name)
-{
-	int i;
-	
-	for (i = 0; i < num_check_fcts; i++)
-		if (strcmp(dev_name, setup_check_functions[i].dev_name) == 0)
-			return setup_check_functions[i].fct_pointer;
-
-	return NULL;
-}
-
-void free_setup_check_fct_list(void)
-{
-	int i;
-	
-	for (i = 0; i < num_check_fcts; i++) {
-		g_free(setup_check_functions[i].dev_name);
-	}
-	g_free(setup_check_functions);
 }
 
 static struct _device_list *add_device(struct _device_list *dev_list, const char *device)

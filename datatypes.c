@@ -27,6 +27,7 @@ Transform* Transform_new(void)
 	tr->integer_id = NULL;
 	tr->graph_active = false;
 	tr->has_the_marker = false;
+	tr->has_invalid_setup = false;
 	tr->settings = NULL;
 	tr->transform_function = NULL;
 	

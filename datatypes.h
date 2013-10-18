@@ -82,6 +82,7 @@ struct _transform {
 	int* integer_id;
 	bool graph_active;
 	bool has_the_marker;
+	bool has_invalid_setup;
 	void *settings;
 	void (*transform_function)(Transform *tr, gboolean init_transform);
 };

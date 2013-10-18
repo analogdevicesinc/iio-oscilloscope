@@ -22,6 +22,7 @@ bool trigger_update_current_device(char *device);
 void application_quit (void);
 
 void add_ch_setup_check_fct(char *device_name, void *fp);
+void *find_setup_check_fct_by_devname(const char *dev_name);
 
 void * plugin_get_device_by_reference(const char *device_name);
 int plugin_data_capture_size(void *device);

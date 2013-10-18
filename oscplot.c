@@ -24,10 +24,13 @@
 extern void time_transform_function(Transform *tr, gboolean init_transform);
 extern void fft_transform_function(Transform *tr, gboolean init_transform);
 extern void constellation_transform_function(Transform *tr, gboolean init_transform);
+extern void *find_setup_check_fct_by_devname(const char *dev_name);
 
 extern char dev_dir_name[512];
 extern struct _device_list *device_list;
 extern unsigned num_devices;
+
+static int (*plugin_setup_validation_fct)(struct iio_channel_info*, int, char **) = NULL;
 
 static void create_plot (OscPlot *plot);
 static void plot_setup(OscPlot *plot);
@@ -154,6 +157,9 @@ struct _OscPlotPrivate
 	time_t last_update;
 	
 	int do_a_rescale_flag;
+	
+	gulong capture_button_hid;
+	gint deactivate_capture_btn_flag;
 	
 	/* A reference to the device holding the most recent created transform */
 	struct _device_list *current_device;
@@ -443,6 +449,68 @@ static gboolean check_channel_is_writable(struct iio_channel_info *channel)
 	return enable;
 }
 
+static void capture_button_restore(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	
+	g_object_set(priv->capture_button, "stock-id", "gtk-media-play", NULL);
+	gtk_widget_set_tooltip_text(priv->capture_button, "Capture / Stop");
+	if (!priv->capture_button_hid) {
+		priv->capture_button_hid = g_signal_connect(priv->capture_button, "toggled",
+			G_CALLBACK(capture_button_clicked_cb), plot);
+		priv->deactivate_capture_btn_flag = 0;
+	}
+}
+
+static bool check_valid_setup(OscPlot *plot, Transform *tr)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct _device_list *device;
+	struct iio_channel_info *temp_channels;
+	char warning_text[100];
+	char *ch_names[2];
+	bool valid_comb;
+	int i;
+	
+	device = GET_CHANNEL_PARENT(tr->channel_parent);
+	plugin_setup_validation_fct = find_setup_check_fct_by_devname(device->device_name);
+	
+	if (plugin_setup_validation_fct) {
+		temp_channels = (struct iio_channel_info *)malloc(sizeof(struct iio_channel_info) * device->num_channels);
+		/* Simulate the existing channel list, because channels that are enabled
+		   in this window are not necessary enabled in the existing channel list. */
+		for (i = 0; i < device->num_channels; i++)
+			if (!strcmp(device->channel_list[i].name, tr->channel_parent->name) ||
+				!strcmp(device->channel_list[i].name, tr->channel_parent2->name)) {
+				temp_channels[i].name = device->channel_list[i].name;
+				temp_channels[i].enabled = 1;
+			} else {
+				temp_channels[i].name = device->channel_list[i].name;
+				temp_channels[i].enabled = 0;
+			}
+		valid_comb = (*plugin_setup_validation_fct)(temp_channels, device->num_channels, ch_names);
+		free(temp_channels);
+		if (!valid_comb) {
+			tr->has_invalid_setup = true;
+			((struct extra_info *)(tr->channel_parent->extra_field))->shadow_of_enabled--;
+			((struct extra_info *)(tr->channel_parent2->extra_field))->shadow_of_enabled--;
+			snprintf(warning_text, sizeof(warning_text),
+				"Combination between %s and %s is invalid", ch_names[0], ch_names[1]);
+			gtk_widget_set_tooltip_text(priv->capture_button, warning_text);
+			g_object_set(priv->capture_button, "stock-id", "gtk-dialog-warning", NULL);
+			if (priv->capture_button_hid) {
+				g_signal_handler_disconnect(priv->capture_button, priv->capture_button_hid);
+				priv->deactivate_capture_btn_flag = 1;
+			}
+			priv->capture_button_hid = 0;
+		}
+			
+		return valid_comb;
+	}
+	
+	return TRUE;
+}
+
 static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_parent, 
 	struct iio_channel_info *ch0, struct iio_channel_info *ch1, char *tr_name)
 {
@@ -503,11 +571,13 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	TrList *list = priv->transform_list;
 	struct extra_info *ch_info = tr->channel_parent->extra_field;
 
-	ch_info->shadow_of_enabled--;
+	if (tr->has_invalid_setup == FALSE)
+		ch_info->shadow_of_enabled--;
 	if (priv->active_transform_type == CONSTELLATION_TRANSFORM ||
 		priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
 		ch_info = tr->channel_parent2->extra_field;
-		ch_info->shadow_of_enabled--;
+		if (tr->has_invalid_setup == FALSE)
+			ch_info->shadow_of_enabled--;
 	}
 		
 	TrList_remove_transform(list, tr);
@@ -582,6 +652,13 @@ static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 	/* Add the transfrom in the treeview */
 	add_row_child(plot, &iter, buf, tr);
 	g_object_set(G_OBJECT(tree_view), "sensitive", TRUE, NULL);
+	/* Use this function to set the capture button tooptip to "Capture / Stop"  */
+	capture_button_restore(plot);
+	/* Check if a two channel transform("Constellation" or "Complex FFT") has
+	   a valid combination of it's parents. The validation rules come from
+	   the plugin (of the device that owns the channels) that may provide the rules or not. */
+	if (priv->num_selected_rows == 2)
+		check_valid_setup(plot, tr);
 
 abort_adding_transform:
 	return;
@@ -597,6 +674,7 @@ static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer dat
 	gboolean is_tr;
 	Transform *tr;
 	GList *path;
+	int i;
 	
 	tree_view = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(tree_view);
@@ -616,6 +694,13 @@ static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer dat
 		gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
 	}
 	remove_transform_from_list(plot, tr);
+	
+	/* Check if there are transforms with invalid configuration */
+	for (i = 0; i < priv->transform_list->size; i++)
+		if (!check_valid_setup(plot, priv->transform_list->transforms[i]))
+			return;
+	/* Reactivate the capture button once all transform are valid or none exist */
+	capture_button_restore(plot);
 }
 
 void set_time_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_data)
@@ -1414,6 +1499,7 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 	button_state = gtk_toggle_tool_button_get_active(btn);
 	
  	if (button_state) {
+		gtk_widget_set_tooltip_text(GTK_WIDGET(btn), "Capture / Stop");
 		if (active_channels_check((GtkTreeView *)priv->channel_list_view) > 0)
 			g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, button_state);
 		else
@@ -1433,6 +1519,7 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 	return;
 	
 play_err:
+	gtk_widget_set_tooltip_text(GTK_WIDGET(btn), "Capture / Stop\n(Add a transform from the left pannel)");
 	gtk_toggle_tool_button_set_active(btn, FALSE);
 }
 
@@ -1569,8 +1656,11 @@ static void fill_channel_list(OscPlot *plot)
 }
 
 static gboolean capture_button_icon_transform(GBinding *binding,
-	const GValue *source_value, GValue *target_value, gpointer user_data)
+	const GValue *source_value, GValue *target_value, gpointer data)
 {
+	if (((OscPlot *)data)->priv->deactivate_capture_btn_flag == 1)
+		return FALSE;
+		
 	if (g_value_get_boolean(source_value))
 		g_value_set_static_string(target_value, "gtk-stop");
 	else
@@ -2006,6 +2096,7 @@ static void create_plot(OscPlot *plot)
 	/* Connect Signals */
 	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);
 	
+	priv->capture_button_hid =
 	g_signal_connect(priv->capture_button, "toggled",
 		G_CALLBACK(capture_button_clicked_cb), plot);
 	g_signal_connect(priv->channel_list_view, "button-press-event",
@@ -2050,7 +2141,7 @@ static void create_plot(OscPlot *plot)
 	
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,
-		"stock-id", 0, capture_button_icon_transform, NULL, NULL, NULL);
+		"stock-id", 0, capture_button_icon_transform, NULL, plot, NULL);
 	g_object_bind_property_full(priv->fullscreen_button, "active", priv->fullscreen_button,
 		"stock-id", 0, fullscreen_button_icon_transform, NULL, NULL, NULL);
 	g_object_bind_property(ruler_y, "lower", priv->y_axis_max, "value", G_BINDING_BIDIRECTIONAL);
