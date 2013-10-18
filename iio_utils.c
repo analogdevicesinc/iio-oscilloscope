@@ -152,14 +152,14 @@ static inline bool element_substr(const char *haystack, const char * end, const 
 	for (i = 0; i < strlen(need); i++) {
 		sprintf(ssub, "%.*s", i, need);
 		sprintf(esub, "%.*s", (int)(strlen(need) - i), need + i);
-		if ((strstr(haystack, ssub) == haystack) && 
+		if ((strstr(haystack, ssub) == haystack) &&
 		    ((strstr(haystack, esub) + strlen(esub)) == (haystack + strlen(haystack))))
 			return true;
 	}
 	return false;
 }
 
-/* 
+/*
 * make sure the "_available" is right after the control
 * IIO core doesn't make this happen in a normal sort
 * since we can have indexes sometimes missing:
@@ -199,12 +199,12 @@ void scan_elements_insert(char **elements, char *token, char *end)
 				}
 				added = realloc(added, strlen(added) + strlen (start) + 1);
 				strcat(added, start);
-			} else 
+			} else
 				added = strdup(start);
 
 			strcpy(entire_key, start);
 			/*
-			 * find where this belongs (if anywhere), and put it there 
+			 * find where this belongs (if anywhere), and put it there
 			 */
 			sprintf(key, "%.*s", (int)(next - start), start);
 
@@ -310,7 +310,7 @@ void scan_elements_sort(char **elements)
 
 					/* sort LABEL0_ LABEL10_ as zero and ten */
 					if ((isdigit(start[k]) && isdigit(next[k])) &&
-					    (isdigit(start[k+1]) || isdigit(next[k+1]))){ 
+					    (isdigit(start[k+1]) || isdigit(next[k+1]))){
 					    	if (atoi(&start[k]) >= atoi(&next[k])) {
 							swap = 1;
 						}
@@ -318,7 +318,7 @@ void scan_elements_sort(char **elements)
 						swap = 1;
 					}
 
-					break;	
+					break;
 				}
 				if (k == strlen(next))
 					swap = 1;
@@ -328,7 +328,7 @@ void scan_elements_sort(char **elements)
 					strcpy(start, next);
 					next = start + strlen(start) + 1;
 					strcpy(next, temp);
-				} 
+				}
 			}
 			start += strlen(start) + 1;
 			next = start + strlen(start) + 1;
@@ -349,7 +349,7 @@ void scan_elements_sort(char **elements)
 
 }
 
-int find_scan_elements(char *dev, char **relement)
+int find_scan_elements(char *dev, char **relement, unsigned access)
 {
 	FILE *fp;
 	char elements[128], buf[128];
@@ -359,13 +359,14 @@ int find_scan_elements(char *dev, char **relement)
 	/* flushes all open output streams */
 	 fflush(NULL);
 
-	sprintf(buf, "echo \"show %s . \" | iio_cmdsrv", dev);
+	sprintf(buf, "echo \"%s %s . \" | iio_cmdsrv",
+		access ? "dbfsshow" : "show", dev);
 	fp = popen(buf, "r");
 	if(fp == NULL) {
 		fprintf(stderr, "Can't execute iio_cmdsrv\n");
 		return -ENODEV;
 	}
-	
+
 
 	elem = malloc(128);
 	memset (elem, 0, 128);

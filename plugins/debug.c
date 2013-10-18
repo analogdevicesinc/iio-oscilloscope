@@ -200,7 +200,7 @@ static void scanel_read_clicked(GtkButton *btn, gpointer data)
 				free(buf);
 				free(buf2);
 			}
-			
+
 		}
 		free(basedir);
 	}
@@ -270,7 +270,7 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		}
 
 		gtk_widget_show(scanel_read);
-		find_scan_elements(current_device, &elements);
+		find_scan_elements(current_device, &elements, ACCESS_NORM);
 		scan_elements_sort(&elements);
 		scan_elements_insert(&elements, AVAILABLE_TOKEN, NULL);
 		while(isspace(elements[strlen(elements) - 1]))
@@ -1201,7 +1201,7 @@ static int debug_init(GtkWidget *notebook)
 	device=devices;
 	for (; ret > 0; ret--) {
 		/* Make sure we can access things */
-		if (!set_debugfs_paths(devices) || find_scan_elements(devices, NULL) >= 0) {
+		if (!set_debugfs_paths(devices) || find_scan_elements(devices, NULL, ACCESS_NORM) >= 0) {
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_device_list),
 							(const gchar *)devices);
 		}
@@ -1250,11 +1250,11 @@ static bool debug_identify(void)
 	for (; num > 0; num--) {
 		/* Make sure we can access things */
 		if (!set_debugfs_paths(devices) ||
-				find_scan_elements(devices, NULL) >= 0) {
+				find_scan_elements(devices, NULL, ACCESS_NORM) >= 0) {
 			i++;
 			break;
 		}
-		find_scan_elements(devices, &elements);
+		find_scan_elements(devices, &elements, ACCESS_NORM);
 		devices += strlen(devices) + 1;
 	}
 	free(device);

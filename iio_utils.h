@@ -21,6 +21,9 @@
 #define FORMAT_SCAN_ELEMENTS_DIR "%s/scan_elements"
 #define FORMAT_TYPE_FILE "%s_type"
 
+#define ACCESS_NORM 0
+#define ACCESS_DBFS 1
+
 static const char *iio_dir = "/sys/bus/iio/devices/";
 static const char *iio_debug_dir = "/sys/kernel/debug/iio/";
 
@@ -499,7 +502,7 @@ static inline int find_type_by_name(const char *name, const char *type)
 		}
 	}
 	closedir(dp);
-	
+
 	return -ENODEV;
 }
 
@@ -763,6 +766,6 @@ int read_devattr_slonglong(const char *attr, long long *value);
 int write_devattr_slonglong(const char *attr, long long value);
 bool iio_devattr_exists(const char *device, const char *attr);
 int iio_buffer_open(bool read, int flags);
-int find_scan_elements(char *dev, char **elements);
+int find_scan_elements(char *dev, char **elements, unsigned access);
 void scan_elements_sort(char **elements);
 void scan_elements_insert(char **elements, char *token, char *end);
