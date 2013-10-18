@@ -31,6 +31,7 @@ extern char dev_dir_name[512];
 struct _device_list *device_list = NULL;
 unsigned num_devices = 0;
 gint capture_function = 0;
+gfloat plugin_fft_corr = 0.0;
 static GList *plot_list = NULL;
 static const char *current_device;
 static int num_capturing_plots;
@@ -168,8 +169,7 @@ static void do_fft(Transform *tr)
 		
 		mag = 10 * log10((fft->out[i][0] * fft->out[i][0] +
 				fft->out[i][1] * fft->out[i][1]) / (fft->m * fft->m)) +
-			fft->fft_corr +
-			pwr_offset;
+			fft->fft_corr + pwr_offset + plugin_fft_corr;
 		/* it's better for performance to have seperate loops,
 		 * rather than do these tests inside the loop, but it makes
 		 * the code harder to understand... Oh well...

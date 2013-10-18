@@ -28,7 +28,10 @@
 #include "../eeprom.h"
 #include "../osc.h"
 
+#define HANNING_ENBW 1.50
+
 extern char dev_dir_name[512];
+extern gfloat plugin_fft_corr;
 
 static bool is_2rx_2tx;
 
@@ -1323,6 +1326,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	rssi_update_labels();
 	
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
+	plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
 
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2_panel, "FMComms2");
