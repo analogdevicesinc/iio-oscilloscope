@@ -1401,6 +1401,9 @@ void *find_setup_check_fct_by_devname(const char *dev_name)
 {
 	int i;
 
+	if (!dev_name)
+		return NULL;
+
 	for (i = 0; i < num_check_fcts; i++)
 		if (strcmp(dev_name, setup_check_functions[i].dev_name) == 0)
 			return setup_check_functions[i].fct_pointer;
