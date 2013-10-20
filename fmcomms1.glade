@@ -1006,6 +1006,16 @@
         </child>
       </object>
     </child>
+    <action-widgets>
+      <action-widget response="6">Cal_Rx</action-widget>
+      <action-widget response="5">Cal_Tx</action-widget>
+      <action-widget response="4">SaveCal2File</action-widget>
+      <action-widget response="3">LoadCal2File</action-widget>
+      <action-widget response="2">SaveCal2eeprom</action-widget>
+      <action-widget response="1">LoadCal2eeprom</action-widget>
+      <action-widget response="-10">ApplyCal</action-widget>
+      <action-widget response="-7">CalClose</action-widget>
+    </action-widgets>
   </object>
   <object class="GtkFileChooserDialog" id="filechooser">
     <property name="can_focus">False</property>
