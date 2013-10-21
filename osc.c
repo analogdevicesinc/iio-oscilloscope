@@ -1401,6 +1401,9 @@ void *find_setup_check_fct_by_devname(const char *dev_name)
 {
 	int i;
 
+	if (!dev_name)
+		return NULL;
+
 	for (i = 0; i < num_check_fcts; i++)
 		if (strcmp(dev_name, setup_check_functions[i].dev_name) == 0)
 			return setup_check_functions[i].fct_pointer;
@@ -1575,14 +1578,16 @@ static gboolean check_valid_setup()
 	} else {
 		/* time domain */
 		if (j == 0) {
-			gtk_widget_set_tooltip_text(capture_button, "No channels are enabled");
-			goto capture_button_err;
+			gtk_widget_set_tooltip_text(capture_button, "Capture / Stop\n(Enable at least one channel from the left pannel)");
+			g_object_set(capture_button, "stock-id", "gtk-media-play", NULL);
+			goto capture_button_err2;
 		}
 		goto reset_capture_button;
 	}
 
 capture_button_err:
 	g_object_set(capture_button, "stock-id", "gtk-dialog-warning", NULL);
+capture_button_err2	:
 	if (capture_button_hid) {
 		g_signal_handler_disconnect(capture_button, capture_button_hid);
 		deactivate_capture_btn_flag = 1;
@@ -1827,6 +1832,7 @@ static void init_application (void)
 	load_plugins(notebook);
 	plugin_setup_validation_fct = find_setup_check_fct_by_devname(current_device);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(sample_count_widget), 500);
+	check_valid_setup();
 	rx_update_labels();
 
 	gtk_widget_show(window);
