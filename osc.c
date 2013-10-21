@@ -1010,8 +1010,8 @@ static struct _device_list *add_device(struct _device_list *dev_list, const char
 	
 	dev_list[n].data_buffer.data = NULL;
 	dev_list[n].data_buffer.data_copy = NULL;
-	dev_list[n].sample_count = 400;
-	dev_list[n].shadow_of_sample_count = 400;
+	dev_list[n].sample_count = 16384;
+	dev_list[n].shadow_of_sample_count = 16384;
 	dev_list[n].channel_data = (gfloat **)malloc(sizeof(gfloat *) * dev_list[n].num_channels);
 	dev_list[n].buffer_fd = -1;
 		

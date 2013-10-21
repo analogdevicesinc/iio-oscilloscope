@@ -351,7 +351,7 @@ static void fft_settings_init(Transform *tr, struct _fft_settings *settings)
 	int i;
 	
 	if (settings) {
-		settings->fft_size = 256;
+		settings->fft_size = 16384;
 		settings->fft_avg = 1;
 		settings->fft_pwr_off = 0.0;
 		settings->fft_alg_data.cached_fft_size = -1;
