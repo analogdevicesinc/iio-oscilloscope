@@ -314,7 +314,8 @@ static int dmm_init(GtkWidget *notebook)
 
 static bool dmm_identify(void)
 {
-	return true;
+	return false;
+// 	return true;
 }
 
 const struct osc_plugin plugin = {
