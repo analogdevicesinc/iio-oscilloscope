@@ -22,6 +22,7 @@ PLUGINS=\
 	plugins/debug.so \
 	plugins/AD5628_1.so \
 	plugins/AD7303.so \
+	plugins/motor_control.so \
 	plugins/dmm.so
 
 all: osc $(PLUGINS)
