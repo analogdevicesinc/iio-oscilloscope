@@ -472,6 +472,9 @@ static bool check_valid_setup(OscPlot *plot, Transform *tr)
 	bool valid_comb;
 	int i;
 	
+	if (tr->channel_parent2 == NULL)
+		return TRUE;
+	
 	device = GET_CHANNEL_PARENT(tr->channel_parent);
 	plugin_setup_validation_fct = find_setup_check_fct_by_devname(device->device_name);
 	
