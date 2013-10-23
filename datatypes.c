@@ -24,6 +24,7 @@ Transform* Transform_new(void)
 	tr->local_output_buf = false;
 	tr->graph = NULL;
 	tr->graph_color = NULL;
+	tr->iter_in_treestore = NULL;
 	tr->integer_id = NULL;
 	tr->graph_active = false;
 	tr->has_the_marker = false;

@@ -186,6 +186,8 @@ struct _OscPlotPrivate
 	
 	GList *available_tr_numbers;
 	gint num_created_tr;
+	
+	char *saveas_filename;
 };
 
 G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
@@ -318,7 +320,7 @@ get_color:
 	}
 }
 
-static void add_row_child(OscPlot *plot, GtkTreeIter *parent, char *child_name, Transform *tr)
+static GtkTreeIter add_row_child(OscPlot *plot, GtkTreeIter *parent, char *child_name, Transform *tr)
 {
 	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *treeview;
@@ -332,6 +334,8 @@ static void add_row_child(OscPlot *plot, GtkTreeIter *parent, char *child_name, 
 	gtk_tree_store_set(treestore, &child, ELEMENT_NAME, child_name,
 		IS_DEVICE, FALSE, IS_CHANNEL, FALSE, IS_TRANSFORM, TRUE,
 		TRANSFORM_ACTIVE, 1, ELEMENT_REFERENCE, tr, COLOR_REF, (GdkColor *)tr->graph_color, -1);
+	
+	return child;
 }
 
 static void time_settings_init(Transform *tr, struct _time_settings *settings)
@@ -582,7 +586,8 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 		if (tr->has_invalid_setup == FALSE)
 			ch_info->shadow_of_enabled--;
 	}
-		
+	if (tr->iter_in_treestore)
+		g_free(tr->iter_in_treestore);
 	TrList_remove_transform(list, tr);
 	Transform_destroy(tr);
 	if (list->size == 0) {
@@ -604,6 +609,7 @@ static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	GtkTreeIter parent_iter;
+	GtkTreeIter child_iter;
 	Transform *tr;
 	char *ch_name;
 	char *tr_name;
@@ -653,8 +659,11 @@ static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 	set_transform_attributes(plot, tr);
 	snprintf(buf + strlen(buf), sizeof(buf), " %d", *((int *)tr->integer_id));
 	/* Add the transfrom in the treeview */
-	add_row_child(plot, &iter, buf, tr);
+	child_iter = add_row_child(plot, &iter, buf, tr);
 	g_object_set(G_OBJECT(tree_view), "sensitive", TRUE, NULL);
+	/* Store the newly created row iter in the transform structure. */
+	tr->iter_in_treestore = (GtkTreeIter *)g_new(GtkTreeIter, 1);
+	*((GtkTreeIter *)tr->iter_in_treestore) = child_iter;
 	/* Use this function to set the capture button tooptip to "Capture / Stop"  */
 	capture_button_restore(plot);
 	/* Check if a two channel transform("Constellation" or "Complex FFT") has
@@ -1903,6 +1912,38 @@ static void zoom_out(GtkButton *btn, gpointer data)
 	gtk_databox_set_visible_limits(GTK_DATABOX(priv->databox), left, right, top, bottom);
 }
 
+static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
+{
+	GtkTreeIter iter;
+	GtkTreeModel *model;
+	char *tr_name;
+	gfloat *tr_data;
+	int i;
+		
+	iter = *((GtkTreeIter *)tr->iter_in_treestore);
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->channel_list_view));
+	gtk_tree_model_get(model, &iter, ELEMENT_NAME, &tr_name, -1);
+	
+	fprintf(fp, "%s\n", tr_name);
+	
+	tr_data = Transform_get_y_axis_ref(tr);
+	if (tr_data == NULL) {
+		fprintf(fp, "No data\n");
+		goto free_tr_name;
+	}
+	
+	for (i = 0; i < tr->y_axis_size; i++) {
+		fprintf(fp, "%g", tr_data[i]);
+		if (i < tr->y_axis_size - 1)
+			fprintf(fp, ", ");
+	}
+	fprintf(fp, "\n");
+	
+free_tr_name:
+	if (tr_name)
+		g_free(tr_name);
+}
+
 static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 {
 	remove_all_transforms(plot);
@@ -1928,52 +1969,81 @@ static void cb_saveas(GtkToolButton *toolbutton, OscPlot *data)
 {
 	OscPlotPrivate *priv = data->priv;
 
+	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (priv->saveas_dialog), GTK_FILE_CHOOSER_ACTION_SAVE);
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->saveas_dialog), TRUE);
+	
+	if (!priv->saveas_filename) {
+		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->saveas_dialog), getenv("HOME"));
+		gtk_file_chooser_get_filename(GTK_FILE_CHOOSER (priv->saveas_dialog));
+	} else {
+		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (priv->saveas_dialog), priv->saveas_filename);
+		g_free(priv->saveas_filename);
+		priv->saveas_filename = NULL;
+	}
+	
 	gtk_widget_show(priv->saveas_dialog);
-	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (priv->saveas_dialog), "~/");
-	gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
 }
 
 void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 {
 	/* Save as Dialog */
 	OscPlotPrivate *priv = data->priv;
-	char *filename;
+	char *name;
+	int i;
 
-	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (priv->saveas_dialog), "~/");
-	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->saveas_dialog), true);
-	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
-	if (filename) {
-		switch(response_id) {
-			/* Response Codes encoded in glade file */
-			case GTK_RESPONSE_CANCEL:
+	priv->saveas_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
+	if (priv->saveas_filename == NULL)
+		goto hide_dialog;
+	name = malloc(strlen(priv->saveas_filename) + 4);
+	switch(response_id) {
+		/* Response Codes encoded in glade file */
+		case GTK_RESPONSE_DELETE_EVENT:
+		case GTK_RESPONSE_CANCEL:
 			break;
-			case 3:
-			case 2:	{
-					GdkPixbuf *pixbuf;
-					GError *err=NULL;
-					GdkColormap *cmap;
-					gint width, height;
-					gboolean ret = true;
+		case 2: 
+			/* save comma separated values (csv) */
+			sprintf(name, "%s.csv", priv->saveas_filename);
+			{			
+				FILE *fp;
 
-					cmap = gdk_window_get_colormap(
-							GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)));
-					gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
-							&width, &height);
-					pixbuf = gdk_pixbuf_get_from_drawable(NULL,
-							GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
-							cmap, 0, 0, 0, 0, width, height);
-
-					if (pixbuf)
-						ret = gdk_pixbuf_save(pixbuf, filename, "png", &err, NULL);
-					if (!pixbuf || !ret)
-						printf("error creating %s\n", filename);
+				fp = fopen(name, "w");
+				if (!fp)
+					break;
+				for (i = 0; i < priv->transform_list->size; i++) {
+						transform_csv_print(priv, fp, priv->transform_list->transforms[i]);
 				}
-				break;
-			default:
-				printf("response_id : %i\n", response_id);
-		}
-		g_free(filename);
+				fclose(fp);
+			}
+			break;
+		case 3:	
+			/* save png */
+			sprintf(name, "%s.png", priv->saveas_filename);
+			{
+				GdkPixbuf *pixbuf;
+				GError *err=NULL;
+				GdkColormap *cmap;
+				gint width, height;
+				gboolean ret = true;
+				
+				cmap = gdk_window_get_colormap(
+						GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)));
+				gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
+						&width, &height);
+				pixbuf = gdk_pixbuf_get_from_drawable(NULL,
+						GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
+						cmap, 0, 0, 0, 0, width, height);
+
+				if (pixbuf)
+					ret = gdk_pixbuf_save(pixbuf, name, "png", &err, NULL);
+				if (!pixbuf || !ret)
+					printf("error creating %s\n", priv->saveas_filename);
+			}
+			break;
+		default:
+			printf("response_id : %i\n", response_id);
 	}
+
+hide_dialog:
 	gtk_widget_hide(priv->saveas_dialog);
 }
 
