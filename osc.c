@@ -417,7 +417,7 @@ static void demux_data_stream(void *data_in, gfloat **data_out,
 
 }
 
-static int buffer_open(unsigned int length)
+static int buffer_open(unsigned int length, int flags)
 {
 	int ret;
 	int fd;
@@ -427,7 +427,7 @@ static int buffer_open(unsigned int length)
 
 	set_dev_paths(current_device);
 
-	fd = iio_buffer_open(true);
+	fd = iio_buffer_open(true, flags);
 	if (fd < 0) {
 		ret = -errno;
 		fprintf(stderr, "Failed to open buffer: %d\n", ret);
@@ -560,7 +560,7 @@ static  int sample_iio_data_oneshot(struct buffer *buf)
 {
 	int fd, ret;
 	
-	fd = buffer_open(buf->size);
+	fd = buffer_open(buf->size, 0);
 	if (fd < 0)
 		return fd;
 	
@@ -819,7 +819,7 @@ static int capture_setup(void)
 		resize_device_data(&device_list[i]);
 		current_device = device_list[i].device_name;
 		if ((!is_oneshot_mode()) && (device_list[i].bytes_per_sample != 0)) {
-			device_list[i].buffer_fd = buffer_open(device_list[i].sample_count);
+			device_list[i].buffer_fd = buffer_open(device_list[i].sample_count, O_NONBLOCK);
 			if (device_list[i].buffer_fd < 0)
 				return -1;
 		}
