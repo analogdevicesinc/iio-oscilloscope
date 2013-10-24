@@ -548,9 +548,16 @@ static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 	int ret;
 	
 	ret = read(buffer_fd, buf->data + buf->available, buf->size - buf->available);
-	if (ret <= 0)
-		return ret;
-		
+
+	if (ret == 0)
+		return 0;
+	if (ret < 0) {
+		if (errno == EAGAIN)
+			return 0;
+		else
+			return -errno;
+	}
+	
 	buf->available += ret;
 	
 	return 0;
