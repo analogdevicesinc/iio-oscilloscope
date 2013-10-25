@@ -842,7 +842,7 @@ static void capture_start(void)
 	}
 	else {
 		stop_capture = FALSE;
-		capture_function = g_timeout_add(50, (GSourceFunc) capture_proccess, NULL);
+		capture_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, (GSourceFunc) capture_proccess, NULL, NULL);
 	}
 }
 

@@ -1412,7 +1412,7 @@ static void capture_start(OscPlotPrivate *priv)
 		priv->stop_redraw = FALSE;
 	} else {
 		priv->stop_redraw = FALSE;
-		priv->redraw_function = g_timeout_add(50, (GSourceFunc) plot_redraw, priv);
+		priv->redraw_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, (GSourceFunc) plot_redraw, priv, NULL);
 	}
 }
 
