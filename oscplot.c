@@ -338,10 +338,22 @@ static GtkTreeIter add_row_child(OscPlot *plot, GtkTreeIter *parent, char *child
 	return child;
 }
 
+static void constrain_to_a_power_of_2(unsigned int* size)
+{
+	int limit = 32;
+	if (*size < 32) {
+		*size = 32;
+		return;
+	}
+	while (!(*size >= limit && *size < (2 * limit)))
+		limit *= 2;
+	*size = limit;
+} 
+
 static void time_settings_init(Transform *tr, struct _time_settings *settings)
 {
 	if (settings) {
-		settings->num_samples = 400;
+		settings->num_samples = (GET_CHANNEL_PARENT(tr->channel_parent))->shadow_of_sample_count;
 		settings->apply_inverse_funct = false;
 		settings->apply_multiply_funct = false;
 		settings->apply_add_funct = false;
@@ -355,7 +367,8 @@ static void fft_settings_init(Transform *tr, struct _fft_settings *settings)
 	int i;
 	
 	if (settings) {
-		settings->fft_size = 16384;
+		settings->fft_size = (GET_CHANNEL_PARENT(tr->channel_parent))->shadow_of_sample_count;
+		constrain_to_a_power_of_2(&settings->fft_size);
 		settings->fft_avg = 1;
 		settings->fft_pwr_off = 0.0;
 		settings->fft_alg_data.cached_fft_size = -1;
@@ -372,7 +385,7 @@ static void fft_settings_init(Transform *tr, struct _fft_settings *settings)
 static void constellation_settings_init(Transform *tr, struct _constellation_settings *settings)
 {
 	if (settings) {
-		settings->num_samples = 400;
+		settings->num_samples = (GET_CHANNEL_PARENT(tr->channel_parent))->shadow_of_sample_count;
 	}
 }
 
@@ -796,10 +809,27 @@ void set_constellation_settings_cb (GtkDialog *dialog, gint response_id, gpointe
 	g_object_set(G_OBJECT(priv->channel_list_view), "sensitive", TRUE, NULL);
 }
 
+static void check_transform_settings(Transform *tr, int transform_type)
+{
+	struct _device_list *device = GET_CHANNEL_PARENT(tr->channel_parent);
+	gfloat sample_count  = device->shadow_of_sample_count;
+	
+	if (transform_type == TIME_TRANSFORM) {
+		if (((struct _time_settings *)tr->settings)->num_samples > sample_count)
+			((struct _time_settings *)tr->settings)->num_samples = sample_count;
+	} else if(transform_type == FFT_TRANSFORM || transform_type == COMPLEX_FFT_TRANSFORM) {
+		while (((struct _fft_settings *)tr->settings)->fft_size > sample_count)
+			((struct _fft_settings *)tr->settings)->fft_size /= 2;
+	} else if(transform_type == CONSTELLATION_TRANSFORM) {
+		if (((struct _constellation_settings *)tr->settings)->num_samples > sample_count)
+			((struct _constellation_settings *)tr->settings)->num_samples = sample_count;
+	}
+}
+
 static void rebuild_fft_size_list(GtkWidget *fft_size_widget, unsigned int sample_count, unsigned int set_value)
 {
 	unsigned int min_fft_size = 32;
-	unsigned int max_fft_size = 16384;
+	unsigned int max_fft_size = 65536;
 	unsigned int fft_size;
 	GtkTreeIter iter;
 	GtkTreeIter set_iter;
@@ -837,6 +867,7 @@ static void default_time_setting(OscPlot *plot, Transform *tr)
 	GtkToggleButton *check_btn;
 	GtkBuilder *builder = priv->builder;
 	
+	check_transform_settings(tr, TIME_TRANSFORM);
 	ch_info = tr->channel_parent->extra_field;
 	settings = (struct _time_settings *)tr->settings;
 	adj = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_time_sample_count"));
@@ -870,6 +901,7 @@ static void default_fft_setting(OscPlot *plot, Transform *tr)
 
 	ch_info = tr->channel_parent->extra_field;
 	settings = (struct _fft_settings *)tr->settings;
+	check_transform_settings(tr, FFT_TRANSFORM);
 	rebuild_fft_size_list(fft_size_widget, ch_info->device_parent->shadow_of_sample_count, settings->fft_size);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_avg_widget), settings->fft_avg);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget), settings->fft_pwr_off);
@@ -883,6 +915,7 @@ static void default_constellation_setting(OscPlot *plot, Transform *tr)
 	GtkAdjustment *constellation_sample_count_adj;
 	GtkBuilder *builder = priv->builder;
 	
+	check_transform_settings(tr, CONSTELLATION_TRANSFORM);
 	ch_info = tr->channel_parent->extra_field;
 	settings = (struct _constellation_settings *)tr->settings;
 	constellation_sample_count_adj = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_constellation_sample_count"));
@@ -1436,23 +1469,6 @@ static void add_markers(OscPlot *plot, Transform *transform)
 		gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(settings->marker[m]), !transform->graph_active);
 	}
 	
-}
-
-static void check_transform_settings(Transform *tr, int transform_type)
-{
-	struct _device_list *device = GET_CHANNEL_PARENT(tr->channel_parent);
-	gfloat sample_count  = device->shadow_of_sample_count;
-	
-	if (transform_type == TIME_TRANSFORM) {
-		if (((struct _time_settings *)tr->settings)->num_samples > sample_count)
-			((struct _time_settings *)tr->settings)->num_samples = sample_count;
-	} else if(transform_type == FFT_TRANSFORM || transform_type == COMPLEX_FFT_TRANSFORM) {
-		while (((struct _fft_settings *)tr->settings)->fft_size > sample_count)
-			((struct _fft_settings *)tr->settings)->fft_size /= 2;
-	} else if(transform_type == CONSTELLATION_TRANSFORM) {
-		if (((struct _constellation_settings *)tr->settings)->num_samples > sample_count)
-			((struct _constellation_settings *)tr->settings)->num_samples = sample_count;
-	}
 }
 
 static void plot_setup(OscPlot *plot)
