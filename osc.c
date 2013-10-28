@@ -1131,15 +1131,15 @@ void rx_update_labels(void)
 	for (i = 0; i < num_devices; i++) {
 		device_list[i].adc_freq = read_sampling_frequency(device_list[i].device_name);
 		if (device_list[i].adc_freq >= 1000000) {
-			sprintf(device_list[i].adc_scale, "MHz");
+			sprintf(device_list[i].adc_scale, "M");
 			device_list[i].adc_freq /= 1000000;
 		} else if(device_list[i].adc_freq >= 1000) {
-			sprintf(device_list[i].adc_scale, "kHz");
+			sprintf(device_list[i].adc_scale, "k");
 			device_list[i].adc_freq /= 1000;
 		} else if(device_list[i].adc_freq >= 0) {
-			sprintf(device_list[i].adc_scale, "Hz");
+			sprintf(device_list[i].adc_scale, " ");
 		} else {
-			sprintf(device_list[i].adc_scale, "???");
+			sprintf(device_list[i].adc_scale, "?");
 			device_list[i].adc_freq = 0;
 		}
 	}

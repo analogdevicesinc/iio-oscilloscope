@@ -245,11 +245,13 @@ void osc_plot_update_rx_lbl(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 	TrList *tr_list = priv->transform_list;
+	char buf[20];
 	double corr;
 	int i;
 	
 	if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
-		gtk_label_set_text(GTK_LABEL(priv->hor_scale), priv->current_device->adc_scale);
+		sprintf(buf, "%sHz", priv->current_device->adc_scale);
+		gtk_label_set_text(GTK_LABEL(priv->hor_scale), buf);
 		/* In FFT mode we need to scale the x-axis according to the selected sampling freequency */
 		for (i = 0; i < tr_list->size; i++)
 			Transform_setup(tr_list->transforms[i]);
@@ -1335,7 +1337,7 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	}
 	ch_info = tr->channel_parent->extra_field;
 	for (m = 0; m <= MAX_MARKERS; m++) {
-		sprintf(text, "M%i: %2.2f dB @ %2.2f %s\n",
+		sprintf(text, "M%i: %2.2f dB @ %2.2f %sHz\n",
 				m, markY[m], markX[m], ch_info->device_parent->adc_scale);
 
 		if (m == 0) {
