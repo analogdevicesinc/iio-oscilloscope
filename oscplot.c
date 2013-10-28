@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <malloc.h>
+#include <matio.h>
 
 #include "osc.h"
 #include "oscplot.h"
@@ -1928,18 +1929,26 @@ static void zoom_out(GtkButton *btn, gpointer data)
 	gtk_databox_set_visible_limits(GTK_DATABOX(priv->databox), left, right, top, bottom);
 }
 
-static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
+static char *transform_get_name_from_tree_store(OscPlotPrivate *priv, Transform *tr)
 {
 	GtkTreeIter iter;
 	GtkTreeModel *model;
 	char *tr_name;
-	gfloat *tr_data;
-	int i;
-		
+	
 	iter = *((GtkTreeIter *)tr->iter_in_treestore);
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->channel_list_view));
 	gtk_tree_model_get(model, &iter, ELEMENT_NAME, &tr_name, -1);
 	
+	return tr_name;
+}
+
+static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
+{
+	char *tr_name;
+	gfloat *tr_data;
+	int i;
+
+	tr_name = transform_get_name_from_tree_store(priv, tr);
 	fprintf(fp, "%s\n", tr_name);
 	
 	tr_data = Transform_get_y_axis_ref(tr);
@@ -2028,6 +2037,7 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 				for (i = 0; i < priv->transform_list->size; i++) {
 						transform_csv_print(priv, fp, priv->transform_list->transforms[i]);
 				}
+				fprintf(fp, "\n");
 				fclose(fp);
 			}
 			break;
@@ -2053,6 +2063,41 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 					ret = gdk_pixbuf_save(pixbuf, name, "png", &err, NULL);
 				if (!pixbuf || !ret)
 					printf("error creating %s\n", priv->saveas_filename);
+			}
+			break;
+		case 4:
+			sprintf(name, "%s.mat", priv->saveas_filename);
+			/* Matlab file
+			 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
+			 */
+			{
+				mat_t *mat;
+				matvar_t *matvar;
+				Transform *tr;
+				gfloat *tr_data;
+				char *tr_name;
+				int dims[2] = {1, -1};
+				
+				mat = Mat_Open(name, MAT_ACC_RDWR);
+				if (!mat)
+					break;
+				for (i = 0; i < priv->transform_list->size; i++) {
+					tr = priv->transform_list->transforms[i];
+					tr_data = Transform_get_y_axis_ref(tr);
+					if (tr_data == NULL)
+						continue;
+					tr_name = transform_get_name_from_tree_store(priv, tr);
+					dims[1] = tr->y_axis_size;
+					matvar = Mat_VarCreate(tr_name, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims, tr_data, 0);
+					if (!matvar)
+						printf("error creating matvar on transform %s\n", tr_name);
+					else {
+						Mat_VarWrite(mat, matvar, 0);
+						Mat_VarFree(matvar);
+					}
+					g_free(tr_name);
+				}
+				Mat_Close(mat);
 			}
 			break;
 		default:

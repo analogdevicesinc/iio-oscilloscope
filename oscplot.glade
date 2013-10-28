@@ -578,6 +578,21 @@
                 <property name="position">2</property>
               </packing>
             </child>
+            <child>
+              <object class="GtkButton" id="save_mat">
+                <property name="label" translatable="yes">Save as .mat</property>
+                <property name="use_action_appearance">False</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_action_appearance">False</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -595,6 +610,7 @@
       <action-widget response="-6">save_cancel</action-widget>
       <action-widget response="2">save_csv</action-widget>
       <action-widget response="3">save_png</action-widget>
+      <action-widget response="4">save_mat</action-widget>
     </action-widgets>
   </object>
   <object class="GtkWindow" id="toplevel">
