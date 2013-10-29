@@ -1026,7 +1026,8 @@ static struct _device_list *add_device(struct _device_list *dev_list, const char
 	dev_list[n].shadow_of_sample_count = 16384;
 	dev_list[n].channel_data = (gfloat **)malloc(sizeof(gfloat *) * dev_list[n].num_channels);
 	dev_list[n].buffer_fd = -1;
-		
+	dev_list[n].lo_freq = 0;
+	
 	return dev_list;
 }
 
@@ -1142,6 +1143,18 @@ void rx_update_labels(void)
 			sprintf(device_list[i].adc_scale, "?");
 			device_list[i].adc_freq = 0;
 		}
+		
+		if (strcmp(device_list[i].device_name, "cf-ad9643-core-lpc") == 0) {
+			set_dev_paths("adf4351-rx-lpc");
+			read_devattr_double("out_altvoltage0_frequency", &device_list[i].lo_freq);
+		} else if (strcmp(device_list[i].device_name, "cf-ad9361-lpc") == 0) {
+			set_dev_paths("ad9361-phy");
+			read_devattr_double("out_altvoltage0_RX_LO_frequency", &device_list[i].lo_freq);
+		} else {
+			device_list[i].lo_freq = 0;
+		}
+		if (device_list[i].lo_freq)
+			device_list[i].lo_freq /= 1000000.0;
 	}
 	
 	g_list_foreach(plot_list, gfunc_update_rx_lbl_plot, NULL);

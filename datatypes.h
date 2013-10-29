@@ -55,6 +55,7 @@ struct _device_list {
 	unsigned int sample_count;
 	unsigned int shadow_of_sample_count;
 	double adc_freq;
+	double lo_freq;
 	char adc_scale[10];
 	void *settings_dialog_builder;
 	struct buffer data_buffer;
