@@ -1337,7 +1337,7 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	}
 	ch_info = tr->channel_parent->extra_field;
 	for (m = 0; m <= MAX_MARKERS; m++) {
-		sprintf(text, "M%i: %2.2f dB @ %2.2f %sHz\n",
+		sprintf(text, "M%i: %2.2f dBFS @ %2.2f %sHz\n",
 				m, markY[m], ch_info->device_parent->lo_freq + markX[m],
 				ch_info->device_parent->adc_scale);
 
