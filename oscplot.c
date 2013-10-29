@@ -249,6 +249,10 @@ void osc_plot_update_rx_lbl(OscPlot *plot)
 	double corr;
 	int i;
 	
+	/* Skip rescaling graphs, updating labels and others if the redrawing is currently halted. */
+	if (priv->redraw_function <= 0)
+		return;
+
 	if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
 		sprintf(buf, "%sHz", priv->current_device->adc_scale);
 		gtk_label_set_text(GTK_LABEL(priv->hor_scale), buf);
