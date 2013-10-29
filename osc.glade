@@ -530,6 +530,19 @@ A GUI for Linux IIO devices</property>
       </object>
     </child>
   </object>
+  <object class="GtkAdjustment" id="adjustmentTrigger">
+    <property name="lower">1</property>
+    <property name="upper">1000</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment_sample_count">
+    <property name="lower">32</property>
+    <property name="upper">1000000</property>
+    <property name="value">400</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
   <object class="GtkDialog" id="Sample_count_dialog">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -628,19 +641,6 @@ A GUI for Linux IIO devices</property>
       <action-widget response="-6">buttonCancel</action-widget>
       <action-widget response="-5">buttonOK</action-widget>
     </action-widgets>
-  </object>
-  <object class="GtkAdjustment" id="adjustmentTrigger">
-    <property name="lower">1</property>
-    <property name="upper">1000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_sample_count">
-    <property name="lower">32</property>
-    <property name="upper">1000000</property>
-    <property name="value">400</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
   </object>
   <object class="GtkDialog" id="connect_dialog">
     <property name="can_focus">False</property>
@@ -1254,11 +1254,126 @@ Installed/Found IIO devices on this platform</property>
       </object>
     </child>
   </object>
-  <object class="GtkListStore" id="trigger_list">
-    <columns>
-      <!-- column-name name -->
-      <column type="gchararray"/>
-    </columns>
+  <object class="GtkMessageDialog" id="serial_number_popup">
+    <property name="can_focus">False</property>
+    <property name="border_width">5</property>
+    <property name="resizable">False</property>
+    <property name="type_hint">dialog</property>
+    <property name="skip_taskbar_hint">True</property>
+    <property name="deletable">False</property>
+    <property name="message_type">question</property>
+    <property name="buttons">ok</property>
+    <property name="text" translatable="yes">FRU to be programmed</property>
+    <child internal-child="vbox">
+      <object class="GtkBox" id="messagedialog-vbox6">
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox" id="messagedialog-action_area6">
+            <property name="can_focus">False</property>
+            <property name="layout_style">end</property>
+            <child>
+              <object class="GtkButton" id="button4">
+                <property name="label">gtk-cancel</property>
+                <property name="use_action_appearance">False</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="pack_type">end</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkTable" id="grid3">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <child>
+              <object class="GtkLabel" id="label18">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">Master FRU File :</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="label19">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">Date :</property>
+              </object>
+              <packing>
+                <property name="top_attach">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="label20">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">Serial Number: </property>
+              </object>
+              <packing>
+                <property name="top_attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="serial_number">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="invisible_char">•</property>
+                <property name="invisible_char_set">True</property>
+              </object>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="top_attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBoxText" id="FRU_files">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="entry_text_column">0</property>
+              </object>
+              <packing>
+                <property name="left_attach">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="fru_date">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="invisible_char">•</property>
+                <property name="invisible_char_set">True</property>
+              </object>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="top_attach">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <action-widgets>
+      <action-widget response="0">button4</action-widget>
+    </action-widgets>
   </object>
   <object class="GtkDialog" id="trigger_dialog">
     <property name="can_focus">False</property>
@@ -1413,5 +1528,11 @@ Installed/Found IIO devices on this platform</property>
       <action-widget response="-6">buttonCancel1</action-widget>
       <action-widget response="-5">buttonOK1</action-widget>
     </action-widgets>
+  </object>
+  <object class="GtkListStore" id="trigger_list">
+    <columns>
+      <!-- column-name name -->
+      <column type="gchararray"/>
+    </columns>
   </object>
 </interface>
