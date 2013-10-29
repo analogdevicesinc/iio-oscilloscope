@@ -1341,9 +1341,10 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	}
 	ch_info = tr->channel_parent->extra_field;
 	for (m = 0; m <= MAX_MARKERS; m++) {
-		sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz\n",
+		sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz%c",
 				m, markY[m], ch_info->device_parent->lo_freq + markX[m],
-				ch_info->device_parent->adc_scale);
+				ch_info->device_parent->adc_scale,
+				m != MAX_MARKERS ? '\n' : '\0');
 
 		if (m == 0) {
 			gtk_text_buffer_set_text(priv->tbuf, text, -1);
