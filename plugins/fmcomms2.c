@@ -276,7 +276,7 @@ short convert(double scale, float val)
 
 int analyse_wavefile(char *file_name, char **buf, int *count)
 {
-	int ret, j, i = 0, size, rep, tx;
+	int ret, j, i = 0, size, rep, tx = is_2rx_2tx ? 2 : 1;
 	double max = 0.0, val[4], scale;
 	double i1, q1, i2, q2;
 	char line[80];
@@ -287,10 +287,9 @@ int analyse_wavefile(char *file_name, char **buf, int *count)
 
 	if (fgets(line, 80, infile) != NULL) {
 	if (strncmp(line, "TEXT", 4) == 0) {
-		ret = sscanf(line, "TEXT REPEAT %d TX %d", &rep, &tx);
-		if (ret != 2) {
+		ret = sscanf(line, "TEXT REPEAT %d", &rep);
+		if (ret != 1) {
 			rep = 1;
-			tx = 2;
 		}
 		size = 0;
 		while (fgets(line, 80, infile)) {
@@ -807,7 +806,6 @@ static void manage_dds_mode()
 		dds_locked_scale_cb(NULL, NULL);
 		dds_locked_freq_cb(NULL, NULL);
 		dds_locked_phase_cb(NULL, NULL);
-		
 		break;
 	case 2:
 		/* Two tones */
