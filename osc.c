@@ -872,38 +872,45 @@ static void fft_capture_start(void)
 
 /*
  * helper functions for plugins which want to look at data
+ * Note that multiosc application will implement these functions differently.
  */
-int plugin_data_capture_size(void)
+ 
+void * plugin_get_device_by_reference(const char * device_name)
+{
+	return NULL; 
+}
+
+int plugin_data_capture_size(void *device)
 {
 	return data_buffer.size;
 }
 
-int plugin_data_capture_num_active_channels(void)
+int plugin_data_capture_num_active_channels(void *device)
 {
 	return num_active_channels;
 }
 
-int plugin_data_capture_bytes_per_sample(void)
+int plugin_data_capture_bytes_per_sample(void *device)
 {
 	return bytes_per_sample;
 }
 
-void plugin_data_capture_demux(void *buf, gfloat **cooked, unsigned int num_sam,
+void plugin_data_capture_demux(void *device, void *buf, gfloat **cooked, unsigned int num_samples,
 	unsigned int num_channels)
 
 {
-	demux_data_stream(buf, cooked, num_sam, 0, num_sam, channels, num_channels);
+	demux_data_stream(buf, cooked, num_samples, 0, num_samples, channels, num_channels);
 }
 
-int plugin_data_capture(void *buf)
-{
+int plugin_data_capture(void *device, void *buf)
+{	
 	/* only one consumer at a time */
 	if (data_buffer.data_copy)
 		return false;
 
 	data_buffer.data_copy = buf;
+	
 	return true;
-
 }
 
 static int time_capture_setup(void)

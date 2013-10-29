@@ -24,11 +24,12 @@ void application_quit (void);
 
 void add_ch_setup_check_fct(char * device_name, void *fp);
 
-int plugin_data_capture_size(void);
-int plugin_data_capture(void *buf);
-int plugin_data_capture_num_active_channels(void);
-int plugin_data_capture_bytes_per_sample(void);
-void plugin_data_capture_demux(void *buf, gfloat **cooked, unsigned int num_samples,
+void * plugin_get_device_by_reference(const char *device_name);
+int plugin_data_capture_size(void *device);
+int plugin_data_capture(void *device, void *buf);
+int plugin_data_capture_num_active_channels(void *device);
+int plugin_data_capture_bytes_per_sample(void *device);
+void plugin_data_capture_demux(void *device, void *buf, gfloat **cooked, unsigned int num_samples,
 	unsigned int num_channels);
 
 
