@@ -166,7 +166,7 @@ static size_t write_fru(char *eeprom)
 #else
 static size_t write_fru(char *eeprom) {
 
-	return;
+	return 0;
 }
 #endif
 
@@ -355,10 +355,8 @@ G_MODULE_EXPORT void cb_connect(GtkButton *button, Dialogs *data)
 	switch(ret) {
 		case GTK_RESPONSE_CANCEL:
 		case GTK_RESPONSE_DELETE_EVENT:
-			printf("Cancel\n");
 			break;
 		case GTK_RESPONSE_OK:
-			printf("OK\n");
 			break;
 		default:
 			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
