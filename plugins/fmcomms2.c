@@ -1369,7 +1369,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
 
-	//g_thread_new("Update_thread", (void *) &update_display, NULL);
+	g_thread_new("Update_thread", (void *) &update_display, NULL);
 
 	return 0;
 }
