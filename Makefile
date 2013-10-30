@@ -32,7 +32,7 @@ osc: osc.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o x
 	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
 
 osc.o: osc.c iio_widget.h iio_utils.h int_fft.h osc_plugin.h osc.h
-	$(CC) osc.c -c $(CFLAGS) -DFRU_FILES=\"$(FRU_FILES)\"
+	$(CC) osc.c -c $(CFLAGS)
 
 int_fft.o: int_fft.c
 	$(CC) int_fft.c -c $(CFLAGS)
@@ -47,7 +47,7 @@ fru.o: fru.c fru.h
 	$(CC) fru.c -c $(CFLAGS)
 
 dialogs.o: dialogs.c fru.h osc.h iio_utils.h
-	$(CC) dialogs.c -c $(CFLAGS)
+	$(CC) dialogs.c -c $(CFLAGS) -DFRU_FILES=\"$(FRU_FILES)\"
 
 trigger_dialog.o: trigger_dialog.c fru.h osc.h iio_utils.h iio_widget.h
 	$(CC) trigger_dialog.c -c $(CFLAGS)
