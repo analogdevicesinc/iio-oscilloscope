@@ -30,7 +30,6 @@
 
 #define HANNING_ENBW 1.50
 
-extern char dev_dir_name[512];
 extern gfloat plugin_fft_corr;
 
 static bool is_2rx_2tx;
@@ -298,7 +297,7 @@ void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 	char *file_name = gtk_file_chooser_get_filename(chooser);
 
 	set_dev_paths("ad9361-phy");
-	sprintf(str, "cat %s > %s/filter_fir_config ", file_name, dev_dir_name);
+	sprintf(str, "cat %s > %s/filter_fir_config ", file_name, dev_name_dir());
 	ret = system(str);
 	if (ret < 0)
 		fprintf(stderr, "FIR filter config failed\n");

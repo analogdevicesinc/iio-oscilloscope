@@ -32,8 +32,6 @@
 #define SAMPLE_COUNT_MIN_VALUE 10
 #define SAMPLE_COUNT_MAX_VALUE 1000000ul
 
-extern char dev_dir_name[512];
-
 static gfloat *X = NULL;
 static gfloat *fft_channel = NULL;
 static gfloat fft_corr = 0.0;
@@ -1374,7 +1372,7 @@ bool is_input_device(const char *device)
 
 	set_dev_paths(device);
 
-	ret = build_channel_array(dev_dir_name, &channels, &num_channels);
+	ret = build_channel_array(dev_name_dir(), &channels, &num_channels);
 	if (ret)
 		return false;
 
@@ -1450,7 +1448,7 @@ static void device_list_cb(GtkWidget *widget, gpointer data)
 	set_dev_paths(current_device);
 	plugin_setup_validation_fct = find_setup_check_fct_by_devname(current_device);
 
-	ret = build_channel_array(dev_dir_name, &channels, &num_channels);
+	ret = build_channel_array(dev_name_dir(), &channels, &num_channels);
 	if (ret)
 		return;
 
@@ -1508,7 +1506,7 @@ void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer d
 	gtk_tree_model_get(GTK_TREE_MODEL (data), &iter, 1, &enabled, 2, &channel, -1);
 	enabled = !enabled;
 
-	snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_dir_name, channel->name);
+	snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_name_dir(), channel->name);
 	f = fopen(buf, "w");
 	if (f) {
 		fprintf(f, "%u\n", enabled);

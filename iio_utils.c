@@ -16,13 +16,17 @@
 #include "iio_utils.h"
 
 #define MAX_STR_LEN		512
-char dev_dir_name[MAX_STR_LEN];
+static char dev_dir_name[MAX_STR_LEN];
 static char buf_dir_name[MAX_STR_LEN];
 static char buffer_access[MAX_STR_LEN];
 static char last_device_name[MAX_STR_LEN];
 static char last_debug_name[MAX_STR_LEN];
 
 static char debug_dir_name[MAX_STR_LEN];
+
+const char * dev_name_dir(void) {
+	return dev_dir_name;
+}
 
 int set_dev_paths(const char *device_name)
 {
