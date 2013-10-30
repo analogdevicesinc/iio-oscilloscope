@@ -230,16 +230,21 @@ static void dmm_update_thread(void)
 	}
 
 	gdk_threads_leave();
-
+	g_thread_exit(NULL);
 }
 
 static void dmm_button_clicked(GtkToggleToolButton *btn, gpointer data)
 {
+	static GThread *thr = NULL;
 
 	if (gtk_toggle_tool_button_get_active(btn)) {
-		g_thread_new("Update_DMM", (void *)dmm_update_thread, NULL);
+		thr = g_thread_new("Update_DMM", (void *)dmm_update_thread, NULL);
 	} else {
-
+		if (thr) {
+			iio_thread_clear(thr);
+			g_thread_unref(thr);
+			thr = NULL;
+		}
 	}
 }
 
@@ -312,8 +317,26 @@ static int dmm_init(GtkWidget *notebook)
 
 static bool dmm_identify(void)
 {
-	return false;
-// 	return true;
+	char *devices = NULL, *device, *elements;
+	unsigned int num;
+	bool ret = false;
+
+	num = find_iio_names(&devices, "iio:device");
+	if (devices != NULL) {
+		device = devices;
+		for (; num > 0; num--) {
+			if (!is_input_device(device) &&
+					(find_scan_elements(device, &elements, ACCESS_NORM))) {
+				if (strstr(elements, "in_")) {
+					ret = true;
+					break;
+				}
+			}
+			device += strlen(device) + 1;
+		}
+		free(devices);
+	}
+	return ret;
 }
 
 const struct osc_plugin plugin = {
