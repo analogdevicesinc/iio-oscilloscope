@@ -12,26 +12,73 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <glib/gthread.h>
 
 #include "iio_utils.h"
 
 #define MAX_STR_LEN		512
-static char dev_dir_name[MAX_STR_LEN];
-static char buf_dir_name[MAX_STR_LEN];
-static char buffer_access[MAX_STR_LEN];
-static char last_device_name[MAX_STR_LEN];
-static char last_debug_name[MAX_STR_LEN];
+#define MAX_THREADS             10
+static GThread *thread_ids[MAX_THREADS];
+static char dev_dir_name[MAX_THREADS][MAX_STR_LEN];
+static char buf_dir_name[MAX_THREADS][MAX_STR_LEN];
+static char buffer_access[MAX_THREADS][MAX_STR_LEN];
+static char last_device_name[MAX_THREADS][MAX_STR_LEN];
+static char last_debug_name[MAX_THREADS][MAX_STR_LEN];
+static char debug_dir_name[MAX_THREADS][MAX_STR_LEN];
 
-static char debug_dir_name[MAX_STR_LEN];
+static int thread_index()
+{
+	GThread *t;
+	size_t i;
+
+	t = g_thread_self();
+
+	for (i = 0; i < MAX_THREADS; i++) {
+		if (thread_ids[i] == t)
+			return i;
+	}
+
+	/* No existing threads, so let's see if an empty one exists */
+	for (i = 0; i < MAX_THREADS; i++) {
+		if (!thread_ids[i]) {
+			thread_ids[i] = t;
+			/* First time, so clear everything */
+			dev_dir_name[i][0] = '\0';
+			buffer_access[i][0] = '\0';
+			last_device_name[i][0] = '\0';
+			buf_dir_name[i][0] = '\0';
+			last_debug_name[i][0] = '\0';
+			debug_dir_name[i][0] = '\0';
+			return i;
+		}
+	}
+
+	printf("Too many threads - sorry\n");
+	exit(0);
+	return 0;
+}
+
+void iio_thread_clear(GThread *thread)
+{
+	size_t i;
+
+	for (i = 0; i < MAX_THREADS; i++) {
+		if (thread_ids[i] == thread) {
+			thread_ids[i] = 0;
+			return;
+		}
+	}
+}
 
 const char * dev_name_dir(void) {
-	return dev_dir_name;
+	return dev_dir_name[thread_index()];
 }
 
 int set_dev_paths(const char *device_name)
 {
 	int dev_num, ret;
 	struct stat s;
+	size_t thr = thread_index();
 
 	if (!device_name) {
 		ret = -EFAULT;
@@ -44,28 +91,28 @@ int set_dev_paths(const char *device_name)
 		goto error_ret;
 	}
 
-	if (strncmp(device_name, last_device_name, MAX_STR_LEN) != 0) {
+	if (strncmp(device_name, last_device_name[thr], MAX_STR_LEN) != 0) {
 	/* Find the device requested */
 		dev_num = find_type_by_name(device_name, "iio:device");
 		if (dev_num >= 0) {
-			ret = snprintf(buf_dir_name, MAX_STR_LEN,"%siio:device%d/buffer",
+			ret = snprintf(buf_dir_name[thr], MAX_STR_LEN,"%siio:device%d/buffer",
 					iio_dir, dev_num);
 			if (ret >= MAX_STR_LEN) {
 				syslog(LOG_ERR, "set_dev_paths failed (%d)\n", __LINE__);
 				ret = -EFAULT;
 				goto error_ret;
 			}
-			snprintf(dev_dir_name, MAX_STR_LEN, "%siio:device%d",
+			snprintf(dev_dir_name[thr], MAX_STR_LEN, "%siio:device%d",
 					iio_dir, dev_num);
-			snprintf(buffer_access, MAX_STR_LEN, "/dev/iio:device%d",
+			snprintf(buffer_access[thr], MAX_STR_LEN, "/dev/iio:device%d",
 					dev_num);
-			strcpy(last_device_name, device_name);
+			strcpy(last_device_name[thr], device_name);
 		} else {
 			dev_num = find_type_by_name(device_name, "trigger");
 			if (dev_num >= 0) {
-				snprintf(dev_dir_name, MAX_STR_LEN, "%strigger%d",
+				snprintf(dev_dir_name[thr], MAX_STR_LEN, "%strigger%d",
 						iio_dir, dev_num);
-				strcpy(last_device_name, device_name);
+				strcpy(last_device_name[thr], device_name);
 			} else {
 				syslog(LOG_ERR, "set_dev_paths failed to find the %s\n",
 					device_name);
@@ -78,9 +125,9 @@ int set_dev_paths(const char *device_name)
 	return 0;
 
 error_ret:
-	dev_dir_name[0] = '\0';
-	buffer_access[0] = '\0';
-	last_device_name[0] = '\0';
+	dev_dir_name[thr][0] = '\0';
+	buffer_access[thr][0] = '\0';
+	last_device_name[thr][0] = '\0';
 	return ret;
 }
 
@@ -88,8 +135,11 @@ int set_debugfs_paths(const char *device_name)
 {
 	int dev_num, ret;
 	FILE *debugfsfp;
+	size_t thr;
 
-	if (strncmp(device_name, last_debug_name, MAX_STR_LEN) != 0) {
+	thr = thread_index();
+	
+	if (strncmp(device_name, last_debug_name[thr], MAX_STR_LEN) != 0) {
 		/* Find the device requested */
 		dev_num = find_type_by_name(device_name, "iio:device");
 		if (dev_num < 0) {
@@ -98,16 +148,16 @@ int set_debugfs_paths(const char *device_name)
 			ret = -ENODEV;
 			goto error_ret;
 		}
-		ret = snprintf(debug_dir_name, MAX_STR_LEN,"%siio:device%d/",
+		ret = snprintf(debug_dir_name[thr], MAX_STR_LEN,"%siio:device%d/",
 		iio_debug_dir, dev_num);
 		if (ret >= MAX_STR_LEN) {
 			syslog(LOG_ERR, "%s failed (%d)\n", __func__, __LINE__);
 			ret = -EFAULT;
 			goto error_ret;
 		}
-		debugfsfp = fopen(debug_dir_name, "r");
+		debugfsfp = fopen(debug_dir_name[thr], "r");
 		if (!debugfsfp) {
-			syslog(LOG_ERR, "%s can't open %s\n", __func__, debug_dir_name);
+			syslog(LOG_ERR, "%s can't open %s\n", __func__, debug_dir_name[thr]);
 			ret = -ENODEV;
 			goto error_ret;
 		}
@@ -115,28 +165,31 @@ int set_debugfs_paths(const char *device_name)
 	return 0;
 
 error_ret:
-	debug_dir_name[0] ='\0';
+	debug_dir_name[thr][0] ='\0';
 	return ret;
 }
 
 int read_reg(unsigned int address)
 {
-	if (strlen(debug_dir_name) == 0)
+	size_t thr = thread_index();
+
+	if (strlen(debug_dir_name[thr]) == 0)
 		return 0;
 
-	write_sysfs_int("direct_reg_access", debug_dir_name, address);
-	return read_sysfs_posint("direct_reg_access", debug_dir_name);
+	write_sysfs_int("direct_reg_access", debug_dir_name[thr], address);
+	return read_sysfs_posint("direct_reg_access", debug_dir_name[thr]);
 }
 
 int write_reg(unsigned int address, unsigned int val)
 {
 	char temp[40];
+	size_t thr = thread_index();
 
-	if (strlen(debug_dir_name) == 0)
+	if (strlen(debug_dir_name[thr]) == 0)
 		return 0;
 
 	sprintf(temp, "0x%x 0x%x\n", address, val);
-	return write_sysfs_string("direct_reg_access", debug_dir_name, temp);
+	return write_sysfs_string("direct_reg_access", debug_dir_name[thr], temp);
 }
 
 /* returns true if needle is inside haystack */
@@ -437,11 +490,12 @@ error_free:
 int write_devattr(const char *attr, const char *str)
 {
 	int ret;
+	size_t thr = thread_index();
 
-	if (strlen(dev_dir_name) == 0)
+	if (strlen(dev_dir_name[thr]) == 0)
 		return -ENODEV;
 
-	ret = write_sysfs_string(attr, dev_dir_name, str);
+	ret = write_sysfs_string(attr, dev_dir_name[thr], str);
 
 	if (ret < 0) {
 		syslog(LOG_ERR, "write_devattr failed (%d)\n", __LINE__);
@@ -453,11 +507,12 @@ int write_devattr(const char *attr, const char *str)
 int read_devattr(const char *attr, char **str)
 {
 	int ret;
+	size_t thr = thread_index();
 
-	if (strlen(dev_dir_name) == 0)
+	if (strlen(dev_dir_name[thr]) == 0)
 		return -ENODEV;
 
-	ret = read_sysfs_string(attr, dev_dir_name, str);
+	ret = read_sysfs_string(attr, dev_dir_name[thr], str);
 	if (ret < 0) {
 		syslog(LOG_ERR, "read_devattr failed (%d)\n", __LINE__);
 	}
@@ -540,11 +595,12 @@ int write_devattr_int(const char *attr, unsigned long long value)
 int read_devattr_int(char *attr, int *val)
 {
 	int ret;
+	size_t thr = thread_index();
 
-	if (strlen(dev_dir_name) == 0)
+	if (strlen(dev_dir_name[thr]) == 0)
 		return -ENODEV;
 
-	ret = read_sysfs_posint(attr, dev_dir_name);
+	ret = read_sysfs_posint(attr, dev_dir_name[thr]);
 	if (ret < 0) {
 		syslog(LOG_ERR, "read_devattr failed (%d)\n", __LINE__);
 	}
@@ -558,18 +614,19 @@ bool iio_devattr_exists(const char *device, const char *attr)
 {
 	char *temp;
 	struct stat s;
+	size_t thr = thread_index();
 
 	set_dev_paths(device);
 
-	if (strlen(dev_dir_name) == 0)
+	if (strlen(dev_dir_name[thr]) == 0)
 		return -ENODEV;
 
-	temp = malloc(strlen(dev_dir_name) + strlen(attr) + 2);
+	temp = malloc(strlen(dev_dir_name[thr]) + strlen(attr) + 2);
 	if (temp == NULL) {
 		fprintf(stderr, "Memory allocation failed\n");
 		return -ENOMEM;
 	}
-	sprintf(temp, "%s/%s", dev_dir_name, attr);
+	sprintf(temp, "%s/%s", dev_dir_name[thr], attr);
 
 	stat(temp, &s);
 
@@ -585,5 +642,5 @@ int iio_buffer_open(bool read, int flags)
 	else
 		flags |= O_WRONLY;
 
-	return open(buffer_access, flags);
+	return open(buffer_access[thread_index()], flags);
 }
