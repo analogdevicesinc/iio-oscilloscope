@@ -9,9 +9,10 @@ FRU_FILES=$(PREFIX)/lib/fmc-tools/
 
 LDFLAGS=`pkg-config --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3`
 LDFLAGS+=`xml2-config --libs`
+LDFLAGS+=-lmatio -lz
 CFLAGS=`pkg-config --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3`
 CFLAGS+=`xml2-config --cflags`
-CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' -lmatio -lz
+CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
@@ -27,8 +28,33 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c xml_utils.c ./ini/ini.c
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -DFRU_FILES=\"$(FRU_FILES)\" -ldl -rdynamic -o $@
+osc: osc.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ./ini/ini.c
+	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
+
+osc.o: osc.c iio_widget.h iio_utils.h int_fft.h osc_plugin.h osc.h
+	$(CC) osc.c -c $(CFLAGS) -DFRU_FILES=\"$(FRU_FILES)\"
+
+int_fft.o: int_fft.c
+	$(CC) int_fft.c -c $(CFLAGS)
+
+iio_utils.o: iio_utils.c iio_utils.h
+	$(CC) iio_utils.c -c $(CFLAGS)
+
+iio_widget.o: iio_widget.c iio_widget.h iio_utils.h
+	$(CC) iio_widget.c -c $(CFLAGS)
+
+fru.o: fru.c fru.h
+	$(CC) fru.c -c $(CFLAGS)
+
+dialogs.o: dialogs.c fru.h osc.h iio_utils.h
+	$(CC) dialogs.c -c $(CFLAGS)
+
+trigger_dialog.o: trigger_dialog.c fru.h osc.h iio_utils.h iio_widget.h
+	$(CC) trigger_dialog.c -c $(CFLAGS)
+
+xml_utils.o: xml_utils.c xml_utils.h
+	$(CC) xml_utils.c -c $(CFLAGS)
+
 
 %.so: %.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@
