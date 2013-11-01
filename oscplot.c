@@ -27,7 +27,6 @@ extern void fft_transform_function(Transform *tr, gboolean init_transform);
 extern void constellation_transform_function(Transform *tr, gboolean init_transform);
 extern void *find_setup_check_fct_by_devname(const char *dev_name);
 
-extern char dev_dir_name[512];
 extern struct _device_list *device_list;
 extern unsigned num_devices;
 
@@ -413,7 +412,7 @@ static gboolean check_channel_is_writable(struct iio_channel_info *channel)
 	/* Enable/disable all the channels using the shadowed enable state */
 	for (i = 0; i < device->num_channels; i++) {
 		ch = &device->channel_list[i];
-		snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_dir_name, ch->name);
+		snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_name_dir(), ch->name);
 		/* Remember the old value */
 		f = fopen(buf, "r");
 		ret = fscanf(f, "%u", &old_values[i]);
@@ -429,7 +428,7 @@ static gboolean check_channel_is_writable(struct iio_channel_info *channel)
 		}
 	} 
 	
-	snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_dir_name, channel->name);
+	snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_name_dir(), channel->name);
 	/* Remember the old value */
 	f = fopen(buf, "r");
 	ret = fscanf(f, "%u", &old_val);
@@ -462,7 +461,7 @@ static gboolean check_channel_is_writable(struct iio_channel_info *channel)
 	/* Restore the old states of all channels */
 	for (i = 0; i < device->num_channels; i++) {
 		ch = &device->channel_list[i];
-		snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_dir_name, ch->name);
+		snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_name_dir(), ch->name);
 		f = fopen(buf, "w");
 		if (f) {
 			fprintf(f, "%u\n", old_values[i]);

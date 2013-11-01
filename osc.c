@@ -27,7 +27,6 @@
 #include "osc_plugin.h"
 #include "osc.h"
 
-extern char dev_dir_name[512];
 struct _device_list *device_list = NULL;
 unsigned num_devices = 0;
 gint capture_function = 0;
@@ -480,7 +479,7 @@ unsigned int set_channel_attr_enable(const char *device_name, struct iio_channel
 	int ret;
 	
 	set_dev_paths(device_name);
-	snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_dir_name, channel->name);
+	snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_name_dir(), channel->name);
 	f = fopen(buf, "w");
 	if (f) {
 		fprintf(f, "%u\n", enable);
@@ -974,7 +973,7 @@ bool is_input_device(const char *device)
 	
 	set_dev_paths(device);
 	
-	ret = build_channel_array(dev_dir_name, &channels, &num_channels);
+	ret = build_channel_array(dev_name_dir(), &channels, &num_channels);
 	if (ret)
 		return false;
 	
@@ -1008,7 +1007,7 @@ static struct _device_list *add_device(struct _device_list *dev_list, const char
 	dev_list[n].device_name = (char *)malloc(sizeof(char) * dev_name_len);
 	snprintf(dev_list[n].device_name, dev_name_len, "%s", device);
 	
-	ret = build_channel_array(dev_dir_name, &dev_list[n].channel_list, &dev_list[n].num_channels);
+	ret = build_channel_array(dev_name_dir(), &dev_list[n].channel_list, &dev_list[n].num_channels);
 	if (ret)
 		return NULL;
 		

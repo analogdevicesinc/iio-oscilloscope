@@ -26,8 +26,6 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 
-extern char dev_dir_name[512];
-
 static GtkWidget *dmm_results;
 static GtkWidget *select_all_channels;
 static GtkWidget *dmm_button;

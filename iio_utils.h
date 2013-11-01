@@ -750,6 +750,7 @@ static inline void dummy_funct_quiet(char *ptr)
 #define SCALE_TOKEN "_scale"
 
 int set_dev_paths(const char *device_name);
+const char * dev_name_dir(void);
 int read_sysfs_string(const char *filename, const char *basedir, char **str);
 int set_debugfs_paths(const char *device_name);
 int read_sysfs_string(const char *filename, const char *basedir, char **str);
