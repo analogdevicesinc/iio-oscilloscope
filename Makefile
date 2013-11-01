@@ -10,9 +10,10 @@ FRU_FILES=$(PREFIX)/lib/fmc-tools/
 
 LDFLAGS=`pkg-config --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3`
 LDFLAGS+=`xml2-config --libs`
+LDFLAGS+=-lmatio -lz
 CFLAGS=`pkg-config --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3`
 CFLAGS+=`xml2-config --cflags`
-CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' -lmatio -lz
+CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
@@ -28,8 +29,39 @@ PLUGINS=\
 
 all: multiosc $(PLUGINS)
 
-multiosc: osc.c oscplot.c datatypes.c int_fft.c iio_utils.c iio_widget.c fru.c dialogs.c trigger_dialog.c xml_utils.c ./ini/ini.c 
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -DFRU_FILES=\"$(FRU_FILES)\" -ldl -rdynamic -o $@
+multiosc: osc.o oscplot.o datatypes.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ./ini/ini.c
+	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
+
+osc.o: osc.c iio_widget.h iio_utils.h int_fft.h osc_plugin.h osc.h
+	$(CC) osc.c -c $(CFLAGS)
+
+multiosc.o: multiosc.c osc.h multiosc.h
+	$(CC) multiosc.c -c $(CFLAGS)
+
+datatypes.o: datatypes.c datatypes.h
+	$(CC) datatypes.c -c $(CFLAGS)
+	
+int_fft.o: int_fft.c
+	$(CC) int_fft.c -c $(CFLAGS)
+
+iio_utils.o: iio_utils.c iio_utils.h
+	$(CC) iio_utils.c -c $(CFLAGS)
+
+iio_widget.o: iio_widget.c iio_widget.h iio_utils.h
+	$(CC) iio_widget.c -c $(CFLAGS)
+
+fru.o: fru.c fru.h
+	$(CC) fru.c -c $(CFLAGS)
+
+dialogs.o: dialogs.c fru.h osc.h iio_utils.h
+	$(CC) dialogs.c -c $(CFLAGS) -DFRU_FILES=\"$(FRU_FILES)\"
+
+trigger_dialog.o: trigger_dialog.c fru.h osc.h iio_utils.h iio_widget.h
+	$(CC) trigger_dialog.c -c $(CFLAGS)
+
+xml_utils.o: xml_utils.c xml_utils.h
+	$(CC) xml_utils.c -c $(CFLAGS)
+
 
 %.so: %.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@
@@ -47,16 +79,16 @@ install:
 	install -d $(DESTDIR)/lib/osc/filters
 	install -d $(DESTDIR)/lib/osc/waveforms
 	install ./multiosc $(DESTDIR)/bin/
-	install ./$(TMP)/*.glade $(DESTDIR)/share/osc/
-	install ./icons/ADIlogo.png $(DESTDIR)/share/osc/
-	install ./icons/IIOlogo.png $(DESTDIR)/share/osc/
-	install ./icons/osc128.png $(DESTDIR)/share/osc/
-	install ./icons/osc_capture.png $(DESTDIR)/share/osc/
-	install ./icons/osc_generator.png $(DESTDIR)/share/osc/
-	install $(PLUGINS) $(DESTDIR)/lib/osc/
-	install ./xmls/* $(DESTDIR)/lib/osc/xmls
-	install ./filters/* $(DESTDIR)/lib/osc/filters
-	install ./waveforms/* $(DESTDIR)/lib/osc/waveforms
+	install ./$(TMP)/*.glade $(PSHARE)
+	install ./icons/ADIlogo.png $(PSHARE)
+	install ./icons/IIOlogo.png $(PSHARE)
+	install ./icons/osc128.png $(PSHARE)
+	install ./icons/osc_capture.png $(PSHARE)
+	install ./icons/osc_generator.png $(PSHARE)
+	install $(PLUGINS) $(PLIB)
+	install ./xmls/* $(PLIB)/xmls
+	install ./filters/* $(PLIB)/filters
+	install ./waveforms/* $(PLIB)/waveforms
 
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
 	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
