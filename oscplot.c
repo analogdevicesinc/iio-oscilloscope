@@ -2026,7 +2026,7 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 	priv->saveas_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
 	if (priv->saveas_filename == NULL)
 		goto hide_dialog;
-	name = malloc(strlen(priv->saveas_filename) + 4);
+	name = malloc(strlen(priv->saveas_filename) + 5);
 	switch(response_id) {
 		/* Response Codes encoded in glade file */
 		case GTK_RESPONSE_DELETE_EVENT:
