@@ -34,7 +34,7 @@ static const char *iio_debug_dir = "/sys/kernel/debug/iio/";
  * @generic_name: the output generic channel name
  **/
 static int iioutils_break_up_name(const char *full_name,
-				  char **generic_name)
+				char **generic_name)
 {
 	char *current;
 	char *w, *r;
@@ -101,14 +101,14 @@ struct iio_channel_info {
  * @generic_name: the channel type name
  **/
 static inline int iioutils_get_type(unsigned *is_signed,
-			     unsigned *bytes,
-			     unsigned *bits_used,
-			     unsigned *shift,
-			     uint64_t *mask,
-				 enum iio_endian *endianness,
-			     const char *device_dir,
-			     const char *name,
-			     const char *generic_name)
+			unsigned *bytes,
+			unsigned *bits_used,
+			unsigned *shift,
+			uint64_t *mask,
+			enum iio_endian *endianness,
+			const char *device_dir,
+			const char *name,
+			const char *generic_name)
 {
 	FILE *sysfsfp;
 	int ret, tmp;
@@ -148,7 +148,7 @@ static inline int iioutils_get_type(unsigned *is_signed,
 		if ((strcmp(builtname, ent->d_name) == 0) ||
 		    (strcmp(builtname_generic, ent->d_name) == 0)) {
 			ret = asprintf(&filename,
-				       "%s/%s", scan_el_dir, ent->d_name);
+					"%s/%s", scan_el_dir, ent->d_name);
 			if (ret < 0) {
 				ret = -ENOMEM;
 				goto error_closedir;
@@ -165,8 +165,8 @@ static inline int iioutils_get_type(unsigned *is_signed,
 				goto error_free_filename;
 			}
 			tmp = fscanf(sysfsfp,
-			       "%c%u/%u>>%u", &signchar, bits_used,
-			       &padint, shift);
+					"%c%u/%u>>%u", &signchar, bits_used,
+					&padint, shift);
 			if (tmp != 4) {
 				ret = -ENODEV;
 				goto error_free_filename;
@@ -201,10 +201,10 @@ error_ret:
 }
 
 static inline int iioutils_get_param_float(float *output,
-				    const char *param_name,
-				    const char *device_dir,
-				    const char *name,
-				    const char *generic_name)
+				const char *param_name,
+				const char *device_dir,
+				const char *name,
+				const char *generic_name)
 {
 	FILE *sysfsfp;
 	int ret, tmp;
@@ -219,7 +219,7 @@ static inline int iioutils_get_param_float(float *output,
 		goto error_ret;
 	}
 	ret = asprintf(&builtname_generic,
-		       "%s_%s", generic_name, param_name);
+			"%s_%s", generic_name, param_name);
 	if (ret < 0) {
 		ret = -ENOMEM;
 		goto error_free_builtname;
@@ -233,7 +233,7 @@ static inline int iioutils_get_param_float(float *output,
 		if ((strcmp(builtname, ent->d_name) == 0) ||
 		    (strcmp(builtname_generic, ent->d_name) == 0)) {
 			ret = asprintf(&filename,
-				       "%s/%s", device_dir, ent->d_name);
+					"%s/%s", device_dir, ent->d_name);
 			if (ret < 0) {
 				ret = -ENOMEM;
 				goto error_closedir;
@@ -290,8 +290,8 @@ static inline void bsort_channel_array_by_index(struct iio_channel_info **ci_arr
  * @
  **/
 static inline int build_channel_array(const char *device_dir,
-			      struct iio_channel_info **ci_array,
-			      unsigned int *counter)
+			struct iio_channel_info **ci_array,
+			unsigned int *counter)
 {
 	DIR *dp;
 	FILE *sysfsfp;
@@ -331,7 +331,7 @@ static inline int build_channel_array(const char *device_dir,
 			   "_en") == 0) {
 			current = &(*ci_array)[count++];
 			ret = asprintf(&filename,
-				       "%s/%s", scan_el_dir, ent->d_name);
+					"%s/%s", scan_el_dir, ent->d_name);
 			if (ret < 0) {
 				ret = -ENOMEM;
 				/* decrement count to avoid freeing name */
@@ -361,15 +361,15 @@ static inline int build_channel_array(const char *device_dir,
 			}
 			/* Get the generic and specific name elements */
 			ret = iioutils_break_up_name(current->name,
-						     &current->generic_name);
+						&current->generic_name);
 			if (ret) {
 				free(filename);
 				goto error_cleanup_array;
 			}
 			ret = asprintf(&filename,
-				       "%s/%s_index",
-				       scan_el_dir,
-				       current->name);
+					"%s/%s_index",
+					scan_el_dir,
+					current->name);
 			if (ret < 0) {
 				free(filename);
 				ret = -ENOMEM;
@@ -385,17 +385,17 @@ static inline int build_channel_array(const char *device_dir,
 			free(filename);
 			/* Find the scale */
 			ret = iioutils_get_param_float(&current->scale,
-						       "scale",
-						       device_dir,
-						       current->name,
-						       current->generic_name);
+						"scale",
+						device_dir,
+						current->name,
+						current->generic_name);
 			if (ret < 0)
 				goto error_cleanup_array;
 			ret = iioutils_get_param_float(&current->offset,
-						       "offset",
-						       device_dir,
-						       current->name,
-						       current->generic_name);
+						"offset",
+						device_dir,
+						current->name,
+						current->generic_name);
 			if (ret < 0)
 				goto error_cleanup_array;
 			ret = iioutils_get_type(&current->is_signed,
@@ -429,7 +429,7 @@ error_ret:
 }
 
 static inline void free_channel_array(struct iio_channel_info *ci_array,
-			      int num_channels)
+				int num_channels)
 {
 	int i;
 

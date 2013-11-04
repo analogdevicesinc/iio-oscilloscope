@@ -252,11 +252,11 @@ void scan_elements_insert(char **elements, char *token, char *end)
 	int j, k, num2;
 	size_t i, len, num = 0;
 
-        if (!*elements)
-                return;
+	if (!*elements)
+		return;
 
-        start = *elements;
-        len = strlen(start);
+	start = *elements;
+	len = strlen(start);
 
 	/* strip everything apart, to make it easier to work on */
 	next = strtok(start, " ");
@@ -265,9 +265,9 @@ void scan_elements_insert(char **elements, char *token, char *end)
 		next = strtok(NULL, " ");
 	}
 	/* now walk through things, looking for the token */
-        for (i = 0; i < num; i++) {
-                next = strstr(start, token);
-                if (next) {
+	for (i = 0; i < num; i++) {
+		next = strstr(start, token);
+		if (next) {
 			if(added) {
 				/* did we all ready process this one? */
 				if (strstr(added, start)) {
@@ -323,8 +323,8 @@ void scan_elements_insert(char **elements, char *token, char *end)
 				next += strlen(next) + 1;
 			}
 		}
-                start += strlen(start) + 1;
-        }
+		start += strlen(start) + 1;
+	}
 
 	start = *elements;
 
@@ -336,8 +336,8 @@ void scan_elements_insert(char **elements, char *token, char *end)
 
 	start[len] = 0;
 
-        if (len != strlen(start))
-                fprintf(stderr, "error in %s(%s)\n", __FILE__, __func__);
+	if (len != strlen(start))
+		fprintf(stderr, "error in %s(%s)\n", __FILE__, __func__);
 }
 
 void scan_elements_sort(char **elements)
@@ -389,7 +389,7 @@ void scan_elements_sort(char **elements)
 					/* sort LABEL0_ LABEL10_ as zero and ten */
 					if ((isdigit(start[k]) && isdigit(next[k])) &&
 					    (isdigit(start[k+1]) || isdigit(next[k+1]))){
-					    	if (atoi(&start[k]) >= atoi(&next[k])) {
+						if (atoi(&start[k]) >= atoi(&next[k])) {
 							swap = 1;
 						}
 					} else if (start[k] >= next[k]) {
