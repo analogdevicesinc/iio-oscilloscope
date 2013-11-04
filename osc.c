@@ -22,12 +22,12 @@
 
 #include <fftw3.h>
 
+#include "osc.h"
 #include "iio_widget.h"
 #include "iio_utils.h"
 #include "int_fft.h"
 #include "config.h"
 #include "osc_plugin.h"
-#include "osc.h"
 
 #define SAMPLE_COUNT_MIN_VALUE 10
 #define SAMPLE_COUNT_MAX_VALUE 1000000ul
