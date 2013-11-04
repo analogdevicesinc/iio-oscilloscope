@@ -16,7 +16,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#ifdef IIO_THREADS
 #include <glib/gthread.h>
+#endif
 
 #include "iio_utils.h"
 
