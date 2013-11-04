@@ -399,7 +399,7 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 
 	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (data->saveas));
 	if (filename) {
-		name = malloc(strlen(filename) + 4);
+		name = malloc(strlen(filename) + 5);
 		switch(ret) {
 			/* Response Codes encoded in glade file */
 			case GTK_RESPONSE_DELETE_EVENT:
