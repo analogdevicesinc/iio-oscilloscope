@@ -5,6 +5,10 @@
  *
  **/
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <fcntl.h>
 #include <errno.h>
 #include <syslog.h>
@@ -17,8 +21,14 @@
 #include "iio_utils.h"
 
 #define MAX_STR_LEN		512
-#define MAX_THREADS             10
+
+#ifndef IIO_THREADS
+# define MAX_THREADS             1
+#else
+# define MAX_THREADS             10
 static GThread *thread_ids[MAX_THREADS];
+#endif
+
 static char dev_dir_name[MAX_THREADS][MAX_STR_LEN];
 static char buf_dir_name[MAX_THREADS][MAX_STR_LEN];
 static char buffer_access[MAX_THREADS][MAX_STR_LEN];
@@ -26,6 +36,12 @@ static char last_device_name[MAX_THREADS][MAX_STR_LEN];
 static char last_debug_name[MAX_THREADS][MAX_STR_LEN];
 static char debug_dir_name[MAX_THREADS][MAX_STR_LEN];
 
+#ifndef IIO_THREADS
+static inline int thread_index()
+{
+	return 0;
+}
+#else
 static int thread_index()
 {
 	GThread *t;
@@ -69,6 +85,7 @@ void iio_thread_clear(GThread *thread)
 		}
 	}
 }
+#endif
 
 const char * dev_name_dir(void) {
 	return dev_dir_name[thread_index()];
@@ -195,7 +212,7 @@ int write_reg(unsigned int address, unsigned int val)
 /* returns true if needle is inside haystack */
 static inline bool element_substr(const char *haystack, const char * end, const char *needle)
 {
-	int i;
+	size_t i;
 	char ssub[256], esub[256], need[256];
 
 	strcpy(need, needle);
@@ -230,7 +247,8 @@ void scan_elements_insert(char **elements, char *token, char *end)
 {
 	char key[256], entire_key[256], *loop, *added = NULL;
 	char *start, *next;
-	int len, i, j, k, num = 0, num2;
+	int j, k, num2;
+	size_t i, len, num = 0;
 
         if (!*elements)
                 return;
@@ -322,7 +340,8 @@ void scan_elements_insert(char **elements, char *token, char *end)
 
 void scan_elements_sort(char **elements)
 {
-	int len, i, j, k, num = 0, swap;
+	int swap;
+	size_t i, j, k, len, num = 0;
 	char *start, *next, *loop, temp[256];
 
 	if (!*elements)
