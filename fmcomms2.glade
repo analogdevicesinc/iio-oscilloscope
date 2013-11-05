@@ -1533,7 +1533,7 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">adjustment_TX1_I1_freq</property>
-                                                            <property name="digits">3</property>
+                                                            <property name="digits">4</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -1663,7 +1663,7 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">adjustment_TX1_I2_freq</property>
-                                                            <property name="digits">3</property>
+                                                            <property name="digits">4</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -1826,7 +1826,7 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">adjustment_TX1_Q1_freq</property>
-                                                            <property name="digits">3</property>
+                                                            <property name="digits">4</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -1953,7 +1953,7 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">adjustment_TX1_Q2_freq</property>
-                                                            <property name="digits">3</property>
+                                                            <property name="digits">4</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -2189,7 +2189,7 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">adjustment_TX2_I1_freq</property>
-                                                            <property name="digits">3</property>
+                                                            <property name="digits">4</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -2319,7 +2319,7 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">adjustment_TX2_I2_freq</property>
-                                                            <property name="digits">3</property>
+                                                            <property name="digits">4</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -2482,7 +2482,7 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">adjustment_TX2_Q1_freq</property>
-                                                            <property name="digits">3</property>
+                                                            <property name="digits">4</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -2609,7 +2609,7 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">adjustment_TX2_Q2_freq</property>
-                                                            <property name="digits">3</property>
+                                                            <property name="digits">4</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
