@@ -21,12 +21,12 @@
 #include <values.h>
 #include <sys/stat.h>
 
+#include "../osc.h"
 #include "../iio_widget.h"
 #include "../iio_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
-#include "../osc.h"
 
 #define HANNING_ENBW 1.50
 

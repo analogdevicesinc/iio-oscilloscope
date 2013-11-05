@@ -20,6 +20,7 @@
 #include <malloc.h>
 #include <libxml/xpath.h>
 
+#include "../osc.h"
 #include "../xml_utils.h"
 #include "../iio_utils.h"
 #include "../osc_plugin.h"

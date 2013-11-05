@@ -20,12 +20,12 @@
 
 #include <fftw3.h>
 
+#include "osc.h"
 #include "oscplot.h"
 #include "datatypes.h"
 #include "int_fft.h"
 #include "config.h"
 #include "osc_plugin.h"
-#include "osc.h"
 
 struct _device_list *device_list = NULL;
 unsigned num_devices = 0;

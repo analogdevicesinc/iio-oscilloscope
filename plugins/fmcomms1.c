@@ -20,12 +20,12 @@
 #include <malloc.h>
 #include <values.h>
 
+#include "../osc.h"
 #include "../iio_widget.h"
 #include "../iio_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
-#include "../osc.h"
 #include "../ini/ini.h"
 
 static const gdouble mhz_scale = 1000000.0;

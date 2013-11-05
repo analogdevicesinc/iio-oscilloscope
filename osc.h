@@ -7,6 +7,7 @@
 
 #ifndef __OSC_H__
 #define __OSC_H__
+#define IIO_THREADS
 
 extern GtkWidget *capture_graph;
 extern gint capture_function;

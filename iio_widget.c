@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <errno.h>
 
+#include "osc.h"
 #include "iio_widget.h"
 #include "iio_utils.h"
 

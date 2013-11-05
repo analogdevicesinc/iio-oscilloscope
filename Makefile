@@ -45,7 +45,7 @@ int_fft.o: int_fft.c
 	$(CC) int_fft.c -c $(CFLAGS)
 
 iio_utils.o: iio_utils.c iio_utils.h
-	$(CC) iio_utils.c -c $(CFLAGS)
+	$(CC) iio_utils.c -c $(CFLAGS) -DIIO_THREADS
 
 iio_widget.o: iio_widget.c iio_widget.h iio_utils.h
 	$(CC) iio_widget.c -c $(CFLAGS)
