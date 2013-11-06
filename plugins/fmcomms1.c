@@ -942,16 +942,19 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q1_l);
 		gtk_widget_hide(dds_Q2_l);
 
+#define IIO_SPIN_SIGNAL "value-changed"
+#define IIO_COMBO_SIGNAL "changed"
+
 		if (!dds1_scale_hid)
-			dds1_scale_hid = g_signal_connect(dds1_scale , "changed",
+			dds1_scale_hid = g_signal_connect(dds1_scale , IIO_COMBO_SIGNAL,
 					G_CALLBACK(dds_locked_scale_cb), NULL);
 
 		if (!dds1_freq_hid)
-			dds1_freq_hid = g_signal_connect(dds1_freq , "changed",
+			dds1_freq_hid = g_signal_connect(dds1_freq , IIO_SPIN_SIGNAL,
 					G_CALLBACK(dds_locked_freq_cb), NULL);
 
 		if (!dds1_phase_hid)
-			dds1_freq_hid = g_signal_connect(dds1_freq , "changed",
+			dds1_freq_hid = g_signal_connect(dds1_freq , IIO_SPIN_SIGNAL,
 					G_CALLBACK(dds_locked_phase_cb), NULL);
 
 		if (dds2_scale_hid) {
@@ -978,6 +981,9 @@ static void manage_dds_mode()
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), 90.0);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), 90.0);
 
+		dds_locked_phase_cb(NULL, NULL);
+		dds_locked_scale_cb(NULL, NULL);
+		dds_locked_freq_cb(NULL, NULL);
 
 		break;
 	case 2:
@@ -1016,25 +1022,29 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q2_l);
 
 		if (!dds1_scale_hid)
-			dds1_scale_hid = g_signal_connect(dds1_scale , "changed",
+			dds1_scale_hid = g_signal_connect(dds1_scale , IIO_COMBO_SIGNAL,
 					G_CALLBACK(dds_locked_scale_cb), NULL);
 		if (!dds2_scale_hid)
-			dds2_scale_hid = g_signal_connect(dds2_scale , "changed",
+			dds2_scale_hid = g_signal_connect(dds2_scale , IIO_COMBO_SIGNAL,
 					G_CALLBACK(dds_locked_scale_cb), NULL);
 
 		if (!dds1_freq_hid)
-			dds1_freq_hid = g_signal_connect(dds1_freq , "changed",
+			dds1_freq_hid = g_signal_connect(dds1_freq , IIO_SPIN_SIGNAL,
 					G_CALLBACK(dds_locked_freq_cb), NULL);
 		if (!dds2_freq_hid)
-			dds2_freq_hid = g_signal_connect(dds2_freq , "changed",
+			dds2_freq_hid = g_signal_connect(dds2_freq , IIO_SPIN_SIGNAL,
 					G_CALLBACK(dds_locked_freq_cb), NULL);
 
 		if (!dds1_phase_hid)
-			dds1_phase_hid = g_signal_connect(dds1_phase , "changed",
+			dds1_phase_hid = g_signal_connect(dds1_phase , IIO_SPIN_SIGNAL,
 					G_CALLBACK(dds_locked_phase_cb), NULL);
 		if (!dds2_phase_hid)
-			dds2_phase_hid = g_signal_connect(dds2_phase , "changed",
+			dds2_phase_hid = g_signal_connect(dds2_phase , IIO_SPIN_SIGNAL,
 					G_CALLBACK(dds_locked_phase_cb), NULL);
+
+		dds_locked_phase_cb(NULL, NULL);
+		dds_locked_scale_cb(NULL, NULL);
+		dds_locked_freq_cb(NULL, NULL);
 
 		break;
 	case 3:
@@ -1100,6 +1110,10 @@ static void manage_dds_mode()
 			g_signal_handler_disconnect(dds2_phase, dds2_phase_hid);
 			dds2_phase_hid = 0;
 		}
+
+		dds_locked_phase_cb(NULL, NULL);
+		dds_locked_scale_cb(NULL, NULL);
+		dds_locked_freq_cb(NULL, NULL);
 
 		break;
 	case 4:
