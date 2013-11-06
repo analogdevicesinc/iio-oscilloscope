@@ -399,6 +399,7 @@ static void display_cal(void *ptr)
 	int size, channels, num_samples, i, j;
 	int8_t *buf = NULL;
 	static gfloat **cooked_data = NULL;
+	gfloat *channel_I, *channel_Q;
 	gfloat max_x, min_x, avg_x;
 	gfloat max_y, min_y, avg_y;
 	gfloat max_r, min_r, max_theta, min_theta, rad;
@@ -466,6 +467,8 @@ static void display_cal(void *ptr)
 			/* Process the data in the buffer */
 			plugin_data_capture_demux(device_ref, buf, cooked_data, size/4, channels);
 
+			channel_I = cooked_data[0];
+			channel_Q = cooked_data[1];
 			avg_x = avg_y = 0.0;
 			max_x = max_y = -MAXFLOAT;
 			min_x = min_y = MAXFLOAT;
@@ -473,31 +476,31 @@ static void display_cal(void *ptr)
 			min_r = min_theta = MAXFLOAT;
 
 			for (i = 0; i < num_samples; i++) {
-				avg_x += cooked_data[0][i];
-				avg_y += cooked_data[1][i];
-				rad = sqrtf((cooked_data[0][i] * cooked_data[0][i]) +
-						(cooked_data[1][i] * cooked_data[1][i]));
+				avg_x += channel_Q[i];
+				avg_y += channel_I[i];
+				rad = sqrtf((channel_I[i] * channel_I[i]) +
+						(channel_Q[i] * channel_Q[i]));
 
-				if (max_x <= cooked_data[0][i])
-					max_x = cooked_data[0][i];
-				if (min_x >= cooked_data[0][i])
-					min_x = cooked_data[0][i];
-				if (max_y <= cooked_data[1][i])
-					max_y = cooked_data[1][i];
-				if (min_y >= cooked_data[1][i])
-					min_y = cooked_data[1][i];
+				if (max_x <= channel_Q[i])
+					max_x = channel_Q[i];
+				if (min_x >= channel_Q[i])
+					min_x = channel_Q[i];
+				if (max_y <= channel_I[i])
+					max_y = channel_I[i];
+				if (min_y >= channel_I[i])
+					min_y = channel_I[i];
 
 				if (max_r <= rad) {
 					max_r = rad;
-					if (cooked_data[1][i])
-						max_theta = asinf(cooked_data[0][i]/rad);
+					if (channel_I[i])
+						max_theta = asinf(channel_Q[i]/rad);
 					else
 						max_theta = 0.0f;
 				}
 				if (min_r >= rad) {
 					min_r = rad;
-					if (cooked_data[1][i])
-						min_theta = asinf(cooked_data[0][i]/rad);
+					if (channel_I[i])
+						min_theta = asinf(channel_Q[i]/rad);
 					else
 						min_theta = 0.0f;
 				}
