@@ -14,66 +14,55 @@
 
 #include "xml_utils.h"
 
-#define MAX_STR_LEN			512
-static char      buf_dir_name[MAX_STR_LEN];
-static xmlDocPtr doc_ADI_device;
-
-/*
- * Set the path of the folder where xml files can be found. The path can be
- * relative to the path of this file or the full path.
- */
-void set_xml_folder_path(char *path)
-{
-	sprintf(buf_dir_name, "%s", path);
-}
+#define MAX_STR_LEN    512
 
 /*
  * Open a xml file with the given name and store in the root variable a pointer
  * to the first element of the xml file. Add extension to the filename if it
  * does not have one.
- * Return 0 - when the file opened successfully or -1 otherwise.
+ * Return a reference to the opened xml file or NULL if an error occurs.
  */
-int open_xml_file(char *file_name, xmlNodePtr *root)
+xmlDocPtr open_xml_file(char *file_name, xmlNodePtr *root)
 {
 	char *has_ext;
 	char *extension = ".xml";
 	char *temp;
+	xmlDocPtr doc;
 
 	if ((root == NULL) || (file_name == NULL))
-		return -1;
+		return NULL;
 
 	if (strlen(file_name) == 0)
-		return -1;
+		return NULL;
 
-	temp  = (char *)malloc(strlen(buf_dir_name) + strlen(file_name) +
+	temp  = (char *)malloc(strlen(file_name) +
 							strlen(extension) +
-							1 + /* for the "/" character between buf_dir_name and file_name */
 							1); /* for the null terminator */
 	if (temp == NULL) {
 		printf("Memory allocation failed");
-		return -1;
+		return NULL;
 	}
 
 	/* Add extension to a path without one. */
 	has_ext = strstr(file_name, extension);
 	if (has_ext == NULL)
-		sprintf(temp, "%s/%s%s", buf_dir_name, file_name, extension);
+		sprintf(temp, "%s%s", file_name, extension);
 	else
-		sprintf(temp, "%s/%s", buf_dir_name, file_name);
-	doc_ADI_device = xmlParseFile(temp);
-	if (doc_ADI_device == NULL){
+		sprintf(temp, "%s", file_name);
+	doc = xmlParseFile(temp);
+	if (doc == NULL){
 		free(temp);
-		return -1;
+		return NULL;
 	}
-	*root = xmlDocGetRootElement(doc_ADI_device);
+	*root = xmlDocGetRootElement(doc);
 	if (*root == NULL){
 		printf("%s is empty (%d)\n", temp, __LINE__);
-		xmlFreeDoc(doc_ADI_device);
-		return -1;
+		xmlFreeDoc(doc);
+		return NULL;
 	}
 	free(temp);
 
-	return 0;
+	return doc;
 }
 
 /*
@@ -82,7 +71,7 @@ int open_xml_file(char *file_name, xmlNodePtr *root)
  * Pass to the caller the number of elements in the list, using list_size.
  * Return a pointer to the list.
  */
-char **get_xml_list(int *list_size)
+char **get_xml_list(char * buf_dir_name, int *list_size)
 {
 	const struct dirent *ent;
 	DIR *d;
@@ -145,14 +134,14 @@ void free_xml_list(char **list, int list_size)
  * Return none, but use xml_name to return the name of the xml file that
  * is found.
  */
-void find_device_xml_file(char *device_name, char *xml_name)
+void find_device_xml_file(char *dir_path, char *device_name, char *xml_name)
 {
 	char **xmls_list;
 	char *xml_elem;
 	int size = 0;
 	int i;
 
-	xmls_list = get_xml_list(&size);
+	xmls_list = get_xml_list(dir_path, &size);
 	for(i = 0; i < size; i++) {
 		xml_elem = strstr(device_name, xmls_list[i]);
 		if (xml_elem != NULL) { /* if the element name from the xml list exist within the device name */
@@ -173,14 +162,14 @@ void find_device_xml_file(char *device_name, char *xml_name)
  * Return - the element value as a char array. Returns an empty string ("") if
  * no element is found.
  */
-char* read_string_element(xmlNodePtr node, char *element)
+char* read_string_element(xmlDocPtr doc, xmlNodePtr node, char *element)
 {
 	char *text = NULL;
 
 	node = node->xmlChildrenNode;
 	while (node != NULL){
 		if (!xmlStrcmp(node->name, (xmlChar *)element)){
-			text = (char *)xmlNodeListGetString(doc_ADI_device, node->xmlChildrenNode, 1);
+			text = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 			break;
 		}
 		node = node->next;
@@ -197,13 +186,13 @@ char* read_string_element(xmlNodePtr node, char *element)
  * stops at the first found element.
  * Return - the element value as an integer. Returns 0 if no element is found.
  */
-int read_integer_element(xmlNodePtr node, char *element)
+int read_integer_element(xmlDocPtr doc, xmlNodePtr node, char *element)
 {
 	char *text = NULL;
 	int result;
 	int ret;
 
-	text = read_string_element(node, element);
+	text = read_string_element(doc, node, element);
 	if (*text == 0) /* Check if the string is empty */
 		return 0;
 	ret = sscanf(text, "%d", &result);
@@ -220,12 +209,12 @@ int read_integer_element(xmlNodePtr node, char *element)
  * Use XPath for the search. Find all elements with the name specified by user.
  * Return - pointer to the list of elements or NULL if an error occurred.
  */
-xmlXPathObjectPtr retrieve_all_elements(char *element)
+xmlXPathObjectPtr retrieve_all_elements(xmlDocPtr doc, char *element)
 {
 	xmlXPathContextPtr context;
 	xmlXPathObjectPtr result;
 
-	context = xmlXPathNewContext(doc_ADI_device);
+	context = xmlXPathNewContext(doc);
 	if (context == NULL){
 		printf("Error in xmlXPathNewContext\n");
 		return NULL;
@@ -296,7 +285,7 @@ xmlNodePtr* get_children_by_name(xmlNodePtr parent_node, char* tag_name, int *ch
 	return children_list;
 }
 
-void close_current_xml_file(void)
+void close_xml_file(xmlDocPtr doc)
 {
-	xmlFreeDoc(doc_ADI_device);
+	xmlFreeDoc(doc);
 }

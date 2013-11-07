@@ -105,12 +105,16 @@ static gulong *combo_hid_list; /* Handler ids of the bit options(comboboxes) */
 static gulong *spin_hid_list;  /* Handler ids of the bit options(spinbuttons) */
 
 /* XML data pointers */
+static xmlDocPtr xml_doc; /* The reference to the xml file */
 static xmlNodePtr root; /* The reference to the first element in the xml file */
 static xmlXPathObjectPtr register_list; /* List of register references */
 
 static int context_created = 0; /* register data allocation flag */
 static int soft_reg_exists = 0; /* keeps track of alloc-free calls */
 static int xml_file_opened = 0; /* a open file flag */
+
+/* The path of the directory containing the xml files. */
+static char xmls_folder_path[512];
 
 /******************************************************************************/
 /**************************** Functions prototypes ****************************/
@@ -240,6 +244,7 @@ static void scanel_write_clicked(GtkButton *btn, gpointer data)
 static void debug_device_list_cb(GtkButton *btn, gpointer data)
 {
 	char buf[128];
+	char *temp_path;
 	char *current_device, *elements, *start, *end, *next, *avail;
 	GtkListStore *store;
 	int ret = 0;
@@ -253,14 +258,22 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 	if (g_strcmp0("None\0", current_device)) {
 		ret = set_debugfs_paths(current_device);
 		if (!ret) {
-			find_device_xml_file(current_device, buf);
-			if (open_xml_file(buf, &root) == 0) {
+			find_device_xml_file(xmls_folder_path,  current_device, buf);
+			temp_path = malloc(strlen(xmls_folder_path) + strlen(buf) + 2);
+			if (!temp_path) {
+				printf("Failed to allocate memory with malloc\n");
+				return;
+			}				
+			sprintf(temp_path, "%s/%s", xmls_folder_path, buf);
+			xml_doc = open_xml_file(temp_path, &root);
+			if (xml_doc) {
 				xml_file_opened = 1;
 				create_device_context();
 				g_signal_emit_by_name(spin_btn_reg_addr, "value-changed");
 			} else {
 				printf("Cannot find or load the xml file for the %s device\n", current_device);
 			}
+			free(temp_path);
 			gtk_widget_show(btn_read_reg);
 			gtk_widget_set_sensitive(spin_btn_reg_value, true);
 			gtk_widget_set_sensitive(label_reg_hex_value,true);
@@ -545,9 +558,9 @@ static void fill_soft_register(reg *p_reg, int reg_index)
 	nodeset = register_list->nodesetval;
 
 	/* Get the name, notes and width of the register. */
-	p_reg->name = read_string_element(nodeset->nodeTab[reg_index], "Description");
-	p_reg->notes = read_string_element(nodeset->nodeTab[reg_index], "Notes");
-	p_reg->width = read_string_element(nodeset->nodeTab[reg_index], "Width");
+	p_reg->name = read_string_element(xml_doc, nodeset->nodeTab[reg_index], "Description");
+	p_reg->notes = read_string_element(xml_doc, nodeset->nodeTab[reg_index], "Notes");
+	p_reg->width = read_string_element(xml_doc, nodeset->nodeTab[reg_index], "Width");
 
 	/* Get the "BitFields" reference */
 	crtnode = get_child_by_name(nodeset->nodeTab[reg_index], "BitFields");
@@ -561,12 +574,12 @@ static void fill_soft_register(reg *p_reg, int reg_index)
 	/* Go through all bit groups and get information: description, width, offset, options, etc. */
 	for (i = 0; i < p_reg->bgroup_cnt; i++){
 		p_bit = &p_reg->bgroup_list[i];
-		p_bit->name = read_string_element(bit_list[i], "Description");
-		p_bit->width = read_integer_element(bit_list[i], "Width");
-		p_bit->offset = read_integer_element(bit_list[i], "RegOffset");
-		p_bit->def_val = read_integer_element(bit_list[i], "DefaultValue");
-		p_bit->access = read_string_element(bit_list[i], "Access");
-		p_bit->description = read_string_element(bit_list[i], "Notes");
+		p_bit->name = read_string_element(xml_doc, bit_list[i], "Description");
+		p_bit->width = read_integer_element(xml_doc, bit_list[i], "Width");
+		p_bit->offset = read_integer_element(xml_doc, bit_list[i], "RegOffset");
+		p_bit->def_val = read_integer_element(xml_doc, bit_list[i], "DefaultValue");
+		p_bit->access = read_string_element(xml_doc, bit_list[i], "Access");
+		p_bit->description = read_string_element(xml_doc, bit_list[i], "Notes");
 
 		/* Get the "Options" reference if exist. Else go to the next bit group. */
 		crtnode = get_child_by_name(bit_list[i], "Options");
@@ -582,8 +595,8 @@ static void fill_soft_register(reg *p_reg, int reg_index)
 		p_bit->option_list = (option *)malloc(sizeof(option) * p_bit->options_cnt);
 		for (j = 0; j < p_bit->options_cnt; j++) {
 			p_option = &p_bit->option_list[j];
-			p_option->text = read_string_element(opt_list[j], "Description");
-			p_option->value = read_integer_element(opt_list[j], "Value");
+			p_option->text = read_string_element(xml_doc, opt_list[j], "Description");
+			p_option->value = read_integer_element(xml_doc, opt_list[j], "Value");
 		}
 		free(opt_list); /* This list options is no longer required */
 	}
@@ -998,7 +1011,7 @@ static int get_default_reg_width(void)
 	if (node == NULL)
 		return 0;
 	/* Now node is pointing to the first <Register> that holds the <Width> element. */
-	default_width = read_integer_element(node, "Width");
+	default_width = read_integer_element(xml_doc, node, "Width");
 
 	return default_width;
 }
@@ -1022,7 +1035,7 @@ static int * get_reg_addr_list(void)
 	}
 
 	for (; i < nodeset->nodeNr; i++){
-		reg_addr = read_string_element(nodeset->nodeTab[i], "Address");
+		reg_addr = read_string_element(xml_doc, nodeset->nodeTab[i], "Address");
 		sscanf(reg_addr, "%x", (int *)(list + i));
 		xmlFree((xmlChar *)reg_addr);
 	}
@@ -1096,7 +1109,7 @@ static void create_device_context(void)
 {
 	if (!context_created) {
 		/* Search for all elements called "Register" */
-		register_list = retrieve_all_elements("//Register");
+		register_list = retrieve_all_elements(xml_doc, "//Register");
 		reg_addr_list = get_reg_addr_list();
 		/* Init data */
 		reg_bit_width = get_default_reg_width();
@@ -1118,7 +1131,7 @@ static void destroy_device_context(void)
 		free_widget_arrays();
 		free_soft_register(&soft_reg);
 		xmlXPathFreeObject(register_list);
-		close_current_xml_file();
+		close_xml_file(xml_doc);
 		xml_file_opened = 0;
 		reg_bit_width = 0;
 	}
@@ -1151,10 +1164,12 @@ static int debug_init(GtkWidget *notebook)
 	/* Check the local xmls folder first */
 	d = opendir("./xmls");
 	if (!d) {
-		set_xml_folder_path(OSC_XML_PATH);
+		//set_xml_folder_path(OSC_XML_PATH);
+		snprintf(xmls_folder_path, sizeof(xmls_folder_path), "%s", OSC_XML_PATH);
 	} else {
 		closedir(d);
-		set_xml_folder_path("./xmls");
+		//set_xml_folder_path("./xmls");
+		snprintf(xmls_folder_path, sizeof(xmls_folder_path), "%s", "./xmls");
 	}
 
 	builder = gtk_builder_new();
