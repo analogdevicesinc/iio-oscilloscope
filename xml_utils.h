@@ -8,15 +8,14 @@
 #ifndef __XML_UTILS_H__
 #define __XML_UTILS_H__
 
-void set_xml_folder_path(char *path);
-int open_xml_file(char *file_name, xmlNodePtr *root);
-void find_device_xml_file(char *device_name, char *xml_name);
-char* read_string_element(xmlNodePtr node, char *element);
-int read_integer_element(xmlNodePtr node, char *element);
-xmlXPathObjectPtr retrieve_all_elements(char *element);
+xmlDocPtr open_xml_file(char *file_name, xmlNodePtr *root);
+void find_device_xml_file(char *dir_path, char *device_name, char *xml_name);
+char* read_string_element(xmlDocPtr doc, xmlNodePtr node, char *element);
+int read_integer_element(xmlDocPtr doc, xmlNodePtr node, char *element);
+xmlXPathObjectPtr retrieve_all_elements(xmlDocPtr doc, char *element);
 xmlNodePtr get_child_by_name(xmlNodePtr parent_node, char* tag_name);
 xmlNodePtr* get_children_by_name(xmlNodePtr parent_node, char* tag_name,
 							int *children_cnt);
-void close_current_xml_file(void);
+void close_xml_file(xmlDocPtr doc);
 
 #endif
