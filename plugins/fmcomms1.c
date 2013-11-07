@@ -85,6 +85,8 @@ static GtkWidget *Q_dac_pha_adj, *Q_dac_offs, *Q_dac_fs_adj;
 static GtkWidget *I_adc_offset_adj, *I_adc_gain_adj;
 static GtkWidget *Q_adc_offset_adj, *Q_adc_gain_adj;
 
+static GtkWidget *ad9122_temp;
+
 static int kill_thread;
 static int fmcomms1_cal_eeprom(void);
 
@@ -394,6 +396,24 @@ static void cal_rx_button_clicked(GtkButton *btn, gpointer data)
 	cal_rx_flag = true;
 }
 
+static void dac_temp_update()
+{
+	double temp;
+	char buf[25];
+
+	gdk_threads_enter();
+	set_dev_paths("cf-ad9122-core-lpc");
+	if (read_devattr_double("in_temp0_input", &temp) < 0) {
+		/* Just assume it's 25C */
+		temp = 2500;
+		write_devattr_double("in_temp0_input", temp);
+	}
+
+	sprintf(buf, "%2.1f", temp/1000);
+	gtk_label_set_text(GTK_LABEL(ad9122_temp), buf);
+	gdk_threads_leave();
+}
+
 static void display_cal(void *ptr)
 {
 	int size, channels, num_samples, i, j;
@@ -409,6 +429,7 @@ static void display_cal(void *ptr)
 	while (!kill_thread) {
 		while (!kill_thread && !capture_function) {
 			/* Wait 1/2 second */
+			dac_temp_update();
 			usleep(500000);
 		}
 
@@ -421,10 +442,12 @@ static void display_cal(void *ptr)
 		}
 
 		if (size != 0 && channels == 2) {
+			gdk_threads_enter();
 			if (show)
 				gtk_widget_show(cal_rx);
 			else
 				gtk_widget_hide(cal_rx);
+			gdk_threads_leave();
 
 			if (buf)
 				buf = g_renew(int8_t, buf, size);
@@ -450,8 +473,9 @@ static void display_cal(void *ptr)
 
 			/* tell the other thread where to put the data */
 			while (!plugin_data_capture(device_ref, buf) && !kill_thread) {
-				/* Wait 10ms */
-				usleep(10000);
+				/* Wait 100ms */
+				usleep(100000);
+				dac_temp_update();
 			}
 
 			/* Wait til the buffer is full */
@@ -459,8 +483,10 @@ static void display_cal(void *ptr)
 
 			/* If the lock is broken, then wait nicely */
 			if (kill_thread) {
-				while(!plugin_data_capture(device_ref, NULL))
-					usleep(10000);
+				while(!plugin_data_capture(device_ref, NULL)){
+					usleep(100000);
+					dac_temp_update();
+				}
 				break;
 			}
 
@@ -1326,6 +1352,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	Q_adc_offset_adj = GTK_WIDGET(gtk_builder_get_object(builder, "adc_calibbias1"));
 	Q_adc_gain_adj = GTK_WIDGET(gtk_builder_get_object(builder, "adc_calibscale1"));
 
+	ad9122_temp = GTK_WIDGET(gtk_builder_get_object(builder, "dac_temp"));
 
 	rf_out =  GTK_WIDGET(gtk_builder_get_object(builder, "RF_out"));
 	dac_shift = GTK_WIDGET(gtk_builder_get_object(builder, "dac_fcenter_shift"));
