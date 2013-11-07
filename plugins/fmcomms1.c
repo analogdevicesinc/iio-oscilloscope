@@ -306,8 +306,9 @@ static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer data)
 {
 	gdouble freq1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq));
 	gdouble freq2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds2_freq));
+	size_t mode = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode));
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode))) {
+	switch (mode) {
 		case 1:
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_freq), freq1);
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_freq), freq1);
@@ -317,8 +318,12 @@ static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer data)
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_freq), freq1);
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_freq), freq2);
 			break;
+		case 0: /* Off */
+		case 3: /* Independent I/Q Control */
+		case 4: /* DAC output */
+			break;
 		default:
-			printf("%s: error\n", __func__);
+			printf("%s: unknown mode (%d)error\n", __func__, mode);
 			break;
 	}
 }
@@ -329,8 +334,9 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer data)
 
 	gdouble phase1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_phase));
 	gdouble phase2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds2_phase));
+	size_t mode = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode));
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode))) {
+	switch (mode) {
 		case 1:
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_phase), phase1);
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), phase1 + 90.0);
@@ -340,8 +346,12 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer data)
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), phase1 + 90.0);
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), phase2 + 90.0);
 			break;
+		case 0: /* Off */
+		case 3: /* Independent I/Q Control */
+		case 4: /* DAC output */
+			break;
 		default:
-			printf("%s: error\n", __func__);
+			printf("%s: unknown mode (%d)error\n", __func__, mode);
 			break;
 	}
 }
@@ -349,8 +359,9 @@ static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer data)
 {
 	gint scale1 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds1_scale));
 	gint scale2 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds2_scale));
+	size_t mode = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode));
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode))) {
+	switch (mode) {
 		case 1:
 			gtk_combo_box_set_active(GTK_COMBO_BOX(dds2_scale), scale1);
 			gtk_combo_box_set_active(GTK_COMBO_BOX(dds3_scale), scale1);
@@ -360,8 +371,12 @@ static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer data)
 			gtk_combo_box_set_active(GTK_COMBO_BOX(dds3_scale), scale1);
 			gtk_combo_box_set_active(GTK_COMBO_BOX(dds4_scale), scale2);
 			break;
+		case 0: /* Off */
+		case 3: /* Independent I/Q Control */
+		case 4: /* DAC output */
+			break;
 		default:
-			printf("%s: error\n", __func__);
+			printf("%s: unknown mode (%d)error\n", __func__, mode);
 			break;
 	}
 }
