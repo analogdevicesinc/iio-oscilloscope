@@ -517,22 +517,22 @@ static void display_cal(void *ptr)
 			gdk_threads_enter ();
 
 			sprintf(cbuf, "avg: %3.0f | mid : %3.0f", avg_y, (min_y + max_y)/2);
-			gtk_label_set_markup(GTK_LABEL(avg_I), cbuf);
+			gtk_label_set_text(GTK_LABEL(avg_I), cbuf);
 
 			sprintf(cbuf, "avg: %3.0f | mid : %3.0f", avg_x, (min_x + max_x)/2);
-			gtk_label_set_markup(GTK_LABEL(avg_Q), cbuf);
+			gtk_label_set_text(GTK_LABEL(avg_Q), cbuf);
 
 			sprintf(cbuf, "%3.0f <-> %3.0f (%3.0f)", max_y, min_y, (max_y - min_y));
-			gtk_label_set_markup(GTK_LABEL(span_I), cbuf);
+			gtk_label_set_text(GTK_LABEL(span_I), cbuf);
 
 			sprintf(cbuf, "%3.0f <-> %3.0f (%3.0f)", max_x, min_x, (max_x - min_x));
-			gtk_label_set_markup(GTK_LABEL(span_Q), cbuf);
+			gtk_label_set_text(GTK_LABEL(span_Q), cbuf);
 
 			sprintf(cbuf, "max: %3.0f | min: %3.0f", max_r, min_r);
-			gtk_label_set_markup(GTK_LABEL(radius_IQ), cbuf);
+			gtk_label_set_text(GTK_LABEL(radius_IQ), cbuf);
 
 			sprintf(cbuf, "max: %0.3f | min: %0.3f", max_theta * 180 / M_PI, min_theta * 180 / M_PI);
-			gtk_label_set_markup(GTK_LABEL(angle_IQ), cbuf);
+			gtk_label_set_text(GTK_LABEL(angle_IQ), cbuf);
 
 			for (i = 0; i < channels; i++)
 				g_free(cooked_data[i]);
