@@ -82,8 +82,8 @@ static Dialogs dialogs;
 static GtkWidget *cal_save, *cal_open, *cal_tx, *cal_rx;
 static GtkWidget *I_dac_pha_adj, *I_dac_offs, *I_dac_fs_adj;
 static GtkWidget *Q_dac_pha_adj, *Q_dac_offs, *Q_dac_fs_adj;
-static GtkWidget *I_adc_offset_adj, *I_adc_gain_adj;
-static GtkWidget *Q_adc_offset_adj, *Q_adc_gain_adj;
+static GtkWidget *I_adc_offset_adj, *I_adc_gain_adj, *I_adc_phase_adj;
+static GtkWidget *Q_adc_offset_adj, *Q_adc_gain_adj, *Q_adc_phase_adj;
 
 static GtkWidget *ad9122_temp;
 
@@ -1348,9 +1348,11 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	I_adc_offset_adj = GTK_WIDGET(gtk_builder_get_object(builder, "adc_calibbias0"));
 	I_adc_gain_adj = GTK_WIDGET(gtk_builder_get_object(builder, "adc_calibscale0"));
+	I_adc_phase_adj = GTK_WIDGET(gtk_builder_get_object(builder, "adc_calibphase0"));
 
 	Q_adc_offset_adj = GTK_WIDGET(gtk_builder_get_object(builder, "adc_calibbias1"));
 	Q_adc_gain_adj = GTK_WIDGET(gtk_builder_get_object(builder, "adc_calibscale1"));
+	Q_adc_phase_adj = GTK_WIDGET(gtk_builder_get_object(builder, "adc_calibphase1"));
 
 	ad9122_temp = GTK_WIDGET(gtk_builder_get_object(builder, "dac_temp"));
 
@@ -1471,6 +1473,12 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_init(&cal_widgets[num_cal++],
 			"cf-ad9643-core-lpc", "in_voltage1_calibscale",
 			Q_adc_gain_adj, NULL);
+	iio_spin_button_init(&cal_widgets[num_cal++],
+			"cf-ad9643-core-lpc", "in_voltage0_calibphase",
+			I_adc_phase_adj, NULL);
+	iio_spin_button_init(&cal_widgets[num_cal++],
+			"cf-ad9643-core-lpc", "in_voltage1_calibphase",
+			Q_adc_phase_adj, NULL);
 
 	/* Rx Widgets */
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
