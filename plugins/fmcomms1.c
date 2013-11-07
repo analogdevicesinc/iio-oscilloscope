@@ -1257,6 +1257,24 @@ static int fmcomms1_cal_eeprom(void)
 	return -ENODEV;
 }
 
+static void adc_cal_spin(GtkRange *range, gpointer user_data)
+{
+	gdouble val, inc;
+
+	gdk_threads_enter();
+	val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(range));
+	gtk_spin_button_get_increments(GTK_SPIN_BUTTON(range), &inc, NULL);
+
+	set_dev_paths("cf-ad9643-core-lpc");
+	if (inc == 1.0)
+		write_devattr_int((char *)user_data, (int)val);
+	else
+		write_devattr_double((char *)user_data, val);
+
+	gdk_threads_leave();
+}
+
+
 static int fmcomms1_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -1495,6 +1513,19 @@ static int fmcomms1_init(GtkWidget *notebook)
 			"cf-ad9643-core-lpc", "in_voltage1_calibphase",
 			Q_adc_phase_adj, NULL);
 
+	g_signal_connect(I_adc_gain_adj  , "value-changed",
+			G_CALLBACK(adc_cal_spin), "in_voltage0_calibscale");
+	g_signal_connect(I_adc_offset_adj, "value-changed",
+			G_CALLBACK(adc_cal_spin), "in_voltage0_calibbias");
+	g_signal_connect(I_adc_phase_adj , "value-changed",
+			G_CALLBACK(adc_cal_spin), "in_voltage0_calibphase");
+	g_signal_connect(Q_adc_gain_adj  , "value-changed",
+			G_CALLBACK(adc_cal_spin), "in_voltage1_calibscale");
+	g_signal_connect(Q_adc_offset_adj, "value-changed",
+			G_CALLBACK(adc_cal_spin), "in_voltage1_calibbias");
+	g_signal_connect(Q_adc_phase_adj , "value-changed",
+			G_CALLBACK(adc_cal_spin), "in_voltage1_calibphase");
+
 	/* Rx Widgets */
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			"adf4351-rx-lpc", "out_altvoltage0_frequency_resolution",
@@ -1529,7 +1560,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 		"toggled", G_CALLBACK(gain_amp_locked_cb), NULL);
 
 	g_signal_connect(cal_rx, "clicked", G_CALLBACK(cal_rx_button_clicked), NULL);
-	
+
 	device_ref = plugin_get_device_by_reference("cf-ad9643-core-lpc");
 
 	fmcomms1_cal_eeprom();
