@@ -217,6 +217,11 @@ static inline bool element_substr(const char *haystack, const char * end, const 
 	size_t i;
 	char ssub[256], esub[256], need[256];
 
+	if ((strlen(needle) > sizeof (need)) ||
+	    (end && (strlen(needle) + strlen(end) > sizeof(need)))) {
+		printf("error in %s\n", __func__);
+		exit(-1);
+	}
 	strcpy(need, needle);
 	if (end)
 		strcat(need, end);
@@ -234,6 +239,24 @@ static inline bool element_substr(const char *haystack, const char * end, const 
 	}
 	return false;
 }
+
+#if 0
+static void dump_str(char *str, size_t size)
+{
+	size_t i, j=0;
+
+	printf("'");
+	for (i = 0; i <= size; i++)
+		if (str[i])
+			printf("%c", str[i]);
+		else {
+			printf("'(%d|%d) '", j, i);
+			j++;
+		}
+
+	printf("' : %d (%d)\n", size, j);
+}
+#endif
 
 /*
 * make sure the "_available" is right after the control
@@ -264,6 +287,7 @@ void scan_elements_insert(char **elements, char *token, char *end)
 		num++;
 		next = strtok(NULL, " ");
 	}
+
 	/* now walk through things, looking for the token */
 	for (i = 0; i < num; i++) {
 		next = strstr(start, token);
@@ -279,11 +303,23 @@ void scan_elements_insert(char **elements, char *token, char *end)
 			} else
 				added = strdup(start);
 
-			strcpy(entire_key, start);
-			/*
-			 * find where this belongs (if anywhere), and put it there
+			if (strlen(start) >= sizeof(entire_key) - 1) {
+				printf("key '%s' too large (%d) , can't fit in %d buffer in %s\n",
+						start, strlen(start), sizeof(entire_key), __func__);
+				exit(-1);
+			}
+			/* example : entire_key: 'in_temp0_scale'
+			 *                  key: 'in_temp0'
 			 */
+			strcpy(entire_key, start);
 			sprintf(key, "%.*s", (int)(next - start), start);
+
+			/* Now we know where things are, we remove the entire_key from the buffer,
+			 * so we don't process the key by accident
+			 */
+			memmove(start, start + strlen(entire_key) + 1, len - (start - *elements) - strlen(entire_key));
+			len -= (strlen(entire_key) + 1);
+			num--;
 
 			/*  so we need to:
 			 *  - find out where it goes (can go multiple places)
@@ -297,31 +333,34 @@ void scan_elements_insert(char **elements, char *token, char *end)
 			num2 = num;
 			for (j = 0; j < num2; j++) {
 				if (element_substr(next, end, key)) {
-					if (!loop) {
-					//	if (strcmp(next, entire_key)
-						/* The first time we do this, we just move it, so
-						 * we don't need to make the string bigger
-						 */
-						loop = next + strlen(next) + 1;
-						memmove(loop + strlen(entire_key) + 1, loop, start - loop - 1);
-						strcpy(loop, entire_key);
-						/* we moved the token off the end, so check for one less */
-						num2--;
-					} else {
-						k = next - *elements;
-						*elements = realloc(*elements, len + strlen(entire_key) + 1);
-						next = *elements + k;
-						loop = next + strlen(next) + 1;
-						memmove(loop + strlen(entire_key) + 1, loop, *elements + len - loop);
-						strcpy(loop, entire_key);
-						num++; num2++;
-						len += strlen(entire_key) + 1;
-					}
-					start -= 1;
+					/* Now we need to make things bigger, and since realloc, can move
+					 * things, we need to update all the pointers afterwards
+					 */
+					k = next - *elements;
+					/* make the buffer bigger, by the length of the key to insert
+					 * make sure to count the terminating null char
+					 */
+					*elements = realloc(*elements, (len + 1) + (strlen(entire_key) + 1));
+					/* reset the pointers */
+					next = *elements + k;
+					/* move the buffer into the extended position */
+					loop = next + strlen(next) + 1;
+					memmove(loop + strlen(entire_key) + 1, loop, (len + 1) - (loop - *elements));
+					/* Move the key into the opening */
+					strcpy(loop, entire_key);
+
+					/* increment things */
+					len += strlen(entire_key) + 1;
+					num++; num2++; j++;
+					/* Get read for the next one */
+					start = loop;
 					next += strlen(next) + 1;
 				}
+				/* process next one */
 				next += strlen(next) + 1;
 			}
+			start = *elements;
+			i = 0;
 		}
 		start += strlen(start) + 1;
 	}
@@ -338,6 +377,9 @@ void scan_elements_insert(char **elements, char *token, char *end)
 
 	if (len != strlen(start))
 		fprintf(stderr, "error in %s(%s)\n", __FILE__, __func__);
+
+	if (added)
+		free(added);
 }
 
 void scan_elements_sort(char **elements)
@@ -403,7 +445,7 @@ void scan_elements_sort(char **elements)
 
 				if (swap) {
 					strcpy(temp, start);
-					strcpy(start, next);
+					memmove(start, next, strlen(next) +1);
 					next = start + strlen(start) + 1;
 					strcpy(next, temp);
 				}
