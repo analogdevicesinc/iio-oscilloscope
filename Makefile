@@ -35,8 +35,8 @@ multiosc: osc.o oscplot.o datatypes.o int_fft.o iio_utils.o iio_widget.o fru.o d
 osc.o: osc.c iio_widget.h iio_utils.h int_fft.h osc_plugin.h osc.h
 	$(CC) osc.c -c $(CFLAGS)
 
-multiosc.o: multiosc.c osc.h multiosc.h
-	$(CC) multiosc.c -c $(CFLAGS)
+oscplot.o: oscplot.c oscplot.h osc.h datatypes.h xml_utils.h iio_widget.h
+	$(CC) oscplot.c -c $(CFLAGS)
 
 datatypes.o: datatypes.c datatypes.h
 	$(CC) datatypes.c -c $(CFLAGS)
