@@ -70,6 +70,7 @@ static GtkWidget *label_reg_descrip;
 static GtkWidget *label_reg_def_val;
 static GtkWidget *label_reg_notes;
 static GtkWidget *label_notes_tag;
+static GtkWidget *warning_label;
 
 /* IIO Scan Elements widgets */
 static GtkWidget *scanel_read;
@@ -263,7 +264,7 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 			if (!temp_path) {
 				printf("Failed to allocate memory with malloc\n");
 				return;
-			}				
+			}
 			sprintf(temp_path, "%s/%s", xmls_folder_path, buf);
 			xml_doc = open_xml_file(temp_path, &root);
 			if (xml_doc) {
@@ -275,9 +276,13 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 			}
 			free(temp_path);
 			gtk_widget_show(btn_read_reg);
+			gtk_widget_hide(warning_label);
 			gtk_widget_set_sensitive(spin_btn_reg_value, true);
 			gtk_widget_set_sensitive(label_reg_hex_value,true);
 		} else {
+			int id = getuid();
+			if (id != 0)
+				gtk_widget_show(warning_label);
 			gtk_widget_hide(btn_read_reg);
 			gtk_widget_set_sensitive(spin_btn_reg_value, false);
 			gtk_widget_set_sensitive(label_reg_hex_value, false);
@@ -332,6 +337,7 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		gtk_widget_hide(btn_write_reg);
 		gtk_widget_hide(scanel_read);
 		gtk_widget_hide(scanel_write);
+		gtk_widget_hide(warning_label);
 	}
 }
 
@@ -1190,6 +1196,7 @@ static int debug_init(GtkWidget *notebook)
 	spin_btn_reg_value = GTK_WIDGET(gtk_builder_get_object(builder, "debug_reg_value"));
 	scrollwin_regmap = GTK_WIDGET(gtk_builder_get_object(builder, "scrolledwindow_regmap"));
 	reg_map_container = GTK_WIDGET(gtk_builder_get_object(builder, "regmap_container"));
+	warning_label = GTK_WIDGET(gtk_builder_get_object(builder, "label_warning"));
 
 	vbox_scanel =  GTK_WIDGET(gtk_builder_get_object(builder, "scanel_container"));
 	scanel_read = GTK_WIDGET(gtk_builder_get_object(builder, "debug_read_scan"));
@@ -1211,7 +1218,7 @@ static int debug_init(GtkWidget *notebook)
 	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel),
 				(const gchar *)"None");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_debug_scanel), 0);
-
+	
 	/* Fill in device list */
 	ret = find_iio_names(&devices, "iio:device");
 	device=devices;
