@@ -407,7 +407,11 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 				break;
 			case 5:
 				/* Save as Agilent VSA formatted file */
-				sprintf(name, "%s.txt", filename);
+				if (!strncasecmp(&filename[strlen(filename)-4], ".txt", 4))
+					strcpy(name, filename);
+				else
+					sprintf(name, "%s.txt", filename);
+
 				{
 					FILE *fp;
 					unsigned int i, j;
@@ -452,10 +456,14 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 				break;
 
 			case 4:
-				sprintf(name, "%s.mat", filename);
 				/* Matlab file
 				 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
 				 */
+				if (!strncasecmp(&filename[strlen(filename)-4], ".mat", 4))
+					strcpy(name, filename);
+				else
+					sprintf(name, "%s.mat", filename);
+
 				{
 					mat_t *mat;
 					matvar_t *matvar;
@@ -483,8 +491,12 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 				}
 				break;
 			case 2:
-				sprintf(name, "%s.csv", filename);
 				/* save comma seperated valus (csv) */
+				if (!strncasecmp(&filename[strlen(filename)-4], ".csv", 4))
+					strcpy(name, filename);
+				else
+					sprintf(name, "%s.csv", filename);
+
 				{
 					FILE *fp;
 					unsigned int i, j;
@@ -507,7 +519,11 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 				break;
 			case 3:
 				/* save_png */
-				sprintf(name, "%s.png", filename);
+				if (!strncasecmp(&filename[strlen(filename)-4], ".png", 4))
+					strcpy(name, filename);
+				else
+					sprintf(name, "%s.png", filename);
+
 				{
 					GdkPixbuf *pixbuf;
 					GError *err=NULL;
