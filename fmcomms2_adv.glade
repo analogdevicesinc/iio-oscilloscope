@@ -520,7 +520,6 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">(RX1A_N &amp; RX1A_P) and (RX2A_N &amp; RX2A_P) balanced</item>
                               <item translatable="yes">(RX1B_N &amp; RX1B_P) and (RX2B_N &amp; RX2B_P) balanced</item>
@@ -563,7 +562,6 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">TX1A, TX2A</item>
                               <item translatable="yes">TX1B, TX2B</item>
@@ -654,9 +652,6 @@
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkLabel" id="label37">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -672,7 +667,6 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">Disable</item>
                               <item translatable="yes">XTALN DCXO Buffered</item>
@@ -715,7 +709,6 @@
           <object class="GtkLabel" id="label1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="margin_bottom">1</property>
             <property name="label" translatable="yes">ENSM/MODE/Clocks</property>
           </object>
           <packing>
@@ -966,7 +959,6 @@
                                 <property name="can_focus">False</property>
                                 <property name="wrap_width">1</property>
                                 <property name="entry_text_column">0</property>
-                                <property name="id_column">1</property>
                                 <items>
                                   <item translatable="yes">AGC in Fast Attack Mode Locks the Gain</item>
                                   <item translatable="yes">EN_AGC pin is pulled High</item>
@@ -1068,7 +1060,6 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">Manual</item>
                               <item translatable="yes">Fast Attack</item>
@@ -1085,7 +1076,6 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">Manual</item>
                               <item translatable="yes">Fast Attack</item>
@@ -1119,9 +1109,6 @@
                             <property name="top_attach">3</property>
                             <property name="bottom_attach">4</property>
                           </packing>
-                        </child>
-                        <child>
-                          <placeholder/>
                         </child>
                         <child>
                           <object class="GtkSpinButton" id="adi,gc-dec-pow-measurement-duration">
@@ -1182,15 +1169,6 @@
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkLabel" id="label87">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -1206,7 +1184,6 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">Full Gain Table</item>
                               <item translatable="yes">Split Gain Table</item>
@@ -1304,9 +1281,6 @@
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkSpinButton" id="adi,mgc-inc-gain-step">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
@@ -1331,9 +1305,6 @@
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkLabel" id="label26">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -1344,17 +1315,10 @@
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkComboBoxText" id="adi,mgc-split-table-ctrl-inp-gain-mode">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">AGC determined</item>
                               <item translatable="yes">only in LPF</item>
@@ -1587,12 +1551,6 @@
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkLabel" id="label75">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -1601,12 +1559,6 @@
                           <packing>
                             <property name="top_attach">5</property>
                           </packing>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
                         </child>
                         <child>
                           <object class="GtkCheckButton" id="adi,agc-sync-for-gain-counter-enable">
@@ -2128,9 +2080,6 @@ if Large Overload</property>
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkSpinButton" id="adi,agc-dig-gain-step-size">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
@@ -2160,9 +2109,6 @@ if Large Overload</property>
                 <property name="fill">True</property>
                 <property name="position">5</property>
               </packing>
-            </child>
-            <child>
-              <placeholder/>
             </child>
           </object>
           <packing>
@@ -2583,9 +2529,6 @@ if Large Overload</property>
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkSpinButton" id="adi,dc-offset-tracking-update-event-mask">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
@@ -2658,7 +2601,6 @@ if Large Overload</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">Disable</item>
                               <item translatable="yes">TX -&gt; RX</item>
@@ -2701,7 +2643,6 @@ if Large Overload</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">Disable</item>
                               <item translatable="yes">Injection Point TX</item>
@@ -2718,7 +2659,6 @@ if Large Overload</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">Disable</item>
                               <item translatable="yes">Injection Point TX</item>
@@ -2734,7 +2674,6 @@ if Large Overload</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="entry_text_column">0</property>
-                            <property name="id_column">1</property>
                             <items>
                               <item translatable="yes">0 dB</item>
                               <item translatable="yes">-3 dB</item>
@@ -2745,18 +2684,6 @@ if Large Overload</property>
                           <packing>
                             <property name="top_attach">3</property>
                           </packing>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
                         </child>
                         <child>
                           <object class="GtkLabel" id="label42">
@@ -2779,12 +2706,6 @@ if Large Overload</property>
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkSpinButton" id="bist_tone_freq">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
@@ -2794,12 +2715,6 @@ if Large Overload</property>
                           <packing>
                             <property name="top_attach">5</property>
                           </packing>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
                         </child>
                       </object>
                       <packing>
