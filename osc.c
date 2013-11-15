@@ -369,7 +369,7 @@ static void add_grid(void)
 */
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
-		fill_axis(gridx, 0, 10, 15);
+		fill_axis(gridx, -30, 10, 15);
 		fill_axis(gridy, 10, -10, 15);
 		grid = gtk_databox_grid_array_new (15, 15, gridy, gridx, &color_grid, 1);
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(constellation_radio))) {
