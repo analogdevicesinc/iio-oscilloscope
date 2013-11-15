@@ -157,7 +157,7 @@ int set_debugfs_paths(const char *device_name)
 	size_t thr;
 
 	thr = thread_index();
-	
+
 	if (strncmp(device_name, last_debug_name[thr], MAX_STR_LEN) != 0) {
 		/* Find the device requested */
 		dev_num = find_type_by_name(device_name, "iio:device");
@@ -186,6 +186,10 @@ int set_debugfs_paths(const char *device_name)
 error_ret:
 	debug_dir_name[thr][0] ='\0';
 	return ret;
+}
+
+const char *debug_name_dir(void) {
+	return debug_dir_name[thread_index()];
 }
 
 int read_reg(unsigned int address)

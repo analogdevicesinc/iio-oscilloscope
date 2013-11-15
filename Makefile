@@ -21,6 +21,7 @@ CFLAGS+=-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 PLUGINS=\
 	plugins/fmcomms1.so \
 	plugins/fmcomms2.so \
+	plugins/fmcomms2_adv.so \
 	plugins/debug.so \
 	plugins/AD5628_1.so \
 	plugins/AD7303.so \
