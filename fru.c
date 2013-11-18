@@ -3,17 +3,40 @@
  * Copyright (C) 2012 Analog Devices
  * Author : Robin Getz <robin.getz@analog.com>
  *
- * fru-dump is free software: you can redistribute it and/or modify it
- * under the terms of the GNU General Public License, (v2 only) as
- * published by the Free Software Foundation.
+ * This file is maintained as part of:
+ *    https://github.com/analogdevicesinc/fru_tools
+ * but is released under this license, so you can use it without having 
+ * your software fall under the GPL. If you make improvements to this,
+ * although you are not required, it would be nice if you sent me a patch.
  *
- * fru-dump is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * - Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in
+ *   the documentation and/or other materials provided with the
+ *   distribution.
+ * - Neither the name of Analog Devices, Inc. nor the names of its
+ *   contributors may be used to endorse or promote products derived
+ *   from this software without specific prior written permission.
+ * - The use of this software may or may not infringe the patent rights
+ *   of one or more patent holders.  This license does not release you
+ *   from the requirement that you obtain separate licenses from these
+ *   patent holders to use this software.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see http://www.gnu.org/licenses/gpl-2.0.html
+ * THIS SOFTWARE IS PROVIDED BY ANALOG DEVICES "AS IS" AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, NON-INFRINGEMENT,
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL ANALOG DEVICES BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, INTELLECTUAL PROPERTY RIGHTS, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
  */
 
 #include <ctype.h>
@@ -58,10 +81,11 @@
  * of the header) plus the checksum byte equals zero.
  * Platform Management FRU Information Storage Definition : section 16.2.[56]
  */
-unsigned char calc_zero_checksum (unsigned char *data, unsigned int len)
+unsigned char calc_zero_checksum (unsigned char *data, size_t len)
 {
-	int i;
+	size_t i;
 	unsigned char tmp = 0;
+
 	for (i = 0; i <= len; i++)
 		tmp += data[i];
 
@@ -98,16 +122,18 @@ time_t min2date(unsigned int mins)
 /*
  * Used for debugging
  */
-void dump_str(unsigned char * p, unsigned int size, unsigned int space)
+static void dump_str(unsigned char * p, unsigned int size, unsigned int space)
 {
 	size_t i, j = 0, k, m, shift;
-	unsigned char *t;
+	unsigned char *t, this = 0, last = 0;
 
 	t = p;
 	k = 8 - space;
 	for (i = 0; i < size; i++) {
 		m = 0;
 		printf("%02zi: %02x : ", i, *t);
+		last = this;
+		this = *t;
 		for (shift = 0x80; shift > 0; shift >>= 1) {
 			printf("%s", ((*t & shift) == shift) ? "1" : "0");
 			j++, m++;
@@ -119,56 +145,90 @@ void dump_str(unsigned char * p, unsigned int size, unsigned int space)
 				m = space + 100;
 			}
 		}
-		if (space == 8)
-			printf(" (%c) %02x", *t, *t - 0x20);
+		if (space == 8) {
+			if (*t)
+				printf(" (%c) %02x", *t, *t - 0x20);
+			else
+				printf(" (term) NULL");
+		}
+		if (space == 6) {
+			unsigned char x = 0, y = 0;
+
+			if (k == 2) {
+				y = (this >> 2) & 0x3F;
+				x = (last >> 4) | ((this & 0x3) << 4);
+			} else if (k == 4) {
+				x = this & 0x3F;
+			} else if (k == 6) {
+				x = (last >> 6) | ((this & 0xF) << 2);
+			}
+
+			if (k == 4 || k == 6)
+				printf(" (%02x) %02x '%c'", x , x + 0x20, x + 0x20);
+			if (k == 2)
+				printf(" (%02x) %02x '%c' | (%02x) %02x '%c'", x , x + 0x20, x + 0x20, y , y + 0x20, y + 0x20);
+		}
 		++t;
 		printf("\n");
 	}
+}
+#else
+static void dump_str(unsigned char * UNUSED(p), unsigned int UNUSED(size), unsigned int UNUSED(space))
+{
+	return;
 }
 #endif
 /*
  * 6-bit ASCII Packing
  * Platform Management FRU Information Storage Definition:  Section 13.[23]
  */
-unsigned int ascii2six(unsigned char *buf, size_t size, unsigned char **dest)
+int ascii2six(unsigned char **dest, unsigned char *src, size_t size)
 {
-	size_t i = 0, j;
+	size_t i = 0;
+	ssize_t j;
 	unsigned int k, m = 0;
-	unsigned char *p;
+	unsigned char *p, *d, *e;
 
-	if (!buf || !size)
+	if (!src || !size)
 		return 0;
 
-	p = buf;
+	e = d = x_calloc(1, size);
+
+	p = src;
 	/*
 	 * 6-bit requires uppercase chars, between 0 and 0x3f
 	 */
 	while (*p != '\0' && i <= size) {
 		j = toupper(*p) - 0x20;
-		if (j < 0 || j >= 0x40)
-			printf_err("%s trying to convert a string, which is not possible to be converted\n", __func__);
-		*p = j;
-		++p, i++;
+		if (j < 0 || j >= 0x40) {
+			printf_warn("%s : trying to convert a string '%s'\n"
+					"\t\twhich includes char '%c (0x%x)', which can't be converted\n",
+					__func__, src, *p, *p);
+			free(e);
+			return -1;
+		}
+		*d = j;
+		++p, ++d, i++;
 	}
-	/* dump_str(buf, size, 4); */
+	/* dump_str(d, size, 4); */
 
-	/* the length of dest, should be 3/4 of size, we just leave it, so it's zero padded at the end */
-	*dest = x_calloc(1, size);
+	/* the length of dest, should be 3/4 of size, it's zero padded at the end */
+	*dest = x_calloc(1, size + 1);
 	p = *dest;
 
 	for (i = 0; i <= size ; i+= 4) {
-		k = buf[i];
+		k = e[i];
 		m++;
 		if ((i + 1) < size) {
-			k |= buf[i + 1] << 6;
+			k |= e[i + 1] << 6;
 			m++;
 		}
 		if ((i + 2) < size) {
-			k |= buf[i + 2] << 12;
+			k |= e[i + 2] << 12;
 			m++;
 		}
 		if ((i + 3) < size) {
-			k |= buf[i + 3] << 18;
+			k |= e[i + 3] << 18;
 		}
 #ifndef __MINGW32__
 #if __BYTE_ORDER == __BIG_ENDIAN
@@ -180,6 +240,7 @@ unsigned int ascii2six(unsigned char *buf, size_t size, unsigned char **dest)
 	}
 
 	/* dump_str(*dest, m, 6); */
+	free (e);
 
 	return  m;
 }
@@ -193,40 +254,45 @@ unsigned char * six2ascii(unsigned char *buf, size_t size)
 	unsigned char *p, *dest;
 	size_t i;
 
+	if (!size)
+		return NULL;
+
+	dump_str(buf, size, 6);
 	/* the length of dest, should be 4/3 of size + 1 for null termination char*/
 	dest = x_calloc(1, ((size * 4) / 3) + 2);
 	p = dest;
 
-	for (i = 0; i <= size; i += 3) {
+	for (i = 0; i < size; i += 3) {
 		*dest = (buf[i] & 0x3F) + 0x20;
-		/* printf("%i: 0x%x (%c)\n", i, *dest, *dest); */
+		/* printf("1: %i: 0x%x (%c)\n", i, *dest, *dest); */
 		dest++;
-		if ((i + 1) <= size) {
+		if ((i + 1) < size) {
 			*dest = ((buf[i] & 0xC0) >> 6 | (buf[i+1] & 0x0F) << 2) + 0x20;
-			/* printf("%i: 0x%x (%c)\n", i, *dest, *dest); */
+			/* printf("2: %i: 0x%x (%c)\n", i, *dest, *dest); */
 			dest++;
 		}
-		if ((i + 2) <= size) {
+		if ((i + 2) < size) {
 			*dest = ((buf[i+1] & 0xF0) >> 4 | (buf[i+2] & 0x03) << 4) + 0x20;
-			/* printf("%i: 0x%x (%c)\n", i, *dest, *dest); */
+			/* printf("3: %i: 0x%x (%c)\n", i, *dest, *dest); */
 			dest++;
 		}
-		if ((i + 3) <= size) {
+		if ((i + 3) < size) {
 			*dest = ((buf[i+2] & 0xFC) >> 2) + 0x20;
-			/* printf("%i: 0x%x (%c)\n", i, *dest, *dest); */
+			/* printf("4: %i: 0x%x (%c)\n", i, *dest, *dest); */
 			dest++;
 		}
 	}
+	/* make sure strings are null terminated */
 	*dest = 0;
 
-	/* Drop trailing spaces */
+	/* Drop trailing spaces & null chars */
 	dest--;
-	while (*dest == ' ' && size) {
+	while ((*dest == 0 || *dest == ' ') && size) {
 		*dest = 0;
 		dest--;
 		size--;
 	}
-	/* printf("%s\n",p); */
+
 	return p;
 }
 
@@ -235,11 +301,17 @@ unsigned char * six2ascii(unsigned char *buf, size_t size)
  * Section 13 TYPE/LENGTH BYTE FORMAT
  * Platform Management FRU Information Storage Definition
  */
-unsigned int parse_string(unsigned char *p, char **str, const char * field)
+unsigned int parse_string(unsigned char *p, unsigned char **str, const char * field)
 {
-	size_t len = -1, i, j;
+	size_t len, i, j;
 
 	len = p[0] & 0x3F;
+
+	if (!len) {
+		*str = x_calloc(1, 3);
+		*str[0] = (FRU_STRING_ASCII << 6);
+		return 1;
+	}
 
 	switch((p[0] >> 6) & 0x3 ) {
 		case FRU_STRING_BINARY:
@@ -254,19 +326,23 @@ unsigned int parse_string(unsigned char *p, char **str, const char * field)
 		case FRU_STRING_SIXBIT:
 			/* 6-bit ASCII, packed */
 			{
-				unsigned char *foo, bar;
-				char *tmp;
+				unsigned char *tmp1, *tmp2;
+				size_t tlen;
 
-				foo = six2ascii(&p[1], p[0]& 0x3F);
+				tmp1 = six2ascii(&p[1], p[0]& 0x3F);
 				/* printf("str: %s\n", foo); */
-				bar = strlen((char *)foo);
+				/* dump_str(foo, strlen(foo) + 1, 8); */
+				tlen = strlen((char *)tmp1);
+				*str = x_calloc(1, tlen + 2);
 
-				tmp = x_calloc(1, bar + 2);
-				memcpy(tmp, &bar, 1);
-				memcpy(&tmp[1], foo, bar);
-				*str = x_calloc(1, bar + 2);
-				memcpy(*str, tmp, bar + 2);
+				tmp2 = *str;
+				tmp2++;
+				memcpy(tmp2, tmp1, tlen + 1);
+				if (tlen > 0x3F)
+					tlen = 0x3F;
 
+				*str[0] = (FRU_STRING_ASCII << 6) | tlen;
+				free(tmp1);
 			}
 			break;
 		case FRU_STRING_ASCII:
@@ -456,9 +532,9 @@ struct MULTIRECORD_INFO * parse_multiboard_area(unsigned char *data)
 						} else {
 							/* see table 9 in FMC spec */
 							unsigned char *foo2;
-							foo2 = six2ascii(&p[9], p[2] - 5);
+							foo2 = six2ascii(&p[9], p[2] - 4);
 
-							multi->i2c_devices = x_calloc(1, strlen((char *)foo2));
+							multi->i2c_devices = x_calloc(1, strlen((char *)foo2) + 1);
 							strcpy ((char *)multi->i2c_devices, (char *)foo2);
 							free(foo2);
 							/* This isn't the end 'til we re-assemble things */
@@ -564,6 +640,8 @@ void free_FRU(struct FRU_DATA *fru)
 
 	for(j = 0; j < NUM_SUPPLIES; j++)
 		free(fru->MultiRecord_Area->supplies[j]);
+	free(fru->MultiRecord_Area->i2c_devices);
+
 	free(fru->MultiRecord_Area->connector);
 	free(fru->MultiRecord_Area);
 
@@ -575,26 +653,48 @@ void free_FRU(struct FRU_DATA *fru)
  * take string, and put in into the buffer
  * return the number of bytes copied
  */
-unsigned int insert_str(unsigned char *buf, char * str)
+static unsigned int insert_str(unsigned char *buf, const unsigned char * str, bool force)
 {
 	int tmp;
-	tmp = strlen(&str[1]);
 
-	if (tmp <= 0x3F) {
-		/* It fits, so just leave it as ASCII */
-		buf[0] = tmp | (FRU_STRING_ASCII << 6);
+	if (TYPE_CODE(str) == FRU_STRING_ASCII)
+		tmp = strlen((const char *)&str[1]);
+	else
+		tmp = FIELD_LEN(str);
+
+	/* Turn ASCII into 6 bit if possible */
+	if ((TYPE_CODE(str) != FRU_STRING_ASCII) || (tmp <= 0x3F && !force)) {
+		/* It fits, so just leave it as ASCII/binary/whatever format it's in */
+		buf[0] = tmp | (TYPE_CODE(str) << 6);
 		memcpy(&buf[1], &str[1], tmp);
 	} else {
-		/* 6-bit ASCII */
-		unsigned char *six;
-		/* dump_str((unsigned char*)&str[1], tmp, 8); */
-		tmp = ascii2six((unsigned char *)&str[1], tmp, &six);
-		/* dump_str(six, tmp, 6); */
-		if (tmp > 0x3F)
+		/* turn it into 6-bit ASCII */
+		unsigned char *six = NULL;
+
+		/* printf("six in : 0x%x : len: %2d : %s\n", (str[0] >> 6) && 0x3, str[0] & 0x3F , &str[1]); */
+		/* dump_str((unsigned char*)&str[1], tmp + 1 , 8); */
+		tmp = ascii2six(&six, (unsigned char *)&str[1], tmp);
+		if (tmp < 0) {
+			/* Counldn't encode things */
+			printf_warn("couldn't encode '%s' string\n", &str[1]);
+			tmp = strlen((const char *)&str[1]);
+			if (tmp > 0x3F) {
+				printf_warn("fail : %d\n", tmp);
+				printf_err("String too long to fit\n");
+			}
+			buf[0] = tmp | (FRU_STRING_ASCII << 6);
+			memcpy(&buf[1], &str[1], tmp);
+			return tmp + 1;
+		}
+		dump_str(six, tmp, 6);
+		if (tmp > 0x3F) {
+			printf_warn("fail : %d\n", tmp);
 			printf_err("String too long to fit\n");
+		}
 
 		buf[0] = tmp | (FRU_STRING_SIXBIT << 6);
 		memcpy(&buf[1], six, tmp);
+		free(six);
 	}
 
 
@@ -604,7 +704,7 @@ unsigned int insert_str(unsigned char *buf, char * str)
 /*
  * Takes the FRU structure, and builds the binary blob
  */
-unsigned char * build_FRU_blob (struct FRU_DATA *fru, size_t *length, int packed)
+unsigned char * build_FRU_blob (struct FRU_DATA *fru, size_t *length, bool packed)
 {
 	unsigned char *p, *buf;
 	unsigned int st, len, tmp, last = 0, i = 0, j;
@@ -631,14 +731,15 @@ unsigned char * build_FRU_blob (struct FRU_DATA *fru, size_t *length, int packed
 		buf[i+5] = (fru->Board_Area->mfg_date >> 16) & 0xFF;
 
 		i += 6;
-		i += insert_str(&buf[i], fru->Board_Area->manufacturer);
-		i += insert_str(&buf[i], fru->Board_Area->product_name);
-		i += insert_str(&buf[i], fru->Board_Area->serial_number);
-		i += insert_str(&buf[i], fru->Board_Area->part_number);
-		i += insert_str(&buf[i], fru->Board_Area->FRU_file_ID);
+		i += insert_str(&buf[i], fru->Board_Area->manufacturer, packed);
+		i += insert_str(&buf[i], fru->Board_Area->product_name, packed);
+		i += insert_str(&buf[i], fru->Board_Area->serial_number, packed);
+		i += insert_str(&buf[i], fru->Board_Area->part_number, packed);
+		i += insert_str(&buf[i], fru->Board_Area->FRU_file_ID, packed);
 		for (j = 0; j < CUSTOM_FIELDS; j++) {
-			if (fru->Board_Area->custom[j])
-				i += insert_str(&buf[i], fru->Board_Area->custom[j]);
+			if (fru->Board_Area->custom[j]) {
+				i += insert_str(&buf[i], fru->Board_Area->custom[j], packed);
+			}
 		}
 		buf[i] = 0xC1;
 		i++;
@@ -670,8 +771,8 @@ unsigned char * build_FRU_blob (struct FRU_DATA *fru, size_t *length, int packed
 		p = fru->MultiRecord_Area->i2c_devices;
 		if (p) {
 			unsigned int len, oui = VITA_OUI;
-			unsigned char *six;
-			len = ascii2six(p, strlen((char *)p), &six);
+			unsigned char *six = NULL;
+			len = ascii2six(&six, p, strlen((char *)p));
 
 			/* Type ID, Record Format version, Length, checksum, checksum */
 			sprintf((char *)&buf[i], "%c%c%c%c%c", MULTIRECORD_FMC, 0x02, len + 4, 0, 0);
@@ -693,6 +794,8 @@ unsigned char * build_FRU_blob (struct FRU_DATA *fru, size_t *length, int packed
 
 			last = i + 1;
 			i += len + 9;
+
+			free(six);
 		}
 		if (last) {
 			buf[last] = buf[last] | 0x80;
