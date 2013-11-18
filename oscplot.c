@@ -16,6 +16,7 @@
 #include <malloc.h>
 #include <matio.h>
 
+#include "ini/ini.h"
 #include "osc.h"
 #include "oscplot.h"
 #include "config.h"
@@ -50,15 +51,6 @@ enum {
 /* signals will be configured during class init */
 static guint oscplot_signals[LAST_SIGNAL] = { 0 };
 
-/* Types of transforms */
-enum {
-	NO_TRANSFORM_TYPE,
-	TIME_TRANSFORM,
-	FFT_TRANSFORM,
-	CONSTELLATION_TRANSFORM,
-	COMPLEX_FFT_TRANSFORM
-};
-
 /* Columns of the device treestore */
 enum {
 	ELEMENT_NAME,
@@ -70,6 +62,7 @@ enum {
 	MARKER_ENABLED,
 	ELEMENT_REFERENCE,
 	COLOR_REF,
+	EXPANDED,
 	NUM_COL
 };
 
@@ -124,8 +117,21 @@ static GdkColor color_marker = {
 	.blue = 0xFFFF,
 };
 
+struct transform_gui_settings {
+	char* tr_name;
+	char* tr_type_name;
+	int tr_type_id;
+	int tr_color_id;
+	GtkTreeIter *ch1_iter;
+	GtkTreeIter *ch2_iter;
+};
+
 /* Helpers */
 #define GET_CHANNEL_PARENT(ch) ((struct extra_info *)(((struct iio_channel_info *)(ch))->extra_field))->device_parent
+
+#define TIME_SETTINGS(obj) ((struct _time_settings *)obj->settings)
+#define FFT_SETTINGS(obj) ((struct _fft_settings *)obj->settings)
+#define CONSTELLATION_SETTINGS(obj) ((struct _constellation_settings *)obj->settings)
 
 struct _OscPlotPrivate
 {
@@ -147,6 +153,7 @@ struct _OscPlotPrivate
 	GtkWidget *marker_label;
 	GtkWidget *saveas_button;
 	GtkWidget *saveas_dialog;
+	GtkWidget *devlist_cfg_dialog;
 	GtkWidget *fullscreen_button;
 	GtkWidget *y_axis_max;
 	GtkWidget *y_axis_min;
@@ -171,6 +178,9 @@ struct _OscPlotPrivate
 	int active_transform_type;
 	Transform *selected_transform_for_setup;
 	
+	/* Iter of element currently holding the fft marker */
+	GtkTreeIter *iter_with_marker;
+	
 	/* Databox data */
 	GtkDataboxGraph *grid;
 	GtkDataboxGraph *time_graph;
@@ -187,7 +197,10 @@ struct _OscPlotPrivate
 	GList *available_tr_numbers;
 	gint num_created_tr;
 	
+	GList *ini_cfgs;
+	
 	char *saveas_filename;
+	char *devlist_cfg_filename;
 };
 
 G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
@@ -292,13 +305,21 @@ void osc_plot_draw_stop (OscPlot *plot)
 	gtk_toggle_tool_button_set_active((GtkToggleToolButton *)priv->capture_button, FALSE);
 }
 
-static void set_transform_attributes(OscPlot *plot, Transform *tr)
+static void set_transform_attributes(OscPlot *plot, Transform *tr, struct transform_gui_settings *tr_gui)
 {
 	OscPlotPrivate *priv = plot->priv;
-	GdkColor *transform_color;
+	gint *transform_color;
 	GList *first_element;
+	gint *c_index;
+	gint *tr_id;
 	int i;
 
+	if (tr_gui->tr_color_id > -1) {
+		c_index = g_new(int, 1);
+		*c_index = tr_gui->tr_color_id;
+		tr->graph_color = c_index;
+		goto get_number;
+	}
 	/* Give transform a color */
 get_color:
 	if (g_list_length(priv->available_graph_colors)) {
@@ -306,15 +327,18 @@ get_color:
 		transform_color = first_element->data;
 		priv->available_graph_colors = g_list_delete_link(priv->available_graph_colors, first_element);
 	} else {
-		 /* Fill the list again */
-		for (i = sizeof(color_graph) / sizeof(color_graph[0]) - 1; i >= 0; i--)
-		priv->available_graph_colors = g_list_prepend(priv->available_graph_colors, &color_graph[i]);
+		/* Fill the list again */
+		for (i = sizeof(color_graph) / sizeof(color_graph[0]) - 1; i >= 0; i--) {
+			c_index = g_new(int, 1);
+			*c_index = i;
+			priv->available_graph_colors = g_list_prepend(priv->available_graph_colors, c_index);
+		}
 		goto get_color;
 	}
 	tr->graph_color = transform_color;
 
 	/* Give transform a number */
-	gint *tr_id;
+get_number:
 	if (g_list_length(priv->available_tr_numbers) == 0) {
 		tr_id = g_new(gint, 1);
 		*tr_id = priv->num_created_tr++;
@@ -324,6 +348,20 @@ get_color:
 		tr->integer_id = first_element->data;
 		priv->available_tr_numbers = g_list_delete_link(priv->available_tr_numbers, first_element);
 	}
+}
+
+static void expand_iter(OscPlot *plot, GtkTreeIter *iter, gboolean expand)
+{
+	GtkTreeView *tree = GTK_TREE_VIEW(plot->priv->channel_list_view);
+	GtkTreeModel *model;
+	GtkTreePath *path;
+	
+	model = gtk_tree_view_get_model(tree);
+	path = gtk_tree_model_get_path(model, iter);
+	if (expand)
+		gtk_tree_view_expand_row(tree, path, FALSE);
+	else
+		gtk_tree_view_collapse_row(tree, path);
 }
 
 static GtkTreeIter add_row_child(OscPlot *plot, GtkTreeIter *parent, char *child_name, Transform *tr)
@@ -339,7 +377,8 @@ static GtkTreeIter add_row_child(OscPlot *plot, GtkTreeIter *parent, char *child
 	gtk_tree_store_append(treestore, &child, parent);
 	gtk_tree_store_set(treestore, &child, ELEMENT_NAME, child_name,
 		IS_DEVICE, FALSE, IS_CHANNEL, FALSE, IS_TRANSFORM, TRUE,
-		TRANSFORM_ACTIVE, 1, ELEMENT_REFERENCE, tr, COLOR_REF, (GdkColor *)tr->graph_color, -1);
+		TRANSFORM_ACTIVE, 1, ELEMENT_REFERENCE, tr, COLOR_REF, (GdkColor *)&color_graph[*(tr->graph_color)], -1);
+	expand_iter(plot, parent, TRUE);
 	
 	return child;
 }
@@ -538,7 +577,7 @@ static bool check_valid_setup(OscPlot *plot, Transform *tr)
 }
 
 static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_parent, 
-	struct iio_channel_info *ch0, struct iio_channel_info *ch1, char *tr_name)
+	struct iio_channel_info *ch0, struct iio_channel_info *ch1, int tr_type)
 {
 	OscPlotPrivate *priv = plot->priv;
 	TrList *list = priv->transform_list;
@@ -548,26 +587,29 @@ static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_p
 	struct _constellation_settings *constellation_settings;
 	struct extra_info *ch_info;
 	
-	transform = Transform_new();
+	transform = Transform_new(tr_type);
 	ch_info = ch0->extra_field;
 	transform->channel_parent = ch0;
 	transform->graph_active = TRUE;
 	ch_info->shadow_of_enabled++;
 	priv->current_device = GET_CHANNEL_PARENT(ch0);
 	Transform_set_in_data_ref(transform, (gfloat **)&ch_info->data_ref, &ch_parent->sample_count);
-	if (!strcmp(tr_name, "TIME")) {
+	switch (tr_type) {
+	case TIME_TRANSFORM:
 		Transform_attach_function(transform, time_transform_function);
 		time_settings = (struct _time_settings *)malloc(sizeof(struct _time_settings));
 		time_settings_init(transform, time_settings);
 		Transform_attach_settings(transform, time_settings);
 		priv->active_transform_type = TIME_TRANSFORM;
-	} else if (!strcmp(tr_name, "FFT")) {
+		break;
+	case FFT_TRANSFORM:
 		Transform_attach_function(transform, fft_transform_function);
 		fft_settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
 		fft_settings_init(transform, fft_settings);
 		Transform_attach_settings(transform, fft_settings);
-		priv->active_transform_type = FFT_TRANSFORM;
-	} else if (!strcmp(tr_name, "CONSTELLATION")) {
+		priv->active_transform_type = FFT_TRANSFORM;	
+		break;
+	case CONSTELLATION_TRANSFORM:
 		transform->channel_parent2 = ch1;
 		Transform_attach_function(transform, constellation_transform_function);
 		constellation_settings = (struct _constellation_settings *)malloc(sizeof(struct _constellation_settings));
@@ -575,8 +617,9 @@ static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_p
 		Transform_attach_settings(transform, constellation_settings);
 		ch_info = ch1->extra_field;
 		ch_info->shadow_of_enabled++;
-		priv->active_transform_type = CONSTELLATION_TRANSFORM;
-	} else if (!strcmp(tr_name, "COMPLEX FFT")) {
+		priv->active_transform_type = CONSTELLATION_TRANSFORM;	
+		break;
+	case COMPLEX_FFT_TRANSFORM:
 		transform->channel_parent2 = ch1;
 		Transform_attach_function(transform, fft_transform_function);
 		fft_settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
@@ -585,6 +628,10 @@ static Transform* add_transform_to_list(OscPlot *plot, struct _device_list *ch_p
 		ch_info = ch1->extra_field;
 		ch_info->shadow_of_enabled++;
 		priv->active_transform_type = COMPLEX_FFT_TRANSFORM;
+		break;
+	default:
+		printf("Invalid transform\n");
+		return NULL;
 	}
 	TrList_add_transform(list, transform);
 	
@@ -615,71 +662,65 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	}
 }
 
-gint tr_id_compare(gconstpointer a, gconstpointer b)
+static gint tr_id_compare(gconstpointer a, gconstpointer b)
 {
 	return *((gint *)a) - *((int *)b);
 }
 
-static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
+static Transform * add_transform(OscPlot *plot, struct transform_gui_settings *tr_gui)
 {
-	OscPlot *plot = data;
 	OscPlotPrivate *priv = plot->priv;
-	GtkTreeView *tree_view;
 	GtkTreeModel *model;
-	GtkTreeIter iter;
 	GtkTreeIter parent_iter;
 	GtkTreeIter child_iter;
-	Transform *tr;
+	GtkTreeIter *iter_ch1 = tr_gui->ch1_iter;
+	GtkTreeIter *iter_ch2 = tr_gui->ch2_iter;
+	Transform *tr = NULL;
 	char *ch_name;
-	char *tr_name;
 	char buf[50];
 	struct iio_channel_info *channel0 = NULL, *channel1 = NULL;
 	struct _device_list *ch_parent0, *ch_parent1;
-	GList *path;
 	
-	tree_view = GTK_TREE_VIEW(priv->channel_list_view);
-	model = gtk_tree_view_get_model(tree_view);
-	/* Get the selected channel name */
-	path = g_list_first(priv->selected_rows_paths);
-	gtk_tree_model_get_iter(model, &iter, path->data);
-	gtk_tree_model_get(model, &iter, ELEMENT_NAME, &ch_name, ELEMENT_REFERENCE, &channel0, -1);	
-	/* Get the transform name */
-	tr_name = (char *)gtk_menu_item_get_label(menuitem);
-	snprintf(buf, sizeof(buf), "%s", tr_name);
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->channel_list_view));
+	gtk_tree_model_get(model, iter_ch1, ELEMENT_NAME, &ch_name, ELEMENT_REFERENCE, &channel0, -1);
+	if (tr_gui->tr_name == NULL)
+		snprintf(buf, sizeof(buf), "%s", tr_gui->tr_type_name);
 	/* Get the parent reference of the channel0. */
-	gtk_tree_model_iter_parent(model, &parent_iter, &iter);
+	gtk_tree_model_iter_parent(model, &parent_iter, iter_ch1);
 	gtk_tree_model_get(model, &parent_iter, ELEMENT_REFERENCE, &ch_parent0, -1);		
 	/* Check if the channel can be enabled. (Some devices don't allow specific channels to be enabled at the same time) */
 	if (!check_channel_is_writable(channel0)) {
 		g_free(ch_name);
 		goto abort_adding_transform;
 	}
-	/* Get the second channel if two channel were selected. */
-	if (priv->num_selected_rows == 2) {
-		snprintf(buf, sizeof(buf), "%s with %s", tr_name, ch_name);
+	/* Get the second channel if two channels were selected. */
+	if (tr_gui->ch2_iter != NULL) {
+		if (tr_gui->tr_name == NULL)
+			snprintf(buf, sizeof(buf), "%s with %s", tr_gui->tr_type_name, ch_name);
 		g_free(ch_name);
-		path = g_list_next(priv->selected_rows_paths);
-		gtk_tree_model_get_iter(model, &iter, path->data);
-		gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &channel1, -1);
+		gtk_tree_model_get(model, iter_ch2, ELEMENT_REFERENCE, &channel1, -1);
 		/* Get the parent reference of the channel1. */
-		gtk_tree_model_iter_parent(model, &parent_iter, &iter);
+		gtk_tree_model_iter_parent(model, &parent_iter, iter_ch2);
 		gtk_tree_model_get(model, &parent_iter, ELEMENT_REFERENCE, &ch_parent1, -1);
 		/* Don't add a constellation for channels belonging to different devices */
 		if (ch_parent0 != ch_parent1)
 			goto abort_adding_transform;
 		if (!check_channel_is_writable(channel1))
 			goto abort_adding_transform;
+		iter_ch1 = iter_ch2;
 	} else {
 		g_free(ch_name);
 	}
 	/* Add a new transform to a list of transforms. */
-	tr = add_transform_to_list(plot, ch_parent0, channel0, channel1, tr_name);
+	tr = add_transform_to_list(plot, ch_parent0, channel0, channel1, tr_gui->tr_type_id);
 	/* Create transform attributes(color, number id, etc) */
-	set_transform_attributes(plot, tr);
-	snprintf(buf + strlen(buf), sizeof(buf), " %d", *((int *)tr->integer_id));
+	set_transform_attributes(plot, tr, tr_gui);
+	if (tr_gui->tr_name == NULL)
+		snprintf(buf + strlen(buf), sizeof(buf), " %d", *((int *)tr->integer_id));
+	if (tr_gui->tr_name == NULL)
+		tr_gui->tr_name = buf;
 	/* Add the transfrom in the treeview */
-	child_iter = add_row_child(plot, &iter, buf, tr);
-	g_object_set(G_OBJECT(tree_view), "sensitive", TRUE, NULL);
+	child_iter = add_row_child(plot, iter_ch1, tr_gui->tr_name, tr);
 	/* Store the newly created row iter in the transform structure. */
 	tr->iter_in_treestore = (GtkTreeIter *)g_new(GtkTreeIter, 1);
 	*((GtkTreeIter *)tr->iter_in_treestore) = child_iter;
@@ -688,43 +729,108 @@ static void add_transform_to_tree_store(GtkMenuItem* menuitem, gpointer data)
 	/* Check if a two channel transform("Constellation" or "Complex FFT") has
 	   a valid combination of it's parents. The validation rules come from
 	   the plugin (of the device that owns the channels) that may provide the rules or not. */
-	if (priv->num_selected_rows == 2)
+	if (tr_gui->ch2_iter != NULL)
 		check_valid_setup(plot, tr);
 
 abort_adding_transform:
-	return;
+	return tr;
 }
 
-static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer data)
+static void menu_add_transform(GtkMenuItem* menuitem, gpointer data)
 {
-	OscPlot *plot = data;
-	OscPlotPrivate *priv  = plot->priv;
+	OscPlot *plot = (OscPlot *)data;
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeModel *model;
+	GList *path;
+	GtkTreeIter iter_row1, iter_row2;
+	struct transform_gui_settings tr_gui;
+	
+	tr_gui.tr_name = NULL;
+	tr_gui.tr_type_name = NULL;
+	tr_gui.tr_type_id = -1;
+	tr_gui.tr_color_id = -1;
+	tr_gui.ch1_iter = NULL;
+	tr_gui.ch2_iter = NULL;
+	
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->channel_list_view));
+	/* Get the iters of the selected channels */
+	path = g_list_first(priv->selected_rows_paths);
+	gtk_tree_model_get_iter(model, &iter_row1, path->data);
+	tr_gui.ch1_iter = &iter_row1;
+	if (priv->num_selected_rows == 2) {
+		path = g_list_next(priv->selected_rows_paths);
+		gtk_tree_model_get_iter(model, &iter_row2, path->data);
+		tr_gui.ch2_iter = &iter_row2;
+	}
+	
+	/* Get the name of the transform type */
+	tr_gui.tr_type_name = (char *)gtk_menu_item_get_label(menuitem);
+	/* Get the type id of the transform */
+	if (!strcmp(tr_gui.tr_type_name, "TIME"))
+		tr_gui.tr_type_id = TIME_TRANSFORM;
+	else if (!strcmp(tr_gui.tr_type_name, "FFT"))
+		tr_gui.tr_type_id = FFT_TRANSFORM;
+	else if (!strcmp(tr_gui.tr_type_name, "COMPLEX FFT"))
+		tr_gui.tr_type_id = COMPLEX_FFT_TRANSFORM;
+	else if (!strcmp(tr_gui.tr_type_name, "CONSTELLATION"))
+		tr_gui.tr_type_id = CONSTELLATION_TRANSFORM;
+	/* Add the transform to the treestore */
+	add_transform(plot, &tr_gui);
+	/* Make the treeview sensitive again */
+	g_object_set(G_OBJECT(GTK_TREE_VIEW(priv->channel_list_view)), "sensitive", TRUE, NULL);
+}
+
+/*
+ * Remove the transform entirely(from treestore and from transform list).
+ */
+static void remove_transform(OscPlot *plot, GtkTreeIter rm_iter)
+{
+	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *tree_view;
 	GtkTreeModel *model;
-	GtkTreeIter iter;
 	gboolean is_tr;
 	Transform *tr;
-	GList *path;
-	int i;
 	
 	tree_view = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(tree_view);
-	path = g_list_first(priv->selected_rows_paths);
-	gtk_tree_model_get_iter(model, &iter, path->data);
-	gtk_tree_model_get(model, &iter, IS_TRANSFORM, &is_tr, ELEMENT_REFERENCE, &tr, -1);
+	
+	gtk_tree_model_get(model, &rm_iter, IS_TRANSFORM, &is_tr, ELEMENT_REFERENCE, &tr, -1);
 	if (!is_tr)
 		return;
-	gtk_tree_store_remove(GTK_TREE_STORE(model), &iter);
+	gtk_tree_store_remove(GTK_TREE_STORE(model), &rm_iter);
 	priv->available_graph_colors = g_list_prepend(priv->available_graph_colors, tr->graph_color);
 	if (tr->integer_id) {
 		priv->available_tr_numbers = g_list_insert_sorted(priv->available_tr_numbers,
 			tr->integer_id, (GCompareFunc)tr_id_compare);
+	}
+	if (tr->has_the_marker) {
+		g_free(priv->iter_with_marker);
+		priv->iter_with_marker = NULL;
 	}
 	if (tr->graph) {
 		gtk_databox_graph_remove(GTK_DATABOX(priv->databox), tr->graph);
 		gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
 	}
 	remove_transform_from_list(plot, tr);
+}
+
+/*
+ * Find the transform iter using the path of the selected row in the
+ * treeview and remove the transform.
+ */
+static void menu_remove_transform(GtkMenuItem* menuitem, gpointer data)
+{
+	OscPlot *plot = data;
+	OscPlotPrivate *priv  = plot->priv;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	GList *path;
+	int i;
+	
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->channel_list_view));
+	path = g_list_first(priv->selected_rows_paths);
+	gtk_tree_model_get_iter(model, &iter, path->data);
+	remove_transform(plot, iter);
 	
 	/* Check if there are transforms with invalid configuration */
 	for (i = 0; i < priv->transform_list->size; i++)
@@ -734,7 +840,7 @@ static void remove_transform_from_tree_store(GtkMenuItem* menuitem, gpointer dat
 	capture_button_restore(plot);
 }
 
-void set_time_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_data)
+static void set_time_settings_cb (GtkDialog *dialog, gint response_id, gpointer user_data)
 {
 	OscPlot *plot = user_data;
 	OscPlotPrivate *priv = plot->priv;
@@ -821,14 +927,14 @@ static void check_transform_settings(Transform *tr, int transform_type)
 	gfloat sample_count  = device->shadow_of_sample_count;
 	
 	if (transform_type == TIME_TRANSFORM) {
-		if (((struct _time_settings *)tr->settings)->num_samples > sample_count)
-			((struct _time_settings *)tr->settings)->num_samples = sample_count;
+		if (TIME_SETTINGS(tr)->num_samples > sample_count)
+			TIME_SETTINGS(tr)->num_samples = sample_count;
 	} else if(transform_type == FFT_TRANSFORM || transform_type == COMPLEX_FFT_TRANSFORM) {
-		while (((struct _fft_settings *)tr->settings)->fft_size > sample_count)
-			((struct _fft_settings *)tr->settings)->fft_size /= 2;
+		while (FFT_SETTINGS(tr)->fft_size > sample_count)
+			FFT_SETTINGS(tr)->fft_size /= 2;
 	} else if(transform_type == CONSTELLATION_TRANSFORM) {
-		if (((struct _constellation_settings *)tr->settings)->num_samples > sample_count)
-			((struct _constellation_settings *)tr->settings)->num_samples = sample_count;
+		if (CONSTELLATION_SETTINGS(tr)->num_samples > sample_count)
+			CONSTELLATION_SETTINGS(tr)->num_samples = sample_count;
 	}
 }
 
@@ -1001,41 +1107,6 @@ static void destroy_tr_id(gpointer data)
 	data = NULL;
 }
 
-static void clear_marker_flag(GtkTreeView *treeview)
-{
-	GtkTreeIter dev_iter, ch_iter, tr_iter;
-	GtkTreeModel *model;
-	gboolean next_dev_iter;
-	gboolean next_ch_iter;
-	gboolean next_tr_iter;
-	Transform *tr;
-	
-	model = gtk_tree_view_get_model(treeview);
-	if (!gtk_tree_model_get_iter_first(model, &dev_iter))
-		return;
-	
-	next_dev_iter = true;
-	while (next_dev_iter) {		
-		gtk_tree_model_iter_children(model, &ch_iter, &dev_iter);
-		next_ch_iter = true;
-		while (next_ch_iter) {
-			gtk_tree_model_iter_children(model, &tr_iter, &ch_iter);
-				if (gtk_tree_model_iter_has_child(model, &ch_iter))
-					next_tr_iter = true;
-				else
-					next_tr_iter = false;
-				while (next_tr_iter) {
-					gtk_tree_store_set(GTK_TREE_STORE(model), &tr_iter, MARKER_ENABLED, false, -1);
-					gtk_tree_model_get(model, &tr_iter, ELEMENT_REFERENCE, &tr, -1);
-					tr->has_the_marker = false;
-					next_tr_iter = gtk_tree_model_iter_next(model, &tr_iter);
-				}
-			next_ch_iter = gtk_tree_model_iter_next(model, &ch_iter);
-		}
-		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
-	}
-}
-
 static void apply_marker(GtkMenuItem* menuitem, gpointer data)
 {
 	OscPlot *plot = data;
@@ -1047,12 +1118,20 @@ static void apply_marker(GtkMenuItem* menuitem, gpointer data)
 	GList *path;
 	
 	tree_view = GTK_TREE_VIEW(priv->channel_list_view);
-	clear_marker_flag(tree_view);
 	model = gtk_tree_view_get_model(tree_view);
 	path = g_list_first(priv->selected_rows_paths);
 	gtk_tree_model_get_iter(model, &iter, path->data);
 	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &tr, -1);
 	priv->selected_transform_for_setup = tr;
+	
+	if (priv->iter_with_marker == NULL) {
+		priv->iter_with_marker = (GtkTreeIter *)g_new(GtkTreeIter, 1);
+		*priv->iter_with_marker = iter;
+	} else {
+		/* Remove the old marker flag */
+		gtk_tree_store_set(GTK_TREE_STORE(model), priv->iter_with_marker, MARKER_ENABLED, false, -1);
+		*priv->iter_with_marker = iter;
+	}
 	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, MARKER_ENABLED, true, -1);
 	tr->has_the_marker = true;
 }
@@ -1145,20 +1224,20 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 					for (i = 2; i < 4; i++) {
 						menuitem = gtk_menu_item_new_with_label(transforms[i]);
 						g_signal_connect(menuitem, "activate",
-							(GCallback) add_transform_to_tree_store, data);
+							(GCallback) menu_add_transform, data);
 						gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 					}
 					break;
 				case CONSTELLATION_TRANSFORM:
 					menuitem = gtk_menu_item_new_with_label(transforms[2]);
 					g_signal_connect(menuitem, "activate",
-						(GCallback) add_transform_to_tree_store, data);
+						(GCallback) menu_add_transform, data);
 					gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 					break;
 				case COMPLEX_FFT_TRANSFORM:
 					menuitem = gtk_menu_item_new_with_label(transforms[3]);
 					g_signal_connect(menuitem, "activate",
-						(GCallback) add_transform_to_tree_store, data);
+						(GCallback) menu_add_transform, data);
 					gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 					break;
 				default:
@@ -1171,7 +1250,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 				for (i = 0; i < 2; i++) {
 					menuitem = gtk_menu_item_new_with_label(transforms[i]);
 					g_signal_connect(menuitem, "activate",
-						(GCallback) add_transform_to_tree_store, data);
+						(GCallback) menu_add_transform, data);
 					gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 				}
 				goto show_menu;
@@ -1188,7 +1267,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 					
 				menuitem = gtk_menu_item_new_with_label(transforms[priv->active_transform_type - 1]);
 				g_signal_connect(menuitem, "activate",
-					(GCallback) add_transform_to_tree_store, data);
+					(GCallback) menu_add_transform, data);
 				gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);				
 				goto show_menu;
 			}
@@ -1222,7 +1301,7 @@ static void show_right_click_menu(GtkWidget *treeview, GdkEventButton *event, gp
 		
 		menuitem = gtk_menu_item_new_with_label("Remove");
 		g_signal_connect(menuitem, "activate",
-			(GCallback) remove_transform_from_tree_store, data);
+			(GCallback) menu_remove_transform, data);
 		gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 		goto show_menu;
 	}
@@ -1238,7 +1317,7 @@ show_menu:
 
 }
 
-void highlight_selected_rows (gpointer data, gpointer user_data)
+static void highlight_selected_rows (gpointer data, gpointer user_data)
 {
 	GtkTreePath *path = data;
 	GtkTreeSelection *selection = user_data;
@@ -1316,7 +1395,7 @@ static gboolean enter_key_press_cb(GtkWidget *treeview, GdkEventKey *event, gpoi
 			priv->num_selected_rows = rows;
 			g_list_foreach(priv->selected_rows_paths, highlight_selected_rows, selection);
 			if (event->keyval == DELETE_KEY_CODE)
-				remove_transform_from_tree_store(NULL, plot);
+				menu_remove_transform(NULL, plot);
 			else
 				show_right_click_menu(treeview, NULL, data);
 		}
@@ -1506,9 +1585,9 @@ static void plot_setup(OscPlot *plot)
 		transform_y_axis = Transform_get_y_axis_ref(transform);
 				
 		if (strcmp(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type)), "Lines"))
-			transform->graph = gtk_databox_points_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, 3);
+			transform->graph = gtk_databox_points_new(transform->y_axis_size, transform_x_axis, transform_y_axis, &color_graph[*(transform->graph_color)], 3);
 		else
-			transform->graph = gtk_databox_lines_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, 1);
+			transform->graph = gtk_databox_lines_new(transform->y_axis_size, transform_x_axis, transform_y_axis, &color_graph[*(transform->graph_color)], 1);
 		
 		ch_info = transform->channel_parent->extra_field;
 		if (transform->x_axis_size > max_x_axis)
@@ -1993,12 +2072,12 @@ static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 	gtk_widget_destroy(plot->priv->window);
 }
 
-gboolean save_settings_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
+static gboolean save_settings_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
 	if (event->keyval == ENTER_KEY_CODE) {
 		g_signal_emit_by_name(widget, "response", GTK_RESPONSE_OK, 0);
 	}
-	
+
 	return FALSE;
 }
 
@@ -2181,6 +2260,576 @@ static void min_y_axis_cb(GtkSpinButton *btn, OscPlot *plot)
 	gtk_databox_set_total_limits(box, min_x, max_x, max_y, min_y);
 }
 
+static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter, char *dev_name, char *ch_name)
+{
+	GtkTreeModel *model;
+	GtkTreeIter dev_iter;
+	GtkTreeIter ch_iter;
+	gboolean next_dev_iter;
+	gboolean next_ch_iter;
+	char *device;
+	char *channel;
+	
+	model = gtk_tree_view_get_model(tree);
+	if (!gtk_tree_model_get_iter_first(model, &dev_iter))
+		return FALSE;
+	if (dev_name == NULL)
+		return FALSE;
+	
+	next_dev_iter = true;
+	while (next_dev_iter) {
+		gtk_tree_model_iter_children(model, &ch_iter, &dev_iter);
+		gtk_tree_model_get(model, &dev_iter, ELEMENT_NAME, &device, -1);
+		if (!strcmp(dev_name, device)) {
+			g_free(device);
+			if (ch_name == NULL) {
+				*iter = dev_iter;
+				return TRUE;
+			}
+			next_ch_iter = true;
+			while (next_ch_iter) {
+				gtk_tree_model_get(model, &ch_iter, ELEMENT_NAME, &channel, -1);
+				if (!strcmp(ch_name, channel)) {
+					g_free(channel);
+					*iter = ch_iter;
+					return TRUE;
+				}
+				next_ch_iter = gtk_tree_model_iter_next(model, &ch_iter);
+			}
+		}
+		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
+	}
+	
+	return FALSE;
+}
+
+struct tr_types_count {
+	int time;
+	int fft;
+	int complex_fft;
+	int constellation;
+};
+
+static void device_list_cfg_file_write(OscPlot *plot, char *filename)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeView *tree = GTK_TREE_VIEW(priv->channel_list_view);
+	GtkTreeModel *model;
+	GtkTreeIter dev_iter;
+	GtkTreeIter ch_iter;
+	GtkTreeIter tr_iter;
+	gboolean next_dev_iter;
+	gboolean next_ch_iter;
+	gboolean next_tr_iter;
+	struct _device_list *dev;
+	struct iio_channel_info *ch;
+	Transform *tr;
+	char *tr_name;
+	gboolean expanded;
+	char tr_unique_name[25];
+	struct tr_types_count tr_count = {0, 0, 0, 0};
+	FILE *fp;
+	
+	model = gtk_tree_view_get_model(tree);
+	if (!gtk_tree_model_get_iter_first(model, &dev_iter))
+		return;
+		
+	fp = fopen(filename, "w");
+	fprintf(fp, "#.device list configuration file\n");
+	fprintf(fp, "[Capture_Configuration]\n");
+	next_dev_iter = true;
+	while (next_dev_iter) {
+		gtk_tree_model_get(model, &dev_iter, ELEMENT_REFERENCE, &dev, -1);
+		expanded = gtk_tree_view_row_expanded(tree, gtk_tree_model_get_path(model, &dev_iter));
+		fprintf(fp, "%s.sample_count=%d\n", dev->device_name, dev->shadow_of_sample_count);
+		fprintf(fp, "%s.expanded=%d\n", dev->device_name, (expanded) ? 1 : 0);
+		gtk_tree_model_iter_children(model, &ch_iter, &dev_iter);
+		next_ch_iter = true;
+		while (next_ch_iter) {
+			gtk_tree_model_get(model, &ch_iter, ELEMENT_REFERENCE, &ch, -1);
+			expanded = gtk_tree_view_row_expanded(tree, gtk_tree_model_get_path(model, &ch_iter));
+			fprintf(fp, "%s.%s.expanded=%d\n", dev->device_name, ch->name,(expanded) ? 1 : 0);
+			if (gtk_tree_model_iter_has_child(model, &ch_iter)) {
+				gtk_tree_model_iter_children(model, &tr_iter, &ch_iter);
+				next_tr_iter = true;
+			} else {
+				next_tr_iter = false;
+			}
+			while (next_tr_iter) {
+				gtk_tree_model_get(model, &tr_iter, ELEMENT_REFERENCE,
+						&tr, ELEMENT_NAME, &tr_name, -1);
+				switch (priv->active_transform_type) {
+						case NO_TRANSFORM_TYPE:
+							break;
+						case TIME_TRANSFORM:
+							sprintf(tr_unique_name, "time%d", tr_count.time++);
+							fprintf(fp, "%s.%s.%s.num_samples=%d\n", dev->device_name, ch->name,
+								tr_unique_name, TIME_SETTINGS(tr)->num_samples);
+							fprintf(fp, "%s.%s.%s.apply_inverse_funct=%d\n", dev->device_name, ch->name,
+								tr_unique_name, TIME_SETTINGS(tr)->apply_inverse_funct);
+							fprintf(fp, "%s.%s.%s.apply_multiply_funct=%d\n", dev->device_name, ch->name,
+								tr_unique_name, TIME_SETTINGS(tr)->apply_multiply_funct);
+							fprintf(fp, "%s.%s.%s.apply_add_funct=%d\n", dev->device_name, ch->name,
+								tr_unique_name, TIME_SETTINGS(tr)->apply_add_funct);
+							fprintf(fp, "%s.%s.%s.multiply_value=%f\n", dev->device_name, ch->name,
+								tr_unique_name, TIME_SETTINGS(tr)->multiply_value);
+							fprintf(fp, "%s.%s.%s.add_value=%f\n", dev->device_name, ch->name,
+								tr_unique_name, TIME_SETTINGS(tr)->add_value);
+							break;
+						case COMPLEX_FFT_TRANSFORM:
+							sprintf(tr_unique_name, "complex_fft%d", tr_count.complex_fft++);
+							fprintf(fp, "%s.%s.%s.first_parent=%s\n",
+								dev->device_name, ch->name, tr_unique_name, tr->channel_parent->name);
+						case FFT_TRANSFORM:
+							if(priv->active_transform_type != COMPLEX_FFT_TRANSFORM)
+								sprintf(tr_unique_name, "fft%d", tr_count.fft++);
+							fprintf(fp, "%s.%s.%s.fft_size=%d\n", dev->device_name, ch->name,
+								tr_unique_name, FFT_SETTINGS(tr)->fft_size);
+							fprintf(fp, "%s.%s.%s.fft_avg=%d\n", dev->device_name, ch->name,
+								tr_unique_name, FFT_SETTINGS(tr)->fft_avg);
+							fprintf(fp, "%s.%s.%s.fft_pwr_off=%f\n", dev->device_name, ch->name,
+								tr_unique_name, FFT_SETTINGS(tr)->fft_pwr_off);
+							break;
+						case CONSTELLATION_TRANSFORM:
+							sprintf(tr_unique_name, "constellation%d", tr_count.constellation++);
+							fprintf(fp, "%s.%s.%s.first_parent=%s\n", dev->device_name, ch->name,
+								tr_unique_name, tr->channel_parent->name);
+							fprintf(fp, "%s.%s.%s.num_samples=%d\n", dev->device_name, ch->name,
+								tr_unique_name, CONSTELLATION_SETTINGS(tr)->num_samples);
+							break;
+						default:
+							break;
+					}
+					fprintf(fp, "%s.%s.%s.name=%s\n", dev->device_name, ch->name,
+								tr_unique_name, tr_name);
+					fprintf(fp, "%s.%s.%s.color_id=%d\n", dev->device_name, ch->name,
+								tr_unique_name, *(tr->graph_color));
+				g_free(tr_name);
+				next_tr_iter = gtk_tree_model_iter_next(model, &tr_iter);
+			}
+			next_ch_iter = gtk_tree_model_iter_next(model, &ch_iter);
+		}
+		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
+	}
+		
+	fclose(fp);
+}
+
+#define MATCH(s1, s2) strcmp(s1, s2) == 0
+#define MATCH_N(s1, s2, n) strncmp(s1, s2, n) == 0
+#define MATCH_SECT(s) strcmp(section, s) == 0
+#define MATCH_NAME(n) strcmp(name, n) == 0
+#define DEVICE 1
+#define CHANNEL 2
+#define TRANSFORM 3
+
+struct transform_ini_cfg {
+	int index;
+	int type;
+	int color_id;
+	char *name;
+	void *settings;
+	char *first_parent;
+	char *tree_parent;
+	char *device_name;
+};
+
+static int device_find_by_name(const char *name)
+{
+	int i;
+	
+	for (i = 0; i < num_devices; i++)
+		if (strcmp(device_list[i].device_name, name) == 0)
+			return i;
+	
+	return -1;
+}
+
+static int channel_find_by_name(int device_index, const char *name)
+{
+	int i;
+	
+	for (i = 0; i < device_list[device_index].num_channels; i++)
+		if (strcmp(device_list[device_index].channel_list[i].name, name) == 0)
+			return i;
+	
+	return -1;
+}
+
+static int count_char_in_string(char c, const char *s)
+{
+	int i;
+	
+	for (i = 0; s[i];)
+		if (s[i] == c)
+			i++;
+		else
+			s++;
+			
+	return i;
+}
+
+static struct transform_ini_cfg * ini_cfg_add(OscPlot *plot, int index, int type, char *dev_name, char *ch_name)
+{
+	struct transform_ini_cfg *cfg;
+	
+	cfg = (struct transform_ini_cfg *)malloc(sizeof(struct transform_ini_cfg));
+	if (type == TIME_TRANSFORM)
+		cfg->settings = (struct _time_settings *)malloc(sizeof(struct _time_settings));
+	else if (type == FFT_TRANSFORM)
+		cfg->settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
+	else if (type == COMPLEX_FFT_TRANSFORM)
+		cfg->settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
+	else if (type == CONSTELLATION_TRANSFORM)
+		cfg->settings = (struct _constellation_settings *)malloc(sizeof(struct _constellation_settings));
+	cfg->index = index;
+	cfg->type = type;
+	cfg->color_id = 1;
+	cfg->name = NULL;
+	cfg->first_parent = NULL;
+	cfg->tree_parent = g_strdup(ch_name);
+	cfg->device_name = g_strdup(dev_name);
+	plot->priv->ini_cfgs = g_list_append(plot->priv->ini_cfgs, cfg);
+	
+	return cfg;
+}
+
+struct cfg_search_key {
+	int index;
+	int type;
+};
+
+static int cfg_find(gconstpointer a, gconstpointer b)
+{
+	struct transform_ini_cfg *data = (struct transform_ini_cfg *)a;
+	struct cfg_search_key *key = (struct cfg_search_key *)b;
+	
+	if (data->index == key->index && data->type == key->type)
+		return 0;
+	
+	return -1;
+}
+
+static struct transform_ini_cfg * ini_cfg_exist_check(OscPlot *plot, int index, int type)
+{
+	GList *list = plot->priv->ini_cfgs;
+	GList *elem = NULL;
+	struct cfg_search_key key;
+	
+	key.index = index;
+	key.type = type;
+	elem = g_list_find_custom(list, &key, cfg_find);
+	if (elem == NULL)
+		return NULL;
+	
+	return (struct transform_ini_cfg *)elem->data;
+}
+
+static int cfg_read_handler(void *user, const char* section, const char* name, const char* value)
+{
+	OscPlot *plot = (OscPlot *)user;
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeView *tree = GTK_TREE_VIEW(priv->channel_list_view);
+	GtkTreeStore *store = GTK_TREE_STORE(gtk_tree_view_get_model(tree));
+	GtkTreeIter dev_iter, ch_iter;
+	int dev, ch;
+	char *dev_name, *ch_name, *tr_name;
+	char *dev_property, *ch_property, *tr_property;
+	gboolean expanded;
+	int elem_type;
+	gchar **elems = NULL;
+	int len;
+	int index;
+	int t_type;
+	struct transform_ini_cfg *cfg = NULL;
+	
+	if (!MATCH_SECT("Capture_Configuration"))
+		return 0;
+	
+	elem_type = count_char_in_string('.', name);
+	switch(elem_type) {
+		case DEVICE:
+			elems = g_strsplit(name, ".", DEVICE + 1);
+			dev_name = elems[0];
+			dev_property = elems[1];
+			dev = device_find_by_name(dev_name);
+			if (dev == -1)
+				break;
+			if (MATCH(dev_property, "sample_cout")) {
+				device_list[dev].shadow_of_sample_count = atoi(value);
+				break;
+			}
+			if (MATCH(dev_property, "expanded")) {
+				expanded = atoi(value);	
+				get_iter_by_name(tree, &dev_iter, dev_name, NULL);
+				gtk_tree_store_set(store, &dev_iter, EXPANDED, expanded, -1);
+			}
+			break;
+		case CHANNEL:
+			elems = g_strsplit(name, ".", CHANNEL + 1);
+			dev_name = elems[0];
+			ch_name = elems[1];
+			ch_property = elems[2];
+			dev = device_find_by_name(dev_name);
+			if (dev == -1)
+				break;
+			ch = channel_find_by_name(dev, ch_name);
+			if (ch == -1)
+				break;	
+			if (MATCH(ch_property, "expanded")) {
+				expanded = atoi(value);	
+				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
+				gtk_tree_store_set(store, &ch_iter, EXPANDED, expanded, -1);
+			}
+			break;
+		case TRANSFORM:		
+			elems = g_strsplit(name, ".", TRANSFORM + 1);
+			dev_name = elems[0];
+			ch_name = elems[1];
+			tr_name = elems[2];
+			tr_property = elems[3];
+			dev = device_find_by_name(dev_name);
+			if (dev == -1)
+				break;
+			ch = channel_find_by_name(dev, ch_name);
+			if (ch == -1)
+				break;
+			
+			len = strcspn(tr_name, "0123456789");
+			index = atoi(tr_name + len);
+			
+			if (MATCH_N(tr_name, "time", len))
+				t_type = TIME_TRANSFORM;
+			else if (MATCH_N(tr_name, "fft", len))
+				t_type = FFT_TRANSFORM;
+			else if (MATCH_N(tr_name, "complex_fft", len))
+				t_type = COMPLEX_FFT_TRANSFORM;
+			else if (MATCH_N(tr_name, "constellation", len))
+				t_type = CONSTELLATION_TRANSFORM;
+			else
+				break;
+
+			cfg = ini_cfg_exist_check(plot, index, t_type);
+			if(!cfg)
+				cfg = ini_cfg_add(plot, index, t_type, dev_name, ch_name);
+			if(MATCH(tr_property, "name")) {
+				cfg->name = realloc(cfg->name, strlen(value) + 1);
+				strcpy(cfg->name, value);
+			}
+			else if(MATCH(tr_property, "first_parent")) {
+				cfg->first_parent = realloc(cfg->first_parent, strlen(value) + 1);
+				strcpy(cfg->first_parent, value);
+			}
+			else if (MATCH(tr_property, "color_id")) {
+				cfg->color_id = atoi(value);
+			} else {
+				switch(t_type) {
+					case TIME_TRANSFORM:
+						if (MATCH(tr_property, "num_samples"))
+							TIME_SETTINGS(cfg)->num_samples = atoi(value);
+						else if (MATCH(tr_property, "apply_inverse_funct"))
+							TIME_SETTINGS(cfg)->apply_inverse_funct = atoi(value);
+						else if (MATCH(tr_property, "apply_multiply_funct"))
+							TIME_SETTINGS(cfg)->apply_multiply_funct = atoi(value);
+						else if (MATCH(tr_property, "apply_add_funct"))
+							TIME_SETTINGS(cfg)->apply_add_funct = atoi(value);
+						else if (MATCH(tr_property, "multiply_value"))
+							TIME_SETTINGS(cfg)->multiply_value = atof(value);
+						else if (MATCH(tr_property, "add_value"))
+							TIME_SETTINGS(cfg)->add_value = atof(value);
+						break;
+					case COMPLEX_FFT_TRANSFORM:
+					case FFT_TRANSFORM:
+						if (MATCH(tr_property, "fft_size"))
+								FFT_SETTINGS(cfg)->fft_size = atoi(value);
+						else if (MATCH(tr_property, "fft_avg"))
+								FFT_SETTINGS(cfg)->fft_avg = atoi(value);
+						else if (MATCH(tr_property, "fft_pwr_off"))
+								FFT_SETTINGS(cfg)->fft_pwr_off = atof(value);
+						break;
+					case CONSTELLATION_TRANSFORM:
+						if (MATCH(tr_property, "num_samples"))
+							CONSTELLATION_SETTINGS(cfg)->num_samples = atoi(value);
+						break;
+				}
+			}
+			break;
+		default:
+			break;
+	}
+	if (elems != NULL)
+		g_strfreev(elems);
+	
+	return 0;
+}
+
+static void treeview_expand_update(OscPlot *plot)
+{
+	GtkTreeIter dev_iter, ch_iter;
+	GtkTreeView *tree = GTK_TREE_VIEW(plot->priv->channel_list_view);
+	GtkTreeModel *model;
+	gboolean next_dev_iter, next_ch_iter;
+	gboolean expanded;
+	
+	model = gtk_tree_view_get_model(tree);
+	if (!gtk_tree_model_get_iter_first(model, &dev_iter))
+		return;
+	
+	next_dev_iter = true;
+	while (next_dev_iter) {
+		gtk_tree_model_get(model, &dev_iter, EXPANDED, &expanded, -1);
+		expand_iter(plot, &dev_iter, expanded);
+		gtk_tree_model_iter_children(model, &ch_iter, &dev_iter);		
+		next_ch_iter = true;
+		while (next_ch_iter) {
+			gtk_tree_model_get(model, &ch_iter, EXPANDED, &expanded, -1);
+			expand_iter(plot, &ch_iter, expanded);
+			next_ch_iter = gtk_tree_model_iter_next(model, &ch_iter);
+		}
+		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
+	}
+}
+
+static void create_transform_from_ini(gpointer data, gpointer user_data)
+{
+	OscPlot *plot = (OscPlot *)user_data;
+	GtkTreeView *tree = GTK_TREE_VIEW(plot->priv->channel_list_view);
+	struct transform_ini_cfg *cfg = (struct transform_ini_cfg *)data;
+	struct transform_gui_settings tr_gui;
+	GtkTreeIter iter1, iter2;
+	Transform *transform;
+	
+	tr_gui.tr_name = cfg->name;
+	tr_gui.tr_type_name = NULL;
+	tr_gui.tr_type_id = cfg->type;
+	tr_gui.tr_color_id = cfg->color_id;
+	tr_gui.ch1_iter = NULL;
+	tr_gui.ch2_iter = NULL;
+	get_iter_by_name(tree, &iter1, cfg->device_name, cfg->tree_parent);
+	get_iter_by_name(tree, &iter2, cfg->device_name, cfg->first_parent);
+	tr_gui.ch1_iter = &iter1;
+	if (cfg->first_parent != NULL) {
+		tr_gui.ch2_iter = tr_gui.ch1_iter;
+		tr_gui.ch1_iter = &iter2;
+	}
+	transform = add_transform(plot, &tr_gui);
+	if (transform == NULL)
+		return;
+	switch (cfg->type) {
+		case TIME_TRANSFORM:
+			TIME_SETTINGS(transform)->num_samples = TIME_SETTINGS(cfg)->num_samples;
+			TIME_SETTINGS(transform)->apply_inverse_funct = TIME_SETTINGS(cfg)->apply_inverse_funct;
+			TIME_SETTINGS(transform)->apply_multiply_funct = TIME_SETTINGS(cfg)->apply_multiply_funct;
+			TIME_SETTINGS(transform)->apply_add_funct = TIME_SETTINGS(cfg)->apply_add_funct;
+			TIME_SETTINGS(transform)->multiply_value = TIME_SETTINGS(cfg)->multiply_value;
+			TIME_SETTINGS(transform)->add_value = TIME_SETTINGS(cfg)->add_value;
+			break;
+		case COMPLEX_FFT_TRANSFORM:
+		case FFT_TRANSFORM:
+			FFT_SETTINGS(transform)->fft_size = FFT_SETTINGS(cfg)->fft_size;
+			FFT_SETTINGS(transform)->fft_avg = FFT_SETTINGS(cfg)->fft_avg;
+			FFT_SETTINGS(transform)->fft_pwr_off = FFT_SETTINGS(cfg)->fft_pwr_off;
+		case CONSTELLATION_TRANSFORM:
+			CONSTELLATION_SETTINGS(transform)->num_samples = CONSTELLATION_SETTINGS(cfg)->num_samples;
+		break;
+	}
+	/* Free stored data from ini file */
+	if (cfg->name)
+		free(cfg->name);
+	if (cfg->first_parent)
+		free(cfg->first_parent);
+	if (cfg->device_name)
+		free(cfg->device_name);
+	if (cfg->settings)
+		free(cfg->settings);
+	plot->priv->ini_cfgs = g_list_remove(plot->priv->ini_cfgs, cfg);
+	free(cfg);
+}
+
+static void load_ini_settings(OscPlot *plot)
+{
+	g_list_foreach(plot->priv->ini_cfgs, create_transform_from_ini, plot);
+}
+
+static void device_list_cfg_file_load(OscPlot *plot, char *filename)
+{	
+	ini_parse(filename, cfg_read_handler, plot);
+	load_ini_settings(plot);
+	treeview_expand_update(plot);
+}
+
+static void devlist_cfg_save_cb(GtkToolButton *btn, OscPlot *data)
+{
+	OscPlotPrivate *priv = data->priv;
+	GtkWidget *save_btn;
+	GtkWidget *load_btn;
+
+	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), GTK_FILE_CHOOSER_ACTION_SAVE);
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->devlist_cfg_dialog), TRUE);
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), getenv("HOME"));
+	save_btn = gtk_dialog_get_widget_for_response(GTK_DIALOG(priv->devlist_cfg_dialog), 1); /* 1 = Save Configuration button response id declared in the glade file */
+	load_btn = gtk_dialog_get_widget_for_response(GTK_DIALOG(priv->devlist_cfg_dialog), 2); /* 2 = Load Configuration button response id declared in the glade file */
+	gtk_widget_show(save_btn);
+	gtk_widget_hide(load_btn);
+	gtk_widget_show(priv->devlist_cfg_dialog);
+}
+
+static void devlist_cfg_load_cb(GtkToolButton *btn, OscPlot *data)
+{
+	OscPlotPrivate *priv = data->priv;
+	GtkWidget *save_btn;
+	GtkWidget *load_btn;
+
+	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), GTK_FILE_CHOOSER_ACTION_OPEN);
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->devlist_cfg_dialog), TRUE);
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), getenv("HOME"));
+	save_btn = gtk_dialog_get_widget_for_response(GTK_DIALOG(priv->devlist_cfg_dialog), 1);
+	load_btn = gtk_dialog_get_widget_for_response(GTK_DIALOG(priv->devlist_cfg_dialog), 2);
+	gtk_widget_show(load_btn);
+	gtk_widget_hide(save_btn);
+	gtk_widget_show(priv->devlist_cfg_dialog);
+}
+
+static void devlist_cfg_dialog_response_cb(GtkDialog *dialog, gint response_id, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	char *name;
+	
+	priv->devlist_cfg_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(priv->devlist_cfg_dialog));
+	name = malloc(strlen(priv->devlist_cfg_filename) + 5);
+	switch (response_id) {
+		case GTK_RESPONSE_CANCEL:
+			break;
+		case 1:
+			/* Save the device list configuration. */
+			if (!strncasecmp(&priv->devlist_cfg_filename[strlen(priv->devlist_cfg_filename)-4], ".ini", 4))
+					strcpy(name, priv->devlist_cfg_filename);
+				else
+					sprintf(name, "%s.ini", priv->devlist_cfg_filename);
+			{		
+				device_list_cfg_file_write(plot, name);
+			}
+			break;
+		case 2:
+			/* Load the device list configuration. */
+			{
+				/* Remove the existings transforms. */
+				while (priv->transform_list->size)
+					remove_transform(plot, *((GtkTreeIter *)(priv->transform_list->transforms[0]->iter_in_treestore)));
+				/* Load the transforms from file */
+				device_list_cfg_file_load(plot, priv->devlist_cfg_filename);
+			}
+			break;
+		default:
+			printf("response_id : %i\n", response_id);
+			break;
+	}
+	if (name)
+		free(name);
+
+	gtk_widget_hide(priv->devlist_cfg_dialog);
+}
+
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -2189,6 +2838,7 @@ static void create_plot(OscPlot *plot)
 	GtkBuilder *builder = NULL;
 	GtkTreeSelection *tree_selection;
 	GtkWidget *fft_size_widget;
+	GtkWidget *devlist_cfg_save, *devlist_cfg_load;
 	GtkDataboxRuler *ruler_y;
 	GtkTreeStore *tree_store;
 	int i;
@@ -2219,9 +2869,12 @@ static void create_plot(OscPlot *plot)
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
+	priv->devlist_cfg_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "devlist_cfg_chooser"));
 	priv->fullscreen_button = GTK_WIDGET(gtk_builder_get_object(builder, "fullscreen_toggle"));
 	priv->y_axis_max = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_max"));
 	priv->y_axis_min = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_min"));
+	devlist_cfg_save = GTK_WIDGET(gtk_builder_get_object(builder, "toolbtn_save_cfg"));
+	devlist_cfg_load = GTK_WIDGET(gtk_builder_get_object(builder, "toolbtn_load_cfg"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	priv->tbuf = NULL;
 
@@ -2243,13 +2896,18 @@ static void create_plot(OscPlot *plot)
 									G_TYPE_BOOLEAN,   /* TRANSFORM_ACTIVE */
 									G_TYPE_BOOLEAN,   /* MARKER_ENABLED */
 									G_TYPE_POINTER,   /* ELEMENT_REFERENCE */
-									GDK_TYPE_COLOR);  /* COLOR_REF */
+									GDK_TYPE_COLOR,   /* COLOR_REF */
+									G_TYPE_BOOLEAN);  /* EXPANDED */
 	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 	fill_channel_list(plot);
 	
-	/* Fill the color list with the available colors for the graph */
-	for (i = sizeof(color_graph) / sizeof(color_graph[0]) - 1; i >= 0; i--)
-		priv->available_graph_colors = g_list_prepend(priv->available_graph_colors, &color_graph[i]);
+	/* Fill the color list with indexes of the available colors for the graph */
+	gint *c_index;
+	for (i = sizeof(color_graph) / sizeof(color_graph[0]) - 1; i >= 0; i--) {
+		c_index = g_new(int, 1);
+		*c_index = i;
+		priv->available_graph_colors = g_list_prepend(priv->available_graph_colors, c_index);
+	}
 	
 	/* Connect Signals */
 	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);
@@ -2287,6 +2945,14 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(max_y_axis_cb), plot);
 	g_signal_connect(priv->y_axis_min, "value-changed",
 		G_CALLBACK(min_y_axis_cb), plot);
+	g_signal_connect(devlist_cfg_save, "clicked",
+		G_CALLBACK(devlist_cfg_save_cb), plot);
+	g_signal_connect(devlist_cfg_load, "clicked",
+		G_CALLBACK(devlist_cfg_load_cb), plot);
+	g_signal_connect(priv->devlist_cfg_dialog, "response", 
+		G_CALLBACK(devlist_cfg_dialog_response_cb), plot);
+	g_signal_connect(priv->devlist_cfg_dialog, "delete-event",
+		G_CALLBACK(gtk_widget_hide_on_delete), plot);
 	
 	g_builder_connect_signal(builder, "zoom_in", "clicked",
 		G_CALLBACK(zoom_in), plot);

@@ -19,6 +19,16 @@
 #define MAX_MARKERS 4
 #endif
 
+/* Types of transforms */
+enum {
+	NO_TRANSFORM_TYPE,
+	TIME_TRANSFORM,
+	FFT_TRANSFORM,
+	CONSTELLATION_TRANSFORM,
+	COMPLEX_FFT_TRANSFORM,
+	TRANSFORMS_TYPES_COUNT
+};
+
 typedef struct _transform Transform;
 typedef struct _tr_list TrList;
 
@@ -67,6 +77,7 @@ struct _device_list {
 };
 
 struct _transform {
+	int type_id;
 	struct iio_channel_info *channel_parent;
 	struct iio_channel_info *channel_parent2;
 	gfloat **in_data;
@@ -79,7 +90,7 @@ struct _transform {
 	bool destroy_y_axis;
 	bool local_output_buf;
 	void *graph;
-	void *graph_color;
+	int *graph_color;
 	void *iter_in_treestore;
 	int* integer_id;
 	bool graph_active;
@@ -117,7 +128,7 @@ struct _constellation_settings {
 	unsigned int num_samples;
 };
 
-Transform* Transform_new(void);
+Transform* Transform_new(int tr_type);
 void Transform_destroy(Transform *tr);
 void Transform_resize_x_axis(Transform *tr, int new_size);
 void Transform_resize_y_axis(Transform *tr, int new_size);

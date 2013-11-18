@@ -7,10 +7,12 @@
 #include <malloc.h>
 #include "datatypes.h"
 
-Transform* Transform_new(void)
+Transform* Transform_new(int type)
 {
 	Transform *tr = (Transform *)malloc(sizeof(Transform));
 	
+	tr->type_id = (type > NO_TRANSFORM_TYPE &&
+			type < TRANSFORMS_TYPES_COUNT) ? type : NO_TRANSFORM_TYPE;
 	tr->channel_parent = NULL;
 	tr->channel_parent2 = NULL;
 	tr->in_data = NULL;

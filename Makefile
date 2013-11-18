@@ -30,13 +30,13 @@ PLUGINS=\
 
 all: multiosc $(PLUGINS)
 
-multiosc: osc.o oscplot.o datatypes.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ./ini/ini.c
-	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
+multiosc: osc.o oscplot.o datatypes.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o
+	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -O2 -o $@
 
 osc.o: osc.c iio_widget.h iio_utils.h int_fft.h osc_plugin.h osc.h
 	$(CC) osc.c -c $(CFLAGS)
 
-oscplot.o: oscplot.c oscplot.h osc.h datatypes.h xml_utils.h iio_widget.h
+oscplot.o: oscplot.c oscplot.h osc.h datatypes.h iio_widget.h ./ini/ini.h
 	$(CC) oscplot.c -c $(CFLAGS)
 
 datatypes.o: datatypes.c datatypes.h
@@ -63,6 +63,8 @@ trigger_dialog.o: trigger_dialog.c fru.h osc.h iio_utils.h iio_widget.h
 xml_utils.o: xml_utils.c xml_utils.h
 	$(CC) xml_utils.c -c $(CFLAGS)
 
+ini.o: ./ini/ini.c ./ini/ini.h
+	$(CC) ./ini/ini.c -c $(CFLAGS)
 
 %.so: %.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@
