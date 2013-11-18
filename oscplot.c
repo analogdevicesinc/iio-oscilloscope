@@ -1746,11 +1746,16 @@ static void add_grid(OscPlot *plot)
 	grid = gtk_databox_grid_array_new (y, x, gridy, gridx, &color_grid, 1);
 	*/
 
-	if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
+	if (priv->active_transform_type == FFT_TRANSFORM) {
 		fill_axis(priv->gridx, 0, 10, 15);
 		fill_axis(priv->gridy, 10, -10, 15);
 		priv->grid = gtk_databox_grid_array_new (15, 15, priv->gridy, priv->gridx, &color_grid, 1);
-	} else if (priv->active_transform_type == CONSTELLATION_TRANSFORM) {
+	}else if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
+		fill_axis(priv->gridx, -30, 10, 15);
+		fill_axis(priv->gridy, 10, -10, 15);
+		priv->grid = gtk_databox_grid_array_new (15, 15, priv->gridy, priv->gridx, &color_grid, 1);
+	}
+	 else if (priv->active_transform_type == CONSTELLATION_TRANSFORM) {
 		fill_axis(priv->gridx, -80000, 10000, 18);
 		fill_axis(priv->gridy, -80000, 10000, 18);
 		priv->grid = gtk_databox_grid_array_new (18, 18, priv->gridy, priv->gridx, &color_grid, 1);
