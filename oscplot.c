@@ -2039,7 +2039,11 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 			break;
 		case 2: 
 			/* save comma separated values (csv) */
-			sprintf(name, "%s.csv", priv->saveas_filename);
+			if (!strncasecmp(&priv->saveas_filename[strlen(priv->saveas_filename)-4], ".csv", 4))
+					strcpy(name, priv->saveas_filename);
+				else
+					sprintf(name, "%s.csv", priv->saveas_filename);
+
 			{			
 				FILE *fp;
 
@@ -2055,7 +2059,11 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 			break;
 		case 3:	
 			/* save png */
-			sprintf(name, "%s.png", priv->saveas_filename);
+			if (!strncasecmp(&priv->saveas_filename[strlen(priv->saveas_filename)-4], ".png", 4))
+					strcpy(name, priv->saveas_filename);
+				else
+					sprintf(name, "%s.png", priv->saveas_filename);
+
 			{
 				GdkPixbuf *pixbuf;
 				GError *err=NULL;
@@ -2078,10 +2086,14 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 			}
 			break;
 		case 4:
-			sprintf(name, "%s.mat", priv->saveas_filename);
 			/* Matlab file
 			 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
 			 */
+			 if (!strncasecmp(&priv->saveas_filename[strlen(priv->saveas_filename)-4], ".mat", 4))
+					strcpy(name, priv->saveas_filename);
+				else
+					sprintf(name, "%s.mat", priv->saveas_filename);
+
 			{
 				mat_t *mat;
 				matvar_t *matvar;
