@@ -106,7 +106,7 @@ static void do_fft(Transform *tr)
 			fft->in = NULL;
 		}	
 
-		fft->win = fftw_malloc(sizeof(fftw_complex) * fft_size);
+		fft->win = fftw_malloc(sizeof(double) * fft_size);
 		if (fft->num_active_channels == 2) {
 			fft->m = fft_size;
 			fft->in_c = fftw_malloc(sizeof(fftw_complex) * fft_size);
@@ -166,8 +166,8 @@ static void do_fft(Transform *tr)
 				j = i;
 		}
 		
-		mag = 10 * log10((fft->out[i][0] * fft->out[i][0] +
-				fft->out[i][1] * fft->out[i][1]) / (fft->m * fft->m)) +
+		mag = 10 * log10((fft->out[j][0] * fft->out[j][0] +
+				fft->out[j][1] * fft->out[j][1]) / (fft->m * fft->m)) +
 			fft->fft_corr + pwr_offset + plugin_fft_corr;
 		/* it's better for performance to have seperate loops,
 		 * rather than do these tests inside the loop, but it makes
