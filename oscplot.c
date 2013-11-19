@@ -2766,6 +2766,15 @@ static void devlist_cfg_save_cb(GtkToolButton *btn, OscPlot *data)
 
 	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), GTK_FILE_CHOOSER_ACTION_SAVE);
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->devlist_cfg_dialog), TRUE);
+	if (!priv->devlist_cfg_filename) {
+		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), getenv("HOME"));
+		gtk_file_chooser_get_filename(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog));
+	} else {
+		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (priv->saveas_dialog), priv->devlist_cfg_filename);
+		g_free(priv->devlist_cfg_filename);
+		priv->devlist_cfg_filename = NULL;
+	}
+	
 	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), getenv("HOME"));
 	save_btn = gtk_dialog_get_widget_for_response(GTK_DIALOG(priv->devlist_cfg_dialog), 1); /* 1 = Save Configuration button response id declared in the glade file */
 	load_btn = gtk_dialog_get_widget_for_response(GTK_DIALOG(priv->devlist_cfg_dialog), 2); /* 2 = Load Configuration button response id declared in the glade file */
@@ -2796,6 +2805,9 @@ static void devlist_cfg_dialog_response_cb(GtkDialog *dialog, gint response_id, 
 	char *name;
 	
 	priv->devlist_cfg_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(priv->devlist_cfg_dialog));
+	if (!priv->devlist_cfg_filename)
+		goto hide_cfg_dialog;
+	
 	name = malloc(strlen(priv->devlist_cfg_filename) + 5);
 	switch (response_id) {
 		case GTK_RESPONSE_CANCEL:
@@ -2827,6 +2839,7 @@ static void devlist_cfg_dialog_response_cb(GtkDialog *dialog, gint response_id, 
 	if (name)
 		free(name);
 
+hide_cfg_dialog:
 	gtk_widget_hide(priv->devlist_cfg_dialog);
 }
 
