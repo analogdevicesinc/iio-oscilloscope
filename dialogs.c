@@ -35,6 +35,8 @@ struct _Dialogs
 	GtkWidget *connect_fru;
 	GtkWidget *connect_iio;
 	GtkWidget *serial_num;
+	GtkWidget *load_save_profile;
+
 };
 
 static Dialogs dialogs;
@@ -553,6 +555,61 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 	gtk_widget_hide(data->saveas);
 }
 
+G_MODULE_EXPORT void load_save_profile_cb(GtkButton *button, Dialogs *data)
+{
+	/* Save as Dialog */
+	gint ret;
+	static char *filename = NULL;
+	char *name;
+
+	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (data->load_save_profile), GTK_FILE_CHOOSER_ACTION_SAVE);
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(data->load_save_profile), TRUE);
+
+	if(!filename) {
+		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (data->load_save_profile), getenv("HOME"));
+		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER (data->load_save_profile), current_device);
+	} else {
+		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (data->load_save_profile), filename);
+		g_free(filename);
+		filename = NULL;
+
+	}
+
+	ret = gtk_dialog_run(GTK_DIALOG(data->load_save_profile));
+
+	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (data->load_save_profile));
+	if (filename) {
+		name = malloc(strlen(filename) + 5);
+		switch(ret) {
+			/* Response Codes encoded in glade file */
+			case GTK_RESPONSE_DELETE_EVENT:
+			case GTK_RESPONSE_CANCEL:
+				break;
+			case 1:
+				/* save_ini */
+				if (!strncasecmp(&filename[strlen(filename)-4], ".ini", 4))
+					strcpy(name, filename);
+				else
+					sprintf(name, "%s.ini", filename);
+
+				save_all_plugins(name, NULL);
+				break;
+			case 2:
+				/* load_ini */
+				if (!strncasecmp(&filename[strlen(filename)-4], ".ini", 4))
+					strcpy(name, filename);
+				else
+					sprintf(name, "%s.ini", filename);
+
+				restore_all_plugins(name, NULL);
+			default:
+				printf("ret : %i\n", ret);
+		}
+		free(name);
+	}
+	gtk_widget_hide(data->load_save_profile);
+}
+
 G_MODULE_EXPORT void cb_quit(GtkButton *button, Dialogs *data)
 {
 	application_quit();
@@ -568,7 +625,7 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.connect_fru = GTK_WIDGET(gtk_builder_get_object(builder, "fru_info"));
 	dialogs.serial_num = GTK_WIDGET(gtk_builder_get_object(builder, "serial_number_popup"));
 	dialogs.connect_iio = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_devices"));
-
+	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
 	gtk_builder_connect_signals(builder, &dialogs);
 
 	/* Bind some dialogs radio buttons to text/labels */

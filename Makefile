@@ -29,7 +29,7 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ./ini/ini.c
+osc: osc.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ./ini/ini.c libini.o
 	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
 
 osc.o: osc.c iio_widget.h iio_utils.h int_fft.h osc_plugin.h osc.h

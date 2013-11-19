@@ -33,6 +33,8 @@ int plugin_data_capture_bytes_per_sample(void *device);
 void plugin_data_capture_demux(void *device, void *buf, gfloat **cooked, unsigned int num_samples,
 	unsigned int num_channels);
 
+void save_all_plugins(const char *filename, gpointer user_data);
+void restore_all_plugins(const char *filename, gpointer user_data);
 
 #endif
 

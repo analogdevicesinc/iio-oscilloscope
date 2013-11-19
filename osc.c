@@ -32,6 +32,8 @@
 #define SAMPLE_COUNT_MIN_VALUE 10
 #define SAMPLE_COUNT_MAX_VALUE 1000000ul
 
+GSList *plugin_list = NULL;
+
 static gfloat *X = NULL;
 static gfloat *fft_channel = NULL;
 static gfloat fft_corr = 0.0;
@@ -872,10 +874,10 @@ static void fft_capture_start(void)
  * helper functions for plugins which want to look at data
  * Note that multiosc application will implement these functions differently.
  */
- 
+
 void * plugin_get_device_by_reference(const char * device_name)
 {
-	return NULL; 
+	return NULL;
 }
 
 int plugin_data_capture_size(void *device)
@@ -901,13 +903,13 @@ void plugin_data_capture_demux(void *device, void *buf, gfloat **cooked, unsigne
 }
 
 int plugin_data_capture(void *device, void *buf)
-{	
+{
 	/* only one consumer at a time */
 	if (data_buffer.data_copy)
 		return false;
 
 	data_buffer.data_copy = buf;
-	
+
 	return true;
 }
 
@@ -1322,6 +1324,7 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 	if (!plugin->identify() && !force_plugin(plugin->name))
 		return;
 
+	plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
 	plugin->init(notebook);
 
 	printf("Loaded plugin: %s\n", plugin->name);
