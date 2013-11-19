@@ -28,6 +28,7 @@
 #include "int_fft.h"
 #include "config.h"
 #include "osc_plugin.h"
+#include "ini/ini.h"
 
 #define SAMPLE_COUNT_MIN_VALUE 10
 #define SAMPLE_COUNT_MAX_VALUE 1000000ul
@@ -1650,6 +1651,197 @@ gboolean samples_to_time(GBinding *binding, const GValue *source_val,
 	g_value_set_double(target_val, time);
 
 	return TRUE;
+}
+
+void capture_profile_save(char *filename)
+{
+	FILE *inifp;
+	gchar *crt_dev_name;
+	gchar *ch_name;
+	GtkTreeIter iter;
+	gboolean loop, enabled;
+	int tmp_int;
+	float tmp_float;
+	gchar *tmp_string;
+
+	inifp = fopen(filename, "w");
+	if (!inifp)
+		return;
+
+	fprintf(inifp, "[Capture_Configuration]\n");
+	crt_dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(device_list_widget));
+	fprintf(inifp, "device_name=%s\n", crt_dev_name);
+	g_free(crt_dev_name);
+	loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(channel_list_store), &iter);
+	while (loop) {
+		gtk_tree_model_get(GTK_TREE_MODEL(channel_list_store), &iter, 0, &ch_name, 1, &enabled, -1);
+		fprintf(inifp, "%s.enabled=%d\n", ch_name, enabled);
+		loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(channel_list_store), &iter);
+		g_free(ch_name);
+	}
+
+	fprintf(inifp, "domain=");
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
+		fprintf(inifp, "%s\n", "fft");
+	else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(constellation_radio)))
+		fprintf(inifp, "%s\n", "constellation");
+	else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(time_radio)))
+		fprintf(inifp, "%s\n", "time");
+
+	tmp_int = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(sample_count_widget));
+	fprintf(inifp, "sample_count=%d\n", tmp_int);
+
+	tmp_int = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
+	fprintf(inifp, "fft_size=%d\n", tmp_int);
+
+	tmp_int = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
+	fprintf(inifp, "fft_avg=%d\n", tmp_int);
+
+	tmp_float = gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget));
+	fprintf(inifp, "fft_pwr_offset=%f\n", tmp_float);
+
+	tmp_string = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(plot_type));
+	fprintf(inifp, "graph_type=%s\n", tmp_string);
+	g_free(tmp_string);
+
+	tmp_int = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(show_grid));
+	fprintf(inifp, "show_grid=%d\n", tmp_int);
+
+	tmp_int = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_auto_scale));
+	fprintf(inifp, "enable_auto_scale=%d\n", tmp_int);
+
+	fclose(inifp);
+}
+
+static int comboboxtext_set_active_by_string(GtkComboBox *combo_box, const char *name)
+{
+	GtkTreeModel *model = gtk_combo_box_get_model(combo_box);
+	GtkTreeIter iter;
+	gboolean has_iter;
+	char *item;
+	
+	has_iter = gtk_tree_model_get_iter_first(model, &iter);
+	while (has_iter) {
+		gtk_tree_model_get(model, &iter, 0, &item, -1);
+		if (strcmp(name, item) == 0) {
+			g_free(item);
+			gtk_combo_box_set_active_iter(combo_box, &iter);
+			return 1;
+		}
+		has_iter = gtk_tree_model_iter_next(model, &iter);
+	}
+	
+	return 0;
+}
+
+static int channel_soft_toggle(const char *ch_name, gboolean enable)
+{
+	GtkTreeIter iter;
+	GtkTreePath *path;
+	gchar *path_string;
+	gboolean loop;
+	char *item;
+
+	loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(channel_list_store), &iter);
+	while (loop) {
+		gtk_tree_model_get(GTK_TREE_MODEL(channel_list_store), &iter, 0, &item, -1);
+		if (!strcmp(ch_name, item)) {
+			g_free(item);
+			gtk_list_store_set(GTK_LIST_STORE(channel_list_store), &iter, 1, !enable, -1);
+			path = gtk_tree_model_get_path(GTK_TREE_MODEL(channel_list_store), &iter);
+			path_string = gtk_tree_path_to_string(path);
+			channel_toggled(NULL, path_string, channel_list_store);
+			g_free(path_string);
+			return 1;
+		}
+		loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(channel_list_store), &iter);
+	}
+
+	return 0;
+}
+
+static int count_char_in_string(char c, const char *s)
+{
+	int i;
+	
+	for (i = 0; s[i];)
+		if (s[i] == c)
+			i++;
+		else
+			s++;
+	
+	return i;
+}
+
+static int profile_read_handler(void *user, const char * section, const char* name, const char *value)
+{
+	int elem_type;
+	gchar **elems = NULL;
+	gchar *ch_name;
+	int ret;
+	
+	if (strcmp(section, "Capture_Configuration") != 0)
+		return 0;
+
+	elem_type = count_char_in_string('.', name);
+	switch (elem_type) {
+		case 0:
+			if (!strcmp(name, "device_name")) {
+				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(device_list_widget), value);
+				if (ret == 0)
+					printf("found invalid device name in .ini file\n");
+			} else if (!strcmp(name, "domain")) {
+				if (!strcmp(value, "time"))
+					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(time_radio), TRUE);
+				else if (!strcmp(value, "fft"))
+					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(fft_radio), TRUE);
+				else if (!strcmp(value, "constellation"))
+					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(constellation_radio), TRUE);
+			} else if (!strcmp(name, "sample_count")) {
+				gtk_spin_button_set_value(GTK_SPIN_BUTTON(sample_count_widget), atoi(value));
+			} else if (!strcmp(name, "fft_size")) {
+				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(fft_size_widget), value);
+				if (ret == 0)
+					printf("found invalid fft size in .ini file\n");
+			} else if (!strcmp(name, "fft_avg")) {
+				gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_avg_widget), atoi(value));
+			} else if (!strcmp(name, "fft_pwr_offset")) {
+				gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget), atof(value));
+			} else if (!strcmp(name, "graph_type")) {
+				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(plot_type), value);
+				if (ret == 0)
+					printf("found invalid graph type in .ini file\n");
+			} else if (!strcmp(name, "show_grid")) {
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_grid), atoi(value));
+			} else if (!strcmp(name, "enable_auto_scale")) {
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_auto_scale), atoi(value));
+			}
+			break;
+		case 1:
+			elems = g_strsplit(name, ".", 2);
+			ch_name = elems[0];
+			if (!strcmp(elems[1], "enabled")) {
+				ret = channel_soft_toggle(ch_name, atoi(value));
+				if (ret == 0)
+				printf("found invalid channel name in .ini fle\n");
+			}
+				
+			break;
+		default:
+			printf("found invalid property in ini file\n");
+			break;
+	}
+	
+	if (elems != NULL)
+		g_strfreev(elems);
+	
+	return 0;
+}
+
+void capture_profile_load(char *filename)
+{
+	ini_parse(filename, profile_read_handler, NULL);
+	check_valid_setup();
 }
 
 void application_quit (void)
