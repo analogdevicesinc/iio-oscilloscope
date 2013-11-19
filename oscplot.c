@@ -178,8 +178,8 @@ struct _OscPlotPrivate
 	int active_transform_type;
 	Transform *selected_transform_for_setup;
 	
-	/* Iter of element currently holding the fft marker */
-	GtkTreeIter *iter_with_marker;
+	/* Transform currently holding the fft marker */
+	Transform *tr_with_marker;
 	
 	/* Databox data */
 	GtkDataboxGraph *grid;
@@ -667,6 +667,39 @@ static gint tr_id_compare(gconstpointer a, gconstpointer b)
 	return *((gint *)a) - *((int *)b);
 }
 
+static void add_markers(OscPlot *plot, Transform *transform)
+{
+	GtkDatabox *databox = GTK_DATABOX(plot->priv->databox);
+	struct _fft_settings *settings = transform->settings;
+	gfloat *markX = settings->markX;
+	gfloat *markY = settings->markY;
+	GtkDataboxGraph **marker = (GtkDataboxGraph **)settings->marker;
+	char buf[10];
+	int m;
+	
+	for (m = 0; m <= MAX_MARKERS; m++) {
+		markX[m] = 0.0f;
+		markY[m] = -100.0f;
+		marker[m] = gtk_databox_markers_new(1, &markX[m], &markY[m], &color_marker, 10, GTK_DATABOX_MARKERS_TRIANGLE);
+		sprintf(buf, "M%i", m);
+		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(marker[m]), 0, GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+		gtk_databox_graph_add(databox, marker[m]);
+		gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(settings->marker[m]), !transform->graph_active);
+	}
+}
+
+static void remove_markers(OscPlot *plot, Transform *transform)
+{
+	GtkDatabox *databox = GTK_DATABOX(plot->priv->databox);
+	struct _fft_settings *settings = transform->settings;
+	GtkDataboxGraph **marker = (GtkDataboxGraph **)settings->marker;
+	int m;
+	
+	for (m = 0; m <= MAX_MARKERS; m++)
+		gtk_databox_graph_remove(databox, marker[m]);
+	gtk_text_buffer_set_text(plot->priv->tbuf, "", -1);
+}
+
 static Transform * add_transform(OscPlot *plot, struct transform_gui_settings *tr_gui)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -804,8 +837,8 @@ static void remove_transform(OscPlot *plot, GtkTreeIter rm_iter)
 			tr->integer_id, (GCompareFunc)tr_id_compare);
 	}
 	if (tr->has_the_marker) {
-		g_free(priv->iter_with_marker);
-		priv->iter_with_marker = NULL;
+		priv->tr_with_marker = NULL;
+		remove_markers(plot, tr);
 	}
 	if (tr->graph) {
 		gtk_databox_graph_remove(GTK_DATABOX(priv->databox), tr->graph);
@@ -1114,6 +1147,7 @@ static void apply_marker(GtkMenuItem* menuitem, gpointer data)
 	GtkTreeView *tree_view;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
+	GtkTreeIter *iter_with_marker;
 	Transform *tr;
 	GList *path;
 	
@@ -1124,16 +1158,14 @@ static void apply_marker(GtkMenuItem* menuitem, gpointer data)
 	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &tr, -1);
 	priv->selected_transform_for_setup = tr;
 	
-	if (priv->iter_with_marker == NULL) {
-		priv->iter_with_marker = (GtkTreeIter *)g_new(GtkTreeIter, 1);
-		*priv->iter_with_marker = iter;
-	} else {
-		/* Remove the old marker flag */
-		gtk_tree_store_set(GTK_TREE_STORE(model), priv->iter_with_marker, MARKER_ENABLED, false, -1);
-		*priv->iter_with_marker = iter;
+	if (priv->tr_with_marker) {
+		iter_with_marker = (GtkTreeIter *)priv->tr_with_marker->iter_in_treestore;
+		gtk_tree_store_set(GTK_TREE_STORE(model), iter_with_marker, MARKER_ENABLED, false, -1);
+		priv->tr_with_marker->has_the_marker = false;
 	}
 	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, MARKER_ENABLED, true, -1);
 	tr->has_the_marker = true;
+	priv->tr_with_marker = tr;
 }
 
 static void show_sample_count_dialog(GtkMenuItem* menuitem, gpointer data)
@@ -1534,28 +1566,6 @@ static void capture_start(OscPlotPrivate *priv)
 		priv->stop_redraw = FALSE;
 		priv->redraw_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, (GSourceFunc) plot_redraw, priv, NULL);
 	}
-}
-
-static void add_markers(OscPlot *plot, Transform *transform)
-{
-	GtkDatabox *databox = GTK_DATABOX(plot->priv->databox);
-	struct _fft_settings *settings = transform->settings;
-	gfloat *markX = settings->markX;
-	gfloat *markY = settings->markY;
-	GtkDataboxGraph **marker = (GtkDataboxGraph **)settings->marker;
-	char buf[10];
-	int m;
-	
-	for (m = 0; m <= MAX_MARKERS; m++) {
-		markX[m] = 0.0f;
-		markY[m] = -100.0f;
-		marker[m] = gtk_databox_markers_new(1, &markX[m], &markY[m], &color_marker, 10, GTK_DATABOX_MARKERS_TRIANGLE);
-		sprintf(buf, "M%i", m);
-		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(marker[m]), 0, GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
-		gtk_databox_graph_add(databox, marker[m]);
-		gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(settings->marker[m]), !transform->graph_active);
-	}
-	
 }
 
 static void plot_setup(OscPlot *plot)
