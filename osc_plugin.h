@@ -14,7 +14,8 @@ struct osc_plugin {
 	const char *name;
 	bool (*identify)(void);
 	int (*init)(GtkWidget *notebook);
-	char *(*handle_item) (struct osc_plugin *plugin, const char *attrib, const char *value);
+	char *(*handle_item) (struct osc_plugin *plugin, const char *attrib,
+			      const char *value);
 	const char **save_restore_attribs;
 };
 

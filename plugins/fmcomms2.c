@@ -1386,11 +1386,16 @@ static int fmcomms2_init(GtkWidget *notebook)
 	return 0;
 }
 
+#define SYNC_RELOAD "SYNC_RELOAD"
+
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
 {
-	if (MATCH_ATTRIB("SYNC_RELOAD")) {
-		reload_button_clicked(NULL, 0);
+	if (MATCH_ATTRIB(SYNC_RELOAD)) {
+		if (value)
+			reload_button_clicked(NULL, 0);
+		else
+			return "1";
 	} else if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value) {
 			if (value[0])
@@ -1458,7 +1463,7 @@ static const char *fmcomms2_sr_attribs[] = {
 	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_phase",
 	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_raw",
 	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_scale",
-	"SYNC_RELOAD",
+	SYNC_RELOAD,
 	NULL,
 };
 
