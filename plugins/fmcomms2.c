@@ -1393,7 +1393,7 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 		reload_button_clicked(NULL, 0);
 	} else if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value) {
-			if (value[0]
+			if (value[0])
 				load_fir_filter(value);
 		} else {
 			return last_fir_filter;
