@@ -21,4 +21,6 @@ struct osc_plugin {
 void osc_plugin_register(const struct osc_plugin *plugin);
 extern GSList *plugin_list;
 
+#define MATCH_ATTRIB(s) (strcmp(attrib, s) == 0)
+
 #endif

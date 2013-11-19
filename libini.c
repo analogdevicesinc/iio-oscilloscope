@@ -35,7 +35,8 @@ static int count_char_in_string(char c, const char *s)
 	return i;
 }
 
-static int libini_restore_handler(void *user, const char* section, const char* name, const char* value)
+static int libini_restore_handler(void *user, const char* section,
+				 const char* name, const char* value)
 {
 	struct osc_plugin *plugin = user;
 	int elem_type;
@@ -49,7 +50,7 @@ static int libini_restore_handler(void *user, const char* section, const char* n
 		case 0:
 			if (!plugin->handle_item)
 				break;
-			plugin->handle_item(plugin, elems[0], value);
+			plugin->handle_item(plugin, name, value);
 			break;
 		case 1:
 			elems = g_strsplit(name, ".", 0);
@@ -110,7 +111,7 @@ void save_all_plugins(const char *filename, gpointer user_data)
 						if (!plugin->handle_item)
 							break;
 						str = plugin->handle_item(plugin, *attribs, NULL);
-						if (str)
+						if (str && str[0])
 							fprintf(cfile, "%s = %s\n",
 								*attribs,
 								str);
