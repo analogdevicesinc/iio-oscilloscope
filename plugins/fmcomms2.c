@@ -99,6 +99,8 @@ static gulong dds1_phase_hid = 0, dds2_phase_hid = 0, dds5_phase_hid = 0, dds6_p
 static gint this_page;
 static GtkNotebook *nbook;
 
+static char last_fir_filter[PATH_MAX];
+
 static void tx_update_values(void)
 {
 	iio_update_widgets(tx_widgets, num_tx);
@@ -289,18 +291,25 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	rssi_update_labels();
 }
 
-void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+static void load_fir_filter(const char *file_name)
 {
 	char str[4096];
 	int ret;
-
-	char *file_name = gtk_file_chooser_get_filename(chooser);
 
 	set_dev_paths("ad9361-phy");
 	sprintf(str, "cat %s > %s/filter_fir_config ", file_name, dev_name_dir());
 	ret = system(str);
 	if (ret < 0)
 		fprintf(stderr, "FIR filter config failed\n");
+	else
+		strcpy(last_fir_filter, file_name);
+}
+
+void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+{
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+
+	load_fir_filter(file_name);
 }
 
 short convert(double scale, float val)
@@ -1375,12 +1384,79 @@ static int fmcomms2_init(GtkWidget *notebook)
 	return 0;
 }
 
+static char *handle_item(struct osc_plugin *plugin, const char *attrib,
+			 const char *value)
+{
+	if (MATCH_ATTRIB("SYNC_RELOAD")) {
+		reload_button_clicked(NULL, 0);
+	} else if (MATCH_ATTRIB("load_fir_filter_file")) {
+		if (value) {
+			if (value[0]
+				load_fir_filter(value);
+		} else {
+			return last_fir_filter;
+		}
+	}
+
+	return NULL;
+}
+
 static const char *fmcomms2_sr_attribs[] = {
+	"ad9361-phy.trx_rate_governor",
+	"ad9361-phy.dcxo_tune_coarse",
+	"ad9361-phy.dcxo_tune_fine",
+	"ad9361-phy.ensm_mode",
+	"ad9361-phy.in_voltage0_gain_control_mode",
+	"ad9361-phy.in_voltage0_hardwaregain",
+	"ad9361-phy.in_voltage1_gain_control_mode",
+	"ad9361-phy.in_voltage1_hardwaregain",
+	"ad9361-phy.in_voltage_bb_dc_offset_tracking_en",
+	"ad9361-phy.in_voltage_quadrature_tracking_en",
+	"ad9361-phy.in_voltage_rf_dc_offset_tracking_en",
 	"ad9361-phy.out_altvoltage0_RX_LO_frequency",
 	"ad9361-phy.out_altvoltage1_TX_LO_frequency",
-	"ad9361-phy.out_voltage_rf_bandwidth",
+	"ad9361-phy.out_voltage0_hardwaregain",
+	"ad9361-phy.out_voltage1_hardwaregain",
+	"ad9361-phy.out_voltage_sampling_frequency",
 	"ad9361-phy.in_voltage_rf_bandwidth",
-//	"load_fir_filter_file", /* implement handle_item() */
+	"ad9361-phy.out_voltage_rf_bandwidth",
+	"load_fir_filter_file",
+	"ad9361-phy.in_voltage_filter_fir_en",
+	"ad9361-phy.out_voltage_filter_fir_en",
+	"ad9361-phy.in_out_voltage_filter_fir_en",
+	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_frequency",
+	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_phase",
+	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_raw",
+	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_scale",
+	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_frequency",
+	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_phase",
+	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_raw",
+	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_scale",
+	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_frequency",
+	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_phase",
+	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_raw",
+	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_scale",
+	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_frequency",
+	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_phase",
+	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_raw",
+	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_scale",
+	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_frequency",
+	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_phase",
+	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_raw",
+	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_scale",
+	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_frequency",
+	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_phase",
+	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_raw",
+	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_scale",
+	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_frequency",
+	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_phase",
+	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_raw",
+	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_scale",
+	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_frequency",
+	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_phase",
+	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_raw",
+	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_scale",
+	"SYNC_RELOAD",
 	NULL,
 };
 
@@ -1394,5 +1470,5 @@ const struct osc_plugin plugin = {
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
 	.save_restore_attribs = fmcomms2_sr_attribs,
-	.handle_item = NULL,
+	.handle_item = handle_item,
 };
