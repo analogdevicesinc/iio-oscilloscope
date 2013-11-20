@@ -323,7 +323,7 @@ static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer data)
 		case 4: /* DAC output */
 			break;
 		default:
-			printf("%s: unknown mode (%d)error\n", __func__, mode);
+			printf("%s: unknown mode (%d)error\n", __func__, (int)mode);
 			break;
 	}
 }
@@ -351,7 +351,7 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer data)
 		case 4: /* DAC output */
 			break;
 		default:
-			printf("%s: unknown mode (%d)error\n", __func__, mode);
+			printf("%s: unknown mode (%d)error\n", __func__, (int)mode);
 			break;
 	}
 }
@@ -376,7 +376,7 @@ static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer data)
 		case 4: /* DAC output */
 			break;
 		default:
-			printf("%s: unknown mode (%d)error\n", __func__, mode);
+			printf("%s: unknown mode (%d)error\n", __func__, (int)mode);
 			break;
 	}
 }
@@ -1574,6 +1574,63 @@ static int fmcomms1_init(GtkWidget *notebook)
 	return 0;
 }
 
+#define SYNC_RELOAD "SYNC_RELOAD"
+
+static char *handle_item(struct osc_plugin *plugin, const char *attrib,
+			 const char *value)
+{
+	if (MATCH_ATTRIB(SYNC_RELOAD)) {
+		if (value) {
+			tx_update_values();
+			rx_update_values();
+		} else {
+			return "1";
+		}
+	}
+
+	return NULL;
+}
+
+static const char *fmcomms1_sr_attribs[] = {
+	"cf-ad9122-core-lpc.out_altvoltage_1A_sampling_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage_interpolation_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage_interpolation_center_shift_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage0_1A_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage2_2A_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage1_1B_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage3_2B_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage0_1A_scale",
+	"cf-ad9122-core-lpc.out_altvoltage2_2A_scale",
+	"cf-ad9122-core-lpc.out_altvoltage1_1B_scale",
+	"cf-ad9122-core-lpc.out_altvoltage3_2B_scale",
+	"cf-ad9122-core-lpc.out_altvoltage0_1A_phase",
+	"cf-ad9122-core-lpc.out_altvoltage1_1B_phase",
+	"cf-ad9122-core-lpc.out_altvoltage2_2A_phase",
+	"cf-ad9122-core-lpc.out_altvoltage3_2B_phase",
+	"adf4351-tx-lpc.out_altvoltage0_frequency",
+	"adf4351-tx-lpc.out_altvoltage0_powerdown",
+	"adf4351-tx-lpc.out_altvoltage0_frequency_resolution",
+	"cf-ad9122-core-lpc.out_voltage0_calibbias",
+	"cf-ad9122-core-lpc.out_voltage0_calibscale",
+	"cf-ad9122-core-lpc.out_voltage0_phase",
+	"cf-ad9122-core-lpc.out_voltage1_calibbias",
+	"cf-ad9122-core-lpc.out_voltage1_calibscale",
+	"cf-ad9122-core-lpc.out_voltage1_phase",
+	"cf-ad9643-core-lpc.in_voltage0_calibbias",
+	"cf-ad9643-core-lpc.in_voltage1_calibbias",
+	"cf-ad9643-core-lpc.in_voltage0_calibscale",
+	"cf-ad9643-core-lpc.in_voltage1_calibscale",
+	"cf-ad9643-core-lpc.in_voltage0_calibphase",
+	"cf-ad9643-core-lpc.in_voltage1_calibphase",
+	"adf4351-rx-lpc.out_altvoltage0_frequency_resolution",
+	"adf4351-rx-lpc.out_altvoltage0_frequency",
+	"adf4351-rx-lpc.out_altvoltage0_powerdown",
+	"ad8366-lpc.out_voltage0_hardwaregain",
+	"ad8366-lpc.out_voltage1_hardwaregain",
+	SYNC_RELOAD,
+	NULL,
+};
+
 static bool fmcomms1_identify(void)
 {
 	return !set_dev_paths("cf-ad9122-core-lpc");
@@ -1583,4 +1640,7 @@ const struct osc_plugin plugin = {
 	.name = "FMComms1",
 	.identify = fmcomms1_identify,
 	.init = fmcomms1_init,
+	.save_restore_attribs = fmcomms1_sr_attribs,
+	.handle_item = handle_item,
+
 };
