@@ -1375,6 +1375,15 @@ static int fmcomms2_init(GtkWidget *notebook)
 	return 0;
 }
 
+static const char *fmcomms2_sr_attribs[] = {
+	"ad9361-phy.out_altvoltage0_RX_LO_frequency",
+	"ad9361-phy.out_altvoltage1_TX_LO_frequency",
+	"ad9361-phy.out_voltage_rf_bandwidth",
+	"ad9361-phy.in_voltage_rf_bandwidth",
+//	"load_fir_filter_file", /* implement handle_item() */
+	NULL,
+};
+
 static bool fmcomms2_identify(void)
 {
 	return !set_dev_paths("ad9361-phy");
@@ -1384,4 +1393,6 @@ const struct osc_plugin plugin = {
 	.name = "FMComms2",
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
+	.save_restore_attribs = fmcomms2_sr_attribs,
+	.handle_item = NULL,
 };

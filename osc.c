@@ -27,6 +27,8 @@
 #include "config.h"
 #include "osc_plugin.h"
 
+GSList *plugin_list = NULL;
+
 struct _device_list *device_list = NULL;
 unsigned num_devices = 0;
 gint capture_function = 0;
@@ -695,6 +697,7 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 	if (!plugin->identify() && !force_plugin(plugin->name))
 		return;
 
+	plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
 	plugin->init(notebook);
 
 	printf("Loaded plugin: %s\n", plugin->name);
