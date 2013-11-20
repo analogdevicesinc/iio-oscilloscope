@@ -20,6 +20,7 @@
 #include <malloc.h>
 #include <values.h>
 #include <sys/stat.h>
+#include <string.h>
 
 #include "../osc.h"
 #include "../iio_utils.h"
@@ -160,6 +161,14 @@ static void connect_widget(GtkBuilder *builder, struct w_info *item)
 
 	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
 	val = read_sysfs_posint(item->name, dir_name);
+
+	/* check for errors, incase there is a kernel <-> userspace mismatch */
+	if (val <= -1) {
+		printf("%s:%s: error accessing '%s' (%s)\n",
+				__FILE__, __func__, item->name, strerror(-val));
+		gtk_widget_hide(widget);
+		return;
+	}
 
 	switch (item->type) {
 		case CHECKBOX:
