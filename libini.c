@@ -93,6 +93,11 @@ void save_all_plugins(const char *filename, gpointer user_data)
 	FILE* cfile;
 
 	cfile = fopen(filename, "a");
+	if (cfile == NULL) {
+		fprintf(stderr, "Failed to open %s : %s\n",filename,
+			strerror(errno));
+		return;
+	}
 
 	for (node = plugin_list; node; node = g_slist_next(node))
 	{
@@ -110,6 +115,7 @@ void save_all_plugins(const char *filename, gpointer user_data)
 					case 0:
 						if (!plugin->handle_item)
 							break;
+
 						str = plugin->handle_item(plugin, *attribs, NULL);
 						if (str && str[0])
 							fprintf(cfile, "%s = %s\n",
