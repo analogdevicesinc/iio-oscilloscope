@@ -18,6 +18,7 @@
 #include "fru.h"
 #include "osc.h"
 #include "iio_utils.h"
+#include "config.h"
 
 extern gfloat **channel_data;
 extern unsigned int num_samples;
@@ -566,7 +567,7 @@ G_MODULE_EXPORT void load_save_profile_cb(GtkButton *button, Dialogs *data)
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(data->load_save_profile), TRUE);
 
 	if(!filename) {
-		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (data->load_save_profile), getenv("HOME"));
+		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (data->load_save_profile), OSC_PROFILES_FILE_PATH);
 		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER (data->load_save_profile), current_device);
 	} else {
 		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (data->load_save_profile), filename);
@@ -591,7 +592,7 @@ G_MODULE_EXPORT void load_save_profile_cb(GtkButton *button, Dialogs *data)
 					strcpy(name, filename);
 				else
 					sprintf(name, "%s.ini", filename);
-				
+
 				capture_profile_save(name);
 				save_all_plugins(name, NULL);
 				break;
