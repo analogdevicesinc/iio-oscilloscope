@@ -1842,6 +1842,10 @@ void capture_profile_load(char *filename)
 {
 	ini_parse(filename, profile_read_handler, NULL);
 	check_valid_setup();
+	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
+	add_grid();
+	gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label)), "", -1);
+	gtk_label_set_text(GTK_LABEL(hor_scale), "");
 }
 
 void application_quit (void)
