@@ -1233,14 +1233,10 @@ static void init_application (void)
 	rx_update_labels();
 	gtk_widget_show(window);	
 }
+static char *prev_section;
 
 static int profile_read_handler(void *user, const char *section, const char *name, const char *value)
-{
-	static char *prev_section = NULL;
-	
-	if (prev_section == NULL)
-		prev_section = g_strdup("");
-		
+{	
 	/* Check if a new "Capture" section has been reached */
 	if (strcmp(section, prev_section) != 0) { 
 		if (strncmp(section, "MultiOsc_Capture_Configuration", strlen("MultiOsc_Capture_Configuration")) != 0)
@@ -1289,11 +1285,15 @@ void capture_profile_save(char *filename)
 
 void capture_profile_load(char *filename)
 {	
-	g_slist_free(ini_capture_sections);
-	ini_capture_sections = NULL;
-	ini_parse(filename, profile_read_handler, NULL);
+	if (ini_capture_sections != NULL) {
+		g_slist_free(ini_capture_sections);
+		ini_capture_sections = NULL;
+	}
 	close_all_plots();
 	destroy_all_plots();
+	prev_section = g_strdup("");
+	ini_parse(filename, profile_read_handler, NULL);
+	g_free(prev_section);
 	g_slist_foreach(ini_capture_sections, gfunc_create_plot_with_ini_data, filename);
 }
 
