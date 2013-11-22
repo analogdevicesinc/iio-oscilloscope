@@ -20,6 +20,7 @@
 
 #include <fftw3.h>
 
+#include "ini/ini.h"
 #include "osc.h"
 #include "oscplot.h"
 #include "datatypes.h"
@@ -40,6 +41,7 @@ G_LOCK_DEFINE(buffer_full);
 static gboolean stop_capture;
 static struct plugin_check_fct *setup_check_functions;
 static int num_check_fcts = 0;
+static GSList *ini_capture_sections = NULL;
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
@@ -337,6 +339,13 @@ static void gfunc_close_plot(gpointer data, gpointer user_data)
 	osc_plot_draw_stop(OSC_PLOT(plot));
 }
 
+static void gfunc_destroy_plot(gpointer data, gpointer user_data)
+{
+	GtkWidget *plot = data;
+	
+	osc_plot_destroy(OSC_PLOT(plot));
+}
+
 static void update_all_plots(void)
 {
 	g_list_foreach(plot_list, gfunc_update_plot, NULL);
@@ -350,6 +359,11 @@ static void restart_all_running_plots(void)
 static void close_all_plots(void)
 {
 	g_list_foreach(plot_list, gfunc_close_plot, NULL);
+}
+
+static void destroy_all_plots(void)
+{
+	g_list_foreach(plot_list, gfunc_destroy_plot, NULL);
 }
 
 static int sign_extend(unsigned int val, unsigned int bits)
@@ -881,7 +895,7 @@ static void plot_destroyed_cb(OscPlot *plot)
 	restart_all_running_plots();
 }
 
-static void btn_capture_cb(GtkButton *button, gpointer user_data)
+static GtkWidget * plot_create_and_init(void)
 {
 	GtkWidget *plot;
 	
@@ -890,6 +904,13 @@ static void btn_capture_cb(GtkButton *button, gpointer user_data)
 	g_signal_connect(plot, "osc-capture-event", G_CALLBACK(start), NULL);
 	g_signal_connect(plot, "osc-destroy-event", G_CALLBACK(plot_destroyed_cb), NULL);
 	gtk_widget_show(plot);
+	
+	return plot;
+}
+
+static void btn_capture_cb(GtkButton *button, gpointer user_data)
+{
+	plot_create_and_init();	
 }
 
 struct plugin_check_fct {
@@ -1211,6 +1232,69 @@ static void init_application (void)
 	create_sample_count_dialogs();
 	rx_update_labels();
 	gtk_widget_show(window);	
+}
+
+static int profile_read_handler(void *user, const char *section, const char *name, const char *value)
+{
+	static char *prev_section = NULL;
+	
+	if (prev_section == NULL)
+		prev_section = g_strdup("");
+		
+	/* Check if a new "Capture" section has been reached */
+	if (strcmp(section, prev_section) != 0) { 
+		if (strncmp(section, "MultiOsc_Capture_Configuration", strlen("MultiOsc_Capture_Configuration")) != 0)
+			return 0;
+		g_free(prev_section);
+		/* Remember the last section */
+		prev_section = g_strdup(section);
+		/* Store the name of the section */
+		ini_capture_sections = g_slist_append(ini_capture_sections, g_strdup(section));
+	}
+	
+	return 0;
+}
+
+static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data)
+{
+	OscPlot *plot = OSC_PLOT(data);
+	char *filename = (char *)user_data;
+	
+	osc_plot_save_to_ini(plot, filename);
+}
+
+static void gfunc_create_plot_with_ini_data(gpointer data, gpointer user_data)
+{
+	GtkWidget  *plot;
+	char *filename = (char *)user_data;
+	char *section = (char *)data;
+	
+	plot = plot_create_and_init();
+	osc_plot_load_ini_section(OSC_PLOT(plot), filename, section);
+}
+
+void capture_profile_save(char *filename)
+{
+	FILE *fp;
+	
+	/* Create(or empty) the file. The plots will append data to the file.*/
+	fp = fopen(filename, "w");
+	if (!fp) {
+		fprintf(stderr, "Failed to open %s : %s\n", filename, strerror(errno));
+		return;
+	}
+	fclose(fp);
+	g_list_foreach(plot_list, gfunc_save_plot_data_to_ini, filename);
+}
+
+void capture_profile_load(char *filename)
+{	
+	g_slist_free(ini_capture_sections);
+	ini_capture_sections = NULL;
+	ini_parse(filename, profile_read_handler, NULL);
+	close_all_plots();
+	destroy_all_plots();
+	g_slist_foreach(ini_capture_sections, gfunc_create_plot_with_ini_data, filename);
 }
 
 gint main (int argc, char **argv)

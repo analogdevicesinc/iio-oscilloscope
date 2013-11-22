@@ -32,6 +32,7 @@ extern struct _device_list *device_list;
 extern unsigned num_devices;
 
 static int (*plugin_setup_validation_fct)(struct iio_channel_info*, int, char **) = NULL;
+static unsigned object_count = 0;
 
 static void create_plot (OscPlot *plot);
 static void plot_setup(OscPlot *plot);
@@ -40,6 +41,11 @@ static void add_grid(OscPlot *plot);
 static void rescale_databox(OscPlotPrivate *priv, GtkDatabox *box, gfloat border);
 static void call_all_transform_functions(OscPlotPrivate *priv);
 static void capture_start(OscPlotPrivate *priv);
+static void remove_transform(OscPlot *plot, GtkTreeIter rm_iter);
+static void device_list_cfg_file_write(OscPlot *plot, char *filename);
+static void device_list_cfg_file_load(OscPlot *plot, char *filename);
+static void osc_plot_finalize(GObject *object);
+static void osc_plot_dispose(GObject *object);
 
 /* IDs of signals */
 enum {
@@ -137,6 +143,8 @@ struct _OscPlotPrivate
 {
 	GtkBuilder *builder;
 	
+	int object_id;
+	
 	/* Graphical User Interface */
 	GtkWidget *window;
 	GtkWidget *time_settings_diag;
@@ -153,7 +161,6 @@ struct _OscPlotPrivate
 	GtkWidget *marker_label;
 	GtkWidget *saveas_button;
 	GtkWidget *saveas_dialog;
-	GtkWidget *devlist_cfg_dialog;
 	GtkWidget *fullscreen_button;
 	GtkWidget *y_axis_max;
 	GtkWidget *y_axis_min;
@@ -200,7 +207,7 @@ struct _OscPlotPrivate
 	GList *ini_cfgs;
 	
 	char *saveas_filename;
-	char *devlist_cfg_filename;
+	char *ini_section_name;
 };
 
 G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
@@ -208,7 +215,10 @@ G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
 static void osc_plot_class_init(OscPlotClass *klass)
 {
 	GObjectClass *gobject_class  = G_OBJECT_CLASS (klass);
-
+	
+	gobject_class->dispose = osc_plot_dispose;
+	gobject_class->finalize = osc_plot_finalize;
+	
 	oscplot_signals[CAPTURE_EVENT_SIGNAL] = g_signal_new("osc-capture-event",
 			G_TYPE_FROM_CLASS (klass),
 			G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION,
@@ -246,6 +256,12 @@ static void osc_plot_init(OscPlot *plot)
 GtkWidget *osc_plot_new(void)
 {
 	return GTK_WIDGET(g_object_new(OSC_PLOT_TYPE, NULL));
+}
+
+void osc_plot_destroy (OscPlot *plot)
+{
+	gtk_widget_destroy(plot->priv->window);
+	gtk_widget_destroy(GTK_WIDGET(plot));
 }
 
 void osc_plot_data_update (OscPlot *plot)
@@ -303,6 +319,33 @@ void osc_plot_draw_stop (OscPlot *plot)
 	
 	priv->stop_redraw = TRUE;
 	gtk_toggle_tool_button_set_active((GtkToggleToolButton *)priv->capture_button, FALSE);
+}
+
+void osc_plot_save_to_ini (OscPlot *plot, char *filename)
+{
+	device_list_cfg_file_write(plot, filename);
+}
+
+void osc_plot_load_ini_section (OscPlot *plot, char *filename, char *section)
+{
+	OscPlotPrivate *priv = plot->priv;
+	
+	if (priv->ini_section_name != NULL)
+		g_free(priv->ini_section_name);
+	priv->ini_section_name = strdup(section);
+
+	/* Load the device list configuration. */
+	device_list_cfg_file_load(plot, filename);
+}
+
+static void osc_plot_dispose(GObject *object)
+{
+	G_OBJECT_CLASS(osc_plot_parent_class)->dispose(object);
+}
+
+static void osc_plot_finalize(GObject *object)
+{
+	G_OBJECT_CLASS(osc_plot_parent_class)->finalize(object);
 }
 
 static void set_transform_attributes(OscPlot *plot, Transform *tr, struct transform_gui_settings *tr_gui)
@@ -2079,7 +2122,6 @@ static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 		g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, FALSE);
 	}
 	g_signal_emit(plot, oscplot_signals[DESTROY_EVENT_SIGNAL], 0);
-	gtk_widget_destroy(plot->priv->window);
 }
 
 static gboolean save_settings_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
@@ -2344,9 +2386,12 @@ static void device_list_cfg_file_write(OscPlot *plot, char *filename)
 	if (!gtk_tree_model_get_iter_first(model, &dev_iter))
 		return;
 		
-	fp = fopen(filename, "w");
-	fprintf(fp, "#.device list configuration file\n");
-	fprintf(fp, "[Capture_Configuration]\n");
+	fp = fopen(filename, "a");
+	if (!fp) {
+		fprintf(stderr, "Failed to open %s : %s\n", filename, strerror(errno));
+		return;
+	}
+	fprintf(fp, "[MultiOsc_Capture_Configuration%d]\n", priv->object_id);
 	next_dev_iter = true;
 	while (next_dev_iter) {
 		gtk_tree_model_get(model, &dev_iter, ELEMENT_REFERENCE, &dev, -1);
@@ -2553,7 +2598,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 	int t_type;
 	struct transform_ini_cfg *cfg = NULL;
 	
-	if (!MATCH_SECT("Capture_Configuration"))
+	if (!MATCH_SECT(priv->ini_section_name))
 		return 0;
 	
 	elem_type = count_char_in_string('.', name);
@@ -2565,7 +2610,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			dev = device_find_by_name(dev_name);
 			if (dev == -1)
 				break;
-			if (MATCH(dev_property, "sample_cout")) {
+			if (MATCH(dev_property, "sample_count")) {
 				device_list[dev].shadow_of_sample_count = atoi(value);
 				break;
 			}
@@ -2768,91 +2813,6 @@ static void device_list_cfg_file_load(OscPlot *plot, char *filename)
 	treeview_expand_update(plot);
 }
 
-static void devlist_cfg_save_cb(GtkToolButton *btn, OscPlot *data)
-{
-	OscPlotPrivate *priv = data->priv;
-	GtkWidget *save_btn;
-	GtkWidget *load_btn;
-
-	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), GTK_FILE_CHOOSER_ACTION_SAVE);
-	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->devlist_cfg_dialog), TRUE);
-	if (!priv->devlist_cfg_filename) {
-		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), getenv("HOME"));
-		gtk_file_chooser_get_filename(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog));
-	} else {
-		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (priv->saveas_dialog), priv->devlist_cfg_filename);
-		g_free(priv->devlist_cfg_filename);
-		priv->devlist_cfg_filename = NULL;
-	}
-	
-	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), getenv("HOME"));
-	save_btn = gtk_dialog_get_widget_for_response(GTK_DIALOG(priv->devlist_cfg_dialog), 1); /* 1 = Save Configuration button response id declared in the glade file */
-	load_btn = gtk_dialog_get_widget_for_response(GTK_DIALOG(priv->devlist_cfg_dialog), 2); /* 2 = Load Configuration button response id declared in the glade file */
-	gtk_widget_show(save_btn);
-	gtk_widget_hide(load_btn);
-	gtk_widget_show(priv->devlist_cfg_dialog);
-}
-
-static void devlist_cfg_load_cb(GtkToolButton *btn, OscPlot *data)
-{
-	OscPlotPrivate *priv = data->priv;
-	GtkWidget *save_btn;
-	GtkWidget *load_btn;
-
-	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), GTK_FILE_CHOOSER_ACTION_OPEN);
-	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->devlist_cfg_dialog), TRUE);
-	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->devlist_cfg_dialog), getenv("HOME"));
-	save_btn = gtk_dialog_get_widget_for_response(GTK_DIALOG(priv->devlist_cfg_dialog), 1);
-	load_btn = gtk_dialog_get_widget_for_response(GTK_DIALOG(priv->devlist_cfg_dialog), 2);
-	gtk_widget_show(load_btn);
-	gtk_widget_hide(save_btn);
-	gtk_widget_show(priv->devlist_cfg_dialog);
-}
-
-static void devlist_cfg_dialog_response_cb(GtkDialog *dialog, gint response_id, OscPlot *plot)
-{
-	OscPlotPrivate *priv = plot->priv;
-	char *name;
-	
-	priv->devlist_cfg_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(priv->devlist_cfg_dialog));
-	if (!priv->devlist_cfg_filename)
-		goto hide_cfg_dialog;
-	
-	name = malloc(strlen(priv->devlist_cfg_filename) + 5);
-	switch (response_id) {
-		case GTK_RESPONSE_CANCEL:
-			break;
-		case 1:
-			/* Save the device list configuration. */
-			if (!strncasecmp(&priv->devlist_cfg_filename[strlen(priv->devlist_cfg_filename)-4], ".ini", 4))
-					strcpy(name, priv->devlist_cfg_filename);
-				else
-					sprintf(name, "%s.ini", priv->devlist_cfg_filename);
-			{		
-				device_list_cfg_file_write(plot, name);
-			}
-			break;
-		case 2:
-			/* Load the device list configuration. */
-			{
-				/* Remove the existings transforms. */
-				while (priv->transform_list->size)
-					remove_transform(plot, *((GtkTreeIter *)(priv->transform_list->transforms[0]->iter_in_treestore)));
-				/* Load the transforms from file */
-				device_list_cfg_file_load(plot, priv->devlist_cfg_filename);
-			}
-			break;
-		default:
-			printf("response_id : %i\n", response_id);
-			break;
-	}
-	if (name)
-		free(name);
-
-hide_cfg_dialog:
-	gtk_widget_hide(priv->devlist_cfg_dialog);
-}
-
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -2861,9 +2821,9 @@ static void create_plot(OscPlot *plot)
 	GtkBuilder *builder = NULL;
 	GtkTreeSelection *tree_selection;
 	GtkWidget *fft_size_widget;
-	GtkWidget *devlist_cfg_save, *devlist_cfg_load;
 	GtkDataboxRuler *ruler_y;
 	GtkTreeStore *tree_store;
+	char buf[50];
 	int i;
 	
 	/* Get the GUI from a glade file. */
@@ -2892,15 +2852,21 @@ static void create_plot(OscPlot *plot)
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
-	priv->devlist_cfg_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "devlist_cfg_chooser"));
 	priv->fullscreen_button = GTK_WIDGET(gtk_builder_get_object(builder, "fullscreen_toggle"));
 	priv->y_axis_max = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_max"));
 	priv->y_axis_min = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_min"));
-	devlist_cfg_save = GTK_WIDGET(gtk_builder_get_object(builder, "toolbtn_save_cfg"));
-	devlist_cfg_load = GTK_WIDGET(gtk_builder_get_object(builder, "toolbtn_load_cfg"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	priv->tbuf = NULL;
-
+	priv->ini_section_name = NULL;
+	
+	/* Count every object that is being created */
+	object_count++;
+	priv->object_id = object_count;
+	
+	/* Set a different title for every plot */
+	snprintf(buf, sizeof(buf), "ADI IIO multi plot oscilloscope - Capture%d", priv->object_id);
+	gtk_window_set_title(GTK_WINDOW(priv->window), buf);
+	
 	/* Create a GtkDatabox widget along with scrollbars and rulers */
 	gtk_databox_create_box_with_scrollbars_and_rulers(&priv->databox, &table,
 		TRUE, TRUE, TRUE, TRUE);
@@ -2968,14 +2934,6 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(max_y_axis_cb), plot);
 	g_signal_connect(priv->y_axis_min, "value-changed",
 		G_CALLBACK(min_y_axis_cb), plot);
-	g_signal_connect(devlist_cfg_save, "clicked",
-		G_CALLBACK(devlist_cfg_save_cb), plot);
-	g_signal_connect(devlist_cfg_load, "clicked",
-		G_CALLBACK(devlist_cfg_load_cb), plot);
-	g_signal_connect(priv->devlist_cfg_dialog, "response", 
-		G_CALLBACK(devlist_cfg_dialog_response_cb), plot);
-	g_signal_connect(priv->devlist_cfg_dialog, "delete-event",
-		G_CALLBACK(gtk_widget_hide_on_delete), plot);
 	
 	g_builder_connect_signal(builder, "zoom_in", "clicked",
 		G_CALLBACK(zoom_in), plot);
@@ -3002,5 +2960,5 @@ static void create_plot(OscPlot *plot)
 	
 	gtk_window_set_modal(GTK_WINDOW(priv->saveas_dialog), FALSE);
 	gtk_widget_show(priv->window);
-	gtk_widget_show_all(priv->capture_graph);	
+	gtk_widget_show_all(priv->capture_graph);
 }

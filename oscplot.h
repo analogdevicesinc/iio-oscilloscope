@@ -37,12 +37,15 @@ struct _OscPlotClass
 	void (* destroy_event) (OscPlot *plot);
 };
 
-GType         osc_plot_get_type      (void);
-GtkWidget*    osc_plot_new           (void);
-void          osc_plot_data_update   (OscPlot *plot);
-void          osc_plot_update_rx_lbl (OscPlot *plot);
-void          osc_plot_restart       (OscPlot *plot);
-void          osc_plot_draw_stop     (OscPlot *plot);
+GType         osc_plot_get_type         (void);
+GtkWidget*    osc_plot_new              (void);
+void          osc_plot_destroy          (OscPlot *plot);
+void          osc_plot_data_update      (OscPlot *plot);
+void          osc_plot_update_rx_lbl    (OscPlot *plot);
+void          osc_plot_restart          (OscPlot *plot);
+void          osc_plot_draw_stop        (OscPlot *plot);
+void          osc_plot_save_to_ini      (OscPlot *plot, char *filename);
+void          osc_plot_load_ini_section (OscPlot *plot, char *filename, char *section);
 
 G_END_DECLS
 
