@@ -17,5 +17,6 @@
 #define OSC_XML_PATH PREFIX "/lib/osc/xmls"
 #define OSC_FILTER_FILE_PATH PREFIX "/lib/osc/filters"
 #define OSC_WAVEFORM_FILE_PATH PREFIX "/lib/osc/wavefroms"
+#define OSC_PROFILES_FILE_PATH PREFIX "/lib/osc/multiosc/profiles"
 
 #endif

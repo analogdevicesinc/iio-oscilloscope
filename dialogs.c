@@ -17,6 +17,7 @@
 #include "fru.h"
 #include "osc.h"
 #include "iio_utils.h"
+#include "config.h"
 
 typedef struct _Dialogs Dialogs;
 struct _Dialogs
@@ -375,7 +376,7 @@ G_MODULE_EXPORT void load_save_profile_cb(GtkButton *button, Dialogs *data)
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(data->load_save_profile), TRUE);
 
 	if(!filename) {
-		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (data->load_save_profile), getenv("HOME"));
+		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (data->load_save_profile), OSC_PROFILES_FILE_PATH);
 		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER (data->load_save_profile), "profile1");
 	} else {
 		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (data->load_save_profile), filename);
