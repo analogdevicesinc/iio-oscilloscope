@@ -287,11 +287,12 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 			gtk_widget_set_sensitive(spin_btn_reg_value, false);
 			gtk_widget_set_sensitive(label_reg_hex_value, false);
 		}
-
-		gtk_widget_show(scanel_read);
 		find_scan_elements(current_device, &elements, ACCESS_NORM);
+		if (!strcmp(&elements[0], ""))
+			return;
 		scan_elements_sort(&elements);
 		scan_elements_insert(&elements, AVAILABLE_TOKEN, NULL);
+		gtk_widget_show(scanel_read);
 		while(isspace(elements[strlen(elements) - 1]))
 			elements[strlen(elements) - 1] = 0;
 		current_elements = start = elements;
