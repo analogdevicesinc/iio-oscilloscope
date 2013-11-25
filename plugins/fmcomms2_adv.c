@@ -157,15 +157,15 @@ static void connect_widget(GtkBuilder *builder, struct w_info *item)
 {
 	GtkWidget *widget;
 	char *signal = NULL;
-	unsigned val;
+	int val;
 
 	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
 	val = read_sysfs_posint(item->name, dir_name);
 
-	/* check for errors, incase there is a kernel <-> userspace mismatch */
-	if (val <= -1) {
+	/* check for errors, in case there is a kernel <-> userspace mismatch */
+	if (val < 0) {
 		printf("%s:%s: error accessing '%s' (%s)\n",
-				__FILE__, __func__, item->name, strerror(-val));
+			__FILE__, __func__, item->name, strerror(-val));
 		gtk_widget_hide(widget);
 		return;
 	}
