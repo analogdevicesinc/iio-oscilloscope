@@ -1261,7 +1261,6 @@ static void adc_cal_spin(GtkRange *range, gpointer user_data)
 {
 	gdouble val, inc;
 
-	gdk_threads_enter();
 	val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(range));
 	gtk_spin_button_get_increments(GTK_SPIN_BUTTON(range), &inc, NULL);
 
@@ -1271,7 +1270,6 @@ static void adc_cal_spin(GtkRange *range, gpointer user_data)
 	else
 		write_devattr_double((char *)user_data, val);
 
-	gdk_threads_leave();
 }
 
 
