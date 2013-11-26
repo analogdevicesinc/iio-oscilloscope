@@ -176,7 +176,7 @@ static void rf_out_update(void)
 
 short convert(double scale, float val)
 {
-	return (short) (val * scale);
+	return (unsigned short) (val * scale + 32767.0);
 }
 
 int analyse_wavefile(char *file_name, char **buf, int *count)
@@ -1059,10 +1059,10 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 static void enable_dds(bool on_off)
 {
 	int ret;
-	
+
 	set_dev_paths("cf-ad9122-core-lpc");
 	write_devattr_int("out_altvoltage0_1A_raw", on_off ? 1 : 0);
-	
+
 	if (on_off || dac_data_loaded) {
 		ret = write_devattr_int("buffer/enable", !on_off);
 		if (ret < 0) {
@@ -1472,7 +1472,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	dds_mode = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode"));
 
 	dac_buffer = GTK_WIDGET(gtk_builder_get_object(builder, "dac_buffer"));
-	
+
 	dds_I_l  = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I_l"));
 
 	dds_I1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_l"));
@@ -1719,7 +1719,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	g_builder_connect_signal(builder, "calibrate_dialog", "clicked",
 		G_CALLBACK(cal_dialog), NULL);
-	
+
 	g_builder_connect_signal(builder, "dac_buffer", "file-set",
 		G_CALLBACK(dac_buffer_config_file_set_cb), NULL);
 
