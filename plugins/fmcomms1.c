@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <values.h>
+#include <sys/stat.h>
 
 #include "../osc.h"
 #include "../iio_widget.h"
@@ -31,6 +32,8 @@
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
 
+static bool dac_data_loaded = false;
+
 #define VERSION_SUPPORTED 0
 static struct fmcomms1_calib_data *cal_data;
 
@@ -39,6 +42,7 @@ static GtkAdjustment *adj_gain0, *adj_gain1;
 static GtkWidget *rf_out;
 
 static GtkWidget *dds_mode;
+static GtkWidget *dac_buffer;
 static GtkWidget *dds1_freq, *dds2_freq, *dds3_freq, *dds4_freq;
 static GtkWidget *dds1_scale, *dds2_scale, *dds3_scale, *dds4_scale;
 static GtkWidget *dds1_phase, *dds2_phase, *dds3_phase, *dds4_phase;
@@ -170,6 +174,106 @@ static void rf_out_update(void)
 
 }
 
+short convert(double scale, float val)
+{
+	return (short) (val * scale);
+}
+
+int analyse_wavefile(char *file_name, char **buf, int *count)
+{
+	int ret, j, i = 0, size, rep, tx = 1;
+	double max = 0.0, val[4], scale;
+	double i1, q1, i2, q2;
+	char line[80];
+
+	FILE *infile = fopen(file_name, "r");
+	if (infile == NULL)
+		return -3;
+
+	if (fgets(line, 80, infile) != NULL) {
+	if (strncmp(line, "TEXT", 4) == 0) {
+		ret = sscanf(line, "TEXT REPEAT %d", &rep);
+		if (ret != 1) {
+			rep = 1;
+		}
+		size = 0;
+		while (fgets(line, 80, infile)) {
+			ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
+				     &val[0], &val[1], &val[2], &val[3]);
+
+			if (!(ret == 4 || ret == 2)) {
+				fclose(infile);
+				return -2;
+			}
+
+			for (i = 0; i < ret; i++)
+				if (fabs(val[i]) > max)
+					max = fabs(val[i]);
+
+			size += ((tx == 2) ? 8 : 4);
+
+
+		}
+
+	size *= rep;
+	scale = 32767.0 / max;
+
+	*buf = malloc(size);
+	if (*buf == NULL)
+		return 0;
+
+	unsigned long long *sample = *((unsigned long long **)buf);
+	unsigned int *sample_32 = *((unsigned int **)buf);
+
+	rewind(infile);
+
+	if (fgets(line, 80, infile) != NULL) {
+		if (strncmp(line, "TEXT", 4) == 0) {
+			size = 0;
+			i = 0;
+			while (fgets(line, 80, infile)) {
+
+				ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
+					     &i1, &q1, &i2, &q2);
+				for (j = 0; j < rep; j++) {
+					if (ret == 4 && tx == 2) {
+						sample[i++] = ((unsigned long long)convert(scale, q2) << 48) +
+							((unsigned long long)convert(scale, i2) << 32) +
+							(convert(scale, q1) << 16) +
+							(convert(scale, i1) << 0);
+
+						size += 8;
+					}
+					if (ret == 2 && tx == 2) {
+						sample[i++] = ((unsigned long long)convert(scale, q1) << 48) +
+							((unsigned long long)convert(scale, i1) << 32) +
+							(convert(scale, q1) << 16) +
+							(convert(scale, i1) << 0);
+
+						size += 8;
+					}
+					if (tx == 1) {
+						sample_32[i++] = (convert(scale, q1) << 16) +
+							(convert(scale, i1) << 0);
+
+						size += 4;
+					}
+				}
+			}
+		}
+	}
+
+	fclose(infile);
+	*count = size;
+
+	}} else {
+		fclose(infile);
+		*buf = NULL;
+		return -1;
+	}
+
+	return 0;
+}
 
 static void tx_update_values(void)
 {
@@ -200,6 +304,54 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	iio_save_widgets(tx_widgets, num_tx);
 	iio_save_widgets(rx_widgets, num_rx);
 	rx_update_labels();
+}
+
+void dac_buffer_config_file_set_cb(GtkFileChooser *chooser, gpointer data)
+{
+	int ret, fd, size;
+	struct stat st;
+	char *buf;
+	FILE *infile;
+
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+	ret = analyse_wavefile(file_name, &buf, &size);
+	if (ret == -3)
+		return;
+
+	if (ret == -1 || buf == NULL) {
+
+		stat(file_name, &st);
+		buf = malloc(st.st_size);
+		if (buf == NULL)
+			return;
+		infile = fopen(file_name, "r");
+		size = fread(buf, 1, st.st_size, infile);
+		fclose(infile);
+	}
+
+	set_dev_paths("cf-ad9122-core-lpc");
+	write_devattr_int("buffer/enable", 0);
+
+	fd = iio_buffer_open(false, 0);
+	if (fd < 0) {
+		free(buf);
+		return;
+	}
+
+	ret = write(fd, buf, size);
+	if (ret != size) {
+		fprintf(stderr, "Loading waveform failed %d\n", ret);
+	}
+
+	close(fd);
+	free(buf);
+
+	ret = write_devattr_int("buffer/enable", 1);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
+	}
+
+	dac_data_loaded = true;
 }
 
 static int compare_gain(const char *a, const char *b)
@@ -906,8 +1058,18 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 
 static void enable_dds(bool on_off)
 {
+	int ret;
+	
 	set_dev_paths("cf-ad9122-core-lpc");
 	write_devattr_int("out_altvoltage0_1A_raw", on_off ? 1 : 0);
+	
+	if (on_off || dac_data_loaded) {
+		ret = write_devattr_int("buffer/enable", !on_off);
+		if (ret < 0) {
+			fprintf(stderr, "Failed to enable buffer: %d\n", ret);
+
+		}
+	}
 }
 
 static void manage_dds_mode()
@@ -950,6 +1112,7 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q_l);
 		gtk_widget_hide(dds_Q1_l);
 		gtk_widget_hide(dds_Q2_l);
+		gtk_widget_hide(dac_buffer);
 		break;
 	case 1:
 		/* One tone */
@@ -985,6 +1148,7 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q_l);
 		gtk_widget_hide(dds_Q1_l);
 		gtk_widget_hide(dds_Q2_l);
+		gtk_widget_hide(dac_buffer);
 
 #define IIO_SPIN_SIGNAL "value-changed"
 #define IIO_COMBO_SIGNAL "changed"
@@ -1064,6 +1228,7 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q_l);
 		gtk_widget_hide(dds_Q1_l);
 		gtk_widget_hide(dds_Q2_l);
+		gtk_widget_hide(dac_buffer);
 
 		if (!dds1_scale_hid)
 			dds1_scale_hid = g_signal_connect(dds1_scale , IIO_COMBO_SIGNAL,
@@ -1125,7 +1290,7 @@ static void manage_dds_mode()
 		gtk_widget_show(dds_Q_l);
 		gtk_widget_show(dds_Q1_l);
 		gtk_widget_show(dds_Q2_l);
-
+		gtk_widget_hide(dac_buffer);
 
 		if (dds1_scale_hid) {
 			g_signal_handler_disconnect(dds1_scale, dds1_scale_hid);
@@ -1193,6 +1358,7 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q_l);
 		gtk_widget_hide(dds_Q1_l);
 		gtk_widget_hide(dds_Q2_l);
+		gtk_widget_show(dac_buffer);
 		break;
 	default:
 		printf("glade file out of sync with C file - please contact developers\n");
@@ -1305,7 +1471,8 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	dds_mode = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode"));
 
-
+	dac_buffer = GTK_WIDGET(gtk_builder_get_object(builder, "dac_buffer"));
+	
 	dds_I_l  = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I_l"));
 
 	dds_I1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_l"));
@@ -1552,6 +1719,9 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	g_builder_connect_signal(builder, "calibrate_dialog", "clicked",
 		G_CALLBACK(cal_dialog), NULL);
+	
+	g_builder_connect_signal(builder, "dac_buffer", "file-set",
+		G_CALLBACK(dac_buffer_config_file_set_cb), NULL);
 
 	g_signal_connect(
 		GTK_WIDGET(gtk_builder_get_object(builder, "gain_amp_together")),
@@ -1568,6 +1738,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms1_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms1_panel, "FMComms1");
+	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
 
 	return 0;
 }
