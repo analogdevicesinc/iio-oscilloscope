@@ -531,6 +531,7 @@ static void close_active_buffers(void)
 			current_device = device_list[i].device_name;
 			buffer_close(device_list[i].buffer_fd);
 			device_list[i].buffer_fd = -1;
+			device_list[i].data_buffer.data_copy = NULL;
 		}
 	disable_all_channels();
 }
@@ -538,8 +539,8 @@ static void close_active_buffers(void)
 static void stop_sampling(void)
 {
 	stop_capture = TRUE;
-	G_UNLOCK(buffer_full);
 	close_active_buffers();
+	G_UNLOCK(buffer_full);
 }
 
 static void abort_sampling(void)
@@ -864,10 +865,14 @@ static void capture_start(void)
 
 static void start(OscPlot *plot, gboolean start_event)
 {	
+	int i;
+	
 	if (start_event) {
 		num_capturing_plots++;
 		/* Stop the capture process to allow settings to be updated */
 		stop_capture = TRUE;
+		for (i = 0; i < num_devices; i++)
+			device_list[0].data_buffer.data_copy = NULL;
 		G_UNLOCK(buffer_full);
 		close_active_buffers();
 		
@@ -880,6 +885,9 @@ static void start(OscPlot *plot, gboolean start_event)
 		num_capturing_plots--;
 		if (num_capturing_plots == 0) {
 			stop_capture = TRUE;
+			for (i = 0; i < num_devices; i++)
+				if (!device_list[0].data_buffer.data_copy)
+					device_list[0].data_buffer.data_copy = NULL;
 			G_UNLOCK(buffer_full);
 		}
 	}
