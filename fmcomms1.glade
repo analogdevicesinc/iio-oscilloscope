@@ -10,7 +10,6 @@
   <object class="GtkAdjustment" id="adjustment10">
     <property name="lower">-1</property>
     <property name="upper">1</property>
-    <property name="value">0</property>
     <property name="step_increment">0.001</property>
   </object>
   <object class="GtkAdjustment" id="adjustment11">
@@ -119,7 +118,6 @@
   <object class="GtkAdjustment" id="adjustment9">
     <property name="lower">-1</property>
     <property name="upper">1</property>
-    <property name="value">0</property>
     <property name="step_increment">0.001</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_I1_p">
@@ -671,7 +669,7 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkSpinButton" id="adc_calibphase1">rgetz
+                                          <object class="GtkSpinButton" id="adc_calibphase1">
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="invisible_char">•</property>
@@ -1111,16 +1109,6 @@
         </child>
       </object>
     </child>
-    <action-widgets>
-      <action-widget response="6">Cal_Rx</action-widget>
-      <action-widget response="5">Cal_Tx</action-widget>
-      <action-widget response="4">SaveCal2File</action-widget>
-      <action-widget response="3">LoadCal2File</action-widget>
-      <action-widget response="2">SaveCal2eeprom</action-widget>
-      <action-widget response="1">LoadCal2eeprom</action-widget>
-      <action-widget response="-10">ApplyCal</action-widget>
-      <action-widget response="-7">CalClose</action-widget>
-    </action-widgets>
   </object>
   <object class="GtkFileChooserDialog" id="filechooser">
     <property name="can_focus">False</property>
@@ -1367,6 +1355,15 @@
                           </packing>
                         </child>
                         <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
                           <object class="GtkCheckButton" id="gain_amp_together">
                             <property name="label" translatable="yes">Lock Channels</property>
                             <property name="use_action_appearance">False</property>
@@ -1449,6 +1446,9 @@
                           </packing>
                         </child>
                         <child>
+                          <placeholder/>
+                        </child>
+                        <child>
                           <object class="GtkSpinButton" id="rx_lo_freq">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
@@ -1467,6 +1467,21 @@
                           </packing>
                         </child>
                         <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
                           <object class="GtkSpinButton" id="rx_lo_spacing">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
@@ -1482,6 +1497,24 @@
                             <property name="x_options">GTK_FILL</property>
                             <property name="y_options">GTK_FILL</property>
                           </packing>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
                         </child>
                         <child>
                           <object class="GtkCheckButton" id="rx_lo_powerdown">
@@ -1580,8 +1613,46 @@
                           </object>
                           <packing>
                             <property name="expand">False</property>
-                            <property name="fill">False</property>
+                            <property name="fill">True</property>
                             <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkHBox" id="grid12">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <child>
+                              <object class="GtkFileChooserButton" id="dac_buffer">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="orientation">vertical</property>
+                                <property name="width_chars">12</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkHBox" id="grid17">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="expand">True</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">1</property>
                           </packing>
                         </child>
                         <child>
@@ -1873,7 +1944,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">True</property>
-                            <property name="position">1</property>
+                            <property name="position">3</property>
                           </packing>
                         </child>
                         <child>
@@ -2167,7 +2238,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">True</property>
-                            <property name="position">2</property>
+                            <property name="position">4</property>
                           </packing>
                         </child>
                       </object>
