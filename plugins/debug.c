@@ -393,6 +393,7 @@ static void reg_address_value_changed_cb(GtkSpinButton *spinbutton,
 		gtk_widget_hide(btn_write_reg);
 		return;
 	}
+	gtk_widget_set_sensitive(spin_btn_reg_addr, FALSE);
 	if (!block_signal) {
 		gtk_widget_hide(btn_write_reg);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value),
@@ -409,13 +410,14 @@ static void reg_address_value_changed_cb(GtkSpinButton *spinbutton,
 		} else if (spin_step == -1) {
 			if (crt_pos > 0)
 				crt_pos--;
+			else crt_pos = 0;
 			goto spin_overwrite;
 		} else {
 			goto updt_addr;
 		}
 	} else {
 		block_signal = 0;
-		return;
+		goto restore_widget;
 	}
 
 spin_overwrite:
@@ -432,6 +434,10 @@ updt_addr:
 	prev_addr = reg_addr;
 	snprintf(buf, sizeof(buf), "0x%.3x", reg_addr);
 	gtk_label_set_text((GtkLabel *)label_reg_hex_addr, buf);
+restore_widget:
+	gtk_widget_set_sensitive(spin_btn_reg_addr, TRUE);
+	gtk_widget_grab_focus(spin_btn_reg_addr);
+	gtk_editable_select_region(GTK_EDITABLE(spinbutton), 0, 0);
 }
 
 static void reg_value_change_value_cb(GtkSpinButton *btn, gpointer user_data)
