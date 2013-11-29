@@ -79,12 +79,30 @@ static GtkDataboxGraph *grid;
 static GtkDataboxGraph **channel_graph;
 
 #ifndef MAX_MARKERS
-#define MAX_MARKERS 4
+#define MAX_MARKERS 10
 #endif
 
-static gfloat markX[MAX_MARKERS + 2], markY[MAX_MARKERS + 2];
-static GtkDataboxGraph *marker[MAX_MARKERS + 2];
+struct marker_type {
+	gfloat x;
+	gfloat y;
+	int bin;
+	bool active;
+	GtkDataboxGraph *graph;
+};
+static struct marker_type markers[MAX_MARKERS + 2];
+
 static GtkWidget *marker_label;
+
+enum marker_types {
+	MARKER_OFF,
+	MARKER_PEAK,
+	MARKER_FIXED,
+	MARKER_ONE_TONE,
+	MARKER_TWO_TONE,
+	MARKER_IMAGE
+};
+
+static enum marker_types marker_type;
 
 static GtkListStore *channel_list_store;
 
@@ -727,20 +745,25 @@ static void do_fft(struct buffer *buf)
 			/* do an average */
 			fft_channel[i] = ((1 - avg) * fft_channel[i]) + (avg * mag);
 		}
-		if (MAX_MARKERS) {
+
+		if (MAX_MARKERS && (marker_type == MARKER_PEAK ||
+				    marker_type == MARKER_ONE_TONE ||
+				    marker_type == MARKER_IMAGE)) {
 			if (i == 0) {
 				maxx[0] = 0;
 				maxY[0] = fft_channel[0];
 			} else {
-				for (j = 0; j <= MAX_MARKERS; j++) {
+				for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
 					if  ((fft_channel[i - 1] > maxY[j]) &&
 						((!((fft_channel[i - 2] > fft_channel[i - 1]) &&
 						 (fft_channel[i - 1] > fft_channel[i]))) &&
 						 (!((fft_channel[i - 2] < fft_channel[i - 1]) &&
 						 (fft_channel[i - 1] < fft_channel[i]))))) {
-						for (k = MAX_MARKERS; k > j; k--) {
-							maxY[k] = maxY[k - 1];
-							maxx[k] = maxx[k - 1];
+						if (marker_type == MARKER_PEAK) {
+							for (k = MAX_MARKERS; k > j; k--) {
+								maxY[k] = maxY[k - 1];
+								maxx[k] = maxx[k - 1];
+							}
 						}
 						maxY[j] = fft_channel[i - 1];
 						maxx[j] = i - 1;
@@ -750,18 +773,86 @@ static void do_fft(struct buffer *buf)
 			}
 		}
 	}
-	if (MAX_MARKERS) {
-		if (tbuf == NULL) {
-			tbuf = gtk_text_buffer_new(NULL);
-			gtk_text_view_set_buffer(GTK_TEXT_VIEW(marker_label), tbuf);
-		}
 
-		for (j = 0; j <= MAX_MARKERS; j++) {
-			markX[j] = (gfloat)X[maxx[j]];
-			markY[j] = (gfloat)fft_channel[maxx[j]];
+	if (tbuf == NULL) {
+		tbuf = gtk_text_buffer_new(NULL);
+		gtk_text_view_set_buffer(GTK_TEXT_VIEW(marker_label), tbuf);
+	}
+
+	if (MAX_MARKERS && marker_type != MARKER_OFF) {
+		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
+			if (marker_type == MARKER_PEAK) {
+				markers[j].x = (gfloat)X[maxx[j]];
+				markers[j].y = (gfloat)fft_channel[maxx[j]];
+				markers[j].bin = maxx[j];
+			} else if (marker_type == MARKER_FIXED) {
+				markers[j].x = (gfloat)X[markers[j].bin];
+				markers[j].y = (gfloat)fft_channel[markers[j].bin];
+			} else if (marker_type == MARKER_ONE_TONE) {
+				/* assume peak is the tone */
+				if (j == 0) {
+					markers[j].bin = maxx[j];
+					i = 1;
+				} else if (j == 1) {
+					/* keep DC */
+					if (num_active_channels == 2)
+						markers[j].bin = m / 2;
+					else
+						markers[j].bin = 0;
+				} else {
+					/* where should the spurs be? */
+					i++;
+					if (num_active_channels == 2) {
+						markers[j].bin = (markers[0].bin - (m / 2)) * i + (m / 2);
+						if (markers[j].bin > m)
+							markers[j].bin -= 2 * (markers[j].bin - m);
+						if (markers[j].bin < ( m/2 ))
+							markers[j].bin += 2 * ((m / 2) - markers[j].bin);
+					} else {
+						markers[j].bin = markers[0].bin * i;
+						if (markers[j].bin > (m))
+							markers[j].bin -=  2 * (markers[j].bin - (m));
+						if (markers[j].bin < 0)
+							markers[j].bin += -markers[j].bin;
+					}
+				}
+				/* make sure we don't need to nudge things one way or the other */
+				k = markers[j].bin;
+				while (fft_channel[k] < fft_channel[k + 1]) {
+					k++;
+				}
+
+				while (markers[j].bin != 0 &&
+						fft_channel[markers[j].bin] < fft_channel[markers[j].bin - 1]) {
+					markers[j].bin--;
+				}
+
+				if (fft_channel[k] > fft_channel[markers[j].bin])
+					markers[j].bin = k;
+
+				markers[j].x = (gfloat)X[markers[j].bin];
+				markers[j].y = (gfloat)fft_channel[markers[j].bin];
+			} else if (marker_type == MARKER_IMAGE) {
+				/* keep DC, fundamental, and image
+				 * num_active_channels always needs to be 2 for images */
+				if (j == 0) {
+					/* Fundamental */
+					markers[j].bin = maxx[j];
+				} else if (j == 1) {
+					/* DC */
+					markers[j].bin = m / 2;
+				} else if (j == 2) {
+					/* Image */
+					markers[j].bin = m / 2 - (markers[0].bin - m/2);
+				} else
+					continue;
+				markers[j].x = (gfloat)X[markers[j].bin];
+				markers[j].y = (gfloat)fft_channel[markers[j].bin];
+
+			}
 
 			sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz%c",
-					j, markY[j], lo_freq + markX[j], adc_scale,
+					j, markers[j].y, lo_freq + markers[j].x, adc_scale,
 					j != MAX_MARKERS ? '\n' : '\0');
 
 			if (j == 0) {
@@ -771,6 +862,8 @@ static void do_fft(struct buffer *buf)
 				gtk_text_buffer_insert(tbuf, &iter, text, -1);
 			}
 		}
+	} else {
+		gtk_text_buffer_set_text(tbuf, "No markers active", 17);
 	}
 }
 
@@ -822,6 +915,269 @@ static void fft_update_scale(void)
 
 }
 
+#define OFF_MRK    "Markers Off"
+#define PEAK_MRK   "Peak Markers"
+#define FIX_MRK    "Fixed Markers"
+#define SINGLE_MRK "Single Tone Markers"
+#define DUAL_MRK   "Two Tone Markers"
+#define IMAGE_MRK  "Image Markers"
+#define ADD_MRK    "Add Marker"
+#define REMOVE_MRK "Remove Marker"
+
+static inline void marker_set(int i, char *buf, bool force)
+{
+	if (force)
+		markers[i].active = TRUE;
+
+	gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph), 0,
+			GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+	gtk_databox_graph_set_hide(markers[i].graph, !markers[i].active);
+}
+
+static void marker_menu (gchar *buf)
+{
+	char tmp[128];
+	int i;
+
+	if (!MAX_MARKERS)
+		return;
+
+	if (!strcmp(buf, PEAK_MRK)) {
+		marker_type = MARKER_PEAK;
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			sprintf(tmp, "P%i", i);
+			marker_set(i, tmp, FALSE);
+		}
+		return;
+	} else if (!strcmp(buf, FIX_MRK)) {
+		marker_type = MARKER_FIXED;
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			sprintf(tmp, "F%i", i);
+			marker_set(i, tmp, FALSE);
+		}
+		return;
+	} else if (!strcmp(buf, SINGLE_MRK)) {
+		marker_type = MARKER_ONE_TONE;
+		marker_set(0, "Fund", TRUE);
+		marker_set(1, "DC", TRUE);
+		for (i = 2; i < MAX_MARKERS; i++) {
+			sprintf(tmp, "%iH", i);
+			marker_set(i, tmp, FALSE);
+		}
+		return;
+	} else if (!strcmp(buf, DUAL_MRK)) {
+		marker_type = MARKER_TWO_TONE;
+		return;
+	} else if (!strcmp(buf, IMAGE_MRK)) {
+		marker_type = MARKER_IMAGE;
+		marker_set(0, "Fund", TRUE);
+		marker_set(1, "DC", TRUE);
+		marker_set(2, "Image", TRUE);
+		for (i = 3; i <= MAX_MARKERS; i++) {
+			markers[i].active = FALSE;
+			gtk_databox_graph_set_hide(markers[i].graph, TRUE);
+		}
+		return;
+	} else if (!strcmp(buf, OFF_MRK)) {
+		marker_type = MARKER_OFF;
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			gtk_databox_graph_set_hide(markers[i].graph, TRUE);
+		}
+		return;
+	} else if (!strcmp(buf, REMOVE_MRK)) {
+		for (i = MAX_MARKERS; i != 0; i--) {
+			if (markers[i].active) {
+				markers[i].active = FALSE;
+				gtk_databox_graph_set_hide(markers[i].graph, TRUE);
+				break;
+			}
+		}
+		return;
+	} else if (!strcmp(buf, ADD_MRK)) {
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			if (!markers[i].active) {
+				markers[i].active = TRUE;
+				gtk_databox_graph_set_hide(markers[i].graph, FALSE);
+				break;
+			}
+		}
+		return;
+	}
+
+	printf("unhandled event at %s : %s\n", __func__, buf);
+}
+
+static gint moved_fixed(GtkDatabox *box, GdkEventMotion *event, int mark)
+{
+	unsigned int max_size;
+
+	if (num_active_channels == 2)
+		max_size = num_samples;
+	else
+		max_size = num_samples / 2;
+
+	while((gfloat)X[markers[mark].bin] < gtk_databox_pixel_to_value_x(box, event->x) &&
+			markers[mark].bin < max_size)
+		markers[mark].bin++;
+
+	while ((gfloat)X[markers[mark].bin] > gtk_databox_pixel_to_value_x(box, event->x) &&
+			markers[mark].bin > 0)
+		markers[mark].bin--;
+
+	return FALSE;
+}
+
+static gint marker_button (GtkDatabox *box, GdkEventButton *event)
+{
+	gfloat x, y, dist;
+	GtkWidget *popupmenu, *menuitem;
+	gfloat left, right, top, bottom;
+	int i, fix = -1;
+	bool full = TRUE, empty = TRUE;
+	static gulong fixed_marker_hid = 0;
+
+	/* FFT? */
+	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
+		return FALSE;
+
+	/* Right button */
+	if (event->button != 3)
+		return FALSE;
+
+	/* things are running? */
+	if (!markers[0].graph)
+		return FALSE;
+
+	if (event->type == GDK_BUTTON_RELEASE) {
+		if (fixed_marker_hid) {
+			g_signal_handler_disconnect(GTK_DATABOX(databox), fixed_marker_hid);
+			fixed_marker_hid = 0;
+			return TRUE;
+		}
+		return FALSE;
+	}
+
+	x = gtk_databox_pixel_to_value_x(box, event->x);
+	y = gtk_databox_pixel_to_value_y(box, event->y);
+	gtk_databox_get_total_limits(GTK_DATABOX(box), &left, &right, &top, &bottom);
+
+	for (i = 0 ; i <= MAX_MARKERS; i++) {
+		if (marker_type == MARKER_FIXED) {
+			/* sqrt of ((delta X / X range)^2 + (delta Y / Y range)^2 ) */
+			dist = sqrtf(powf((x - markers[i].x) / (right - left), 2.0) +
+					powf((y - markers[i].y) / (bottom - top), 2.0)) * 100;
+			if (dist <= 2.0)
+				fix = i;
+		}
+		if (!markers[i].active)
+			full = FALSE;
+		else if (empty)
+			empty = FALSE;
+	}
+
+	if (fix != -1) {
+		fixed_marker_hid = g_signal_connect(GTK_DATABOX(databox), "motion_notify_event",
+				G_CALLBACK(moved_fixed), (gpointer) fix);
+		return TRUE;
+	}
+
+	popupmenu = gtk_menu_new();
+
+	i = 0;
+	if (!full && !(marker_type == MARKER_OFF || marker_type == MARKER_IMAGE)) {
+		menuitem = gtk_menu_item_new_with_label(ADD_MRK);
+		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+				GTK_SIGNAL_FUNC(marker_menu), (gpointer) ADD_MRK);
+		gtk_widget_show(menuitem);
+		i++;
+	}
+
+	if (!empty && !(marker_type == MARKER_OFF || marker_type == MARKER_IMAGE)) {
+		menuitem = gtk_menu_item_new_with_label(REMOVE_MRK);
+		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+				GTK_SIGNAL_FUNC(marker_menu), (gpointer) REMOVE_MRK);
+		gtk_widget_show(menuitem);
+		i++;
+	}
+
+	if (!full || !empty) {
+		menuitem = gtk_separator_menu_item_new();
+		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+		gtk_widget_show(menuitem);
+		i++;
+	}
+
+	menuitem = gtk_check_menu_item_new_with_label(PEAK_MRK);
+	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+			marker_type == MARKER_PEAK);
+	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+			GTK_SIGNAL_FUNC(marker_menu), (gpointer) PEAK_MRK);
+	gtk_widget_show(menuitem);
+	i++;
+
+	menuitem = gtk_check_menu_item_new_with_label(FIX_MRK);
+	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+			marker_type == MARKER_FIXED);
+	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+			GTK_SIGNAL_FUNC(marker_menu), (gpointer) FIX_MRK);
+	gtk_widget_show(menuitem);
+	i++;
+
+	menuitem = gtk_check_menu_item_new_with_label(SINGLE_MRK);
+	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+			marker_type == MARKER_ONE_TONE);
+	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+			GTK_SIGNAL_FUNC(marker_menu), (gpointer) SINGLE_MRK);
+	gtk_widget_show(menuitem);
+	i++;
+
+/*
+	menuitem = gtk_check_menu_item_new_with_label(DUAL_MRK);
+	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+			marker_type == MARKER_TWO_TONE);
+	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+			GTK_SIGNAL_FUNC(marker_menu), (gpointer) DUAL_MRK);
+	gtk_widget_show(menuitem);
+	i++;
+*/
+
+	if (num_active_channels == 2) {
+		menuitem = gtk_check_menu_item_new_with_label(IMAGE_MRK);
+		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+				marker_type == MARKER_IMAGE);
+		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+		GTK_SIGNAL_FUNC(marker_menu), (gpointer) IMAGE_MRK);
+		gtk_widget_show(menuitem);
+		i++;
+	}
+
+	if (marker_type != MARKER_OFF) {
+		menuitem = gtk_check_menu_item_new_with_label(OFF_MRK);
+		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+				marker_type == MARKER_OFF);
+		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+		GTK_SIGNAL_FUNC(marker_menu), (gpointer) OFF_MRK);
+		gtk_widget_show(menuitem);
+		i++;
+	}
+
+	gtk_menu_popup(GTK_MENU(popupmenu), NULL, NULL, NULL, NULL,
+		event->button, event->time);
+
+	if (marker_type == MARKER_FIXED)
+		return TRUE;
+
+	return FALSE;
+
+}
 static int fft_capture_setup(void)
 {
 	int i;
@@ -850,14 +1206,23 @@ static int fft_capture_setup(void)
 	 */
 	if (MAX_MARKERS) {
 		for (i = 0; i <= MAX_MARKERS; i++) {
-			markX[i] = 0.0f;
-			markY[i] = -100.0f;
-			marker[i] =  gtk_databox_markers_new(1, &markX[i], &markY[i], &color_marker,
+			markers[i].x = 0.0f;
+			markers[i].y = -100.0f;
+			if (markers[i].graph)
+				g_object_unref(markers[i].graph);
+
+			markers[i].graph =  gtk_databox_markers_new(1, &markers[i].x, &markers[i].y, &color_marker,
 					10, GTK_DATABOX_MARKERS_TRIANGLE);
+			gtk_databox_graph_add(GTK_DATABOX(databox), markers[i].graph);
+
 			sprintf(buf, "M%i", i);
-			gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(marker[i]), 0,
+			gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph), 0,
 					GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
-			gtk_databox_graph_add(GTK_DATABOX(databox), marker[i]);
+
+			if (marker_type == MARKER_OFF)
+				gtk_databox_graph_set_hide(markers[i].graph, TRUE);
+			else
+				gtk_databox_graph_set_hide(markers[i].graph, !markers[i].active);
 		}
 	}
 
@@ -1839,7 +2204,7 @@ static int profile_read_handler(void *user, const char * section, const char* na
 	
 	if (elems != NULL)
 		g_strfreev(elems);
-	
+
 	return 0;
 }
 
@@ -1881,6 +2246,7 @@ static void init_application (void)
 	GtkWidget *tmp;
 	GtkWidget *notebook;
 	GtkBuilder *builder;
+	int i;
 
 	builder = gtk_builder_new();
 
@@ -1973,8 +2339,20 @@ static void init_application (void)
 	/* Create a GtkDatabox widget along with scrollbars and rulers */
 	gtk_databox_create_box_with_scrollbars_and_rulers(&databox, &table,
 							TRUE, TRUE, TRUE, TRUE);
+	g_signal_connect(GTK_DATABOX(databox), "button_press_event",
+				G_CALLBACK(marker_button), NULL);
+	g_signal_connect(GTK_DATABOX(databox), "button_release_event",
+				G_CALLBACK(marker_button), NULL);
 	gtk_box_pack_start(GTK_BOX(capture_graph), table, TRUE, TRUE, 0);
 	gtk_widget_modify_bg(databox, GTK_STATE_NORMAL, &color_background);
+
+	if (MAX_MARKERS) {
+		marker_type = MARKER_OFF;
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			markers[i].graph = NULL;
+			markers[i].active = (i <= 4);
+		}
+	}
 
 	add_grid();
 
@@ -2048,6 +2426,7 @@ static void init_application (void)
 
 	gtk_widget_show(window);
 	gtk_widget_show_all(capture_graph);
+
 }
 
 gint main(gint argc, char *argv[])
