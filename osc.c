@@ -99,7 +99,8 @@ enum marker_types {
 	MARKER_FIXED,
 	MARKER_ONE_TONE,
 	MARKER_TWO_TONE,
-	MARKER_IMAGE
+	MARKER_IMAGE,
+	MARKER_NULL
 };
 
 static enum marker_types marker_type;
@@ -929,12 +930,14 @@ static inline void marker_set(int i, char *buf, bool force)
 	if (force)
 		markers[i].active = TRUE;
 
-	gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph), 0,
-			GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
-	gtk_databox_graph_set_hide(markers[i].graph, !markers[i].active);
+	if (markers[i].graph) {
+		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph), 0,
+				GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+		gtk_databox_graph_set_hide(markers[i].graph, !markers[i].active);
+	}
 }
 
-static void marker_menu (gchar *buf)
+static void set_marker_labels(gchar *buf, enum marker_types type)
 {
 	char tmp[128];
 	int i;
@@ -942,21 +945,21 @@ static void marker_menu (gchar *buf)
 	if (!MAX_MARKERS)
 		return;
 
-	if (!strcmp(buf, PEAK_MRK)) {
+	if ((buf && !strcmp(buf, PEAK_MRK)) || type == MARKER_PEAK) {
 		marker_type = MARKER_PEAK;
 		for (i = 0; i <= MAX_MARKERS; i++) {
 			sprintf(tmp, "P%i", i);
 			marker_set(i, tmp, FALSE);
 		}
 		return;
-	} else if (!strcmp(buf, FIX_MRK)) {
+	} else if ((buf && !strcmp(buf, FIX_MRK)) || type == MARKER_FIXED) {
 		marker_type = MARKER_FIXED;
 		for (i = 0; i <= MAX_MARKERS; i++) {
 			sprintf(tmp, "F%i", i);
 			marker_set(i, tmp, FALSE);
 		}
 		return;
-	} else if (!strcmp(buf, SINGLE_MRK)) {
+	} else if ((buf && !strcmp(buf, SINGLE_MRK)) || type == MARKER_ONE_TONE) {
 		marker_type = MARKER_ONE_TONE;
 		marker_set(0, "Fund", TRUE);
 		marker_set(1, "DC", TRUE);
@@ -965,26 +968,28 @@ static void marker_menu (gchar *buf)
 			marker_set(i, tmp, FALSE);
 		}
 		return;
-	} else if (!strcmp(buf, DUAL_MRK)) {
+	} else if ((buf && !strcmp(buf, DUAL_MRK)) || type == MARKER_TWO_TONE) {
 		marker_type = MARKER_TWO_TONE;
 		return;
-	} else if (!strcmp(buf, IMAGE_MRK)) {
+	} else if ((buf && !strcmp(buf, IMAGE_MRK)) || type == MARKER_IMAGE) {
 		marker_type = MARKER_IMAGE;
 		marker_set(0, "Fund", TRUE);
 		marker_set(1, "DC", TRUE);
 		marker_set(2, "Image", TRUE);
 		for (i = 3; i <= MAX_MARKERS; i++) {
 			markers[i].active = FALSE;
-			gtk_databox_graph_set_hide(markers[i].graph, TRUE);
+			if(markers[i].graph)
+				gtk_databox_graph_set_hide(markers[i].graph, TRUE);
 		}
 		return;
-	} else if (!strcmp(buf, OFF_MRK)) {
+	} else if (buf && !strcmp(buf, OFF_MRK)) {
 		marker_type = MARKER_OFF;
 		for (i = 0; i <= MAX_MARKERS; i++) {
-			gtk_databox_graph_set_hide(markers[i].graph, TRUE);
+			if (markers[i].graph)
+				gtk_databox_graph_set_hide(markers[i].graph, TRUE);
 		}
 		return;
-	} else if (!strcmp(buf, REMOVE_MRK)) {
+	} else if (buf && !strcmp(buf, REMOVE_MRK)) {
 		for (i = MAX_MARKERS; i != 0; i--) {
 			if (markers[i].active) {
 				markers[i].active = FALSE;
@@ -993,7 +998,7 @@ static void marker_menu (gchar *buf)
 			}
 		}
 		return;
-	} else if (!strcmp(buf, ADD_MRK)) {
+	} else if (buf && !strcmp(buf, ADD_MRK)) {
 		for (i = 0; i <= MAX_MARKERS; i++) {
 			if (!markers[i].active) {
 				markers[i].active = TRUE;
@@ -1005,6 +1010,11 @@ static void marker_menu (gchar *buf)
 	}
 
 	printf("unhandled event at %s : %s\n", __func__, buf);
+}
+
+static void marker_menu (gchar *buf)
+{
+	set_marker_labels(buf, MARKER_NULL);
 }
 
 static gint moved_fixed(GtkDatabox *box, GdkEventMotion *event, int mark)
@@ -1215,7 +1225,7 @@ static int fft_capture_setup(void)
 					10, GTK_DATABOX_MARKERS_TRIANGLE);
 			gtk_databox_graph_add(GTK_DATABOX(databox), markers[i].graph);
 
-			sprintf(buf, "M%i", i);
+			sprintf(buf, "?%i", i);
 			gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph), 0,
 					GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
 
@@ -1224,6 +1234,8 @@ static int fft_capture_setup(void)
 			else
 				gtk_databox_graph_set_hide(markers[i].graph, !markers[i].active);
 		}
+		if (marker_type != MARKER_OFF)
+			set_marker_labels(NULL, marker_type);
 	}
 
 	fft_graph = gtk_databox_lines_new(num_samples_ploted, X, fft_channel, &color_graph[0], 1);
@@ -2080,6 +2092,25 @@ void capture_profile_save(char *filename)
 	tmp_int = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_auto_scale));
 	fprintf(inifp, "enable_auto_scale=%d\n", tmp_int);
 
+	if (marker_type == MARKER_OFF)
+		fprintf(inifp, "marker_type = %s\n", OFF_MRK);
+	else if (marker_type == MARKER_PEAK)
+		fprintf(inifp, "marker_type = %s\n", PEAK_MRK);
+	else if (marker_type == MARKER_FIXED)
+		fprintf(inifp, "marker_type = %s\n", FIX_MRK);
+	else if (marker_type == MARKER_ONE_TONE)
+		fprintf(inifp, "marker_type = %s\n", SINGLE_MRK);
+	else if (marker_type == MARKER_TWO_TONE)
+		fprintf(inifp, "marker_type = %s\n", DUAL_MRK);
+	else if (marker_type == MARKER_IMAGE)
+		fprintf(inifp, "marker_type = %s\n", IMAGE_MRK);
+
+
+	for (tmp_int = 0; tmp_int <= MAX_MARKERS; tmp_int++) {
+		if (markers[tmp_int].active)
+			fprintf(inifp, "marker.%i = %i\n", tmp_int, markers[tmp_int].bin);
+	}
+
 	fclose(inifp);
 }
 
@@ -2089,7 +2120,7 @@ static int comboboxtext_set_active_by_string(GtkComboBox *combo_box, const char 
 	GtkTreeIter iter;
 	gboolean has_iter;
 	char *item;
-	
+
 	has_iter = gtk_tree_model_get_iter_first(model, &iter);
 	while (has_iter) {
 		gtk_tree_model_get(model, &iter, 0, &item, -1);
@@ -2133,13 +2164,13 @@ static int channel_soft_toggle(const char *ch_name, gboolean enable)
 static int count_char_in_string(char c, const char *s)
 {
 	int i;
-	
+
 	for (i = 0; s[i];)
 		if (s[i] == c)
 			i++;
 		else
 			s++;
-	
+
 	return i;
 }
 
@@ -2148,8 +2179,8 @@ static int profile_read_handler(void *user, const char * section, const char* na
 	int elem_type;
 	gchar **elems = NULL;
 	gchar *ch_name;
-	int ret;
-	
+	int ret, i;
+
 	if (strcmp(section, "Capture_Configuration") != 0)
 		return 0;
 
@@ -2185,6 +2216,14 @@ static int profile_read_handler(void *user, const char * section, const char* na
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_grid), atoi(value));
 			} else if (!strcmp(name, "enable_auto_scale")) {
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_auto_scale), atoi(value));
+			} else if (!strcmp(name, "marker_type")) {
+				set_marker_labels((gchar *)value, MARKER_NULL);
+				for (i = 0; i <= MAX_MARKERS; i++)
+					markers[i].active = FALSE;
+			} else {
+				printf("Unhandled token in ini file,\n"
+						"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
+						"Capture_Configuration", name, value);
 			}
 			break;
 		case 1:
@@ -2194,14 +2233,24 @@ static int profile_read_handler(void *user, const char * section, const char* na
 				ret = channel_soft_toggle(ch_name, atoi(value));
 				if (ret == 0)
 				printf("found invalid channel name in .ini fle\n");
+			} else if (!strcmp(elems[0], "marker")) {
+				i = atoi(elems[1]);
+				if (i >= 0 && i <= MAX_MARKERS) {
+					markers[i].bin = atoi(value);
+					markers[i].active = TRUE;
+				}
+			} else {
+				printf("Unhandled tokens in ini file,\n"
+					"\tSection %s\n\ttoken: %s : %s\n\tvalue: %s\n",
+					"Capture_Configuration", elems[0], elems[1], value);
 			}
-				
+
 			break;
 		default:
 			printf("found invalid property in ini file\n");
 			break;
 	}
-	
+
 	if (elems != NULL)
 		g_strfreev(elems);
 
