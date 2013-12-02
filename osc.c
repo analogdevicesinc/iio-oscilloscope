@@ -53,6 +53,7 @@ static unsigned int num_channels;
 gfloat **channel_data;
 static unsigned int current_sample;
 static unsigned int bytes_per_sample;
+static int ini_capture_status;
 
 static GtkWidget *databox;
 static GtkWidget *time_interval_widget;
@@ -2051,6 +2052,7 @@ void capture_profile_save(char *filename)
 		return;
 
 	fprintf(inifp, "[Capture_Configuration]\n");
+	fprintf(inifp, "capture_started=%d\n", (capture_function) ? 1 : 0);
 	crt_dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(device_list_widget));
 	fprintf(inifp, "device_name=%s\n", crt_dev_name);
 	g_free(crt_dev_name);
@@ -2187,7 +2189,9 @@ static int profile_read_handler(void *user, const char * section, const char* na
 	elem_type = count_char_in_string('.', name);
 	switch (elem_type) {
 		case 0:
-			if (!strcmp(name, "device_name")) {
+			if (!strcmp(name, "capture_started")) {
+				ini_capture_status = atoi(value);
+			} else if (!strcmp(name, "device_name")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(device_list_widget), value);
 				if (ret == 0)
 					printf("found invalid device name in .ini file\n");
@@ -2259,12 +2263,16 @@ static int profile_read_handler(void *user, const char * section, const char* na
 
 void capture_profile_load(char *filename)
 {
+	if (capture_function)
+		abort_sampling();
 	ini_parse(filename, profile_read_handler, NULL);
 	check_valid_setup();
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 	add_grid();
 	gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label)), "", -1);
 	gtk_label_set_text(GTK_LABEL(hor_scale), "");
+	if (ini_capture_status)
+		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button), TRUE);
 }
 
 void application_quit (void)
