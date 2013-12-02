@@ -71,6 +71,7 @@ static GtkWidget *label_reg_def_val;
 static GtkWidget *label_reg_notes;
 static GtkWidget *label_notes_tag;
 static GtkWidget *warning_label;
+static GtkWidget *reg_autoread;
 
 /* IIO Scan Elements widgets */
 static GtkWidget *scanel_read;
@@ -438,6 +439,8 @@ restore_widget:
 	gtk_widget_set_sensitive(spin_btn_reg_addr, TRUE);
 	gtk_widget_grab_focus(spin_btn_reg_addr);
 	gtk_editable_select_region(GTK_EDITABLE(spinbutton), 0, 0);
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(reg_autoread)))
+		g_signal_emit_by_name(btn_read_reg, "clicked", NULL);
 }
 
 static void reg_value_change_value_cb(GtkSpinButton *btn, gpointer user_data)
@@ -1204,7 +1207,8 @@ static int debug_init(GtkWidget *notebook)
 	scrollwin_regmap = GTK_WIDGET(gtk_builder_get_object(builder, "scrolledwindow_regmap"));
 	reg_map_container = GTK_WIDGET(gtk_builder_get_object(builder, "regmap_container"));
 	warning_label = GTK_WIDGET(gtk_builder_get_object(builder, "label_warning"));
-
+	reg_autoread = GTK_WIDGET(gtk_builder_get_object(builder, "register_autoread"));
+	
 	vbox_scanel =  GTK_WIDGET(gtk_builder_get_object(builder, "scanel_container"));
 	scanel_read = GTK_WIDGET(gtk_builder_get_object(builder, "debug_read_scan"));
 	scanel_write = GTK_WIDGET(gtk_builder_get_object(builder, "debug_write_scan"));
