@@ -1231,6 +1231,7 @@ Installed/Found IIO devices on this platform</property>
                         <property name="can_focus">False</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
+                        <accelerator key="s" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                         <signal name="activate" handler="cb_saveas" swapped="no"/>
                       </object>
                     </child>
@@ -1267,6 +1268,7 @@ Installed/Found IIO devices on this platform</property>
                         <property name="can_focus">False</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
+                        <accelerator key="q" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                         <signal name="activate" handler="cb_quit" swapped="no"/>
                       </object>
                     </child>
