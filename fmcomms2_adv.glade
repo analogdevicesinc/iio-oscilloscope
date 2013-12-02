@@ -1190,7 +1190,6 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="entry_text_column">0</property>
-                                    <property name="id_column">1</property>
                                     <items>
                                       <item translatable="yes">Manual</item>
                                       <item translatable="yes">Fast Attack</item>
@@ -1207,7 +1206,6 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="entry_text_column">0</property>
-                                    <property name="id_column">1</property>
                                     <items>
                                       <item translatable="yes">Manual</item>
                                       <item translatable="yes">Fast Attack</item>
@@ -1322,7 +1320,6 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="entry_text_column">0</property>
-                                    <property name="id_column">1</property>
                                     <items>
                                       <item translatable="yes">Full Gain Table</item>
                                       <item translatable="yes">Split Gain Table</item>
@@ -1475,7 +1472,6 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="entry_text_column">0</property>
-                                    <property name="id_column">1</property>
                                     <items>
                                       <item translatable="yes">AGC determined</item>
                                       <item translatable="yes">only in LPF</item>
@@ -2880,7 +2876,6 @@ Gain Lock Algorithm (GLA)  and goto</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="entry_text_column">0</property>
-                                                <property name="id_column">1</property>
                                                 <items>
                                                   <item translatable="yes">MAX Gain</item>
                                                   <item translatable="yes">SET Gain</item>
@@ -2910,7 +2905,6 @@ Gain Lock Algorithm (GLA)  and goto</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="entry_text_column">0</property>
-                                                <property name="id_column">1</property>
                                                 <items>
                                                   <item translatable="yes">Beginning of previous Burst</item>
                                                   <item translatable="yes">End of previous Burst</item>
@@ -3140,7 +3134,6 @@ restart GLA ...</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="entry_text_column">0</property>
-                                                <property name="id_column">1</property>
                                                 <items>
                                                   <item translatable="yes">MAX Gain</item>
                                                   <item translatable="yes">OPTIMIZED Gain</item>
@@ -3160,7 +3153,6 @@ restart GLA ...</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="entry_text_column">0</property>
-                                                <property name="id_column">1</property>
                                                 <items>
                                                   <item translatable="yes">MAX Gain</item>
                                                   <item translatable="yes">SET Gain</item>
