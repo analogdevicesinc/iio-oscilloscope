@@ -19,6 +19,9 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <dlfcn.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <fftw3.h>
 
@@ -2275,8 +2278,17 @@ void capture_profile_load(char *filename)
 		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button), TRUE);
 }
 
+#define DEFAULT_PROFILE_NAME ".osc_profile.ini"
 void application_quit (void)
 {
+	const char *home_dir = getenv("HOME");
+	char buf[1024];
+
+	/* Before we shut down, let's save the profile */
+	sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
+	capture_profile_save(buf);
+	save_all_plugins(buf, NULL);
+
 	if (capture_function > 0) {
 		g_source_remove(capture_function);
 		capture_function = 0;
@@ -2294,6 +2306,25 @@ void application_quit (void)
 void sigterm (int signum)
 {
 	application_quit();
+}
+
+/* Before we really start, let's load the last saved profile */
+static void load_default_profile (void)
+{
+	const char *home_dir = getenv("HOME");
+	char buf[1024];
+	struct stat sts;
+
+	sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
+
+	if (stat(buf, &sts) == -1)
+		return;
+
+	if (!S_ISREG(sts.st_mode))
+		return;
+
+	capture_profile_load(buf);
+	restore_all_plugins(buf, NULL);
 }
 
 static void init_application (void)
@@ -2498,6 +2529,7 @@ gint main(gint argc, char *argv[])
 
 	gdk_threads_enter();
 	init_application();
+	load_default_profile();
 	gtk_main();
 	gdk_threads_leave();
 
