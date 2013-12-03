@@ -17,6 +17,7 @@ struct osc_plugin {
 	char *(*handle_item) (struct osc_plugin *plugin, const char *attrib,
 			      const char *value);
 	const char **save_restore_attribs;
+	void (*update_active_page)(gint active_page, gboolean is_detached);
 };
 
 void osc_plugin_register(const struct osc_plugin *plugin);

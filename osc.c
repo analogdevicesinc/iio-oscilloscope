@@ -72,6 +72,7 @@ static GtkWidget *plot_type;
 static GtkWidget *time_unit_lbl;
 static gulong capture_button_hid = 0;
 static GBinding *capture_button_bind;
+static GtkWidget *notebook;
 
 GtkWidget *capture_graph;
 
@@ -1253,6 +1254,149 @@ static void fft_capture_start(void)
 	capture_function = g_idle_add((GSourceFunc) fft_capture_func, databox);
 }
 
+static void detach_plugin(GtkToolButton *btn, gpointer data);
+
+static void plugin_tab_add_detach_btn(GtkWidget *page, const struct osc_plugin *plugin)
+{
+	GtkWidget *tab_box;
+	GtkWidget *tab_label;
+	GtkWidget *tab_toolbar;
+	GtkWidget *tab_detach_btn;
+	const char *plugin_name = plugin->name;
+	
+	tab_box = gtk_hbox_new(FALSE, 0);
+	tab_label = gtk_label_new(plugin_name);
+	tab_toolbar = gtk_toolbar_new();
+	tab_detach_btn = (GtkWidget *)gtk_tool_button_new_from_stock("gtk-disconnect");
+	
+	gtk_widget_set_size_request(tab_detach_btn, 25, 5);
+	
+	gtk_toolbar_insert(GTK_TOOLBAR(tab_toolbar), GTK_TOOL_ITEM(tab_detach_btn), 0);
+	gtk_container_add(GTK_CONTAINER(tab_box), tab_label);
+	gtk_container_add(GTK_CONTAINER(tab_box), tab_toolbar);
+	
+	gtk_widget_show_all(tab_box);
+	
+	gtk_notebook_set_tab_label(GTK_NOTEBOOK(notebook), page, tab_box);
+	g_signal_connect(tab_detach_btn, "clicked",
+		G_CALLBACK(detach_plugin), (gpointer)plugin);
+}
+
+static void plugin_make_detachable(const struct osc_plugin *plugin)
+{
+	GtkWidget *page = NULL;
+	int num_pages = 0;
+	
+	/* Add detach button */
+	num_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
+	page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), num_pages - 1);
+	
+	plugin_tab_add_detach_btn(page, plugin);
+}
+
+static void attach_plugin(GtkToolButton *btn, gpointer data)
+{
+	GtkWidget *window;
+	GtkWidget *plugin_page;
+	const struct osc_plugin *plugin = (const struct osc_plugin *)data;
+	gint plugin_page_index;
+	
+	window = (GtkWidget *)gtk_widget_get_toplevel(GTK_WIDGET(btn));
+	
+	GtkWidget *hbox = NULL;
+	GList *hbox_elems = NULL;
+	GList *first = NULL;
+	
+	hbox = gtk_bin_get_child(GTK_BIN(window));
+	hbox_elems = gtk_container_get_children(GTK_CONTAINER(hbox));
+	first = g_list_first(hbox_elems);
+	plugin_page = first->data;
+	gtk_container_remove(GTK_CONTAINER(hbox), plugin_page);
+	gtk_widget_destroy(window);
+	plugin_page_index = gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
+		plugin_page, NULL);
+	plugin_tab_add_detach_btn(plugin_page, plugin);
+	
+	if (plugin->update_active_page)
+		plugin->update_active_page(plugin_page_index, FALSE);
+}
+
+static GtkWidget * extract_label_from_box(GtkWidget *box)
+{
+	GList *children = NULL;
+	GList *first = NULL;
+	GtkWidget *label;
+	
+	children = gtk_container_get_children(GTK_CONTAINER(box));
+	first = g_list_first(children);
+	label = first->data;
+	g_list_free(children);
+	
+	return label;
+}
+
+static void detach_plugin(GtkToolButton *btn, gpointer data)
+{
+	const struct osc_plugin *plugin = (const struct osc_plugin *)data;
+	const char *plugin_name = plugin->name;
+	const char *page_name = NULL;
+	GtkWidget *page = NULL;
+	GtkWidget *box;
+	GtkWidget *label;
+	int num_pages;
+	int i;
+	
+	/* Find the page that belongs to a plugin, using the plugin name */
+	num_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
+	for (i = 0; i < num_pages; i++) {
+		page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
+		box = gtk_notebook_get_tab_label(GTK_NOTEBOOK(notebook), page);
+		if (GTK_IS_BOX(box))
+			label = extract_label_from_box(box);
+		else
+			label = box;
+		page_name = gtk_label_get_text(GTK_LABEL(label));
+		if (!strcmp(page_name, plugin_name))
+			break;
+	}
+	if (i == num_pages) {
+		printf("Could not find %s plugin in the notebook\n", plugin_name);
+		return;
+	}
+	
+	GtkWidget *window;
+	GtkWidget *hbox;
+	GtkWidget *vbox;
+	GtkWidget *vbox_empty;
+	GtkWidget *toolbar;
+	GtkWidget *attach_button;
+	
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_deletable(GTK_WINDOW(window), FALSE);
+	hbox = gtk_hbox_new(FALSE, 0);
+	vbox = gtk_vbox_new(FALSE, 0);
+	vbox_empty = gtk_vbox_new(FALSE, 0);
+	toolbar = gtk_toolbar_new();
+	attach_button = (GtkWidget *)gtk_tool_button_new_from_stock("gtk-connect");
+	gtk_widget_set_size_request(attach_button, 25, 5);
+	
+	gtk_window_set_title(GTK_WINDOW(window), page_name);
+	gtk_widget_reparent(page, hbox);
+	gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), vbox_empty, TRUE, TRUE, 0);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(attach_button), 0);
+	gtk_container_add(GTK_CONTAINER(window), hbox);
+	
+	g_signal_connect(attach_button, "clicked",
+			G_CALLBACK(attach_plugin), (gpointer)plugin);
+	
+	if (plugin->update_active_page)
+		plugin->update_active_page(-1, TRUE);
+	
+	gtk_widget_show_all(window);
+}
+
 /*
  * helper functions for plugins which want to look at data
  * Note that multiosc application will implement these functions differently.
@@ -1713,6 +1857,7 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 
 	plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
 	plugin->init(notebook);
+	plugin_make_detachable(plugin);
 
 	printf("Loaded plugin: %s\n", plugin->name);
 }
@@ -2332,7 +2477,6 @@ static void init_application (void)
 	GtkWidget *window;
 	GtkWidget *table;
 	GtkWidget *tmp;
-	GtkWidget *notebook;
 	GtkBuilder *builder;
 	int i;
 
