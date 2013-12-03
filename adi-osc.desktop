@@ -1,5 +1,5 @@
 [Desktop Entry]
-Exec=gksudo -k -u root osc
+Exec=gksudo -u root /usr/local/bin/osc
 Icon=adi-osc
 Terminal=false
 Type=Application
