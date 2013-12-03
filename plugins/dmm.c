@@ -34,6 +34,7 @@ static GtkListStore *device_list_store;
 static GtkListStore *channel_list_store;
 static gint this_page;
 static GtkNotebook *nbook;
+static gboolean plugin_detached;
 
 static void build_channel_list(void)
 {
@@ -250,7 +251,7 @@ static void dmm_update_thread(void)
 		buf = gtk_text_buffer_new(NULL);
 		gtk_text_buffer_get_iter_at_offset(buf, &text_iter, 0);
 
-		if (this_page == gtk_notebook_get_current_page(nbook)) {
+		if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
 			loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(channel_list_store), &tree_iter);
 			while (loop) {
 				gtk_tree_model_get(GTK_TREE_MODEL(channel_list_store), &tree_iter,
@@ -483,6 +484,12 @@ static const char *dmm_sr_attribs[] = {
 	NULL,
 };
 
+static void update_active_page(gint active_page, gboolean is_detached)
+{
+	this_page = active_page;
+	plugin_detached = is_detached;
+}
+
 static bool dmm_identify(void)
 {
 	char *devices = NULL, *device, *elements;
@@ -513,4 +520,5 @@ const struct osc_plugin plugin = {
 	.init = dmm_init,
 	.save_restore_attribs = dmm_sr_attribs,
 	.handle_item = dmm_handle,
+	.update_active_page = update_active_page,
 };
