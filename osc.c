@@ -916,6 +916,8 @@ static void fft_update_scale(void)
 		fft_channel[i] = FLT_MAX;
 	}
 
+	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_auto_scale)))
+		return;
 	gtk_databox_set_total_limits(GTK_DATABOX(databox), -5.0 - corr, adc_freq / 2.0 + 5.0, 0.0, -75.0);
 	do_a_rescale_flag = 1;
 
@@ -2242,6 +2244,13 @@ void capture_profile_save(char *filename)
 	tmp_int = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_auto_scale));
 	fprintf(inifp, "enable_auto_scale=%d\n", tmp_int);
 
+	gfloat left, right, top, bottom;
+	gtk_databox_get_visible_limits(GTK_DATABOX(databox), &left, &right, &top, &bottom);
+	fprintf(inifp, "x_axis_min=%f\n", left);
+	fprintf(inifp, "x_axis_max=%f\n", right);
+	fprintf(inifp, "y_axis_min=%f\n", bottom);
+	fprintf(inifp, "y_axis_max=%f\n", top);
+
 	if (marker_type == MARKER_OFF)
 		fprintf(inifp, "marker_type = %s\n", OFF_MRK);
 	else if (marker_type == MARKER_PEAK)
@@ -2324,6 +2333,9 @@ static int count_char_in_string(char c, const char *s)
 	return i;
 }
 
+static gfloat plot_left, plot_right, plot_top, plot_bottom;
+static int read_scale_params;
+
 static int profile_read_handler(void *user, const char * section, const char* name, const char *value)
 {
 	int elem_type;
@@ -2368,6 +2380,18 @@ static int profile_read_handler(void *user, const char * section, const char* na
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_grid), atoi(value));
 			} else if (!strcmp(name, "enable_auto_scale")) {
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_auto_scale), atoi(value));
+			} else if (!strcmp(name, "x_axis_min")) {
+				plot_left = atoi(value);
+				read_scale_params++;
+			} else if (!strcmp(name, "x_axis_max")) {
+				plot_right = atoi(value);
+				read_scale_params++;
+			} else if (!strcmp(name, "y_axis_min")) {
+				plot_bottom = atoi(value);
+				read_scale_params++;
+			} else if (!strcmp(name, "y_axis_max")) {
+				plot_top = atoi(value);
+				read_scale_params++;
 			} else if (!strcmp(name, "marker_type")) {
 				set_marker_labels((gchar *)value, MARKER_NULL);
 				for (i = 0; i <= MAX_MARKERS; i++)
@@ -2417,6 +2441,11 @@ void capture_profile_load(char *filename)
 	check_valid_setup();
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 	add_grid();
+	if (read_scale_params == 4) {
+		gtk_databox_set_total_limits(GTK_DATABOX(databox), plot_left, plot_right,
+			plot_top, plot_bottom);
+		read_scale_params = 0;
+	}
 	gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label)), "", -1);
 	gtk_label_set_text(GTK_LABEL(hor_scale), "");
 	if (ini_capture_status)
