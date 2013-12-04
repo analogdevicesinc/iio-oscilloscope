@@ -2445,7 +2445,7 @@ void capture_profile_load(char *filename)
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 	add_grid();
 	if (read_scale_params == 4) {
-		gtk_databox_set_total_limits(GTK_DATABOX(databox), plot_left, plot_right,
+		gtk_databox_set_visible_limits(GTK_DATABOX(databox), plot_left, plot_right,
 			plot_top, plot_bottom);
 		read_scale_params = 0;
 	}
@@ -2653,7 +2653,7 @@ static void init_application (void)
 	capture_button_hid = g_signal_connect(capture_button, "toggled",
 		G_CALLBACK(capture_button_clicked), NULL);
 
-	g_signal_connect(G_OBJECT(window), "destroy",
+	g_signal_connect(G_OBJECT(window), "delete-event",
 			G_CALLBACK(application_quit), NULL);
 
 	g_builder_bind_property(builder, "capture_button", "active",
