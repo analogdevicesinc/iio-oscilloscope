@@ -49,7 +49,6 @@ struct w_info {
 static char dir_name[512];
 
 static struct w_info attrs[] = {
-	{CHECKBOX, "adi,2rx-2tx-mode-enable"},
 	{SPINBUTTON, "adi,agc-adc-large-overload-exceed-counter"},
 	{SPINBUTTON, "adi,agc-adc-large-overload-inc-steps"},
 	{CHECKBOX, "adi,agc-adc-lmt-small-overload-prevent-gain-inc-enable"},
@@ -178,6 +177,32 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 	write_sysfs_string(item->name, dir_name, temp);
 }
 
+void bist_tone_cb (GtkWidget *widget, gpointer data)
+{
+	GtkBuilder *builder = data;
+	unsigned mode, level, freq, c2i, c2q, c1i, c1q;
+	char temp[40];
+
+	mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+	level = gtk_combo_box_get_active(GTK_COMBO_BOX(
+		GTK_WIDGET(gtk_builder_get_object(builder, "tone_level"))));
+	freq = gtk_combo_box_get_active(GTK_COMBO_BOX(
+		GTK_WIDGET(gtk_builder_get_object(builder, "bist_tone_frequency"))));
+	c2i = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
+		GTK_WIDGET(gtk_builder_get_object(builder, "c2i"))));
+	c2q = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
+		GTK_WIDGET(gtk_builder_get_object(builder, "c2q"))));
+	c1i = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
+		GTK_WIDGET(gtk_builder_get_object(builder, "c1i"))));
+	c1q = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
+		GTK_WIDGET(gtk_builder_get_object(builder, "c1q"))));
+
+	sprintf(temp, "%d %d %d %d\n", mode, freq, level * 3,
+		(c2q << 3) | (c2i << 2) | (c1q << 1) | c1i);
+
+	write_sysfs_string("bist_tone", dir_name, temp);
+}
+
 static void connect_widget(GtkBuilder *builder, struct w_info *item)
 {
 	GtkWidget *widget;
@@ -217,6 +242,17 @@ static void connect_widget(GtkBuilder *builder, struct w_info *item)
 		G_CALLBACK(signal_handler_cb), item);
 }
 
+void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
+		     guint page_num, gpointer user_data)
+{
+	GtkWidget *tohide = user_data;
+
+	if (page_num == 5)
+		gtk_widget_hide(tohide); /* Hide Init button in BIST Tab */
+	else
+		gtk_widget_show(tohide);
+}
+
 static int fmcomms2adv_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -234,9 +270,26 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 	for (i = 0; i < ARRAY_SIZE(attrs); i++)
 		connect_widget(builder, &attrs[i]);
 
+	g_builder_connect_signal(builder, "bist_tone", "changed",
+		G_CALLBACK(bist_tone_cb), builder);
+
+	gtk_combo_box_set_active(GTK_COMBO_BOX(
+		GTK_WIDGET(gtk_builder_get_object(builder, "bist_tone"))), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(
+		GTK_WIDGET(gtk_builder_get_object(builder, "bist_tone_frequency"))), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(
+		GTK_WIDGET(gtk_builder_get_object(builder, "tone_level"))), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(
+		GTK_WIDGET(gtk_builder_get_object(builder, "bist_prbs"))), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(
+		GTK_WIDGET(gtk_builder_get_object(builder, "loopback"))), 0);
 
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, "FMComms2 Advanced");
+
+	g_builder_connect_signal(builder, "notebook1", "switch-page",
+		G_CALLBACK(change_page_cb),
+		GTK_WIDGET(gtk_builder_get_object(builder, "initialize")));
 
 	return 0;
 }
