@@ -1317,6 +1317,7 @@ static void attach_plugin(GtkToolButton *btn, gpointer data)
 	gtk_widget_destroy(window);
 	plugin_page_index = gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
 		plugin_page, NULL);
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), plugin_page_index);
 	plugin_tab_add_detach_btn(plugin_page, plugin);
 	
 	if (plugin->update_active_page)
@@ -1396,7 +1397,9 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	if (plugin->update_active_page)
 		plugin->update_active_page(-1, TRUE);
 	
-	gtk_widget_show_all(window);
+	gtk_widget_show(window);
+	gtk_widget_show(hbox);
+	gtk_widget_show_all(vbox);
 }
 
 /*
@@ -2442,7 +2445,7 @@ void capture_profile_load(char *filename)
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 	add_grid();
 	if (read_scale_params == 4) {
-		gtk_databox_set_total_limits(GTK_DATABOX(databox), plot_left, plot_right,
+		gtk_databox_set_visible_limits(GTK_DATABOX(databox), plot_left, plot_right,
 			plot_top, plot_bottom);
 		read_scale_params = 0;
 	}
@@ -2650,7 +2653,7 @@ static void init_application (void)
 	capture_button_hid = g_signal_connect(capture_button, "toggled",
 		G_CALLBACK(capture_button_clicked), NULL);
 
-	g_signal_connect(G_OBJECT(window), "destroy",
+	g_signal_connect(G_OBJECT(window), "delete-event",
 			G_CALLBACK(application_quit), NULL);
 
 	g_builder_bind_property(builder, "capture_button", "active",
