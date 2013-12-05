@@ -55,8 +55,12 @@ static int libini_restore_handler(void *user, const char* section,
 		case 1:
 			elems = g_strsplit(name, ".", 0);
 
-			if (set_dev_paths(elems[0]))
+			if (set_dev_paths(elems[0])) {
+				if (!plugin->handle_item)
+					break;
+				plugin->handle_item(plugin, name, value);
 				break;
+			}
 
 			write_devattr(elems[1], value);
 			break;
@@ -128,6 +132,11 @@ void save_all_plugins(const char *filename, gpointer user_data)
 						if (set_dev_paths(elems[0])) {
 							if (elems != NULL)
 								g_strfreev(elems);
+
+							str = plugin->handle_item(plugin, *attribs, NULL);
+							if (str && str[0])
+								fprintf(cfile, "%s = %s\n",
+									*attribs, str);
 							break;
 						}
 						str = NULL;
