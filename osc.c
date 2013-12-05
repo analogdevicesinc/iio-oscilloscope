@@ -2189,6 +2189,8 @@ gboolean samples_to_time(GBinding *binding, const GValue *source_val,
 	return TRUE;
 }
 
+#define CAPTURE_CONF "Capture_Configuration"
+
 void capture_profile_save(char *filename)
 {
 	FILE *inifp;
@@ -2204,7 +2206,7 @@ void capture_profile_save(char *filename)
 	if (!inifp)
 		return;
 
-	fprintf(inifp, "[Capture_Configuration]\n");
+	fprintf(inifp, "[%s]\n", CAPTURE_CONF);
 	fprintf(inifp, "capture_started=%d\n", (capture_function) ? 1 : 0);
 	crt_dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(device_list_widget));
 	fprintf(inifp, "device_name=%s\n", crt_dev_name);
@@ -2346,7 +2348,7 @@ static int profile_read_handler(void *user, const char * section, const char* na
 	gchar *ch_name;
 	int ret, i;
 
-	if (strcmp(section, "Capture_Configuration") != 0)
+	if (strcmp(section, CAPTURE_CONF) != 0)
 		return 0;
 
 	elem_type = count_char_in_string('.', name);
@@ -2402,7 +2404,7 @@ static int profile_read_handler(void *user, const char * section, const char* na
 			} else {
 				printf("Unhandled token in ini file,\n"
 						"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
-						"Capture_Configuration", name, value);
+						CAPTURE_CONF, name, value);
 			}
 			break;
 		case 1:
@@ -2421,7 +2423,7 @@ static int profile_read_handler(void *user, const char * section, const char* na
 			} else {
 				printf("Unhandled tokens in ini file,\n"
 					"\tSection %s\n\ttoken: %s : %s\n\tvalue: %s\n",
-					"Capture_Configuration", elems[0], elems[1], value);
+					CAPTURE_CONF, elems[0], elems[1], value);
 			}
 
 			break;
@@ -2486,20 +2488,55 @@ void sigterm (int signum)
 }
 
 /* Before we really start, let's load the last saved profile */
-static void load_default_profile (void)
+static bool check_inifile (char *filepath)
+{
+	struct stat sts;
+	FILE *fd;
+	char buf[1024];
+	size_t i;
+
+	if (stat(filepath, &sts) == -1)
+		return FALSE;
+
+	if (!S_ISREG(sts.st_mode))
+		return FALSE;
+
+	fd = fopen(filepath, "r");
+	if (!fd)
+		return FALSE;
+
+	i = fread(buf, 1023, 1, fd);
+	fclose(fd);
+
+	if (i == 0 )
+		return FALSE;
+
+	if (!strstr(buf, "[" CAPTURE_CONF "]"))
+		return FALSE;
+
+	return TRUE;
+}
+
+static void load_default_profile (char * filename)
 {
 	const char *home_dir = getenv("HOME");
 	char buf[1024];
-	struct stat sts;
+	int checkok = 0;
 
-	sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
+	if (!filename) {
+		sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
+	} else {
+		strcpy (buf, filename);
+		if (!check_inifile(buf))
+			sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
+		else
+			checkok = 1;
+	}
 
-	if (stat(buf, &sts) == -1)
+	if (!checkok && !check_inifile(buf))
 		return;
 
-	if (!S_ISREG(sts.st_mode))
-		return;
-
+	printf("Loading profile : %s\n", buf);
 	capture_profile_load(buf);
 	restore_all_plugins(buf, NULL);
 }
@@ -2693,8 +2730,41 @@ static void init_application (void)
 
 }
 
+void usage (char *program)
+{
+	printf("%s: the IIO visualization and control tool\n", program);
+	printf( " Copyright (C) Analog Devices, Inc. and others\n"
+		" This is free software; see the source for copying conditions.\n"
+		" There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n"
+		" PARTICULAR PURPOSE.\n\n");
+
+	/* please keep this list sorted in alphabetal order */
+	printf( "Command line options:\n"
+		"\t-p\tload specific profile\n");
+
+	exit(-1);
+}
+
 gint main(gint argc, char *argv[])
 {
+	int c;
+	char *profile = NULL;
+
+	opterr = 0;
+	while ((c = getopt (argc, argv, "p:")) != -1)
+	switch (c) {
+		case 'p':
+			profile = strdup(optarg);
+			break;
+		case '?':
+			usage(argv[0]);
+			break;
+		default:
+			printf("Unknown command line option\n");
+			usage(argv[0]);
+			break;
+	}
+
 	g_thread_init (NULL);
 	gdk_threads_init ();
 	gtk_init(&argc, &argv);
@@ -2705,7 +2775,7 @@ gint main(gint argc, char *argv[])
 
 	gdk_threads_enter();
 	init_application();
-	load_default_profile();
+	load_default_profile(profile);
 	gtk_main();
 	gdk_threads_leave();
 
