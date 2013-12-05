@@ -3848,9 +3848,9 @@ power for (sample periods)</property>
                             <property name="entry_text_column">0</property>
                             <items>
                               <item translatable="yes">0 dB</item>
-                              <item translatable="yes">-3 dB</item>
                               <item translatable="yes">-6 dB</item>
-                              <item translatable="yes">-9 dB</item>
+                              <item translatable="yes">-12 dB</item>
+                              <item translatable="yes">-18 dB</item>
                             </items>
                           </object>
                           <packing>
@@ -3957,7 +3957,6 @@ power for (sample periods)</property>
                                 <property name="receives_default">False</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="xalign">0</property>
-                                <property name="active">True</property>
                                 <property name="draw_indicator">True</property>
                               </object>
                               <packing>
@@ -3974,7 +3973,6 @@ power for (sample periods)</property>
                                 <property name="receives_default">False</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="xalign">0</property>
-                                <property name="active">True</property>
                                 <property name="draw_indicator">True</property>
                               </object>
                               <packing>
@@ -3993,7 +3991,6 @@ power for (sample periods)</property>
                                 <property name="receives_default">False</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="xalign">0</property>
-                                <property name="active">True</property>
                                 <property name="draw_indicator">True</property>
                               </object>
                               <packing>
@@ -4012,7 +4009,6 @@ power for (sample periods)</property>
                                 <property name="receives_default">False</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="xalign">0</property>
-                                <property name="active">True</property>
                                 <property name="draw_indicator">True</property>
                               </object>
                               <packing>

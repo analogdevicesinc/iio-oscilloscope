@@ -183,7 +183,8 @@ void bist_tone_cb (GtkWidget *widget, gpointer data)
 	unsigned mode, level, freq, c2i, c2q, c1i, c1q;
 	char temp[40];
 
-	mode = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+	mode = gtk_combo_box_get_active(GTK_COMBO_BOX(
+		GTK_WIDGET(gtk_builder_get_object(builder, "bist_tone"))));
 	level = gtk_combo_box_get_active(GTK_COMBO_BOX(
 		GTK_WIDGET(gtk_builder_get_object(builder, "tone_level"))));
 	freq = gtk_combo_box_get_active(GTK_COMBO_BOX(
@@ -197,7 +198,7 @@ void bist_tone_cb (GtkWidget *widget, gpointer data)
 	c1q = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
 		GTK_WIDGET(gtk_builder_get_object(builder, "c1q"))));
 
-	sprintf(temp, "%d %d %d %d\n", mode, freq, level * 3,
+	sprintf(temp, "%d %d %d %d\n", mode, freq, level * 6,
 		(c2q << 3) | (c2i << 2) | (c1q << 1) | c1i);
 
 	write_sysfs_string("bist_tone", dir_name, temp);
@@ -270,9 +271,6 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 	for (i = 0; i < ARRAY_SIZE(attrs); i++)
 		connect_widget(builder, &attrs[i]);
 
-	g_builder_connect_signal(builder, "bist_tone", "changed",
-		G_CALLBACK(bist_tone_cb), builder);
-
 	gtk_combo_box_set_active(GTK_COMBO_BOX(
 		GTK_WIDGET(gtk_builder_get_object(builder, "bist_tone"))), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(
@@ -283,6 +281,28 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 		GTK_WIDGET(gtk_builder_get_object(builder, "bist_prbs"))), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(
 		GTK_WIDGET(gtk_builder_get_object(builder, "loopback"))), 0);
+
+	g_builder_connect_signal(builder, "bist_tone", "changed",
+		G_CALLBACK(bist_tone_cb), builder);
+
+	g_builder_connect_signal(builder, "bist_tone_frequency", "changed",
+		G_CALLBACK(bist_tone_cb), builder);
+
+	g_builder_connect_signal(builder, "tone_level", "changed",
+		G_CALLBACK(bist_tone_cb), builder);
+
+	g_builder_connect_signal(builder, "c2q", "toggled",
+		G_CALLBACK(bist_tone_cb), builder);
+
+	g_builder_connect_signal(builder, "c1q", "toggled",
+		G_CALLBACK(bist_tone_cb), builder);
+
+	g_builder_connect_signal(builder, "c2i", "toggled",
+		G_CALLBACK(bist_tone_cb), builder);
+
+	g_builder_connect_signal(builder, "c1i", "toggled",
+		G_CALLBACK(bist_tone_cb), builder);
+
 
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, "FMComms2 Advanced");
