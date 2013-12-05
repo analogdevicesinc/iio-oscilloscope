@@ -2386,16 +2386,16 @@ static int profile_read_handler(void *user, const char * section, const char* na
 			} else if (!strcmp(name, "enable_auto_scale")) {
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_auto_scale), atoi(value));
 			} else if (!strcmp(name, "x_axis_min")) {
-				plot_left = atoi(value);
+				plot_left = atof(value);
 				read_scale_params++;
 			} else if (!strcmp(name, "x_axis_max")) {
-				plot_right = atoi(value);
+				plot_right = atof(value);
 				read_scale_params++;
 			} else if (!strcmp(name, "y_axis_min")) {
-				plot_bottom = atoi(value);
+				plot_bottom = atof(value);
 				read_scale_params++;
 			} else if (!strcmp(name, "y_axis_max")) {
-				plot_top = atoi(value);
+				plot_top = atof(value);
 				read_scale_params++;
 			} else if (!strcmp(name, "marker_type")) {
 				set_marker_labels((gchar *)value, MARKER_NULL);
@@ -2447,7 +2447,7 @@ void capture_profile_load(char *filename)
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 	add_grid();
 	if (read_scale_params == 4) {
-		gtk_databox_set_visible_limits(GTK_DATABOX(databox), plot_left, plot_right,
+		gtk_databox_set_total_limits(GTK_DATABOX(databox), plot_left, plot_right,
 			plot_top, plot_bottom);
 		read_scale_params = 0;
 	}
