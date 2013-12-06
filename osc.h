@@ -23,6 +23,12 @@ void trigger_dialog_init(GtkBuilder *builder);
 void trigger_update_current_device(void);
 void application_quit (void);
 
+void save_as(const char *filename, int type);
+#define SAVE_CSV 2
+#define SAVE_PNG 3
+#define SAVE_MAT 4
+#define SAVE_VSA 5
+
 void add_ch_setup_check_fct(char * device_name, void *fp);
 
 void * plugin_get_device_by_reference(const char *device_name);

@@ -375,12 +375,154 @@ G_MODULE_EXPORT void cb_show_about(GtkButton *button, Dialogs *data)
 	gtk_widget_hide(data->about);
 }
 
+G_MODULE_EXPORT void save_as(const char *filename, int type)
+{
+
+	FILE *fp;
+	unsigned int i, j;
+	double freq;
+	mat_t *mat;
+	matvar_t *matvar;
+	int dims[2];
+	char tmp[20];
+	GdkPixbuf *pixbuf;
+	GError *err=NULL;
+	GdkColormap *cmap;
+	gint width, height;
+	gboolean ret = true;
+	char *name;
+
+	name = malloc(strlen(filename) + 5);
+	switch(type) {
+		/* Response Codes encoded in glade file */
+		case GTK_RESPONSE_DELETE_EVENT:
+		case GTK_RESPONSE_CANCEL:
+			break;
+		case SAVE_VSA:
+			/* Save as Agilent VSA formatted file */
+			if (!strncasecmp(&filename[strlen(filename)-4], ".txt", 4))
+				strcpy(name, filename);
+			else
+				sprintf(name, "%s.txt", filename);
+
+			fp = fopen(name, "w");
+			if (!fp)
+				break;
+			fprintf(fp, "InputZoom\tTRUE\n");
+			fprintf(fp, "InputCenter\t0\n");
+			fprintf(fp, "InputRange\t1\n");
+			fprintf(fp, "InputRefImped\t50\n");
+			fprintf(fp, "XStart\t0\n");
+			if (!strcmp(adc_scale, "M"))
+				freq = adc_freq * 1000000;
+			else if (!strcmp(adc_scale, "k"))
+				freq = adc_freq * 1000;
+			else {
+				printf("error in writing\n");
+				break;
+			}
+
+			fprintf(fp, "XDelta\t%-.17f\n", 1.0/freq);
+			fprintf(fp, "XDomain\t2\n");
+			fprintf(fp, "XUnit\tSec\n");
+			fprintf(fp, "YUnit\tV\n");
+			fprintf(fp, "FreqValidMax\t%e\n", freq / 2);
+			fprintf(fp, "FreqValidMin\t-%e\n", freq / 2);
+			fprintf(fp, "Y\n");
+
+			for (j = 0; j < num_samples; j++) {
+				for (i = 0; i < num_active_channels ; i++) {
+					fprintf(fp, "%g", channel_data[i][j]);
+					if (i < (num_active_channels - 1))
+						fprintf(fp, "\t");
+				}
+				fprintf(fp, "\n");
+			}
+			fprintf(fp, "\n");
+			fclose(fp);
+
+			break;
+		case SAVE_MAT:
+			/* Matlab file
+			 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
+			 */
+			if (!strncasecmp(&filename[strlen(filename)-4], ".mat", 4))
+				strcpy(name, filename);
+			else
+				sprintf(name, "%s.mat", filename);
+
+			dims[1] = 1;
+			dims[0] = num_samples;
+
+			mat = Mat_Open(name, MAT_ACC_RDWR);
+			if(mat) {
+				for (i = 0; i < num_active_channels; i++) {
+					sprintf(tmp, "in_voltage%d", i);
+					matvar = Mat_VarCreate(tmp, MAT_C_SINGLE,
+						MAT_T_SINGLE , 2, dims, channel_data[i], 0);
+					if (!matvar)
+						printf("error creating matvar on channel %i\n", i);
+					else {
+						Mat_VarWrite(mat, matvar, 0);
+						Mat_VarFree(matvar);
+					}
+				}
+				Mat_Close(mat);
+			}
+			break;
+		case SAVE_CSV:
+			/* save comma seperated valus (csv) */
+			if (!strncasecmp(&filename[strlen(filename)-4], ".csv", 4))
+				strcpy(name, filename);
+			else
+				sprintf(name, "%s.csv", filename);
+
+			fp = fopen(name, "w");
+			if (!fp)
+				break;
+
+			for (j = 0; j < num_samples; j++) {
+				for (i = 0; i < num_active_channels ; i++) {
+					fprintf(fp, "%g", channel_data[i][j]);
+					if (i < (num_active_channels - 1))
+						fprintf(fp, ", ");
+				}
+				fprintf(fp, "\n");
+			}
+			fprintf(fp, "\n");
+			fclose(fp);
+			break;
+		case SAVE_PNG:
+			/* save_png */
+			if (!strncasecmp(&filename[strlen(filename)-4], ".png", 4))
+				strcpy(name, filename);
+			else
+				sprintf(name, "%s.png", filename);
+
+			cmap = gdk_window_get_colormap(
+					GDK_DRAWABLE(gtk_widget_get_window(capture_graph)));
+			gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
+					&width, &height);
+			pixbuf = gdk_pixbuf_get_from_drawable(NULL,
+					GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
+					cmap, 0, 0, 0, 0, width, height);
+
+			if (pixbuf)
+				ret = gdk_pixbuf_save(pixbuf, name, "png", &err, NULL);
+			if (!pixbuf || !ret)
+				printf("error creating %s\n", name);
+			break;
+		default:
+			printf("ret : %i\n", ret);
+	}
+	free(name);
+}
+
 G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 {
 	/* Save as Dialog */
 	gint ret;
 	static char *filename = NULL;
-	char *name;
 
 	if (!channel_data || !num_active_channels)
 		return;
@@ -402,156 +544,7 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 
 	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (data->saveas));
 	if (filename) {
-		name = malloc(strlen(filename) + 5);
-		switch(ret) {
-			/* Response Codes encoded in glade file */
-			case GTK_RESPONSE_DELETE_EVENT:
-			case GTK_RESPONSE_CANCEL:
-				break;
-			case 5:
-				/* Save as Agilent VSA formatted file */
-				if (!strncasecmp(&filename[strlen(filename)-4], ".txt", 4))
-					strcpy(name, filename);
-				else
-					sprintf(name, "%s.txt", filename);
-
-				{
-					FILE *fp;
-					unsigned int i, j;
-					double freq;
-
-					fp = fopen(name, "w");
-					if (!fp)
-						break;
-					fprintf(fp, "InputZoom\tTRUE\n");
-					fprintf(fp, "InputCenter\t0\n");
-					fprintf(fp, "InputRange\t1\n");
-					fprintf(fp, "InputRefImped\t50\n");
-					fprintf(fp, "XStart\t0\n");
-					if (!strcmp(adc_scale, "M"))
-						freq = adc_freq * 1000000;
-					else if (!strcmp(adc_scale, "k"))
-						freq = adc_freq * 1000;
-					else {
-						printf("error in writing\n");
-						break;
-					}
-
-					fprintf(fp, "XDelta\t%-.17f\n", 1.0/freq);
-					fprintf(fp, "XDomain\t2\n");
-					fprintf(fp, "XUnit\tSec\n");
-					fprintf(fp, "YUnit\tV\n");
-					fprintf(fp, "FreqValidMax\t%e\n", freq / 2);
-					fprintf(fp, "FreqValidMin\t-%e\n", freq / 2);
-					fprintf(fp, "Y\n");
-
-					for (j = 0; j < num_samples; j++) {
-						for (i = 0; i < num_active_channels ; i++) {
-							fprintf(fp, "%g", channel_data[i][j]);
-							if (i < (num_active_channels - 1))
-								fprintf(fp, "\t");
-						}
-						fprintf(fp, "\n");
-					}
-					fprintf(fp, "\n");
-					fclose(fp);
-				}
-				break;
-
-			case 4:
-				/* Matlab file
-				 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
-				 */
-				if (!strncasecmp(&filename[strlen(filename)-4], ".mat", 4))
-					strcpy(name, filename);
-				else
-					sprintf(name, "%s.mat", filename);
-
-				{
-					mat_t *mat;
-					matvar_t *matvar;
-					int dims[2], i;
-					char tmp[20];
-
-					dims[1] = 1;
-					dims[0] = num_samples;
-
-					mat = Mat_Open(name, MAT_ACC_RDWR);
-					if(mat) {
-						for (i = 0; i < num_active_channels; i++) {
-							sprintf(tmp, "in_voltage%d", i);
-							matvar = Mat_VarCreate(tmp, MAT_C_SINGLE,
-								MAT_T_SINGLE , 2, dims, channel_data[i], 0);
-							if (!matvar)
-								printf("error creating matvar on channel %i\n", i);
-							else {
-								Mat_VarWrite(mat, matvar, 0);
-								Mat_VarFree(matvar);
-							}
-						}
-						Mat_Close(mat);
-					}
-				}
-				break;
-			case 2:
-				/* save comma seperated valus (csv) */
-				if (!strncasecmp(&filename[strlen(filename)-4], ".csv", 4))
-					strcpy(name, filename);
-				else
-					sprintf(name, "%s.csv", filename);
-
-				{
-					FILE *fp;
-					unsigned int i, j;
-
-					fp = fopen(name, "w");
-					if (!fp)
-						break;
-
-					for (j = 0; j < num_samples; j++) {
-						for (i = 0; i < num_active_channels ; i++) {
-							fprintf(fp, "%g", channel_data[i][j]);
-							if (i < (num_active_channels - 1))
-								fprintf(fp, ", ");
-						}
-						fprintf(fp, "\n");
-					}
-					fprintf(fp, "\n");
-					fclose(fp);
-				}
-				break;
-			case 3:
-				/* save_png */
-				if (!strncasecmp(&filename[strlen(filename)-4], ".png", 4))
-					strcpy(name, filename);
-				else
-					sprintf(name, "%s.png", filename);
-
-				{
-					GdkPixbuf *pixbuf;
-					GError *err=NULL;
-					GdkColormap *cmap;
-					gint width, height;
-					gboolean ret = true;
-
-					cmap = gdk_window_get_colormap(
-							GDK_DRAWABLE(gtk_widget_get_window(capture_graph)));
-					gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
-							&width, &height);
-					pixbuf = gdk_pixbuf_get_from_drawable(NULL,
-							GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
-							cmap, 0, 0, 0, 0, width, height);
-
-					if (pixbuf)
-						ret = gdk_pixbuf_save(pixbuf, name, "png", &err, NULL);
-					if (!pixbuf || !ret)
-						printf("error creating %s\n", name);
-				}
-				break;
-			default:
-				printf("ret : %i\n", ret);
-		}
-		free(name);
+		save_as(filename, ret);
 	}
 	gtk_widget_hide(data->saveas);
 }
