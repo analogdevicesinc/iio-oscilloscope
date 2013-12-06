@@ -26,7 +26,8 @@ PLUGINS=\
 	plugins/AD5628_1.so \
 	plugins/AD7303.so \
 	plugins/motor_control.so \
-	plugins/dmm.so
+	plugins/dmm.so \
+	plugins/scpi.so
 
 all: multiosc $(PLUGINS)
 
