@@ -56,7 +56,6 @@ static unsigned int num_channels;
 gfloat **channel_data;
 static unsigned int current_sample;
 static unsigned int bytes_per_sample;
-static int ini_capture_status;
 
 static GtkWidget *databox;
 static GtkWidget *time_interval_widget;
@@ -2238,7 +2237,6 @@ void capture_profile_save(char *filename)
 		return;
 
 	fprintf(inifp, "[%s]\n", CAPTURE_CONF);
-	fprintf(inifp, "capture_started=%d\n", (capture_function) ? 1 : 0);
 	crt_dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(device_list_widget));
 	fprintf(inifp, "device_name=%s\n", crt_dev_name);
 	g_free(crt_dev_name);
@@ -2304,6 +2302,8 @@ void capture_profile_save(char *filename)
 		if (markers[tmp_int].active)
 			fprintf(inifp, "marker.%i = %i\n", tmp_int, markers[tmp_int].bin);
 	}
+
+	fprintf(inifp, "capture_started = %d\n", (capture_function) ? 1 : 0);
 
 	g_slist_foreach(dplugin_list, plugin_state_ini_save, inifp);
 
@@ -2400,6 +2400,7 @@ static void plugin_restore_ini_state(char *plugin_name, gboolean detached)
 static gfloat plot_left, plot_right, plot_top, plot_bottom;
 static int read_scale_params;
 
+#define MATCH_NAME(s) (strcmp(name, s) == 0)
 static int profile_read_handler(void *user, const char * section, const char* name, const char *value)
 {
 	int elem_type;
@@ -2413,53 +2414,71 @@ static int profile_read_handler(void *user, const char * section, const char* na
 	elem_type = count_char_in_string('.', name);
 	switch (elem_type) {
 		case 0:
-			if (!strcmp(name, "capture_started")) {
-				ini_capture_status = atoi(value);
-			} else if (!strcmp(name, "device_name")) {
+			if (MATCH_NAME("capture_started")) {
+				check_valid_setup();
+				gtk_databox_graph_remove_all(GTK_DATABOX(databox));
+				add_grid();
+				if (read_scale_params == 4) {
+					gtk_databox_set_total_limits(GTK_DATABOX(databox),
+							plot_left, plot_right, plot_top, plot_bottom);
+					read_scale_params = 0;
+				}
+				gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label)), "", -1);
+				gtk_label_set_text(GTK_LABEL(hor_scale), "");
+				gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button), TRUE);
+			} else if (MATCH_NAME("device_name")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(device_list_widget), value);
 				if (ret == 0)
 					printf("found invalid device name in .ini file\n");
-			} else if (!strcmp(name, "domain")) {
+			} else if (MATCH_NAME("domain")) {
 				if (!strcmp(value, "time"))
 					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(time_radio), TRUE);
 				else if (!strcmp(value, "fft"))
 					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(fft_radio), TRUE);
 				else if (!strcmp(value, "constellation"))
 					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(constellation_radio), TRUE);
-			} else if (!strcmp(name, "sample_count")) {
+			} else if (MATCH_NAME("sample_count")) {
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(sample_count_widget), atoi(value));
-			} else if (!strcmp(name, "fft_size")) {
+			} else if (MATCH_NAME("fft_size")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(fft_size_widget), value);
 				if (ret == 0)
 					printf("found invalid fft size in .ini file\n");
-			} else if (!strcmp(name, "fft_avg")) {
+			} else if (MATCH_NAME("fft_avg")) {
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_avg_widget), atoi(value));
-			} else if (!strcmp(name, "fft_pwr_offset")) {
+			} else if (MATCH_NAME("fft_pwr_offset")) {
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(fft_pwr_offset_widget), atof(value));
-			} else if (!strcmp(name, "graph_type")) {
+			} else if (MATCH_NAME("graph_type")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(plot_type), value);
 				if (ret == 0)
 					printf("found invalid graph type in .ini file\n");
-			} else if (!strcmp(name, "show_grid")) {
+			} else if (MATCH_NAME("show_grid")) {
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_grid), atoi(value));
-			} else if (!strcmp(name, "enable_auto_scale")) {
+			} else if (MATCH_NAME("enable_auto_scale")) {
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_auto_scale), atoi(value));
-			} else if (!strcmp(name, "x_axis_min")) {
+			} else if (MATCH_NAME("x_axis_min")) {
 				plot_left = atof(value);
 				read_scale_params++;
-			} else if (!strcmp(name, "x_axis_max")) {
+			} else if (MATCH_NAME("x_axis_max")) {
 				plot_right = atof(value);
 				read_scale_params++;
-			} else if (!strcmp(name, "y_axis_min")) {
+			} else if (MATCH_NAME("y_axis_min")) {
 				plot_bottom = atof(value);
 				read_scale_params++;
-			} else if (!strcmp(name, "y_axis_max")) {
+			} else if (MATCH_NAME("y_axis_max")) {
 				plot_top = atof(value);
 				read_scale_params++;
-			} else if (!strcmp(name, "marker_type")) {
+			} else if (MATCH_NAME("marker_type")) {
 				set_marker_labels((gchar *)value, MARKER_NULL);
 				for (i = 0; i <= MAX_MARKERS; i++)
 					markers[i].active = FALSE;
+			} else if (MATCH_NAME("save_png")) {
+				save_as(value, SAVE_PNG);
+			} else if (MATCH_NAME("cycle")) {
+				i = 0;
+				while (gtk_events_pending() && i < atoi(value)) {
+					i++;
+					gtk_main_iteration();
+				}
 			} else {
 				printf("Unhandled token in ini file,\n"
 						"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
@@ -2516,19 +2535,21 @@ void capture_profile_load(char *filename)
 {
 	if (capture_function)
 		abort_sampling();
+
 	ini_parse(filename, profile_read_handler, NULL);
-	check_valid_setup();
-	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
-	add_grid();
-	if (read_scale_params == 4) {
-		gtk_databox_set_total_limits(GTK_DATABOX(databox), plot_left, plot_right,
-			plot_top, plot_bottom);
-		read_scale_params = 0;
+
+	if (!gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(capture_button))) {
+		check_valid_setup();
+		gtk_databox_graph_remove_all(GTK_DATABOX(databox));
+		add_grid();
+		if (read_scale_params == 4) {
+			gtk_databox_set_total_limits(GTK_DATABOX(databox), plot_left, plot_right,
+				plot_top, plot_bottom);
+			read_scale_params = 0;
+		}
+		gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label)), "", -1);
+		gtk_label_set_text(GTK_LABEL(hor_scale), "");
 	}
-	gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label)), "", -1);
-	gtk_label_set_text(GTK_LABEL(hor_scale), "");
-	if (ini_capture_status)
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button), TRUE);
 }
 
 #define DEFAULT_PROFILE_NAME ".osc_profile.ini"
