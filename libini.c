@@ -38,9 +38,25 @@ static int count_char_in_string(char c, const char *s)
 static int libini_restore_handler(void *user, const char* section,
 				 const char* name, const char* value)
 {
-	struct osc_plugin *plugin = user;
+	struct osc_plugin *plugin;
 	int elem_type;
 	gchar **elems = NULL;
+	GSList *node;
+
+	/* See if the section is from the main capture window */
+	if (MATCH_SECT(CAPTURE_CONF)) {
+		capture_profile_handler(name, value);
+		return 0;
+	}
+
+	/* needs to be a plugin */
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		plugin = node->data;
+		if (plugin && plugin->save_restore_attribs &&
+				MATCH_SECT(plugin->name)) {
+			break;
+		}
+	}
 
 	if (!MATCH_SECT(plugin->name))
 		return 0;
@@ -75,15 +91,7 @@ static int libini_restore_handler(void *user, const char* section,
 
 void restore_all_plugins(const char *filename, gpointer user_data)
 {
-	struct osc_plugin *plugin;
-	GSList *node;
-
-	for (node = plugin_list; node; node = g_slist_next(node))
-	{
-		plugin = node->data;
-		if (plugin && plugin->save_restore_attribs)
-			ini_parse(filename, libini_restore_handler, plugin);
-	}
+	ini_parse(filename, libini_restore_handler, NULL);
 }
 
 void save_all_plugins(const char *filename, gpointer user_data)
@@ -95,6 +103,8 @@ void save_all_plugins(const char *filename, gpointer user_data)
 	gchar **elems;
 	GSList *node;
 	FILE* cfile;
+
+	capture_profile_save(filename);
 
 	cfile = fopen(filename, "a");
 	if (cfile == NULL) {

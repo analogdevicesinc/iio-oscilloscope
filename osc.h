@@ -39,8 +39,9 @@ int plugin_data_capture_bytes_per_sample(void *device);
 void plugin_data_capture_demux(void *device, void *buf, gfloat **cooked, unsigned int num_samples,
 	unsigned int num_channels);
 
-void capture_profile_save(char *filename);
-void capture_profile_load(char *filename);
+void capture_profile_save(const char *filename);
+int capture_profile_handler(const char* name, const char *value);
+#define CAPTURE_CONF "Capture_Configuration"
 void save_all_plugins(const char *filename, gpointer user_data);
 void restore_all_plugins(const char *filename, gpointer user_data);
 

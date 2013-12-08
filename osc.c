@@ -2219,9 +2219,7 @@ static void plugin_state_ini_save(gpointer data, gpointer user_data)
 	fprintf(fp, "plugin.%s.detached=%d\n", p->plugin->name, p->detached_state);
 }
 
-#define CAPTURE_CONF "Capture_Configuration"
-
-void capture_profile_save(char *filename)
+void capture_profile_save(const char *filename)
 {
 	FILE *inifp;
 	gchar *crt_dev_name;
@@ -2374,7 +2372,7 @@ static gint plugin_names_cmp(gconstpointer a, gconstpointer b)
 {
 	struct detachable_plugin *p = (struct detachable_plugin *)a;
 	char *key = (char *)b;
-	
+
 	return strcmp(p->plugin->name, key);
 }
 
@@ -2383,14 +2381,14 @@ static void plugin_restore_ini_state(char *plugin_name, gboolean detached)
 	struct detachable_plugin *dplugin;
 	GSList *found_plugin = NULL;
 	GtkWidget *button;
-	
+
 	found_plugin = g_slist_find_custom(dplugin_list,
 		(gconstpointer)plugin_name, plugin_names_cmp);
 	if (found_plugin == NULL) {
-		printf("Invalid plugin: %s\n", plugin_name);
+		printf("Plugin: %s not currently loaded, skipping\n", plugin_name);
 		return;
 	}
-	
+
 	dplugin = found_plugin->data;
 	button = dplugin->detach_attach_button;
 	if ((dplugin->detached_state) ^ (detached))
@@ -2401,15 +2399,13 @@ static gfloat plot_left, plot_right, plot_top, plot_bottom;
 static int read_scale_params;
 
 #define MATCH_NAME(s) (strcmp(name, s) == 0)
-static int profile_read_handler(void *user, const char * section, const char* name, const char *value)
+int capture_profile_handler(const char* name, const char *value)
 {
 	int elem_type;
 	gchar **elems = NULL;
 	gchar *ch_name;
 	int ret, i;
-
-	if (strcmp(section, CAPTURE_CONF) != 0)
-		return 0;
+	FILE *fd;
 
 	elem_type = count_char_in_string('.', name);
 	switch (elem_type) {
@@ -2479,6 +2475,20 @@ static int profile_read_handler(void *user, const char * section, const char* na
 					i++;
 					gtk_main_iteration();
 				}
+			} else if (MATCH_NAME("save_markers")) {
+				fd = fopen(value, "a");
+				if (!fd)
+					return 0;
+
+				fprintf (fd, "%f", lo_freq);
+
+				for (i = 0; i <= MAX_MARKERS; i++) {
+					if (markers[i].active) {
+						fprintf(fd ,", %f, %f", markers[i].x, markers[i].y);
+					}
+				}
+				fprintf (fd, "\n");
+				fclose (fd);
 			} else {
 				printf("Unhandled token in ini file,\n"
 						"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
@@ -2529,27 +2539,6 @@ static int profile_read_handler(void *user, const char * section, const char* na
 		g_strfreev(elems);
 
 	return 0;
-}
-
-void capture_profile_load(char *filename)
-{
-	if (capture_function)
-		abort_sampling();
-
-	ini_parse(filename, profile_read_handler, NULL);
-
-	if (!gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(capture_button))) {
-		check_valid_setup();
-		gtk_databox_graph_remove_all(GTK_DATABOX(databox));
-		add_grid();
-		if (read_scale_params == 4) {
-			gtk_databox_set_total_limits(GTK_DATABOX(databox), plot_left, plot_right,
-				plot_top, plot_bottom);
-			read_scale_params = 0;
-		}
-		gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label)), "", -1);
-		gtk_label_set_text(GTK_LABEL(hor_scale), "");
-	}
 }
 
 #define DEFAULT_PROFILE_NAME ".osc_profile.ini"
@@ -2633,7 +2622,7 @@ static void load_default_profile (char * filename)
 		return;
 
 	printf("Loading profile : %s\n", buf);
-	capture_profile_load(buf);
+
 	restore_all_plugins(buf, NULL);
 }
 
