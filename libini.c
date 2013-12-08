@@ -91,7 +91,14 @@ static int libini_restore_handler(void *user, const char* section,
 
 void restore_all_plugins(const char *filename, gpointer user_data)
 {
+	GtkWidget *msg;
+
+	msg = create_nonblocking_popup(GTK_MESSAGE_INFO,
+			"Please wait",
+			"Loading ini file:\n%s", filename);
 	ini_parse(filename, libini_restore_handler, NULL);
+	if (msg)
+		gtk_widget_destroy(msg);
 }
 
 void save_all_plugins(const char *filename, gpointer user_data)

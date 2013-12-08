@@ -2621,8 +2621,6 @@ static void load_default_profile (char * filename)
 	if (!checkok && !check_inifile(buf))
 		return;
 
-	printf("Loading profile : %s\n", buf);
-
 	restore_all_plugins(buf, NULL);
 }
 
