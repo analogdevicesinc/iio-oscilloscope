@@ -35,6 +35,7 @@ static int count_char_in_string(char c, const char *s)
 	return i;
 }
 
+/*Handler should return nonzero on success, zero on error. */
 static int libini_restore_handler(void *user, const char* section,
 				 const char* name, const char* value)
 {
@@ -42,11 +43,11 @@ static int libini_restore_handler(void *user, const char* section,
 	int elem_type;
 	gchar **elems = NULL;
 	GSList *node;
+	int ret = 1;
 
 	/* See if the section is from the main capture window */
 	if (MATCH_SECT(CAPTURE_CONF)) {
-		capture_profile_handler(name, value);
-		return 0;
+		return capture_profile_handler(name, value);
 	}
 
 	/* needs to be a plugin */
@@ -66,7 +67,7 @@ static int libini_restore_handler(void *user, const char* section,
 		case 0:
 			if (!plugin->handle_item)
 				break;
-			plugin->handle_item(plugin, name, value);
+			ret = !plugin->handle_item(plugin, name, value);
 			break;
 		case 1:
 			elems = g_strsplit(name, ".", 0);
@@ -74,11 +75,10 @@ static int libini_restore_handler(void *user, const char* section,
 			if (set_dev_paths(elems[0])) {
 				if (!plugin->handle_item)
 					break;
-				plugin->handle_item(plugin, name, value);
+				ret = !plugin->handle_item(plugin, name, value);
 				break;
-			}
-
-			write_devattr(elems[1], value);
+			} else
+				ret = !write_devattr(elems[1], value);
 			break;
 		default:
 			break;
@@ -86,19 +86,22 @@ static int libini_restore_handler(void *user, const char* section,
 	if (elems != NULL)
 		g_strfreev(elems);
 
-	return 0;
+	return ret;
 }
 
-void restore_all_plugins(const char *filename, gpointer user_data)
+int restore_all_plugins(const char *filename, gpointer user_data)
 {
 	GtkWidget *msg;
+	int ret;
 
 	msg = create_nonblocking_popup(GTK_MESSAGE_INFO,
 			"Please wait",
 			"Loading ini file:\n%s", filename);
-	ini_parse(filename, libini_restore_handler, NULL);
+	ret = ini_parse(filename, libini_restore_handler, NULL);
 	if (msg)
 		gtk_widget_destroy(msg);
+
+	return ret;
 }
 
 void save_all_plugins(const char *filename, gpointer user_data)

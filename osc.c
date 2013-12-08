@@ -2399,6 +2399,8 @@ static gfloat plot_left, plot_right, plot_top, plot_bottom;
 static int read_scale_params;
 
 #define MATCH_NAME(s) (strcmp(name, s) == 0)
+
+/*Handler should return nonzero on success, zero on error. */
 int capture_profile_handler(const char* name, const char *value)
 {
 	int elem_type;
@@ -2489,11 +2491,10 @@ int capture_profile_handler(const char* name, const char *value)
 				}
 				fprintf (fd, "\n");
 				fclose (fd);
-			} else {
-				printf("Unhandled token in ini file,\n"
-						"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
-						CAPTURE_CONF, name, value);
-			}
+			} else if (MATCH_NAME("quit")) {
+				return 0;
+			} else
+				goto unhandled;
 			break;
 		case 1:
 			elems = g_strsplit(name, ".", 2);
@@ -2501,19 +2502,15 @@ int capture_profile_handler(const char* name, const char *value)
 			if (!strcmp(elems[1], "enabled")) {
 				ret = channel_soft_toggle(ch_name, atoi(value));
 				if (ret == 0)
-				printf("found invalid channel name in .ini fle\n");
+					goto unhandled;
 			} else if (!strcmp(elems[0], "marker")) {
 				i = atoi(elems[1]);
 				if (i >= 0 && i <= MAX_MARKERS) {
 					markers[i].bin = atoi(value);
 					markers[i].active = TRUE;
 				}
-			} else {
-				printf("Unhandled tokens in ini file,\n"
-					"\tSection %s\n\ttoken: %s : %s\n\tvalue: %s\n",
-					CAPTURE_CONF, elems[0], elems[1], value);
-			}
-
+			} else
+				goto unhandled;
 			break;
 		case 2:
 			elems = g_strsplit(name, ".", 3);
@@ -2525,20 +2522,21 @@ int capture_profile_handler(const char* name, const char *value)
 				goto unhandled;
 			}
 			break;
-			unhandled:
-			printf("Unhandled tokens in ini file,\n"
-					"\tSection %s\n\ttoken: %s : %s : %s\n\tvalue: %s\n",
-					CAPTURE_CONF, elems[0], elems[1], elems[2], value);
-			break;
 		default:
-			printf("found invalid property in ini file\n");
+unhandled:
+			printf("Unhandled tokens in ini file,\n"
+					"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
+					CAPTURE_CONF, name, value);
+			if (elems != NULL)
+				g_strfreev(elems);
+			return 0;
 			break;
 	}
 
 	if (elems != NULL)
 		g_strfreev(elems);
 
-	return 0;
+	return 1;
 }
 
 #define DEFAULT_PROFILE_NAME ".osc_profile.ini"
@@ -2564,7 +2562,8 @@ void application_quit (void)
 	free_setup_check_fct_list();
 	g_slist_free(dplugin_list);
 
-	gtk_main_quit();
+	if (gtk_main_level())
+		gtk_main_quit();
 }
 
 void sigterm (int signum)
@@ -2602,26 +2601,48 @@ static bool check_inifile (char *filepath)
 	return TRUE;
 }
 
-static void load_default_profile (char * filename)
+static int load_default_profile (char * filename)
 {
 	const char *home_dir = getenv("HOME");
-	char buf[1024];
-	int checkok = 0;
+	char buf[1024], tmp[1024];
+	int ret, linecount;
+	FILE *fd;
+
+	if (filename) {
+		strncpy(buf, filename, 1023);
+		if (!check_inifile(buf))
+			filename = NULL;
+	}
 
 	if (!filename) {
 		sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
-	} else {
-		strcpy (buf, filename);
+		/* if this is bad, we don't load anything and
+		 * return sucess, so we still run */
 		if (!check_inifile(buf))
-			sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
-		else
-			checkok = 1;
+			return 0;
 	}
 
-	if (!checkok && !check_inifile(buf))
-		return;
 
-	restore_all_plugins(buf, NULL);
+	ret = restore_all_plugins(buf, NULL);
+
+	if (ret > 0) {
+		fd = fopen(buf, "r");
+		if (!fd)
+			return 0;
+
+		linecount = 0;
+		while (NULL != fgets(tmp, 1023, fd)) {
+			linecount++;
+			if (linecount == ret) {
+				tmp[strlen(tmp) - 1] = 0;
+				printf("Error parsing profile '%s'\n\tline %i : '%s'\n",
+						buf, ret, tmp);
+				break;
+			}
+		}
+	}
+
+	return ret;
 }
 
 static void init_application (void)
@@ -2858,9 +2879,16 @@ gint main(gint argc, char *argv[])
 
 	gdk_threads_enter();
 	init_application();
-	load_default_profile(profile);
-	gtk_main();
+	c = load_default_profile(profile);
+	if (c == 0)
+		gtk_main();
+	else
+		application_quit();
+
 	gdk_threads_leave();
 
-	return 0;
+	if (c == 0)
+		return 0;
+	else
+		return -1;
 }
