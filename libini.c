@@ -38,7 +38,7 @@ static int count_char_in_string(char c, const char *s)
 static int libini_restore_handler(void *user, const char* section,
 				 const char* name, const char* value)
 {
-	struct osc_plugin *plugin;
+	struct osc_plugin *plugin = NULL;
 	int elem_type;
 	gchar **elems = NULL;
 	GSList *node;
@@ -58,7 +58,7 @@ static int libini_restore_handler(void *user, const char* section,
 		}
 	}
 
-	if (!MATCH_SECT(plugin->name))
+	if (!plugin || !MATCH_SECT(plugin->name))
 		return 0;
 
 	elem_type = count_char_in_string('.', name);
