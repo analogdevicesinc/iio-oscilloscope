@@ -610,6 +610,61 @@ G_MODULE_EXPORT void cb_quit(GtkButton *button, Dialogs *data)
 	application_quit();
 }
 
+GtkWidget * create_nonblocking_popup(GtkMessageType type,
+		const char *title, const char *str, ...)
+{
+	GtkWidget *dialog;
+	va_list args;
+	char buf[1024];
+	int len;
+
+	va_start(args, str);
+	len = vsnprintf(buf, 1024, str, args);
+	va_end(args);
+
+	if (len < 0)
+		return NULL;
+
+	dialog = gtk_message_dialog_new(NULL,
+			GTK_DIALOG_MODAL,
+			type,
+			GTK_BUTTONS_NONE,
+			buf, NULL);
+	gtk_window_set_title(GTK_WINDOW(dialog), title);
+	gtk_widget_show (dialog);
+
+	return dialog;
+}
+
+gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
+		const char *title, const char *str, ...)
+{
+	GtkWidget *dialog;
+	va_list args;
+	char buf[1024];
+	int len;
+	gint run;
+
+	va_start(args, str);
+	len = vsnprintf(buf, 1024, str, args);
+	va_end(args);
+
+	if (len < 0)
+		return -1;
+
+	dialog = gtk_message_dialog_new(NULL,
+			GTK_DIALOG_MODAL,
+			type,
+			button,
+			buf, NULL);
+	gtk_window_set_title(GTK_WINDOW(dialog), title);
+	run = gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
+
+	return run;
+}
+
+
 void dialogs_init(GtkBuilder *builder)
 {
 	GtkWidget *tmp, *tmp2;
