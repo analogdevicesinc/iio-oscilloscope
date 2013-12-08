@@ -1390,6 +1390,8 @@ static int fmcomms2_init(GtkWidget *notebook)
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
 {
+	char *buf;
+
 	if (MATCH_ATTRIB(SYNC_RELOAD)) {
 		if (value)
 			reload_button_clicked(NULL, 0);
@@ -1401,6 +1403,14 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 				load_fir_filter(value);
 		} else {
 			return last_fir_filter;
+		}
+	} else if (MATCH_ATTRIB("dds_mode")) {
+		if (value) {
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), atoi(value));
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
+			return buf;
 		}
 	}
 
@@ -1430,6 +1440,7 @@ static const char *fmcomms2_sr_attribs[] = {
 	"ad9361-phy.in_voltage_filter_fir_en",
 	"ad9361-phy.out_voltage_filter_fir_en",
 	"ad9361-phy.in_out_voltage_filter_fir_en",
+	"dds_mode",
 	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_frequency",
 	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_phase",
 	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_raw",
