@@ -2671,8 +2671,11 @@ static int load_default_profile (char * filename)
 			linecount++;
 			if (linecount == ret) {
 				tmp[strlen(tmp) - 1] = 0;
-				printf("Error parsing profile '%s'\n\tline %i : '%s'\n",
-						buf, ret, tmp);
+				if (strcmp(tmp, "quit = 1")) {
+					printf("Error parsing profile '%s'\n\tline %i : '%s'\n",
+							buf, ret, tmp);
+				} else
+					ret = -ENOTTY;
 				break;
 			}
 		}
@@ -2926,7 +2929,7 @@ gint main(gint argc, char *argv[])
 
 	gdk_threads_leave();
 
-	if (c == 0)
+	if (c == 0 || c == -ENOTTY)
 		return 0;
 	else
 		return -1;
