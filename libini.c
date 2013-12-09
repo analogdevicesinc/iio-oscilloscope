@@ -105,12 +105,16 @@ static int libini_restore_handler(void *user, const char* section,
 						max_i = atoi(min_max[1]);
 						if (val_i >= min_i && val_i <= max_i)
 							ret = 1;
+						else
+							printf("value = %i\n", val_i);
 					} else if (!strcmp(elems[3], "double")) {
 						read_devattr_double(elems[2], &val_d);
 						min_d = atof(min_max[0]);
 						max_d = atof(min_max[1]);
 						if (val_d >= min_d && val_d <= max_d)
 							ret = 1;
+						else
+							printf("value = %f\n", val_d);
 					} else {
 						ret = -1;
 					}
