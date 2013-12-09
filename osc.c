@@ -2404,9 +2404,10 @@ static int read_scale_params;
 int capture_profile_handler(const char* name, const char *value)
 {
 	int elem_type;
-	gchar **elems = NULL;
+	gchar **elems = NULL, **min_max = NULL;
+	gfloat max_f, min_f;
 	gchar *ch_name;
-	int ret, i;
+	int ret = 1, i;
 	FILE *fd;
 
 	elem_type = count_char_in_string('.', name);
@@ -2509,6 +2510,12 @@ int capture_profile_handler(const char* name, const char *value)
 					markers[i].bin = atoi(value);
 					markers[i].active = TRUE;
 				}
+			} else if (!strcmp(elems[0], "test")) {
+				if (!strcmp(elems[1], "message")) {
+					create_blocking_popup(GTK_MESSAGE_QUESTION, GTK_BUTTONS_CLOSE,
+							"Profile status", value);
+				} else
+					goto unhandled;
 			} else
 				goto unhandled;
 			break;
@@ -2518,6 +2525,25 @@ int capture_profile_handler(const char* name, const char *value)
 				if (!strcmp(elems[2], "detached"))
 					plugin_restore_ini_state(elems[1], atoi(value));
 				else goto unhandled;
+			} else if (!strcmp(elems[0], "test")) {
+				if (!strcmp(elems[1], "marker")) {
+					min_max = g_strsplit(value, " ", 0);
+					min_f = atof(min_max[0]);
+					max_f = atof(min_max[1]);
+					i = atoi(elems[2]);
+					if (markers[i].active &&
+							markers[i].y >= min_f &&
+							markers[i].y <= max_f) {
+						ret = 1;
+					} else {
+						ret = 0;
+						printf("%smarker %i failed : level %f\n",
+								markers[i].active ? "" : "In",
+								i, markers[i].y);
+					}
+					g_strfreev(min_max);
+				} else
+					goto unhandled;
 			} else {
 				goto unhandled;
 			}
@@ -2527,16 +2553,14 @@ unhandled:
 			printf("Unhandled tokens in ini file,\n"
 					"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
 					CAPTURE_CONF, name, value);
-			if (elems != NULL)
-				g_strfreev(elems);
-			return 0;
+			ret = 0;
 			break;
 	}
 
 	if (elems != NULL)
 		g_strfreev(elems);
 
-	return 1;
+	return ret;
 }
 
 #define DEFAULT_PROFILE_NAME ".osc_profile.ini"
