@@ -2424,7 +2424,7 @@ int capture_profile_handler(const char* name, const char *value)
 				}
 				gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label)), "", -1);
 				gtk_label_set_text(GTK_LABEL(hor_scale), "");
-				gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button), TRUE);
+				gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button), atoi(value));
 			} else if (MATCH_NAME("device_name")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(device_list_widget), value);
 				if (ret == 0)
