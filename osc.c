@@ -2672,7 +2672,9 @@ static int load_default_profile (char * filename)
 			if (linecount == ret) {
 				tmp[strlen(tmp) - 1] = 0;
 				if (strcmp(tmp, "quit = 1")) {
-					printf("Error parsing profile '%s'\n\tline %i : '%s'\n",
+					create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+							"INI parsing / test failure",
+							"Error parsing file '%s'\n\tline %i : '%s'\n",
 							buf, ret, tmp);
 				} else
 					ret = -ENOTTY;
