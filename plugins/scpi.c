@@ -690,8 +690,11 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 			tx_output_set(&signal_generator, atoi(value));
 		/* Don't save the on/off state */
 	} else {
-		printf("%s:%s: Unhandled token (%s) in ini file\n",
-			__FILE__, __func__, attrib);
+		printf("Unhandled tokens in ini file,\n"
+				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
+				"SCPI", attrib, value);
+		if (value)
+			return "FAIL";
 	}
 
 	return buf;
