@@ -2605,7 +2605,7 @@ static int load_default_profile (char * filename)
 {
 	const char *home_dir = getenv("HOME");
 	char buf[1024], tmp[1024];
-	int ret, linecount;
+	int ret, linecount, flag = 0;
 	FILE *fd;
 
 	if (filename) {
@@ -2620,6 +2620,7 @@ static int load_default_profile (char * filename)
 		 * return sucess, so we still run */
 		if (!check_inifile(buf))
 			return 0;
+		flag = 1;
 	}
 
 
@@ -2641,6 +2642,9 @@ static int load_default_profile (char * filename)
 			}
 		}
 	}
+
+	if (flag)
+		return 0;
 
 	return ret;
 }
