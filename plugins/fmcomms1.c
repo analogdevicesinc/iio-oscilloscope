@@ -1619,10 +1619,10 @@ static int fmcomms1_init(GtkWidget *notebook)
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_phase",
 			dds3_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage1_2A_phase",
+			"cf-ad9122-core-lpc", "out_altvoltage2_2A_phase",
 			dds4_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage2_1B_phase",
+			"cf-ad9122-core-lpc", "out_altvoltage1_1B_phase",
 			dds1_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage3_2B_phase",
