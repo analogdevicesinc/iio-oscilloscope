@@ -307,7 +307,8 @@ static int tty_connect(struct scpi_instrument *scpi)
 
 	scpi->ttyfd = open(scpi->tty_path, O_RDWR | O_NOCTTY);
 	if (scpi->ttyfd < 0) {
-		print_output_sys(stderr, "%s: Can't open serial port: %s %s (%d)\n", __func__, scpi->tty_path, strerror(errno), errno);
+		print_output_sys(stderr, "%s: Can't open serial port: %s %s (%d)\n",
+				__func__, scpi->tty_path, strerror(errno), errno);
 
 		return -1;
 	}
@@ -497,13 +498,17 @@ void rx_trigger_sweep(struct scpi_instrument *scpi)
 	scpi_fprintf(scpi, "INIT:IMM;*WAI\n");
 }
 
-void rx_set_frequency(struct scpi_instrument *scpi, unsigned long long fcent_hz, unsigned long long fspan_hz)
+void rx_set_center_frequency(struct scpi_instrument *scpi, unsigned long long fcent_hz)
 {
-	scpi_fprintf(scpi, ":FREQ:CENT %llu;*WAI\n", fcent_hz);
+        scpi_fprintf(scpi, ":FREQ:CENT %llu;*WAI\n", fcent_hz);
+}
+
+void rx_set_span_frequency(struct scpi_instrument *scpi, unsigned long long fspan_hz)
+{
 	scpi_fprintf(scpi, ":FREQ:SPAN %llu;*WAI\n", fspan_hz);
 }
 
-void rx_set_bandwith(struct scpi_instrument *scpi, unsigned res_bw_khz, unsigned vid_bw_khz)
+static void rx_set_bandwith(struct scpi_instrument *scpi, unsigned res_bw_khz, unsigned vid_bw_khz)
 {
 	scpi_fprintf(scpi, ":BAND %dkHz;*WAI\n", res_bw_khz);
 	if (!vid_bw_khz)
@@ -519,12 +524,12 @@ void rx_set_bandwith_auto(struct scpi_instrument *scpi, double ratio)
 
 }
 
-void rx_setup(struct scpi_instrument *scpi, unsigned long long fcent_hz, unsigned long long fspan_hz)
+void rx_setup(struct scpi_instrument *scpi)
 {
 	scpi_fprintf(scpi, ":DISP:TRACE:Y:RLEVEL %d DBM\n", 10);
 	scpi_fprintf(scpi, ":AVER OFF\n");
 	scpi_fprintf(scpi, ":DISPLAY:MARK: AOFF\n");
-	rx_set_frequency(scpi, fcent_hz, fspan_hz);
+//	rx_set_frequency(scpi, fcent_hz, fspan_hz);
 	rx_set_bandwith(scpi, 200, 10);
 
 	scpi_fprintf(scpi, ":INIT:CONT OFF\n");
@@ -689,6 +694,18 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 		if (value)
 			tx_output_set(&signal_generator, atoi(value));
 		/* Don't save the on/off state */
+	} else if (MATCH_ATTRIB("rx.setup")) {
+		if (value)
+			rx_setup(&spectrum_analyzer);
+	} else if (MATCH_ATTRIB("rx.center")) {
+		if (value)
+			rx_set_center_frequency(&spectrum_analyzer, atoll(value));
+	} else if (MATCH_ATTRIB("rx.span")) {
+		if (value)
+			rx_set_span_frequency(&spectrum_analyzer, atoll(value));
+	} else if (!strncmp(attrib, "rx.marker", strlen("rx.marker"))) {
+		if (value)
+			rx_set_marker_freq(&spectrum_analyzer, atoi(&attrib[strlen("rx.marker") + 1]), atoll(value));
 	} else {
 		printf("Unhandled tokens in ini file,\n"
 				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
@@ -708,6 +725,10 @@ static const char *scpi_sr_attribs[] = {
 	"rx." TTY_TOK,
 	"rx." GPIB_TOK,
 	"rx." CON_TOK,
+	"rx.setup",
+	"rx.center",
+	"rx.span",
+	"rx.marker",
 	"tx." SERIAL_TOK,
 	"tx." NET_TOK,
 	"tx." REGEX_TOK,
@@ -878,28 +899,31 @@ void init_scpi_device(struct scpi_instrument *device)
 
 void connect_clicked_cb(void)
 {
-	int ret;
+	int ret = -1;
 
 	if(current_instrument->network && current_instrument->ip_address) {
 		if (!current_instrument->main_port)
 			current_instrument->main_port = DEFAULT_SCPI_IP_PORT;
-		printf("connecting to network %s:%i\n", current_instrument->ip_address, current_instrument->main_port);
+
 		ret = network_connect(current_instrument);
 
-		if (ret == 0) {
-			scpi_fprintf(current_instrument, "*IDN?\n");
-			if (strlen(current_instrument->response))
-				gtk_label_set_text(GTK_LABEL(scpi_id), current_instrument->response);
-
-			if (current_instrument->id_regex)
-				gtk_entry_set_text(GTK_ENTRY(scpi_regex), current_instrument->id_regex);
-
-			gtk_widget_show(scpi_output);
-		}
 	}
 
-	if(current_instrument->serial && current_instrument->tty_path)
-		printf("connecting tty to %s\n", current_instrument->tty_path);
+	if(current_instrument->serial && current_instrument->tty_path) {
+		ret = tty_connect(current_instrument);
+	}
+
+	if (ret == 0) {
+		scpi_fprintf(current_instrument, "*IDN?\n");
+		if (strlen(current_instrument->response))
+			gtk_label_set_text(GTK_LABEL(scpi_id), current_instrument->response);
+
+		if (current_instrument->id_regex)
+			gtk_entry_set_text(GTK_ENTRY(scpi_regex), current_instrument->id_regex);
+
+		gtk_widget_show(scpi_output);
+	}
+
 }
 
 void scpi_radio_cb (GtkRadioButton *button, int data)
@@ -943,7 +967,9 @@ void scpi_cmd_cb (GtkButton *button, GtkEntry *box)
 	if (!buf || !strlen(buf))
 		return;
 
-	printf("write %s\n", buf);
+	scpi_fprintf(current_instrument, "%s\n", buf);
+	if (current_instrument->response)
+		printf("send '%s', received '%s'\n", buf, current_instrument->response);
 }
 
 /*
