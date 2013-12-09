@@ -1755,6 +1755,12 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 		} else {
 			return "1";
 		}
+	} else {
+		printf("Unhandled tokens in ini file,\n"
+				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
+				"FMComms1", attrib, value);
+		if (value)
+			return "FAIL";
 	}
 
 	return NULL;

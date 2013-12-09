@@ -1412,6 +1412,12 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
 			return buf;
 		}
+	} else {
+		printf("Unhandled tokens in ini file,\n"
+				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
+				"FMComms2", attrib, value);
+		if (value)
+			return "FAIL";
 	}
 
 	return NULL;
