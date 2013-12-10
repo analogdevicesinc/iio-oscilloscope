@@ -675,6 +675,7 @@ static void attach_plugin(GtkToolButton *btn, gpointer data)
 	gtk_widget_destroy(window);
 	plugin_page_index = gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
 		plugin_page, NULL);
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), plugin_page_index);
 	plugin_tab_add_detach_btn(plugin_page, plugin);
 	
 	if (plugin->update_active_page)
@@ -754,7 +755,9 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	if (plugin->update_active_page)
 		plugin->update_active_page(-1, TRUE);
 	
-	gtk_widget_show_all(window);
+	gtk_widget_show(window);
+	gtk_widget_show(hbox);
+	gtk_widget_show_all(vbox);
 }
 
 /*
