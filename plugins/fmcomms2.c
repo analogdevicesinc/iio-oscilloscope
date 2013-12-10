@@ -98,6 +98,7 @@ static gulong dds1_phase_hid = 0, dds2_phase_hid = 0, dds5_phase_hid = 0, dds6_p
 
 static gint this_page;
 static GtkNotebook *nbook;
+static gboolean plugin_detached;
 
 static char last_fir_filter[PATH_MAX];
 
@@ -221,7 +222,7 @@ static void update_display (void *ptr)
 
 	/* This thread never exists, and just updates the control frame */
 	while (1) {
-		if (this_page == gtk_notebook_get_current_page(nbook)) {
+		if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
 			gdk_threads_enter();
 			rssi_update_labels();
 			gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes_rx1));
@@ -1465,6 +1466,12 @@ static const char *fmcomms2_sr_attribs[] = {
 	NULL,
 };
 
+static void update_active_page(gint active_page, gboolean is_detached)
+{
+	this_page = active_page;
+	plugin_detached = is_detached;
+}
+
 static bool fmcomms2_identify(void)
 {
 	return !set_dev_paths("ad9361-phy");
@@ -1476,4 +1483,5 @@ const struct osc_plugin plugin = {
 	.init = fmcomms2_init,
 	.save_restore_attribs = fmcomms2_sr_attribs,
 	.handle_item = handle_item,
+	.update_active_page = update_active_page,
 };

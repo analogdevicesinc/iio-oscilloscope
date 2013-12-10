@@ -32,6 +32,7 @@
 
 static gint this_page;
 static GtkNotebook *nbook;
+static gboolean plugin_detached;
 
 enum fmcomms2adv_wtype {
 	CHECKBOX,
@@ -240,6 +241,12 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 	return 0;
 }
 
+static void update_active_page(gint active_page, gboolean is_detached)
+{
+	this_page = active_page;
+	plugin_detached = is_detached;
+}
+
 static bool fmcomms2adv_identify(void)
 {
 	bool ret = !set_debugfs_paths("ad9361-phy");
@@ -251,4 +258,5 @@ const struct osc_plugin plugin = {
 	.name = "FMComms2 Advanced",
 	.identify = fmcomms2adv_identify,
 	.init = fmcomms2adv_init,
+	.update_active_page = update_active_page,
 };
