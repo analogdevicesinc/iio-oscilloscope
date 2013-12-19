@@ -115,6 +115,9 @@ struct detachable_plugin {
 	GtkWidget *detach_attach_button;
 };
 
+#define FORCE_UPDATE TRUE
+#define NORMAL_UPDATE FALSE
+
 static GSList *dplugin_list = NULL;
 
 static GtkListStore *channel_list_store;
@@ -906,7 +909,7 @@ static gboolean fft_capture_func(GtkDatabox *box)
 	return TRUE;
 }
 
-static void fft_update_scale(void)
+static void fft_update_scale(bool force_update)
 {
 	double corr;
 	int i;
@@ -923,7 +926,7 @@ static void fft_update_scale(void)
 		fft_channel[i] = FLT_MAX;
 	}
 
-	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_auto_scale)))
+	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_auto_scale)) && force_update == FALSE)
 		return;
 	gtk_databox_set_total_limits(GTK_DATABOX(databox), -5.0 - corr, adc_freq / 2.0 + 5.0, 0.0, -75.0);
 	do_a_rescale_flag = 1;
@@ -1218,7 +1221,7 @@ static int fft_capture_setup(void)
 	X = g_renew(gfloat, X, num_samples_ploted);
 	fft_channel = g_renew(gfloat, fft_channel, num_samples_ploted);
 
-	fft_update_scale();
+	fft_update_scale(FORCE_UPDATE);
 
 	is_fft_mode = true;
 
@@ -1526,9 +1529,9 @@ static int time_capture_setup(void)
 	}
 
 	if (is_constellation)
-		gtk_databox_set_total_limits(GTK_DATABOX(databox), -8500.0, 8500.0, 8500.0, -8500.0);
+		gtk_databox_set_total_limits(GTK_DATABOX(databox), -1000.0, 1000.0, 1000.0, -1000.0);
 	else
-		gtk_databox_set_total_limits(GTK_DATABOX(databox), 0.0, num_samples, 8500.0, -8500.0);
+		gtk_databox_set_total_limits(GTK_DATABOX(databox), 0.0, num_samples, 1000.0, -1000.0);
 
 	return 0;
 }
@@ -1712,7 +1715,7 @@ void rx_update_labels(void)
 		 * In FFT mode we need to scale the X-axis according to the selected
 		 * sampling frequency.
 		 */
-		fft_update_scale();
+		fft_update_scale(NORMAL_UPDATE);
 	}
 }
 
@@ -2658,8 +2661,10 @@ static int load_default_profile (char * filename)
 		flag = 1;
 	}
 
-
 	ret = restore_all_plugins(buf, NULL);
+
+	if (flag)
+		return 0;
 
 	if (ret > 0) {
 		fd = fopen(buf, "r");
@@ -2672,7 +2677,9 @@ static int load_default_profile (char * filename)
 			if (linecount == ret) {
 				tmp[strlen(tmp) - 1] = 0;
 				if (strcmp(tmp, "quit = 1")) {
-					printf("Error parsing profile '%s'\n\tline %i : '%s'\n",
+					create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+							"INI parsing / test failure",
+							"Error parsing file '%s'\n\tline %i : '%s'\n",
 							buf, ret, tmp);
 				} else
 					ret = -ENOTTY;
@@ -2680,9 +2687,6 @@ static int load_default_profile (char * filename)
 			}
 		}
 	}
-
-	if (flag)
-		return 0;
 
 	return ret;
 }

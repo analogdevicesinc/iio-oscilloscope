@@ -1590,10 +1590,10 @@ static int fmcomms1_init(GtkWidget *notebook)
 			dds3_freq, &mhz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage2_2A_frequency",
-			dds4_freq, &mhz_scale);
+			dds1_freq, &mhz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage1_1B_frequency",
-			dds1_freq, &mhz_scale);
+			dds4_freq, &mhz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage3_2B_frequency",
 			dds2_freq, &mhz_scale);
@@ -1605,11 +1605,11 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage2_2A_scale",
 			"out_altvoltage_2A_scale_available",
-			dds4_scale, compare_gain);
+			dds1_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage1_1B_scale",
 			"out_altvoltage_1B_scale_available",
-			dds1_scale, compare_gain);
+			dds4_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage3_2B_scale",
 			"out_altvoltage_2B_scale_available",
@@ -1620,10 +1620,10 @@ static int fmcomms1_init(GtkWidget *notebook)
 			dds3_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage2_2A_phase",
-			dds4_phase, &khz_scale);
+			dds1_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage1_1B_phase",
-			dds1_phase, &khz_scale);
+			dds4_phase, &khz_scale);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage3_2B_phase",
 			dds2_phase, &khz_scale);
