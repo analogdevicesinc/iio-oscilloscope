@@ -94,8 +94,6 @@ static GtkWidget *ad9122_temp;
 static int kill_thread;
 static int fmcomms1_cal_eeprom(void);
 
-static void *device_ref;
-
 static int oneover(const gchar *num)
 {
 	float close;
@@ -583,15 +581,21 @@ static void dac_temp_update()
 
 static void display_cal(void *ptr)
 {
-	int size, channels, num_samples, i, j;
+	int size, channels, num_samples, i;
 	int8_t *buf = NULL;
-	static gfloat **cooked_data = NULL;
+	gfloat **cooked_data = NULL;
 	gfloat *channel_I, *channel_Q;
 	gfloat max_x, min_x, avg_x;
 	gfloat max_y, min_y, avg_y;
 	gfloat max_r, min_r, max_theta, min_theta, rad;
 	char cbuf[256];
 	bool show = false;
+	const char *device_ref;
+	int ret;
+
+	device_ref = plugin_get_device_by_reference("cf-ad9643-core-lpc");
+	if (!device_ref)
+		return;
 
 	while (!kill_thread) {
 		while (!kill_thread && !capture_function) {
@@ -605,7 +609,11 @@ static void display_cal(void *ptr)
 		} else {
 			size = plugin_data_capture_size(device_ref);
 			channels = plugin_data_capture_num_active_channels(device_ref);
-			num_samples = size / plugin_data_capture_bytes_per_sample(device_ref);
+			i = plugin_data_capture_bytes_per_sample(device_ref);
+			if (i)
+				num_samples = size / i;
+			else
+				num_samples = 0;
 		}
 
 		if (size != 0 && channels == 2) {
@@ -616,49 +624,17 @@ static void display_cal(void *ptr)
 				gtk_widget_hide(cal_rx);
 			gdk_threads_leave();
 
-			if (buf)
-				buf = g_renew(int8_t, buf, size);
-			else
-				buf = g_new(int8_t, size);
-
-			if (cooked_data)
-				cooked_data = g_renew(gfloat *, cooked_data, channels);
-			else
-				cooked_data = g_new(gfloat *, channels);
-
-			for (i = 0; i < channels; i++) {
-				cooked_data[i] = g_new(gfloat, num_samples);
-				for (j = 0; j < num_samples; j++)
-					cooked_data[i][j] = 0.0f;
-			}
-
-			if (!buf || !cooked_data) {
-				printf("%s : malloc failed\n", __func__);
-				kill_thread = 1;
-				continue;
-			}
-
 			/* tell the other thread where to put the data */
-			while (!plugin_data_capture(device_ref, buf) && !kill_thread) {
-				/* Wait 100ms */
-				usleep(100000);
-				dac_temp_update();
-			}
+			do {
+				ret = plugin_data_capture(device_ref, (void **)&buf, &cooked_data);
+			} while ((ret == -EBUSY) && !kill_thread);
 
-			/* Wait til the buffer is full */
-			G_LOCK(buffer_full);
-
-			/* If the lock is broken, then wait nicely */
-			if (kill_thread) {
-				while(!plugin_data_capture(device_ref, NULL)){
-					usleep(100000);
-					dac_temp_update();
-				}
+			/* If the lock is broken, then die nicely */
+			if (kill_thread || ret != 0) {
+				size = 0;
+				kill_thread = 1;
 				break;
 			}
-
-			/* Process the data in the buffer */
-			plugin_data_capture_demux(device_ref, buf, cooked_data, size/4, channels);
 
 			channel_I = cooked_data[0];
 			channel_Q = cooked_data[1];
@@ -727,9 +703,6 @@ static void display_cal(void *ptr)
 			sprintf(cbuf, "max: %0.3f | min: %0.3f", max_theta * 180 / M_PI, min_theta * 180 / M_PI);
 			gtk_label_set_text(GTK_LABEL(angle_IQ), cbuf);
 
-			for (i = 0; i < channels; i++)
-				g_free(cooked_data[i]);
-
 			if (cal_rx_flag) {
 				float span_I, span_Q;
 
@@ -755,8 +728,15 @@ static void display_cal(void *ptr)
 			gdk_threads_leave ();
 		}
 	}
-	g_free(buf);
-	g_free(cooked_data);
+
+	/* free the buffers */
+	plugin_data_capture(NULL, (void **)&buf, &cooked_data);
+
+	gdk_threads_enter();
+	gtk_dialog_response(GTK_DIALOG(dialogs.calibrate), GTK_RESPONSE_CLOSE);
+	gdk_threads_leave();
+
+	printf("thread die\n");
 }
 
 
@@ -1046,9 +1026,6 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 		 ret != GTK_RESPONSE_DELETE_EVENT);	/* Clicked on the close icon */
 
 	kill_thread = 1;
-
-	if (capture_function)
-		G_UNLOCK(buffer_full);
 
 	if (filename)
 		g_free(filename);
@@ -1728,8 +1705,6 @@ static int fmcomms1_init(GtkWidget *notebook)
 		"toggled", G_CALLBACK(gain_amp_locked_cb), NULL);
 
 	g_signal_connect(cal_rx, "clicked", G_CALLBACK(cal_rx_button_clicked), NULL);
-
-	device_ref = plugin_get_device_by_reference("cf-ad9643-core-lpc");
 
 	fmcomms1_cal_eeprom();
 	tx_update_values();
