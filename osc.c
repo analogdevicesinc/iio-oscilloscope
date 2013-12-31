@@ -177,7 +177,7 @@ static GdkColor color_marker = {
 	.blue = 0xFFFF,
 };
 
-G_LOCK_DEFINE(buffer_full);
+G_LOCK_DEFINE_STATIC(buffer_full);
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
@@ -544,7 +544,7 @@ static void abort_sampling(void)
 	}
 	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button),
 			FALSE);
-	data_buffer.data_copy = NULL;
+	G_TRYLOCK(buffer_full);
 	G_UNLOCK(buffer_full);
 }
 
@@ -1427,42 +1427,134 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
  * Note that multiosc application will implement these functions differently.
  */
 
-void * plugin_get_device_by_reference(const char * device_name)
+const void * plugin_get_device_by_reference(const char * device_name)
 {
+
+	if(!current_device)
+		return NULL;
+
+	if(!strcmp(current_device, device_name))
+		return current_device;
+
 	return NULL;
 }
 
-int plugin_data_capture_size(void *device)
+int plugin_data_capture_size(const char *device)
 {
-	return data_buffer.size;
+	if (!strcmp(current_device, device))
+		return data_buffer.size;
+
+	return 0;
 }
 
-int plugin_data_capture_num_active_channels(void *device)
+int plugin_data_capture_num_active_channels(const char *device)
 {
-	return num_active_channels;
+	if (!strcmp(current_device, device))
+		return num_active_channels;
+
+	return 0;
 }
 
-int plugin_data_capture_bytes_per_sample(void *device)
+int plugin_data_capture_bytes_per_sample(const char *device)
 {
-	return bytes_per_sample;
+	if (!strcmp(current_device, device))
+		return bytes_per_sample;
+
+	return 0;
 }
 
-void plugin_data_capture_demux(void *device, void *buf, gfloat **cooked, unsigned int num_samples,
-	unsigned int num_channels)
-
+int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data)
 {
-	demux_data_stream(buf, cooked, num_samples, 0, num_samples, channels, num_channels);
-}
+	int i, j;
+	bool new = FALSE;
 
-int plugin_data_capture(void *device, void *buf)
-{
-	/* only one consumer at a time */
-	if (data_buffer.data_copy)
-		return false;
+	/* if there isn't anything to send, clear everything */
+	if (data_buffer.size == 0 || device == NULL) {
+		if (buf && *buf) {
+			g_free(*buf);
+			*buf = NULL;
+		}
+		if (cooked_data && *cooked_data) {
+			for (i = 0; i < num_active_channels; i++)
+				g_free((*cooked_data)[i]);
+			g_free(*cooked_data);
+			*cooked_data = NULL;
+		}
+		return -ENXIO;
+	}
 
-	data_buffer.data_copy = buf;
+	if (strcmp(current_device, device))
+		return -ENXIO;
 
-	return true;
+	if (buf) {
+		/* One consumer at a time */
+		if (data_buffer.data_copy)
+			return -EBUSY;
+
+		/* make sure space is allocated */
+		if (*buf)
+			*buf = g_renew(int8_t, *buf, data_buffer.size);
+		else
+			*buf = g_new(int8_t, data_buffer.size);
+
+		if (!*buf)
+			goto capture_malloc_fail;
+
+		/* where to put the copy */
+		data_buffer.data_copy = *buf;
+
+		/* Wait til the buffer is full */
+		G_LOCK(buffer_full);
+
+		/* if the lock is released, but the copy is still there
+		 * that's because someone else broke the lock
+		 */
+		if (data_buffer.data_copy) {
+			data_buffer.data_copy = NULL;
+			return -EINTR;
+		}
+
+		if (!cooked_data) {
+			return 0;
+		}
+
+		/* make sure space is allocated */
+		if (*cooked_data) {
+			*cooked_data = g_renew(gfloat *, *cooked_data, num_active_channels);
+			new = FALSE;
+		} else {
+			*cooked_data = g_new(gfloat *, num_active_channels);
+			new = TRUE;
+		}
+
+		if (!*cooked_data)
+			goto capture_malloc_fail;
+
+		for (i = 0; i < num_active_channels; i++) {
+			if (new)
+				(*cooked_data)[i] = g_new(gfloat, data_buffer.size / bytes_per_sample);
+			else
+				(*cooked_data)[i] = g_renew(gfloat, (*cooked_data)[i], data_buffer.size / bytes_per_sample);
+
+			if (!(*cooked_data)[i])
+				goto capture_malloc_fail;
+
+			for (j = 0; j < data_buffer.size / bytes_per_sample; j++)
+				(*cooked_data)[i][j] = 0.0f;
+		}
+
+		/* Now that we have the space, process it */
+		 demux_data_stream(*buf, *cooked_data,
+					data_buffer.size / 4, 0, data_buffer.size / 4,
+					channels, num_active_channels);
+	}
+
+	return 0;
+
+
+capture_malloc_fail:
+	printf("%s:%s malloc failed\n", __FILE__, __func__);
+	return -ENOMEM;
 }
 
 static int time_capture_setup(void)
@@ -1550,8 +1642,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 	if (gtk_toggle_tool_button_get_active(btn)) {
 		gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 
-		data_buffer.data_copy = NULL;
-		G_UNLOCK(buffer_full);
+		G_TRYLOCK(buffer_full);
 
 		data_buffer.available = 0;
 		current_sample = 0;
@@ -1594,13 +1685,12 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			time_capture_start();
 
 	} else {
+		G_TRYLOCK(buffer_full);
+		G_UNLOCK(buffer_full);
+
 		if (capture_function > 0) {
 			g_source_remove(capture_function);
 			capture_function = 0;
-			if (!data_buffer.data_copy) {
-				data_buffer.data_copy = NULL;
-				G_UNLOCK(buffer_full);
-			}
 		}
 		if (buffer_fd >= 0) {
 			buffer_close(buffer_fd);
@@ -2591,6 +2681,7 @@ void application_quit (void)
 	if (capture_function > 0) {
 		g_source_remove(capture_function);
 		capture_function = 0;
+		G_TRYLOCK(buffer_full);
 		G_UNLOCK(buffer_full);
 	}
 	if (buffer_fd >= 0) {
