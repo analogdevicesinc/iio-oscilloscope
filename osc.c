@@ -82,31 +82,9 @@ static GtkDataboxGraph *grid;
 
 static GtkDataboxGraph **channel_graph;
 
-#ifndef MAX_MARKERS
-#define MAX_MARKERS 10
-#endif
-
-struct marker_type {
-	gfloat x;
-	gfloat y;
-	int bin;
-	bool active;
-	GtkDataboxGraph *graph;
-};
 static struct marker_type markers[MAX_MARKERS + 2];
-
+static struct marker_type *markers_copy;
 static GtkWidget *marker_label;
-
-enum marker_types {
-	MARKER_OFF,
-	MARKER_PEAK,
-	MARKER_FIXED,
-	MARKER_ONE_TONE,
-	MARKER_TWO_TONE,
-	MARKER_IMAGE,
-	MARKER_NULL
-};
-
 static enum marker_types marker_type;
 
 struct detachable_plugin {
@@ -178,6 +156,7 @@ static GdkColor color_marker = {
 };
 
 G_LOCK_DEFINE_STATIC(buffer_full);
+G_LOCK_DEFINE_STATIC(markers_copy);
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
@@ -546,6 +525,8 @@ static void abort_sampling(void)
 			FALSE);
 	G_TRYLOCK(buffer_full);
 	G_UNLOCK(buffer_full);
+	G_TRYLOCK(markers_copy);
+	G_UNLOCK(markers_copy);
 }
 
 static gboolean time_capture_func(GtkDatabox *box)
@@ -877,6 +858,11 @@ static void do_fft(struct buffer *buf)
 			} else {
 				gtk_text_buffer_insert(tbuf, &iter, text, -1);
 			}
+		}
+		if (markers_copy) {
+			memcpy(markers_copy, &markers, sizeof(struct marker_type) * MAX_MARKERS);
+			markers_copy = NULL;
+			G_UNLOCK(markers_copy);
 		}
 	} else {
 		gtk_text_buffer_set_text(tbuf, "No markers active", 17);
@@ -1215,6 +1201,7 @@ static int fft_capture_setup(void)
 	data_buffer.size = num_samples * bytes_per_sample * num_active_channels;
 	data_buffer.data = g_renew(int8_t, data_buffer.data, data_buffer.size);
 	data_buffer.data_copy = NULL;
+	markers_copy = NULL;
 
 	num_samples_ploted = num_samples * num_active_channels / 2;
 
@@ -1441,7 +1428,7 @@ const void * plugin_get_device_by_reference(const char * device_name)
 
 int plugin_data_capture_size(const char *device)
 {
-	if (!strcmp(current_device, device))
+	if ((device && !strcmp(current_device, device)) || !device)
 		return data_buffer.size;
 
 	return 0;
@@ -1463,7 +1450,30 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 	return 0;
 }
 
-int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data)
+enum marker_types plugin_get_marker_type(const char *device)
+{
+	if (is_fft_mode && !strcmp(current_device, device))
+		return marker_type;
+
+	return MARKER_NULL;
+}
+
+void plugin_set_marker_type(const char *device, enum marker_types type)
+{
+	if (!strcmp(current_device, device))
+		marker_type = type;
+}
+
+gdouble plugin_get_fft_avg(const char *device)
+{
+	if ((device && !strcmp(current_device, device)) || !device)
+		return gtk_spin_button_get_value(GTK_SPIN_BUTTON(fft_avg_widget));
+
+	return 0;
+}
+
+int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data,
+			struct marker_type **markers_cp)
 {
 	int i, j;
 	bool new = FALSE;
@@ -1479,6 +1489,10 @@ int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data)
 				g_free((*cooked_data)[i]);
 			g_free(*cooked_data);
 			*cooked_data = NULL;
+		}
+		if (markers_cp && *markers_cp) {
+			g_free(*markers_cp);
+			*markers_cp = NULL;
 		}
 		return -ENXIO;
 	}
@@ -1514,41 +1528,79 @@ int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data)
 			return -EINTR;
 		}
 
-		if (!cooked_data) {
+		if (cooked_data) {
+			/* make sure space is allocated */
+			if (*cooked_data) {
+				*cooked_data = g_renew(gfloat *, *cooked_data,
+							num_active_channels);
+				new = FALSE;
+			} else {
+				*cooked_data = g_new(gfloat *, num_active_channels);
+				new = TRUE;
+			}
+
+			if (!*cooked_data)
+				goto capture_malloc_fail;
+
+			for (i = 0; i < num_active_channels; i++) {
+				if (new)
+					(*cooked_data)[i] = g_new(gfloat,
+							data_buffer.size / bytes_per_sample);
+				else
+					(*cooked_data)[i] = g_renew(gfloat,
+							(*cooked_data)[i],
+							data_buffer.size / bytes_per_sample);
+
+				if (!(*cooked_data)[i])
+					goto capture_malloc_fail;
+
+				for (j = 0; j < data_buffer.size / bytes_per_sample; j++)
+					(*cooked_data)[i][j] = 0.0f;
+			}
+
+			/* Now that we have the space, process it */
+			 demux_data_stream(*buf, *cooked_data,
+					data_buffer.size / 4, 0, data_buffer.size / 4,
+					channels, num_active_channels);
+		}
+	}
+
+	if (markers_cp) {
+		if (!is_fft_mode) {
+			if (*markers_cp) {
+				g_free(*markers_cp);
+				*markers_cp = NULL;
+			}
 			return 0;
 		}
 
-		/* make sure space is allocated */
-		if (*cooked_data) {
-			*cooked_data = g_renew(gfloat *, *cooked_data, num_active_channels);
-			new = FALSE;
-		} else {
-			*cooked_data = g_new(gfloat *, num_active_channels);
-			new = TRUE;
-		}
+		/* One consumer at a time */
+		if (markers_copy)
+			return -EBUSY;
 
-		if (!*cooked_data)
+		/* make sure space is allocated */
+		if (*markers_cp)
+			*markers_cp = g_renew(struct marker_type, *markers_cp, MAX_MARKERS + 2);
+		else
+			*markers_cp = g_new(struct marker_type, MAX_MARKERS + 2);
+
+		if (!*markers_cp)
 			goto capture_malloc_fail;
 
-		for (i = 0; i < num_active_channels; i++) {
-			if (new)
-				(*cooked_data)[i] = g_new(gfloat, data_buffer.size / bytes_per_sample);
-			else
-				(*cooked_data)[i] = g_renew(gfloat, (*cooked_data)[i], data_buffer.size / bytes_per_sample);
+		/* where to put the copy */
+		markers_copy = *markers_cp;
 
-			if (!(*cooked_data)[i])
-				goto capture_malloc_fail;
+		/* Wait til the copy is complete */
+		G_LOCK(markers_copy);
 
-			for (j = 0; j < data_buffer.size / bytes_per_sample; j++)
-				(*cooked_data)[i][j] = 0.0f;
+		/* if the lock is released, but the copy is still there
+		 * that's because someone else broke the lock
+		 */
+		if (markers_copy) {
+			markers_copy = NULL;
+			return -EINTR;
 		}
-
-		/* Now that we have the space, process it */
-		 demux_data_stream(*buf, *cooked_data,
-					data_buffer.size / 4, 0, data_buffer.size / 4,
-					channels, num_active_channels);
 	}
-
 	return 0;
 
 
@@ -1572,6 +1624,7 @@ static int time_capture_setup(void)
 
 	data_buffer.data = g_renew(int8_t, data_buffer.data, data_buffer.size);
 	data_buffer.data_copy = NULL;
+	markers_copy = NULL;
 
 	X = g_renew(gfloat, X, num_samples);
 
@@ -1643,6 +1696,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 
 		G_TRYLOCK(buffer_full);
+		G_TRYLOCK(markers_copy);
 
 		data_buffer.available = 0;
 		current_sample = 0;
@@ -1687,6 +1741,8 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 	} else {
 		G_TRYLOCK(buffer_full);
 		G_UNLOCK(buffer_full);
+		G_TRYLOCK(markers_copy);
+		G_UNLOCK(markers_copy);
 
 		if (capture_function > 0) {
 			g_source_remove(capture_function);
@@ -2683,6 +2739,8 @@ void application_quit (void)
 		capture_function = 0;
 		G_TRYLOCK(buffer_full);
 		G_UNLOCK(buffer_full);
+		G_TRYLOCK(markers_copy);
+		G_UNLOCK(markers_copy);
 	}
 	if (buffer_fd >= 0) {
 		buffer_close(buffer_fd);
