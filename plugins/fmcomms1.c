@@ -555,10 +555,19 @@ static void load_cal_eeprom()
 }
 
 static bool cal_rx_flag = false;
+static gfloat knob_max, knob_min, knob_steps;
+static int delay;
 
 static void cal_rx_button_clicked(GtkButton *btn, gpointer data)
 {
 	cal_rx_flag = true;
+
+	delay = 50 * plugin_data_capture_size(NULL) * plugin_get_fft_avg(NULL);
+
+	knob_steps = 10;
+	knob_max = 1;
+	knob_min = -1;
+	gtk_widget_hide(cal_rx);
 }
 
 static void dac_temp_update()
@@ -584,14 +593,17 @@ static void display_cal(void *ptr)
 	int size, channels, num_samples, i;
 	int8_t *buf = NULL;
 	gfloat **cooked_data = NULL;
+	struct marker_type *markers = NULL;
 	gfloat *channel_I, *channel_Q;
 	gfloat max_x, min_x, avg_x;
 	gfloat max_y, min_y, avg_y;
 	gfloat max_r, min_r, max_theta, min_theta, rad;
+	GtkSpinButton *knob;
+	gfloat knob_value, knob_min_value, knob_min_knob, knob_twist;
 	char cbuf[256];
 	bool show = false;
 	const char *device_ref;
-	int ret;
+	int ret, attempt = 0;
 
 	device_ref = plugin_get_device_by_reference("cf-ad9643-core-lpc");
 	if (!device_ref)
@@ -618,15 +630,15 @@ static void display_cal(void *ptr)
 
 		if (size != 0 && channels == 2) {
 			gdk_threads_enter();
-			if (show)
+			if (show && !cal_rx_flag)
 				gtk_widget_show(cal_rx);
 			else
 				gtk_widget_hide(cal_rx);
 			gdk_threads_leave();
 
-			/* tell the other thread where to put the data */
+			/* grab the data */
 			do {
-				ret = plugin_data_capture(device_ref, (void **)&buf, &cooked_data);
+				ret = plugin_data_capture(device_ref, (void **)&buf, &cooked_data, NULL);
 			} while ((ret == -EBUSY) && !kill_thread);
 
 			/* If the lock is broken, then die nicely */
@@ -683,7 +695,7 @@ static void display_cal(void *ptr)
 			else
 				show = false;
 
-			gdk_threads_enter ();
+			gdk_threads_enter();
 
 			sprintf(cbuf, "avg: %3.0f | mid : %3.0f", avg_y, (min_y + max_y)/2);
 			gtk_label_set_text(GTK_LABEL(avg_I), cbuf);
@@ -703,10 +715,12 @@ static void display_cal(void *ptr)
 			sprintf(cbuf, "max: %0.3f | min: %0.3f", max_theta * 180 / M_PI, min_theta * 180 / M_PI);
 			gtk_label_set_text(GTK_LABEL(angle_IQ), cbuf);
 
+			gdk_threads_leave();
+
 			if (cal_rx_flag) {
 				float span_I, span_Q;
 
-				cal_rx_flag = false;
+				gdk_threads_enter();
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_offset_adj),
 					gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_offset_adj)) +
 					(min_y + max_y) / -2.0);
@@ -724,19 +738,77 @@ static void display_cal(void *ptr)
 					gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj)) *
 					(span_I + span_Q)/(2.0 * span_Q));
 				cal_save_values();
+				gdk_threads_leave ();
+
+				if (plugin_get_marker_type(device_ref) != MARKER_IMAGE)
+					cal_rx_flag = false;
 			}
-			gdk_threads_leave ();
+
+			if (cal_rx_flag) {
+				gdk_threads_enter();
+				gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_phase_adj), 0);
+				knob = GTK_SPIN_BUTTON(I_adc_phase_adj);
+				gdk_threads_leave();
+
+				attempt++;
+				knob_min_value = 0;
+				knob_min_value = 0;
+
+				knob_twist = (knob_max - knob_min)/knob_steps;
+				for (knob_value = knob_min;
+						knob_value <= knob_max;
+						knob_value += knob_twist) {
+
+					gdk_threads_enter();
+					gtk_spin_button_set_value(knob, knob_value);
+					gdk_threads_leave();
+					usleep(delay);
+
+					/* grab the data */
+					do {
+						ret = plugin_data_capture(device_ref, NULL, NULL, &markers);
+					} while ((ret == -EBUSY) && !kill_thread);
+
+					/* If the lock is broken, then die nicely */
+					if (kill_thread || ret != 0) {
+						size = 0;
+						kill_thread = 1;
+						break;
+					}
+
+					if (markers[2].y <= knob_min_value) {
+						knob_min_value = markers[2].y;
+						knob_min_knob = knob_value;
+					}
+				}
+
+				knob_max = knob_min_knob + (2 * knob_twist);
+				if (knob_max >= 1.0)
+					knob_max = 1.0;
+
+				knob_min = knob_min_knob - (2 * knob_twist);
+				if (knob_min <= -1.0)
+					knob_min = -1.0;
+
+				gdk_threads_enter();
+				gtk_spin_button_set_value(knob, knob_min_knob);
+				gdk_threads_leave();
+				usleep(delay);
+
+				if (attempt >= 5 || knob_min_value <= -75) {
+					attempt = 0;
+					cal_rx_flag = false;
+				}
+			}
 		}
 	}
 
 	/* free the buffers */
-	plugin_data_capture(NULL, (void **)&buf, &cooked_data);
+	plugin_data_capture(NULL, (void **)&buf, &cooked_data, &markers);
 
 	gdk_threads_enter();
 	gtk_dialog_response(GTK_DIALOG(dialogs.calibrate), GTK_RESPONSE_CLOSE);
 	gdk_threads_leave();
-
-	printf("thread die\n");
 }
 
 
