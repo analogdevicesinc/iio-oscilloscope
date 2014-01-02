@@ -1795,12 +1795,22 @@ static int fmcomms1_init(GtkWidget *notebook)
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
 {
+	char *buf;
+
 	if (MATCH_ATTRIB(SYNC_RELOAD)) {
 		if (value) {
 			tx_update_values();
 			rx_update_values();
 		} else {
 			return "1";
+		}
+	} else if (MATCH_ATTRIB("dds_mode")) {
+		if (value) {
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), atoi(value));
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
+			return buf;
 		}
 	} else {
 		printf("Unhandled tokens in ini file,\n"
@@ -1817,6 +1827,7 @@ static const char *fmcomms1_sr_attribs[] = {
 	"cf-ad9122-core-lpc.out_altvoltage_1A_sampling_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage_interpolation_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage_interpolation_center_shift_frequency",
+	"dds_mode",
 	"cf-ad9122-core-lpc.out_altvoltage0_1A_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage2_2A_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage1_1B_frequency",
