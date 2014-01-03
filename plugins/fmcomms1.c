@@ -607,7 +607,7 @@ static void display_cal(void *ptr)
 
 	device_ref = plugin_get_device_by_reference("cf-ad9643-core-lpc");
 	if (!device_ref)
-		return;
+		goto display_call_ret;
 
 	while (!kill_thread) {
 		while (!kill_thread && !capture_function) {
@@ -798,17 +798,24 @@ static void display_cal(void *ptr)
 				if (attempt >= 5 || knob_min_value <= -75) {
 					attempt = 0;
 					cal_rx_flag = false;
+					if (ptr) {
+						kill_thread = 1;
+						size = 0;
+						break;
+					}
 				}
 			}
 		}
 	}
 
+display_call_ret:
 	/* free the buffers */
 	plugin_data_capture(NULL, (void **)&buf, &cooked_data, &markers);
 
 	gdk_threads_enter();
 	gtk_dialog_response(GTK_DIALOG(dialogs.calibrate), GTK_RESPONSE_CLOSE);
 	gdk_threads_leave();
+	kill_thread = 1;
 }
 
 
@@ -1796,6 +1803,7 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
 {
 	char *buf;
+	GThread *thr = NULL;
 
 	if (MATCH_ATTRIB(SYNC_RELOAD)) {
 		if (value) {
@@ -1811,6 +1819,18 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			buf = malloc (10);
 			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
 			return buf;
+		}
+	} else if (MATCH_ATTRIB("calibrate_rx")) {
+		if (value && atoi(value) == 1) {
+			gtk_widget_show(dialogs.calibrate);
+			cal_rx_button_clicked(NULL, NULL);
+			kill_thread = 0;
+			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
+			while (kill_thread == 0) {
+				gtk_main_iteration();
+			}
+			iio_thread_clear(thr);
+			gtk_widget_hide(dialogs.calibrate);
 		}
 	} else {
 		printf("Unhandled tokens in ini file,\n"
