@@ -564,6 +564,8 @@ static void cal_rx_button_clicked(GtkButton *btn, gpointer data)
 
 	delay = 50 * plugin_data_capture_size(NULL) * plugin_get_fft_avg(NULL);
 
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_phase_adj), 0);
+
 	knob_steps = 10;
 	knob_max = 1;
 	knob_min = -1;
@@ -587,6 +589,8 @@ static void dac_temp_update()
 	gtk_label_set_text(GTK_LABEL(ad9122_temp), buf);
 	gdk_threads_leave();
 }
+
+#define RX_CAL_THRESHOLD -75
 
 static void display_cal(void *ptr)
 {
@@ -721,6 +725,7 @@ static void display_cal(void *ptr)
 				float span_I, span_Q;
 
 				gdk_threads_enter();
+				/* DC correction */
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_offset_adj),
 					gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_offset_adj)) +
 					(min_y + max_y) / -2.0);
@@ -728,14 +733,13 @@ static void display_cal(void *ptr)
 					gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_offset_adj)) +
 					(min_x + max_x) / -2.0);
 
-				span_I = (max_y - min_y);
-				span_Q = (max_x - min_x);
+				span_I = (max_y - min_y) / gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj));
+				span_Q = (max_x - min_x) / gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj));
 
+				/* Scale connection */
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_gain_adj),
-					gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj)) *
 					(span_I + span_Q)/(2.0 * span_I));
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_gain_adj),
-					gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj)) *
 					(span_I + span_Q)/(2.0 * span_Q));
 				cal_save_values();
 				gdk_threads_leave ();
@@ -745,13 +749,33 @@ static void display_cal(void *ptr)
 			}
 
 			if (cal_rx_flag) {
+				int bigger = 0;
+				gfloat last_val;
+
+				if (attempt == 0) {
+					/* if the current value is OK, we leave it alone */
+					do {
+						ret = plugin_data_capture(device_ref, NULL, NULL, &markers);
+					} while ((ret == -EBUSY) && !kill_thread);
+
+					/* If the lock is broken, then die nicely */
+					if (kill_thread || ret != 0) {
+						size = 0;
+						kill_thread = 1;
+						break;
+					}
+
+					if (markers[2].y <= RX_CAL_THRESHOLD) {
+						goto skip_rx_cal;
+					}
+				}
+
 				gdk_threads_enter();
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_phase_adj), 0);
 				knob = GTK_SPIN_BUTTON(I_adc_phase_adj);
 				gdk_threads_leave();
 
 				attempt++;
-				knob_min_value = 0;
 				knob_min_value = 0;
 
 				knob_twist = (knob_max - knob_min)/knob_steps;
@@ -779,14 +803,23 @@ static void display_cal(void *ptr)
 					if (markers[2].y <= knob_min_value) {
 						knob_min_value = markers[2].y;
 						knob_min_knob = knob_value;
+						bigger = 0;
 					}
+
+					if (knob_min_value != 0 && markers[2].y > last_val)
+						bigger++;
+
+					if (bigger == 2)
+						break;
+
+					last_val = markers[2].y;
 				}
 
-				knob_max = knob_min_knob + (2 * knob_twist);
+				knob_max = knob_min_knob + (1 * knob_twist);
 				if (knob_max >= 1.0)
 					knob_max = 1.0;
 
-				knob_min = knob_min_knob - (2 * knob_twist);
+				knob_min = knob_min_knob - (1 * knob_twist);
 				if (knob_min <= -1.0)
 					knob_min = -1.0;
 
@@ -795,7 +828,8 @@ static void display_cal(void *ptr)
 				gdk_threads_leave();
 				usleep(delay);
 
-				if (attempt >= 5 || knob_min_value <= -75) {
+				if (attempt >= 5 || knob_min_value <= RX_CAL_THRESHOLD) {
+skip_rx_cal:
 					attempt = 0;
 					cal_rx_flag = false;
 					if (ptr) {
