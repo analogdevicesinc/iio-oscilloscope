@@ -484,7 +484,8 @@ int scpi_connect(struct scpi_instrument *scpi)
 	scpi_fprintf(scpi, "*RST\n");
 	scpi_fprintf(scpi, "*IDN?\n");
 	if (!strstr(scpi->response, scpi->id_regex)) {
-		printf("instrumnt doesn't match regex\n");
+		printf("instrument doesn't match regex\n");
+		return -1;
 	}
 	printf("Instrument ID: %s\n", scpi->response);
 
@@ -679,7 +680,8 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 	if (strcmp(elems[1], CON_TOK) == 0) {
 		if (value) {
 			if (atoi(value) == 1)
-				scpi_connect(current_instrument);
+				if (scpi_connect(current_instrument) != 0)
+					return "FAIL";
 		}
 		/* We don't save the connect state */
 	} else if (MATCH_ATTRIB("tx.freq")) {
