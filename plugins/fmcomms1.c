@@ -963,8 +963,10 @@ char * get_filename(char *name, bool load)
 
 #define ADC_I_O "I_adc_offset_adj"
 #define ADC_I_G "I_adc_gain_adj"
+#define ADC_I_P "I_adc_phase_adj"
 #define ADC_Q_O "Q_adc_offset_adj"
 #define ADC_Q_G "Q_adc_gain_adj"
+#define ADC_Q_P "Q_adc_phase_adj"
 
 static void combo_box_set_active_text(GtkWidget *combobox, const char* text)
 {
@@ -1040,13 +1042,17 @@ static int parse_cal_handler(void* user, const char* section, const char* name, 
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_dac_fs_adj), atof(value));
 	} else if (MATCH_SECT("ADC_SETTINGS")) {
 		if(MATCH_NAME(ADC_I_O))
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_offset_adj), atof(value));
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_offset_adj), (gfloat)atoi(value));
 		else if (MATCH_NAME(ADC_Q_O))
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_offset_adj), atof(value));
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_offset_adj), (gfloat)atoi(value));
 		else if (MATCH_NAME(ADC_I_G))
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_gain_adj), atof(value));
 		else if (MATCH_NAME(ADC_Q_G))
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_gain_adj), atof(value));
+		else if (MATCH_NAME(ADC_I_P))
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_phase_adj), atof(value));
+		else if (MATCH_NAME(ADC_Q_P))
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_phase_adj), atof(value));
 	}
 	return 1;
 }
@@ -1075,6 +1081,7 @@ void save_cal(char * resfile)
 	fprintf(file, "\n[SYS_SETTINGS]\n");
 	fprintf(file, "%s = %f\n", RX_F, gtk_spin_button_get_value (GTK_SPIN_BUTTON(rx_lo_freq)));
 	fprintf(file, "%s = %f\n", TX_F, gtk_spin_button_get_value (GTK_SPIN_BUTTON(tx_lo_freq)));
+	fprintf(file, "dds_mode = %i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
 	fprintf(file, "%s = %f\n", DDS1_F, gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)));
 	fprintf(file, "%s = %s\n", DDS1_S, gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds1_scale)));
 	fprintf(file, "%s = %f\n", DDS1_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_phase)));
@@ -1097,10 +1104,16 @@ void save_cal(char * resfile)
 	fprintf(file, "%s = %f\n", DAC_Q_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_dac_fs_adj)));
 
 	fprintf(file, "\n[ADC_SETTINGS]\n");
-	fprintf(file, "%s = %f\n", ADC_I_O, gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_offset_adj)));
-	fprintf(file, "%s = %f\n", ADC_Q_O, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_offset_adj)));
-	fprintf(file, "%s = %f\n", ADC_I_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj)));
-	fprintf(file, "%s = %f\n", ADC_Q_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj)));
+	fprintf(file, "%s = %i\n", ADC_I_O, (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_offset_adj)));
+	fprintf(file, "%s = %i\n", ADC_Q_O, (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_offset_adj)));
+	fprintf(file, "%s = %f #0x%x\n", ADC_I_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj)),
+				float_to_fract(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj))));
+	fprintf(file, "%s = %f #0x%x\n", ADC_Q_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj)),
+				float_to_fract(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj))));
+	fprintf(file, "%s = %f #0x%x\n", ADC_I_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_phase_adj)),
+				float_to_fract(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_phase_adj))));
+	fprintf(file, "%s = %f #0x%x\n", ADC_Q_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_phase_adj)),
+				float_to_fract(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_phase_adj))));
 
 	/* Don't have this info yet
 	 * fprintf(file, "\n[SAVE]\n");
