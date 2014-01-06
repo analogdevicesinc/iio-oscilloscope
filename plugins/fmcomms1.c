@@ -622,7 +622,7 @@ static void display_cal(void *ptr)
 	gfloat max_y, min_y, avg_y;
 	gfloat max_r, min_r, max_theta, min_theta, rad;
 	GtkSpinButton *knob;
-	gfloat knob_value, knob_min_value, knob_min_knob, knob_dc_value, knob_twist;
+	gfloat knob_value, knob_min_value, knob_min_knob = 0.0, knob_dc_value = 0.0, knob_twist;
 	gfloat span_I_val, span_Q_val;
 	gfloat gain = 1.0;
 	char cbuf[256];
@@ -662,7 +662,7 @@ static void display_cal(void *ptr)
 			gdk_threads_leave();
 
 			/* grab the data */
-			if (cal_rx_level && plugin_get_marker_type(device_ref) == MARKER_IMAGE) {
+			if (cal_rx_flag && cal_rx_level && plugin_get_marker_type(device_ref) == MARKER_IMAGE) {
 				do {
 					ret = plugin_data_capture(device_ref, (void **)&buf, &cooked_data, &markers);
 				} while ((ret == -EBUSY) && !kill_thread);
@@ -786,7 +786,7 @@ static void display_cal(void *ptr)
 
 			if (cal_rx_flag) {
 				int bigger = 0;
-				gfloat last_val;
+				gfloat last_val = FLT_MAX;
 
 				if (attempt == 0) {
 					/* if the current value is OK, we leave it alone */
@@ -844,7 +844,7 @@ static void display_cal(void *ptr)
 						bigger = 0;
 					}
 
-					if (knob_min_value != 0 && markers[2].y > last_val)
+					if (markers[2].y > last_val)
 						bigger++;
 
 					if (bigger == 2)
