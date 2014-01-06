@@ -88,6 +88,7 @@ static GtkWidget *I_dac_pha_adj, *I_dac_offs, *I_dac_fs_adj;
 static GtkWidget *Q_dac_pha_adj, *Q_dac_offs, *Q_dac_fs_adj;
 static GtkWidget *I_adc_offset_adj, *I_adc_gain_adj, *I_adc_phase_adj;
 static GtkWidget *Q_adc_offset_adj, *Q_adc_gain_adj, *Q_adc_phase_adj;
+static double cal_rx_level = 0;
 
 static GtkWidget *ad9122_temp;
 
@@ -603,7 +604,9 @@ static void display_cal(void *ptr)
 	gfloat max_y, min_y, avg_y;
 	gfloat max_r, min_r, max_theta, min_theta, rad;
 	GtkSpinButton *knob;
-	gfloat knob_value, knob_min_value, knob_min_knob, knob_twist;
+	gfloat knob_value, knob_min_value, knob_min_knob, knob_dc_value, knob_twist;
+	gfloat span_I_val, span_Q_val;
+	gfloat gain = 1.0;
 	char cbuf[256];
 	bool show = false;
 	const char *device_ref;
@@ -641,9 +644,15 @@ static void display_cal(void *ptr)
 			gdk_threads_leave();
 
 			/* grab the data */
-			do {
-				ret = plugin_data_capture(device_ref, (void **)&buf, &cooked_data, NULL);
-			} while ((ret == -EBUSY) && !kill_thread);
+			if (cal_rx_level && plugin_get_marker_type(device_ref) == MARKER_IMAGE) {
+				do {
+					ret = plugin_data_capture(device_ref, (void **)&buf, &cooked_data, &markers);
+				} while ((ret == -EBUSY) && !kill_thread);
+			} else {
+				do {
+					ret = plugin_data_capture(device_ref, (void **)&buf, &cooked_data, NULL);
+				} while ((ret == -EBUSY) && !kill_thread);
+			}
 
 			/* If the lock is broken, then die nicely */
 			if (kill_thread || ret != 0) {
@@ -722,7 +731,7 @@ static void display_cal(void *ptr)
 			gdk_threads_leave();
 
 			if (cal_rx_flag) {
-				float span_I, span_Q;
+				gfloat span_I_set, span_Q_set;
 
 				gdk_threads_enter();
 				/* DC correction */
@@ -733,17 +742,26 @@ static void display_cal(void *ptr)
 					gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_offset_adj)) +
 					(min_x + max_x) / -2.0);
 
-				span_I = (max_y - min_y) / gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj));
-				span_Q = (max_x - min_x) / gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj));
-
 				/* Scale connection */
+				span_I_set = gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj));
+				span_Q_set = gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj));
+				span_I_val = (max_y - min_y) / span_I_set;
+				span_Q_val = (max_x - min_x) / span_Q_set;
+
+				if (cal_rx_level && plugin_get_marker_type(device_ref) == MARKER_IMAGE) {
+					if (attempt == 0)
+						gain = (span_I_set + span_I_set) / 2;
+					gain *= 1.0 / exp10((markers[0].y - cal_rx_level) / 20);
+				}
+
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_gain_adj),
-					(span_I + span_Q)/(2.0 * span_I));
+					(span_I_val + span_Q_val)/(2.0 * span_I_val) * gain);
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_gain_adj),
-					(span_I + span_Q)/(2.0 * span_Q));
+					(span_I_val + span_Q_val)/(2.0 * span_Q_val) * gain);
 				cal_save_values();
 				gdk_threads_leave ();
 
+				usleep(delay);
 				if (plugin_get_marker_type(device_ref) != MARKER_IMAGE)
 					cal_rx_flag = false;
 			}
@@ -765,7 +783,8 @@ static void display_cal(void *ptr)
 						break;
 					}
 
-					if (markers[2].y <= RX_CAL_THRESHOLD) {
+					/* make sure image, and DC are below */
+					if ((markers[2].y <= RX_CAL_THRESHOLD) && (markers[1].y <= RX_CAL_THRESHOLD)) {
 						goto skip_rx_cal;
 					}
 				}
@@ -802,6 +821,7 @@ static void display_cal(void *ptr)
 
 					if (markers[2].y <= knob_min_value) {
 						knob_min_value = markers[2].y;
+						knob_dc_value = markers[1].y;
 						knob_min_knob = knob_value;
 						bigger = 0;
 					}
@@ -828,7 +848,8 @@ static void display_cal(void *ptr)
 				gdk_threads_leave();
 				usleep(delay);
 
-				if (attempt >= 5 || knob_min_value <= RX_CAL_THRESHOLD) {
+				if (attempt >= 5 || ((knob_min_value <= RX_CAL_THRESHOLD) &&
+						    (knob_dc_value <= RX_CAL_THRESHOLD))) {
 skip_rx_cal:
 					attempt = 0;
 					cal_rx_flag = false;
@@ -1854,6 +1875,9 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
 			return buf;
 		}
+	} else if (MATCH_ATTRIB("calibrate_rx_level")) {
+		if (value)
+			cal_rx_level = atof(value);
 	} else if (MATCH_ATTRIB("calibrate_rx")) {
 		if (value && atoi(value) == 1) {
 			gtk_widget_show(dialogs.calibrate);
