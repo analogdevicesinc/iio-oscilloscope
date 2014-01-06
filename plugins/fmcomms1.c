@@ -35,7 +35,7 @@ static const gdouble khz_scale = 1000.0;
 static bool dac_data_loaded = false;
 
 #define VERSION_SUPPORTED 0
-static struct fmcomms1_calib_data *cal_data;
+static struct fmcomms1_calib_data *cal_data = NULL;
 
 static GtkWidget *vga_gain0, *vga_gain1;
 static GtkAdjustment *adj_gain0, *adj_gain1;
@@ -367,7 +367,25 @@ static int compare_gain(const char *a, const char *b)
 		return 0;
 }
 
-double fract_to_float(unsigned short val)
+static unsigned short float_to_fract(double val)
+{
+	unsigned short fract = 0;
+	unsigned long long llval;
+
+	if (val <= 0.000000) {
+		fract = 0x8000;
+		val *= -1.0;
+	}
+
+	val *= 1000000;
+
+	llval = (unsigned long long)val * 0x8000UL;
+	fract |= (llval / 1000000);
+
+	return fract;
+}
+
+static double fract_to_float(unsigned short val)
 {
 	double ret = 0;
 
@@ -1487,7 +1505,9 @@ static int fmcomms1_cal_eeprom(void)
 	/* flushes all open output streams */
 	fflush(NULL);
 
-	cal_data = malloc(FAB_SIZE_CAL_EEPROM);
+	if (!cal_data)
+		cal_data = malloc(FAB_SIZE_CAL_EEPROM);
+
 	if (cal_data == NULL) {
 		return -ENOMEM;
 	}
