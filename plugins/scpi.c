@@ -690,7 +690,7 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 		/* We don't save the frequency */
 	} else if (MATCH_ATTRIB("tx.mag")) {
 		if (value)
-			tx_mag_set_dBm(&signal_generator, atoll(value));
+			tx_mag_set_dBm(&signal_generator, atof(value));
 		/* Don't save the magintude */
 	} else if (MATCH_ATTRIB("tx.on")) {
 		if (value)
