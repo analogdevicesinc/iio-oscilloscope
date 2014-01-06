@@ -521,7 +521,7 @@ static bool dmm_identify(void)
 	return ret;
 }
 
-const struct osc_plugin plugin = {
+struct osc_plugin plugin = {
 	.name = "DMM",
 	.identify = dmm_identify,
 	.init = dmm_init,

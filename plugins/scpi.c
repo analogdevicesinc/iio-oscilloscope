@@ -1077,7 +1077,7 @@ static bool scpi_identify(void)
 	return false;
 }
 
-const struct osc_plugin plugin = {
+struct osc_plugin plugin = {
 	.name = "SCPI",
 	.identify = scpi_identify,
 	.init = scpi_init,

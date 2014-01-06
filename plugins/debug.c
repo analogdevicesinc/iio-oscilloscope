@@ -1298,7 +1298,7 @@ static bool debug_identify(void)
 	return false;
 }
 
-const struct osc_plugin plugin = {
+struct osc_plugin plugin = {
 	.name = "Debug",
 	.identify = debug_identify,
 	.init = debug_init,
