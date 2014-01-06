@@ -89,6 +89,7 @@ static GtkWidget *Q_dac_pha_adj, *Q_dac_offs, *Q_dac_fs_adj;
 static GtkWidget *I_adc_offset_adj, *I_adc_gain_adj, *I_adc_phase_adj;
 static GtkWidget *Q_adc_offset_adj, *Q_adc_gain_adj, *Q_adc_phase_adj;
 static double cal_rx_level = 0;
+static struct marker_type *rx_marker = NULL;
 
 static GtkWidget *ad9122_temp;
 
@@ -634,6 +635,11 @@ static void display_cal(void *ptr)
 	if (!device_ref)
 		goto display_call_ret;
 
+	if (!rx_marker) {
+		rx_marker = g_new(struct marker_type, 3);
+		rx_marker[0].active = false;
+	}
+
 	while (!kill_thread) {
 		while (!kill_thread && !capture_function) {
 			/* Wait 1/2 second */
@@ -803,6 +809,8 @@ static void display_cal(void *ptr)
 
 					/* make sure image, and DC are below */
 					if ((markers[2].y <= RX_CAL_THRESHOLD) && (markers[1].y <= RX_CAL_THRESHOLD)) {
+						if (rx_marker)
+							memcpy(rx_marker, markers, sizeof(struct marker_type) * 3);
 						goto skip_rx_cal;
 					}
 				}
@@ -838,6 +846,8 @@ static void display_cal(void *ptr)
 					}
 
 					if (markers[2].y <= knob_min_value) {
+						if (rx_marker)
+							memcpy(rx_marker, markers, sizeof(struct marker_type) * 3);
 						knob_min_value = markers[2].y;
 						knob_dc_value = markers[1].y;
 						knob_min_knob = knob_value;
@@ -1078,7 +1088,7 @@ void save_cal(char * resfile)
 
 	fprintf(file, ";Calibration time: %s\n", ctime(&clock));
 
-	fprintf(file, "\n[SYS_SETTINGS]\n");
+	fprintf(file, "[SYS_SETTINGS]\n");
 	fprintf(file, "%s = %f\n", RX_F, gtk_spin_button_get_value (GTK_SPIN_BUTTON(rx_lo_freq)));
 	fprintf(file, "%s = %f\n", TX_F, gtk_spin_button_get_value (GTK_SPIN_BUTTON(tx_lo_freq)));
 	fprintf(file, "dds_mode = %i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
@@ -1103,6 +1113,10 @@ void save_cal(char * resfile)
 	fprintf(file, "%s = %f\n", DAC_I_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_dac_fs_adj)));
 	fprintf(file, "%s = %f\n", DAC_Q_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_dac_fs_adj)));
 
+	if (0) {
+		 fprintf(file, "\n[TX_RESULTS]\n");
+	}
+
 	fprintf(file, "\n[ADC_SETTINGS]\n");
 	fprintf(file, "%s = %i\n", ADC_I_O, (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_offset_adj)));
 	fprintf(file, "%s = %i\n", ADC_Q_O, (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_offset_adj)));
@@ -1115,16 +1129,18 @@ void save_cal(char * resfile)
 	fprintf(file, "%s = %f #0x%x\n", ADC_Q_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_phase_adj)),
 				float_to_fract(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_phase_adj))));
 
+	if (rx_marker && rx_marker[0].active) {
+		fprintf(file, "\n[RX_RESULTS]\n");
+		fprintf(file, "Signal = %lf dBFS @ %lf MHz from carrier\n", rx_marker[0].y, rx_marker[0].x);
+		fprintf(file, "Carrier = %lf dBFS\n", rx_marker[1].y);
+		fprintf(file, "Sideband = %lf dBFS\n", rx_marker[2].y);
+		fprintf(file, "Carrier Suppression = %lf dBc\n", rx_marker[1].y - rx_marker[0].y);
+		fprintf(file, "Sideband Suppression = %lf dBc\n", rx_marker[2].y - rx_marker[0].y);
+	}
+
 	/* Don't have this info yet
 	 * fprintf(file, "\n[SAVE]\n");
 	 * fprintf(file, "PlotFile = %s\n", plotfile);
-	 *
-	 * fprintf(file, "\n[RESULTS]\n");
-	 * fprintf(file, "Signal = %lf dBm\n", res->signal_lvl);
-	 * fprintf(file, "Carrier = %lf dBm\n", res->carrier_lvl);
-	 * fprintf(file, "Sideband = %lf dBm\n", res->sideband_lvl);
-	 * fprintf(file, "Carrier Suppression = %lf dBc\n", res->signal_lvl - res->carrier_lvl);
-	 * fprintf(file, "Sideband Suppression = %lf dBc\n", res->signal_lvl - res->sideband_lvl);
 	 */
 
 	fclose(file);
