@@ -61,7 +61,10 @@ static GtkWidget *databox;
 static GtkWidget *time_interval_widget;
 static GtkWidget *sample_count_widget;
 static GtkWidget *fft_size_widget, *fft_avg_widget, *fft_pwr_offset_widget;
-static GtkWidget *fft_radio, *time_radio, *constellation_radio;
+static GtkWidget *plot_domain;
+#define TIME_PLOT 0
+#define FFT_PLOT 1
+#define XY_PLOT 2
 static GtkWidget *show_grid;
 static GtkWidget *enable_auto_scale;
 static GtkWidget *device_list_widget;
@@ -384,15 +387,15 @@ static void add_grid(void)
 	grid = gtk_databox_grid_array_new (y, x, gridy, gridx, &color_grid, 1);
 */
 
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == FFT_PLOT) {
 		fill_axis(gridx, -30, 10, 15);
 		fill_axis(gridy, 10, -10, 15);
 		grid = gtk_databox_grid_array_new (15, 15, gridy, gridx, &color_grid, 1);
-	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(constellation_radio))) {
+	} else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == XY_PLOT) {
 		fill_axis(gridx, -80000, 10000, 18);
 		fill_axis(gridy, -80000, 10000, 18);
 		grid = gtk_databox_grid_array_new (18, 18, gridy, gridx, &color_grid, 1);
-	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(time_radio))) {
+	} else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == TIME_PLOT) {
 		fill_axis(gridx, 0, 100, 5);
 		fill_axis(gridy, -80000, 10000, 18);
 		grid = gtk_databox_grid_array_new (18, 5, gridy, gridx, &color_grid, 1);
@@ -405,7 +408,7 @@ static void add_grid(void)
 
 static void rescale_databox(GtkDatabox *box, gfloat border)
 {
-	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
+	bool fixed_aspect = gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == XY_PLOT;
 
 	if (fixed_aspect) {
 		gfloat min_x;
@@ -1050,7 +1053,7 @@ static gint marker_button (GtkDatabox *box, GdkEventButton *event)
 	static gulong fixed_marker_hid = 0;
 
 	/* FFT? */
-	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != FFT_PLOT)
 		return FALSE;
 
 	/* Right button */
@@ -1615,7 +1618,7 @@ static int time_capture_setup(void)
 	unsigned int i, j;
 	static int prev_num_active_ch = 0;
 
-	is_constellation = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
+	is_constellation = gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == XY_PLOT;
 
 	gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 
@@ -1709,7 +1712,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 			}
 		}
 
-		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
+		if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == FFT_PLOT) {
 			sprintf(buf, "%sHz", adc_scale);
 			gtk_label_set_text(GTK_LABEL(hor_scale), buf);
 			gtk_widget_show(marker_label);
@@ -1733,7 +1736,7 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		gtk_widget_queue_draw(GTK_WIDGET(databox));
 		frame_counter = 0;
 
-		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
+		if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == FFT_PLOT)
 			fft_capture_start();
 		else
 			time_capture_start();
@@ -1872,7 +1875,7 @@ static void zoom_fit(GtkButton *btn, gpointer data)
 
 static void zoom_in(GtkButton *btn, gpointer data)
 {
-	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
+	bool fixed_aspect = gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == XY_PLOT;
 	gfloat left, right, top, bottom;
 	gfloat width, height;
 
@@ -1904,7 +1907,7 @@ static void zoom_in(GtkButton *btn, gpointer data)
 
 static void zoom_out(GtkButton *btn, gpointer data)
 {
-	bool fixed_aspect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (constellation_radio));
+	bool fixed_aspect = gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == XY_PLOT;
 	gfloat left, right, top, bottom;
 	gfloat t_left, t_right, t_top, t_bottom;
 	gfloat width, height;
@@ -2267,6 +2270,21 @@ static gboolean capture_button_icon_transform(GBinding *binding,
 	return TRUE;
 }
 
+static gboolean domain_is_fft(GBinding *binding,
+        const GValue *source_value, GValue *target_value, gpointer user_data)
+{
+	g_value_set_boolean(target_value, g_value_get_int(source_value) == FFT_PLOT);
+	return TRUE;
+}
+
+static gboolean domain_is_time(GBinding *binding,
+	const GValue *source_value, GValue *target_value, gpointer user_data)
+{
+	g_value_set_boolean(target_value, g_value_get_int(source_value) != FFT_PLOT);
+	return TRUE;
+}
+
+
 static gboolean check_valid_setup()
 {
 	GtkTreeIter iter;
@@ -2285,8 +2303,8 @@ static gboolean check_valid_setup()
 
 	/* Additional validation rules provided by the plugin of the device */
 	if (plugin_setup_validation_fct)
-		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)) ||
-			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(constellation_radio)))
+		if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == FFT_PLOT ||
+			gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == XY_PLOT)
 			if (j == 2)
 				if(!(*plugin_setup_validation_fct)(channels, num_channels, ch_names)) {
 					snprintf(warning_text, sizeof(warning_text),
@@ -2297,49 +2315,43 @@ static gboolean check_valid_setup()
 
 
 	/* Basic validation rules */
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio))) {
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == FFT_PLOT) {
 		if (j != 2 && j != 1) {
 			gtk_widget_set_tooltip_text(capture_button, "FFT needs 2 channels or less");
 			goto capture_button_err;
-		} else {
-			goto reset_capture_button;
 		}
-	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(constellation_radio))) {
+	} else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == XY_PLOT) {
 		if (j != 2) {
 			gtk_widget_set_tooltip_text(capture_button, "Constellation needs 2 channels");
 			goto capture_button_err;
-		} else {
-			goto reset_capture_button;
+		}
+	} else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == TIME_PLOT){
+		if (j == 0) {
+			gtk_widget_set_tooltip_text(capture_button, "Time Domain needs at least one channel");
+			goto capture_button_err;
 		}
 	} else {
-		/* time domain */
-		if (j == 0) {
-			gtk_widget_set_tooltip_text(capture_button, "Capture / Stop\n(Enable at least one channel from the left pannel)");
-			g_object_set(capture_button, "stock-id", "gtk-media-play", NULL);
-			goto capture_button_err2;
-		}
-		goto reset_capture_button;
+		gtk_widget_set_tooltip_text(capture_button, "Unknown capture type");
+		goto capture_button_err;
 	}
+
+	g_object_set(capture_button, "stock-id", "gtk-media-play", NULL);
+	gtk_widget_set_tooltip_text(capture_button, "Capture / Stop");
+	if (!capture_button_hid) {
+		capture_button_hid = g_signal_connect(capture_button, "toggled",
+		G_CALLBACK(capture_button_clicked), NULL);
+		deactivate_capture_btn_flag = 0;
+	}
+
+	return false;
 
 capture_button_err:
 	g_object_set(capture_button, "stock-id", "gtk-dialog-warning", NULL);
-capture_button_err2	:
 	if (capture_button_hid) {
 		g_signal_handler_disconnect(capture_button, capture_button_hid);
 		deactivate_capture_btn_flag = 1;
 	}
 	capture_button_hid = 0;
-
-	return false;
-
-reset_capture_button:
-	g_object_set(capture_button, "stock-id", "gtk-media-play", NULL);
-	gtk_widget_set_tooltip_text(capture_button, "Capture / Stop");
-	if (!capture_button_hid) {
-		capture_button_hid = g_signal_connect(capture_button, "toggled",
-				G_CALLBACK(capture_button_clicked), NULL);
-		deactivate_capture_btn_flag = 0;
-	}
 
 	return false;
 }
@@ -2414,11 +2426,11 @@ void capture_profile_save(const char *filename)
 	}
 
 	fprintf(inifp, "domain=");
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(fft_radio)))
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == FFT_PLOT)
 		fprintf(inifp, "%s\n", "fft");
-	else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(constellation_radio)))
+	else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == XY_PLOT)
 		fprintf(inifp, "%s\n", "constellation");
-	else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(time_radio)))
+	else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == TIME_PLOT)
 		fprintf(inifp, "%s\n", "time");
 
 	tmp_int = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(sample_count_widget));
@@ -2598,11 +2610,11 @@ int capture_profile_handler(const char* name, const char *value)
 					printf("found invalid device name in .ini file\n");
 			} else if (MATCH_NAME("domain")) {
 				if (!strcmp(value, "time"))
-					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(time_radio), TRUE);
+					gtk_combo_box_set_active(GTK_COMBO_BOX(plot_domain), TIME_PLOT);
 				else if (!strcmp(value, "fft"))
-					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(fft_radio), TRUE);
+					gtk_combo_box_set_active(GTK_COMBO_BOX(plot_domain), FFT_PLOT);
 				else if (!strcmp(value, "constellation"))
-					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(constellation_radio), TRUE);
+					gtk_combo_box_set_active(GTK_COMBO_BOX(plot_domain), XY_PLOT);
 			} else if (MATCH_NAME("sample_count")) {
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(sample_count_widget), atoi(value));
 			} else if (MATCH_NAME("fft_size")) {
@@ -2818,6 +2830,10 @@ static int load_default_profile (char * filename)
 	int ret, linecount, flag = 0;
 	FILE *fd;
 
+	/* Don't load anything */
+	if (!strcmp(filename, "-"))
+		return 0;
+
 	if (filename) {
 		strncpy(buf, filename, 1023);
 		if (!check_inifile(buf))
@@ -2903,9 +2919,7 @@ static void init_application (void)
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
 	fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
-	fft_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type_fft"));
-	time_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type"));
-	constellation_radio = GTK_WIDGET(gtk_builder_get_object(builder, "type_constellation"));
+	plot_domain = GTK_WIDGET(gtk_builder_get_object(builder, "capture_domains"));
 	adc_freq_label = GTK_WIDGET(gtk_builder_get_object(builder, "adc_freq_label"));
 	rx_lo_freq_label = GTK_WIDGET(gtk_builder_get_object(builder, "rx_lo_freq_label"));
 	show_grid = GTK_WIDGET(gtk_builder_get_object(builder, "show_grid"));
@@ -2930,29 +2944,45 @@ static void init_application (void)
 	/* Bind the plot mode radio buttons to the sensitivity of the sample count
 	 * and FFT size widgets */
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size_label"));
-	g_object_bind_property(fft_radio, "active", tmp, "visible", 0);
-	g_object_bind_property(fft_radio, "active", fft_size_widget, "visible", 0);
+	g_object_bind_property_full(plot_domain, "active", tmp, "visible",
+			0, domain_is_fft, NULL, NULL, NULL);
+	g_object_bind_property_full(plot_domain, "active", fft_size_widget, "visible",
+			 0, domain_is_fft, NULL, NULL, NULL);
+
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg_label"));
-	g_object_bind_property(fft_radio, "active", tmp, "visible", 0);
-	g_object_bind_property(fft_radio, "active", fft_avg_widget, "visible", 0);
-	g_object_bind_property(fft_radio, "active", fft_pwr_offset_widget, "visible", 0);
+	g_object_bind_property_full(plot_domain, "active", tmp, "visible",
+			0, domain_is_fft, NULL, NULL, NULL);
+	g_object_bind_property_full(plot_domain, "active", fft_avg_widget, "visible",
+			0, domain_is_fft, NULL, NULL, NULL);
+
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset_label"));
-	g_object_bind_property(fft_radio, "active", tmp, "visible", 0);
+	g_object_bind_property_full(plot_domain, "active", tmp, "visible",
+			0, domain_is_fft, NULL, NULL, NULL);
+	g_object_bind_property_full(plot_domain, "active", fft_pwr_offset_widget, "visible",
+			0, domain_is_fft, NULL, NULL, NULL);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "time_interval_label"));
-	g_object_bind_property(time_radio, "active", tmp, "visible", 0);
-	g_object_bind_property(time_radio, "active", time_interval_widget, "visible", 0);
+	g_object_bind_property_full(plot_domain, "active", tmp, "visible",
+			0, domain_is_time, NULL, NULL, NULL);
+	g_object_bind_property_full(plot_domain, "active", time_interval_widget, "visible",
+			0, domain_is_time, NULL, NULL, NULL);
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "time_unit_label"));
+	g_object_bind_property_full(plot_domain, "active", tmp, "visible",
+			0, domain_is_time, NULL, NULL, NULL);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_label"));
-	g_object_bind_property(fft_radio, "active", tmp, "visible", G_BINDING_INVERT_BOOLEAN);
-	g_object_bind_property(fft_radio, "active", sample_count_widget, "visible", G_BINDING_INVERT_BOOLEAN);
-
-	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "time_unit_label"));
-	g_object_bind_property(time_radio, "active", tmp, "visible", 0);
+	g_object_bind_property_full(plot_domain, "active", tmp, "visible",
+			0, domain_is_time, NULL, NULL, NULL);
+	g_object_bind_property_full(plot_domain, "active", sample_count_widget, "visible",
+			0, domain_is_time, NULL, NULL, NULL);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type_label"));
-	g_object_bind_property(fft_radio, "active", tmp, "visible", G_BINDING_INVERT_BOOLEAN);
-	g_object_bind_property(fft_radio, "active", plot_type, "visible", G_BINDING_INVERT_BOOLEAN);
+	g_object_bind_property_full(plot_domain, "active", tmp, "visible",
+		0, domain_is_time, NULL, NULL, NULL);
+	g_object_bind_property_full(plot_domain, "active", plot_type, "visible",
+		0, domain_is_time, NULL, NULL, NULL);
+
+	gtk_combo_box_set_active(GTK_COMBO_BOX(plot_domain), TIME_PLOT);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(plot_type), 0);
 
 	num_samples = 1;
@@ -2979,7 +3009,7 @@ static void init_application (void)
 
 	add_grid();
 
-	gtk_widget_set_size_request(table, 600, 600);
+	gtk_widget_set_size_request(table, 400, 400);
 
 	g_builder_connect_signal(builder, "zoom_in", "clicked",
 		G_CALLBACK(zoom_in), databox);
@@ -2992,18 +3022,9 @@ static void init_application (void)
 	g_signal_connect(enable_auto_scale, "toggled",
 		G_CALLBACK(enable_auto_scale_cb), NULL);
 
-	g_builder_connect_signal(builder, "type", "released",
+	g_signal_connect(plot_domain, "changed",
 		G_CALLBACK(check_valid_setup), NULL);
-	g_builder_connect_signal(builder, "type", "key-release-event",
-		G_CALLBACK(check_valid_setup), NULL);
-	g_builder_connect_signal(builder, "type_fft", "released",
-		G_CALLBACK(check_valid_setup), NULL);
-	g_builder_connect_signal(builder, "type_fft", "key-release-event",
-		G_CALLBACK(check_valid_setup), NULL);
-	g_builder_connect_signal(builder, "type_constellation", "released",
-		G_CALLBACK(check_valid_setup), NULL);
-	g_builder_connect_signal(builder, "type_constellation", "key-release-event",
-		G_CALLBACK(check_valid_setup), NULL);
+
 	g_builder_connect_signal(builder, "channel_list_view", "button_release_event",
 		G_CALLBACK(check_valid_setup), NULL);
 	g_builder_connect_signal(builder, "channel_list_view", "key-release-event",
@@ -3021,11 +3042,7 @@ static void init_application (void)
 			"input_device_list", "sensitive", G_BINDING_INVERT_BOOLEAN);
 
 	g_builder_bind_property(builder, "capture_button", "active",
-			"type", "sensitive", G_BINDING_INVERT_BOOLEAN);
-	g_builder_bind_property(builder, "capture_button", "active",
-			"type_fft", "sensitive", G_BINDING_INVERT_BOOLEAN);
-	g_builder_bind_property(builder, "capture_button", "active",
-			"type_constellation", "sensitive", G_BINDING_INVERT_BOOLEAN);
+			"capture_domains", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
 			"fft_size", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
