@@ -943,6 +943,13 @@ Installed/Found IIO devices on this platform</property>
       <column type="gchararray"/>
     </columns>
   </object>
+  <object class="GtkImage" id="image1">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="xalign">0.49000000953674316</property>
+    <property name="yalign">0.46000000834465027</property>
+    <property name="stock">gtk-save-as</property>
+  </object>
   <object class="GtkImage" id="image_capture">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -952,13 +959,6 @@ Installed/Found IIO devices on this platform</property>
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="pixbuf">/usr/local/share/osc/osc_generator.png</property>
-  </object>
-  <object class="GtkImage" id="image1">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="xalign">0.49000000953674316</property>
-    <property name="yalign">0.46000000834465027</property>
-    <property name="stock">gtk-save-as</property>
   </object>
   <object class="GtkFileChooserDialog" id="load_save_profile">
     <property name="can_focus">False</property>
@@ -1094,6 +1094,7 @@ Installed/Found IIO devices on this platform</property>
                         <property name="can_focus">False</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
+                        <accelerator key="q" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                         <signal name="activate" handler="cb_quit" swapped="no"/>
                       </object>
                     </child>

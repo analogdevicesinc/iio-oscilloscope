@@ -1171,6 +1171,7 @@
                             <property name="label" translatable="yes">Save As</property>
                             <property name="use_underline">True</property>
                             <property name="stock_id">gtk-save-as</property>
+                            <accelerator key="s" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
