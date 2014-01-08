@@ -83,7 +83,7 @@ static void do_fft(Transform *tr)
 	struct _fft_settings *settings = tr->settings;
 	struct _fft_alg_data *fft = &settings->fft_alg_data;
 	struct marker_type *markers = settings->markers;
-	enum marker_types marker_type;
+	enum marker_types marker_type = MARKER_OFF;
 	gfloat *in_data = *tr->in_data;
 	gfloat *in_data_c;
 	gfloat *out_data = tr->y_axis;
