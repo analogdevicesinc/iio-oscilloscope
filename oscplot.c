@@ -237,6 +237,8 @@ struct _OscPlotPrivate
 	gulong fixed_marker_hid;
 };
 
+static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type);
+
 G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
 
 static void osc_plot_class_init(OscPlotClass *klass)
@@ -751,7 +753,7 @@ static void add_markers(OscPlot *plot, Transform *transform)
 		markers[i].graph = gtk_databox_markers_new(1, &markers[i].x, &markers[i].y, &color_marker,
 			10, GTK_DATABOX_MARKERS_TRIANGLE);
 		gtk_databox_graph_add(databox, markers[i].graph);
-		sprintf(buf, "M%i", i);
+		sprintf(buf, "?%i", i);
 		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph), 0, GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
 
 		if (priv->marker_type == MARKER_OFF)
@@ -759,6 +761,9 @@ static void add_markers(OscPlot *plot, Transform *transform)
 		else
 			gtk_databox_graph_set_hide(markers[i].graph, !markers[i].active);
 	}
+	if (priv->marker_type != MARKER_OFF)
+		set_marker_labels(plot, NULL, priv->marker_type);
+
 	FFT_SETTINGS(transform)->markers = priv->markers;
 	FFT_SETTINGS(transform)->marker_type = &priv->marker_type;
 }
@@ -2453,7 +2458,7 @@ static void device_list_cfg_file_write(OscPlot *plot, char *filename)
 	
 	tmp_float = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->y_axis_min));
 	fprintf(fp, "y_axis_min=%f\n", tmp_float);
-	
+
 	next_dev_iter = true;
 	while (next_dev_iter) {
 		gtk_tree_model_get(model, &dev_iter, ELEMENT_REFERENCE, &dev, -1);
@@ -2534,7 +2539,25 @@ static void device_list_cfg_file_write(OscPlot *plot, char *filename)
 		}
 		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
 	}
-		
+
+	if (priv->marker_type == MARKER_OFF)
+		fprintf(fp, "marker_type = %s\n", OFF_MRK);
+	else if (priv->marker_type == MARKER_PEAK)
+		fprintf(fp, "marker_type = %s\n", PEAK_MRK);
+	else if (priv->marker_type == MARKER_FIXED)
+		fprintf(fp, "marker_type = %s\n", FIX_MRK);
+	else if (priv->marker_type == MARKER_ONE_TONE)
+		fprintf(fp, "marker_type = %s\n", SINGLE_MRK);
+	else if (priv->marker_type == MARKER_TWO_TONE)
+		fprintf(fp, "marker_type = %s\n", DUAL_MRK);
+	else if (priv->marker_type == MARKER_IMAGE)
+		fprintf(fp, "marker_type = %s\n", IMAGE_MRK);
+
+	for (tmp_int = 0; tmp_int <= MAX_MARKERS; tmp_int++) {
+		if (priv->markers[tmp_int].active)
+			fprintf(fp, "marker.%i = %i\n", tmp_int, priv->markers[tmp_int].bin);
+	}
+	
 	fclose(fp);
 }
 
@@ -2689,7 +2712,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 	int index;
 	int t_type;
 	struct transform_ini_cfg *cfg = NULL;
-	int ret;
+	int ret, i;
 	
 	if (!MATCH_SECT(priv->ini_section_name))
 		return 0;
@@ -2709,11 +2732,28 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_max), atof(value));
 			else if (MATCH_NAME("y_axis_min"))
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_min), atof(value));
+			else if (MATCH_NAME("marker_type")) {
+				set_marker_labels(plot, (gchar *)value, MARKER_NULL);
+				for (i = 0; i <= MAX_MARKERS; i++)
+					priv->markers[i].active = FALSE;
+			} else {
+				printf("Unhandled token in ini file, \n"
+					"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
+					section, name, value);
+			}
 			break;
 		case DEVICE:
 			elems = g_strsplit(name, ".", DEVICE + 1);
 			dev_name = elems[0];
 			dev_property = elems[1];
+			
+			/* Check for markers */
+			if (MATCH(elems[0], "marker")) {
+				i = atoi(elems[1]);
+				priv->markers[i].bin = atoi(value);
+				priv->markers[i].active = TRUE;
+			}
+
 			dev = device_find_by_name(dev_name);
 			if (dev == -1)
 				break;
@@ -2935,15 +2975,6 @@ static void device_list_cfg_file_load(OscPlot *plot, char *filename)
 	min_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_min), plot);
 }
 
-#define OFF_MRK    "Markers Off"
-#define PEAK_MRK   "Peak Markers"
-#define FIX_MRK    "Fixed Markers"
-#define SINGLE_MRK "Single Tone Markers"
-#define DUAL_MRK   "Two Tone Markers"
-#define IMAGE_MRK  "Image Markers"
-#define ADD_MRK    "Add Marker"
-#define REMOVE_MRK "Remove Marker"
-
 static inline void marker_set(OscPlot *plot, int i, char *buf, bool force)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -2951,15 +2982,15 @@ static inline void marker_set(OscPlot *plot, int i, char *buf, bool force)
 	if (force)
 		priv->markers[i].active = TRUE;
 
-	gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(priv->markers[i].graph), 0,
-		GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
-	gtk_databox_graph_set_hide(priv->markers[i].graph, !priv->markers[i].active);
+	if (priv->markers[i].graph) {
+		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(priv->markers[i].graph), 0,
+			GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+		gtk_databox_graph_set_hide(priv->markers[i].graph, !priv->markers[i].active);
+	}
 }
 
-static void marker_menu (struct string_and_plot *string_data)
+static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type)
 {
-	gchar *buf = string_data->string_obj;
-	OscPlot *plot = string_data->plot;
 	OscPlotPrivate *priv = plot->priv;
 	char tmp[128];
 	int i;
@@ -2967,21 +2998,21 @@ static void marker_menu (struct string_and_plot *string_data)
 	if (!MAX_MARKERS)
 		return;
 
-	if (!strcmp(buf, PEAK_MRK)) {
+	if ((buf && !strcmp(buf, PEAK_MRK)) || type == MARKER_PEAK) {
 		priv->marker_type = MARKER_PEAK;
 		for (i = 0; i <= MAX_MARKERS; i++) {
 			sprintf(tmp, "P%i", i);
 			marker_set(plot, i, tmp, FALSE);
 		}
 		return;
-	} else if (!strcmp(buf, FIX_MRK)) {
+	} else if ((buf && !strcmp(buf, FIX_MRK)) || type == MARKER_FIXED) {
 		priv->marker_type = MARKER_FIXED;
 		for (i = 0; i <= MAX_MARKERS; i++) {
 			sprintf(tmp, "F%i", i);
 			marker_set(plot, i, tmp, FALSE);
 		}
 		return;
-	} else if (!strcmp(buf, SINGLE_MRK)) {
+	} else if ((buf && !strcmp(buf, SINGLE_MRK)) || type == MARKER_ONE_TONE) {
 		priv->marker_type = MARKER_ONE_TONE;
 		marker_set(plot, 0, "Fund", TRUE);
 		marker_set(plot, 1, "DC", TRUE);
@@ -2990,10 +3021,10 @@ static void marker_menu (struct string_and_plot *string_data)
 			marker_set(plot, i, tmp, FALSE);
 		}
 		return;
-	} else if (!strcmp(buf, DUAL_MRK)) {
+	} else if ((buf && !strcmp(buf, DUAL_MRK)) || type == MARKER_TWO_TONE) {
 		priv->marker_type = MARKER_TWO_TONE;
 		return;
-	} else if (!strcmp(buf, IMAGE_MRK)) {
+	} else if ((buf && !strcmp(buf, IMAGE_MRK)) || type == MARKER_IMAGE) {
 		priv->marker_type = MARKER_IMAGE;
 		marker_set(plot, 0, "Fund", TRUE);
 		marker_set(plot, 1, "DC", TRUE);
@@ -3004,14 +3035,14 @@ static void marker_menu (struct string_and_plot *string_data)
 				gtk_databox_graph_set_hide(priv->markers[i].graph, TRUE);
 		}
 		return;
-	} else if (!strcmp(buf, OFF_MRK)) {
+	} else if (buf && !strcmp(buf, OFF_MRK)) {
 		priv->marker_type = MARKER_OFF;
 		for (i = 0; i <= MAX_MARKERS; i++) {
 			if (priv->markers[i].graph)
 				gtk_databox_graph_set_hide(priv->markers[i].graph, TRUE);
 		}
 		return;
-	} else if (!strcmp(buf, REMOVE_MRK)) {
+	} else if (buf && !strcmp(buf, REMOVE_MRK)) {
 		for (i = MAX_MARKERS; i != 0; i--) {
 			if (priv->markers[i].active) {
 				priv->markers[i].active = FALSE;
@@ -3020,7 +3051,7 @@ static void marker_menu (struct string_and_plot *string_data)
 			}
 		}
 		return;
-	} else if (!strcmp(buf, ADD_MRK)) {
+	} else if (buf && !strcmp(buf, ADD_MRK)) {
 		for (i = 0; i <= MAX_MARKERS; i++) {
 			if (!priv->markers[i].active) {
 				priv->markers[i].active = TRUE;
@@ -3032,6 +3063,11 @@ static void marker_menu (struct string_and_plot *string_data)
 	}
 
 	printf("unhandled event at %s : %s\n", __func__, buf);
+}
+
+static void marker_menu (struct string_and_plot *string_data)
+{
+	set_marker_labels(string_data->plot, string_data->string_obj, MARKER_NULL);
 }
 
 static gint moved_fixed(GtkDatabox *box, GdkEventMotion *event, gpointer user_data)
