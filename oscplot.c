@@ -221,6 +221,8 @@ struct _OscPlotPrivate
 	
 	GList *ini_cfgs;
 	
+	int ini_capture_status;
+	
 	char *saveas_filename;
 	char *ini_section_name;
 	
@@ -2443,6 +2445,8 @@ static void device_list_cfg_file_write(OscPlot *plot, char *filename)
 	float tmp_float;
 	gchar *tmp_string;
 	
+	fprintf(fp, "capture_started=%d\n", (priv->redraw_function) ? 1 : 0);
+	
 	tmp_string = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type));
 	fprintf(fp, "graph_type=%s\n", tmp_string);
 	g_free(tmp_string);
@@ -2720,7 +2724,9 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 	elem_type = count_char_in_string('.', name);
 	switch(elem_type) {
 		case PLOT_ATTRIBUTE:
-			if (MATCH_NAME("graph_type")) {
+			if (MATCH_NAME("capture_started")) {
+				priv->ini_capture_status = atoi(value);
+			} else if (MATCH_NAME("graph_type")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->plot_type), value);
 				if (ret == 0)
 					printf("found invalid graph type in .ini file\n");
@@ -2973,6 +2979,8 @@ static void device_list_cfg_file_load(OscPlot *plot, char *filename)
 	treeview_expand_update(plot);
 	max_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_max), plot);
 	min_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_min), plot);
+	if (plot->priv->ini_capture_status)
+		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(plot->priv->capture_button), TRUE);
 }
 
 static inline void marker_set(OscPlot *plot, int i, char *buf, bool force)
