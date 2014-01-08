@@ -22,6 +22,8 @@ struct osc_plugin {
 };
 
 void osc_plugin_register(const struct osc_plugin *plugin);
+void * plugin_dlsym(const char *name, const char *symbol);
+bool plugin_installed(const char *name);
 extern GSList *plugin_list;
 
 #define MATCH_ATTRIB(s) (strcmp(attrib, s) == 0)

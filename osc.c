@@ -2059,6 +2059,51 @@ static void close_plugins(void)
 	}
 }
 
+bool plugin_installed(const char *name)
+{
+	GSList *node;
+	struct osc_plugin *plugin = NULL;
+
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		plugin = node->data;
+		if (plugin && !strcmp(plugin->name, name))
+			return true;
+	}
+
+	return false;
+}
+
+void * plugin_dlsym(const char *name, const char *symbol)
+{
+	GSList *node;
+	struct osc_plugin *plugin = NULL;
+	void *fcn;
+	char *buf;
+	Dl_info info;
+
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		plugin = node->data;
+		if (plugin && !strcmp(plugin->name, name)) {
+			dlerror();
+			fcn = dlsym(plugin->handle, symbol);
+			buf = dlerror();
+			if (buf) {
+				fprintf(stderr, "%s:%s(): found plugin %s, error looking up %s\n"
+						"\t%s\n", __FILE__, __func__, name, symbol, buf);
+				if (dladdr(__builtin_return_address(0), &info))
+					fprintf(stderr, "\tcalled from %s:%s()\n", info.dli_fname, info.dli_sname);
+			}
+			return fcn;
+		}
+	}
+
+	fprintf(stderr, "%s:%s : No plugin with matching name %s\n", __FILE__, __func__, name);
+	if (dladdr(__builtin_return_address(0), &info))
+		fprintf(stderr, "\tcalled from %s:%s()\n", info.dli_fname, info.dli_sname);
+
+	return NULL;
+}
+
 bool str_endswith(const char *str, const char *needle)
 {
 	const char *pos;
@@ -2831,7 +2876,7 @@ static int load_default_profile (char * filename)
 	FILE *fd;
 
 	/* Don't load anything */
-	if (!strcmp(filename, "-"))
+	if (filename && !strcmp(filename, "-"))
 		return 0;
 
 	if (filename) {
