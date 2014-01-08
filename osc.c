@@ -82,19 +82,22 @@ static void do_fft(Transform *tr)
 	struct extra_info *ch_info;
 	struct _fft_settings *settings = tr->settings;
 	struct _fft_alg_data *fft = &settings->fft_alg_data;
+	struct marker_type *markers = settings->markers;
+	enum marker_types marker_type;
 	gfloat *in_data = *tr->in_data;
 	gfloat *in_data_c;
 	gfloat *out_data = tr->y_axis;
+	gfloat *X = tr->x_axis;
 	unsigned int fft_size = settings->fft_size;
 	int i, j, k;
 	int cnt;
 	gfloat mag;
 	double avg, pwr_offset;
-
-	gfloat *markX = settings->markX;
-	gfloat *markY = settings->markY;
 	unsigned int maxx[MAX_MARKERS + 1];
 	gfloat maxY[MAX_MARKERS + 1];
+
+	if (settings->marker_type)
+		marker_type = *((enum marker_types *)settings->marker_type);
 
 	if ((fft->cached_fft_size == -1) || (fft->cached_fft_size != fft_size) ||
 		(fft->cached_num_active_channels != fft->num_active_channels)) {
@@ -193,20 +196,26 @@ static void do_fft(Transform *tr)
 			/* do an average */
 			out_data[i] = ((1 - avg) * out_data[i]) + (avg * mag);
 		}
-		if (MAX_MARKERS && tr->has_the_marker) {
+		if (!tr->has_the_marker)
+			continue;
+		if (MAX_MARKERS && (marker_type == MARKER_PEAK ||
+				marker_type == MARKER_ONE_TONE ||
+				marker_type == MARKER_IMAGE)) {
 			if (i == 0) {
 				maxx[0] = 0;
 				maxY[0] = out_data[0];
 			} else {
-				for (j = 0; j <= MAX_MARKERS; j++) {
+				for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
 					if  ((out_data[i - 1] > maxY[j]) &&
 						((!((out_data[i - 2] > out_data[i - 1]) &&
 						 (out_data[i - 1] > out_data[i]))) &&
 						 (!((out_data[i - 2] < out_data[i - 1]) &&
 						 (out_data[i - 1] < out_data[i]))))) {
-						for (k = MAX_MARKERS; k > j; k--) {
-							maxY[k] = maxY[k - 1];
-							maxx[k] = maxx[k - 1];
+						if (marker_type == MARKER_PEAK) {
+							for (k = MAX_MARKERS; k > j; k--) {
+								maxY[k] = maxY[k - 1];
+								maxx[k] = maxx[k - 1];
+							}
 						}
 						maxY[j] = out_data[i - 1];
 						maxx[j] = i - 1;
@@ -216,11 +225,85 @@ static void do_fft(Transform *tr)
 			}
 		}
 	}
-	if (MAX_MARKERS && tr->has_the_marker)
-		for (j = 0; j <= MAX_MARKERS; j++) {
-			markX[j] = (gfloat)tr->x_axis[maxx[j]];
-			markY[j] = (gfloat)out_data[maxx[j]];
+	
+	if (!tr->has_the_marker)
+		return;
+	
+	unsigned int m = fft->m;
+		
+	if (MAX_MARKERS && marker_type != MARKER_OFF) {
+		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
+			if (marker_type == MARKER_PEAK) {
+				markers[j].x = (gfloat)X[maxx[j]];
+				markers[j].y = (gfloat)out_data[maxx[j]];
+				markers[j].bin = maxx[j];
+			} else if (marker_type == MARKER_FIXED) {
+				markers[j].x = (gfloat)X[markers[j].bin];
+				markers[j].y = (gfloat)out_data[markers[j].bin];
+			} else if (marker_type == MARKER_ONE_TONE) {
+				/* assume peak is the tone */
+				if (j == 0) {
+					markers[j].bin = maxx[j];
+					i = 1;
+				} else if (j == 1) {
+					/* keep DC */
+					if (tr->type_id == COMPLEX_FFT_TRANSFORM)
+						markers[j].bin = m / 2;
+					else
+						markers[j].bin = 0;
+				} else {
+					/* where should the spurs be? */
+					i++;
+					if (tr->type_id == COMPLEX_FFT_TRANSFORM) {
+						markers[j].bin = (markers[0].bin - (m / 2)) * i + (m / 2);
+						if (markers[j].bin > m)
+							markers[j].bin -= 2 * (markers[j].bin - m);
+						if (markers[j].bin < ( m/2 ))
+							markers[j].bin += 2 * ((m / 2) - markers[j].bin);
+					} else {
+						markers[j].bin = markers[0].bin * i;
+						if (markers[j].bin > (m))
+							markers[j].bin -= 2 * (markers[j].bin - (m));
+						if (markers[j].bin < 0)
+							markers[j].bin += -markers[j].bin;
+					}
+				}
+				/* make sure we don't need to nudge things one way or the other */
+				k = markers[j].bin;
+				while (out_data[k] < out_data[k + 1]) {
+					k++;
+				}
+				
+				while (markers[j].bin != 0 &&
+						out_data[markers[j].bin] < out_data[markers[j].bin - 1]) {
+					markers[j].bin--;
+				}
+				
+				if (out_data[k] > out_data[markers[j].bin])
+					markers[j].bin = k;
+				
+				markers[j].x = (gfloat)X[markers[j].bin];
+				markers[j].y = (gfloat)out_data[markers[j].bin];
+			} else if (marker_type == MARKER_IMAGE) {
+				/* keep DC, fundamental, and image
+				 * num_active_channels always needs to be 2 for images */
+				if (j == 0) {
+					/* Fundamental */
+					markers[j].bin = maxx[j];
+				} else if (j == 1) {
+					/* DC */
+					markers[j].bin = m / 2;
+				} else if (j == 2) {
+					/* Image */
+					markers[j].bin = m / 2 - (markers[0].bin - m/2);
+				} else
+					continue;
+				markers[j].x = (gfloat)X[markers[j].bin];
+				markers[j].y = (gfloat)out_data[markers[j].bin];
+
+			}
 		}
+	}
 }
 
 void time_transform_function(Transform *tr, gboolean init_transform)

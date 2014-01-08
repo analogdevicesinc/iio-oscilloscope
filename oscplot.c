@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <malloc.h>
+#include <math.h>
 #include <matio.h>
 
 #include "ini/ini.h"
@@ -139,6 +140,16 @@ struct transform_gui_settings {
 #define FFT_SETTINGS(obj) ((struct _fft_settings *)obj->settings)
 #define CONSTELLATION_SETTINGS(obj) ((struct _constellation_settings *)obj->settings)
 
+struct int_and_plot {
+	int int_obj;
+	OscPlot *plot;
+};
+
+struct string_and_plot {
+	char *string_obj;
+	OscPlot *plot;
+};
+
 struct _OscPlotPrivate
 {
 	GtkBuilder *builder;
@@ -188,6 +199,10 @@ struct _OscPlotPrivate
 	/* Transform currently holding the fft marker */
 	Transform *tr_with_marker;
 	
+	/* The set of markers */
+	struct marker_type markers[MAX_MARKERS + 2];
+	enum marker_types marker_type;
+
 	/* Databox data */
 	GtkDataboxGraph *grid;
 	GtkDataboxGraph *time_graph;
@@ -208,6 +223,18 @@ struct _OscPlotPrivate
 	
 	char *saveas_filename;
 	char *ini_section_name;
+	
+	struct int_and_plot fix_marker;
+	struct string_and_plot add_mrk;
+	struct string_and_plot remove_mrk;
+	struct string_and_plot peak_mrk;
+	struct string_and_plot fix_mrk;
+	struct string_and_plot single_mrk;
+	struct string_and_plot dual_mrk;
+	struct string_and_plot image_mrk;
+	struct string_and_plot off_mrk;
+	
+	gulong fixed_marker_hid;
 };
 
 G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
@@ -451,9 +478,7 @@ static void time_settings_init(Transform *tr, struct _time_settings *settings)
 }
 
 static void fft_settings_init(Transform *tr, struct _fft_settings *settings)
-{
-	int i;
-	
+{	
 	if (settings) {
 		settings->fft_size = (GET_CHANNEL_PARENT(tr->channel_parent))->shadow_of_sample_count;
 		constrain_to_a_power_of_2(&settings->fft_size);
@@ -465,8 +490,8 @@ static void fft_settings_init(Transform *tr, struct _fft_settings *settings)
 			settings->fft_alg_data.num_active_channels = 2;
 		else
 			settings->fft_alg_data.num_active_channels = 1;
-		for (i = 0; i < MAX_MARKERS + 2; i++)
-			settings->marker[i] = NULL;
+		settings->markers = NULL;
+		settings->marker_type = NULL;
 	}
 }
 
@@ -712,35 +737,42 @@ static gint tr_id_compare(gconstpointer a, gconstpointer b)
 
 static void add_markers(OscPlot *plot, Transform *transform)
 {
+	OscPlotPrivate *priv = plot->priv;
 	GtkDatabox *databox = GTK_DATABOX(plot->priv->databox);
-	struct _fft_settings *settings = transform->settings;
-	gfloat *markX = settings->markX;
-	gfloat *markY = settings->markY;
-	GtkDataboxGraph **marker = (GtkDataboxGraph **)settings->marker;
+	struct marker_type *markers = priv->markers;
 	char buf[10];
-	int m;
-	
-	for (m = 0; m <= MAX_MARKERS; m++) {
-		markX[m] = 0.0f;
-		markY[m] = -100.0f;
-		marker[m] = gtk_databox_markers_new(1, &markX[m], &markY[m], &color_marker, 10, GTK_DATABOX_MARKERS_TRIANGLE);
-		sprintf(buf, "M%i", m);
-		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(marker[m]), 0, GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
-		gtk_databox_graph_add(databox, marker[m]);
-		gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(settings->marker[m]), !transform->graph_active);
+	int i;
+
+	for (i = 0; i <= MAX_MARKERS; i++) {
+		markers[i].x = 0.0f;
+		markers[i].y = -100.0f;
+		if (markers[i].graph)
+			g_object_unref(markers[i].graph);
+		markers[i].graph = gtk_databox_markers_new(1, &markers[i].x, &markers[i].y, &color_marker,
+			10, GTK_DATABOX_MARKERS_TRIANGLE);
+		gtk_databox_graph_add(databox, markers[i].graph);
+		sprintf(buf, "M%i", i);
+		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph), 0, GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+
+		if (priv->marker_type == MARKER_OFF)
+			gtk_databox_graph_set_hide(markers[i].graph, TRUE);
+		else
+			gtk_databox_graph_set_hide(markers[i].graph, !markers[i].active);
 	}
+	FFT_SETTINGS(transform)->markers = priv->markers;
+	FFT_SETTINGS(transform)->marker_type = &priv->marker_type;
 }
 
 static void remove_markers(OscPlot *plot, Transform *transform)
 {
-	GtkDatabox *databox = GTK_DATABOX(plot->priv->databox);
-	struct _fft_settings *settings = transform->settings;
-	GtkDataboxGraph **marker = (GtkDataboxGraph **)settings->marker;
+	OscPlotPrivate *priv = plot->priv;
 	int m;
 	
 	for (m = 0; m <= MAX_MARKERS; m++)
-		gtk_databox_graph_remove(databox, marker[m]);
-	gtk_text_buffer_set_text(plot->priv->tbuf, "", -1);
+		gtk_databox_graph_set_hide(priv->markers[m].graph, TRUE);
+	gtk_text_buffer_set_text(priv->tbuf, "No markers active", 17);
+	priv->marker_type = MARKER_OFF;
+	
 }
 
 static Transform * add_transform(OscPlot *plot, struct transform_gui_settings *tr_gui)
@@ -1489,8 +1521,7 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 {
 	struct _fft_settings *settings = tr->settings;
 	struct extra_info *ch_info;
-	gfloat *markX = settings->markX;
-	gfloat *markY = settings->markY;
+	struct marker_type *markers = settings->markers;
 	GtkTextIter iter;
 	char text[256];
 	int m;
@@ -1500,18 +1531,22 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 			gtk_text_view_set_buffer(GTK_TEXT_VIEW(priv->marker_label), priv->tbuf);
 	}
 	ch_info = tr->channel_parent->extra_field;
-	for (m = 0; m <= MAX_MARKERS; m++) {
-		sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz%c",
-				m, markY[m], ch_info->device_parent->lo_freq + markX[m],
-				ch_info->device_parent->adc_scale,
-				m != MAX_MARKERS ? '\n' : '\0');
+	if (MAX_MARKERS && priv->marker_type != MARKER_OFF) {
+		for (m = 0; m <= MAX_MARKERS && markers[m].active; m++) {
+			sprintf(text, "M%i: %2.2f dBFS @ %2.3f %sHz%c",
+					m, markers[m].y, ch_info->device_parent->lo_freq + markers[m].x,
+					ch_info->device_parent->adc_scale,
+					m != MAX_MARKERS ? '\n' : '\0');
 
-		if (m == 0) {
-			gtk_text_buffer_set_text(priv->tbuf, text, -1);
-			gtk_text_buffer_get_iter_at_line(priv->tbuf, &iter, 1);
-		} else {
-			gtk_text_buffer_insert(priv->tbuf, &iter, text, -1);
+			if (m == 0) {
+				gtk_text_buffer_set_text(priv->tbuf, text, -1);
+				gtk_text_buffer_get_iter_at_line(priv->tbuf, &iter, 1);
+			} else {
+				gtk_text_buffer_insert(priv->tbuf, &iter, text, -1);
+			}
 		}
+	} else {
+		gtk_text_buffer_set_text(priv->tbuf, "No markers active", 17);
 	}
 }
 
@@ -1636,7 +1671,7 @@ static void plot_setup(OscPlot *plot)
 	/* Remove FFT Marker info */
 	if (priv->tbuf)
 		gtk_text_buffer_set_text(priv->tbuf, empty_text, -1);
-		
+
 	for (i = 0; i < tr_list->size; i++) {
 		transform = tr_list->transforms[i];
 		check_transform_settings(transform, priv->active_transform_type);
@@ -1658,7 +1693,7 @@ static void plot_setup(OscPlot *plot)
 		if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM)
 			if (transform->has_the_marker)
 				add_markers(plot, transform);
-		
+
 		gtk_databox_graph_add(GTK_DATABOX(priv->databox), transform->graph);
 		gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(transform->graph), !transform->graph_active);
 	}
@@ -1760,8 +1795,7 @@ static void transform_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, g
 		settings = tr->settings;
 		if (tr->has_the_marker)
 			for (m = 0; m <= MAX_MARKERS; m++)
-				if (settings->marker[m])
-					gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(settings->marker[m]), !active);
+					gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(settings->markers[m].graph), !active);
 		gtk_widget_queue_draw(GTK_WIDGET(priv->databox));
 	}
 }
@@ -2901,6 +2935,289 @@ static void device_list_cfg_file_load(OscPlot *plot, char *filename)
 	min_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_min), plot);
 }
 
+#define OFF_MRK    "Markers Off"
+#define PEAK_MRK   "Peak Markers"
+#define FIX_MRK    "Fixed Markers"
+#define SINGLE_MRK "Single Tone Markers"
+#define DUAL_MRK   "Two Tone Markers"
+#define IMAGE_MRK  "Image Markers"
+#define ADD_MRK    "Add Marker"
+#define REMOVE_MRK "Remove Marker"
+
+static inline void marker_set(OscPlot *plot, int i, char *buf, bool force)
+{
+	OscPlotPrivate *priv = plot->priv;
+	
+	if (force)
+		priv->markers[i].active = TRUE;
+
+	gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(priv->markers[i].graph), 0,
+		GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+	gtk_databox_graph_set_hide(priv->markers[i].graph, !priv->markers[i].active);
+}
+
+static void marker_menu (struct string_and_plot *string_data)
+{
+	gchar *buf = string_data->string_obj;
+	OscPlot *plot = string_data->plot;
+	OscPlotPrivate *priv = plot->priv;
+	char tmp[128];
+	int i;
+
+	if (!MAX_MARKERS)
+		return;
+
+	if (!strcmp(buf, PEAK_MRK)) {
+		priv->marker_type = MARKER_PEAK;
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			sprintf(tmp, "P%i", i);
+			marker_set(plot, i, tmp, FALSE);
+		}
+		return;
+	} else if (!strcmp(buf, FIX_MRK)) {
+		priv->marker_type = MARKER_FIXED;
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			sprintf(tmp, "F%i", i);
+			marker_set(plot, i, tmp, FALSE);
+		}
+		return;
+	} else if (!strcmp(buf, SINGLE_MRK)) {
+		priv->marker_type = MARKER_ONE_TONE;
+		marker_set(plot, 0, "Fund", TRUE);
+		marker_set(plot, 1, "DC", TRUE);
+		for (i = 2; i < MAX_MARKERS; i++) {
+			sprintf(tmp, "%iH", i);
+			marker_set(plot, i, tmp, FALSE);
+		}
+		return;
+	} else if (!strcmp(buf, DUAL_MRK)) {
+		priv->marker_type = MARKER_TWO_TONE;
+		return;
+	} else if (!strcmp(buf, IMAGE_MRK)) {
+		priv->marker_type = MARKER_IMAGE;
+		marker_set(plot, 0, "Fund", TRUE);
+		marker_set(plot, 1, "DC", TRUE);
+		marker_set(plot, 2, "Image", TRUE);
+		for (i = 3; i <= MAX_MARKERS; i++) {
+			priv->markers[i].active = FALSE;
+			if(priv->markers[i].graph)
+				gtk_databox_graph_set_hide(priv->markers[i].graph, TRUE);
+		}
+		return;
+	} else if (!strcmp(buf, OFF_MRK)) {
+		priv->marker_type = MARKER_OFF;
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			if (priv->markers[i].graph)
+				gtk_databox_graph_set_hide(priv->markers[i].graph, TRUE);
+		}
+		return;
+	} else if (!strcmp(buf, REMOVE_MRK)) {
+		for (i = MAX_MARKERS; i != 0; i--) {
+			if (priv->markers[i].active) {
+				priv->markers[i].active = FALSE;
+				gtk_databox_graph_set_hide(priv->markers[i].graph, TRUE);
+				break;
+			}
+		}
+		return;
+	} else if (!strcmp(buf, ADD_MRK)) {
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			if (!priv->markers[i].active) {
+				priv->markers[i].active = TRUE;
+				gtk_databox_graph_set_hide(priv->markers[i].graph, FALSE);
+				break;
+			}
+		}
+		return;
+	}
+
+	printf("unhandled event at %s : %s\n", __func__, buf);
+}
+
+static gint moved_fixed(GtkDatabox *box, GdkEventMotion *event, gpointer user_data)
+{
+	struct int_and_plot *data = user_data;
+	OscPlot *plot = data->plot;
+	OscPlotPrivate *priv = plot->priv;
+	int mark = data->int_obj;
+	unsigned int max_size;
+	gfloat *X = Transform_get_x_axis_ref(priv->tr_with_marker);
+	
+	if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM)
+		max_size = priv->tr_with_marker->x_axis_size;
+	else
+		max_size = priv->tr_with_marker->x_axis_size / 2;
+
+	while((gfloat)X[priv->markers[mark].bin] < gtk_databox_pixel_to_value_x(box, event->x) &&
+		priv->markers[mark].bin < max_size)
+		priv->markers[mark].bin++;
+
+	while((gfloat)X[priv->markers[mark].bin] > gtk_databox_pixel_to_value_x(box, event->x) &&
+		priv->markers[mark].bin > 0)
+		priv->markers[mark].bin--;
+
+	return FALSE;
+}
+
+static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
+{
+	OscPlot *plot = (OscPlot *)data;
+	OscPlotPrivate *priv = plot->priv;
+	gfloat x, y, dist;
+	GtkWidget *popupmenu, *menuitem;
+	gfloat left, right, top, bottom;
+	int i, fix = -1;
+	bool full = TRUE, empty = TRUE;
+
+	/* FFT? */
+	if (priv->active_transform_type != FFT_TRANSFORM &&
+		priv->active_transform_type != COMPLEX_FFT_TRANSFORM)
+	return FALSE;
+
+	/* Right button */
+	if (event->button != 3)
+		return FALSE;
+
+	/* things are running? */
+	if (!priv->markers[0].graph)
+		return FALSE;
+	
+	/* no transform with marker */
+	if (!priv->tr_with_marker)
+		return FALSE;
+
+	if (event->type == GDK_BUTTON_RELEASE) {
+		if (priv->fixed_marker_hid) {
+			g_signal_handler_disconnect(box, priv->fixed_marker_hid);
+			priv->fixed_marker_hid = 0;
+			return TRUE;
+		}
+		return FALSE;
+	}
+
+	x = gtk_databox_pixel_to_value_x(box, event->x);
+	y = gtk_databox_pixel_to_value_y(box, event->y);
+	gtk_databox_get_total_limits(box, &left, &right, &top, &bottom);
+
+	for (i = 0; i <= MAX_MARKERS; i++) {
+		if (priv->marker_type == MARKER_FIXED) {
+			/* sqrt of ((delta X / X range)^2 + (delta Y / Y range)^2 ) */
+			dist = sqrtf(powf((x - priv->markers[i].x) / (right - left), 2.0) +
+					powf((y - priv->markers[i].y) / (bottom - top), 2.0)) * 100;
+			if (dist <= 2.0)
+				fix = i;
+		}
+		if (!priv->markers[i].active)
+			full = FALSE;
+		else if (empty)
+			empty = FALSE;
+	}
+
+	priv->fix_marker.int_obj = fix;
+	priv->fix_marker.plot = plot;
+	if (fix != -1) {
+		priv->fixed_marker_hid = g_signal_connect(box, "motion_notify_event",
+			G_CALLBACK(moved_fixed), (gpointer) &priv->fix_marker);
+		return TRUE;
+	}
+
+	popupmenu = gtk_menu_new();
+
+	i = 0;
+	if (!full && !(priv->marker_type == MARKER_OFF || priv->marker_type == MARKER_IMAGE)) {
+		menuitem = gtk_menu_item_new_with_label(ADD_MRK);
+		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+				GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->add_mrk);
+		gtk_widget_show(menuitem);
+		i++;
+	}
+
+	if (!empty && !(priv->marker_type == MARKER_OFF || priv->marker_type == MARKER_IMAGE)) {
+		menuitem = gtk_menu_item_new_with_label(REMOVE_MRK);
+		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+				GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->remove_mrk);
+		gtk_widget_show(menuitem);
+		i++;
+	}
+
+	if (!full || !empty) {
+		menuitem = gtk_separator_menu_item_new();
+		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+		gtk_widget_show(menuitem);
+		i++;
+	}
+
+	menuitem = gtk_check_menu_item_new_with_label(PEAK_MRK);
+	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+			priv->marker_type == MARKER_PEAK);
+	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+			GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->peak_mrk);
+	gtk_widget_show(menuitem);
+	i++;
+
+	menuitem = gtk_check_menu_item_new_with_label(FIX_MRK);
+	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+			priv->marker_type == MARKER_FIXED);
+	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+			GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->fix_mrk);
+	gtk_widget_show(menuitem);
+	i++;
+
+	menuitem = gtk_check_menu_item_new_with_label(SINGLE_MRK);
+	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+			priv->marker_type == MARKER_ONE_TONE);
+	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+			GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->single_mrk);
+	gtk_widget_show(menuitem);
+	i++;
+
+	/*
+	menuitem = gtk_check_menu_item_new_with_label(DUAL_MRK);
+	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+			priv->marker_type == MARKER_TWO_TONE);
+	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+			GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->dual_mrk);
+	gtk_widget_show(menuitem);
+	i++;
+	*/
+
+	if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
+		menuitem = gtk_check_menu_item_new_with_label(IMAGE_MRK);
+		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+				priv->marker_type == MARKER_IMAGE);
+		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+		GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->image_mrk);
+		gtk_widget_show(menuitem);
+		i++;
+	}
+
+	if (priv->marker_type != MARKER_OFF) {
+		menuitem = gtk_check_menu_item_new_with_label(OFF_MRK);
+		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
+				priv->marker_type == MARKER_OFF);
+		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
+		GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->off_mrk);
+		gtk_widget_show(menuitem);
+		i++;
+	}
+
+	gtk_menu_popup(GTK_MENU(popupmenu), NULL, NULL, NULL, NULL,
+		event->button, event->time);
+
+	if (priv->marker_type == MARKER_FIXED)
+		return TRUE;
+
+	return FALSE;
+}
+
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -3031,7 +3348,12 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(zoom_fit), plot);
 	g_signal_connect(priv->show_grid, "toggled",
 		G_CALLBACK(show_grid_toggled), plot);
-	
+
+	g_signal_connect(GTK_DATABOX(priv->databox), "button_press_event", 
+		G_CALLBACK(marker_button), plot);
+	g_signal_connect(GTK_DATABOX(priv->databox), "button_release_event", 
+		G_CALLBACK(marker_button), plot);
+
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,
 		"stock-id", 0, capture_button_icon_transform, NULL, plot, NULL);
@@ -3045,6 +3367,29 @@ static void create_plot(OscPlot *plot)
 	tree_selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->channel_list_view));
 	gtk_tree_selection_set_mode(tree_selection, GTK_SELECTION_MULTIPLE);
 	add_grid(plot);
+	if (MAX_MARKERS) {
+		priv->marker_type = MARKER_OFF;
+		for (i = 0; i < MAX_MARKERS; i++) {
+			priv->markers[i].graph = NULL;
+			priv->markers[i].active = (i <= 4);
+		}
+	}
+	priv->add_mrk.plot = plot;
+	priv->remove_mrk.plot = plot;
+	priv->peak_mrk.plot = plot;
+	priv->fix_mrk.plot = plot;
+	priv->single_mrk.plot = plot;
+	priv->dual_mrk.plot = plot;
+	priv->image_mrk.plot = plot;
+	priv->off_mrk.plot = plot;
+	priv->add_mrk.string_obj = ADD_MRK;
+	priv->remove_mrk.string_obj = REMOVE_MRK;
+	priv->peak_mrk.string_obj = PEAK_MRK;
+	priv->fix_mrk.string_obj = FIX_MRK;
+	priv->single_mrk.string_obj = SINGLE_MRK;
+	priv->dual_mrk.string_obj = DUAL_MRK;
+	priv->image_mrk.string_obj = IMAGE_MRK;
+	priv->off_mrk.string_obj = OFF_MRK;
 	
 	gtk_window_set_modal(GTK_WINDOW(priv->saveas_dialog), FALSE);
 	gtk_widget_show(priv->window);

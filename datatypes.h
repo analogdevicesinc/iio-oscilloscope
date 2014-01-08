@@ -10,14 +10,31 @@
 #include <glib.h>
 #include <errno.h>
 #include <stdbool.h>
-
+#include <gtkdatabox.h>
 #include <fftw3.h>
 
 #include "iio_utils.h"
 
 #ifndef MAX_MARKERS
-#define MAX_MARKERS 4
+#define MAX_MARKERS 10
 #endif
+
+struct marker_type {
+	gfloat x;
+	gfloat y;
+	int bin;
+	bool active;
+	GtkDataboxGraph *graph;
+};
+
+enum marker_types {
+	MARKER_OFF,
+	MARKER_PEAK,
+	MARKER_FIXED,
+	MARKER_ONE_TONE,
+	MARKER_TWO_TONE,
+	MARKER_IMAGE
+};
 
 /* Types of transforms */
 enum {
@@ -119,9 +136,8 @@ struct _fft_settings {
 	unsigned int fft_avg;
 	gfloat fft_pwr_off;
 	struct _fft_alg_data fft_alg_data;
-	gfloat markX[MAX_MARKERS + 2];
-	gfloat markY[MAX_MARKERS + 2];
-	void *marker[MAX_MARKERS + 2];
+	struct marker_type *markers;
+	enum marker_types *marker_type;
 };
 
 struct _constellation_settings {
