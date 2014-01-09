@@ -237,6 +237,12 @@ struct _OscPlotPrivate
 	struct string_and_plot off_mrk;
 	
 	gulong fixed_marker_hid;
+	
+	gfloat plot_left;
+	gfloat plot_right;
+	gfloat plot_top;
+	gfloat plot_bottom;
+	int read_scale_params;
 };
 
 static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type);
@@ -322,6 +328,8 @@ void osc_plot_update_rx_lbl(OscPlot *plot)
 			corr = priv->current_device->adc_freq / 2.0;
 		else
 			corr = 0;
+		if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
+			return;
 		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -5.0 - corr, priv->current_device->adc_freq / 2.0 + 5.0, 0.0, -75.0);
 		priv->do_a_rescale_flag = 1;
 	} else {
@@ -2458,10 +2466,17 @@ static void device_list_cfg_file_write(OscPlot *plot, char *filename)
 	fprintf(fp, "enable_auto_scale=%d\n", tmp_int);
 	
 	tmp_float = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->y_axis_max));
-	fprintf(fp, "y_axis_max=%f\n", tmp_float);
+	fprintf(fp, "user_y_axis_max=%f\n", tmp_float);
 	
 	tmp_float = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->y_axis_min));
-	fprintf(fp, "y_axis_min=%f\n", tmp_float);
+	fprintf(fp, "user_y_axis_min=%f\n", tmp_float);
+
+	gfloat left, right, top, bottom;
+	gtk_databox_get_visible_limits(GTK_DATABOX(priv->databox), &left, &right, &top, &bottom);
+	fprintf(fp, "x_axis_min=%f\n", left);
+	fprintf(fp, "x_axis_max=%f\n", right);
+	fprintf(fp, "y_axis_min=%f\n", bottom);
+	fprintf(fp, "y_axis_max=%f\n", top);
 
 	next_dev_iter = true;
 	while (next_dev_iter) {
@@ -2734,11 +2749,23 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(priv->show_grid), atoi(value));
 			else if (MATCH_NAME("enable_auto_scale"))
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale), atoi(value));
-			else if (MATCH_NAME("y_axis_max"))
+			else if (MATCH_NAME("user_y_axis_max"))
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_max), atof(value));
-			else if (MATCH_NAME("y_axis_min"))
+			else if (MATCH_NAME("user_y_axis_min"))
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_min), atof(value));
-			else if (MATCH_NAME("marker_type")) {
+			else if (MATCH_NAME("x_axis_min")) {
+				priv->plot_left = atof(value);
+				priv->read_scale_params++;
+			} else if (MATCH_NAME("x_axis_max")) {
+				priv->plot_right = atof(value);
+				priv->read_scale_params++;
+			} else if (MATCH_NAME("y_axis_min")) {
+				priv->plot_bottom = atof(value);
+					priv->read_scale_params++;
+			} else if (MATCH_NAME("y_axis_max")) {
+				priv->plot_top = atof(value);
+				priv->read_scale_params++;
+			} else if (MATCH_NAME("marker_type")) {
 				set_marker_labels(plot, (gchar *)value, MARKER_NULL);
 				for (i = 0; i <= MAX_MARKERS; i++)
 					priv->markers[i].active = FALSE;
@@ -2974,6 +3001,8 @@ static void load_ini_settings(OscPlot *plot)
 
 static void device_list_cfg_file_load(OscPlot *plot, char *filename)
 {	
+	OscPlotPrivate *priv = plot->priv;
+	
 	ini_parse(filename, cfg_read_handler, plot);
 	load_ini_settings(plot);
 	treeview_expand_update(plot);
@@ -2981,6 +3010,11 @@ static void device_list_cfg_file_load(OscPlot *plot, char *filename)
 	min_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_min), plot);
 	if (plot->priv->ini_capture_status)
 		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(plot->priv->capture_button), TRUE);
+	if (priv->read_scale_params == 4) {
+		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), priv->plot_left, 
+			priv->plot_right, priv->plot_top, priv->plot_bottom);
+			priv->read_scale_params = 0;
+	}
 }
 
 static inline void marker_set(OscPlot *plot, int i, char *buf, bool force)
