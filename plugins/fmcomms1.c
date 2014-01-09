@@ -28,6 +28,7 @@
 #include "../config.h"
 #include "../eeprom.h"
 #include "../ini/ini.h"
+#include "scpi.h"
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
@@ -55,6 +56,7 @@ static GtkWidget *dds_Q_l, *dds_Q1_l, *dds_Q2_l;
 static gulong dds1_freq_hid = 0, dds2_freq_hid = 0;
 static gulong dds1_scale_hid = 0, dds2_scale_hid = 0;
 static gulong dds1_phase_hid = 0, dds2_phase_hid = 0;
+static int rx_lo_powerdown, tx_lo_powerdown;
 
 static GtkWidget *dac_shift;
 
@@ -578,7 +580,17 @@ static bool cal_rx_flag = false;
 static gfloat knob_max, knob_min, knob_steps;
 static int delay;
 
-static void cal_rx_button_clicked(GtkButton *btn, gpointer data)
+static void cal_tx_button_clicked(void)
+{
+	if (!scpi_rx_connected())
+		return;
+
+	scpi_rx_setup();
+	scpi_rx_set_center_frequency(gtk_spin_button_get_value (GTK_SPIN_BUTTON(tx_lo_freq)) * 1000000);
+
+}
+
+static void cal_rx_button_clicked(void)
 {
 	cal_rx_flag = true;
 
@@ -1155,12 +1167,16 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 
 	kill_thread = 0;
 
-	g_thread_new("Display_thread", (void *) &display_cal, NULL);
+	/* Only start the thread if the LO is set */
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget)))
+		g_thread_new("Display_thread", (void *) &display_cal, NULL);
 
 	gtk_widget_show(dialogs.calibrate);
 
 	gtk_widget_hide(cal_rx);
-	gtk_widget_hide(cal_tx);
+
+	if (!scpi_connect_functions())
+		gtk_widget_hide(cal_tx);
 
 	if (fmcomms1_cal_eeprom() < 0)
 		gtk_widget_hide(load_eeprom);
@@ -1188,8 +1204,10 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 				}
 				break;
 			case 5: /* Cal Tx side */
+				cal_tx_button_clicked();
 				break;
 			case 6: /* Cal Rx side */
+				cal_rx_button_clicked();
 				break;
 			case GTK_RESPONSE_APPLY:
 				cal_save_values();
@@ -1792,6 +1810,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_int_init(&tx_widgets[num_tx++],
 			"adf4351-tx-lpc", "out_altvoltage0_frequency",
 			tx_lo_freq, &mhz_scale);
+	tx_lo_powerdown = num_tx;
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"adf4351-tx-lpc", "out_altvoltage0_powerdown",
 			builder, "tx_lo_powerdown", 1);
@@ -1860,6 +1879,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_int_init(&rx_widgets[num_rx++],
 			"adf4351-rx-lpc", "out_altvoltage0_frequency",
 			rx_lo_freq, &mhz_scale);
+	rx_lo_powerdown = num_rx;
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
 			"adf4351-rx-lpc", "out_altvoltage0_powerdown",
 			builder, "rx_lo_powerdown", 1);
@@ -1887,7 +1907,12 @@ static int fmcomms1_init(GtkWidget *notebook)
 		GTK_WIDGET(gtk_builder_get_object(builder, "gain_amp_together")),
 		"toggled", G_CALLBACK(gain_amp_locked_cb), NULL);
 
-	g_signal_connect(cal_rx, "clicked", G_CALLBACK(cal_rx_button_clicked), NULL);
+	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_I, "visible", 0);
+	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_Q, "visible", 0);
+	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", span_I, "visible", 0);
+	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", span_Q, "visible", 0);
+	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", radius_IQ, "visible", 0);
+	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", angle_IQ, "visible", 0);
 
 	fmcomms1_cal_eeprom();
 	tx_update_values();
@@ -1930,7 +1955,7 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	} else if (MATCH_ATTRIB("calibrate_rx")) {
 		if (value && atoi(value) == 1) {
 			gtk_widget_show(dialogs.calibrate);
-			cal_rx_button_clicked(NULL, NULL);
+			cal_rx_button_clicked();
 			kill_thread = 0;
 			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
 			while (kill_thread == 0) {
