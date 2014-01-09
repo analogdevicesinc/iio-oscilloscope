@@ -111,7 +111,7 @@ static struct scpi_instrument spectrum_analyzer;
  */
 
 /* Wait for data to become available */
-int network_waitfordata(int MySocket)
+static int network_waitfordata(int MySocket)
 {
 	fd_set MyFDSet;
 	struct timeval tv;
@@ -167,7 +167,7 @@ static int scpi_network_read(struct scpi_instrument *scpi)
 }
 
 /* Turn NOdelay on */
-void network_setnodelay(int MySocket)
+static void network_setnodelay(int MySocket)
 {
 	int StateNODELAY = 1;
 	int ret;
@@ -395,7 +395,7 @@ static int tty_connect(struct scpi_instrument *scpi)
  * (zero indicates nothing was written).
  * On error, -1 is returned
  */
-ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t count)
+static ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t count)
 {
 	int retval = -1;
 
@@ -425,7 +425,7 @@ ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t count)
 
 #define MAX_STR_SIZE 256
 
-ssize_t scpi_fprintf(struct scpi_instrument *scpi, const char *str, ...)
+static ssize_t scpi_fprintf(struct scpi_instrument *scpi, const char *str, ...)
 {
 	va_list args;
 	char buf[MAX_STR_SIZE];
@@ -442,7 +442,8 @@ ssize_t scpi_fprintf(struct scpi_instrument *scpi, const char *str, ...)
 	return retval;
 }
 
-ssize_t scpi_read(struct scpi_instrument *scpi)
+/*
+static ssize_t scpi_read(struct scpi_instrument *scpi)
 {
 	ssize_t retval;
 
@@ -457,8 +458,9 @@ ssize_t scpi_read(struct scpi_instrument *scpi)
 
 	return retval;
 }
+*/
 
-int scpi_connect(struct scpi_instrument *scpi)
+static int scpi_connect(struct scpi_instrument *scpi)
 {
 	int ret;
 
@@ -494,64 +496,69 @@ int scpi_connect(struct scpi_instrument *scpi)
 
 /* Spectrum Analyzer commands */
 
-void rx_trigger_sweep(struct scpi_instrument *scpi)
+bool scpi_rx_connected()
 {
-	scpi_fprintf(scpi, "INIT:IMM;*WAI\n");
+	return (spectrum_analyzer.ttyfd != 0);
 }
 
-void rx_set_center_frequency(struct scpi_instrument *scpi, unsigned long long fcent_hz)
+void scpi_rx_trigger_sweep()
 {
-        scpi_fprintf(scpi, ":FREQ:CENT %llu;*WAI\n", fcent_hz);
+	scpi_fprintf(&spectrum_analyzer, "INIT:IMM;*WAI\n");
 }
 
-void rx_set_span_frequency(struct scpi_instrument *scpi, unsigned long long fspan_hz)
+void scpi_rx_set_center_frequency(unsigned long long fcent_hz)
 {
-	scpi_fprintf(scpi, ":FREQ:SPAN %llu;*WAI\n", fspan_hz);
+        scpi_fprintf(&spectrum_analyzer, ":FREQ:CENT %llu;*WAI\n", fcent_hz);
 }
 
-static void rx_set_bandwith(struct scpi_instrument *scpi, unsigned res_bw_khz, unsigned vid_bw_khz)
+void scpi_rx_set_span_frequency(unsigned long long fspan_hz)
 {
-	scpi_fprintf(scpi, ":BAND %dkHz;*WAI\n", res_bw_khz);
+	scpi_fprintf(&spectrum_analyzer, ":FREQ:SPAN %llu;*WAI\n", fspan_hz);
+}
+
+void scpi_rx_set_bandwith(unsigned int res_bw_khz, unsigned int vid_bw_khz)
+{
+	scpi_fprintf(&spectrum_analyzer, ":BAND %dkHz;*WAI\n", res_bw_khz);
 	if (!vid_bw_khz)
-		scpi_fprintf(scpi, ":BAND:VID %dkHz;*WAI\n", res_bw_khz);
+		scpi_fprintf(&spectrum_analyzer, ":BAND:VID %dkHz;*WAI\n", res_bw_khz);
 	else
-		scpi_fprintf(scpi, ":BAND:VID %dkHz;*WAI\n", vid_bw_khz);
+		scpi_fprintf(&spectrum_analyzer, ":BAND:VID %dkHz;*WAI\n", vid_bw_khz);
 }
 
-void rx_set_bandwith_auto(struct scpi_instrument *scpi, double ratio)
+void scpi_rx_set_bandwith_auto(double ratio)
 {
-	scpi_fprintf(scpi, ":BAND:AUTO ON;*WAI\n");
-	scpi_fprintf(scpi, ":BAND:RAT %f;*WAI\n", ratio);
+	scpi_fprintf(&spectrum_analyzer, ":BAND:AUTO ON;*WAI\n");
+	scpi_fprintf(&spectrum_analyzer, ":BAND:RAT %f;*WAI\n", ratio);
 
 }
 
-void rx_setup(struct scpi_instrument *scpi)
+void scpi_rx_setup()
 {
-	scpi_fprintf(scpi, ":DISP:TRACE:Y:RLEVEL %d DBM\n", 10);
-	scpi_fprintf(scpi, ":AVER OFF\n");
-	scpi_fprintf(scpi, ":DISPLAY:MARK: AOFF\n");
-//	rx_set_frequency(scpi, fcent_hz, fspan_hz);
-	rx_set_bandwith(scpi, 200, 10);
+	scpi_fprintf(&spectrum_analyzer, ":DISP:TRACE:Y:RLEVEL %d DBM\n", 10);
+	scpi_fprintf(&spectrum_analyzer, ":AVER OFF\n");
+	scpi_fprintf(&spectrum_analyzer, ":DISPLAY:MARK: AOFF\n");
+//	scpi_rx_set_frequency(fcent_hz, fspan_hz);
+	scpi_rx_set_bandwith(200, 10);
 
-	scpi_fprintf(scpi, ":INIT:CONT OFF\n");
-	rx_trigger_sweep(scpi);
-	scpi_fprintf(scpi, ":INIT:CONT ON\n");
+	scpi_fprintf(&spectrum_analyzer, ":INIT:CONT OFF\n");
+	scpi_rx_trigger_sweep();
+	scpi_fprintf(&spectrum_analyzer, ":INIT:CONT ON\n");
 }
 
-int rx_set_marker_freq(struct scpi_instrument *scpi, unsigned marker, unsigned long long freq)
+int scpi_rx_set_marker_freq(unsigned int marker, unsigned long long freq)
 {
-	scpi_fprintf(scpi, "CALC:MARK%d:X %llu;*WAI\n", marker, freq);
-	return scpi_fprintf(scpi, "CALC:MARK%d:STAT ON;*WAI\n", marker);
+	scpi_fprintf(&spectrum_analyzer, "CALC:MARK%d:X %llu;*WAI\n", marker, freq);
+	return scpi_fprintf(&spectrum_analyzer, "CALC:MARK%d:STAT ON;*WAI\n", marker);
 }
 
-int rx_get_marker_level(struct scpi_instrument *scpi, unsigned marker, unsigned wait, double *lvl)
+int scpi_rx_get_marker_level(unsigned marker, unsigned wait, double *lvl)
 {
 	int ret;
 
 	if (wait)
-		scpi_fprintf(scpi, "INIT:IMM;*WAI\n");
-	scpi_fprintf(scpi, "CALC:MARK%d:Y?\n", marker);
-	ret = sscanf(scpi->response, "%lf", lvl);
+		scpi_fprintf(&spectrum_analyzer, "INIT:IMM;*WAI\n");
+	scpi_fprintf(&spectrum_analyzer, "CALC:MARK%d:Y?\n", marker);
+	ret = sscanf(spectrum_analyzer.response, "%lf", lvl);
 
 	if (ret == 1)
 		return 0;
@@ -559,16 +566,16 @@ int rx_get_marker_level(struct scpi_instrument *scpi, unsigned marker, unsigned 
 	return -1;
 }
 
-int rx_get_marker_freq(struct scpi_instrument *scpi, unsigned marker, unsigned wait, double *lvl)
+int scpi_rx_get_marker_freq(unsigned int marker, unsigned int wait, double *lvl)
 {
 	int ret;
 
 	if (wait)
-		scpi_fprintf(scpi, "INIT:IMM;*WAI\n");
+		scpi_fprintf(&spectrum_analyzer, "INIT:IMM;*WAI\n");
 
 	/* scpi_fprintf("CALC:MARK%d:COUNT ON\n", marker); */
-	scpi_fprintf(scpi, "CALC:MARK%d:COUNT:FREQ?\n", marker);
-	ret = sscanf(scpi->response, "%lf", lvl);
+	scpi_fprintf(&spectrum_analyzer, "CALC:MARK%d:COUNT:FREQ?\n", marker);
+	ret = sscanf(spectrum_analyzer.response, "%lf", lvl);
 
 	if (ret == 1)
 		return 0;
@@ -577,17 +584,17 @@ int rx_get_marker_freq(struct scpi_instrument *scpi, unsigned marker, unsigned w
 }
 
 /* SIGNAL Generator Functions */
-int tx_freq_set_Hz(struct scpi_instrument *scpi, unsigned long long freq)
+static int tx_freq_set_Hz(struct scpi_instrument *scpi, unsigned long long freq)
 {
 	return scpi_fprintf(scpi, ":FREQ:CW %llu;*WAI\n", freq);
 }
 
-int tx_output_set(struct scpi_instrument *scpi, unsigned on)
+static int tx_output_set(struct scpi_instrument *scpi, unsigned on)
 {
 	return scpi_fprintf(scpi, ":OUTPut %s;*WAI\n", on ? "ON" : "OFF");
 }
 
-int tx_mag_set_dBm(struct scpi_instrument *scpi, double lvl)
+static int tx_mag_set_dBm(struct scpi_instrument *scpi, double lvl)
 {
 	return scpi_fprintf(scpi, ":POW %f DBM;*WAI\n", lvl);
 }
@@ -596,8 +603,7 @@ int tx_mag_set_dBm(struct scpi_instrument *scpi, double lvl)
  * Save/Restore stuff
  */
 
-struct scpi_instrument *current_instrument;
-
+static struct scpi_instrument *current_instrument;
 
 #define SERIAL_TOK "serial"
 #define NET_TOK    "network"
@@ -698,16 +704,16 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 		/* Don't save the on/off state */
 	} else if (MATCH_ATTRIB("rx.setup")) {
 		if (value)
-			rx_setup(&spectrum_analyzer);
+			scpi_rx_setup(&spectrum_analyzer);
 	} else if (MATCH_ATTRIB("rx.center")) {
 		if (value)
-			rx_set_center_frequency(&spectrum_analyzer, atoll(value));
+			scpi_rx_set_center_frequency(atoll(value));
 	} else if (MATCH_ATTRIB("rx.span")) {
 		if (value)
-			rx_set_span_frequency(&spectrum_analyzer, atoll(value));
+			scpi_rx_set_span_frequency(atoll(value));
 	} else if (!strncmp(attrib, "rx.marker", strlen("rx.marker"))) {
 		if (value)
-			rx_set_marker_freq(&spectrum_analyzer, atoi(&attrib[strlen("rx.marker") + 1]), atoll(value));
+			scpi_rx_set_marker_freq(atoi(&attrib[strlen("rx.marker") + 1]), atoll(value));
 	} else {
 		printf("Unhandled tokens in ini file,\n"
 				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
@@ -748,14 +754,14 @@ static const char *scpi_sr_attribs[] = {
  * All the GUI/Glade stuff
  */
 
-GtkWidget *scpi_radio_conf;
-GtkWidget *scpi_none_radio, *scpi_tty_radio, *scpi_net_radio;
-GtkWidget *scpi_output, *scpi_regex;
-GtkWidget *scpi_ip_addr;
-GtkWidget *scpi_serial_tty, *scpi_gpib_addr;
-GtkWidget *scpi_id;
+static GtkWidget *scpi_radio_conf;
+static GtkWidget *scpi_none_radio, *scpi_tty_radio, *scpi_net_radio;
+static GtkWidget *scpi_output, *scpi_regex;
+static GtkWidget *scpi_ip_addr;
+static GtkWidget *scpi_serial_tty, *scpi_gpib_addr;
+static GtkWidget *scpi_id;
 
-char *cmd_to_send = NULL;
+static char *cmd_to_send = NULL;
 
 #define NO_CONNECT 0
 #define NETWORK_CONNECT 1
@@ -765,7 +771,7 @@ char *cmd_to_send = NULL;
 #define SCPI_TX   1
 #define SCPI_RX   2
 
-void load_instrument (struct scpi_instrument *scpi)
+static void load_instrument (struct scpi_instrument *scpi)
 {
 	char tmp[128];
 
@@ -797,7 +803,7 @@ void load_instrument (struct scpi_instrument *scpi)
 
 }
 
-void instrument_type_cb (GtkComboBox *box)
+static void instrument_type_cb (GtkComboBox *box)
 {
 	gint item;
 
@@ -833,7 +839,7 @@ void instrument_type_cb (GtkComboBox *box)
 	}
 }
 
-void scpi_text_entry_cb (GtkEntry *box, int data)
+static void scpi_text_entry_cb (GtkEntry *box, int data)
 {
 	GdkColor green = {
 		.red = 0,
@@ -885,7 +891,7 @@ void scpi_text_entry_cb (GtkEntry *box, int data)
 	}
 }
 
-void init_scpi_device(struct scpi_instrument *device)
+static void init_scpi_device(struct scpi_instrument *device)
 {
 	memset(device, 0, sizeof(struct scpi_instrument));
 	device->ip_address = strdup(DEFAULT_SCPI_IP_ADDR);
@@ -899,7 +905,7 @@ void init_scpi_device(struct scpi_instrument *device)
 	}
 }
 
-void connect_clicked_cb(void)
+static void connect_clicked_cb(void)
 {
 	int ret = -1;
 
@@ -922,13 +928,16 @@ void connect_clicked_cb(void)
 
 		if (current_instrument->id_regex)
 			gtk_entry_set_text(GTK_ENTRY(scpi_regex), current_instrument->id_regex);
+		else
+			gtk_entry_set_text(GTK_ENTRY(scpi_regex), "");
+		g_signal_emit_by_name(scpi_regex, "changed");
 
 		gtk_widget_show(scpi_output);
 	}
 
 }
 
-void scpi_radio_cb (GtkRadioButton *button, int data)
+static void scpi_radio_cb (GtkRadioButton *button, int data)
 {
 	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)))
 		return;
@@ -962,7 +971,7 @@ void scpi_radio_cb (GtkRadioButton *button, int data)
 	}
 }
 
-void scpi_cmd_cb (GtkButton *button, GtkEntry *box)
+static void scpi_cmd_cb (GtkButton *button, GtkEntry *box)
 {
 	const char *buf = gtk_entry_get_text(box);
 
