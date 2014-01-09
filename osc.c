@@ -2831,8 +2831,9 @@ static int load_default_profile (char * filename)
 	FILE *fd;
 
 	/* Don't load anything */
-	if (!strcmp(filename, "-"))
-		return 0;
+	if (filename)
+		if (!strcmp(filename, "-"))
+			return 0;
 
 	if (filename) {
 		strncpy(buf, filename, 1023);
