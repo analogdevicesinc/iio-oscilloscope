@@ -1601,6 +1601,20 @@ static int fmcomms1_cal_eeprom(void)
 	return -ENODEV;
 }
 
+static void dac_cal_spin(GtkRange *range, gpointer user_data)
+{
+	gdouble val, inc;
+
+	val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(range));
+	gtk_spin_button_get_increments(GTK_SPIN_BUTTON(range), &inc, NULL);
+
+	set_dev_paths("cf-ad9122-core-lpc");
+	if (inc == 1.0)
+		write_devattr_slonglong((char *)user_data, (long long)val);
+	else
+		write_devattr_double((char *)user_data, val);
+}
+
 static void adc_cal_spin(GtkRange *range, gpointer user_data)
 {
 	gdouble val, inc;
@@ -1609,8 +1623,9 @@ static void adc_cal_spin(GtkRange *range, gpointer user_data)
 	gtk_spin_button_get_increments(GTK_SPIN_BUTTON(range), &inc, NULL);
 
 	set_dev_paths("cf-ad9643-core-lpc");
+
 	if (inc == 1.0)
-		write_devattr_int((char *)user_data, (int)val);
+		write_devattr_slonglong((char *)user_data, (long long)val);
 	else
 		write_devattr_double((char *)user_data, val);
 
@@ -1838,6 +1853,20 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
 			"cf-ad9122-core-lpc", "out_voltage1_phase",
 			Q_dac_pha_adj, NULL);
+
+	g_signal_connect(I_dac_offs, "value-changed",
+			G_CALLBACK(dac_cal_spin), "out_voltage0_calibbias");
+	g_signal_connect(I_dac_fs_adj, "value-changed",
+			G_CALLBACK(dac_cal_spin), "out_voltage0_calibscale");
+	g_signal_connect(I_dac_pha_adj, "value-changed",
+			G_CALLBACK(dac_cal_spin), "out_voltage0_phase");
+	g_signal_connect(Q_dac_offs, "value-changed",
+			G_CALLBACK(dac_cal_spin), "out_voltage1_calibbias");
+	g_signal_connect(Q_dac_fs_adj, "value-changed",
+			G_CALLBACK(dac_cal_spin), "out_voltage1_calibscale");
+	g_signal_connect(Q_dac_pha_adj, "value-changed",
+			G_CALLBACK(dac_cal_spin), "out_voltage1_phase");
+
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
 			"cf-ad9643-core-lpc", "in_voltage0_calibbias",
 			I_adc_offset_adj, NULL);
