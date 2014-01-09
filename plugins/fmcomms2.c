@@ -1413,11 +1413,12 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			return buf;
 		}
 	} else {
-		printf("Unhandled tokens in ini file,\n"
+		if (value) {
+			printf("Unhandled tokens in ini file,\n"
 				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
 				"FMComms2", attrib, value);
-		if (value)
 			return "FAIL";
+		}
 	}
 
 	return NULL;
@@ -1495,7 +1496,7 @@ static bool fmcomms2_identify(void)
 }
 
 struct osc_plugin plugin = {
-	.name = "FMComms2",
+	.name = "FMComms2/3",
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
 	.save_restore_attribs = fmcomms2_sr_attribs,
