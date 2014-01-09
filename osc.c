@@ -17,6 +17,9 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <dlfcn.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <fftw3.h>
 
@@ -43,6 +46,9 @@ static struct plugin_check_fct *setup_check_functions;
 static int num_check_fcts = 0;
 static GSList *ini_capture_sections = NULL;
 GtkWidget  *notebook;
+
+static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
+static void gfunc_create_plot_with_ini_data(gpointer data, gpointer user_data);
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
@@ -1192,8 +1198,18 @@ static void free_setup_check_fct_list(void)
 	g_free(setup_check_functions);
 }
 
+#define DEFAULT_PROFILE_NAME ".multiosc_profile.ini"
+
 void application_quit (void)
 {
+	const char *home_dir = getenv("HOME");
+	char buf[1024];
+	
+	/* Before we shut down, let's save the profile */
+	sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
+	capture_profile_save(buf);
+	save_all_plugins(buf, NULL);
+	
 	stop_capture = TRUE;
 	G_UNLOCK(buffer_full);
 	close_active_buffers();
@@ -1422,6 +1438,25 @@ void rx_update_labels(void)
 	g_list_foreach(plot_list, gfunc_update_rx_lbl_plot, NULL);
 }
 
+/* Before we really start, let's load the last saved profile */
+static void load_default_profile (void)
+{
+	const char *home_dir = getenv("HOME");
+	char buf[1024];
+	struct stat sts;
+
+	sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
+	
+	if (stat(buf, &sts) == -1)
+		return;
+
+	if (!S_ISREG(sts.st_mode))
+		return;
+
+	capture_profile_load(buf);
+	restore_all_plugins(buf, NULL);
+}
+
 static void init_application (void)
 {
 	GtkBuilder *builder = NULL;
@@ -1547,6 +1582,7 @@ gint main (int argc, char **argv)
 	
 	gdk_threads_enter();
 	init_application();
+	load_default_profile();
 	gtk_main();
 	gdk_threads_leave();
 	
