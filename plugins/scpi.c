@@ -52,6 +52,7 @@
 #include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <gtk/gtk.h>
 #include <gtkdatabox.h>
@@ -406,16 +407,24 @@ static ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t 
 		return -ENXIO;
 	else if (scpi->network) {
 		retval = send(scpi->control_socket, buf, count, 00);
-		if (retval == count && memchr(buf, '?', count))
+		if (retval == count && memchr(buf, '?', count)) {
+			memset(scpi->response, 0, SOCKETS_BUFFER_SIZE);
 			scpi_network_read(scpi);
+		}
 	}
 
 	if (scpi->serial && scpi->ttyfd < 0)
 		return -ENXIO;
 	else if (scpi->serial) {
 		retval  = write(scpi->ttyfd, buf, count);
-		if (retval == count && memchr(buf, '?', count))
-			tty_read(scpi);
+		if (retval == count) {
+			if (memchr(buf, '?', count)) {
+				memset(scpi->response, 0, SOCKETS_BUFFER_SIZE);
+				tty_read(scpi);
+			}
+		} else
+			fprintf(stderr, "SCPI:%s tty didn't write the entire buffer\n", __func__);
+
 		tcflush(scpi->ttyfd, TCIOFLUSH);
 	}
 
@@ -487,6 +496,8 @@ static int scpi_connect(struct scpi_instrument *scpi)
 	scpi_fprintf(scpi, "*IDN?\n");
 	if (!strstr(scpi->response, scpi->id_regex)) {
 		printf("instrument doesn't match regex\n");
+		printf("\twanted   : '%s'\n", scpi->id_regex);
+		printf("\trecieved : '%s'\n", scpi->response);
 		return -1;
 	}
 	printf("Instrument ID: %s\n", scpi->response);
@@ -508,7 +519,7 @@ void scpi_rx_trigger_sweep()
 
 void scpi_rx_set_center_frequency(unsigned long long fcent_hz)
 {
-        scpi_fprintf(&spectrum_analyzer, ":FREQ:CENT %llu;*WAI\n", fcent_hz);
+	scpi_fprintf(&spectrum_analyzer, ":FREQ:CENT %llu;*WAI\n", fcent_hz);
 }
 
 void scpi_rx_set_span_frequency(unsigned long long fspan_hz)
@@ -534,15 +545,31 @@ void scpi_rx_set_bandwith_auto(double ratio)
 
 void scpi_rx_setup()
 {
-	scpi_fprintf(&spectrum_analyzer, ":DISP:TRACE:Y:RLEVEL %d DBM\n", 10);
-	scpi_fprintf(&spectrum_analyzer, ":AVER OFF\n");
-	scpi_fprintf(&spectrum_analyzer, ":DISPLAY:MARK: AOFF\n");
-//	scpi_rx_set_frequency(fcent_hz, fspan_hz);
-	scpi_rx_set_bandwith(200, 10);
+	static time_t rx_cal_time = 0;
 
+	scpi_fprintf(&spectrum_analyzer, ":DISP:TRACE:Y:RLEVEL %d DBM\n", 10);
+	/* Turn averaging off */
+	scpi_fprintf(&spectrum_analyzer, ":AVER OFF\n");
+	/* Turn off the markers */
+	scpi_fprintf(&spectrum_analyzer, ":DISPLAY:MARK: AOFF\n");
+
+	if (rx_cal_time < time(NULL) && 0) {
+		scpi_fprintf(&spectrum_analyzer, ":CAL:SHOR?\n");
+		/* Wait an hour */
+		rx_cal_time = time(NULL) + (60 * 60);
+	}
+
+	/* trigger source is external (continuous mode off) */
 	scpi_fprintf(&spectrum_analyzer, ":INIT:CONT OFF\n");
 	scpi_rx_trigger_sweep();
-	scpi_fprintf(&spectrum_analyzer, ":INIT:CONT ON\n");
+	/* trigger source is internal (continuous mode on) */
+	//scpi_fprintf(&spectrum_analyzer, ":INIT:CONT ON\n");
+}
+
+void scpi_rx_set_averaging(int average)
+{
+	scpi_fprintf(&spectrum_analyzer, ":AVER:TYPE SCAL\n");
+	scpi_fprintf(&spectrum_analyzer, ":AVER:COUNT %i\n", average);
 }
 
 int scpi_rx_set_marker_freq(unsigned int marker, unsigned long long freq)
@@ -551,12 +578,13 @@ int scpi_rx_set_marker_freq(unsigned int marker, unsigned long long freq)
 	return scpi_fprintf(&spectrum_analyzer, "CALC:MARK%d:STAT ON;*WAI\n", marker);
 }
 
-int scpi_rx_get_marker_level(unsigned marker, unsigned wait, double *lvl)
+int scpi_rx_get_marker_level(unsigned marker, bool wait, double *lvl)
 {
 	int ret;
 
 	if (wait)
 		scpi_fprintf(&spectrum_analyzer, "INIT:IMM;*WAI\n");
+
 	scpi_fprintf(&spectrum_analyzer, "CALC:MARK%d:Y?\n", marker);
 	ret = sscanf(spectrum_analyzer.response, "%lf", lvl);
 
@@ -566,7 +594,7 @@ int scpi_rx_get_marker_level(unsigned marker, unsigned wait, double *lvl)
 	return -1;
 }
 
-int scpi_rx_get_marker_freq(unsigned int marker, unsigned int wait, double *lvl)
+int scpi_rx_get_marker_freq(unsigned int marker, bool wait, double *lvl)
 {
 	int ret;
 
@@ -903,6 +931,7 @@ static void init_scpi_device(struct scpi_instrument *device)
 		printf("%s:%s: malloc fail\n", __FILE__, __func__);
 		exit (-1);
 	}
+	memset(device->response, 0, SOCKETS_BUFFER_SIZE);
 }
 
 static void connect_clicked_cb(void)
