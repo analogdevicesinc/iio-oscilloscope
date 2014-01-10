@@ -1495,7 +1495,7 @@ static void init_application (void)
 	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "button_capture"));
 
 	/* Connect signals. */
-	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(application_quit), NULL);
+	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
 	g_signal_connect(G_OBJECT(btn_capture), "clicked", G_CALLBACK(btn_capture_cb), NULL);
    
 	dialogs_init(builder);
