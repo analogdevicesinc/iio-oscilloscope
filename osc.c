@@ -1439,20 +1439,55 @@ void rx_update_labels(void)
 }
 
 /* Before we really start, let's load the last saved profile */
-static void load_default_profile (void)
+static bool check_inifile(char *filepath)
+{
+	struct stat sts;
+	FILE *fd;
+	char buf[1024];
+	size_t i;
+
+	if (stat(filepath, &sts) == -1)
+		return FALSE;
+
+	if (!S_ISREG(sts.st_mode))
+		return FALSE;
+
+	fd = fopen(filepath, "r");
+	if (!fd)
+		return FALSE;
+
+	i = fread(buf, 1023, 1, fd);
+	fclose(fd);
+
+	if (i == 0 )
+		return FALSE;
+
+	if (!strstr(buf, "[" CAPTURE_CONF "]"))
+		return FALSE;
+
+	return TRUE;
+}
+
+static void load_default_profile (char *filename)
 {
 	const char *home_dir = getenv("HOME");
 	char buf[1024];
-	struct stat sts;
+	int checkok = 0;
 
-	sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
-	
-	if (stat(buf, &sts) == -1)
+	if (!filename) {
+		sprintf(buf, "%s%s", home_dir, DEFAULT_PROFILE_NAME);
+	} else {
+		strcpy (buf, filename);
+		if (!check_inifile(buf))
+			sprintf(buf, "%s%s", home_dir, DEFAULT_PROFILE_NAME);
+		else
+			checkok = 1;
+	}
+
+	if (!checkok && !check_inifile(buf))
 		return;
 
-	if (!S_ISREG(sts.st_mode))
-		return;
-
+	printf("Loading profile : %s\n", buf);
 	capture_profile_load(buf);
 	restore_all_plugins(buf, NULL);
 }
@@ -1570,19 +1605,53 @@ void capture_profile_load(char *filename)
 	g_slist_foreach(ini_capture_sections, gfunc_create_plot_with_ini_data, filename);
 }
 
+void usage(char *program)
+{
+	printf("%s: the IIO visualization and control tool\n", program);
+	printf( " Copyright (C) Analog Devices, Inc. and others\n"
+		" This is free software; see the source for copying conditions.\n"
+		" There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n"
+		" PARTICULAR PURPOSE.\n\n");
+
+	/* please keep this list sorted in alphabetal order */
+	printf( "Command line options:\n"
+		"\t-p\tload specific profile\n");
+
+	exit(-1);
+}
+
 gint main (int argc, char **argv)
 {
+	int c;
+	
+	char *profile = NULL;
+	
+	opterr = 0;
+	while ((c = getopt (argc, argv, "p:")) != -1)
+		switch (c) {
+			case 'p':
+				profile = strdup(optarg);
+				break;
+			case '?':
+				usage(argv[0]);
+				break;
+			default:
+				printf("Unknown command line option\n");
+				usage(argv[0]);
+				break;
+		}
+
 	g_thread_init (NULL);
 	gdk_threads_init ();
 	gtk_init (&argc, &argv);
-	
+
 	signal(SIGTERM, sigterm);
 	signal(SIGINT, sigterm);
 	signal(SIGHUP, sigterm);
 	
 	gdk_threads_enter();
 	init_application();
-	load_default_profile();
+	load_default_profile(profile);
 	gtk_main();
 	gdk_threads_leave();
 	

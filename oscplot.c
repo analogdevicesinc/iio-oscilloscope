@@ -2447,7 +2447,7 @@ static void device_list_cfg_file_write(OscPlot *plot, char *filename)
 		fprintf(stderr, "Failed to open %s : %s\n", filename, strerror(errno));
 		return;
 	}
-	fprintf(fp, "[MultiOsc_Capture_Configuration%d]\n", priv->object_id);
+	fprintf(fp, "[%s%d]\n", CAPTURE_CONF, priv->object_id);
 	
 	int tmp_int;
 	float tmp_float;
@@ -2785,11 +2785,12 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				i = atoi(elems[1]);
 				priv->markers[i].bin = atoi(value);
 				priv->markers[i].active = TRUE;
+				break;
 			}
 
 			dev = device_find_by_name(dev_name);
 			if (dev == -1)
-				break;
+				goto unhandled_dev;
 			if (MATCH(dev_property, "sample_count")) {
 				device_list[dev].shadow_of_sample_count = atoi(value);
 				break;
@@ -2800,6 +2801,11 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				gtk_tree_store_set(store, &dev_iter, EXPANDED, expanded, -1);
 			}
 			break;
+			unhandled_dev:
+			printf("Unhandled token in ini file, \n"
+				"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
+				section, name, value);
+			break;
 		case CHANNEL:
 			elems = g_strsplit(name, ".", CHANNEL + 1);
 			dev_name = elems[0];
@@ -2807,15 +2813,20 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			ch_property = elems[2];
 			dev = device_find_by_name(dev_name);
 			if (dev == -1)
-				break;
+				goto unhandled_ch;
 			ch = channel_find_by_name(dev, ch_name);
 			if (ch == -1)
-				break;	
+				goto unhandled_ch;
 			if (MATCH(ch_property, "expanded")) {
 				expanded = atoi(value);	
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_store_set(store, &ch_iter, EXPANDED, expanded, -1);
 			}
+			break;
+			unhandled_ch:
+			printf("Unhandled token in ini file, \n"
+				"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
+				section, name, value);
 			break;
 		case TRANSFORM:		
 			elems = g_strsplit(name, ".", TRANSFORM + 1);
@@ -2825,10 +2836,10 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			tr_property = elems[3];
 			dev = device_find_by_name(dev_name);
 			if (dev == -1)
-				break;
+				goto unhandled_tr;
 			ch = channel_find_by_name(dev, ch_name);
 			if (ch == -1)
-				break;
+				goto unhandled_tr;
 			
 			len = strcspn(tr_name, "0123456789");
 			index = atoi(tr_name + len);
@@ -2842,7 +2853,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			else if (MATCH_N(tr_name, "constellation", len))
 				t_type = CONSTELLATION_TRANSFORM;
 			else
-				break;
+				goto unhandled_tr;
 
 			cfg = ini_cfg_exist_check(plot, index, t_type);
 			if(!cfg)
@@ -2870,6 +2881,8 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 							TIME_SETTINGS(cfg)->multiply_value = atof(value);
 						else if (MATCH(tr_property, "add_value"))
 							TIME_SETTINGS(cfg)->add_value = atof(value);
+						else 
+							goto unhandled_tr;
 						break;
 					case COMPLEX_FFT_TRANSFORM:
 					case FFT_TRANSFORM:
@@ -2884,14 +2897,23 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 								cfg->has_the_marker = true;
 							else 
 								cfg->has_the_marker = false;
+						} else {
+							goto unhandled_tr;
 						}
 						break;
 					case CONSTELLATION_TRANSFORM:
 						if (MATCH(tr_property, "num_samples"))
 							CONSTELLATION_SETTINGS(cfg)->num_samples = atoi(value);
+						else
+							goto unhandled_tr;
 						break;
 				}
 			}
+			break;
+			unhandled_tr:
+			printf("Unhandled token in ini file, \n"
+				"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
+				section, name, value);
 			break;
 		default:
 			break;

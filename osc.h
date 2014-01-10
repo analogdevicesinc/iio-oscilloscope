@@ -9,6 +9,8 @@
 #define __OSC_H__
 #define IIO_THREADS
 
+#define CAPTURE_CONF "MultiOsc_Capture_Configuration"
+
 extern GtkWidget *capture_graph;
 extern gint capture_function;
 extern bool str_endswith(const char *str, const char *needle);
