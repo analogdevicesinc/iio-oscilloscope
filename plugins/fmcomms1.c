@@ -580,14 +580,118 @@ static bool cal_rx_flag = false;
 static gfloat knob_max, knob_min, knob_steps;
 static int delay;
 
+static double find_min(GtkSpinButton *spin_button, int marker, gfloat min, gfloat max, gfloat step)
+{
+	gdouble i, level, min_level = FLT_MAX, min_value = 0;
+	int bigger = -1;
+	gdouble last_val = FLT_MAX;
+
+	for (i = min; i <= max; i += (max - min)/step) {
+		gdk_threads_enter();
+		gtk_spin_button_set_value(spin_button, i);
+		gdk_threads_leave();
+
+		scpi_rx_trigger_sweep();
+		scpi_rx_get_marker_level(1, true, &level);
+		if (level <= min_level) {
+			min_level = level;
+			min_value = i;
+			bigger = 0;
+		}
+
+		if (bigger != -1 && level > last_val)
+			bigger++;
+
+		if (bigger == 5)
+			break;
+
+		last_val = level;
+
+		
+	}
+
+	gdk_threads_enter();
+	gtk_spin_button_set_value(spin_button, min_value);
+	gdk_threads_leave();
+
+	return min_value;
+}
+
+static void tx_thread_cal(void *ptr)
+{
+	gdouble min_i, min_q;
+	unsigned long long lo, sig;
+
+	gdk_threads_enter();
+	/* LO Leakage */
+	lo = (unsigned long long)gtk_spin_button_get_value (GTK_SPIN_BUTTON(tx_lo_freq)) * 1000000;
+	sig = (unsigned long long)gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) * 1000000;
+
+	/* set some default values */
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_dac_offs), 400.0);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_dac_offs), 400.0);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_dac_pha_adj), 0.0);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_dac_pha_adj), 0.0);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_dac_fs_adj), 512.0);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_dac_fs_adj), 512.0);
+
+	gdk_threads_leave();
+
+	scpi_rx_trigger_sweep();
+	scpi_rx_trigger_sweep();
+
+	/* rough approximation of carrier supression */
+        scpi_rx_set_center_frequency(lo);
+        scpi_rx_set_span_frequency(2000000);
+	scpi_rx_set_marker_freq(1, lo);
+
+	min_i = find_min(GTK_SPIN_BUTTON(I_dac_offs), 1, 0, 500, 100.0);
+	min_q = find_min(GTK_SPIN_BUTTON(Q_dac_offs), 1, 0, 500, 100.0);
+	
+	/* side band supression */
+	scpi_rx_set_center_frequency(lo - sig);
+	scpi_rx_set_marker_freq(1, lo - sig);
+
+	find_min(GTK_SPIN_BUTTON(I_dac_pha_adj), 1, -512, 512, 100);
+	find_min(GTK_SPIN_BUTTON(Q_dac_pha_adj), 1, -512, 512, 100);
+	find_min(GTK_SPIN_BUTTON(I_dac_fs_adj), 1, 0, 1024, 100);
+	find_min(GTK_SPIN_BUTTON(Q_dac_fs_adj), 1, 0, 1024, 100);
+
+	/* go back to carrier, and do it in smaller steps */
+	scpi_rx_set_center_frequency(lo);
+	scpi_rx_set_marker_freq(1, lo);
+
+	find_min(GTK_SPIN_BUTTON(I_dac_offs), 1, min_i - 10, min_i + 10, 20.0);
+	find_min(GTK_SPIN_BUTTON(Q_dac_offs), 1, min_q - 10, min_q + 10, 20.0);
+	
+
+	scpi_rx_set_span_frequency(3 * sig);
+	scpi_rx_trigger_sweep();
+	scpi_rx_trigger_sweep();
+}
+
 static void cal_tx_button_clicked(void)
 {
 	if (!scpi_rx_connected())
 		return;
 
+	/* make sure it's a single tone */
+	if ((gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) !=
+				gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds2_freq))) ||
+			(gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) !=
+				gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds3_freq))) ||
+			(gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) !=
+				gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds4_freq))))
+		return;
+	
 	scpi_rx_setup();
-	scpi_rx_set_center_frequency(gtk_spin_button_get_value (GTK_SPIN_BUTTON(tx_lo_freq)) * 1000000);
+	scpi_rx_set_center_frequency(gtk_spin_button_get_value (GTK_SPIN_BUTTON(tx_lo_freq)) * 1000000 + 1000000);
+	scpi_rx_set_span_frequency(3 * gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) * 1000000);
+	scpi_rx_set_bandwith(200, 10);
+	scpi_rx_set_averaging(2);
+	scpi_rx_trigger_sweep();
 
+	g_thread_new("Tx calibration thread", (void *) &tx_thread_cal, NULL);
 }
 
 static void cal_rx_button_clicked(void)
@@ -1164,12 +1268,13 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 {
 	gint ret;
 	char *filename = NULL;
+	GThread *thid_rx = NULL;
 
 	kill_thread = 0;
 
 	/* Only start the thread if the LO is set */
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget)))
-		g_thread_new("Display_thread", (void *) &display_cal, NULL);
+		thid_rx = g_thread_new("Display_thread", (void *) &display_cal, NULL);
 
 	gtk_widget_show(dialogs.calibrate);
 
@@ -1224,7 +1329,10 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 	} while (ret != GTK_RESPONSE_CLOSE &&		/* Clicked on the close button */
 		 ret != GTK_RESPONSE_DELETE_EVENT);	/* Clicked on the close icon */
 
-	kill_thread = 1;
+	if (thid_rx) {
+		kill_thread = 1;
+		iio_thread_clear(thid_rx);
+	}
 
 	if (filename)
 		g_free(filename);
