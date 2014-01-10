@@ -16,9 +16,10 @@ void (*scpi_rx_set_span_frequency)(unsigned long long) = NULL;
 void (*scpi_rx_set_bandwith)(unsigned int, unsigned int) = NULL;
 void (*scpi_rx_set_bandwith_auto)(double) = NULL;
 void (*scpi_rx_setup)() = NULL;
+void (*scpi_rx_set_averaging)(int average) = NULL;
 int (*scpi_rx_set_marker_freq)(unsigned int, unsigned long long) = NULL;
-int (*scpi_rx_get_marker_level)(unsigned int, unsigned int, double *) = NULL;
-int (*scpi_rx_get_marker_freq)(unsigned int, unsigned int, double *) = NULL;
+int (*scpi_rx_get_marker_level)(unsigned int, bool, double *) = NULL;
+int (*scpi_rx_get_marker_freq)(unsigned int, bool, double *) = NULL;
 
 
 static bool scpi_connect_functions(void)
@@ -57,6 +58,10 @@ static bool scpi_connect_functions(void)
 
 	*(void **)(&scpi_rx_setup) = plugin_dlsym("SCPI", "scpi_rx_setup");
 	if (*scpi_rx_setup == NULL)
+		return false;
+
+	*(void **)(&scpi_rx_set_averaging) = plugin_dlsym("SCPI", "scpi_rx_set_averaging");
+	if (*scpi_rx_set_averaging == NULL)
 		return false;
 
 	*(void **)(&scpi_rx_set_marker_freq) = plugin_dlsym("SCPI", "scpi_rx_set_marker_freq");
