@@ -20,6 +20,7 @@
 #include "iio_utils.h"
 #include "config.h"
 
+extern GtkWidget *plot_domain;
 extern gfloat **channel_data;
 extern unsigned int num_samples;
 extern unsigned int num_active_channels;
@@ -406,6 +407,12 @@ G_MODULE_EXPORT void save_as(const char *filename, int type)
 		case GTK_RESPONSE_CANCEL:
 			break;
 		case SAVE_VSA:
+			/* Allow saving data when only in Time Domanin */
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != TIME_PLOT) {
+				create_blocking_popup(GTK_MESSAGE_WARNING, GTK_BUTTONS_CLOSE, "Invalid Plot Type",
+					"Please make sure to set the Plot Type to \"Time Domanin\" before saving data.");
+				return;
+			}
 			/* Save as Agilent VSA formatted file */
 			if (!strncasecmp(&filename[strlen(filename)-4], ".txt", 4))
 				strcpy(name, filename);
@@ -450,6 +457,12 @@ G_MODULE_EXPORT void save_as(const char *filename, int type)
 
 			break;
 		case SAVE_MAT:
+			/* Allow saving data when only in Time Domanin */
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != TIME_PLOT) {
+				create_blocking_popup(GTK_MESSAGE_WARNING, GTK_BUTTONS_CLOSE, "Invalid Plot Type",
+					"Please make sure to set the Plot Type to \"Time Domanin\" before saving data.");
+				return;
+			}
 			/* Matlab file
 			 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
 			 */
@@ -478,6 +491,12 @@ G_MODULE_EXPORT void save_as(const char *filename, int type)
 			}
 			break;
 		case SAVE_CSV:
+			/* Allow saving data when only in Time Domanin */
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != TIME_PLOT) {
+				create_blocking_popup(GTK_MESSAGE_WARNING, GTK_BUTTONS_CLOSE, "Invalid Plot Type",
+					"Please make sure to set the Plot Type to \"Time Domanin\" before saving data.");
+				return;
+			}
 			/* save comma seperated valus (csv) */
 			if (!strncasecmp(&filename[strlen(filename)-4], ".csv", 4))
 				strcpy(name, filename);

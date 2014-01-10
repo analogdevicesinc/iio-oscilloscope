@@ -61,10 +61,8 @@ static GtkWidget *databox;
 static GtkWidget *time_interval_widget;
 static GtkWidget *sample_count_widget;
 static GtkWidget *fft_size_widget, *fft_avg_widget, *fft_pwr_offset_widget;
-static GtkWidget *plot_domain;
-#define TIME_PLOT 0
-#define FFT_PLOT 1
-#define XY_PLOT 2
+GtkWidget *plot_domain;
+
 static GtkWidget *show_grid;
 static GtkWidget *enable_auto_scale;
 static GtkWidget *device_list_widget;
