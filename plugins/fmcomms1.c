@@ -727,20 +727,25 @@ static void display_temp(void *ptr)
 	char buf[25];
 
 	while (!kill_thread) {
-		set_dev_paths("cf-ad9122-core-lpc");
-		if (read_devattr_double("in_temp0_input", &temp) < 0) {
-			/* Just assume it's 25C */
-			temp = 2500;
-			write_devattr_double("in_temp0_input", temp);
-			read_devattr_int("in_temp0_calibbias", &tmp);
-			printf("AD9122 temp cal value : %i\n", tmp);
+		if (set_dev_paths("cf-ad9122-core-lpc") < 0) {
+			kill_thread = 1;
+			break;
 		}
 
-		sprintf(buf, "%2.1f", temp/1000);
-		gdk_threads_enter();
-		gtk_label_set_text(GTK_LABEL(ad9122_temp), buf);
-		gdk_threads_leave();
+		if (read_devattr_double("in_temp0_input", &temp) < 0) {
+			/* Just assume it's 25C, units are in milli-degrees C */
+			temp = 25 * 1000;
+			write_devattr_double("in_temp0_input", temp);
+			read_devattr_int("in_temp0_calibbias", &tmp);
+			/* This will eventually be stored in the EEPROM */
+			printf("AD9122 temp cal value : %i\n", tmp);
+		} else {
 
+			sprintf(buf, "%2.1f", temp/1000);
+			gdk_threads_enter();
+			gtk_label_set_text(GTK_LABEL(ad9122_temp), buf);
+			gdk_threads_leave();
+		}
 		usleep(500000);
 	}
 }
