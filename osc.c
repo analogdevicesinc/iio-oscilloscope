@@ -31,6 +31,8 @@
 #include "config.h"
 #include "osc_plugin.h"
 
+extern int count_char_in_string(char c, const char *s);
+
 GSList *plugin_list = NULL;
 
 struct _device_list *device_list = NULL;
@@ -45,10 +47,12 @@ static gboolean stop_capture;
 static struct plugin_check_fct *setup_check_functions;
 static int num_check_fcts = 0;
 static GSList *ini_capture_sections = NULL;
+static GSList *dplugin_list = NULL;
 GtkWidget  *notebook;
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
 static void gfunc_create_plot_with_ini_data(gpointer data, gpointer user_data);
+static void plugin_restore_ini_state(char *plugin_name, gboolean detached);
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
@@ -705,12 +709,13 @@ static int sample_iio_data(struct _device_list *device)
 
 static void detach_plugin(GtkToolButton *btn, gpointer data);
 
-static void plugin_tab_add_detach_btn(GtkWidget *page, const struct osc_plugin *plugin)
+static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detachable_plugin *d_plugin)
 {
 	GtkWidget *tab_box;
 	GtkWidget *tab_label;
 	GtkWidget *tab_toolbar;
 	GtkWidget *tab_detach_btn;
+	const struct osc_plugin *plugin = d_plugin->plugin;
 	const char *plugin_name = plugin->name;
 	
 	tab_box = gtk_hbox_new(FALSE, 0);
@@ -728,26 +733,30 @@ static void plugin_tab_add_detach_btn(GtkWidget *page, const struct osc_plugin *
 	
 	gtk_notebook_set_tab_label(GTK_NOTEBOOK(notebook), page, tab_box);
 	g_signal_connect(tab_detach_btn, "clicked",
-		G_CALLBACK(detach_plugin), (gpointer)plugin);
+		G_CALLBACK(detach_plugin), (gpointer)d_plugin);
+
+	return tab_detach_btn;
 }
 
-static void plugin_make_detachable(const struct osc_plugin *plugin)
+static void plugin_make_detachable(struct detachable_plugin *d_plugin)
 {
 	GtkWidget *page = NULL;
 	int num_pages = 0;
 	
-	/* Add detach button */
 	num_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
 	page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), num_pages - 1);
 	
-	plugin_tab_add_detach_btn(page, plugin);
+	d_plugin->detached_state = FALSE;
+	d_plugin->detach_attach_button = plugin_tab_add_detach_btn(page, d_plugin);
 }
 
 static void attach_plugin(GtkToolButton *btn, gpointer data)
 {
 	GtkWidget *window;
 	GtkWidget *plugin_page;
-	const struct osc_plugin *plugin = (const struct osc_plugin *)data;
+	GtkWidget *detach_btn;
+	struct detachable_plugin *d_plugin = (struct detachable_plugin *)data;
+	const struct osc_plugin *plugin = d_plugin->plugin;
 	gint plugin_page_index;
 	
 	window = (GtkWidget *)gtk_widget_get_toplevel(GTK_WIDGET(btn));
@@ -765,10 +774,12 @@ static void attach_plugin(GtkToolButton *btn, gpointer data)
 	plugin_page_index = gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
 		plugin_page, NULL);
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), plugin_page_index);
-	plugin_tab_add_detach_btn(plugin_page, plugin);
+	detach_btn = plugin_tab_add_detach_btn(plugin_page, d_plugin);
 	
 	if (plugin->update_active_page)
 		plugin->update_active_page(plugin_page_index, FALSE);
+	d_plugin->detached_state = FALSE;
+	d_plugin->detach_attach_button = detach_btn;
 }
 
 static GtkWidget * extract_label_from_box(GtkWidget *box)
@@ -787,7 +798,8 @@ static GtkWidget * extract_label_from_box(GtkWidget *box)
 
 static void detach_plugin(GtkToolButton *btn, gpointer data)
 {
-	const struct osc_plugin *plugin = (const struct osc_plugin *)data;
+	struct detachable_plugin *d_plugin = (struct detachable_plugin *)data;
+	const struct osc_plugin *plugin = d_plugin->plugin;
 	const char *plugin_name = plugin->name;
 	const char *page_name = NULL;
 	GtkWidget *page = NULL;
@@ -839,10 +851,12 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	gtk_container_add(GTK_CONTAINER(window), hbox);
 	
 	g_signal_connect(attach_button, "clicked",
-			G_CALLBACK(attach_plugin), (gpointer)plugin);
+			G_CALLBACK(attach_plugin), (gpointer)d_plugin);
 	
 	if (plugin->update_active_page)
 		plugin->update_active_page(-1, TRUE);
+	d_plugin->detached_state = TRUE;
+	d_plugin->detach_attach_button = attach_button;
 	
 	gtk_widget_show(window);
 	gtk_widget_show(hbox);
@@ -927,6 +941,7 @@ static bool force_plugin(const char *name)
 
 static void load_plugin(const char *name, GtkWidget *notebook)
 {
+	struct detachable_plugin *d_plugin;
 	const struct osc_plugin *plugin;
 	void *lib;
 
@@ -950,7 +965,12 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 
 	plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
 	plugin->init(notebook);
-	plugin_make_detachable(plugin);
+	
+	d_plugin = malloc(sizeof(struct detachable_plugin));
+	d_plugin->plugin = plugin;
+	dplugin_list = g_slist_append(dplugin_list, (gpointer)d_plugin);
+	
+	plugin_make_detachable(d_plugin);
 
 	printf("Loaded plugin: %s\n", plugin->name);
 }
@@ -986,6 +1006,14 @@ static void load_plugins(GtkWidget *notebook)
 		snprintf(buf, sizeof(buf), "%s/%s", plugin_dir, ent->d_name);
 		load_plugin(buf, notebook);
 	}
+}
+
+static void plugin_state_ini_save(gpointer data, gpointer user_data)
+{
+	struct detachable_plugin *p = (struct detachable_plugin *)data;
+	FILE *fp = (FILE *)user_data;
+	
+	fprintf(fp, "plugin.%s.detached=%d\n", p->plugin->name, p->detached_state);
 }
 
 static gboolean capture_proccess(void)
@@ -1215,6 +1243,7 @@ void application_quit (void)
 	close_active_buffers();
 	
 	g_list_free(plot_list);
+	g_slist_free(dplugin_list);
 	free_setup_check_fct_list();
 	
 	gtk_main_quit();
@@ -1462,7 +1491,7 @@ static bool check_inifile(char *filepath)
 	if (i == 0 )
 		return FALSE;
 
-	if (!strstr(buf, "[" CAPTURE_CONF "]"))
+	if (!strstr(buf, "[MultiOsc]"))
 		return FALSE;
 
 	return TRUE;
@@ -1475,7 +1504,7 @@ static void load_default_profile (char *filename)
 	int checkok = 0;
 
 	if (!filename) {
-		sprintf(buf, "%s%s", home_dir, DEFAULT_PROFILE_NAME);
+		sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
 	} else {
 		strcpy (buf, filename);
 		if (!check_inifile(buf))
@@ -1544,7 +1573,38 @@ static void init_application (void)
 static char *prev_section;
 
 static int profile_read_handler(void *user, const char *section, const char *name, const char *value)
-{	
+{
+	int elem_type;
+	gchar **elems = NULL;
+	
+	/* Get data from [MultOsc] section */
+	if (!strcmp(section, "MultiOsc")) {
+		elem_type = count_char_in_string('.', name);
+		switch(elem_type) {
+			case 2:
+				elems = g_strsplit(name, ".", 3);
+				if (!strcmp(elems[0], "plugin")) {
+					if (!strcmp(elems[2], "detached"))
+						plugin_restore_ini_state(elems[1], atoi(value));
+					else goto unhandled;
+				} else {
+					goto unhandled;
+				}
+				break;
+				unhandled:
+				printf("Unhandled token in ini file, \n"
+					"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
+					section, name, value);
+				break;
+			default:
+				printf("Unhandled token in ini file, \n"
+					"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
+					section, name, value);
+				break;
+		};
+		return 0;
+	}
+	
 	/* Check if a new "Capture" section has been reached */
 	if (strcmp(section, prev_section) != 0) { 
 		if (strncmp(section, "MultiOsc_Capture_Configuration", strlen("MultiOsc_Capture_Configuration")) != 0)
@@ -1587,8 +1647,43 @@ void capture_profile_save(char *filename)
 		fprintf(stderr, "Failed to open %s : %s\n", filename, strerror(errno));
 		return;
 	}
+	/* Create MultiOsc Section */
+	fprintf(fp, "[MultiOsc]\n");
+	
+	/* Save plugin attached status */
+	g_slist_foreach(dplugin_list, plugin_state_ini_save, fp);
+	
 	fclose(fp);
+	
+	/* All opened "Capture" windows save their own configurations */
 	g_list_foreach(plot_list, gfunc_save_plot_data_to_ini, filename);
+}
+
+static gint plugin_names_cmp(gconstpointer a, gconstpointer b)
+{
+	struct detachable_plugin *p = (struct detachable_plugin *)a;
+	char *key = (char *)b;
+
+	return strcmp(p->plugin->name, key);
+}
+
+static void plugin_restore_ini_state(char *plugin_name, gboolean detached)
+{
+	struct detachable_plugin *dplugin;
+	GSList *found_plugin;
+	GtkWidget *button;
+	printf("restoring plugin: %s\n", plugin_name);
+	found_plugin = g_slist_find_custom(dplugin_list,
+		(gconstpointer)plugin_name, plugin_names_cmp);
+	if (found_plugin == NULL) {
+		printf("Invalid plugin: %s\n", plugin_name);
+		return;
+	}
+
+	dplugin = found_plugin->data;
+	button = dplugin->detach_attach_button;
+	if ((dplugin->detached_state) ^ (detached))
+		g_signal_emit_by_name(button, "clicked", dplugin);
 }
 
 void capture_profile_load(char *filename)

@@ -22,7 +22,7 @@
 
 #define MATCH_SECT(s) (strcmp(section, s) == 0)
 
-static int count_char_in_string(char c, const char *s)
+int count_char_in_string(char c, const char *s)
 {
 	int i;
 
