@@ -1652,7 +1652,7 @@ void capture_profile_save(char *filename)
 	
 	/* Save plugin attached status */
 	g_slist_foreach(dplugin_list, plugin_state_ini_save, fp);
-	
+	fprintf(fp, "\n");
 	fclose(fp);
 	
 	/* All opened "Capture" windows save their own configurations */

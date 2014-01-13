@@ -48,6 +48,8 @@ static void device_list_cfg_file_load(OscPlot *plot, char *filename);
 static void osc_plot_finalize(GObject *object);
 static void osc_plot_dispose(GObject *object);
 static void save_as(OscPlot *plot, const char *filename, int type);
+static void load_ini_settings(OscPlot *plot);
+static void treeview_expand_update(OscPlot *plot);
 
 /* IDs of signals */
 enum {
@@ -221,8 +223,6 @@ struct _OscPlotPrivate
 	gint num_created_tr;
 	
 	GList *ini_cfgs;
-	
-	int ini_capture_status;
 	
 	char *saveas_filename;
 	char *ini_section_name;
@@ -2232,7 +2232,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 	char *name;
 	int i;
 
-	name = malloc(strlen(priv->saveas_filename) + 5);
+	name = malloc(strlen(filename) + 5);
 	switch(type) {
 		/* Response Codes encoded in glade file */
 		case GTK_RESPONSE_DELETE_EVENT:
@@ -2240,10 +2240,10 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			break;
 		case SAVE_CSV: 
 			/* save comma separated values (csv) */
-			if (!strncasecmp(&priv->saveas_filename[strlen(priv->saveas_filename)-4], ".csv", 4))
-					strcpy(name, priv->saveas_filename);
+			if (!strncasecmp(&filename[strlen(filename)-4], ".csv", 4))
+					strcpy(name, filename);
 				else
-					sprintf(name, "%s.csv", priv->saveas_filename);
+					sprintf(name, "%s.csv", filename);
 			fp = fopen(name, "w");
 			if (!fp)
 				break;
@@ -2255,10 +2255,10 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			break;
 		case SAVE_PNG:	
 			/* save png */
-			if (!strncasecmp(&priv->saveas_filename[strlen(priv->saveas_filename)-4], ".png", 4))
-					strcpy(name, priv->saveas_filename);
+			if (!strncasecmp(&filename[strlen(filename)-4], ".png", 4))
+					strcpy(name, filename);
 				else
-					sprintf(name, "%s.png", priv->saveas_filename);
+					sprintf(name, "%s.png", filename);
 			cmap = gdk_window_get_colormap(
 					GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)));
 			gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
@@ -2269,16 +2269,16 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			if (pixbuf)
 				ret = gdk_pixbuf_save(pixbuf, name, "png", &err, NULL);
 			if (!pixbuf || !ret)
-				printf("error creating %s\n", priv->saveas_filename);
+				printf("error creating %s\n", filename);
 			break;
 		case SAVE_MAT:
 			/* Matlab file
 			 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
 			 */
-			 if (!strncasecmp(&priv->saveas_filename[strlen(priv->saveas_filename)-4], ".mat", 4))
-					strcpy(name, priv->saveas_filename);
+			 if (!strncasecmp(&filename[strlen(filename)-4], ".mat", 4))
+					strcpy(name, filename);
 				else
-					sprintf(name, "%s.mat", priv->saveas_filename);
+					sprintf(name, "%s.mat", filename);
 			mat = Mat_Open(name, MAT_ACC_RDWR);
 			if (!mat)
 				break;
@@ -2453,8 +2453,6 @@ static void device_list_cfg_file_write(OscPlot *plot, char *filename)
 	float tmp_float;
 	gchar *tmp_string;
 	
-	fprintf(fp, "capture_started=%d\n", (priv->redraw_function) ? 1 : 0);
-	
 	tmp_string = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type));
 	fprintf(fp, "graph_type=%s\n", tmp_string);
 	g_free(tmp_string);
@@ -2576,6 +2574,8 @@ static void device_list_cfg_file_write(OscPlot *plot, char *filename)
 		if (priv->markers[tmp_int].active)
 			fprintf(fp, "marker.%i = %i\n", tmp_int, priv->markers[tmp_int].bin);
 	}
+	
+	fprintf(fp, "capture_started=%d\n", (priv->redraw_function) ? 1 : 0);
 	
 	fclose(fp);
 }
@@ -2740,7 +2740,16 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 	switch(elem_type) {
 		case PLOT_ATTRIBUTE:
 			if (MATCH_NAME("capture_started")) {
-				priv->ini_capture_status = atoi(value);
+				load_ini_settings(plot);
+				treeview_expand_update(plot);
+				max_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_max), plot);
+				min_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_min), plot);
+				if (priv->read_scale_params == 4) {
+					gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), priv->plot_left,
+						priv->plot_right, priv->plot_top, priv->plot_bottom);
+						priv->read_scale_params = 0;
+				}
+				gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button), atoi(value));
 			} else if (MATCH_NAME("graph_type")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->plot_type), value);
 				if (ret == 0)
@@ -2769,6 +2778,14 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				set_marker_labels(plot, (gchar *)value, MARKER_NULL);
 				for (i = 0; i <= MAX_MARKERS; i++)
 					priv->markers[i].active = FALSE;
+			} else if (MATCH_NAME("save_png")) {
+				save_as(plot, value, SAVE_PNG);
+			} else if (MATCH_NAME("cycle")) {
+				i = 0;
+				while (gtk_events_pending() && i < atoi(value)) {
+					i++;
+					gtk_main_iteration();
+				}
 			} else {
 				printf("Unhandled token in ini file, \n"
 					"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
@@ -3024,18 +3041,18 @@ static void load_ini_settings(OscPlot *plot)
 static void device_list_cfg_file_load(OscPlot *plot, char *filename)
 {	
 	OscPlotPrivate *priv = plot->priv;
-	
+
 	ini_parse(filename, cfg_read_handler, plot);
-	load_ini_settings(plot);
-	treeview_expand_update(plot);
-	max_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_max), plot);
-	min_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_min), plot);
-	if (plot->priv->ini_capture_status)
-		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(plot->priv->capture_button), TRUE);
-	if (priv->read_scale_params == 4) {
-		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), priv->plot_left, 
-			priv->plot_right, priv->plot_top, priv->plot_bottom);
-			priv->read_scale_params = 0;
+	if (!gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button))) {
+		load_ini_settings(plot);
+		treeview_expand_update(plot);
+		max_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_max), plot);
+		min_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_min), plot);
+		if (priv->read_scale_params == 4) {
+			gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), priv->plot_left,
+				priv->plot_right, priv->plot_top, priv->plot_bottom);
+				priv->read_scale_params = 0;
+		}
 	}
 }
 
