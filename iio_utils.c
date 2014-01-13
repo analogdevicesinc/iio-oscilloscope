@@ -518,7 +518,7 @@ int find_scan_elements(char *dev, char **relement, unsigned access)
 
 int read_sysfs_string(const char *filename, const char *basedir, char **str)
 {
-	int ret = 0;
+	int ret = 0, len;
 	FILE  *sysfsfp;
 	char *temp = malloc(strlen(basedir) + strlen(filename) + 2);
 
@@ -542,12 +542,21 @@ int read_sysfs_string(const char *filename, const char *basedir, char **str)
 			free(*str);
 
 	}
-	ret = strlen(*str);
 
-	if ((*str)[ret - 1] == '\n')
-		(*str)[ret - 1] = '\0';
+	/* if the last char is a newline, eat it */
+	len = strlen(*str);
+	if ((*str)[len - 1] == '\n') {
+		(*str)[len - 1] = '\0';
+		len = strlen(*str);
+	}
 
 	fclose(sysfsfp);
+
+	/* zero elements, which are zero length is an error */
+	if (ret == 0 && len == 0)
+		ret = -EINVAL;
+	else
+		ret = len;
 
 error_free:
 	free(temp);
@@ -611,6 +620,7 @@ int read_devattr_double(const char *attr, double *value)
 	int ret;
 
 	ret = read_devattr(attr, &buf);
+
 	if (ret < 0)
 		return ret;
 
