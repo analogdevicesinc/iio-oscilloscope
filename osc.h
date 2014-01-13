@@ -11,6 +11,11 @@
 
 #define CAPTURE_CONF "MultiOsc_Capture_Configuration"
 
+#define SAVE_CSV 2
+#define SAVE_PNG 3
+#define SAVE_MAT 4
+#define SAVE_VSA 5
+
 extern GtkWidget *capture_graph;
 extern gint capture_function;
 extern bool str_endswith(const char *str, const char *needle);

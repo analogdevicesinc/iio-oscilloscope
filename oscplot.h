@@ -46,6 +46,7 @@ void          osc_plot_restart          (OscPlot *plot);
 void          osc_plot_draw_stop        (OscPlot *plot);
 void          osc_plot_save_to_ini      (OscPlot *plot, char *filename);
 void          osc_plot_load_ini_section (OscPlot *plot, char *filename, char *section);
+void          osc_plot_save_as          (OscPlot *plot, char *filename, int type);
 
 G_END_DECLS
 

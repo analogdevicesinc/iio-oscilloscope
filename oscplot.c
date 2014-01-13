@@ -47,6 +47,7 @@ static void device_list_cfg_file_write(OscPlot *plot, char *filename);
 static void device_list_cfg_file_load(OscPlot *plot, char *filename);
 static void osc_plot_finalize(GObject *object);
 static void osc_plot_dispose(GObject *object);
+static void save_as(OscPlot *plot, const char *filename, int type);
 
 /* IDs of signals */
 enum {
@@ -375,6 +376,11 @@ void osc_plot_load_ini_section (OscPlot *plot, char *filename, char *section)
 
 	/* Load the device list configuration. */
 	device_list_cfg_file_load(plot, filename);
+}
+
+void osc_plot_save_as (OscPlot *plot, char *filename, int type)
+{
+	save_as(plot, filename, type);
 }
 
 static void osc_plot_dispose(GObject *object)
@@ -2208,71 +2214,64 @@ static void cb_saveas(GtkToolButton *toolbutton, OscPlot *data)
 	gtk_widget_show(priv->saveas_dialog);
 }
 
-void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
+static void save_as(OscPlot *plot, const char *filename, int type)
 {
-	/* Save as Dialog */
-	OscPlotPrivate *priv = data->priv;
+	OscPlotPrivate *priv = plot->priv;
+	FILE *fp;
+	mat_t *mat;
+	matvar_t *matvar;
+	Transform *tr;
+	gfloat *tr_data;
+	char *tr_name;
+	int dims[2] = {1, -1};
+	GdkPixbuf *pixbuf;
+	GError *err=NULL;
+	GdkColormap *cmap;
+	gint width, height;
+	gboolean ret = true;
 	char *name;
 	int i;
 
-	priv->saveas_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
-	if (priv->saveas_filename == NULL)
-		goto hide_dialog;
 	name = malloc(strlen(priv->saveas_filename) + 5);
-	switch(response_id) {
+	switch(type) {
 		/* Response Codes encoded in glade file */
 		case GTK_RESPONSE_DELETE_EVENT:
 		case GTK_RESPONSE_CANCEL:
 			break;
-		case 2: 
+		case SAVE_CSV: 
 			/* save comma separated values (csv) */
 			if (!strncasecmp(&priv->saveas_filename[strlen(priv->saveas_filename)-4], ".csv", 4))
 					strcpy(name, priv->saveas_filename);
 				else
 					sprintf(name, "%s.csv", priv->saveas_filename);
-
-			{			
-				FILE *fp;
-
-				fp = fopen(name, "w");
-				if (!fp)
-					break;
-				for (i = 0; i < priv->transform_list->size; i++) {
-						transform_csv_print(priv, fp, priv->transform_list->transforms[i]);
-				}
-				fprintf(fp, "\n");
-				fclose(fp);
+			fp = fopen(name, "w");
+			if (!fp)
+				break;
+			for (i = 0; i < priv->transform_list->size; i++) {
+					transform_csv_print(priv, fp, priv->transform_list->transforms[i]);
 			}
+			fprintf(fp, "\n");
+			fclose(fp);
 			break;
-		case 3:	
+		case SAVE_PNG:	
 			/* save png */
 			if (!strncasecmp(&priv->saveas_filename[strlen(priv->saveas_filename)-4], ".png", 4))
 					strcpy(name, priv->saveas_filename);
 				else
 					sprintf(name, "%s.png", priv->saveas_filename);
-
-			{
-				GdkPixbuf *pixbuf;
-				GError *err=NULL;
-				GdkColormap *cmap;
-				gint width, height;
-				gboolean ret = true;
-				
-				cmap = gdk_window_get_colormap(
-						GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)));
-				gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
-						&width, &height);
-				pixbuf = gdk_pixbuf_get_from_drawable(NULL,
-						GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
-						cmap, 0, 0, 0, 0, width, height);
-
-				if (pixbuf)
-					ret = gdk_pixbuf_save(pixbuf, name, "png", &err, NULL);
-				if (!pixbuf || !ret)
-					printf("error creating %s\n", priv->saveas_filename);
-			}
+			cmap = gdk_window_get_colormap(
+					GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)));
+			gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
+					&width, &height);
+			pixbuf = gdk_pixbuf_get_from_drawable(NULL,
+					GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
+					cmap, 0, 0, 0, 0, width, height);
+			if (pixbuf)
+				ret = gdk_pixbuf_save(pixbuf, name, "png", &err, NULL);
+			if (!pixbuf || !ret)
+				printf("error creating %s\n", priv->saveas_filename);
 			break;
-		case 4:
+		case SAVE_MAT:
 			/* Matlab file
 			 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
 			 */
@@ -2280,40 +2279,41 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *data)
 					strcpy(name, priv->saveas_filename);
 				else
 					sprintf(name, "%s.mat", priv->saveas_filename);
-
-			{
-				mat_t *mat;
-				matvar_t *matvar;
-				Transform *tr;
-				gfloat *tr_data;
-				char *tr_name;
-				int dims[2] = {1, -1};
-				
-				mat = Mat_Open(name, MAT_ACC_RDWR);
-				if (!mat)
-					break;
-				for (i = 0; i < priv->transform_list->size; i++) {
-					tr = priv->transform_list->transforms[i];
-					tr_data = Transform_get_y_axis_ref(tr);
-					if (tr_data == NULL)
-						continue;
-					tr_name = transform_get_name_from_tree_store(priv, tr);
-					dims[1] = tr->y_axis_size;
-					matvar = Mat_VarCreate(tr_name, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims, tr_data, 0);
-					if (!matvar)
-						printf("error creating matvar on transform %s\n", tr_name);
-					else {
-						Mat_VarWrite(mat, matvar, 0);
-						Mat_VarFree(matvar);
-					}
-					g_free(tr_name);
+			mat = Mat_Open(name, MAT_ACC_RDWR);
+			if (!mat)
+				break;
+			for (i = 0; i < priv->transform_list->size; i++) {
+				tr = priv->transform_list->transforms[i];
+				tr_data = Transform_get_y_axis_ref(tr);
+				if (tr_data == NULL)
+					continue;
+				tr_name = transform_get_name_from_tree_store(priv, tr);
+				dims[1] = tr->y_axis_size;
+				matvar = Mat_VarCreate(tr_name, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims, tr_data, 0);
+				if (!matvar)
+					printf("error creating matvar on transform %s\n", tr_name);
+				else {
+					Mat_VarWrite(mat, matvar, 0);
+					Mat_VarFree(matvar);
 				}
-				Mat_Close(mat);
+				g_free(tr_name);
 			}
+			Mat_Close(mat);
 			break;
 		default:
-			printf("response_id : %i\n", response_id);
+			printf("SaveAs response: %i\n", type);
 	}
+}
+
+void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
+{
+	/* Save as Dialog */
+	OscPlotPrivate *priv = plot->priv;
+
+	priv->saveas_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
+	if (priv->saveas_filename == NULL)
+		goto hide_dialog;
+	save_as(plot, priv->saveas_filename, response_id);
 
 hide_dialog:
 	gtk_widget_hide(priv->saveas_dialog);
