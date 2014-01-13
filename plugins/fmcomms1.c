@@ -594,20 +594,23 @@ static double find_min(GtkSpinButton *spin_button, int marker, gfloat min, gfloa
 		scpi_rx_trigger_sweep();
 		scpi_rx_get_marker_level(1, true, &level);
 		if (level <= min_level) {
+			if (min_level != FLT_MAX)
+				bigger = 0;
 			min_level = level;
 			min_value = i;
-			bigger = 0;
 		}
 
-		if (bigger != -1 && level > last_val)
-			bigger++;
+		if (min_value != 0 && bigger != -1) {
+			if (level > last_val)
+				bigger++;
+			else
+				bigger = 0;
+		}
 
 		if (bigger == 5)
 			break;
 
 		last_val = level;
-
-		
 	}
 
 	gdk_threads_enter();
@@ -619,7 +622,7 @@ static double find_min(GtkSpinButton *spin_button, int marker, gfloat min, gfloa
 
 static void tx_thread_cal(void *ptr)
 {
-	gdouble min_i, min_q;
+	gdouble min_i, min_q, tmp;
 	unsigned long long lo, sig;
 
 	gdk_threads_enter();
@@ -628,8 +631,8 @@ static void tx_thread_cal(void *ptr)
 	sig = (unsigned long long)gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) * 1000000;
 
 	/* set some default values */
-	gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_dac_offs), 400.0);
-	gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_dac_offs), 400.0);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_dac_offs), 0.0);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_dac_offs), 0.0);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_dac_pha_adj), 0.0);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_dac_pha_adj), 0.0);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_dac_fs_adj), 512.0);
@@ -641,21 +644,31 @@ static void tx_thread_cal(void *ptr)
 	scpi_rx_trigger_sweep();
 
 	/* rough approximation of carrier supression */
-        scpi_rx_set_center_frequency(lo);
-        scpi_rx_set_span_frequency(2000000);
+	scpi_rx_set_center_frequency(lo);
+	scpi_rx_set_span_frequency(2000000);
 	scpi_rx_set_marker_freq(1, lo);
 
-	min_i = find_min(GTK_SPIN_BUTTON(I_dac_offs), 1, 0, 500, 100.0);
-	min_q = find_min(GTK_SPIN_BUTTON(Q_dac_offs), 1, 0, 500, 100.0);
-	
+	min_i = find_min(GTK_SPIN_BUTTON(I_dac_offs), 1, -500, 500, 100.0);
+	min_q = find_min(GTK_SPIN_BUTTON(Q_dac_offs), 1, -500, 500, 100.0);
+
 	/* side band supression */
 	scpi_rx_set_center_frequency(lo - sig);
 	scpi_rx_set_marker_freq(1, lo - sig);
 
-	find_min(GTK_SPIN_BUTTON(I_dac_pha_adj), 1, -512, 512, 100);
-	find_min(GTK_SPIN_BUTTON(Q_dac_pha_adj), 1, -512, 512, 100);
-	find_min(GTK_SPIN_BUTTON(I_dac_fs_adj), 1, 0, 1024, 100);
-	find_min(GTK_SPIN_BUTTON(Q_dac_fs_adj), 1, 0, 1024, 100);
+	tmp = find_min(GTK_SPIN_BUTTON(I_dac_pha_adj), 1, -512, 512, 100);
+	tmp += find_min(GTK_SPIN_BUTTON(Q_dac_pha_adj), 1, -512, 512, 100);
+	find_min(GTK_SPIN_BUTTON(I_dac_fs_adj), 1, 0, 600, 100);
+	find_min(GTK_SPIN_BUTTON(Q_dac_fs_adj), 1, 0, 600, 100);
+
+	if (tmp != -1024) {
+		gdk_threads_enter();
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_dac_pha_adj), tmp / 2);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_dac_pha_adj), tmp / 2);
+		gdk_threads_leave();
+
+		find_min(GTK_SPIN_BUTTON(I_dac_pha_adj), 1, tmp / 2 - 20, tmp / 2 + 20, 40);
+		find_min(GTK_SPIN_BUTTON(Q_dac_pha_adj), 1, tmp / 2 - 20, tmp / 2 + 20, 40);
+	}
 
 	/* go back to carrier, and do it in smaller steps */
 	scpi_rx_set_center_frequency(lo);
@@ -663,7 +676,6 @@ static void tx_thread_cal(void *ptr)
 
 	find_min(GTK_SPIN_BUTTON(I_dac_offs), 1, min_i - 10, min_i + 10, 20.0);
 	find_min(GTK_SPIN_BUTTON(Q_dac_offs), 1, min_q - 10, min_q + 10, 20.0);
-	
 
 	scpi_rx_set_span_frequency(3 * sig);
 	scpi_rx_trigger_sweep();
@@ -683,7 +695,7 @@ static void cal_tx_button_clicked(void)
 			(gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) !=
 				gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds4_freq))))
 		return;
-	
+
 	scpi_rx_setup();
 	scpi_rx_set_center_frequency(gtk_spin_button_get_value (GTK_SPIN_BUTTON(tx_lo_freq)) * 1000000 + 1000000);
 	scpi_rx_set_span_frequency(3 * gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) * 1000000);
@@ -708,22 +720,29 @@ static void cal_rx_button_clicked(void)
 	gtk_widget_hide(cal_rx);
 }
 
-static void dac_temp_update()
+static void display_temp(void *ptr)
 {
 	double temp;
+	int tmp;
 	char buf[25];
 
-	gdk_threads_enter();
-	set_dev_paths("cf-ad9122-core-lpc");
-	if (read_devattr_double("in_temp0_input", &temp) < 0) {
-		/* Just assume it's 25C */
-		temp = 2500;
-		write_devattr_double("in_temp0_input", temp);
-	}
+	while (!kill_thread) {
+		set_dev_paths("cf-ad9122-core-lpc");
+		if (read_devattr_double("in_temp0_input", &temp) < 0) {
+			/* Just assume it's 25C */
+			temp = 2500;
+			write_devattr_double("in_temp0_input", temp);
+			read_devattr_int("in_temp0_calibbias", &tmp);
+			printf("AD9122 temp cal value : %i\n", tmp);
+		}
 
-	sprintf(buf, "%2.1f", temp/1000);
-	gtk_label_set_text(GTK_LABEL(ad9122_temp), buf);
-	gdk_threads_leave();
+		sprintf(buf, "%2.1f", temp/1000);
+		gdk_threads_enter();
+		gtk_label_set_text(GTK_LABEL(ad9122_temp), buf);
+		gdk_threads_leave();
+
+		usleep(500000);
+	}
 }
 
 #define RX_CAL_THRESHOLD -75
@@ -757,12 +776,6 @@ static void display_cal(void *ptr)
 	}
 
 	while (!kill_thread) {
-		while (!kill_thread && !capture_function) {
-			/* Wait 1/2 second */
-			dac_temp_update();
-			usleep(500000);
-		}
-
 		if (kill_thread) {
 			size = 0;
 		} else {
@@ -1268,7 +1281,7 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 {
 	gint ret;
 	char *filename = NULL;
-	GThread *thid_rx = NULL;
+	GThread *thid_rx = NULL, *thid_tmp = NULL;
 
 	kill_thread = 0;
 
@@ -1285,6 +1298,8 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 
 	if (fmcomms1_cal_eeprom() < 0)
 		gtk_widget_hide(load_eeprom);
+
+	thid_tmp = g_thread_new("Display_temp", (void *) &display_temp, NULL);
 
 	do {
 		ret = gtk_dialog_run(GTK_DIALOG(dialogs.calibrate));
@@ -1332,6 +1347,12 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 	if (thid_rx) {
 		kill_thread = 1;
 		iio_thread_clear(thid_rx);
+	}
+
+	if (thid_tmp) {
+		kill_thread = 1;
+		g_thread_join(thid_tmp);
+		iio_thread_clear(thid_tmp);
 	}
 
 	if (filename)
