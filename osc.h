@@ -49,4 +49,9 @@ int capture_profile_handler(const char *section, const char *name, const char *v
 void save_all_plugins(const char *filename, gpointer user_data);
 void restore_all_plugins(const char *filename, gpointer user_data);
 
+GtkWidget * create_nonblocking_popup(GtkMessageType type,
+			const char *title, const char *str, ...);
+gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
+			const char *title, const char *str, ...);
+
 #endif
