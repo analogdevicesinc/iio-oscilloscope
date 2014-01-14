@@ -44,12 +44,12 @@ static void call_all_transform_functions(OscPlotPrivate *priv);
 static void capture_start(OscPlotPrivate *priv);
 static void remove_transform(OscPlot *plot, GtkTreeIter rm_iter);
 static void device_list_cfg_file_write(OscPlot *plot, char *filename);
-static void device_list_cfg_file_load(OscPlot *plot, char *filename);
 static void osc_plot_finalize(GObject *object);
 static void osc_plot_dispose(GObject *object);
 static void save_as(OscPlot *plot, const char *filename, int type);
 static void load_ini_settings(OscPlot *plot);
 static void treeview_expand_update(OscPlot *plot);
+static int  cfg_read_handler(void *user, const char* section, const char* name, const char* value);
 
 /* IDs of signals */
 enum {
@@ -225,7 +225,6 @@ struct _OscPlotPrivate
 	GList *ini_cfgs;
 	
 	char *saveas_filename;
-	char *ini_section_name;
 	
 	struct int_and_plot fix_marker;
 	struct string_and_plot add_mrk;
@@ -366,16 +365,9 @@ void osc_plot_save_to_ini (OscPlot *plot, char *filename)
 	device_list_cfg_file_write(plot, filename);
 }
 
-void osc_plot_load_ini_section (OscPlot *plot, char *filename, char *section)
+void osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *name, const char *value)
 {
-	OscPlotPrivate *priv = plot->priv;
-	
-	if (priv->ini_section_name != NULL)
-		g_free(priv->ini_section_name);
-	priv->ini_section_name = strdup(section);
-
-	/* Load the device list configuration. */
-	device_list_cfg_file_load(plot, filename);
+	cfg_read_handler(plot, section, name, value);
 }
 
 void osc_plot_save_as (OscPlot *plot, char *filename, int type)
@@ -2732,10 +2724,8 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 	int t_type;
 	struct transform_ini_cfg *cfg = NULL;
 	int ret, i;
-	
-	if (!MATCH_SECT(priv->ini_section_name))
-		return 0;
-	
+	FILE *fd;
+
 	elem_type = count_char_in_string('.', name);
 	switch(elem_type) {
 		case PLOT_ATTRIBUTE:
@@ -2786,6 +2776,22 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 					i++;
 					gtk_main_iteration();
 				}
+			} else if (MATCH_NAME("save_markers")) {
+				fd = fopen(value, "a");
+				if (!fd)
+					return 0;
+				
+				for (i = 0; i < num_devices; i++) {
+					if (!strcmp(device_list[i].device_name, "cf-ad9643-core-lpc") || 
+						!strcmp(device_list[i].device_name, "cf-ad9361-lpc"))
+						fprintf(fd, "%f", device_list[i].lo_freq);
+				}
+				
+				for (i = 0; i <= MAX_MARKERS; i++) {
+					fprintf(fd, ", %f, %f", priv->markers[i].x, priv->markers[i].y);
+				}
+				fprintf(fd, "\n");
+				fclose(fd);
 			} else {
 				printf("Unhandled token in ini file, \n"
 					"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
@@ -3036,24 +3042,6 @@ static void create_transform_from_ini(gpointer data, gpointer user_data)
 static void load_ini_settings(OscPlot *plot)
 {
 	g_list_foreach(plot->priv->ini_cfgs, create_transform_from_ini, plot);
-}
-
-static void device_list_cfg_file_load(OscPlot *plot, char *filename)
-{	
-	OscPlotPrivate *priv = plot->priv;
-
-	ini_parse(filename, cfg_read_handler, plot);
-	if (!gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button))) {
-		load_ini_settings(plot);
-		treeview_expand_update(plot);
-		max_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_max), plot);
-		min_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_min), plot);
-		if (priv->read_scale_params == 4) {
-			gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), priv->plot_left,
-				priv->plot_right, priv->plot_top, priv->plot_bottom);
-				priv->read_scale_params = 0;
-		}
-	}
 }
 
 static inline void marker_set(OscPlot *plot, int i, char *buf, bool force)
@@ -3379,7 +3367,6 @@ static void create_plot(OscPlot *plot)
 	priv->y_axis_min = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_min"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	priv->tbuf = NULL;
-	priv->ini_section_name = NULL;
 	
 	/* Count every object that is being created */
 	object_count++;

@@ -46,12 +46,10 @@ G_LOCK_DEFINE(buffer_full);
 static gboolean stop_capture;
 static struct plugin_check_fct *setup_check_functions;
 static int num_check_fcts = 0;
-static GSList *ini_capture_sections = NULL;
 static GSList *dplugin_list = NULL;
 GtkWidget  *notebook;
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
-static void gfunc_create_plot_with_ini_data(gpointer data, gpointer user_data);
 static void plugin_restore_ini_state(char *plugin_name, gboolean detached);
 
 /* Couple helper functions from fru parsing */
@@ -1517,7 +1515,6 @@ static void load_default_profile (char *filename)
 		return;
 
 	printf("Loading profile : %s\n", buf);
-	capture_profile_load(buf);
 	restore_all_plugins(buf, NULL);
 }
 
@@ -1570,52 +1567,67 @@ static void init_application (void)
 	rx_update_labels();
 	gtk_widget_show(window);	
 }
+
 static char *prev_section;
 
-static int profile_read_handler(void *user, const char *section, const char *name, const char *value)
+/*
+ * Check for settings in sections [MultiOsc_Capture_Configuration1,2,..]
+ */
+int capture_profile_handler(const char *section, const char *name, const char *value)
 {
-	int elem_type;
-	gchar **elems = NULL;
-	
-	/* Get data from [MultOsc] section */
-	if (!strcmp(section, "MultiOsc")) {
-		elem_type = count_char_in_string('.', name);
-		switch(elem_type) {
-			case 2:
-				elems = g_strsplit(name, ".", 3);
-				if (!strcmp(elems[0], "plugin")) {
-					if (!strcmp(elems[2], "detached"))
-						plugin_restore_ini_state(elems[1], atoi(value));
-					else goto unhandled;
-				} else {
-					goto unhandled;
-				}
-				break;
-				unhandled:
-				printf("Unhandled token in ini file, \n"
-					"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
-					section, name, value);
-				break;
-			default:
-				printf("Unhandled token in ini file, \n"
-					"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
-					section, name, value);
-				break;
-		};
-		return 0;
-	}
-	
-	/* Check if a new "Capture" section has been reached */
-	if (strcmp(section, prev_section) != 0) { 
-		if (strncmp(section, "MultiOsc_Capture_Configuration", strlen("MultiOsc_Capture_Configuration")) != 0)
-			return 0;
+	static GtkWidget *plot = NULL;
+
+	/* Check if a new section has been reached */
+	if (strcmp(section, prev_section) != 0) {
 		g_free(prev_section);
 		/* Remember the last section */
 		prev_section = g_strdup(section);
-		/* Store the name of the section */
-		ini_capture_sections = g_slist_append(ini_capture_sections, g_strdup(section));
+		/* Create a capture window and parse the line from ini file*/
+		if (strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF)) == 0) {
+			plot = plot_create_and_init();
+			osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
+		}
+	} else {
+		/* Parse the line from ini file */
+		if (strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF)) == 0) {
+			osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
+		}
 	}
-	
+
+	return 0;
+}
+
+/*
+ * Check for settings in [MultiOsc] section
+ */
+int main_profile_handler(const char *section, const char *name, const char *value)
+{
+	int elem_type;
+	gchar **elems = NULL;
+
+	elem_type = count_char_in_string('.', name);
+	switch(elem_type) {
+		case 2:
+			elems = g_strsplit(name, ".", 3);
+			if (!strcmp(elems[0], "plugin")) {
+				if (!strcmp(elems[2], "detached"))
+					plugin_restore_ini_state(elems[1], atoi(value));
+				else goto unhandled;
+			} else {
+				goto unhandled;
+			}
+			break;
+			unhandled:
+			printf("Unhandled token in ini file, \n"
+				"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
+				section, name, value);
+			break;
+		default:
+			printf("Unhandled token in ini file, \n"
+				"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
+				section, name, value);
+			break;
+	};
 	return 0;
 }
 
@@ -1627,17 +1639,7 @@ static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data)
 	osc_plot_save_to_ini(plot, filename);
 }
 
-static void gfunc_create_plot_with_ini_data(gpointer data, gpointer user_data)
-{
-	GtkWidget  *plot;
-	char *filename = (char *)user_data;
-	char *section = (char *)data;
-	
-	plot = plot_create_and_init();
-	osc_plot_load_ini_section(OSC_PLOT(plot), filename, section);
-}
-
-void capture_profile_save(char *filename)
+void capture_profile_save(const char *filename)
 {
 	FILE *fp;
 	
@@ -1656,7 +1658,7 @@ void capture_profile_save(char *filename)
 	fclose(fp);
 	
 	/* All opened "Capture" windows save their own configurations */
-	g_list_foreach(plot_list, gfunc_save_plot_data_to_ini, filename);
+	g_list_foreach(plot_list, gfunc_save_plot_data_to_ini, (gpointer)filename);
 }
 
 static gint plugin_names_cmp(gconstpointer a, gconstpointer b)
@@ -1672,11 +1674,11 @@ static void plugin_restore_ini_state(char *plugin_name, gboolean detached)
 	struct detachable_plugin *dplugin;
 	GSList *found_plugin;
 	GtkWidget *button;
-	printf("restoring plugin: %s\n", plugin_name);
+
 	found_plugin = g_slist_find_custom(dplugin_list,
 		(gconstpointer)plugin_name, plugin_names_cmp);
 	if (found_plugin == NULL) {
-		printf("Invalid plugin: %s\n", plugin_name);
+		printf("Plugin: %s not currently loaded, skipping\n", plugin_name);
 		return;
 	}
 
@@ -1686,18 +1688,16 @@ static void plugin_restore_ini_state(char *plugin_name, gboolean detached)
 		g_signal_emit_by_name(button, "clicked", dplugin);
 }
 
-void capture_profile_load(char *filename)
-{	
-	if (ini_capture_sections != NULL) {
-		g_slist_free(ini_capture_sections);
-		ini_capture_sections = NULL;
-	}
+void main_setup_before_ini_load(void)
+{
 	close_all_plots();
 	destroy_all_plots();
-	prev_section = g_strdup("");
-	ini_parse(filename, profile_read_handler, NULL);
+	prev_section = strdup("");
+}
+
+void main_setup_after_ini_load(void)
+{
 	g_free(prev_section);
-	g_slist_foreach(ini_capture_sections, gfunc_create_plot_with_ini_data, filename);
 }
 
 void usage(char *program)

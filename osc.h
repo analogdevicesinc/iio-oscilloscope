@@ -9,7 +9,8 @@
 #define __OSC_H__
 #define IIO_THREADS
 
-#define CAPTURE_CONF "MultiOsc_Capture_Configuration"
+#define MULTI_OSC "MultiOsc"
+#define CAPTURE_CONF MULTI_OSC"_Capture_Configuration"
 
 #define SAVE_CSV 2
 #define SAVE_PNG 3
@@ -40,8 +41,11 @@ int plugin_data_capture_bytes_per_sample(void *device);
 void plugin_data_capture_demux(void *device, void *buf, gfloat **cooked, unsigned int num_samples,
 	unsigned int num_channels);
 
-void capture_profile_save(char *filename);
-void capture_profile_load(char *filename);
+void capture_profile_save(const char *filename);
+void main_setup_before_ini_load(void);
+void main_setup_after_ini_load(void);
+int main_profile_handler(const char *section, const char *name, const char *value);
+int capture_profile_handler(const char *section, const char *name, const char *value);
 void save_all_plugins(const char *filename, gpointer user_data);
 void restore_all_plugins(const char *filename, gpointer user_data);
 
