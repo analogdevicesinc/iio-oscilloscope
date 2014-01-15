@@ -53,5 +53,6 @@ GtkWidget * create_nonblocking_popup(GtkMessageType type,
 			const char *title, const char *str, ...);
 gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 			const char *title, const char *str, ...);
+gint fru_connect(void);
 
 #endif

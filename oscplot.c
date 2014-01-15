@@ -2795,6 +2795,17 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				}
 				fprintf(fd, "\n");
 				fclose(fd);
+			} else if (MATCH_NAME("fru_connect")) {
+				if (value) {
+					if (atoi(value) == 1) {
+						i = fru_connect();
+						if (i == GTK_RESPONSE_OK)
+							ret = 1;
+						else
+							ret = 0;
+					} else
+						ret = 0;
+				}
 			} else if (MATCH_NAME("quit")) {
 				return 0;
 			} else {

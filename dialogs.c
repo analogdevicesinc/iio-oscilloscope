@@ -332,7 +332,7 @@ void connect_fillin(Dialogs *data)
 	return;
 }
 
-G_MODULE_EXPORT void cb_connect(GtkButton *button, Dialogs *data)
+G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 {
 	/* Connect Dialog */
 	gint ret;
@@ -356,6 +356,11 @@ G_MODULE_EXPORT void cb_connect(GtkButton *button, Dialogs *data)
 	}
 	gtk_widget_hide(data->connect);
 
+	return ret;
+}
+gint fru_connect(void)
+{
+	return cb_connect(NULL, &dialogs);
 }
 
 G_MODULE_EXPORT void cb_show_about(GtkButton *button, Dialogs *data)
