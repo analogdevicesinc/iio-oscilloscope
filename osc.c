@@ -410,13 +410,6 @@ static void gfunc_update_plot(gpointer data, gpointer user_data)
 	osc_plot_data_update(OSC_PLOT(plot));
 }
 
-static void gfunc_update_rx_lbl_plot(gpointer data, gpointer user_data)
-{
-	GtkWidget *plot = data;
-
-	osc_plot_update_rx_lbl(OSC_PLOT(plot));
-}
-
 static void gfunc_restart_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
@@ -1462,8 +1455,11 @@ void rx_update_labels(void)
 		if (device_list[i].lo_freq)
 			device_list[i].lo_freq /= 1000000.0;
 	}
-	
-	g_list_foreach(plot_list, gfunc_update_rx_lbl_plot, NULL);
+
+	GList *node;
+
+	for (node = plot_list; node; node = g_list_next(node))
+		osc_plot_update_rx_lbl(OSC_PLOT(node->data), NORMAL_UPDATE);
 }
 
 /* Before we really start, let's load the last saved profile */

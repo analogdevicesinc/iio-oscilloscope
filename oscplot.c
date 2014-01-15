@@ -306,7 +306,7 @@ void osc_plot_data_update (OscPlot *plot)
 	call_all_transform_functions(plot->priv);
 }
 
-void osc_plot_update_rx_lbl(OscPlot *plot)
+void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 {
 	OscPlotPrivate *priv = plot->priv;
 	TrList *tr_list = priv->transform_list;
@@ -315,7 +315,7 @@ void osc_plot_update_rx_lbl(OscPlot *plot)
 	int i;
 	
 	/* Skip rescaling graphs, updating labels and others if the redrawing is currently halted. */
-	if (priv->redraw_function <= 0)
+	if (priv->redraw_function <= 0 && !force_update)
 		return;
 
 	if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
@@ -328,7 +328,7 @@ void osc_plot_update_rx_lbl(OscPlot *plot)
 			corr = priv->current_device->adc_freq / 2.0;
 		else
 			corr = 0;
-		if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
+		if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)) && !force_update)
 			return;
 		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -5.0 - corr, priv->current_device->adc_freq / 2.0 + 5.0, 0.0, -75.0);
 		priv->do_a_rescale_flag = 1;
@@ -1710,7 +1710,13 @@ static void plot_setup(OscPlot *plot)
 		gtk_databox_graph_add(GTK_DATABOX(priv->databox), transform->graph);
 		gtk_databox_graph_set_hide(GTK_DATABOX_GRAPH(transform->graph), !transform->graph_active);
 	}
-	osc_plot_update_rx_lbl(plot);
+
+	if (priv->active_transform_type == TIME_TRANSFORM)
+		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), 0.0, max_x_axis, 1000, -1000);
+	else if (priv->active_transform_type == CONSTELLATION_TRANSFORM)
+		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -1000.0, 1000.0, 1000, -1000);
+
+	osc_plot_update_rx_lbl(plot, FORCE_UPDATE);
 }
 
 static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
@@ -3500,8 +3506,8 @@ static void create_plot(OscPlot *plot)
 		"stock-id", 0, capture_button_icon_transform, NULL, plot, NULL);
 	g_object_bind_property_full(priv->fullscreen_button, "active", priv->fullscreen_button,
 		"stock-id", 0, fullscreen_button_icon_transform, NULL, NULL, NULL);
-	g_object_bind_property(ruler_y, "lower", priv->y_axis_max, "value", G_BINDING_BIDIRECTIONAL);
-	g_object_bind_property(ruler_y, "upper", priv->y_axis_min, "value", G_BINDING_BIDIRECTIONAL);
+	g_object_bind_property(priv->y_axis_max, "value", ruler_y, "lower", G_BINDING_DEFAULT);
+	g_object_bind_property(priv->y_axis_min, "value", ruler_y, "upper", G_BINDING_DEFAULT);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(fft_size_widget), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_type), 0);

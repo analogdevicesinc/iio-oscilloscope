@@ -15,6 +15,9 @@
 
 #include "iio_utils.h"
 
+#define FORCE_UPDATE TRUE
+#define NORMAL_UPDATE FALSE
+
 #ifndef MAX_MARKERS
 #define MAX_MARKERS 10
 #endif
