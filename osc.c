@@ -1500,7 +1500,7 @@ static int load_default_profile (char *filename)
 {
 	const char *home_dir = getenv("HOME");
 	char buf[1024], tmp[1024];
-	int ret, linecount;
+	int ret, linecount, flag = 0;
 	FILE *fd;
 
 	if (filename) {
@@ -1515,6 +1515,7 @@ static int load_default_profile (char *filename)
 	 * return success, so we still run */
 		if (!check_inifile(buf))
 			return 0;
+		flag = 1;
 	}
 
 	ret = restore_all_plugins(buf, NULL);
@@ -1535,6 +1536,9 @@ static int load_default_profile (char *filename)
 			}
 		}
 	}
+
+	if (flag)
+		return 0;
 
 	return ret;
 }
@@ -1598,7 +1602,7 @@ static char *prev_section;
 int capture_profile_handler(const char *section, const char *name, const char *value)
 {
 	static GtkWidget *plot = NULL;
-	int ret;
+	int ret = 1;
 
 	/* Check if a new section has been reached */
 	if (strcmp(section, prev_section) != 0) {
