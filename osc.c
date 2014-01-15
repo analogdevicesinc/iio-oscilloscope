@@ -42,7 +42,7 @@ gfloat plugin_fft_corr = 0.0;
 static GList *plot_list = NULL;
 static const char *current_device;
 static int num_capturing_plots;
-G_LOCK_DEFINE(buffer_full);
+G_LOCK_DEFINE_STATIC(buffer_full);
 static gboolean stop_capture;
 static struct plugin_check_fct *setup_check_functions;
 static int num_check_fcts = 0;
@@ -616,7 +616,6 @@ static void close_active_buffers(void)
 			current_device = device_list[i].device_name;
 			buffer_close(device_list[i].buffer_fd);
 			device_list[i].buffer_fd = -1;
-			device_list[i].data_buffer.data_copy = NULL;
 		}
 	disable_all_channels();
 }
@@ -625,6 +624,7 @@ static void stop_sampling(void)
 {
 	stop_capture = TRUE;
 	close_active_buffers();
+	G_TRYLOCK(buffer_full);
 	G_UNLOCK(buffer_full);
 }
 
@@ -854,55 +854,157 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	gtk_widget_show_all(vbox);
 }
 
-/*
- * helper functions for plugins which want to look at data
- */
-
-void * plugin_get_device_by_reference(const char * device_name)
+void * find_device_by_name(const char *device_name)
 {
 	int i;
-	
+
+	if (!device_name)
+		return NULL;
+
 	for (i = 0; i < num_devices; i++) {
 		if (strcmp(device_name, device_list[i].device_name) == 0)
 			return (void *)&device_list[i];
 	}
-	
+
 	return NULL;
 }
 
-int plugin_data_capture_size(void *device)
-{
-	return ((struct _device_list *)device)->data_buffer.size;
+/*
+ * helper functions for plugins which want to look at data
+ */
+
+const void * plugin_get_device_by_reference(const char * device_name)
+{	
+	return find_device_by_name(device_name);
 }
 
-int plugin_data_capture_num_active_channels(void *device)
+int plugin_data_capture_size(const char *device)
 {
-	return ((struct _device_list *)device)->num_active_channels;
+	struct _device_list *dev;
+
+	dev = find_device_by_name(device);
+	if (!dev)
+		return 0;
+
+	return dev->data_buffer.size;
 }
 
-int plugin_data_capture_bytes_per_sample(void *device)
+int plugin_data_capture_num_active_channels(const char *device)
 {
-	return ((struct _device_list *)device)->bytes_per_sample;
+	struct _device_list *dev;
+
+	dev = find_device_by_name(device);
+	if (!dev)
+		return 0;
+
+	return dev->num_active_channels;
 }
 
-void plugin_data_capture_demux(void *device, void *buf, gfloat **cooked, unsigned int num_samples,
-	unsigned int num_channels)
-
+int plugin_data_capture_bytes_per_sample(const char *device)
 {
-	demux_data_stream(buf, cooked, num_samples, 0, num_samples,
-		((struct _device_list *)device)->channel_list, num_channels);
+	struct _device_list *dev;
+
+	dev = find_device_by_name(device);
+	if (!dev)
+		return 0;
+
+	return dev->bytes_per_sample;
 }
 
-int plugin_data_capture(void *device, void *buf)
+int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data)
 {
-	struct _device_list *_device = (struct _device_list *)device;
-	
-	/* only one consumer at a time */
-	if (_device->data_buffer.data_copy)
-		return false;
+	struct _device_list *dev;
+	int i, j;
+	bool new = FALSE;
 
-	_device->data_buffer.data_copy = buf;
-	return true;
+	dev = find_device_by_name(device);
+
+	/* if there isn't anything to send, clear everything */
+	if (dev->data_buffer.size == 0 || device == NULL) {
+		if (buf && *buf) {
+			g_free(*buf);
+			*buf = NULL;
+		}
+		if (cooked_data && *cooked_data) {
+			for (i = 0; i < dev->num_active_channels; i++)
+				g_free((*cooked_data)[i]);
+			g_free(*cooked_data);
+			*cooked_data = NULL;
+		}
+		return -ENXIO;
+	}
+
+	if (!dev)
+		return -ENXIO;
+
+	if (buf) {
+		/* One consumer at a time */
+		if (dev->data_buffer.data_copy)
+			return -EBUSY;
+
+		/* make sure space is allocated */
+		if (*buf)
+			*buf = g_renew(int8_t, *buf, dev->data_buffer.size);
+		else
+			*buf = g_new(int8_t, dev->data_buffer.size);
+
+		if (!*buf)
+			goto capture_malloc_fail;
+
+		/* where to put the copy */
+		dev->data_buffer.data_copy = *buf;
+		
+		/* Wait til the buffer is full */
+		G_LOCK(buffer_full);
+		
+		/* if the lock is released, but the copy is still there
+		 * that's because someone else broke the lock
+		 */
+		if (dev->data_buffer.data_copy) {
+			dev->data_buffer.data_copy = NULL;
+			return -EINTR;
+		}
+
+		if (!cooked_data) {
+			return 0;
+		}
+
+		/* make sure space is allocated */
+		if (*cooked_data) {
+			*cooked_data = g_renew(gfloat *, *cooked_data, dev->num_active_channels);
+			new = FALSE;
+		} else {
+			*cooked_data = g_new(gfloat *, dev->num_active_channels);
+			new = TRUE;
+		}
+
+		if (!*cooked_data)
+			goto capture_malloc_fail;
+
+		for (i = 0; i < dev->num_active_channels; i++) {
+			if (new)
+				(*cooked_data)[i] = g_new(gfloat, dev->data_buffer.size / dev->bytes_per_sample);
+			else
+				(*cooked_data)[i] = g_renew(gfloat, (*cooked_data)[i], dev->data_buffer.size / dev->bytes_per_sample);
+
+			if (!(*cooked_data)[i])
+				goto capture_malloc_fail;
+
+			for (j = 0; j < dev->data_buffer.size / dev->bytes_per_sample; j++)
+				(*cooked_data)[i][j] = 0.0f;
+		}
+
+		/* Now that we have the space, process it */
+		 demux_data_stream(*buf, *cooked_data,
+					dev->data_buffer.size / 4, 0, dev->data_buffer.size / 4,
+					dev->channel_list, dev->num_active_channels);
+	}
+
+	return 0;
+
+capture_malloc_fail:
+	printf("%s:%s malloc failed\n", __FILE__, __func__);
+	return -ENOMEM;
 }
 
 static bool force_plugin(const char *name)
@@ -1121,15 +1223,12 @@ static void capture_start(void)
 
 static void start(OscPlot *plot, gboolean start_event)
 {	
-	int i;
-	
 	if (start_event) {
 		num_capturing_plots++;
 		/* Stop the capture process to allow settings to be updated */
 		stop_capture = TRUE;
-		for (i = 0; i < num_devices; i++)
-			device_list[0].data_buffer.data_copy = NULL;
-		G_UNLOCK(buffer_full);
+		
+		G_TRYLOCK(buffer_full);
 		close_active_buffers();
 		
 		/* Start the capture process */
@@ -1138,14 +1237,11 @@ static void start(OscPlot *plot, gboolean start_event)
 		capture_start();
 		restart_all_running_plots();
 	} else {
+		G_TRYLOCK(buffer_full);
+		G_UNLOCK(buffer_full);
 		num_capturing_plots--;
-		if (num_capturing_plots == 0) {
+		if (num_capturing_plots == 0)
 			stop_capture = TRUE;
-			for (i = 0; i < num_devices; i++)
-				if (!device_list[0].data_buffer.data_copy)
-					device_list[0].data_buffer.data_copy = NULL;
-			G_UNLOCK(buffer_full);
-		}
 	}
 }
 
@@ -1230,6 +1326,7 @@ void application_quit (void)
 	save_all_plugins(buf, NULL);
 	
 	stop_capture = TRUE;
+	G_TRYLOCK(buffer_full);
 	G_UNLOCK(buffer_full);
 	close_active_buffers();
 	
