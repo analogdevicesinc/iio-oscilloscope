@@ -2578,7 +2578,7 @@ static int comboboxtext_set_active_by_string(GtkComboBox *combo_box, const char 
 	GtkTreeIter iter;
 	gboolean has_iter;
 	char *item;
-	
+
 	has_iter = gtk_tree_model_get_iter_first(model, &iter);
 	while (has_iter) {
 		gtk_tree_model_get(model, &iter, 0, &item, -1);
@@ -2589,7 +2589,7 @@ static int comboboxtext_set_active_by_string(GtkComboBox *combo_box, const char 
 		}
 		has_iter = gtk_tree_model_iter_next(model, &iter);
 	}
-	
+
 	return 0;
 }
 

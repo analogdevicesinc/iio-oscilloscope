@@ -715,20 +715,20 @@ static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detach
 	GtkWidget *tab_detach_btn;
 	const struct osc_plugin *plugin = d_plugin->plugin;
 	const char *plugin_name = plugin->name;
-	
+
 	tab_box = gtk_hbox_new(FALSE, 0);
 	tab_label = gtk_label_new(plugin_name);
 	tab_toolbar = gtk_toolbar_new();
 	tab_detach_btn = (GtkWidget *)gtk_tool_button_new_from_stock("gtk-disconnect");
-	
+
 	gtk_widget_set_size_request(tab_detach_btn, 25, 5);
-	
+
 	gtk_toolbar_insert(GTK_TOOLBAR(tab_toolbar), GTK_TOOL_ITEM(tab_detach_btn), 0);
 	gtk_container_add(GTK_CONTAINER(tab_box), tab_label);
 	gtk_container_add(GTK_CONTAINER(tab_box), tab_toolbar);
-	
+
 	gtk_widget_show_all(tab_box);
-	
+
 	gtk_notebook_set_tab_label(GTK_NOTEBOOK(notebook), page, tab_box);
 	g_signal_connect(tab_detach_btn, "clicked",
 		G_CALLBACK(detach_plugin), (gpointer)d_plugin);
@@ -756,13 +756,13 @@ static void attach_plugin(GtkToolButton *btn, gpointer data)
 	struct detachable_plugin *d_plugin = (struct detachable_plugin *)data;
 	const struct osc_plugin *plugin = d_plugin->plugin;
 	gint plugin_page_index;
-	
+
 	window = (GtkWidget *)gtk_widget_get_toplevel(GTK_WIDGET(btn));
-	
+
 	GtkWidget *hbox = NULL;
 	GList *hbox_elems = NULL;
 	GList *first = NULL;
-	
+
 	hbox = gtk_bin_get_child(GTK_BIN(window));
 	hbox_elems = gtk_container_get_children(GTK_CONTAINER(hbox));
 	first = g_list_first(hbox_elems);
@@ -773,7 +773,7 @@ static void attach_plugin(GtkToolButton *btn, gpointer data)
 		plugin_page, NULL);
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), plugin_page_index);
 	detach_btn = plugin_tab_add_detach_btn(plugin_page, d_plugin);
-	
+
 	if (plugin->update_active_page)
 		plugin->update_active_page(plugin_page_index, FALSE);
 	d_plugin->detached_state = FALSE;
@@ -785,12 +785,12 @@ static GtkWidget * extract_label_from_box(GtkWidget *box)
 	GList *children = NULL;
 	GList *first = NULL;
 	GtkWidget *label;
-	
+
 	children = gtk_container_get_children(GTK_CONTAINER(box));
 	first = g_list_first(children);
 	label = first->data;
 	g_list_free(children);
-	
+
 	return label;
 }
 
@@ -805,7 +805,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	GtkWidget *label;
 	int num_pages;
 	int i;
-	
+
 	/* Find the page that belongs to a plugin, using the plugin name */
 	num_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
 	for (i = 0; i < num_pages; i++) {
@@ -823,14 +823,14 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 		printf("Could not find %s plugin in the notebook\n", plugin_name);
 		return;
 	}
-	
+
 	GtkWidget *window;
 	GtkWidget *hbox;
 	GtkWidget *vbox;
 	GtkWidget *vbox_empty;
 	GtkWidget *toolbar;
 	GtkWidget *attach_button;
-	
+
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_deletable(GTK_WINDOW(window), FALSE);
 	hbox = gtk_hbox_new(FALSE, 0);
@@ -839,7 +839,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	toolbar = gtk_toolbar_new();
 	attach_button = (GtkWidget *)gtk_tool_button_new_from_stock("gtk-connect");
 	gtk_widget_set_size_request(attach_button, 25, 5);
-	
+
 	gtk_window_set_title(GTK_WINDOW(window), page_name);
 	gtk_widget_reparent(page, hbox);
 	gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, TRUE, 0);
@@ -847,15 +847,15 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	gtk_box_pack_start(GTK_BOX(vbox), vbox_empty, TRUE, TRUE, 0);
 	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(attach_button), 0);
 	gtk_container_add(GTK_CONTAINER(window), hbox);
-	
+
 	g_signal_connect(attach_button, "clicked",
 			G_CALLBACK(attach_plugin), (gpointer)d_plugin);
-	
+
 	if (plugin->update_active_page)
 		plugin->update_active_page(-1, TRUE);
 	d_plugin->detached_state = TRUE;
 	d_plugin->detach_attach_button = attach_button;
-	
+
 	gtk_widget_show(window);
 	gtk_widget_show(hbox);
 	gtk_widget_show_all(vbox);
@@ -967,7 +967,7 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 	d_plugin = malloc(sizeof(struct detachable_plugin));
 	d_plugin->plugin = plugin;
 	dplugin_list = g_slist_append(dplugin_list, (gpointer)d_plugin);
-	
+
 	plugin_make_detachable(d_plugin);
 
 	printf("Loaded plugin: %s\n", plugin->name);
@@ -1010,7 +1010,7 @@ static void plugin_state_ini_save(gpointer data, gpointer user_data)
 {
 	struct detachable_plugin *p = (struct detachable_plugin *)data;
 	FILE *fp = (FILE *)user_data;
-	
+
 	fprintf(fp, "plugin.%s.detached=%d\n", p->plugin->name, p->detached_state);
 }
 
@@ -1551,7 +1551,7 @@ static void init_application (void)
 	GtkBuilder *builder = NULL;
 	GtkWidget  *window;
 	GtkWidget  *btn_capture;
-	
+
 	builder = gtk_builder_new();
 
 	if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL)) {
@@ -1578,7 +1578,7 @@ static void init_application (void)
 			g_object_unref(pixbuf);
 		}
 	}
-	
+
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "main_menu"));
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "button_capture"));
@@ -1586,7 +1586,7 @@ static void init_application (void)
 	/* Connect signals. */
 	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
 	g_signal_connect(G_OBJECT(btn_capture), "clicked", G_CALLBACK(btn_capture_cb), NULL);
-   
+
 	dialogs_init(builder);
 	trigger_dialog_init(builder);
 	init_device_list();
