@@ -2439,7 +2439,7 @@ static void device_list_cfg_file_write(OscPlot *plot, char *filename)
 		fprintf(stderr, "Failed to open %s : %s\n", filename, strerror(errno));
 		return;
 	}
-	fprintf(fp, "[%s%d]\n", CAPTURE_CONF, priv->object_id);
+	fprintf(fp, "\n[%s%d]\n", CAPTURE_CONF, priv->object_id);
 	
 	int tmp_int;
 	float tmp_float;
@@ -2718,12 +2718,13 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 	char *dev_property, *ch_property, *tr_property;
 	gboolean expanded;
 	int elem_type;
-	gchar **elems = NULL;
+	gchar **elems = NULL, **min_max = NULL;
+	gfloat max_f, min_f;
 	int len;
 	int index;
 	int t_type;
 	struct transform_ini_cfg *cfg = NULL;
-	int ret, i;
+	int ret = 1, i;
 	FILE *fd;
 
 	elem_type = count_char_in_string('.', name);
@@ -2744,6 +2745,8 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->plot_type), value);
 				if (ret == 0)
 					goto unhandled;
+				else
+					ret = 1;
 			} else if (MATCH_NAME("show_grid"))
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(priv->show_grid), atoi(value));
 			else if (MATCH_NAME("enable_auto_scale"))
@@ -2809,6 +2812,14 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				priv->markers[i].bin = atoi(value);
 				priv->markers[i].active = TRUE;
 				break;
+			} else if (MATCH(elems[0], "test")) {
+				if (MATCH(elems[1], "message")) {
+					create_blocking_popup(GTK_MESSAGE_QUESTION, GTK_BUTTONS_CLOSE,
+						"Profile status", value);
+					break;
+				} else {
+					goto unhandled;
+				}
 			}
 
 			dev = device_find_by_name(dev_name);
@@ -2829,6 +2840,30 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			dev_name = elems[0];
 			ch_name = elems[1];
 			ch_property = elems[2];
+			
+			if (MATCH(elems[0], "test")) {
+				if (MATCH(elems[1], "marker")) {
+					min_max = g_strsplit(value, " ", 0);
+					min_f = atof(min_max[0]);
+					max_f = atof(min_max[1]);
+					i = atoi(elems[2]);
+					if (priv->markers[i].active &&
+						priv->markers[i].y >= min_f &&
+						priv->markers[i].y <= max_f) {
+						ret = 1;
+					} else {
+						ret = 0;
+						printf("%smarker %i failed : level %f\n",
+							priv->markers[i].active ? "" : "In",
+							i, priv->markers[i].y);
+					}
+					g_strfreev(min_max);
+				} else {
+					goto unhandled;
+				}
+				break;
+			}
+			
 			dev = device_find_by_name(dev_name);
 			if (dev == -1)
 				goto unhandled;
@@ -2928,16 +2963,14 @@ unhandled:
 			printf("Unhandled tokens in ini file, \n"
 				"\tSection %s\n\tAttribute : %s\n\tValue: %s\n",
 				section, name, value);
-			if (elems != NULL)
-				g_strfreev(elems);
-			return 0;
+			ret = 0;
 			break;
 	}
 
 	if (elems != NULL)
 		g_strfreev(elems);
 
-	return 1;
+	return ret;
 }
 
 static void treeview_expand_update(OscPlot *plot)

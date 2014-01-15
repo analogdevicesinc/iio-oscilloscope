@@ -41,7 +41,10 @@ static int libini_restore_handler(void *user, const char* section,
 {
 	struct osc_plugin *plugin = NULL;
 	int elem_type;
-	gchar **elems = NULL;
+	int val_i, min_i, max_i;
+	double val_d, min_d, max_d;
+	char *str = NULL;
+	gchar **elems = NULL, **min_max = NULL;
 	GSList *node;
 	int ret = 1;
 
@@ -73,6 +76,9 @@ static int libini_restore_handler(void *user, const char* section,
 			ret = !plugin->handle_item(plugin, name, value);
 			break;
 		case 1:
+			/* Set something, according to:
+			 * device.attribute = value
+			 */
 			elems = g_strsplit(name, ".", 0);
 
 			if (set_dev_paths(elems[0])) {
@@ -82,6 +88,48 @@ static int libini_restore_handler(void *user, const char* section,
 				break;
 			} else
 				ret = !write_devattr(elems[1], value);
+			break;
+		case 3:
+			/* Test something, according it:
+			 * test.device.attribute.type = min max
+			 */
+			ret = 0;
+			elems = g_strsplit(name, ".", 0);
+
+			if (!strchr(value, ' '))
+				return 0;
+			min_max = g_strsplit(value, " ", 0);
+
+			if (!strcmp(elems[0], "test")) {
+				if (!set_dev_paths(elems[1])) {
+					if (!strcmp(elems[3], "int")) {
+						read_devattr_int(elems[2], &val_i);
+						min_i = atoi(min_max[0]);
+						max_i = atoi(min_max[1]);
+						if (val_i >= min_i && val_i <= max_i)
+							ret = 1;
+					} else if (!strcmp(elems[3], "double")) {
+						read_devattr_double(elems[2], &val_d);
+						min_d = atof(min_max[0]);
+						max_d = atof(min_max[1]);
+						if (val_d >= min_d && val_d <= max_d)
+							ret = 1;
+					} else {
+						ret = -1;
+					}
+				} else
+					ret = -1;
+			} else
+				ret = -1;
+
+			g_strfreev(min_max);
+			if (ret == -1 && plugin->handle_item) {
+				str = plugin->handle_item(plugin, name, value);
+				if (str == NULL)
+					ret = 1;
+				else
+					ret = 0;
+			}
 			break;
 		default:
 			break;
