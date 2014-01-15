@@ -1244,7 +1244,8 @@ void application_quit (void)
 	g_slist_free(dplugin_list);
 	free_setup_check_fct_list();
 	
-	gtk_main_quit();
+	if (gtk_main_level())
+		gtk_main_quit();
 }
 
 void sigterm (int signum)
@@ -1495,26 +1496,47 @@ static bool check_inifile(char *filepath)
 	return TRUE;
 }
 
-static void load_default_profile (char *filename)
+static int load_default_profile (char *filename)
 {
 	const char *home_dir = getenv("HOME");
-	char buf[1024];
-	int checkok = 0;
+	char buf[1024], tmp[1024];
+	int ret, linecount;
+	FILE *fd;
 
+	if (filename) {
+		strncpy(buf, filename, 1023);
+		if (!check_inifile(buf))
+		filename = NULL;
+	}
+	
 	if (!filename) {
 		sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
-	} else {
-		strcpy (buf, filename);
+	/* if this is bad, we don't load anything and
+	 * return success, so we still run */
 		if (!check_inifile(buf))
-			sprintf(buf, "%s%s", home_dir, DEFAULT_PROFILE_NAME);
-		else
-			checkok = 1;
+			return 0;
 	}
 
-	if (!checkok && !check_inifile(buf))
-		return;
+	ret = restore_all_plugins(buf, NULL);
 
-	restore_all_plugins(buf, NULL);
+	if (ret > 0) {
+		fd = fopen(buf, "r");
+		if (!fd)
+			return 0;
+
+		linecount = 0;
+		while (NULL != fgets(tmp, 1023, fd)) {
+			linecount++;
+			if (linecount == ret) {
+				tmp[strlen(tmp) - 1] = 0;
+				printf("Error parsing profile '%s'\n\tline %i : '%s'\n",
+						buf, ret, tmp);
+				break;
+			}
+		}
+	}
+
+	return ret;
 }
 
 static void init_application (void)
@@ -1571,10 +1593,12 @@ static char *prev_section;
 
 /*
  * Check for settings in sections [MultiOsc_Capture_Configuration1,2,..]
+ * Handler should return nonzero on success, zero on error.
  */
 int capture_profile_handler(const char *section, const char *name, const char *value)
 {
 	static GtkWidget *plot = NULL;
+	int ret;
 
 	/* Check if a new section has been reached */
 	if (strcmp(section, prev_section) != 0) {
@@ -1584,16 +1608,16 @@ int capture_profile_handler(const char *section, const char *name, const char *v
 		/* Create a capture window and parse the line from ini file*/
 		if (strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF)) == 0) {
 			plot = plot_create_and_init();
-			osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
+			ret = osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
 		}
 	} else {
 		/* Parse the line from ini file */
 		if (strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF)) == 0) {
-			osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
+			ret = osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 /*
@@ -1616,17 +1640,17 @@ int main_profile_handler(const char *section, const char *name, const char *valu
 				goto unhandled;
 			}
 			break;
-			unhandled:
-			printf("Unhandled token in ini file, \n"
-				"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
-				section, name, value);
-			break;
 		default:
-			printf("Unhandled token in ini file, \n"
-				"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
-				section, name, value);
-			break;
+			goto unhandled;
 	};
+
+	return 1;
+
+unhandled:
+	printf("Unhandled tokens in ini file, \n"
+		"\tSection %s\n\tAttribute : %s\n\tValue: %s\n",
+		section, name, value);
+
 	return 0;
 }
 
@@ -1745,10 +1769,17 @@ gint main (int argc, char **argv)
 	
 	gdk_threads_enter();
 	init_application();
-	load_default_profile(profile);
-	gtk_main();
+	c = load_default_profile(profile);
+	if (c == 0)
+		gtk_main();
+	else
+		application_quit();
+
 	gdk_threads_leave();
 	
-	return 0;
+	if (c == 0)
+		return 0;
+	else
+		return -1;
 }
 

@@ -47,7 +47,7 @@ void main_setup_after_ini_load(void);
 int main_profile_handler(const char *section, const char *name, const char *value);
 int capture_profile_handler(const char *section, const char *name, const char *value);
 void save_all_plugins(const char *filename, gpointer user_data);
-void restore_all_plugins(const char *filename, gpointer user_data);
+int restore_all_plugins(const char *filename, gpointer user_data);
 
 GtkWidget * create_nonblocking_popup(GtkMessageType type,
 			const char *title, const char *str, ...);

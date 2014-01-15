@@ -35,6 +35,7 @@ int count_char_in_string(char c, const char *s)
 	return i;
 }
 
+/* Handler should return nonzero on success, zero on error. */
 static int libini_restore_handler(void *user, const char* section,
 				 const char* name, const char* value)
 {
@@ -42,18 +43,15 @@ static int libini_restore_handler(void *user, const char* section,
 	int elem_type;
 	gchar **elems = NULL;
 	GSList *node;
+	int ret = 1;
 
 	/* See if the section is from the main window */
-	if (MATCH_SECT(MULTI_OSC)) {
-		main_profile_handler(section, name, value);
-		return 0;
-	}
+	if (MATCH_SECT(MULTI_OSC))
+		return main_profile_handler(section, name, value);
 
 	/* See if the section is from a capture window */
-	if (!strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF))) {
-		capture_profile_handler(section, name, value);
-		return 0;
-	}
+	if (!strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF)))
+		return capture_profile_handler(section, name, value);
 
 	/* needs to be a plugin */
 	for (node = plugin_list; node; node = g_slist_next(node)) {
@@ -72,7 +70,7 @@ static int libini_restore_handler(void *user, const char* section,
 		case 0:
 			if (!plugin->handle_item)
 				break;
-			plugin->handle_item(plugin, name, value);
+			ret = !plugin->handle_item(plugin, name, value);
 			break;
 		case 1:
 			elems = g_strsplit(name, ".", 0);
@@ -82,9 +80,8 @@ static int libini_restore_handler(void *user, const char* section,
 					break;
 				plugin->handle_item(plugin, name, value);
 				break;
-			}
-
-			write_devattr(elems[1], value);
+			} else
+				ret = !write_devattr(elems[1], value);
 			break;
 		default:
 			break;
@@ -92,21 +89,24 @@ static int libini_restore_handler(void *user, const char* section,
 	if (elems != NULL)
 		g_strfreev(elems);
 
-	return 0;
+	return ret;
 }
 
-void restore_all_plugins(const char *filename, gpointer user_data)
+int restore_all_plugins(const char *filename, gpointer user_data)
 {
 	GtkWidget *msg;
-	
+	int ret;
+
 	msg = create_nonblocking_popup(GTK_MESSAGE_INFO,
 			"Please wait",
 			"Loading ini file:\n%s", filename);
 	main_setup_before_ini_load();
-	ini_parse(filename, libini_restore_handler, NULL);
+	ret = ini_parse(filename, libini_restore_handler, NULL);
 	main_setup_after_ini_load();
 	if (msg)
 		gtk_widget_destroy(msg);
+
+	return ret;
 }
 
 void save_all_plugins(const char *filename, gpointer user_data)

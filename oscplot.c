@@ -365,9 +365,9 @@ void osc_plot_save_to_ini (OscPlot *plot, char *filename)
 	device_list_cfg_file_write(plot, filename);
 }
 
-void osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *name, const char *value)
+int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *name, const char *value)
 {
-	cfg_read_handler(plot, section, name, value);
+	return cfg_read_handler(plot, section, name, value);
 }
 
 void osc_plot_save_as (OscPlot *plot, char *filename, int type)
@@ -2743,7 +2743,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			} else if (MATCH_NAME("graph_type")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->plot_type), value);
 				if (ret == 0)
-					printf("found invalid graph type in .ini file\n");
+					goto unhandled;
 			} else if (MATCH_NAME("show_grid"))
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(priv->show_grid), atoi(value));
 			else if (MATCH_NAME("enable_auto_scale"))
@@ -2792,10 +2792,10 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				}
 				fprintf(fd, "\n");
 				fclose(fd);
+			} else if (MATCH_NAME("quit")) {
+				return 0;
 			} else {
-				printf("Unhandled token in ini file, \n"
-					"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
-					section, name, value);
+				goto unhandled;
 			}
 			break;
 		case DEVICE:
@@ -2813,7 +2813,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 
 			dev = device_find_by_name(dev_name);
 			if (dev == -1)
-				goto unhandled_dev;
+				goto unhandled;
 			if (MATCH(dev_property, "sample_count")) {
 				device_list[dev].shadow_of_sample_count = atoi(value);
 				break;
@@ -2824,11 +2824,6 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				gtk_tree_store_set(store, &dev_iter, EXPANDED, expanded, -1);
 			}
 			break;
-			unhandled_dev:
-			printf("Unhandled token in ini file, \n"
-				"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
-				section, name, value);
-			break;
 		case CHANNEL:
 			elems = g_strsplit(name, ".", CHANNEL + 1);
 			dev_name = elems[0];
@@ -2836,20 +2831,15 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			ch_property = elems[2];
 			dev = device_find_by_name(dev_name);
 			if (dev == -1)
-				goto unhandled_ch;
+				goto unhandled;
 			ch = channel_find_by_name(dev, ch_name);
 			if (ch == -1)
-				goto unhandled_ch;
+				goto unhandled;
 			if (MATCH(ch_property, "expanded")) {
 				expanded = atoi(value);	
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_store_set(store, &ch_iter, EXPANDED, expanded, -1);
 			}
-			break;
-			unhandled_ch:
-			printf("Unhandled token in ini file, \n"
-				"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
-				section, name, value);
 			break;
 		case TRANSFORM:		
 			elems = g_strsplit(name, ".", TRANSFORM + 1);
@@ -2859,10 +2849,10 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			tr_property = elems[3];
 			dev = device_find_by_name(dev_name);
 			if (dev == -1)
-				goto unhandled_tr;
+				goto unhandled;
 			ch = channel_find_by_name(dev, ch_name);
 			if (ch == -1)
-				goto unhandled_tr;
+				goto unhandled;
 			
 			len = strcspn(tr_name, "0123456789");
 			index = atoi(tr_name + len);
@@ -2876,7 +2866,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			else if (MATCH_N(tr_name, "constellation", len))
 				t_type = CONSTELLATION_TRANSFORM;
 			else
-				goto unhandled_tr;
+				goto unhandled;
 
 			cfg = ini_cfg_exist_check(plot, index, t_type);
 			if(!cfg)
@@ -2905,7 +2895,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 						else if (MATCH(tr_property, "add_value"))
 							TIME_SETTINGS(cfg)->add_value = atof(value);
 						else 
-							goto unhandled_tr;
+							goto unhandled;
 						break;
 					case COMPLEX_FFT_TRANSFORM:
 					case FFT_TRANSFORM:
@@ -2921,30 +2911,33 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 							else 
 								cfg->has_the_marker = false;
 						} else {
-							goto unhandled_tr;
+							goto unhandled;
 						}
 						break;
 					case CONSTELLATION_TRANSFORM:
 						if (MATCH(tr_property, "num_samples"))
 							CONSTELLATION_SETTINGS(cfg)->num_samples = atoi(value);
 						else
-							goto unhandled_tr;
+							goto unhandled;
 						break;
 				}
 			}
 			break;
-			unhandled_tr:
-			printf("Unhandled token in ini file, \n"
-				"\tSection %s\n\ttoken: %s\n\tvalue: %s\n",
-				section, name, value);
-			break;
 		default:
+unhandled:
+			printf("Unhandled tokens in ini file, \n"
+				"\tSection %s\n\tAttribute : %s\n\tValue: %s\n",
+				section, name, value);
+			if (elems != NULL)
+				g_strfreev(elems);
+			return 0;
 			break;
 	}
+
 	if (elems != NULL)
 		g_strfreev(elems);
-	
-	return 0;
+
+	return 1;
 }
 
 static void treeview_expand_update(OscPlot *plot)
