@@ -1515,6 +1515,9 @@ static int load_default_profile (char *filename)
 	}
 
 	ret = restore_all_plugins(buf, NULL);
+	
+	if (flag)
+		return 0;
 
 	if (ret > 0) {
 		fd = fopen(buf, "r");
@@ -1537,9 +1540,6 @@ static int load_default_profile (char *filename)
 			}
 		}
 	}
-
-	if (flag)
-		return 0;
 
 	return ret;
 }
