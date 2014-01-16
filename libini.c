@@ -43,10 +43,12 @@ static int libini_restore_handler(void *user, const char* section,
 	int elem_type;
 	int val_i, min_i, max_i;
 	double val_d, min_d, max_d;
+	char *val_str;
 	char *str = NULL;
 	gchar **elems = NULL, **min_max = NULL;
 	GSList *node;
 	int ret = 1;
+	FILE *fd;
 
 	/* See if the section is from the main window */
 	if (MATCH_SECT(MULTI_OSC))
@@ -88,6 +90,33 @@ static int libini_restore_handler(void *user, const char* section,
 				break;
 			} else
 				ret = !write_devattr(elems[1], value);
+			break;
+		case 2:
+			/* log something, according to:
+			 * log.device.attribute = file
+			 */
+			elems = g_strsplit(name, ".", 0);
+
+			if (!strcmp("log", elems[0]) && !set_dev_paths(elems[1])) {
+				ret = read_devattr(elems[2], &val_str);
+
+				if (ret >= 0) {
+					fd = fopen(value, "a");
+					if (!fd) {
+						ret = 1;
+						break;
+					}
+					fprintf(fd, "%s, ", val_str);
+					fclose (fd);
+					free (val_str);
+				} else
+					ret = 0;
+			} else {
+				if (plugin->handle_item)
+					ret = !plugin->handle_item(plugin, name, value);
+				else
+					ret = 0;
+			}
 			break;
 		case 3:
 			/* Test something, according it:
