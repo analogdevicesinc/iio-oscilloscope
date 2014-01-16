@@ -327,7 +327,7 @@ static bool fmcomms2adv_identify(void)
 	return ret;
 }
 
-const struct osc_plugin plugin = {
+struct osc_plugin plugin = {
 	.name = "FMComms2 Advanced",
 	.identify = fmcomms2adv_identify,
 	.init = fmcomms2adv_init,

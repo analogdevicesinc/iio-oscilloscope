@@ -419,7 +419,7 @@ static bool motor_control_identify(void)
 	return FALSE;
 }
 
-const struct osc_plugin plugin = {
+struct osc_plugin plugin = {
 	.name = "Motor Control",
 	.identify = motor_control_identify,
 	.init = motor_control_init,

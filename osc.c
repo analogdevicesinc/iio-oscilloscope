@@ -44,7 +44,7 @@ static const char *current_device;
 static int num_capturing_plots;
 G_LOCK_DEFINE_STATIC(buffer_full);
 static gboolean stop_capture;
-static struct plugin_check_fct *setup_check_functions;
+static struct plugin_check_fct *setup_check_functions = NULL;
 static int num_check_fcts = 0;
 static GSList *dplugin_list = NULL;
 GtkWidget  *notebook;
@@ -959,7 +959,7 @@ static bool force_plugin(const char *name)
 static void load_plugin(const char *name, GtkWidget *notebook)
 {
 	struct detachable_plugin *d_plugin;
-	const struct osc_plugin *plugin;
+	struct osc_plugin *plugin;
 	void *lib;
 
 	lib = dlopen(name, RTLD_LOCAL | RTLD_LAZY);
@@ -977,9 +977,12 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 
 	printf("Found plugin: %s\n", plugin->name);
 
-	if (!plugin->identify() && !force_plugin(plugin->name))
+	if (!plugin->identify() && !force_plugin(plugin->name)) {
+		dlclose(lib);
 		return;
+	}
 
+	plugin->handle = lib;
 	plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
 	plugin->init(notebook);
 	
@@ -990,6 +993,20 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 	plugin_make_detachable(d_plugin);
 
 	printf("Loaded plugin: %s\n", plugin->name);
+}
+
+static void close_plugins(void)
+{
+	GSList *node;
+	struct osc_plugin *plugin = NULL;
+
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		plugin = node->data;
+		if (plugin) {
+			printf("Closing plugin: %s\n", plugin->name);
+			dlclose(plugin->handle);
+		}
+	}
 }
 
 bool str_endswith(const char *str, const char *needle)
@@ -1255,11 +1272,16 @@ void application_quit (void)
 	close_active_buffers();
 	
 	g_list_free(plot_list);
-	g_slist_free(dplugin_list);
 	free_setup_check_fct_list();
 	
 	if (gtk_main_level())
 		gtk_main_quit();
+
+	/* This can't be done until all the windows are detroyed with main_quit
+	 * otherwise, the widgets need to be updated, but they don't exist anymore
+	 */
+	close_plugins();
+	g_slist_free(dplugin_list);
 }
 
 void sigterm (int signum)

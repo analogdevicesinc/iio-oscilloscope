@@ -11,6 +11,7 @@
 #include <gtk/gtk.h>
 
 struct osc_plugin {
+	void *handle;
 	const char *name;
 	bool (*identify)(void);
 	int (*init)(GtkWidget *notebook);

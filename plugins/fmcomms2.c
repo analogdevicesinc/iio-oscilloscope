@@ -1494,7 +1494,7 @@ static bool fmcomms2_identify(void)
 	return !set_dev_paths("ad9361-phy");
 }
 
-const struct osc_plugin plugin = {
+struct osc_plugin plugin = {
 	.name = "FMComms2",
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,

@@ -1996,7 +1996,7 @@ static bool fmcomms1_identify(void)
 	return !set_dev_paths("cf-ad9122-core-lpc");
 }
 
-const struct osc_plugin plugin = {
+struct osc_plugin plugin = {
 	.name = "FMComms1",
 	.identify = fmcomms1_identify,
 	.init = fmcomms1_init,

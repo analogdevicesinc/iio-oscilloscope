@@ -396,7 +396,7 @@ static bool AD7303_identify(void)
 	return !set_dev_paths("ad7303");
 }
 
-const struct osc_plugin plugin = {
+struct osc_plugin plugin = {
 	.name = "AD7303",
 	.identify = AD7303_identify,
 	.init = AD7303_init,
