@@ -147,14 +147,26 @@ static int libini_restore_handler(void *user, const char* section,
 int restore_all_plugins(const char *filename, gpointer user_data)
 {
 	GtkWidget *msg;
-	int ret;
+	int ret = 0;
 
 	msg = create_nonblocking_popup(GTK_MESSAGE_INFO,
 			"Please wait",
 			"Loading ini file:\n%s", filename);
+
+	/* if the main loop isn't running, we need to poke things, so the message
+	 * can be displayed
+	 */
+	if (msg && gtk_main_level() == 0) {
+		while (gtk_events_pending() && ret <= 200) {
+			gtk_main_iteration();
+			ret++;
+		}
+	}
+
 	main_setup_before_ini_load();
 	ret = ini_parse(filename, libini_restore_handler, NULL);
 	main_setup_after_ini_load();
+
 	if (msg)
 		gtk_widget_destroy(msg);
 
