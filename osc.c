@@ -878,6 +878,20 @@ const void * plugin_get_device_by_reference(const char * device_name)
 	return find_device_by_name(device_name);
 }
 
+enum marker_types plugin_get_marker_type(const char *device)
+{
+	return MARKER_NULL;
+}
+
+void plugin_set_marker_type(const char *device, enum marker_types type)
+{
+}
+
+gdouble plugin_get_fft_avg(const char *device)
+{
+	return 1;
+}
+
 int plugin_data_capture_size(const char *device)
 {
 	struct _device_list *dev;
@@ -911,100 +925,10 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 	return dev->bytes_per_sample;
 }
 
-int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data)
+int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data,
+			struct marker_type **markers_cp)
 {
-	struct _device_list *dev;
-	int i, j;
-	bool new = FALSE;
-
-	dev = find_device_by_name(device);
-
-	/* if there isn't anything to send, clear everything */
-	if (dev->data_buffer.size == 0 || device == NULL) {
-		if (buf && *buf) {
-			g_free(*buf);
-			*buf = NULL;
-		}
-		if (cooked_data && *cooked_data) {
-			for (i = 0; i < dev->num_active_channels; i++)
-				g_free((*cooked_data)[i]);
-			g_free(*cooked_data);
-			*cooked_data = NULL;
-		}
-		return -ENXIO;
-	}
-
-	if (!dev)
-		return -ENXIO;
-
-	if (buf) {
-		/* One consumer at a time */
-		if (dev->data_buffer.data_copy)
-			return -EBUSY;
-
-		/* make sure space is allocated */
-		if (*buf)
-			*buf = g_renew(int8_t, *buf, dev->data_buffer.size);
-		else
-			*buf = g_new(int8_t, dev->data_buffer.size);
-
-		if (!*buf)
-			goto capture_malloc_fail;
-
-		/* where to put the copy */
-		dev->data_buffer.data_copy = *buf;
-		
-		/* Wait til the buffer is full */
-		G_LOCK(buffer_full);
-		
-		/* if the lock is released, but the copy is still there
-		 * that's because someone else broke the lock
-		 */
-		if (dev->data_buffer.data_copy) {
-			dev->data_buffer.data_copy = NULL;
-			return -EINTR;
-		}
-
-		if (!cooked_data) {
-			return 0;
-		}
-
-		/* make sure space is allocated */
-		if (*cooked_data) {
-			*cooked_data = g_renew(gfloat *, *cooked_data, dev->num_active_channels);
-			new = FALSE;
-		} else {
-			*cooked_data = g_new(gfloat *, dev->num_active_channels);
-			new = TRUE;
-		}
-
-		if (!*cooked_data)
-			goto capture_malloc_fail;
-
-		for (i = 0; i < dev->num_active_channels; i++) {
-			if (new)
-				(*cooked_data)[i] = g_new(gfloat, dev->data_buffer.size / dev->bytes_per_sample);
-			else
-				(*cooked_data)[i] = g_renew(gfloat, (*cooked_data)[i], dev->data_buffer.size / dev->bytes_per_sample);
-
-			if (!(*cooked_data)[i])
-				goto capture_malloc_fail;
-
-			for (j = 0; j < dev->data_buffer.size / dev->bytes_per_sample; j++)
-				(*cooked_data)[i][j] = 0.0f;
-		}
-
-		/* Now that we have the space, process it */
-		 demux_data_stream(*buf, *cooked_data,
-					dev->data_buffer.size / 4, 0, dev->data_buffer.size / 4,
-					dev->channel_list, dev->num_active_channels);
-	}
-
 	return 0;
-
-capture_malloc_fail:
-	printf("%s:%s malloc failed\n", __FILE__, __func__);
-	return -ENOMEM;
 }
 
 static bool force_plugin(const char *name)

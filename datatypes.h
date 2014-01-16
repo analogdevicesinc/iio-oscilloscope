@@ -8,46 +8,15 @@
 #define __DATA_TYPES__
 
 #include <glib.h>
+#include <gtk/gtk.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <gtkdatabox.h>
 #include <fftw3.h>
 
 #include "iio_utils.h"
 
 #define FORCE_UPDATE TRUE
 #define NORMAL_UPDATE FALSE
-
-#ifndef MAX_MARKERS
-#define MAX_MARKERS 10
-#endif
-
-#define OFF_MRK    "Markers Off"
-#define PEAK_MRK   "Peak Markers"
-#define FIX_MRK    "Fixed Markers"
-#define SINGLE_MRK "Single Tone Markers"
-#define DUAL_MRK   "Two Tone Markers"
-#define IMAGE_MRK  "Image Markers"
-#define ADD_MRK    "Add Marker"
-#define REMOVE_MRK "Remove Marker"
-
-struct marker_type {
-	gfloat x;
-	gfloat y;
-	int bin;
-	bool active;
-	GtkDataboxGraph *graph;
-};
-
-enum marker_types {
-	MARKER_OFF,
-	MARKER_PEAK,
-	MARKER_FIXED,
-	MARKER_ONE_TONE,
-	MARKER_TWO_TONE,
-	MARKER_IMAGE,
-	MARKER_NULL
-};
 
 struct detachable_plugin {
 	const struct osc_plugin *plugin;
