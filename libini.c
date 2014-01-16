@@ -136,6 +136,8 @@ static int libini_restore_handler(void *user, const char* section,
 			}
 			break;
 		default:
+			/* Unhandled */
+			ret = 0;
 			break;
 	}
 	if (elems != NULL)
