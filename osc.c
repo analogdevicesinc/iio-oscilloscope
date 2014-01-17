@@ -1831,6 +1831,9 @@ void usage(char *program)
 	printf( "Command line options:\n"
 		"\t-p\tload specific profile\n");
 
+	printf("\nEnvironmental variables:\n"
+		"\tOSC_FORCE_PLUGIN\tforce loading of a specfic plugin\n");
+
 	exit(-1);
 }
 
