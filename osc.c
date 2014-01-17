@@ -1542,6 +1542,10 @@ static int load_default_profile (char *filename)
 	int ret, linecount, flag = 0;
 	FILE *fd;
 
+	/* Don't load anything */
+	if (!strcmp(filename, "-"))
+		return 0;
+
 	if (filename) {
 		strncpy(buf, filename, 1023);
 		if (!check_inifile(buf))
