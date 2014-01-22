@@ -112,6 +112,7 @@ static bool is_fft_mode;
 static int (*plugin_setup_validation_fct)(struct iio_channel_info*, int, char **) = NULL;
 static struct plugin_check_fct *setup_check_functions = NULL;
 static int num_check_fcts = 0;
+static bool profile_loaded_scale;
 
 const char *current_device;
 
@@ -915,7 +916,9 @@ static void fft_update_scale(bool force_update)
 
 	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_auto_scale)) && force_update == FALSE)
 		return;
-	gtk_databox_set_total_limits(GTK_DATABOX(databox), -5.0 - corr, adc_freq / 2.0 + 5.0, 0.0, -75.0);
+	if (profile_loaded_scale)
+		return;
+	gtk_databox_set_total_limits(GTK_DATABOX(databox), -5.0 - corr, adc_freq / 2.0 + 5.0, 0.0, -100.0);
 	do_a_rescale_flag = 1;
 
 }
@@ -1673,6 +1676,9 @@ static int time_capture_setup(void)
 			j++;
 		}
 	}
+
+	if (profile_loaded_scale)
+		return 0;
 
 	if (is_constellation)
 		gtk_databox_set_total_limits(GTK_DATABOX(databox), -1000.0, 1000.0, 1000.0, -1000.0);
@@ -2646,7 +2652,9 @@ int capture_profile_handler(const char* name, const char *value)
 				}
 				gtk_text_buffer_set_text(gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label)), "", -1);
 				gtk_label_set_text(GTK_LABEL(hor_scale), "");
+				profile_loaded_scale = TRUE;
 				gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button), atoi(value));
+				profile_loaded_scale = FALSE;
 			} else if (MATCH_NAME("device_name")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(device_list_widget), value);
 				if (ret == 0)
