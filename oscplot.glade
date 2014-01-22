@@ -48,86 +48,6 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkFileChooserDialog" id="devlist_cfg_chooser">
-    <property name="can_focus">False</property>
-    <property name="border_width">5</property>
-    <property name="title" translatable="yes">Device List Configuration Load/Save</property>
-    <property name="role">GtkFileChooserDialog</property>
-    <property name="modal">True</property>
-    <property name="type_hint">dialog</property>
-    <child internal-child="vbox">
-      <object class="GtkBox" id="filechooserdialog-vbox2">
-        <property name="can_focus">False</property>
-        <property name="orientation">vertical</property>
-        <property name="spacing">2</property>
-        <child internal-child="action_area">
-          <object class="GtkButtonBox" id="filechooserdialog-action_area2">
-            <property name="can_focus">False</property>
-            <property name="layout_style">end</property>
-            <child>
-              <object class="GtkButton" id="cancel_btn">
-                <property name="label" translatable="yes">Cancel</property>
-                <property name="use_action_appearance">False</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_action_appearance">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="save_btn">
-                <property name="label" translatable="yes">Save Configuration</property>
-                <property name="use_action_appearance">False</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_action_appearance">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="load_btn">
-                <property name="label" translatable="yes">Load Configuration</property>
-                <property name="use_action_appearance">False</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_action_appearance">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">2</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="pack_type">end</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <placeholder/>
-        </child>
-      </object>
-    </child>
-    <action-widgets>
-      <action-widget response="-6">cancel_btn</action-widget>
-      <action-widget response="1">save_btn</action-widget>
-      <action-widget response="2">load_btn</action-widget>
-    </action-widgets>
-  </object>
   <object class="GtkDialog" id="dialog_CONSTELLATION_settings">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -644,8 +564,8 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="save_png">
-                <property name="label" translatable="yes">Save as .png</property>
+              <object class="GtkButton" id="save_vsa">
+                <property name="label" translatable="yes">Save as Agilent VSA</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -673,6 +593,21 @@
                 <property name="position">3</property>
               </packing>
             </child>
+            <child>
+              <object class="GtkButton" id="save_png">
+                <property name="label" translatable="yes">Save as .png</property>
+                <property name="use_action_appearance">False</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_action_appearance">False</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">4</property>
+              </packing>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -682,15 +617,194 @@
           </packing>
         </child>
         <child>
-          <placeholder/>
+          <object class="GtkHBox" id="hbox_ch_sel_label">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <child>
+              <object class="GtkHBox" id="hbox6">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <placeholder/>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkHBox" id="hbox4">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkLabel" id="label4">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">&lt;b&gt;Select the channels you want to save to file:&lt;/b&gt;</property>
+                    <property name="use_markup">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkHBox" id="hbox5">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <placeholder/>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScrolledWindow" id="saveas_channels_list">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="shadow_type">in</property>
+            <child>
+              <object class="GtkViewport" id="saveas_channels_container">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <placeholder/>
+                </child>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">3</property>
+          </packing>
         </child>
       </object>
     </child>
     <action-widgets>
       <action-widget response="-6">save_cancel</action-widget>
       <action-widget response="2">save_csv</action-widget>
-      <action-widget response="3">save_png</action-widget>
+      <action-widget response="5">save_vsa</action-widget>
       <action-widget response="4">save_mat</action-widget>
+      <action-widget response="3">save_png</action-widget>
+    </action-widgets>
+  </object>
+  <object class="GtkDialog" id="saveas_type_dialog">
+    <property name="can_focus">False</property>
+    <property name="border_width">5</property>
+    <property name="title" translatable="yes">Save As Options</property>
+    <property name="type_hint">dialog</property>
+    <child internal-child="vbox">
+      <object class="GtkBox" id="dialog-vbox5">
+        <property name="width_request">240</property>
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox" id="dialog-action_area5">
+            <property name="can_focus">False</property>
+            <property name="orientation">vertical</property>
+            <property name="layout_style">end</property>
+            <child>
+              <object class="GtkButton" id="btn_raw_data">
+                <property name="label" translatable="yes">ADC Raw Data</property>
+                <property name="use_action_appearance">False</property>
+                <property name="height_request">80</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_action_appearance">False</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="btn_plot_data">
+                <property name="label" translatable="yes">Plot Data</property>
+                <property name="use_action_appearance">False</property>
+                <property name="height_request">80</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_action_appearance">False</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="btn_png_image">
+                <property name="label" translatable="yes">PNG Image</property>
+                <property name="use_action_appearance">False</property>
+                <property name="height_request">80</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_action_appearance">False</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="btn_cancel">
+                <property name="label" translatable="yes">Cancel</property>
+                <property name="use_action_appearance">False</property>
+                <property name="height_request">80</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_action_appearance">False</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="pack_type">end</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <action-widgets>
+      <action-widget response="16">btn_raw_data</action-widget>
+      <action-widget response="17">btn_plot_data</action-widget>
+      <action-widget response="18">btn_png_image</action-widget>
+      <action-widget response="-6">btn_cancel</action-widget>
     </action-widgets>
   </object>
   <object class="GtkWindow" id="toplevel">
@@ -1183,6 +1297,7 @@
                             <property name="use_action_appearance">False</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="tooltip_text" translatable="yes">Toggle Full Screen</property>
                             <property name="use_action_appearance">False</property>
                             <property name="label" translatable="yes">Full Screen</property>
                             <property name="use_underline">True</property>

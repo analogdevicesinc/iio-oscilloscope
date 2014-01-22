@@ -50,6 +50,7 @@ static void save_as(OscPlot *plot, const char *filename, int type);
 static void load_ini_settings(OscPlot *plot);
 static void treeview_expand_update(OscPlot *plot);
 static int  cfg_read_handler(void *user, const char* section, const char* name, const char* value);
+static int device_find_by_name(const char *name);
 
 /* IDs of signals */
 enum {
@@ -138,6 +139,7 @@ struct transform_gui_settings {
 
 /* Helpers */
 #define GET_CHANNEL_PARENT(ch) ((struct extra_info *)(((struct iio_channel_info *)(ch))->extra_field))->device_parent
+#define CHANNEL_EXTRA_FIELD(ch) ((struct extra_info *)ch->extra_field)
 
 #define TIME_SETTINGS(obj) ((struct _time_settings *)obj->settings)
 #define FFT_SETTINGS(obj) ((struct _fft_settings *)obj->settings)
@@ -175,9 +177,14 @@ struct _OscPlotPrivate
 	GtkWidget *marker_label;
 	GtkWidget *saveas_button;
 	GtkWidget *saveas_dialog;
+	GtkWidget *saveas_type_dialog;
 	GtkWidget *fullscreen_button;
 	GtkWidget *y_axis_max;
 	GtkWidget *y_axis_min;
+	GtkWidget *viewport_saveas_channels;
+	GtkWidget *saveas_channels_list;
+	GtkWidget *saveas_select_channel_message;
+	GtkWidget *device_combobox;
 	
 	GtkTextBuffer* tbuf;
 	
@@ -201,6 +208,9 @@ struct _OscPlotPrivate
 	
 	/* Transform currently holding the fft marker */
 	Transform *tr_with_marker;
+	
+	/* Type of "Save As" currently selected*/
+	gint active_saveas_type;
 	
 	/* The set of markers */
 	struct marker_type markers[MAX_MARKERS + 2];
@@ -1883,6 +1893,63 @@ static void fill_channel_list(OscPlot *plot)
 	create_channel_list_view(plot);
 }
 
+static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct _device_list *device;
+	struct iio_channel_info *channel;
+	GtkWidget *parent;
+	GtkWidget *ch_checkbtn;
+	gchar *active_device;
+	int i, d;
+	
+	parent = gtk_widget_get_parent(priv->saveas_channels_list);
+	gtk_widget_destroy(priv->saveas_channels_list);
+	priv->saveas_channels_list = gtk_vbox_new(FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(parent), priv->saveas_channels_list, FALSE, TRUE, 0);
+
+	active_device = gtk_combo_box_text_get_active_text(box);
+	d = device_find_by_name(active_device);
+	if (d < 0)
+		return;
+	device = &device_list[d];
+	
+	for (i = device->num_channels - 1; i >= 0; i--) {
+		channel = &device->channel_list[i];
+		ch_checkbtn = gtk_check_button_new_with_label(channel->name);
+		gtk_box_pack_end(GTK_BOX(priv->saveas_channels_list), ch_checkbtn, FALSE, TRUE, 0);
+	}
+	gtk_widget_show_all(priv->saveas_channels_list);
+}
+
+static void saveas_channels_list_fill(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkWidget *ch_window;
+	GtkWidget *vbox;
+	int dev;
+
+	ch_window = priv->viewport_saveas_channels;
+	vbox = gtk_vbox_new(FALSE, 10);
+	gtk_container_add(GTK_CONTAINER(ch_window), vbox);
+	priv->device_combobox = gtk_combo_box_text_new();
+	gtk_box_pack_start(GTK_BOX(vbox), priv->device_combobox, FALSE, TRUE, 0);
+	priv->saveas_channels_list = gtk_vbox_new(FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(vbox), priv->saveas_channels_list, FALSE, TRUE, 0);
+
+	for (dev = 0; dev < num_devices; dev++)
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(priv->device_combobox),
+			device_list[dev].device_name);
+	if (!num_devices)
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(priv->device_combobox),
+			"No Devices Available");
+	g_signal_connect(priv->device_combobox, "changed",
+		G_CALLBACK(saveas_device_changed_cb), (gpointer)plot);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->device_combobox), 0);
+	gtk_widget_set_size_request(priv->viewport_saveas_channels, -1, 150);
+	gtk_widget_show_all(vbox);
+}
+
 static gboolean capture_button_icon_transform(GBinding *binding,
 	const GValue *source_value, GValue *target_value, gpointer data)
 {
@@ -2193,13 +2260,47 @@ static gboolean save_settings_cb(GtkWidget *widget, GdkEventKey *event, gpointer
 	return FALSE;
 }
 
-static void cb_saveas(GtkToolButton *toolbutton, OscPlot *data)
+static int * get_user_saveas_channel_selection(OscPlot *plot, struct _device_list *device)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GList *ch_checkbtns = NULL;
+	GList *node;
+	GtkToggleButton *btn;
+	int *mask;
+	int i = 0;
+
+	/* Create masks for all channels */
+	mask = malloc(sizeof(int) * device->num_channels);
+
+	/* Get user channel selection from GUI widgets */
+	ch_checkbtns = gtk_container_get_children(GTK_CONTAINER(priv->saveas_channels_list));
+	for (node = ch_checkbtns; node; node = g_list_next(node)) {
+		btn = (GtkToggleButton *)node->data;
+		mask[i++] = !gtk_toggle_button_get_active(btn);
+	}
+	g_list_free(ch_checkbtns);
+
+	return mask;
+}
+
+#define SAVE_AS_RAW_DATA  16
+#define SAVE_AS_PLOT_DATA 17
+#define SAVE_AS_PNG_IMAGE 18
+
+static void cb_saveas_chooser(GtkToolButton *toolbutton, OscPlot *data)
 {
 	OscPlotPrivate *priv = data->priv;
+	
+	gtk_widget_show(priv->saveas_type_dialog);
+}
+
+static void saveas_dialog_show(OscPlot *plot, gint saveas_type)
+{
+	OscPlotPrivate *priv = plot->priv;
 
 	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (priv->saveas_dialog), GTK_FILE_CHOOSER_ACTION_SAVE);
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->saveas_dialog), TRUE);
-	
+
 	if (!priv->saveas_filename) {
 		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->saveas_dialog), getenv("HOME"));
 		gtk_file_chooser_get_filename(GTK_FILE_CHOOSER (priv->saveas_dialog));
@@ -2208,8 +2309,51 @@ static void cb_saveas(GtkToolButton *toolbutton, OscPlot *data)
 		g_free(priv->saveas_filename);
 		priv->saveas_filename = NULL;
 	}
-	
+
+	GtkWidget *save_csv = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_csv"));
+	GtkWidget *save_vsa = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_vsa"));
+	GtkWidget *save_mat = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_mat"));
+	GtkWidget *save_png = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_png"));
+
+	gtk_widget_show(save_csv);
+	gtk_widget_show(save_vsa);
+	gtk_widget_show(save_mat);
+	gtk_widget_show(save_png);
+	gtk_widget_hide(priv->viewport_saveas_channels);
+	gtk_widget_hide(priv->saveas_select_channel_message);
+	switch(saveas_type) {
+		case SAVE_AS_RAW_DATA:
+			gtk_widget_hide(save_png);
+			gtk_widget_show(priv->viewport_saveas_channels);
+			gtk_widget_show(priv->saveas_select_channel_message);
+			break;
+		case SAVE_AS_PLOT_DATA:
+			gtk_widget_hide(save_vsa);
+			gtk_widget_hide(save_png);
+			break;
+		case SAVE_AS_PNG_IMAGE:
+			gtk_widget_hide(save_csv);
+			gtk_widget_hide(save_vsa);
+			gtk_widget_hide(save_mat);
+			break;
+		default:
+			break;
+	};
+
+	priv->active_saveas_type = saveas_type;
 	gtk_widget_show(priv->saveas_dialog);
+}
+
+void cb_saveas_chooser_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+
+	if (response_id == SAVE_AS_RAW_DATA ||
+		response_id == SAVE_AS_PLOT_DATA ||
+		response_id == SAVE_AS_PNG_IMAGE)
+		saveas_dialog_show(plot, response_id);
+
+	gtk_widget_hide(priv->saveas_type_dialog);
 }
 
 static void save_as(OscPlot *plot, const char *filename, int type)
@@ -2218,23 +2362,84 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 	FILE *fp;
 	mat_t *mat;
 	matvar_t *matvar;
+	struct _device_list *device;
+	struct iio_channel_info *channel;
 	Transform *tr;
 	gfloat *tr_data;
 	char *tr_name;
+	char tmp[100];
 	int dims[2] = {1, -1};
+	double freq;
 	GdkPixbuf *pixbuf;
 	GError *err=NULL;
 	GdkColormap *cmap;
 	gint width, height;
 	gboolean ret = true;
 	char *name;
-	int i;
+	gchar *active_device;
+	int *save_channels_mask;
+	int i, j, d;
 
 	name = malloc(strlen(filename) + 5);
 	switch(type) {
 		/* Response Codes encoded in glade file */
 		case GTK_RESPONSE_DELETE_EVENT:
 		case GTK_RESPONSE_CANCEL:
+			break;
+		case SAVE_VSA:
+			/* Save as Agilent VSA formatted file */
+			if (!strncasecmp(&filename[strlen(filename)-4], ".txt", 4))
+					strcpy(name, filename);
+				else
+					sprintf(name, "%s.txt", filename);
+			fp = fopen(name, "w");
+			if (!fp)
+				break;
+			
+			active_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->device_combobox));
+			d = device_find_by_name(active_device);
+			if (d < 0)
+				break;
+			device = &device_list[d];
+			/* Make a VSA file header */
+			fprintf(fp, "InputZoom\tTRUE\n");
+			fprintf(fp, "InputCenter\t0\n");
+			fprintf(fp, "InputRange\t1\n");
+			fprintf(fp, "InputRefImped\t50\n");
+			fprintf(fp, "XStart\t0\n");
+			if (!strcmp(device->adc_scale, "M"))
+				freq = device->adc_freq * 1000000;
+			else if (!strcmp(device->adc_scale, "k"))
+				freq = device->adc_freq * 1000;
+			else {
+				printf("error in writing\n");
+				break;
+			}
+			fprintf(fp, "XDelta\t%-.17f\n", 1.0/freq);
+			fprintf(fp, "XDomain\t2\n");
+			fprintf(fp, "XUnit\tSec\n");
+			fprintf(fp, "YUnit\tV\n");
+			fprintf(fp, "FreqValidMax\t%e\n", freq / 2);
+			fprintf(fp, "FreqValidMin\t-%e\n", freq / 2);
+			fprintf(fp, "Y\n");
+			
+			/* Find which channel need to be saved */
+			save_channels_mask = get_user_saveas_channel_selection(plot, device);
+			
+			/* Start writing the samples */
+			for (i = 0; i < device->sample_count; i++) {
+				for (j = 0; j < device->num_channels; j++) {
+					channel = &device->channel_list[j];
+					if (!channel->enabled || save_channels_mask[j] == 1)
+						continue;
+					fprintf(fp, "%g\t", CHANNEL_EXTRA_FIELD(channel)->data_ref[i]);
+				}
+				fprintf(fp, "\n");
+			}
+			fprintf(fp, "\n");
+			fclose(fp);
+			free(save_channels_mask);
+			
 			break;
 		case SAVE_CSV: 
 			/* save comma separated values (csv) */
@@ -2245,12 +2450,36 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			fp = fopen(name, "w");
 			if (!fp)
 				break;
-			for (i = 0; i < priv->transform_list->size; i++) {
-					transform_csv_print(priv, fp, priv->transform_list->transforms[i]);
+			if (priv->active_saveas_type == SAVE_AS_RAW_DATA) {
+				active_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->device_combobox));
+				d = device_find_by_name(active_device);
+				if (d < 0)
+				break;
+				device = &device_list[d];
+
+				/* Find which channel need to be saved */
+				save_channels_mask = get_user_saveas_channel_selection(plot, device);
+
+				for (i = 0; i < device->sample_count; i++) {
+					for (j = 0; j < device->num_channels; j++) {
+						channel = &device->channel_list[j];
+						if (!channel->enabled || save_channels_mask[j] == 1)
+							continue;
+						fprintf(fp, "%g, ", CHANNEL_EXTRA_FIELD(channel)->data_ref[i]);
+					}
+					fprintf(fp, "\n");
+				}
+				fprintf(fp, "\n");
+				free(save_channels_mask);
+			} else {
+				for (i = 0; i < priv->transform_list->size; i++) {
+						transform_csv_print(priv, fp, priv->transform_list->transforms[i]);
+				}
 			}
 			fprintf(fp, "\n");
 			fclose(fp);
 			break;
+
 		case SAVE_PNG:	
 			/* save png */
 			if (!strncasecmp(&filename[strlen(filename)-4], ".png", 4))
@@ -2269,6 +2498,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			if (!pixbuf || !ret)
 				printf("error creating %s\n", filename);
 			break;
+
 		case SAVE_MAT:
 			/* Matlab file
 			 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
@@ -2280,24 +2510,53 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			mat = Mat_Open(name, MAT_ACC_RDWR);
 			if (!mat)
 				break;
-			for (i = 0; i < priv->transform_list->size; i++) {
-				tr = priv->transform_list->transforms[i];
-				tr_data = Transform_get_y_axis_ref(tr);
-				if (tr_data == NULL)
-					continue;
-				tr_name = transform_get_name_from_tree_store(priv, tr);
-				dims[1] = tr->y_axis_size;
-				matvar = Mat_VarCreate(tr_name, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims, tr_data, 0);
-				if (!matvar)
-					printf("error creating matvar on transform %s\n", tr_name);
-				else {
-					Mat_VarWrite(mat, matvar, 0);
-					Mat_VarFree(matvar);
+			if (priv->active_saveas_type == SAVE_AS_RAW_DATA) {
+				active_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->device_combobox));
+				d = device_find_by_name(active_device);
+				if (d < 0)
+				break;
+				device = &device_list[d];
+
+				/* Find which channel need to be saved */
+				save_channels_mask = get_user_saveas_channel_selection(plot, device);
+
+				dims[1] = device->sample_count;
+				for (i = 0; i < device->num_channels; i++) {
+					channel = &device->channel_list[i];
+					if (!channel->enabled || save_channels_mask[i] == 1)
+						continue;
+					sprintf(tmp, "%s:%s", device->device_name, channel->name);
+					matvar = Mat_VarCreate(tmp, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims,
+						CHANNEL_EXTRA_FIELD(channel)->data_ref, 0);
+					if (!matvar)
+						printf("error creating matvar on channel %s\n", tmp);
+					else {
+						Mat_VarWrite(mat, matvar, 0);
+						Mat_VarFree(matvar);
+					}
 				}
-				g_free(tr_name);
+				free(save_channels_mask);
+			} else {
+				for (i = 0; i < priv->transform_list->size; i++) {
+					tr = priv->transform_list->transforms[i];
+					tr_data = Transform_get_y_axis_ref(tr);
+					if (tr_data == NULL)
+						continue;
+					tr_name = transform_get_name_from_tree_store(priv, tr);
+					dims[1] = tr->y_axis_size;
+					matvar = Mat_VarCreate(tr_name, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims, tr_data, 0);
+					if (!matvar)
+						printf("error creating matvar on transform %s\n", tr_name);
+					else {
+						Mat_VarWrite(mat, matvar, 0);
+						Mat_VarFree(matvar);
+					}
+					g_free(tr_name);
+				}
 			}
 			Mat_Close(mat);
 			break;
+
 		default:
 			printf("SaveAs response: %i\n", type);
 	}
@@ -3405,9 +3664,12 @@ static void create_plot(OscPlot *plot)
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
+	priv->saveas_type_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_type_dialog"));
 	priv->fullscreen_button = GTK_WIDGET(gtk_builder_get_object(builder, "fullscreen_toggle"));
 	priv->y_axis_max = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_max"));
 	priv->y_axis_min = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_min"));
+	priv->viewport_saveas_channels = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_channels_container"));
+	priv->saveas_select_channel_message = GTK_WIDGET(gtk_builder_get_object(builder, "hbox_ch_sel_label"));
 	fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	priv->tbuf = NULL;
 	
@@ -3441,6 +3703,7 @@ static void create_plot(OscPlot *plot)
 									G_TYPE_BOOLEAN);  /* EXPANDED */
 	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 	fill_channel_list(plot);
+	saveas_channels_list_fill(plot);
 	
 	/* Fill the color list with indexes of the available colors for the graph */
 	gint *c_index;
@@ -3467,10 +3730,14 @@ static void create_plot(OscPlot *plot)
 	g_signal_connect(priv->constellation_settings_diag, "response",
 		G_CALLBACK(set_constellation_settings_cb), plot);
 	g_signal_connect(priv->saveas_button, "clicked",
-		G_CALLBACK(cb_saveas), plot);
+		G_CALLBACK(cb_saveas_chooser), plot);
+	g_signal_connect(priv->saveas_type_dialog, "response", 
+		G_CALLBACK(cb_saveas_chooser_response), plot);
 	g_signal_connect(priv->saveas_dialog, "response", 
 		G_CALLBACK(cb_saveas_response), plot);
 	g_signal_connect(priv->saveas_dialog, "delete-event",
+		G_CALLBACK(gtk_widget_hide_on_delete), plot);
+	g_signal_connect(priv->saveas_type_dialog, "delete-event",
 		G_CALLBACK(gtk_widget_hide_on_delete), plot);
 	g_signal_connect(priv->fullscreen_button, "toggled",
 		G_CALLBACK(fullscreen_button_clicked_cb), plot);
