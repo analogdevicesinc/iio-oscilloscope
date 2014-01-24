@@ -35,8 +35,9 @@ static const gdouble khz_scale = 1000.0;
 
 static bool dac_data_loaded = false;
 
-#define VERSION_SUPPORTED 0
-static struct fmcomms1_calib_data *cal_data = NULL;
+#define VERSION_SUPPORTED 1
+static struct fmcomms1_calib_data_v1 *cal_data = NULL;
+static struct fmcomms1_calib_header_v1 *cal_header = NULL;
 
 static GtkWidget *vga_gain0, *vga_gain1;
 static GtkAdjustment *adj_gain0, *adj_gain1;
@@ -370,73 +371,29 @@ static int compare_gain(const char *a, const char *b)
 		return 0;
 }
 
-static unsigned short float_to_fract(double val)
+struct fmcomms1_calib_data_v1 *find_entry(struct fmcomms1_calib_data_v1 *data,
+					 struct fmcomms1_calib_header_v1 *header,
+					 unsigned f)
 {
-	unsigned short fract = 0;
-	unsigned long long llval;
-
-	if (val <= 0.000000) {
-		fract = 0x8000;
-		val *= -1.0;
-	}
-
-	val *= 1000000;
-
-	llval = (unsigned long long)val * 0x8000UL;
-	fract |= (llval / 1000000);
-
-	return fract;
-}
-
-static double fract_to_float(unsigned short val)
-{
-	double ret = 0;
-
-	if (val & 0x8000) {
-		ret = 1.0000;
-		val &= ~0x8000;
-	}
-
-	ret += (double)val / 0x8000;
-
-	return ret;
-}
-
-struct fmcomms1_calib_data *find_entry(struct fmcomms1_calib_data *ptr, unsigned f)
-{
-	struct fmcomms1_calib_data *data;
 	int ind = 0;
 	int delta, gindex = 0;
 	int min_delta = 2147483647;
 
-	data = ptr;
+	if (!header && !data)
+		return NULL;
 
-	do {
-		if (data->adi_magic0 != ADI_MAGIC_0 || data->adi_magic1 != ADI_MAGIC_1) {
-			fprintf (stderr, "invalid magic detected\n");
-			return NULL;
-		}
-		if (data->version != ADI_VERSION(VERSION_SUPPORTED)) {
-			fprintf (stderr, "unsupported version detected %c\n", data->version);
-			return NULL;
-		}
-
-
-		if (f) {
+	for (ind = 0; ind < header->num_entries; ind++) {
 			delta = abs(f - data->cal_frequency_MHz);
 			if (delta < min_delta) {
 				gindex = ind;
 				min_delta = delta;
 			}
+	}
 
-		}
-		ind++;
-	} while (data++->next);
-
-	return &ptr[gindex];
+	return &data[gindex];
 }
 
-void store_entry_hw(struct fmcomms1_calib_data *data, unsigned tx, unsigned rx)
+void store_entry_hw(struct fmcomms1_calib_data_v1 *data, unsigned tx, unsigned rx)
 {
 	if (!data)
 		return;
@@ -455,9 +412,10 @@ void store_entry_hw(struct fmcomms1_calib_data *data, unsigned tx, unsigned rx)
 	if (rx) {
 		set_dev_paths("cf-ad9643-core-lpc");
 		write_devattr_slonglong("in_voltage0_calibbias", data->i_adc_offset_adj);
-		write_devattr_double("in_voltage0_calibscale", fract_to_float(data->i_adc_gain_adj));
+		write_devattr_double("in_voltage0_calibscale", fract1_1_14_to_float(data->i_adc_gain_adj));
 		write_devattr_slonglong("in_voltage1_calibbias", data->q_adc_offset_adj);
-		write_devattr_double("in_voltage1_calibscale", fract_to_float(data->q_adc_gain_adj));
+		write_devattr_double("in_voltage1_calibscale", fract1_1_14_to_float(data->q_adc_gain_adj));
+		write_devattr_double("in_voltage0_calibphase", fract1_1_14_to_float(data->i_adc_phase_adj));
 		cal_update_values();
 	}
 }
@@ -570,10 +528,12 @@ static void load_cal_eeprom()
 {
 	gdouble freq;
 	freq = pll_get_freq(&tx_widgets[num_tx_pll]);
-	store_entry_hw(find_entry(cal_data, (unsigned) (freq / mhz_scale)), 1, 0);
+	store_entry_hw(find_entry(cal_data, cal_header,
+			(unsigned) (freq / mhz_scale)), 1, 0);
 
 	freq = pll_get_freq(&rx_widgets[num_rx_pll]);
-	store_entry_hw(find_entry(cal_data,  (unsigned) (freq / mhz_scale)), 0, 1);
+	store_entry_hw(find_entry(cal_data, cal_header,
+			(unsigned) (freq / mhz_scale)), 0, 1);
 }
 
 static bool cal_rx_flag = false;
@@ -1255,13 +1215,13 @@ void save_cal(char * resfile)
 	fprintf(file, "%s = %i\n", ADC_I_O, (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_offset_adj)));
 	fprintf(file, "%s = %i\n", ADC_Q_O, (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_offset_adj)));
 	fprintf(file, "%s = %f #0x%x\n", ADC_I_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj)),
-				float_to_fract(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj))));
+				float_to_fract1_15(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj))));
 	fprintf(file, "%s = %f #0x%x\n", ADC_Q_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj)),
-				float_to_fract(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj))));
+				float_to_fract1_15(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj))));
 	fprintf(file, "%s = %f #0x%x\n", ADC_I_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_phase_adj)),
-				float_to_fract(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_phase_adj))));
+				float_to_fract1_15(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_phase_adj))));
 	fprintf(file, "%s = %f #0x%x\n", ADC_Q_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_phase_adj)),
-				float_to_fract(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_phase_adj))));
+				float_to_fract1_15(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_phase_adj))));
 
 	if (rx_marker && rx_marker[0].active) {
 		fprintf(file, "\n[RX_RESULTS]\n");
@@ -1677,6 +1637,56 @@ static void manage_dds_mode()
 
 }
 
+static int fmcomms1_cal_eeprom_v0_convert(char *ptr)
+{
+	char tmp[FAB_SIZE_CAL_EEPROM];
+	struct fmcomms1_calib_data *data;
+	struct fmcomms1_calib_header_v1 *header =
+		(struct fmcomms1_calib_header_v1 *) ptr;
+	struct fmcomms1_calib_data_v1 *data_v1 =
+		(struct fmcomms1_calib_data_v1 *)(ptr + sizeof(*header));
+	unsigned ind = 0;
+
+	memcpy(tmp, ptr, FAB_SIZE_CAL_EEPROM);
+	memset(ptr, 0, FAB_SIZE_CAL_EEPROM);
+
+	data = (struct fmcomms1_calib_data *) tmp;
+
+	do {
+		if (data->adi_magic0 != ADI_MAGIC_0 || data->adi_magic1 != ADI_MAGIC_1) {
+			fprintf (stderr, "invalid magic detected\n");
+			return -EINVAL;
+		}
+		if (data->version != ADI_VERSION(0)) {
+			fprintf (stderr, "unsupported version detected %c\n", data->version);
+			return -EINVAL;
+		}
+
+		data_v1->cal_frequency_MHz = data->cal_frequency_MHz;
+		data_v1->i_phase_adj       = data->i_phase_adj;
+		data_v1->q_phase_adj       = data->q_phase_adj;
+		data_v1->i_dac_offset      = data->i_dac_offset;
+		data_v1->q_dac_offset      = data->q_dac_offset;
+		data_v1->i_dac_fs_adj      = data->i_dac_fs_adj;
+		data_v1->q_dac_fs_adj      = data->q_dac_fs_adj;
+		data_v1->i_adc_offset_adj  = data->i_adc_offset_adj;
+		data_v1->q_adc_offset_adj  = data->q_adc_offset_adj;
+		data_v1->i_adc_gain_adj    = float_to_fract1_1_14(fract1_15_to_float(data->i_adc_gain_adj));
+		data_v1->q_adc_gain_adj    = float_to_fract1_1_14(fract1_15_to_float(data->q_adc_gain_adj));
+		data_v1->i_adc_phase_adj   = 0.0;
+		data_v1++;
+		ind++;
+	} while (data++->next);
+
+	header->adi_magic0 = ADI_MAGIC_0;
+	header->adi_magic1 = ADI_MAGIC_1;
+	header->version = ADI_VERSION(VERSION_SUPPORTED);
+	header->num_entries = ind;
+	header->temp_calibbias = 0;
+
+	return 0;
+}
+
 static int fmcomms1_cal_eeprom(void)
 {
 	char eprom_names[512];
@@ -1686,10 +1696,10 @@ static int fmcomms1_cal_eeprom(void)
 	/* flushes all open output streams */
 	fflush(NULL);
 
-	if (!cal_data)
-		cal_data = malloc(FAB_SIZE_CAL_EEPROM);
+	if (!cal_header)
+		cal_header = malloc(FAB_SIZE_CAL_EEPROM);
 
-	if (cal_data == NULL) {
+	if (cal_header == NULL) {
 		return -ENOMEM;
 	}
 
@@ -1712,17 +1722,24 @@ static int fmcomms1_cal_eeprom(void)
 		if(efp == NULL)
 			return -errno;
 
-		memset(cal_data, 0, FAB_SIZE_CAL_EEPROM);
-		tmp = fread(cal_data, FAB_SIZE_CAL_EEPROM, 1, efp);
+		memset(cal_header, 0, FAB_SIZE_CAL_EEPROM);
+		tmp = fread(cal_header, FAB_SIZE_CAL_EEPROM, 1, efp);
 		fclose(efp);
 
-		if (!tmp || cal_data->adi_magic0 != ADI_MAGIC_0 || cal_data->adi_magic1 != ADI_MAGIC_1) {
+		if (!tmp || cal_header->adi_magic0 != ADI_MAGIC_0 || cal_header->adi_magic1 != ADI_MAGIC_1) {
 			continue;
 		}
 
-		if (cal_data->version != ADI_VERSION(VERSION_SUPPORTED)) {
-			continue;
+		if (cal_header->version != ADI_VERSION(VERSION_SUPPORTED)) {
+			if (cal_header->version == ADI_VERSION(0)) {
+				if (fmcomms1_cal_eeprom_v0_convert((char*) cal_header))
+					continue;
+			} else {
+				continue;
+			}
 		}
+
+		cal_data = (struct fmcomms1_calib_data_v1 *)(cal_header + sizeof(*cal_header));
 
 		fprintf (stdout, "Found Calibration EEPROM @ %s\n", eprom_names);
 		pclose(fp);
