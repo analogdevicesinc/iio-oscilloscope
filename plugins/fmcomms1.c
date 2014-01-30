@@ -99,6 +99,13 @@ static GtkWidget *ad9122_temp;
 static int kill_thread;
 static int fmcomms1_cal_eeprom(void);
 
+static struct s_cal_eeprom_v1 {
+	struct fmcomms1_calib_header_v1 header;
+	struct fmcomms1_calib_data_v1 data[
+		(MAX_SIZE_CAL_EEPROM - sizeof(struct fmcomms1_calib_header_v1)) /
+		sizeof(struct fmcomms1_calib_data_v1)];
+} __attribute__((packed)) cal_eeprom_v1;
+
 static int oneover(const gchar *num)
 {
 	float close;
@@ -1171,6 +1178,49 @@ void load_cal(char * resfile)
 	return;
 }
 
+static int cal_entry_add(struct s_cal_eeprom_v1 *eeprom)
+{
+	int i = eeprom->header.num_entries;
+
+	eeprom->data[i].cal_frequency_MHz = (short) gtk_spin_button_get_value (GTK_SPIN_BUTTON(rx_lo_freq));
+
+	eeprom->data[i].i_phase_adj       = (short) gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_dac_pha_adj));
+	eeprom->data[i].q_phase_adj       = (short) gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_dac_pha_adj));
+	eeprom->data[i].i_dac_offset      = (short) gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_dac_offs));
+	eeprom->data[i].q_dac_offset      = (short) gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_dac_offs));
+	eeprom->data[i].i_dac_fs_adj      = (unsigned short) gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_dac_fs_adj));
+	eeprom->data[i].q_dac_fs_adj      = (unsigned short) gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_dac_fs_adj));
+
+	eeprom->data[i].i_adc_offset_adj  = (short) gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_offset_adj));
+	eeprom->data[i].q_adc_offset_adj  = (short) gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_offset_adj));
+	eeprom->data[i].i_adc_gain_adj    = float_to_fract1_1_14(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj)));
+	eeprom->data[i].q_adc_gain_adj    = float_to_fract1_1_14(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj)));
+	eeprom->data[i].i_adc_phase_adj   = float_to_fract1_1_14(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_phase_adj)));
+
+	eeprom->header.num_entries++;
+
+	return 0;
+}
+
+static int cal_save_to_eeprom(struct s_cal_eeprom_v1 *eeprom)
+{
+	FILE* file;
+	size_t num;
+
+	file = fopen("/sys/bus/i2c/devices/1-0054/eeprom", "w"); /* FIXME */
+	if (!file)
+		return -errno;
+
+	num = fwrite(eeprom, sizeof(*eeprom), 1, file);
+
+	fclose(file);
+
+	if (num != sizeof(*eeprom))
+		return -EIO;
+
+	return 0;
+}
+
 void save_cal(char * resfile)
 {
 	FILE* file;
@@ -2132,6 +2182,16 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	} else if (MATCH_ATTRIB("calibrate_rx_level")) {
 		if (value)
 			cal_rx_level = atof(value);
+	} else if (MATCH_ATTRIB("cal_clear")) {
+		if (value)
+			memset(&cal_eeprom_v1, 0, sizeof(cal_eeprom_v1));
+	} else if (MATCH_ATTRIB("cal_add")) {
+		if (value)
+			cal_entry_add(&cal_eeprom_v1);
+	} else if (MATCH_ATTRIB("cal_save")) {
+		if (value)
+			cal_save_to_eeprom(&cal_eeprom_v1);
+
 	} else if (MATCH_ATTRIB("calibrate_rx")) {
 		if (value && atoi(value) == 1) {
 			gtk_widget_show(dialogs.calibrate);
@@ -2154,6 +2214,8 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 
 	return NULL;
 }
+
+
 
 static const char *fmcomms1_sr_attribs[] = {
 	"cf-ad9122-core-lpc.out_altvoltage_1A_sampling_frequency",
