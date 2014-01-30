@@ -1215,13 +1215,13 @@ void save_cal(char * resfile)
 	fprintf(file, "%s = %i\n", ADC_I_O, (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_offset_adj)));
 	fprintf(file, "%s = %i\n", ADC_Q_O, (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_offset_adj)));
 	fprintf(file, "%s = %f #0x%x\n", ADC_I_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj)),
-				float_to_fract1_15(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj))));
+				float_to_fract1_1_14(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj))));
 	fprintf(file, "%s = %f #0x%x\n", ADC_Q_G, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj)),
-				float_to_fract1_15(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj))));
+				float_to_fract1_1_14(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_gain_adj))));
 	fprintf(file, "%s = %f #0x%x\n", ADC_I_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_phase_adj)),
-				float_to_fract1_15(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_phase_adj))));
+				float_to_fract1_1_14(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_phase_adj))));
 	fprintf(file, "%s = %f #0x%x\n", ADC_Q_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_phase_adj)),
-				float_to_fract1_15(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_phase_adj))));
+				float_to_fract1_1_14(gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_phase_adj))));
 
 	if (rx_marker && rx_marker[0].active) {
 		fprintf(file, "\n[RX_RESULTS]\n");
