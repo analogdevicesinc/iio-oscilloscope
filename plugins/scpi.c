@@ -1007,9 +1007,12 @@ static void scpi_cmd_cb (GtkButton *button, GtkEntry *box)
 	if (!buf || !strlen(buf))
 		return;
 
+	current_instrument->response[0] = 0;
 	scpi_fprintf(current_instrument, "%s\n", buf);
+
+	printf("send '%s',\n", buf);
 	if (current_instrument->response)
-		printf("send '%s', received '%s'\n", buf, current_instrument->response);
+		printf("received '%s'\n", current_instrument->response);
 }
 
 /*
