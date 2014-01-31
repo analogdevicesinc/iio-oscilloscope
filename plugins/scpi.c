@@ -509,7 +509,7 @@ static int scpi_connect(struct scpi_instrument *scpi)
 
 bool scpi_rx_connected()
 {
-	return (spectrum_analyzer.ttyfd != 0);
+	return (spectrum_analyzer.ttyfd != 0 || spectrum_analyzer.control_port != 0);
 }
 
 void scpi_rx_trigger_sweep()
