@@ -778,6 +778,16 @@ static void do_fft(struct buffer *buf)
 		gtk_text_view_set_buffer(GTK_TEXT_VIEW(marker_label), tbuf);
 	}
 
+	if ((marker_type == MARKER_ONE_TONE || marker_type == MARKER_IMAGE) &&
+			((num_active_channels == 1 && maxx[0] == 0) ||
+			 (num_active_channels == 2 && maxx[0] == m/2))) {
+		unsigned int max_tmp;
+
+		max_tmp = maxx[1];
+		maxx[1] = maxx[0];
+		maxx[0] = max_tmp;
+	}
+
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
 		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
 			if (marker_type == MARKER_PEAK) {
