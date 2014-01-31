@@ -2218,6 +2218,19 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			iio_thread_clear(thr);
 			gtk_widget_hide(dialogs.calibrate);
 		}
+	} else if (MATCH_ATTRIB("calibrate_tx")) {
+		if (value && atoi(value) == 1) {
+			scpi_connect_functions();
+			gtk_widget_show(dialogs.calibrate);
+			cal_tx_button_clicked();
+			kill_thread = 0;
+			 thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
+			while (kill_thread == 0) {
+				gtk_main_iteration();
+			}
+			iio_thread_clear(thr);
+			gtk_widget_hide(dialogs.calibrate);
+		}
 	} else {
 		printf("Unhandled tokens in ini file,\n"
 				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
