@@ -194,7 +194,7 @@ short convert(double scale, float val)
 int analyse_wavefile(char *file_name, char **buf, int *count)
 {
 	int ret, j, i = 0, size, rep, tx = 1;
-	double max = 0.0, val[4], scale;
+	double max = 0.0, val[4], scale = 0.0;
 	double i1, q1, i2, q2;
 	char line[80];
 
@@ -204,7 +204,10 @@ int analyse_wavefile(char *file_name, char **buf, int *count)
 
 	if (fgets(line, 80, infile) != NULL) {
 	if (strncmp(line, "TEXT", 4) == 0) {
-		ret = sscanf(line, "TEXT REPEAT %d", &rep);
+		/* Unscaled samples need to be in the range +- 32767 */
+		if (strncmp(line, "TEXTU", 5) == 0)
+			scale = 1.0; /* scale up to 16-bit */
+		ret = sscanf(line, "TEXT%*c REPEAT %d", &rep);
 		if (ret != 1) {
 			rep = 1;
 		}
@@ -228,7 +231,11 @@ int analyse_wavefile(char *file_name, char **buf, int *count)
 		}
 
 	size *= rep;
-	scale = 32767.0 / max;
+	if (scale == 0.0)
+		scale = 32767.0 / max;
+
+	if (max > 32767.0)
+		fprintf(stderr, "ERROR: DAC Waveform Samples > +/- 32767.0\n");
 
 	*buf = malloc(size);
 	if (*buf == NULL)
