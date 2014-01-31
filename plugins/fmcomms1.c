@@ -106,6 +106,8 @@ static struct s_cal_eeprom_v1 {
 		sizeof(struct fmcomms1_calib_data_v1)];
 } __attribute__((packed)) cal_eeprom_v1;
 
+static unsigned short temp_calibbias;
+
 static int oneover(const gchar *num)
 {
 	float close;
@@ -705,6 +707,7 @@ static void display_temp(void *ptr)
 			write_devattr_double("in_temp0_input", temp);
 			read_devattr_int("in_temp0_calibbias", &tmp);
 			/* This will eventually be stored in the EEPROM */
+			temp_calibbias = tmp;
 			printf("AD9122 temp cal value : %i\n", tmp);
 		} else {
 
@@ -1117,7 +1120,6 @@ static int parse_cal_handler(void* user, const char* section, const char* name, 
 			combo_box_set_active_text(dds1_scale, value);
 		else if (MATCH_NAME(DDS1_P))
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds1_phase), atof(value));
-
 		else if (MATCH_NAME(DDS2_F))
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_freq), atof(value));
 		else if (MATCH_NAME(DDS2_S))
@@ -1198,6 +1200,11 @@ static int cal_entry_add(struct s_cal_eeprom_v1 *eeprom)
 	eeprom->data[i].i_adc_phase_adj   = float_to_fract1_1_14(gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_phase_adj)));
 
 	eeprom->header.num_entries++;
+
+	eeprom->header.adi_magic0 = ADI_MAGIC_0;
+	eeprom->header.adi_magic1 = ADI_MAGIC_1;
+	eeprom->header.version = ADI_VERSION(VERSION_SUPPORTED);
+	eeprom->header.temp_calibbias = temp_calibbias;
 
 	return 0;
 }
