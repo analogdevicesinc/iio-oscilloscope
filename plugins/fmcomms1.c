@@ -656,12 +656,16 @@ static void tx_thread_cal(void *ptr)
 	scpi_rx_set_span_frequency(3 * sig);
 	scpi_rx_trigger_sweep();
 	scpi_rx_trigger_sweep();
+
+	kill_thread = 1;
 }
 
 static void cal_tx_button_clicked(void)
 {
-	if (!scpi_rx_connected())
+	if (!scpi_rx_connected()) {
+		printf("not connected\n");
 		return;
+	}
 
 	/* make sure it's a single tone */
 	if ((gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) !=
@@ -669,8 +673,10 @@ static void cal_tx_button_clicked(void)
 			(gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) !=
 				gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds3_freq))) ||
 			(gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) !=
-				gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds4_freq))))
+				gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds4_freq)))) {
+		printf("not a tone\n");
 		return;
+	}
 
 	scpi_rx_setup();
 	scpi_rx_set_center_frequency(gtk_spin_button_get_value (GTK_SPIN_BUTTON(tx_lo_freq)) * 1000000 + 1000000);
@@ -2224,7 +2230,7 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			gtk_widget_show(dialogs.calibrate);
 			cal_tx_button_clicked();
 			kill_thread = 0;
-			 thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
+			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
 			while (kill_thread == 0) {
 				gtk_main_iteration();
 			}
