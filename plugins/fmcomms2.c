@@ -119,6 +119,8 @@ static void rx_update_values(void)
 static void glb_settings_update_labels(void)
 {
 	char *buf = NULL;
+	float rates[6];
+	char tmp[160];
 	int ret;
 
 	set_dev_paths("ad9361-phy");
@@ -171,18 +173,34 @@ static void glb_settings_update_labels(void)
 	}
 
 	ret = read_devattr("rx_path_rates", &buf);
-	if (ret >= 0)
-		gtk_label_set_text(GTK_LABEL(rx_path_rates), buf);
-	else
+	if (ret >= 0) {
+		sscanf(buf, "BBPLL:%f ADC:%f R2:%f R1:%f RF:%f RXSAMP:%f",
+		        &rates[0], &rates[1], &rates[2], &rates[3], &rates[4],
+			&rates[5]);
+		sprintf(tmp, "BBPLL: %4.3f   ADC: %4.3f   R2: %4.3f   R1: %4.3f   RF: %4.3f   RXSAMP: %4.3f",
+		        rates[0] / 1e6, rates[1] / 1e6, rates[2] / 1e6,
+			rates[3] / 1e6, rates[4] / 1e6, rates[5] / 1e6);
+
+		gtk_label_set_text(GTK_LABEL(rx_path_rates), tmp);
+	} else {
 		gtk_label_set_text(GTK_LABEL(rx_path_rates), "<error>");
+	}
 	if (buf)
 		free(buf);
 
 	ret = read_devattr("tx_path_rates", &buf);
-	if (ret >= 0)
-		gtk_label_set_text(GTK_LABEL(tx_path_rates), buf);
-	else
+	if (ret >= 0) {
+		sscanf(buf, "BBPLL:%f DAC:%f T2:%f T1:%f TF:%f TXSAMP:%f",
+		        &rates[0], &rates[1], &rates[2], &rates[3], &rates[4],
+			&rates[5]);
+		sprintf(tmp, "BBPLL: %4.3f   DAC: %4.3f   T2: %4.3f   T1: %4.3f   TF: %4.3f   TXSAMP: %4.3f",
+		        rates[0] / 1e6, rates[1] / 1e6, rates[2] / 1e6,
+			rates[3] / 1e6, rates[4] / 1e6, rates[5] / 1e6);
+
+		gtk_label_set_text(GTK_LABEL(tx_path_rates), tmp);
+	} else {
 		gtk_label_set_text(GTK_LABEL(tx_path_rates), "<error>");
+	}
 	if (buf)
 		free(buf);
 
