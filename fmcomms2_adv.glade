@@ -3780,6 +3780,7 @@ power for (sample periods)</property>
                             <items>
                               <item translatable="yes">Disable</item>
                               <item translatable="yes">TX -&gt; RX</item>
+                              <item translatable="yes">RX -&gt; TX</item>
                             </items>
                           </object>
                           <packing>
