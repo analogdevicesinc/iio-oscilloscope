@@ -316,6 +316,12 @@
     <property name="step_increment">1000</property>
     <property name="page_increment">1000</property>
   </object>
+  <object class="GtkListStore" id="liststore1">
+    <columns>
+      <!-- column-name AGC -->
+      <column type="guint"/>
+    </columns>
+  </object>
   <object class="GtkVBox" id="fmcomms2adv_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -3782,6 +3788,42 @@ power for (sample periods)</property>
                           </packing>
                         </child>
                         <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
                           <object class="GtkLabel" id="label40">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -3858,18 +3900,6 @@ power for (sample periods)</property>
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkLabel" id="label42">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -3890,18 +3920,6 @@ power for (sample periods)</property>
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
                           <object class="GtkComboBoxText" id="bist_tone_frequency">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -3920,18 +3938,6 @@ power for (sample periods)</property>
                             <property name="x_options">GTK_FILL</property>
                             <property name="y_options">GTK_FILL</property>
                           </packing>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
                         </child>
                         <child>
                           <object class="GtkLabel" id="label118">
@@ -3959,10 +3965,6 @@ power for (sample periods)</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                               </object>
-                              <packing>
-                                <property name="left_attach">0</property>
-                                <property name="top_attach">0</property>
-                              </packing>
                             </child>
                             <child>
                               <object class="GtkCheckButton" id="c2i">
@@ -3977,7 +3979,6 @@ power for (sample periods)</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                             <child>
@@ -3993,7 +3994,6 @@ power for (sample periods)</property>
                               </object>
                               <packing>
                                 <property name="left_attach">2</property>
-                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                             <child>
@@ -4009,7 +4009,6 @@ power for (sample periods)</property>
                               </object>
                               <packing>
                                 <property name="left_attach">3</property>
-                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                           </object>
@@ -4103,11 +4102,5 @@ power for (sample periods)</property>
         <property name="position">1</property>
       </packing>
     </child>
-  </object>
-  <object class="GtkListStore" id="liststore1">
-    <columns>
-      <!-- column-name AGC -->
-      <column type="guint"/>
-    </columns>
   </object>
 </interface>
