@@ -59,6 +59,7 @@ static GtkWidget *dac_buffer;
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control_rx1;
 static GtkWidget *rx_gain_control_modes_rx1;
+static GtkWidget *rf_port_select_rx;
 static GtkWidget *rx_gain_control_rx2;
 static GtkWidget *rx_gain_control_modes_rx2;
 static GtkWidget *rx1_rssi;
@@ -67,6 +68,8 @@ static GtkWidget *rx_path_rates;
 static GtkWidget *tx_path_rates;
 static GtkWidget *fir_filter_en_tx;
 static GtkWidget *enable_fir_filter_rx;
+static GtkWidget *rf_port_select_tx;
+
 
 /* Widgets for Receive Settings */
 static GtkWidget *dds_mode;
@@ -1104,6 +1107,8 @@ static int fmcomms2_init(GtkWidget *notebook)
 	filter_fir_config = GTK_WIDGET(gtk_builder_get_object(builder, "filter_fir_config"));
 
 	/* Receive Chain */
+
+	rf_port_select_rx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_rx"));
 	rx_gain_control_rx1 = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_rx1"));
 	rx_gain_control_rx2 = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_rx2"));
 	rx_gain_control_modes_rx1 = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_available_rx1"));
@@ -1112,6 +1117,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	rx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx2"));
 	enable_fir_filter_rx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_rx"));
 	/* Transmit Chain */
+	rf_port_select_tx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_tx"));
 	fir_filter_en_tx = GTK_WIDGET(gtk_builder_get_object(builder, "fir_filter_en_tx"));
 	dds_mode = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode"));
 
@@ -1197,6 +1203,9 @@ static int fmcomms2_init(GtkWidget *notebook)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes_rx1), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes_rx2), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_rx), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_tx), 0);
+
 
 	/* Bind the IIO device files to the GUI widgets */
 
@@ -1225,6 +1234,11 @@ static int fmcomms2_init(GtkWidget *notebook)
 		"ad9361-phy", "in_voltage0_gain_control_mode",
 		"in_voltage_gain_control_mode_available",
 		rx_gain_control_modes_rx1, NULL);
+
+	iio_combo_box_init(&rx_widgets[num_rx++],
+		"ad9361-phy", "in_voltage0_rf_port_select",
+		"in_voltage_rf_port_select_available",
+		rf_port_select_rx, NULL);
 
 	if (is_2rx_2tx)
 		iio_combo_box_init(&rx_widgets[num_rx++],
@@ -1262,6 +1276,12 @@ static int fmcomms2_init(GtkWidget *notebook)
 		"bbdc", 0);
 
 	/* Transmit Chain */
+
+	iio_combo_box_init(&tx_widgets[num_tx++],
+		"ad9361-phy", "out_voltage0_rf_port_select",
+		"out_voltage_rf_port_select_available",
+		rf_port_select_tx, NULL);
+
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_voltage0_hardwaregain", builder,
 		"hardware_gain_tx1", &inv_scale);
