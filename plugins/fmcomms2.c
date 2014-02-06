@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2012-2013 Analog Devices, Inc.
+ * Copyright (C) 2012-2014 Analog Devices, Inc.
  *
  * Licensed under the GPL-2.
  *
@@ -1425,6 +1425,11 @@ static int fmcomms2_init(GtkWidget *notebook)
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
 
+	if (!is_2rx_2tx) {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame7")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame5")));
+	}
+
 	g_thread_new("Update_thread", (void *) &update_display, NULL);
 
 	return 0;
@@ -1474,6 +1479,7 @@ static const char *fmcomms2_sr_attribs[] = {
 	"ad9361-phy.dcxo_tune_coarse",
 	"ad9361-phy.dcxo_tune_fine",
 	"ad9361-phy.ensm_mode",
+	"ad9361-phy.in_voltage0_rf_port_select",
 	"ad9361-phy.in_voltage0_gain_control_mode",
 	"ad9361-phy.in_voltage0_hardwaregain",
 	"ad9361-phy.in_voltage1_gain_control_mode",
@@ -1481,6 +1487,7 @@ static const char *fmcomms2_sr_attribs[] = {
 	"ad9361-phy.in_voltage_bb_dc_offset_tracking_en",
 	"ad9361-phy.in_voltage_quadrature_tracking_en",
 	"ad9361-phy.in_voltage_rf_dc_offset_tracking_en",
+	"ad9361-phy.out_voltage0_rf_port_select",
 	"ad9361-phy.out_altvoltage0_RX_LO_frequency",
 	"ad9361-phy.out_altvoltage1_TX_LO_frequency",
 	"ad9361-phy.out_voltage0_hardwaregain",
