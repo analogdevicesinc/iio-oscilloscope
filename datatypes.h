@@ -50,6 +50,11 @@ struct buffer {
 	unsigned int size;
 };
 
+struct plot_params{
+	unsigned int plot_id;
+	unsigned int sample_count;
+};
+
 struct _fft_alg_data{
 	gfloat fft_corr;
 	double *in;
@@ -68,7 +73,7 @@ struct _device_list {
 	struct iio_channel_info *channel_list;
 	unsigned int num_channels;
 	unsigned int sample_count;
-	unsigned int shadow_of_sample_count;
+	GSList *plots_sample_counts;
 	double adc_freq;
 	double lo_freq;
 	char adc_scale[10];
@@ -90,17 +95,12 @@ struct _transform {
 	gfloat *y_axis;
 	unsigned *in_data_size;
 	unsigned x_axis_size;
-	unsigned y_axis_size;	
+	unsigned y_axis_size;
 	bool destroy_x_axis;
 	bool destroy_y_axis;
 	bool local_output_buf;
-	void *graph;
-	int *graph_color;
-	void *iter_in_treestore;
-	int* integer_id;
-	bool graph_active;
+	GdkColor *graph_color;
 	bool has_the_marker;
-	bool has_invalid_setup;
 	void *settings;
 	void (*transform_function)(Transform *tr, gboolean init_transform);
 };

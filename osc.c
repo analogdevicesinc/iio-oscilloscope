@@ -120,7 +120,7 @@ static void do_fft(Transform *tr)
 				fftw_free(fft->in_c);
 			fft->in_c = NULL;
 			fft->in = NULL;
-		}	
+		}
 
 		fft->win = fftw_malloc(sizeof(double) * fft_size);
 		if (fft->num_active_channels == 2) {
@@ -136,14 +136,14 @@ static void do_fft(Transform *tr)
 			fft->in = fftw_malloc(sizeof(double) * fft_size);
 			fft->plan_forward = fftw_plan_dft_r2c_1d(fft_size, fft->in, fft->out, FFTW_ESTIMATE);
 		}
-		
+
 		for (i = 0; i < fft_size; i ++)
 			fft->win[i] = win_hanning(i, fft_size);
 
 		fft->cached_fft_size = fft_size;
 		fft->cached_num_active_channels = fft->num_active_channels;
 	}
-	
+
 	if (fft->num_active_channels == 2) {
 		ch_info = tr->channel_parent2->extra_field;
 		in_data_c = ch_info->data_ref;
@@ -181,7 +181,7 @@ static void do_fft(Transform *tr)
 		} else {
 				j = i;
 		}
-		
+
 		mag = 10 * log10((fft->out[j][0] * fft->out[j][0] +
 				fft->out[j][1] * fft->out[j][1]) / (fft->m * fft->m)) +
 			fft->fft_corr + pwr_offset + plugin_fft_corr;
@@ -233,12 +233,12 @@ static void do_fft(Transform *tr)
 			}
 		}
 	}
-	
+
 	if (!tr->has_the_marker)
 		return;
-	
+
 	unsigned int m = fft->m;
-		
+
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
 		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
 			if (marker_type == MARKER_PEAK) {
@@ -281,15 +281,15 @@ static void do_fft(Transform *tr)
 				while (out_data[k] < out_data[k + 1]) {
 					k++;
 				}
-				
+
 				while (markers[j].bin != 0 &&
 						out_data[markers[j].bin] < out_data[markers[j].bin - 1]) {
 					markers[j].bin--;
 				}
-				
+
 				if (out_data[k] > out_data[markers[j].bin])
 					markers[j].bin = k;
-				
+
 				markers[j].x = (gfloat)X[markers[j].bin];
 				markers[j].y = (gfloat)out_data[markers[j].bin];
 			} else if (marker_type == MARKER_IMAGE) {
@@ -319,13 +319,13 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 	struct _time_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
 	int i;
-		
+
 	if (init_transform) {
 		Transform_resize_x_axis(tr, axis_length);
 		for (i = 0; i < axis_length; i++)
 			tr->x_axis[i] = i;
 		tr->y_axis_size = axis_length;
-		
+
 		if (settings->apply_inverse_funct || settings->apply_multiply_funct || settings->apply_add_funct) {
 			Transform_resize_y_axis(tr, tr->y_axis_size);
 			tr->local_output_buf = true;
@@ -333,12 +333,12 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 			tr->y_axis = *tr->in_data;
 			tr->local_output_buf = false;
 		}
-		
+
 		return;
 	}
 	if (!tr->local_output_buf)
 		return;
-		
+
 	for (i = 0; i < tr->y_axis_size; i++) {
 		if (settings->apply_inverse_funct) {
 			if ((*tr->in_data)[i] != 0)
@@ -378,7 +378,7 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 			tr->x_axis[i] = i * device->adc_freq / num_samples - corr;
 			tr->y_axis[i] = FLT_MAX;
 		}
-		
+
 		/* Compute FFT normalization and scaling offset */
 		settings->fft_alg_data.fft_corr = 20 * log10(2.0 / (1 << (tr->channel_parent->bits_used - 1)));
 		return;
@@ -392,13 +392,13 @@ void constellation_transform_function(Transform *tr, gboolean init_transform)
 	gfloat *y_axis = ch_info->data_ref;
 	struct _constellation_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
-	
+
 	if (init_transform) {
 		tr->x_axis_size = axis_length;
 		tr->y_axis_size = axis_length;
 		tr->x_axis = *tr->in_data;
 		tr->y_axis = y_axis;
-				
+
 		return;
 	}
 }
@@ -406,28 +406,28 @@ void constellation_transform_function(Transform *tr, gboolean init_transform)
 static void gfunc_update_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
-	
+
 	osc_plot_data_update(OSC_PLOT(plot));
 }
 
 static void gfunc_restart_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
-	
+
 	osc_plot_restart(OSC_PLOT(plot));
 }
 
 static void gfunc_close_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
-	
+
 	osc_plot_draw_stop(OSC_PLOT(plot));
 }
 
 static void gfunc_destroy_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
-	
+
 	osc_plot_destroy(OSC_PLOT(plot));
 }
 
@@ -578,14 +578,14 @@ unsigned int set_channel_attr_enable(const char *device_name, struct iio_channel
 	char buf[512];
 	FILE *f;
 	int ret;
-	
+
 	set_dev_paths(device_name);
 	snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_name_dir(), channel->name);
 	f = fopen(buf, "w");
 	if (f) {
 		fprintf(f, "%u\n", enable);
 		fclose(f);
-		
+
 		f = fopen(buf, "r");
 		ret = fscanf(f, "%u", &enable);
 		if (ret != 1)
@@ -594,14 +594,14 @@ unsigned int set_channel_attr_enable(const char *device_name, struct iio_channel
 	} else {
 		enable = 0;
 	}
-	
+
 	return enable;
 }
 
 static void disable_all_channels(void)
 {
 	int i, j;
-	
+
 	for (i = 0; i < num_devices; i++)
 		for (j = 0; j < device_list[i].num_channels; j++)
 			set_channel_attr_enable(device_list[i].device_name, &device_list[i].channel_list[j], 0);
@@ -610,7 +610,7 @@ static void disable_all_channels(void)
 static void close_active_buffers(void)
 {
 	int i;
-	
+
 	for (i = 0; i < num_devices; i++)
 		if (device_list[i].buffer_fd >= 0) {
 			current_device = device_list[i].device_name;
@@ -640,14 +640,14 @@ static bool is_oneshot_mode(void)
 		return true;
 	if (strncmp(current_device, "ad-mc-", 5) == 0)
 		return true;
-	
+
 	return false;
 }
 
 static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 {
 	int ret;
-	
+
 	ret = read(buffer_fd, buf->data + buf->available, buf->size - buf->available);
 
 	if (ret == 0)
@@ -658,24 +658,24 @@ static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 		else
 			return -errno;
 	}
-	
+
 	buf->available += ret;
-	
+
 	return 0;
 }
 
 static  int sample_iio_data_oneshot(struct buffer *buf)
 {
 	int fd, ret;
-	
+
 	fd = buffer_open(buf->size, 0);
 	if (fd < 0)
 		return fd;
-	
+
 	ret = sample_iio_data_continuous(fd, buf);
-	
+
 	buffer_close(fd);
-	
+
 	return ret;
 }
 
@@ -683,18 +683,18 @@ static int sample_iio_data(struct _device_list *device)
 {
 	int ret;
 	struct buffer *buf = &device->data_buffer;
-	
+
 	if (is_oneshot_mode())
 		ret = sample_iio_data_oneshot(buf);
 	else
 		ret = sample_iio_data_continuous(device->buffer_fd, buf);
-	
+
 	if ((buf->data_copy) && (buf->available == buf->size)) {
 		memcpy(buf->data_copy, buf->data, buf->size);
 		buf->data_copy = NULL;
 		G_UNLOCK(buffer_full);
 	}
-		
+
 	return ret;
 }
 
@@ -733,10 +733,10 @@ static void plugin_make_detachable(struct detachable_plugin *d_plugin)
 {
 	GtkWidget *page = NULL;
 	int num_pages = 0;
-	
+
 	num_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
 	page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), num_pages - 1);
-	
+
 	d_plugin->detached_state = FALSE;
 	d_plugin->detach_attach_button = plugin_tab_add_detach_btn(page, d_plugin);
 }
@@ -874,7 +874,7 @@ void * find_device_by_name(const char *device_name)
  */
 
 const void * plugin_get_device_by_reference(const char * device_name)
-{	
+{
 	return find_device_by_name(device_name);
 }
 
@@ -985,7 +985,7 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 	plugin->handle = lib;
 	plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
 	plugin->init(notebook);
-	
+
 	d_plugin = malloc(sizeof(struct detachable_plugin));
 	d_plugin->plugin = plugin;
 	dplugin_list = g_slist_append(dplugin_list, (gpointer)d_plugin);
@@ -1115,8 +1115,8 @@ static gboolean capture_proccess(void)
 
 	for (i = 0; i < num_devices; i++) {
 		if (device_list[i].bytes_per_sample == 0)
-			continue;	
-		
+			continue;
+
 		n = device_list[i].data_buffer.available / device_list[i].bytes_per_sample;
 		demux_data_stream(device_list[i].data_buffer.data, device_list[i].channel_data, n, device_list[i].current_sample,
 			device_list[i].sample_count, device_list[i].channel_list, device_list[i].num_channels);
@@ -1128,12 +1128,29 @@ static gboolean capture_proccess(void)
 				device_list[i].data_buffer.available);
 		}
 	}
-	
+
 	update_all_plots();
 	if (stop_capture == TRUE)
 		capture_function = 0;
-	
+
 	return !stop_capture;
+}
+
+static unsigned int max_sample_count_from_plots(struct _device_list *device)
+{
+	unsigned int max_count = 0;
+	struct plot_params *prm;
+	GSList *list;
+	GSList *node;
+
+	list = device->plots_sample_counts;
+	for (node = list; node; node = g_slist_next(node)) {
+		prm = node->data;
+		if (prm->sample_count > max_count)
+			max_count = prm->sample_count;
+	}
+
+	return max_count;
 }
 
 static void resize_device_data(struct _device_list *device)
@@ -1143,7 +1160,7 @@ static void resize_device_data(struct _device_list *device)
 	unsigned enable;
 	int i;
 	int k;
-	
+
 	/* Check the enable status of the channels from all windows and update the channels enable attributes. */
 	device->bytes_per_sample = 0;
 	device->num_active_channels = 0;
@@ -1181,9 +1198,9 @@ static void resize_device_data(struct _device_list *device)
 static int capture_setup(void)
 {
 	int i;
-	
+
 	for (i = 0; i < num_devices; i++) {
-		device_list[i].sample_count = device_list[i].shadow_of_sample_count;
+		device_list[i].sample_count = max_sample_count_from_plots(&device_list[i]);
 		resize_device_data(&device_list[i]);
 		current_device = device_list[i].device_name;
 		if ((!is_oneshot_mode()) && (device_list[i].bytes_per_sample != 0)) {
@@ -1192,7 +1209,7 @@ static int capture_setup(void)
 				return -1;
 		}
 	}
-		
+
 	return 0;
 }
 
@@ -1208,15 +1225,15 @@ static void capture_start(void)
 }
 
 static void start(OscPlot *plot, gboolean start_event)
-{	
+{
 	if (start_event) {
 		num_capturing_plots++;
 		/* Stop the capture process to allow settings to be updated */
 		stop_capture = TRUE;
-		
+
 		G_TRYLOCK(buffer_full);
 		close_active_buffers();
-		
+
 		/* Start the capture process */
 		G_UNLOCK(buffer_full);
 		capture_setup();
@@ -1232,7 +1249,7 @@ static void start(OscPlot *plot, gboolean start_event)
 }
 
 static void plot_destroyed_cb(OscPlot *plot)
-{	
+{
 	plot_list = g_list_remove(plot_list, plot);
 	stop_sampling();
 	capture_setup();
@@ -1244,19 +1261,19 @@ static void plot_destroyed_cb(OscPlot *plot)
 static GtkWidget * plot_create_and_init(void)
 {
 	GtkWidget *plot;
-	
+
 	plot = osc_plot_new();
 	plot_list = g_list_append(plot_list, plot);
 	g_signal_connect(plot, "osc-capture-event", G_CALLBACK(start), NULL);
 	g_signal_connect(plot, "osc-destroy-event", G_CALLBACK(plot_destroyed_cb), NULL);
 	gtk_widget_show(plot);
-	
+
 	return plot;
 }
 
 static void btn_capture_cb(GtkButton *button, gpointer user_data)
 {
-	plot_create_and_init();	
+	plot_create_and_init();
 }
 
 struct plugin_check_fct {
@@ -1265,9 +1282,9 @@ struct plugin_check_fct {
 };
 
 void add_ch_setup_check_fct(char *device_name, void *fp)
-{	
+{
 	int n;
-	
+
 	setup_check_functions = (struct plugin_check_fct *)g_renew(struct plugin_check_fct, setup_check_functions, ++num_check_fcts);
 	n = num_check_fcts - 1;
 	setup_check_functions[n].fct_pointer = fp;
@@ -1278,10 +1295,10 @@ void add_ch_setup_check_fct(char *device_name, void *fp)
 void *find_setup_check_fct_by_devname(const char *dev_name)
 {
 	int i;
-	
+
 	if(!dev_name)
 		return NULL;
-		
+
 	for (i = 0; i < num_check_fcts; i++)
 		if (strcmp(dev_name, setup_check_functions[i].dev_name) == 0)
 			return setup_check_functions[i].fct_pointer;
@@ -1292,7 +1309,7 @@ void *find_setup_check_fct_by_devname(const char *dev_name)
 static void free_setup_check_fct_list(void)
 {
 	int i;
-	
+
 	for (i = 0; i < num_check_fcts; i++) {
 		g_free(setup_check_functions[i].dev_name);
 	}
@@ -1305,20 +1322,20 @@ void application_quit (void)
 {
 	const char *home_dir = getenv("HOME");
 	char buf[1024];
-	
+
 	/* Before we shut down, let's save the profile */
 	sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
 	capture_profile_save(buf);
 	save_all_plugins(buf, NULL);
-	
+
 	stop_capture = TRUE;
 	G_TRYLOCK(buffer_full);
 	G_UNLOCK(buffer_full);
 	close_active_buffers();
-	
+
 	g_list_free(plot_list);
 	free_setup_check_fct_list();
-	
+
 	if (gtk_main_level())
 		gtk_main_quit();
 
@@ -1334,23 +1351,6 @@ void sigterm (int signum)
 	application_quit();
 }
 
-static void set_sample_count_cb (GtkDialog *dialog, gint response_id, gpointer user_data)
-{
-	struct _device_list *dev_list = user_data;
-	GtkBuilder *builder = dev_list->settings_dialog_builder;
-	GtkAdjustment *sample_count;
-	GtkWidget *response_btn;
-	
-	if (response_id == GTK_RESPONSE_OK) {
-		/* By passing the focus from the spinbutton to others, the spinbutton gets updated */
-		response_btn = gtk_dialog_get_widget_for_response(dialog, response_id);
-		gtk_widget_grab_focus(response_btn);
-		/* Get data from widget and store it */
-		sample_count = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_sample_count"));
-		dev_list->shadow_of_sample_count = gtk_adjustment_get_value(sample_count);
-	}
-}
-
 bool is_input_device(const char *device)
 {
 	struct iio_channel_info *channels = NULL;
@@ -1358,13 +1358,13 @@ bool is_input_device(const char *device)
 	bool is_input = false;
 	int ret;
 	int i;
-	
+
 	set_dev_paths(device);
-	
+
 	ret = build_channel_array(dev_name_dir(), &channels, &num_channels);
 	if (ret)
 		return false;
-	
+
 	for (i = 0; i < num_channels; i++) {
 		if (strncmp("in", channels[i].name, 2) == 0) {
 			is_input = true;
@@ -1372,7 +1372,7 @@ bool is_input_device(const char *device)
 		}
 	}
 	free_channel_array(channels, num_channels);
-	
+
 	return is_input;
 }
 
@@ -1383,22 +1383,22 @@ static struct _device_list *add_device(struct _device_list *dev_list, const char
 	int ret;
 	int n;
 	int j;
-	
+
 	/* Add device */
 	dev_list = (struct _device_list *)realloc(dev_list, sizeof(*dev_list) * num_devices);
 	set_dev_paths(device);
-	
+
 	/* Init device */
 	n = num_devices - 1;
-	
+
 	dev_name_len = strlen(device) + 1;
 	dev_list[n].device_name = (char *)malloc(sizeof(char) * dev_name_len);
 	snprintf(dev_list[n].device_name, dev_name_len, "%s", device);
-	
+
 	ret = build_channel_array(dev_name_dir(), &dev_list[n].channel_list, &dev_list[n].num_channels);
 	if (ret)
 		return NULL;
-		
+
 	for (j = 0; j < dev_list[n].num_channels; j++) {
 		ch_info  = (struct extra_info *)malloc(sizeof(struct extra_info));
 		ch_info->device_parent = NULL; /* Don't add the device parrent yet(dev_list addresses may change due to realloc) */
@@ -1406,15 +1406,15 @@ static struct _device_list *add_device(struct _device_list *dev_list, const char
 		ch_info->shadow_of_enabled = 0;
 		dev_list[n].channel_list[j].extra_field = ch_info;
 	}
-	
+
 	dev_list[n].data_buffer.data = NULL;
 	dev_list[n].data_buffer.data_copy = NULL;
-	dev_list[n].sample_count = 16384;
-	dev_list[n].shadow_of_sample_count = 16384;
+	dev_list[n].sample_count = 400;
+	dev_list[n].plots_sample_counts = NULL;
 	dev_list[n].channel_data = (gfloat **)malloc(sizeof(gfloat *) * dev_list[n].num_channels);
 	dev_list[n].buffer_fd = -1;
 	dev_list[n].lo_freq = 0;
-	
+
 	return dev_list;
 }
 
@@ -1424,7 +1424,7 @@ static void init_device_list(void)
 	unsigned int num;
 	struct iio_channel_info *channel;
 	int i, j;
-	
+
 	num = find_iio_names(&devices, "iio:device");
 	if (devices != NULL) {
 		device = devices;
@@ -1437,7 +1437,7 @@ static void init_device_list(void)
 		}
 	}
 	free(devices);
-	
+
 	/* Disable all channels. Link parent references to channels*/
 	for (i = 0;  i < num_devices; i++) {
 		for (j = 0; j < device_list[i].num_channels; j++) {
@@ -1456,28 +1456,8 @@ gboolean save_sample_count_cb(GtkWidget *widget, GdkEventKey *event, gpointer da
 	if (event->keyval == ENTER_KEY_CODE) {
 		g_signal_emit_by_name(widget, "response", GTK_RESPONSE_OK, 0);
 	}
-	
-	return FALSE;
-}
 
-static void create_sample_count_dialogs(void)
-{
-	GtkBuilder *builder = NULL;
-	GtkWidget *dialog;
-	int i;
-	
-	for (i = 0; i < num_devices; i++) {
-		builder = gtk_builder_new();
-		if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL))
-			gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "multi_plot_osc.glade", NULL);
-		
-		device_list[i].settings_dialog_builder = builder;
-		dialog = GTK_WIDGET(gtk_builder_get_object(builder, "Sample_count_dialog"));
-		g_signal_connect(dialog, "response", G_CALLBACK(set_sample_count_cb), &device_list[i]);
-		g_signal_connect(dialog, "key_press_event", G_CALLBACK(save_sample_count_cb), NULL);
-		
-		gtk_window_set_title(GTK_WINDOW(dialog), (gchar *)device_list[i].device_name);
-	}
+	return FALSE;
 }
 
 static double read_sampling_frequency(const char *device)
@@ -1530,7 +1510,7 @@ void rx_update_labels(void)
 			sprintf(device_list[i].adc_scale, "?");
 			device_list[i].adc_freq = 0;
 		}
-		
+
 		if (strcmp(device_list[i].device_name, "cf-ad9643-core-lpc") == 0) {
 			set_dev_paths("adf4351-rx-lpc");
 			read_devattr_double("out_altvoltage0_frequency", &device_list[i].lo_freq);
@@ -1596,7 +1576,7 @@ static int load_default_profile (char *filename)
 		if (!check_inifile(buf))
 		filename = NULL;
 	}
-	
+
 	if (!filename) {
 		sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
 	/* if this is bad, we don't load anything and
@@ -1607,7 +1587,7 @@ static int load_default_profile (char *filename)
 	}
 
 	ret = restore_all_plugins(buf, NULL);
-	
+
 	if (flag)
 		return 0;
 
@@ -1681,9 +1661,8 @@ static void init_application (void)
 	trigger_dialog_init(builder);
 	init_device_list();
 	load_plugins(notebook);
-	create_sample_count_dialogs();
 	rx_update_labels();
-	gtk_widget_show(window);	
+	gtk_widget_show(window);
 }
 
 static char *prev_section;
@@ -1755,14 +1734,14 @@ static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data)
 {
 	OscPlot *plot = OSC_PLOT(data);
 	char *filename = (char *)user_data;
-	
+
 	osc_plot_save_to_ini(plot, filename);
 }
 
 void capture_profile_save(const char *filename)
 {
 	FILE *fp;
-	
+
 	/* Create(or empty) the file. The plots will append data to the file.*/
 	fp = fopen(filename, "w");
 	if (!fp) {
@@ -1771,11 +1750,11 @@ void capture_profile_save(const char *filename)
 	}
 	/* Create MultiOsc Section */
 	fprintf(fp, "[MultiOsc]\n");
-	
+
 	/* Save plugin attached status */
 	g_slist_foreach(dplugin_list, plugin_state_ini_save, fp);
 	fclose(fp);
-	
+
 	/* All opened "Capture" windows save their own configurations */
 	g_list_foreach(plot_list, gfunc_save_plot_data_to_ini, (gpointer)filename);
 }
@@ -1840,9 +1819,9 @@ void usage(char *program)
 gint main (int argc, char **argv)
 {
 	int c;
-	
+
 	char *profile = NULL;
-	
+
 	opterr = 0;
 	while ((c = getopt (argc, argv, "p:")) != -1)
 		switch (c) {
@@ -1865,7 +1844,7 @@ gint main (int argc, char **argv)
 	signal(SIGTERM, sigterm);
 	signal(SIGINT, sigterm);
 	signal(SIGHUP, sigterm);
-	
+
 	gdk_threads_enter();
 	init_application();
 	c = load_default_profile(profile);
@@ -1875,7 +1854,7 @@ gint main (int argc, char **argv)
 		application_quit();
 
 	gdk_threads_leave();
-	
+
 	if (c == 0 || c == -ENOTTY)
 		return 0;
 	else

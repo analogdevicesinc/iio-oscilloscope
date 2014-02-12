@@ -42,7 +42,7 @@ oscplot.o: oscplot.c oscplot.h osc.h datatypes.h iio_widget.h ./ini/ini.h
 
 datatypes.o: datatypes.c datatypes.h
 	$(CC) datatypes.c -c $(CFLAGS)
-	
+
 int_fft.o: int_fft.c
 	$(CC) int_fft.c -c $(CFLAGS)
 
@@ -103,8 +103,8 @@ install:
 	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc
 #	xdg-icon-resource install --size scalable ./osc.svg adi-osc
 	xdg-desktop-menu install ./$(TMP)/adi-multi_plot_osc.desktop
-	
+
 	rm -r $(TMP)
-	
+
 clean:
 	rm -rf multiosc *.o plugins/*.so

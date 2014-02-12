@@ -10,7 +10,7 @@
 Transform* Transform_new(int type)
 {
 	Transform *tr = (Transform *)malloc(sizeof(Transform));
-	
+
 	tr->type_id = (type > NO_TRANSFORM_TYPE &&
 			type < TRANSFORMS_TYPES_COUNT) ? type : NO_TRANSFORM_TYPE;
 	tr->channel_parent = NULL;
@@ -24,16 +24,11 @@ Transform* Transform_new(int type)
 	tr->destroy_x_axis = false;
 	tr->destroy_y_axis = false;
 	tr->local_output_buf = false;
-	tr->graph = NULL;
 	tr->graph_color = NULL;
-	tr->iter_in_treestore = NULL;
-	tr->integer_id = NULL;
-	tr->graph_active = false;
 	tr->has_the_marker = false;
-	tr->has_invalid_setup = false;
 	tr->settings = NULL;
 	tr->transform_function = NULL;
-	
+
 	return tr;
 }
 
@@ -112,10 +107,10 @@ void Transform_update_output(Transform *tr)
 TrList* TrList_new(void)
 {
 	TrList *list = (TrList *)malloc(sizeof(TrList));
-	
+
 	list->transforms = NULL;
 	list->size = 0;
-	
+
 	return list;
 }
 
@@ -136,7 +131,7 @@ void TrList_remove_transform(TrList *list, Transform *tr)
 {
 	int n = 0;
 	int i = 0;
-	
+
 	/* Find the transform that needs to be deleted */
 	while ((n < list->size) && (list->transforms[n] != tr)) {
 		n++;

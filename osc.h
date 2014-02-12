@@ -55,6 +55,10 @@ enum marker_types {
 	MARKER_NULL
 };
 
+#define TIME_PLOT 0
+#define FFT_PLOT 1
+#define XY_PLOT 2
+
 void rx_update_labels(void);
 void dialogs_init(GtkBuilder *builder);
 void trigger_dialog_init(GtkBuilder *builder);
