@@ -2431,27 +2431,35 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_store_set(store, &ch_iter, CHANNEL_ACTIVE, enabled, -1);
 			} else if (MATCH(ch_property, "color_red")) {
+				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
 				csettings->graph_color.red = atoi(value);
 			} else if (MATCH(ch_property, "color_green")) {
+				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
 				csettings->graph_color.green = atoi(value);
 			} else if (MATCH(ch_property, "color_blue")) {
+				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
 				csettings->graph_color.blue = atoi(value);
 			} else if (MATCH(ch_property, "math_apply_inverse_funct")) {
+				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
 				csettings->apply_inverse_funct = atoi(value);
 			} else if (MATCH(ch_property, "math_apply_multiply_funct")) {
+				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
 				csettings->apply_multiply_funct = atoi(value);
 			} else if (MATCH(ch_property, "math_apply_add_funct")) {
+				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
 				csettings->apply_add_funct = atoi(value);
 			} else if (MATCH(ch_property, "math_multiply_value")) {
+				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
 				csettings->multiply_value = atof(value);
 			} else if (MATCH(ch_property, "math_add_value")) {
+				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
 				csettings->add_value = atof(value);
 			}
