@@ -214,6 +214,7 @@ struct _OscPlotPrivate
 
 	/* The set of markers */
 	struct marker_type markers[MAX_MARKERS + 2];
+	struct marker_type *markers_copy;
 	enum marker_types marker_type;
 
 	/* Settings list of all channel */
@@ -245,6 +246,8 @@ struct _OscPlotPrivate
 	gfloat plot_top;
 	gfloat plot_bottom;
 	int read_scale_params;
+
+	GMutex g_marker_copy_lock;
 };
 
 struct channel_settings {
@@ -382,6 +385,62 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 void osc_plot_save_as (OscPlot *plot, char *filename, int type)
 {
 	save_as(plot, filename, type);
+}
+
+char * osc_plot_get_active_device (OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	gboolean next_iter;
+	gboolean active;
+	struct _device_list *device;
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->channel_list_view));
+	next_iter = gtk_tree_model_get_iter_first(model, &iter);
+	while (next_iter) {
+		gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &device, DEVICE_ACTIVE, &active, -1);
+		if (active)
+			return device->device_name;
+		next_iter = gtk_tree_model_iter_next(model, &iter);
+	}
+
+	return NULL;
+}
+
+int osc_plot_get_fft_avg (OscPlot *plot)
+{
+	return gtk_spin_button_get_value(GTK_SPIN_BUTTON(plot->priv->fft_avg_widget));
+}
+
+int osc_plot_get_marker_type (OscPlot *plot)
+{
+	return plot->priv->marker_type;
+}
+
+void osc_plot_set_marker_type (OscPlot *plot, int mtype)
+{
+	plot->priv->marker_type = mtype;
+}
+
+void * osc_plot_get_markers_copy(OscPlot *plot)
+{
+	return plot->priv->markers_copy;
+}
+
+void osc_plot_set_markers_copy (OscPlot *plot, void *value)
+{
+	plot->priv->markers_copy = value;
+}
+
+int osc_plot_get_plot_domain (OscPlot *plot)
+{
+	return gtk_combo_box_get_active(GTK_COMBO_BOX(plot->priv->plot_domain));
+}
+
+GMutex * osc_plot_get_marker_lock (OscPlot *plot)
+{
+	return &plot->priv->g_marker_copy_lock;
 }
 
 static void osc_plot_dispose(GObject *object)
@@ -607,6 +666,8 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 		else
 			FFT_SETTINGS(transform)->fft_alg_data.num_active_channels = 1;
 		FFT_SETTINGS(transform)->markers = NULL;
+		FFT_SETTINGS(transform)->markers_copy = NULL;
+		FFT_SETTINGS(transform)->marker_lock = NULL;
 		FFT_SETTINGS(transform)->marker_type = NULL;
 	} else if (plot_type == TIME_PLOT) {
 		TIME_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
@@ -731,7 +792,9 @@ static void add_markers(OscPlot *plot, Transform *transform)
 	transform->has_the_marker = true;
 	priv->tr_with_marker = transform;
 	FFT_SETTINGS(transform)->markers = priv->markers;
+	FFT_SETTINGS(transform)->markers_copy = priv->markers_copy;
 	FFT_SETTINGS(transform)->marker_type = &priv->marker_type;
+	FFT_SETTINGS(transform)->marker_lock = &priv->g_marker_copy_lock;
 }
 
 static unsigned int plot_sample_count_get(OscPlot *plot)
@@ -1022,6 +1085,8 @@ static void plot_setup(OscPlot *plot)
 	if (priv->tbuf)
 		gtk_text_buffer_set_text(priv->tbuf, empty_text, -1);
 
+	priv->markers_copy = NULL;
+
 	for (i = 0; i < tr_list->size; i++) {
 		transform = tr_list->transforms[i];
 		Transform_setup(transform);
@@ -1070,6 +1135,9 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 		collect_parameters_from_plot(plot);
 		remove_all_transforms(plot);
 		devices_transform_assignment(plot);
+
+		g_mutex_trylock(&priv->g_marker_copy_lock);
+
 		g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, button_state);
 
 		plot_setup(plot);
@@ -1081,6 +1149,10 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 	} else {
 		priv->stop_redraw = TRUE;
 		dispose_parameters_from_plot(plot);
+
+		g_mutex_trylock(&priv->g_marker_copy_lock);
+		g_mutex_unlock(&priv->g_marker_copy_lock);
+
 		g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, button_state);
 	}
 }
@@ -1607,6 +1679,9 @@ static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 	dispose_parameters_from_plot(plot);
 	remove_all_transforms(plot);
 	g_slist_free_full(plot->priv->ch_settings_list, *free);
+	g_mutex_trylock(&plot->priv->g_marker_copy_lock);
+	g_mutex_unlock(&plot->priv->g_marker_copy_lock);
+
 	if (plot->priv->redraw_function) {
 		g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, FALSE);
 	}
@@ -3187,6 +3262,7 @@ static void create_plot(OscPlot *plot)
 	gtk_tree_selection_set_mode(tree_selection, GTK_SELECTION_SINGLE);
 	add_grid(plot);
 	check_valid_setup(plot);
+	g_mutex_init(&priv->g_marker_copy_lock);
 
 	if (MAX_MARKERS) {
 		priv->marker_type = MARKER_OFF;

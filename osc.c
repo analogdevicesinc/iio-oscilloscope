@@ -311,6 +311,12 @@ static void do_fft(Transform *tr)
 
 			}
 		}
+		if (settings->markers_copy) {
+			memcpy(settings->markers_copy, settings->markers,
+				sizeof(struct marker_type) * MAX_MARKERS);
+			settings->markers_copy = NULL;
+			g_mutex_unlock(settings->marker_lock);
+		}
 	}
 }
 
@@ -854,6 +860,21 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	gtk_widget_show_all(vbox);
 }
 
+const char * device_name_check(const char *device_name)
+{
+	int i;
+
+	if (!device_name)
+		return NULL;
+
+	for (i = 0; i < num_devices; i++) {
+		if (strcmp(device_name, device_list[i].device_name) == 0)
+			return device_list[i].device_name;
+	}
+
+	return NULL;
+}
+
 void * find_device_by_name(const char *device_name)
 {
 	int i;
@@ -869,27 +890,71 @@ void * find_device_by_name(const char *device_name)
 	return NULL;
 }
 
+static OscPlot * find_a_fft_plot(GList *list)
+{
+	OscPlot *plot;
+	GList *node;
+
+	for (node = list; node; node = g_list_next(node)) {
+		plot = node->data;
+		if (osc_plot_get_plot_domain(plot) == FFT_PLOT)
+			return plot;
+	}
+
+	return NULL;
+}
+
 /*
  * helper functions for plugins which want to look at data
  */
 
 const void * plugin_get_device_by_reference(const char * device_name)
 {
-	return find_device_by_name(device_name);
+	return device_name_check(device_name);
 }
 
 enum marker_types plugin_get_marker_type(const char *device)
 {
-	return MARKER_NULL;
+	OscPlot *fft_plot;
+
+	if (!device)
+		return 0;
+	fft_plot = find_a_fft_plot(plot_list);
+	if (!fft_plot)
+		return MARKER_NULL;
+	if (!strcmp(osc_plot_get_active_device(fft_plot), device))
+		return MARKER_NULL;
+
+	return osc_plot_get_marker_type(fft_plot);
 }
 
 void plugin_set_marker_type(const char *device, enum marker_types type)
 {
+	OscPlot *fft_plot;
+
+	if (!device)
+		return;
+	fft_plot = find_a_fft_plot(plot_list);
+	if (!fft_plot)
+		return;
+	if (!strcmp(osc_plot_get_active_device(fft_plot), device))
+		return;
+	osc_plot_set_marker_type(fft_plot, type);
 }
 
 gdouble plugin_get_fft_avg(const char *device)
 {
-	return 1;
+	OscPlot *fft_plot;
+
+	if (!device)
+		return 0;
+	fft_plot = find_a_fft_plot(plot_list);
+	if (!fft_plot)
+		return 0;
+	if (!strcmp(osc_plot_get_active_device(fft_plot), device))
+		return 0;
+
+	return osc_plot_get_fft_avg(fft_plot);
 }
 
 int plugin_data_capture_size(const char *device)
@@ -928,7 +993,160 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data,
 			struct marker_type **markers_cp)
 {
-	return 0;
+	OscPlot *fft_plot;
+	struct _device_list *dev, *tmp_dev = NULL;
+	struct marker_type *markers_copy;
+	GMutex *markers_lock;
+	bool is_fft_mode;
+	int i, j;
+	bool new = FALSE;
+	char *tmp = NULL;
+
+	dev = find_device_by_name(device);
+	fft_plot = find_a_fft_plot(plot_list);
+	if (fft_plot) {
+		tmp = osc_plot_get_active_device(fft_plot);
+		tmp_dev = find_device_by_name(tmp);
+	}
+
+	/* if there isn't anything to send, clear everything */
+	if (dev == NULL || dev->data_buffer.size == 0) {
+		if (buf && *buf) {
+			g_free(*buf);
+			*buf = NULL;
+		}
+		if (cooked_data && *cooked_data) {
+			if (tmp_dev)
+				for (i = 0; i < tmp_dev->num_active_channels; i++)
+					if ((*cooked_data)[i])
+			g_free((*cooked_data)[i]);
+			g_free(*cooked_data);
+			*cooked_data = NULL;
+		}
+		if (markers_cp && *markers_cp) {
+			if (*markers_cp)
+				g_free(*markers_cp);
+			*markers_cp = NULL;
+		}
+		return -ENXIO;
+	}
+
+	if (!dev)
+		return -ENXIO;
+
+	if (buf) {
+		/* One consumer at a time */
+		if (dev->data_buffer.data_copy)
+			return -EBUSY;
+
+		/* make sure space is allocated */
+		if (*buf)
+			*buf = g_renew(int8_t, *buf, dev->data_buffer.size);
+		else
+			*buf = g_new(int8_t, dev->data_buffer.size);
+
+		if (!*buf)
+			goto capture_malloc_fail;
+
+		/* where to put the copy */
+		dev->data_buffer.data_copy = *buf;
+
+		/* Wait til the buffer is full */
+		G_LOCK(buffer_full);
+
+		/* if the lock is released, but the copy is still there
+		 * that's because someone else broke the lock
+		 */
+		if (dev->data_buffer.data_copy) {
+			dev->data_buffer.data_copy = NULL;
+			return -EINTR;
+		}
+
+		if (cooked_data) {
+			/* make sure space is allocated */
+			if (*cooked_data) {
+				*cooked_data = g_renew(gfloat *, *cooked_data,
+						dev->num_active_channels);
+				new = false;
+			} else {
+				*cooked_data = g_new(gfloat *, dev->num_active_channels);
+				new = true;
+			}
+
+			if (!*cooked_data)
+				goto capture_malloc_fail;
+
+			for (i = 0; i < dev->num_active_channels; i++) {
+				if (new)
+					(*cooked_data)[i] = g_new(gfloat,
+							dev->data_buffer.size / dev->bytes_per_sample);
+				else
+					(*cooked_data)[i] = g_renew(gfloat,
+							(*cooked_data)[i],
+							dev->data_buffer.size / dev->bytes_per_sample);
+				if (!(*cooked_data)[i])
+					goto capture_malloc_fail;
+
+				for (j = 0; j < dev->data_buffer.size / dev->bytes_per_sample; j++)
+					(*cooked_data)[i][j] = 0.0f;
+			}
+
+			/* Now that we have the space, process it */
+			demux_data_stream(*buf, *cooked_data,
+					dev->data_buffer.size / 4, 0, dev->data_buffer.size / 4,
+					dev->channel_list, dev->num_active_channels);
+		}
+	}
+
+	if (!fft_plot) {
+		is_fft_mode = false;
+	} else {
+		markers_copy = (struct marker_type *)osc_plot_get_markers_copy(fft_plot);
+		markers_lock = osc_plot_get_marker_lock(fft_plot);
+	}
+
+	if (markers_cp) {
+		if (!is_fft_mode) {
+			if (*markers_cp) {
+				g_free(*markers_cp);
+				*markers_cp = NULL;
+			}
+			return 0;
+
+		}
+
+		/* One consumer at a time */
+		if (markers_copy)
+			return -EBUSY;
+
+		/* make sure space is allocated */
+		if (*markers_cp)
+			*markers_cp = g_renew(struct marker_type, *markers_cp, MAX_MARKERS + 2);
+		else
+			*markers_cp = g_new(struct marker_type, MAX_MARKERS + 2);
+
+		if (!*markers_cp)
+			goto capture_malloc_fail;
+
+		/* where to put the copy */
+		osc_plot_set_markers_copy(fft_plot, *markers_cp);
+
+		/* Wait til the copy is complete */
+		g_mutex_lock(markers_lock);
+
+		/* if the lock is released, but the copy is still here
+		 * that's because someone else broke the lock
+		 */
+		 if (markers_copy) {
+			osc_plot_set_markers_copy(fft_plot, NULL);
+			 return -EINTR;
+		 }
+	}
+ 	return 0;
+
+capture_malloc_fail:
+	printf("%s:%s malloc failed\n", __FILE__, __func__);
+	return -ENOMEM;
 }
 
 static bool force_plugin(const char *name)
@@ -1180,6 +1398,7 @@ static void resize_device_data(struct _device_list *device)
 	device->data_buffer.size = device->sample_count * device->bytes_per_sample;
 	device->data_buffer.data = g_renew(int8_t, device->data_buffer.data, device->data_buffer.size);
 	device->data_buffer.available = 0;
+	device->data_buffer.data_copy = NULL;
 	device->current_sample = 0;
 	k = 0;
 	for (i = 0; i < device->num_channels; i++) {
@@ -1235,7 +1454,6 @@ static void start(OscPlot *plot, gboolean start_event)
 		close_active_buffers();
 
 		/* Start the capture process */
-		G_UNLOCK(buffer_full);
 		capture_setup();
 		capture_start();
 		restart_all_running_plots();

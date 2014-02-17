@@ -125,6 +125,8 @@ struct _fft_settings {
 	gfloat fft_pwr_off;
 	struct _fft_alg_data fft_alg_data;
 	struct marker_type *markers;
+	struct marker_type *markers_copy;
+	GMutex *marker_lock;
 	enum marker_types *marker_type;
 };
 
