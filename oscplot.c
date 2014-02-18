@@ -227,6 +227,8 @@ struct _OscPlotPrivate
 	gint redraw_function;
 	gint stop_redraw;
 
+	bool profile_loaded_scale;
+
 	char *saveas_filename;
 
 	struct int_and_plot fix_marker;
@@ -342,7 +344,9 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 			corr = 0;
 		if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)) && !force_update)
 			return;
-		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -5.0 - corr, priv->current_device->adc_freq / 2.0 + 5.0, 0.0, -75.0);
+		if (priv->profile_loaded_scale)
+			return;
+		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -5.0 - corr, priv->current_device->adc_freq / 2.0 + 5.0, 0.0, -100.0);
 		priv->do_a_rescale_flag = 1;
 	} else {
 		gtk_label_set_text(GTK_LABEL(priv->hor_scale), "Samples");
@@ -1109,15 +1113,16 @@ static void plot_setup(OscPlot *plot)
 
 		gtk_databox_graph_add(GTK_DATABOX(priv->databox), graph);
 	}
-
-	if (priv->active_transform_type == TIME_TRANSFORM &&
-		!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
-		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), 0.0, max_x_axis,
-			(int)(gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->y_axis_max))),
-			(int)(gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->y_axis_min))));
-	else if (priv->active_transform_type == CONSTELLATION_TRANSFORM &&
-		!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
-		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -1000.0, 1000.0, 1000, -1000);
+	if (!priv->profile_loaded_scale) {
+		if (priv->active_transform_type == TIME_TRANSFORM &&
+			!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
+			gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), 0.0, max_x_axis,
+				(int)(gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->y_axis_max))),
+				(int)(gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->y_axis_min))));
+		else if (priv->active_transform_type == CONSTELLATION_TRANSFORM &&
+			!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
+			gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -1000.0, 1000.0, 1000, -1000);
+	}
 
 	osc_plot_update_rx_lbl(plot, FORCE_UPDATE);
 }
@@ -2336,12 +2341,16 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				max_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_max), plot);
 				min_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_min), plot);
 				if (priv->read_scale_params == 4) {
+					gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_min), priv->plot_bottom);
+					gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_max), priv->plot_top);
 					gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), priv->plot_left,
 						priv->plot_right, priv->plot_top, priv->plot_bottom);
-						priv->read_scale_params = 0;
+					priv->read_scale_params = 0;
 				}
 				check_valid_setup(plot);
+				priv->profile_loaded_scale = TRUE;
 				gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button), atoi(value));
+				priv->profile_loaded_scale = FALSE;
 			} else if (MATCH_NAME("domain")) {
 				if (!strcmp(value, "time"))
 					gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_domain), TIME_PLOT);
