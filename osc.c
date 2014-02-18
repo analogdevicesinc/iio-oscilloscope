@@ -1499,7 +1499,7 @@ static GtkWidget * plot_create_and_init(void)
 	return plot;
 }
 
-static void btn_capture_cb(GtkButton *button, gpointer user_data)
+static void new_plot_cb(GtkMenuItem *item, gpointer user_data)
 {
 	plot_create_and_init();
 }
@@ -1879,11 +1879,11 @@ static void init_application (void)
 
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "main_menu"));
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
-	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "button_capture"));
+	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "new_capture_plot"));
 
 	/* Connect signals. */
 	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
-	g_signal_connect(G_OBJECT(btn_capture), "clicked", G_CALLBACK(btn_capture_cb), NULL);
+	g_signal_connect(G_OBJECT(btn_capture), "activate", G_CALLBACK(new_plot_cb), NULL);
 
 	dialogs_init(builder);
 	trigger_dialog_init(builder);
