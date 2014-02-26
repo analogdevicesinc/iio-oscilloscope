@@ -242,7 +242,7 @@ void iio_widget_update(struct iio_widget *widget)
 	widget->update(widget);
 }
 
-static void iio_widget_save(struct iio_widget *widget)
+void iio_widget_save(struct iio_widget *widget)
 {
 	set_dev_paths(widget->device_name);
 	widget->save(widget);

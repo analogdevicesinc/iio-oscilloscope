@@ -28,6 +28,7 @@ void g_builder_bind_property(GtkBuilder *builder,
 
 void iio_update_widgets(struct iio_widget *widgets, unsigned int num_widgets);
 void iio_widget_update(struct iio_widget *widget);
+void iio_widget_save(struct iio_widget *widget);
 void iio_save_widgets(struct iio_widget *widgets, unsigned int num_widgets);
 
 void iio_spin_button_init(struct iio_widget *widget,

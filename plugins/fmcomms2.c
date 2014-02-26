@@ -45,6 +45,7 @@ static struct iio_widget tx_widgets[50];
 static struct iio_widget rx_widgets[50];
 static unsigned int rx1_gain, rx2_gain;
 static unsigned int num_glb, num_tx, num_rx;
+static unsigned int rx_lo, tx_lo;
 
 /* Widgets for Global Settings */
 static GtkWidget *ensm_mode;
@@ -69,7 +70,8 @@ static GtkWidget *tx_path_rates;
 static GtkWidget *fir_filter_en_tx;
 static GtkWidget *enable_fir_filter_rx;
 static GtkWidget *rf_port_select_tx;
-
+static GtkWidget *rx_fastlock_profile;
+static GtkWidget *tx_fastlock_profile;
 
 /* Widgets for Receive Settings */
 static GtkWidget *dds_mode;
@@ -311,6 +313,38 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	rx_update_labels();
 	glb_settings_update_labels();
 	rssi_update_labels();
+}
+
+static void fastlock_clicked(GtkButton *btn, gpointer data)
+{
+	int profile;
+
+	switch ((int)data) {
+		case 1: /* RX Store */
+			iio_widget_save(&rx_widgets[rx_lo]);
+			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile));
+			set_dev_paths("ad9361-phy");
+			write_devattr_int("out_altvoltage0_RX_LO_fastlock_store", profile);
+			break;
+		case 2: /* TX Store */
+			iio_widget_save(&tx_widgets[tx_lo]);
+			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile));
+			set_dev_paths("ad9361-phy");
+			write_devattr_int("out_altvoltage1_TX_LO_fastlock_store", profile);
+			break;
+		case 3: /* RX Recall */
+			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile));
+			set_dev_paths("ad9361-phy");
+			write_devattr_int("out_altvoltage0_RX_LO_fastlock_recall", profile);
+			iio_widget_update(&rx_widgets[rx_lo]);
+			break;
+		case 4: /* TX Recall */
+			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile));
+			set_dev_paths("ad9361-phy");
+			write_devattr_int("out_altvoltage1_TX_LO_fastlock_recall", profile);
+			iio_widget_update(&tx_widgets[tx_lo]);
+			break;
+	}
 }
 
 static void load_fir_filter(const char *file_name)
@@ -1135,9 +1169,11 @@ static int fmcomms2_init(GtkWidget *notebook)
 	rx1_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx1"));
 	rx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx2"));
 	enable_fir_filter_rx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_rx"));
+	rx_fastlock_profile = GTK_WIDGET(gtk_builder_get_object(builder, "rx_fastlock_profile"));
 	/* Transmit Chain */
 	rf_port_select_tx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_tx"));
 	fir_filter_en_tx = GTK_WIDGET(gtk_builder_get_object(builder, "fir_filter_en_tx"));
+	tx_fastlock_profile = GTK_WIDGET(gtk_builder_get_object(builder, "tx_fastlock_profile"));
 	dds_mode = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode"));
 
 	dds1_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_freq"));
@@ -1224,7 +1260,8 @@ static int fmcomms2_init(GtkWidget *notebook)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_rx), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_tx), 0);
-
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_fastlock_profile), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(tx_fastlock_profile), 0);
 
 	/* Bind the IIO device files to the GUI widgets */
 
@@ -1281,6 +1318,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage_rf_bandwidth", builder, "rf_bandwidth_rx",
 		&mhz_scale);
+	rx_lo = num_rx;
 	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "out_altvoltage0_RX_LO_frequency", builder,
 		"rx_lo_freq", &mhz_scale);
@@ -1315,6 +1353,8 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_voltage_rf_bandwidth", builder,
 		"rf_bandwidth_tx", &mhz_scale);
+
+	tx_lo = num_tx;
 	iio_spin_button_s64_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_altvoltage1_TX_LO_frequency", builder,
 		"tx_lo_freq", &mhz_scale);
@@ -1349,49 +1389,49 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_scale",
 			shared_scale_available ?
-				"out_altvoltage_scale_available" : 
+				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX1_I_F1_scale_available",
 			dds1_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_scale",
 			shared_scale_available ?
-				"out_altvoltage_scale_available" : 
+				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX1_I_F2_scale_available",
 			dds2_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_scale",
 			shared_scale_available ?
-				"out_altvoltage_scale_available" : 
+				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX1_Q_F1_scale_available",
 			dds3_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_scale",
 			shared_scale_available ?
-				"out_altvoltage_scale_available" : 
+				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX1_Q_F2_scale_available",
 			dds4_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_scale",
 			shared_scale_available ?
-				"out_altvoltage_scale_available" : 
+				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX2_I_F1_scale_available",
 			dds5_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_scale",
 			shared_scale_available ?
-				"out_altvoltage_scale_available" : 
+				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX2_I_F2_scale_available",
 			dds6_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_scale",
 			shared_scale_available ?
-				"out_altvoltage_scale_available" : 
+				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX2_Q_F1_scale_available",
 			dds7_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_scale",
 			shared_scale_available ?
-				"out_altvoltage_scale_available" : 
+				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX2_Q_F2_scale_available",
 				dds8_scale, compare_gain);
 	iio_spin_button_init(&tx_widgets[num_tx++],
@@ -1437,6 +1477,14 @@ static int fmcomms2_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "dac_buffer", "file-set",
 		G_CALLBACK(dac_buffer_config_file_set_cb), NULL);
 
+	g_builder_connect_signal(builder, "rx_fastlock_store", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 1);
+	g_builder_connect_signal(builder, "tx_fastlock_store", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 2);
+	g_builder_connect_signal(builder, "rx_fastlock_recall", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 3);
+	g_builder_connect_signal(builder, "tx_fastlock_recall", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 4);
 
 	iio_update_widgets(glb_widgets, num_glb);
 	tx_update_values();
