@@ -27,6 +27,7 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
+#include "./block_diagram.h"
 
 #define HANNING_ENBW 1.50
 
@@ -1495,6 +1496,8 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
 	plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
+
+	block_diagram_init(builder, "fmcomms2.svg");
 
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2_panel, "FMComms2");
