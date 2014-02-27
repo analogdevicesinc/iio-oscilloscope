@@ -4348,8 +4348,8 @@ power for (sample periods)</property>
                             <property name="entry_text_column">0</property>
                             <items>
                               <item translatable="yes">Disable</item>
-                              <item translatable="yes">TX -&gt; RX</item>
-                              <item translatable="yes">RX -&gt; TX</item>
+                              <item translatable="yes">Digital TX -&gt; Digital RX</item>
+                              <item translatable="yes">RF RX -&gt; RF TX</item>
                             </items>
                           </object>
                           <packing>
