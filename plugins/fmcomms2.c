@@ -38,6 +38,7 @@ static bool is_2rx_2tx;
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
+static char *dac_buf_filename = NULL;
 
 static bool dac_data_loaded = false;
 
@@ -374,7 +375,7 @@ short convert(double scale, float val)
 	return (short) (val * scale);
 }
 
-int analyse_wavefile(char *file_name, char **buf, int *count)
+int analyse_wavefile(const char *file_name, char **buf, int *count)
 {
 	int ret, j, i = 0, size, rep, tx = is_2rx_2tx ? 2 : 1;
 	double max = 0.0, val[4], scale = 0.0;
@@ -477,20 +478,18 @@ int analyse_wavefile(char *file_name, char **buf, int *count)
 	return 0;
 }
 
-void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+static void process_dac_buffer_file (const char *file_name)
 {
 	int ret, fd, size;
 	struct stat st;
 	char *buf;
 	FILE *infile;
 
-	char *file_name = gtk_file_chooser_get_filename(chooser);
 	ret = analyse_wavefile(file_name, &buf, &size);
 	if (ret == -3)
 		return;
 
 	if (ret == -1 || buf == NULL) {
-
 		stat(file_name, &st);
 		buf = malloc(st.st_size);
 		if (buf == NULL)
@@ -523,6 +522,19 @@ void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 	}
 
 	dac_data_loaded = true;
+
+	if (dac_buf_filename)
+		free(dac_buf_filename);
+	dac_buf_filename = malloc(strlen(file_name) + 1);
+	strcpy(dac_buf_filename, file_name);
+
+}
+
+static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+{
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+	if (file_name)
+		process_dac_buffer_file((const char *)file_name);
 }
 
 static int compare_gain(const char *a, const char *b)
@@ -1541,6 +1553,13 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
 			return buf;
 		}
+	} else if (MATCH_ATTRIB("dac_buf_filename") &&
+				gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)) == 4) {
+		if (value) {
+			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dac_buffer), value);
+			process_dac_buffer_file(value);
+		} else
+			return dac_buf_filename;
 	} else {
 		if (value) {
 			printf("Unhandled tokens in ini file,\n"
@@ -1579,6 +1598,7 @@ static const char *fmcomms2_sr_attribs[] = {
 	"ad9361-phy.out_voltage_filter_fir_en",
 	"ad9361-phy.in_out_voltage_filter_fir_en",
 	"dds_mode",
+	"dac_buf_filename",
 	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_frequency",
 	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_phase",
 	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_raw",
