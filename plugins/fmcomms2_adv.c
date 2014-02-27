@@ -43,7 +43,7 @@ enum fmcomms2adv_wtype {
 
 struct w_info {
 	enum fmcomms2adv_wtype type;
-	char name[60];
+	const char * const name;
 };
 
 static char dir_name[512];
@@ -123,6 +123,7 @@ static struct w_info attrs[] = {
 	{COMBOBOX, "adi,tx-rf-port-input-select"},
 	{CHECKBOX, "adi,update-tx-gain-in-alert-enable"},
 	{CHECKBOX, "adi,xo-disable-use-ext-refclk-enable"},
+	{SPINBUTTON, "adi,fagc-dec-pow-measurement-duration"},
 	{CHECKBOX, "adi,fagc-allow-agc-gain-increase-enable"},
 	{SPINBUTTON, "adi,fagc-energy-lost-stronger-sig-gain-lock-exit-cnt"},
 	{SPINBUTTON, "adi,fagc-final-overrange-count"},
@@ -147,6 +148,21 @@ static struct w_info attrs[] = {
 	{CHECKBOX, "adi,fagc-rst-gla-stronger-sig-thresh-exceeded-enable"},
 	{SPINBUTTON, "adi,fagc-state-wait-time-ns"},
 	{COMBOBOX, "adi,fagc-use-last-lock-level-for-set-gain-enable"},
+	{CHECKBOX, "adi,aux-dac-manual-mode-enable"},
+	{CHECKBOX, "adi,aux-dac1-active-in-alert-enable"},
+	{CHECKBOX, "adi,aux-dac1-active-in-rx-enable"},
+	{CHECKBOX, "adi,aux-dac1-active-in-tx-enable"},
+	{SPINBUTTON, "adi,aux-dac1-default-value-mV"},
+	{SPINBUTTON, "adi,aux-dac1-rx-delay-us"},
+	{SPINBUTTON, "adi,aux-dac1-tx-delay-us"},
+	{CHECKBOX, "adi,aux-dac2-active-in-alert-enable"},
+	{CHECKBOX, "adi,aux-dac2-active-in-rx-enable"},
+	{CHECKBOX, "adi,aux-dac2-active-in-tx-enable"},
+	{SPINBUTTON, "adi,aux-dac2-default-value-mV"},
+	{SPINBUTTON, "adi,aux-dac2-rx-delay-us"},
+	{SPINBUTTON, "adi,aux-dac2-tx-delay-us"},
+	{SPINBUTTON, "adi,rx-fastlock-delay-ns"},
+	{SPINBUTTON, "adi,tx-fastlock-delay-ns"},
 	{COMBOBOX, "bist_prbs"},
 	{COMBOBOX, "loopback"},
 	{BUTTON, "initialize"},
