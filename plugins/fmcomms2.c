@@ -1623,6 +1623,7 @@ static void update_active_page(gint active_page, gboolean is_detached)
 
 static bool fmcomms2_identify(void)
 {
+	return true;
 	return !set_dev_paths("ad9361-phy");
 }
 
