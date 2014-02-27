@@ -83,6 +83,7 @@ install:
 	install -d $(DESTDIR)/lib/osc/filters
 	install -d $(DESTDIR)/lib/osc/waveforms
 	install -d $(DESTDIR)/lib/osc/multiosc/profiles
+	install -d $(DESTDIR)/lib/osc/block_diagrams
 	install ./multiosc $(DESTDIR)/bin/
 	install ./$(TMP)/*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
@@ -95,6 +96,7 @@ install:
 	install ./filters/* $(PLIB)/filters
 	install ./waveforms/* $(PLIB)/waveforms
 	install ./profiles/* $(PLIB)/multiosc/profiles
+	install ./block_diagrams/* $(PLIB)/block_diagrams
 
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
 	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
