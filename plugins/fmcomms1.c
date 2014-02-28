@@ -1857,6 +1857,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *fmcomms1_panel;
+	bool shared_scale_available;
 
 	builder = gtk_builder_new();
 
@@ -1979,6 +1980,9 @@ static int fmcomms1_init(GtkWidget *notebook)
 		adc_freq_file = "out_altvoltage2_ADC_CLK_frequency";
 	}
 
+	shared_scale_available = iio_devattr_exists("cf-ad9122-core-lpc",
+			"out_altvoltage_scale_available");
+
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
 	manage_dds_mode();
 	g_signal_connect( dds_mode, "changed", G_CALLBACK(manage_dds_mode), NULL);
@@ -2014,19 +2018,27 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_scale",
-			"out_altvoltage_1A_scale_available",
+			shared_scale_available ?
+				"out_altvoltage_scale_available" :
+				"out_altvoltage_1A_scale_available",
 			dds3_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage2_2A_scale",
-			"out_altvoltage_2A_scale_available",
+			shared_scale_available ?
+				"out_altvoltage_scale_available" :
+				"out_altvoltage_2A_scale_available",
 			dds1_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage1_1B_scale",
-			"out_altvoltage_1B_scale_available",
+			shared_scale_available ?
+				"out_altvoltage_scale_available" :
+				"out_altvoltage_1B_scale_available",
 			dds4_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage3_2B_scale",
-			"out_altvoltage_2B_scale_available",
+			shared_scale_available ?
+				"out_altvoltage_scale_available" :
+				"out_altvoltage_2B_scale_available",
 			dds2_scale, compare_gain);
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
