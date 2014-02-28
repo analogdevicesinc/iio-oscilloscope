@@ -1858,6 +1858,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	GtkBuilder *builder;
 	GtkWidget *fmcomms1_panel;
 	bool shared_scale_available;
+	const char *dac_sampling_freq_file;
 
 	builder = gtk_builder_new();
 
@@ -1980,6 +1981,11 @@ static int fmcomms1_init(GtkWidget *notebook)
 		adc_freq_file = "out_altvoltage2_ADC_CLK_frequency";
 	}
 
+	if (iio_devattr_exists("cf-ad9122-core-lpc", "out_altvoltage_1A_sampling_frequency"))
+		dac_sampling_freq_file = "out_altvoltage_1A_sampling_frequency";
+	else
+		dac_sampling_freq_file = "out_altvoltage_sampling_frequency";
+
 	shared_scale_available = iio_devattr_exists("cf-ad9122-core-lpc",
 			"out_altvoltage_scale_available");
 
@@ -1991,7 +1997,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	/* The next free frequency related widgets - keep in this order! */
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage_1A_sampling_frequency",
+			"cf-ad9122-core-lpc", dac_sampling_freq_file,
 			builder, "dac_data_clock", &mhz_scale);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage_interpolation_frequency",
