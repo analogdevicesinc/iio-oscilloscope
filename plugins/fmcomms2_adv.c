@@ -163,6 +163,8 @@ static struct w_info attrs[] = {
 	{SPINBUTTON, "adi,aux-dac2-tx-delay-us"},
 	{SPINBUTTON, "adi,rx-fastlock-delay-ns"},
 	{SPINBUTTON, "adi,tx-fastlock-delay-ns"},
+	{CHECKBOX, "adi,rx-fastlock-pincontrol-enable"},
+	{CHECKBOX, "adi,tx-fastlock-pincontrol-enable"},
 	{COMBOBOX, "bist_prbs"},
 	{COMBOBOX, "loopback"},
 	{BUTTON, "initialize"},
