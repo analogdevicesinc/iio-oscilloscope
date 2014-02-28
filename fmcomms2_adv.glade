@@ -363,6 +363,12 @@
     <property name="step_increment">1000</property>
     <property name="page_increment">1000</property>
   </object>
+  <object class="GtkListStore" id="liststore1">
+    <columns>
+      <!-- column-name AGC -->
+      <column type="guint"/>
+    </columns>
+  </object>
   <object class="GtkVBox" id="fmcomms2adv_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -699,7 +705,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">5</property>
-                        <property name="n_columns">2</property>
+                        <property name="n_columns">3</property>
                         <property name="column_spacing">5</property>
                         <property name="row_spacing">5</property>
                         <child>
@@ -802,9 +808,11 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="xalign">0.99000000953674316</property>
-                            <property name="label" translatable="yes">RX Fast Lock Delay (us)</property>
+                            <property name="label" translatable="yes">RX Fastlock Delay (us)</property>
                           </object>
                           <packing>
+                            <property name="left_attach">1</property>
+                            <property name="right_attach">2</property>
                             <property name="top_attach">3</property>
                             <property name="bottom_attach">4</property>
                           </packing>
@@ -814,27 +822,13 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="xalign">0.99000000953674316</property>
-                            <property name="label" translatable="yes">TX Fast Lock Delay (us)</property>
-                          </object>
-                          <packing>
-                            <property name="top_attach">4</property>
-                            <property name="bottom_attach">5</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkSpinButton" id="adi,rx-fastlock-delay-ns">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="invisible_char">•</property>
-                            <property name="adjustment">adj_adi,rx-fastlock-delay-ns</property>
+                            <property name="label" translatable="yes">TX Fastlock Delay (us)</property>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="right_attach">2</property>
-                            <property name="top_attach">3</property>
-                            <property name="bottom_attach">4</property>
-                            <property name="x_options">GTK_FILL</property>
-                            <property name="y_options">GTK_FILL</property>
+                            <property name="top_attach">4</property>
+                            <property name="bottom_attach">5</property>
                           </packing>
                         </child>
                         <child>
@@ -845,12 +839,69 @@
                             <property name="adjustment">adj_adi,tx-fastlock-delay-ns</property>
                           </object>
                           <packing>
-                            <property name="left_attach">1</property>
-                            <property name="right_attach">2</property>
+                            <property name="left_attach">2</property>
+                            <property name="right_attach">3</property>
                             <property name="top_attach">4</property>
                             <property name="bottom_attach">5</property>
                             <property name="x_options">GTK_FILL</property>
                             <property name="y_options">GTK_FILL</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkSpinButton" id="adi,rx-fastlock-delay-ns">
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="invisible_char">•</property>
+                            <property name="adjustment">adj_adi,rx-fastlock-delay-ns</property>
+                          </object>
+                          <packing>
+                            <property name="left_attach">2</property>
+                            <property name="right_attach">3</property>
+                            <property name="top_attach">3</property>
+                            <property name="bottom_attach">4</property>
+                            <property name="x_options">GTK_FILL</property>
+                            <property name="y_options">GTK_FILL</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <object class="GtkCheckButton" id="adi,rx-fastlock-pincontrol-enable">
+                            <property name="label" translatable="yes">RX Fastlock Pin Control</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">False</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="xalign">0</property>
+                            <property name="draw_indicator">True</property>
+                          </object>
+                          <packing>
+                            <property name="top_attach">3</property>
+                            <property name="bottom_attach">4</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkCheckButton" id="adi,tx-fastlock-pincontrol-enable">
+                            <property name="label" translatable="yes">TX Fastlock Pin Control</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">False</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="xalign">0</property>
+                            <property name="draw_indicator">True</property>
+                          </object>
+                          <packing>
+                            <property name="top_attach">4</property>
+                            <property name="bottom_attach">5</property>
                           </packing>
                         </child>
                       </object>
@@ -3315,20 +3366,14 @@ power for (sample periods)</property>
                                           <object class="GtkTable" id="grid27">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="row_spacing">5</property>
                                             <property name="column_spacing">5</property>
+                                            <property name="row_spacing">5</property>
                                             <child>
                                               <object class="GtkLabel" id="label130">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Dec PWR mess. duration</property>
                                               </object>
-                                              <packing>
-                                                <property name="left_attach">0</property>
-                                                <property name="top_attach">0</property>
-
-
-                                              </packing>
                                             </child>
                                             <child>
                                               <object class="GtkSpinButton" id="adi,fagc-dec-pow-measurement-duration">
@@ -3339,9 +3384,6 @@ power for (sample periods)</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
-                                                <property name="top_attach">0</property>
-
-
                                               </packing>
                                             </child>
                                           </object>
@@ -3645,7 +3687,6 @@ power for (sample periods)</property>
                       <object class="GtkVBox" id="box10">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="orientation">vertical</property>
                         <property name="spacing">5</property>
                         <child>
                           <object class="GtkCheckButton" id="adi,aux-dac-manual-mode-enable">
@@ -3668,8 +3709,8 @@ power for (sample periods)</property>
                           <object class="GtkTable" id="grid24">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="row_spacing">5</property>
                             <property name="column_spacing">5</property>
+                            <property name="row_spacing">5</property>
                             <child>
                               <object class="GtkFrame" id="frame24">
                                 <property name="visible">True</property>
@@ -3685,20 +3726,14 @@ power for (sample periods)</property>
                                       <object class="GtkTable" id="grid25">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="row_spacing">5</property>
                                         <property name="column_spacing">5</property>
+                                        <property name="row_spacing">5</property>
                                         <child>
                                           <object class="GtkLabel" id="label123">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="label" translatable="yes">Default Value (mV)</property>
                                           </object>
-                                          <packing>
-                                            <property name="left_attach">0</property>
-                                            <property name="top_attach">0</property>
-
-
-                                          </packing>
                                         </child>
                                         <child>
                                           <object class="GtkSpinButton" id="adi,aux-dac1-default-value-mV">
@@ -3709,9 +3744,6 @@ power for (sample periods)</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
-                                            <property name="top_attach">0</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3726,10 +3758,7 @@ power for (sample periods)</property>
                                             <property name="draw_indicator">True</property>
                                           </object>
                                           <packing>
-                                            <property name="left_attach">0</property>
                                             <property name="top_attach">1</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3744,10 +3773,7 @@ power for (sample periods)</property>
                                             <property name="draw_indicator">True</property>
                                           </object>
                                           <packing>
-                                            <property name="left_attach">0</property>
                                             <property name="top_attach">2</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3762,10 +3788,7 @@ power for (sample periods)</property>
                                             <property name="draw_indicator">True</property>
                                           </object>
                                           <packing>
-                                            <property name="left_attach">0</property>
                                             <property name="top_attach">3</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3777,8 +3800,6 @@ power for (sample periods)</property>
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">1</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3791,8 +3812,6 @@ power for (sample periods)</property>
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">2</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3805,8 +3824,6 @@ power for (sample periods)</property>
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">3</property>
-
-
                                           </packing>
                                         </child>
                                       </object>
@@ -3822,12 +3839,6 @@ power for (sample periods)</property>
                                   </object>
                                 </child>
                               </object>
-                              <packing>
-                                <property name="left_attach">0</property>
-                                <property name="top_attach">0</property>
-
-
-                              </packing>
                             </child>
                             <child>
                               <object class="GtkFrame" id="frame25">
@@ -3844,20 +3855,14 @@ power for (sample periods)</property>
                                       <object class="GtkTable" id="grid26">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="row_spacing">5</property>
                                         <property name="column_spacing">5</property>
+                                        <property name="row_spacing">5</property>
                                         <child>
                                           <object class="GtkLabel" id="label124">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="label" translatable="yes">Default Value (mV)</property>
                                           </object>
-                                          <packing>
-                                            <property name="left_attach">0</property>
-                                            <property name="top_attach">0</property>
-
-
-                                          </packing>
                                         </child>
                                         <child>
                                           <object class="GtkSpinButton" id="adi,aux-dac2-default-value-mV">
@@ -3868,9 +3873,6 @@ power for (sample periods)</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
-                                            <property name="top_attach">0</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3885,10 +3887,7 @@ power for (sample periods)</property>
                                             <property name="draw_indicator">True</property>
                                           </object>
                                           <packing>
-                                            <property name="left_attach">0</property>
                                             <property name="top_attach">1</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3903,10 +3902,7 @@ power for (sample periods)</property>
                                             <property name="draw_indicator">True</property>
                                           </object>
                                           <packing>
-                                            <property name="left_attach">0</property>
                                             <property name="top_attach">2</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3921,10 +3917,7 @@ power for (sample periods)</property>
                                             <property name="draw_indicator">True</property>
                                           </object>
                                           <packing>
-                                            <property name="left_attach">0</property>
                                             <property name="top_attach">3</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3936,8 +3929,6 @@ power for (sample periods)</property>
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">1</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3950,8 +3941,6 @@ power for (sample periods)</property>
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">2</property>
-
-
                                           </packing>
                                         </child>
                                         <child>
@@ -3964,8 +3953,6 @@ power for (sample periods)</property>
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">3</property>
-
-
                                           </packing>
                                         </child>
                                       </object>
@@ -3983,9 +3970,6 @@ power for (sample periods)</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="top_attach">0</property>
-
-
                               </packing>
                             </child>
                           </object>
@@ -4119,7 +4103,6 @@ power for (sample periods)</property>
           <object class="GtkVBox" id="box8">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="orientation">vertical</property>
             <child>
               <object class="GtkFrame" id="frame16">
                 <property name="visible">True</property>
@@ -4672,11 +4655,5 @@ power for (sample periods)</property>
         <property name="position">1</property>
       </packing>
     </child>
-  </object>
-  <object class="GtkListStore" id="liststore1">
-    <columns>
-      <!-- column-name AGC -->
-      <column type="guint"/>
-    </columns>
   </object>
 </interface>
