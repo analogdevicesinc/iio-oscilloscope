@@ -43,6 +43,16 @@ static void zoom_image_cb (GtkButton *btn, gpointer data)
 
 }
 
+static gboolean erase_block_diagram(GtkNotebook *notebook, GtkWidget *page, guint page_num, GtkImage *block_diagram)
+{
+
+	if (page_num)
+		return true;
+
+	gtk_image_set_from_pixbuf(block_diagram, NULL);
+	return true;
+}
+
 static gboolean draw_block_diagram(GtkWidget *widget, cairo_t *cr, GtkImage *block_diagram)
 {
 	GdkPixbuf *pixbuf, *sub_pixbuf;
@@ -112,12 +122,17 @@ static gboolean draw_block_diagram(GtkWidget *widget, cairo_t *cr, GtkImage *blo
 static int block_diagram_init(GtkBuilder *builder, const char *filename)
 {
 	GtkImage  *block_diagram;
+	GtkNotebook *noteb;
 
 	strcpy(block_filename, filename);
 
 	block_diagram = GTK_IMAGE(gtk_builder_get_object(builder, "block_diagram"));
 	block_diagram_events = GTK_WIDGET(gtk_builder_get_object(builder, "block_diagram_events"));
 	g_signal_connect(block_diagram_events, "expose-event", G_CALLBACK(draw_block_diagram),
+			block_diagram);
+
+	noteb = GTK_NOTEBOOK(gtk_builder_get_object(builder, "plugin_notebook"));
+	g_signal_connect(noteb, "switch-page", G_CALLBACK(erase_block_diagram),
 			block_diagram);
 
 	g_builder_connect_signal(builder, "zoom_image", "clicked", G_CALLBACK(zoom_image_cb), (gpointer *)0);
