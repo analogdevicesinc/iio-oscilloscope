@@ -150,7 +150,7 @@
     <property name="border_width">5</property>
     <property name="spacing">5</property>
     <child>
-      <object class="GtkNotebook" id="notebook1">
+      <object class="GtkNotebook" id="plugin_notebook">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -164,7 +164,7 @@
                 <property name="label_xalign">0</property>
                 <property name="shadow_type">in</property>
                 <child>
-                  <object class="GtkAlignment" id="alignment2">
+                  <object class="GtkAlignment" id="global_settings">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
@@ -571,17 +571,56 @@ configuration:</property>
                   </object>
                 </child>
                 <child type="label">
-                  <object class="GtkLabel" id="label3">
+                  <object class="GtkHBox" id="box7">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">&lt;b&gt;AD9361 / AD9364 Global Settings&lt;/b&gt;	</property>
-                    <property name="use_markup">True</property>
+                    <child>
+                      <object class="GtkToolbar" id="toolbar3">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="show_arrow">False</property>
+                        <child>
+                          <object class="GtkToggleToolButton" id="global_settings_toggle">
+                            <property name="use_action_appearance">False</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="label" translatable="yes">Zoom In</property>
+                            <property name="use_underline">True</property>
+                            <property name="stock_id">gtk-go-down</property>
+                            <property name="active">True</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="homogeneous">True</property>
+                          </packing>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label3">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">&lt;b&gt;AD9361 / AD9364 Global Settings&lt;/b&gt;	</property>
+                        <property name="use_markup">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
                   </object>
                 </child>
               </object>
               <packing>
                 <property name="expand">False</property>
-                <property name="fill">True</property>
+                <property name="fill">False</property>
                 <property name="position">0</property>
               </packing>
             </child>
@@ -592,7 +631,7 @@ configuration:</property>
                 <property name="label_xalign">0</property>
                 <property name="shadow_type">in</property>
                 <child>
-                  <object class="GtkAlignment" id="alignment8">
+                  <object class="GtkAlignment" id="rx_settings">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
@@ -1324,17 +1363,56 @@ configuration:</property>
                   </object>
                 </child>
                 <child type="label">
-                  <object class="GtkLabel" id="label9">
+                  <object class="GtkHBox" id="box6">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">&lt;b&gt;AD9361 / AD9364 Receive Chain&lt;/b&gt;</property>
-                    <property name="use_markup">True</property>
+                    <child>
+                      <object class="GtkToolbar" id="toolbar2">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="show_arrow">False</property>
+                        <child>
+                          <object class="GtkToggleToolButton" id="rx_toggle">
+                            <property name="use_action_appearance">False</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="label" translatable="yes">Zoom In</property>
+                            <property name="use_underline">True</property>
+                            <property name="stock_id">gtk-go-down</property>
+                            <property name="active">True</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="homogeneous">True</property>
+                          </packing>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label9">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">&lt;b&gt;AD9361 / AD9364 Receive Chain&lt;/b&gt;</property>
+                        <property name="use_markup">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
                   </object>
                 </child>
               </object>
               <packing>
                 <property name="expand">False</property>
-                <property name="fill">True</property>
+                <property name="fill">False</property>
                 <property name="padding">5</property>
                 <property name="position">1</property>
               </packing>
@@ -1346,7 +1424,7 @@ configuration:</property>
                 <property name="label_xalign">0</property>
                 <property name="shadow_type">in</property>
                 <child>
-                  <object class="GtkAlignment" id="alignment15">
+                  <object class="GtkAlignment" id="tx_settings">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
@@ -3050,17 +3128,56 @@ configuration:</property>
                   </object>
                 </child>
                 <child type="label">
-                  <object class="GtkLabel" id="label40">
+                  <object class="GtkHBox" id="box8">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">&lt;b&gt;AD9361 / AD9364 Transmit Chain&lt;/b&gt;</property>
-                    <property name="use_markup">True</property>
+                    <child>
+                      <object class="GtkToolbar" id="toolbar4">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="show_arrow">False</property>
+                        <child>
+                          <object class="GtkToggleToolButton" id="tx_toggle">
+                            <property name="use_action_appearance">False</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="label" translatable="yes">Zoom In</property>
+                            <property name="use_underline">True</property>
+                            <property name="stock_id">gtk-go-down</property>
+                            <property name="active">True</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="homogeneous">True</property>
+                          </packing>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label40">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">&lt;b&gt;AD9361 / AD9364 Transmit Chain&lt;/b&gt;</property>
+                        <property name="use_markup">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
                   </object>
                 </child>
               </object>
               <packing>
                 <property name="expand">False</property>
-                <property name="fill">True</property>
+                <property name="fill">False</property>
                 <property name="padding">5</property>
                 <property name="position">2</property>
               </packing>
@@ -3103,13 +3220,16 @@ configuration:</property>
                 </child>
               </object>
               <packing>
-                <property name="expand">False</property>
+                <property name="expand">True</property>
                 <property name="fill">True</property>
                 <property name="pack_type">end</property>
                 <property name="position">3</property>
               </packing>
             </child>
           </object>
+          <packing>
+            <property name="tab_fill">False</property>
+          </packing>
         </child>
         <child type="tab">
           <object class="GtkLabel" id="label1">
@@ -3240,19 +3360,10 @@ configuration:</property>
         </child>
       </object>
       <packing>
-        <property name="expand">False</property>
+        <property name="expand">True</property>
         <property name="fill">True</property>
         <property name="position">0</property>
       </packing>
-    </child>
-    <child>
-      <placeholder/>
-    </child>
-    <child>
-      <placeholder/>
-    </child>
-    <child>
-      <placeholder/>
     </child>
   </object>
 </interface>

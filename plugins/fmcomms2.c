@@ -317,6 +317,22 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	rssi_update_labels();
 }
 
+static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
+{
+	GtkWidget *toplevel;
+
+	if (gtk_toggle_tool_button_get_active(btn)) {
+		gtk_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-down", NULL);
+		gtk_widget_show(section);
+	} else {
+		gtk_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-up", NULL);
+		gtk_widget_hide(section);
+		toplevel = gtk_widget_get_toplevel(GTK_WIDGET(btn));
+		if (GTK_WIDGET_TOPLEVEL(toplevel))
+			gtk_window_resize (GTK_WINDOW(toplevel), 1, 1);
+	}
+}
+
 static void fastlock_clicked(GtkButton *btn, gpointer data)
 {
 	int profile;
@@ -1498,6 +1514,18 @@ static int fmcomms2_init(GtkWidget *notebook)
 		G_CALLBACK(fastlock_clicked), (gpointer) 3);
 	g_builder_connect_signal(builder, "tx_fastlock_recall", "clicked",
 		G_CALLBACK(fastlock_clicked), (gpointer) 4);
+
+	g_builder_connect_signal(builder, "global_settings_toggle", "clicked",
+		G_CALLBACK(hide_section_cb),
+		GTK_WIDGET(gtk_builder_get_object(builder, "global_settings")));
+
+	g_builder_connect_signal(builder, "tx_toggle", "clicked",
+		G_CALLBACK(hide_section_cb),
+		GTK_WIDGET(gtk_builder_get_object(builder, "tx_settings")));
+
+	g_builder_connect_signal(builder, "rx_toggle", "clicked",
+		G_CALLBACK(hide_section_cb),
+		GTK_WIDGET(gtk_builder_get_object(builder, "rx_settings")));
 
 	iio_update_widgets(glb_widgets, num_glb);
 	tx_update_values();
