@@ -2270,6 +2270,7 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 
 static const char *fmcomms1_sr_attribs[] = {
 	"cf-ad9122-core-lpc.out_altvoltage_1A_sampling_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage_sampling_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage_interpolation_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage_interpolation_center_shift_frequency",
 	"dds_mode",
