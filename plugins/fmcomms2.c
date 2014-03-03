@@ -1546,7 +1546,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	if (!is_2rx_2tx) {
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame7")));
-		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame5")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame10")));
 	}
 
 	g_thread_new("Update_thread", (void *) &update_display, NULL);
