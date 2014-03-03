@@ -1205,10 +1205,20 @@ static gint marker_button (GtkDatabox *box, GdkEventButton *event)
 	return FALSE;
 
 }
+
+static int prev_num_active_ch = 0;
+
 static int fft_capture_setup(void)
 {
 	int i;
 	char buf[10];
+
+	if (channel_data) {
+		for (i = 0; i < prev_num_active_ch; i++)
+			g_free(channel_data[i]);
+		g_free(channel_data);
+		channel_data = NULL;
+	}
 
 	num_samples = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
 
@@ -1627,7 +1637,6 @@ static int time_capture_setup(void)
 {
 	gboolean is_constellation;
 	unsigned int i, j;
-	static int prev_num_active_ch = 0;
 
 	is_constellation = gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == XY_PLOT;
 

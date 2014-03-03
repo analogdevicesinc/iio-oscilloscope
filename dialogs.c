@@ -46,6 +46,8 @@ static GtkWidget *serial_num;
 static GtkWidget *fru_date;
 static GtkWidget *fru_file_list;
 
+static GtkWidget *save_csv, *save_mat, *save_vsa;
+
 #ifdef FRU_FILES
 static time_t mins_since_jan_1_1996(void)
 {
@@ -550,8 +552,15 @@ G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
 	gint ret;
 	static char *filename = NULL;
 
-	if (!channel_data || !num_active_channels)
-		return;
+	if (!channel_data || !num_active_channels) {
+		gtk_widget_hide(save_csv);
+		gtk_widget_hide(save_vsa);
+		gtk_widget_hide(save_mat);
+	} else {
+		gtk_widget_show(save_csv);
+		gtk_widget_show(save_vsa);
+		gtk_widget_show(save_mat);
+	}
 
 	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (data->saveas), GTK_FILE_CHOOSER_ACTION_SAVE);
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(data->saveas), TRUE);
@@ -703,6 +712,10 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.connect_iio = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_devices"));
 	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
 	gtk_builder_connect_signals(builder, &dialogs);
+
+	save_csv = GTK_WIDGET(gtk_builder_get_object(builder, "save_csv"));
+	save_vsa = GTK_WIDGET(gtk_builder_get_object(builder, "save_vsa"));
+	save_mat = GTK_WIDGET(gtk_builder_get_object(builder, "save_mat"));
 
 	/* Bind some dialogs radio buttons to text/labels */
 	tmp2 = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
