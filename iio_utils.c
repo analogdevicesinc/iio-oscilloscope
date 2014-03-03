@@ -692,6 +692,7 @@ bool iio_devattr_exists(const char *device, const char *attr)
 	char *temp;
 	struct stat s;
 	size_t thr = thread_index();
+	int ret;
 
 	set_dev_paths(device);
 
@@ -705,9 +706,12 @@ bool iio_devattr_exists(const char *device, const char *attr)
 	}
 	sprintf(temp, "%s/%s", dev_dir_name[thr], attr);
 
-	stat(temp, &s);
+	ret = stat(temp, &s);
 
 	free(temp);
+
+	if (ret != 0)
+		return false;
 
 	return S_ISREG(s.st_mode);
 }
