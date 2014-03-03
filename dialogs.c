@@ -121,7 +121,7 @@ static size_t write_fru(char *eeprom)
 	tmp = min2date(frutime);
 	tmp2 = gmtime(&tmp);
 
-	strftime(buf, sizeof(buf), "%d %b %C %H:%M", tmp2);
+	strftime(buf, sizeof(buf), "%a %b %d %H:%M %Y", tmp2);
 
 	gtk_entry_set_text(GTK_ENTRY(fru_date), buf);
 
