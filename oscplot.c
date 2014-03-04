@@ -2954,10 +2954,13 @@ static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	gboolean selected;
+	gint response;
 
 	color_dialog = gtk_color_selection_dialog_new("Channel Graph Color Selection");
-	gtk_dialog_run(GTK_DIALOG(color_dialog));
+	response = gtk_dialog_run(GTK_DIALOG(color_dialog));
 	gtk_widget_hide(color_dialog);
+	if (response != GTK_RESPONSE_OK)
+		return;
 
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(treeview);
