@@ -108,6 +108,15 @@ static int libini_restore_handler(void *user, const char* section,
 					free (val_str);
 				} else
 					ret = 0;
+			} else if (!strcmp("debug", elems[0])) {
+				if (set_debugfs_paths(elems[1])) {
+					if (!plugin->handle_item)
+						break;
+					ret = !plugin->handle_item(plugin, name, value);
+					break;
+				} else
+					ret = !write_sysfs_string(elems[2], debug_name_dir(), value);
+				break;
 			} else {
 				if (plugin->handle_item)
 					ret = !plugin->handle_item(plugin, name, value);
@@ -266,6 +275,39 @@ void save_all_plugins(const char *filename, gpointer user_data)
 
 						if (elems != NULL)
 							g_strfreev(elems);
+						break;
+					case 2:
+						if (!plugin->handle_item)
+							break;
+
+						elems = g_strsplit(*attribs, ".", 0);
+
+						if (!strcmp(elems[0], "debug")) {
+							if (set_debugfs_paths(elems[1])) {
+								if (elems != NULL)
+								g_strfreev(elems);
+
+								str = plugin->handle_item(plugin, *attribs, NULL);
+								if (str && str[0])
+									fprintf(cfile, "%s = %s\n",
+										*attribs, str);
+								break;
+							}
+
+							str = NULL;
+							if (read_sysfs_string(elems[2], debug_name_dir(), &str) >= 0) {
+								if (str) {
+									fprintf(cfile, "%s = %s\n",
+										*attribs,
+										str);
+									free(str);
+								}
+							}
+						}
+
+						if (elems != NULL)
+							g_strfreev(elems);
+
 						break;
 					default:
 						break;
