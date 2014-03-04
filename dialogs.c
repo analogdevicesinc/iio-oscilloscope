@@ -28,7 +28,7 @@ struct _Dialogs
 	GtkWidget *connect_iio;
 	GtkWidget *serial_num;
 	GtkWidget *load_save_profile;
-	
+
 };
 
 static Dialogs dialogs;
@@ -108,7 +108,7 @@ static size_t write_fru(char *eeprom)
 	tmp = min2date(frutime);
 	tmp2 = gmtime(&tmp);
 
-	strftime(buf, sizeof(buf), "%d %b %C %H:%M", tmp2);
+	strftime(buf, sizeof(buf), "%a %b %d %H:%M %Y", tmp2);
 
 	gtk_entry_set_text(GTK_ENTRY(fru_date), buf);
 
@@ -252,13 +252,13 @@ void connect_fillin(Dialogs *data)
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
 
 	num = 0;
-	
+
 	while(fgets(eprom_names, sizeof(eprom_names), fp) != NULL){
 		num++;
 		/* strip trailing new lines */
 		if (eprom_names[strlen(eprom_names) - 1] == '\n')
 			eprom_names[strlen(eprom_names) - 1] = '\0';
-	
+
 		/* FRU EEPROMS are exactly 256 */
 		if(stat(eprom_names, &st) !=0)
 			continue;
@@ -266,7 +266,7 @@ void connect_fillin(Dialogs *data)
 			printf("skipping %s (size == %d)\n", eprom_names, (int)st.st_size);
 			continue;
 		}
-		
+
 		i = 0;
 		if (!is_eeprom_fru(eprom_names, buf, &iter)) {
 			/* Wasn't a FRU file, but is it a blank, writeable EEPROM? */
@@ -282,7 +282,7 @@ void connect_fillin(Dialogs *data)
 					}
 				}
 				fclose(efp);
-				
+
 				/* dump the info into it */
 				if (i == 256) {
 					if (write_fru(eprom_names))
@@ -298,7 +298,7 @@ void connect_fillin(Dialogs *data)
 				gtk_text_buffer_insert(buf, &iter, text, -1);
 			}
 		}
-		
+
 		free (raw_input_data);
 	}
 	pclose(fp);
@@ -503,7 +503,7 @@ void dialogs_init(GtkBuilder *builder)
 	serial_num = GTK_WIDGET(gtk_builder_get_object(builder, "serial_number"));
 	fru_date = GTK_WIDGET(gtk_builder_get_object(builder, "fru_date"));
 	fru_file_list = GTK_WIDGET(gtk_builder_get_object(builder, "FRU_files"));
-	
+
 	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
 	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
