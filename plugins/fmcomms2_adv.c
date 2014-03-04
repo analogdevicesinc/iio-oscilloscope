@@ -374,11 +374,14 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	int i;
 
 	if (MATCH_ATTRIB(SYNC_RELOAD)) {
-		if (value)
+		if (value) {
 			for (i = 0; i < ARRAY_SIZE(attrs); i++)
 				update_widget(builder, &attrs[i]);
-		else
+			gtk_button_clicked(GTK_BUTTON(gtk_builder_get_object(builder,
+					"initialize")));
+		} else {
 			return "1";
+		}
 	} else {
 		if (value) {
 			printf("Unhandled tokens in ini file,\n"
