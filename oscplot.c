@@ -48,11 +48,13 @@ static void osc_plot_finalize(GObject *object);
 static void osc_plot_dispose(GObject *object);
 static void save_as(OscPlot *plot, const char *filename, int type);
 static void treeview_expand_update(OscPlot *plot);
+static void treeview_icon_color_update(OscPlot *plot);
 static int  cfg_read_handler(void *user, const char* section, const char* name, const char* value);
 static int device_find_by_name(const char *name);
 static int enabled_channels_of_device(GtkTreeView *treeview, const char *dev_name);
 static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter, char *dev_name, char *ch_name);
 static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type);
+static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color);
 
 /* IDs of signals */
 enum {
@@ -75,7 +77,9 @@ enum {
 	ELEMENT_REFERENCE,
 	EXPANDED,
 	CHANNEL_SETTINGS,
+	CHANNEL_COLOR_ICON,
 	SENSITIVE,
+	PLOT_TYPE,
 	NUM_COL
 };
 
@@ -1193,6 +1197,44 @@ static void iter_children_sensitivity_update(GtkTreeModel *model, GtkTreeIter *i
 	}
 }
 
+static void iter_children_plot_type_update(GtkTreeModel *model, GtkTreeIter *iter, void *data)
+{
+	OscPlot *plot = data;
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeIter child;
+	gboolean next_iter;
+
+	if (!gtk_tree_model_iter_children(model, &child, iter))
+		return;
+
+	next_iter = true;
+	while (next_iter) {
+		gtk_tree_store_set(GTK_TREE_STORE(model), &child,
+			PLOT_TYPE, gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)), -1);
+		next_iter = gtk_tree_model_iter_next(model, &child);
+	}
+}
+
+static void iter_children_icon_color_update(GtkTreeModel *model, GtkTreeIter *iter, void *data)
+{
+	GtkTreeIter child;
+	gboolean next_iter;
+	GdkPixbuf *icon;
+	struct channel_settings *settings;
+
+	if (!gtk_tree_model_iter_children(model, &child, iter))
+		return;
+
+	next_iter = true;
+	while (next_iter) {
+		gtk_tree_model_get(model, &child, CHANNEL_SETTINGS, &settings,
+				CHANNEL_COLOR_ICON, &icon, -1);
+		channel_color_icon_set_color(icon, &settings->graph_color);
+
+		next_iter = gtk_tree_model_iter_next(model, &child);
+	}
+}
+
 static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer plot)
 {
 	OscPlotPrivate *priv = ((OscPlot *)plot)->priv;
@@ -1246,6 +1288,21 @@ static void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpo
 	check_valid_setup(plot);
 }
 
+static void color_icon_renderer_visibility(GtkTreeViewColumn *col,
+		GtkCellRenderer *cell, GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+{
+	gboolean is_channel;
+	gchar plot_type;
+
+	gtk_tree_model_get(model, iter, IS_CHANNEL, &is_channel,
+			PLOT_TYPE, &plot_type, -1);
+
+	if (is_channel && plot_type == TIME_PLOT)
+		gtk_cell_renderer_set_visible(cell, TRUE);
+	else
+		gtk_cell_renderer_set_visible(cell, FALSE);
+}
+
 static void create_channel_list_view(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -1254,6 +1311,7 @@ static void create_channel_list_view(OscPlot *plot)
 	GtkCellRenderer *renderer_name;
 	GtkCellRenderer *renderer_ch_toggle;
 	GtkCellRenderer *renderer_dev_toggle;
+	GtkCellRenderer *renderer_ch_color;
 
 	col = gtk_tree_view_column_new();
 	gtk_tree_view_column_set_title(col, "Channels");
@@ -1262,7 +1320,9 @@ static void create_channel_list_view(OscPlot *plot)
 	renderer_name = gtk_cell_renderer_text_new();
 	renderer_ch_toggle = gtk_cell_renderer_toggle_new();
 	renderer_dev_toggle = gtk_cell_renderer_toggle_new();
+	renderer_ch_color = gtk_cell_renderer_pixbuf_new();
 
+	gtk_tree_view_column_pack_end(col, renderer_ch_color, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_name, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_ch_toggle, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_dev_toggle, FALSE);
@@ -1283,7 +1343,16 @@ static void create_channel_list_view(OscPlot *plot)
 					"active", DEVICE_ACTIVE,
 					"sensitive", SENSITIVE,
 					NULL);
+	gtk_tree_view_column_set_attributes(col, renderer_ch_color,
+					"pixbuf", CHANNEL_COLOR_ICON,
+					"sensitive", SENSITIVE,
+					NULL);
+	gtk_tree_view_column_set_cell_data_func(col, renderer_ch_color,
+					*color_icon_renderer_visibility,
+					NULL,
+					NULL);
 
+	g_object_set(renderer_ch_color, "follow-state", FALSE, NULL);
 	g_signal_connect(G_OBJECT(renderer_ch_toggle), "toggled", G_CALLBACK(channel_toggled), plot);
 	g_signal_connect(G_OBJECT(renderer_dev_toggle), "toggled", G_CALLBACK(device_toggled), plot);
 }
@@ -1314,6 +1383,45 @@ static void * channel_settings_new(OscPlot *plot)
 	return settings;
 }
 
+static GdkPixbuf * channel_color_icon_new(OscPlot *plot)
+{
+	DIR *d;
+
+	/* Check the local icons folder first */
+	d = opendir("./icons");
+	if (!d) {
+		return gtk_image_get_pixbuf(GTK_IMAGE(gtk_image_new_from_file(OSC_GLADE_FILE_PATH"ch_color_icon.png")));
+
+	} else {
+		return gtk_image_get_pixbuf(GTK_IMAGE(gtk_image_new_from_file("icons/ch_color_icon.png")));
+	}
+	closedir(d);
+
+
+
+}
+
+static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color)
+{
+	guchar *pixel;
+	int rowstride;
+	int ht;
+	int i, j;
+	const char border = 2;
+
+	pixel = gdk_pixbuf_get_pixels(pb);
+	ht = gdk_pixbuf_get_height(pb);
+	rowstride = gdk_pixbuf_get_rowstride(pb);
+
+	for (i = border; i < ht - border; i++)
+		for (j = border * 4; j < rowstride - border * 4; j += 4) {
+			pixel[i * rowstride + j + 0] = color->red / 255;
+			pixel[i * rowstride + j + 1] = color->green / 255;
+			pixel[i * rowstride + j + 2] = color->blue / 255;
+			pixel[i * rowstride + j + 3] = 255;
+		}
+}
+
 static void device_list_treeview_init(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -1321,6 +1429,9 @@ static void device_list_treeview_init(OscPlot *plot)
 	GtkTreeIter iter;
 	GtkTreeIter child;
 	GtkTreeStore *treestore;
+	GdkPixbuf *new_icon;
+	GdkColor *icon_color;
+	struct channel_settings *new_settings;
 	int i, j;
 
 	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
@@ -1330,11 +1441,21 @@ static void device_list_treeview_init(OscPlot *plot)
 			IS_DEVICE, TRUE, DEVICE_ACTIVE, !i, ELEMENT_REFERENCE, &device_list[i], SENSITIVE, true, -1);
 		for (j = 0; j < device_list[i].num_channels; j++) {
 			if (strcmp("in_timestamp", device_list[i].channel_list[j].name) != 0) {
+				new_settings = channel_settings_new(plot);
+				new_icon = channel_color_icon_new(plot);
+				icon_color = &new_settings->graph_color;
+				channel_color_icon_set_color(new_icon, icon_color);
 				gtk_tree_store_append(treestore, &child, &iter);
-				gtk_tree_store_set(treestore, &child, ELEMENT_NAME, device_list[i].channel_list[j].name,
-					IS_CHANNEL, TRUE, CHANNEL_ACTIVE, FALSE, ELEMENT_REFERENCE,
-					&device_list[i].channel_list[j], CHANNEL_SETTINGS, channel_settings_new(plot),
-					SENSITIVE, true, -1);
+				gtk_tree_store_set(treestore, &child,
+					ELEMENT_NAME, device_list[i].channel_list[j].name,
+					IS_CHANNEL, TRUE,
+					CHANNEL_ACTIVE, FALSE,
+					ELEMENT_REFERENCE, &device_list[i].channel_list[j],
+					CHANNEL_SETTINGS, new_settings,
+					CHANNEL_COLOR_ICON, new_icon,
+					SENSITIVE, true,
+					PLOT_TYPE, TIME_PLOT,
+					-1);
 			}
 		}
 	}
@@ -2338,6 +2459,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 		case PLOT_ATTRIBUTE:
 			if (MATCH_NAME("capture_started")) {
 				treeview_expand_update(plot);
+				treeview_icon_color_update(plot);
 				max_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_max), plot);
 				min_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_min), plot);
 				if (priv->read_scale_params == 4) {
@@ -2578,6 +2700,12 @@ static void treeview_expand_update(OscPlot *plot)
 		expand_iter(plot, &dev_iter, expanded);
 		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
 	}
+}
+
+static void treeview_icon_color_update(OscPlot *plot)
+{
+	foreach_device_iter(GTK_TREE_VIEW(plot->priv->channel_list_view),
+			*iter_children_icon_color_update, NULL);
 }
 
 static inline void marker_set(OscPlot *plot, int i, char *buf, bool force)
@@ -2879,6 +3007,9 @@ static void plot_domain_changed_cb(GtkComboBox *box, OscPlot *plot)
 
 	check_valid_setup(plot);
 
+	foreach_device_iter(GTK_TREE_VIEW(plot->priv->channel_list_view),
+			*iter_children_plot_type_update, plot);
+
 	if (num_devices < 2)
 		return;
 
@@ -2953,6 +3084,7 @@ static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	GtkTreeView *treeview;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
+	GdkPixbuf *color_icon;
 	gboolean selected;
 	gint response;
 
@@ -2967,11 +3099,16 @@ static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	selected = tree_get_selected_row_iter(treeview, &iter);
 	if (!selected)
 		return;
-	gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &settings, -1);
+	gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &settings,
+			CHANNEL_COLOR_ICON, &color_icon, -1);
 	color = &settings->graph_color;
 
 	colorsel = gtk_color_selection_dialog_get_color_selection(GTK_COLOR_SELECTION_DIALOG(color_dialog));
 	gtk_color_selection_get_current_color(GTK_COLOR_SELECTION(colorsel), color);
+
+	/* Change icon color */
+	channel_color_icon_set_color(color_icon, color);
+
 }
 static void channel_math_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
@@ -3138,6 +3275,8 @@ static void create_plot(OscPlot *plot)
 									G_TYPE_POINTER,   /* ELEMENT_REFERENCE */
 									G_TYPE_BOOLEAN,   /* EXPANDED */
 									G_TYPE_POINTER,   /* CHANNEL_SETTINGS */
+									GDK_TYPE_PIXBUF,  /* CHANNEL_COLOR_ICON */
+									G_TYPE_CHAR,      /* PLOT_TYPE */
 									G_TYPE_BOOLEAN);  /* SENSITIVE */
 	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 

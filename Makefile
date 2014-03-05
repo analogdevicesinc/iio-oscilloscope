@@ -91,6 +91,7 @@ install:
 	install ./icons/osc128.png $(PSHARE)
 	install ./icons/osc_capture.png $(PSHARE)
 	install ./icons/osc_generator.png $(PSHARE)
+	install ./icons/ch_color_icon.png $(PSHARE)
 	install $(PLUGINS) $(PLIB)
 	install ./xmls/* $(PLIB)/xmls
 	install ./filters/* $(PLIB)/filters
