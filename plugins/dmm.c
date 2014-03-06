@@ -20,6 +20,8 @@
 #include <stdbool.h>
 #include <malloc.h>
 
+#include <iio.h>
+
 #include "../osc.h"
 #include "../iio_utils.h"
 #include "../iio_widget.h"
@@ -36,20 +38,86 @@ static gint this_page;
 static GtkNotebook *nbook;
 static gboolean plugin_detached;
 
+static struct iio_context *ctx;
+
+static struct iio_device * get_device(const char *id)
+{
+	unsigned int i, nb = iio_context_get_devices_count(ctx);
+	for (i = 0; i < nb; i++) {
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		const char *name = iio_device_get_name(dev);
+
+		if (!strcmp(id, iio_device_get_id(dev)) ||
+				(name && !strcmp(name, id)))
+			return dev;
+	}
+	return NULL;
+}
+
+static struct iio_channel * get_channel(const struct iio_device *dev,
+		const char *id)
+{
+	unsigned int i, nb = iio_device_get_channels_count(dev);
+	for (i = 0; i < nb; i++) {
+		struct iio_channel *chn = iio_device_get_channel(dev, i);
+		const char *name = iio_channel_get_name(chn);
+
+		if (!strcmp(id, iio_channel_get_id(chn)) ||
+				(name && !strcmp(name, id)))
+			return chn;
+	}
+	return NULL;
+}
+
+static double read_double_attr(const struct iio_channel *chn, const char *name)
+{
+	unsigned int i, nb = iio_channel_get_attrs_count(chn);
+
+	for (i = 0; i < nb; i++) {
+		char buf[1024];
+		size_t ret;
+		const char *attr = iio_channel_get_attr(chn, i);
+		if (strcmp(attr, name))
+			continue;
+
+		ret = iio_channel_attr_read(chn, attr, buf, sizeof(buf));
+		if (ret < 0)
+			return -1.0;
+		return strtod(buf, NULL);
+	}
+
+	return -1.0;
+}
+
+static bool has_attribute(const struct iio_channel *chn, const char *name)
+{
+	unsigned int i, nb = iio_channel_get_attrs_count(chn);
+
+	for (i = 0; i < nb; i++) {
+		const char *attr = iio_channel_get_attr(chn, i);
+		if (!strcmp(attr, name))
+			return true;
+	}
+	return false;
+}
+
 static void build_channel_list(void)
 {
 	GtkTreeIter iter, iter2, iter3;
 	unsigned int enabled;
-	char *device, *device2, *elements, *start, *strt, *end, *next, *scale;
-	char buf[128], buf2[128], pretty[128];
+	char *device, *device2;
 	gboolean first = FALSE, iter3_valid = FALSE, loop, loop2, all = FALSE;
+	fprintf(stderr, "get devices count\n");
 
 	loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL (device_list_store), &iter);
-	//gtk_list_store_clear(channel_list_store);
+	gtk_list_store_clear(channel_list_store);
 
 	while (loop) {
 		gtk_tree_model_get(GTK_TREE_MODEL (device_list_store), &iter, 0, &device, 1, &enabled, -1);
 		if (enabled) {
+			struct iio_device *dev;
+			unsigned int i, nb_channels;
+
 			all = true;
 			/* is it already in the list? */
 			loop2 = gtk_tree_model_get_iter_first(GTK_TREE_MODEL (channel_list_store), &iter2);
@@ -78,48 +146,23 @@ static void build_channel_list(void)
 				continue;
 			}
 
-			find_scan_elements(device, &elements, ACCESS_NORM);
+			dev = get_device(device);
+			if (!dev)
+				continue;
 
-			scan_elements_sort(&elements);
-			scan_elements_insert(&elements, SCALE_TOKEN, "_raw");
-			while(isspace(elements[strlen(elements) - 1]))
-				elements[strlen(elements) - 1] = 0;
-			start = elements;
+			nb_channels = iio_device_get_channels_count(dev);
+			for (i = 0; i < nb_channels; i++) {
+				struct iio_channel *chn =
+					iio_device_get_channel(dev, i);
+				const char *name, *id, *devid;
+				char buf[1024], *scale;
 
-			while (start[0] != 0) {
-				/* find pointers, and correct for end of line */
-				end = strchr(start, ' ');
-				if (!end)
-					end = start + strlen(start);
-
-				scale = strstr(end + 1, SCALE_TOKEN);
-				next = strchr(end + 1, ' ' );
-
-				if (!next)
-					next = end + 1 + strlen(end + 1);
-
-				sprintf(buf, "%.*s", (int)(end - start), start);
-
-				strt = start;
-				if(scale >= next) {
-					scale = NULL;
-					buf2[0] = 0;
-					start = end + 1;
-				} else {
-					sprintf(buf2, "%.*s", (int)(next - end) - 1, end + 1);
-					start = next + 1;
-				}
-
-
-				/* if it doesn't start with "in_" or includes the scale,
-				 * skip it */
-				if (strncmp("in_", buf, 3) || (strstr(buf, SCALE_TOKEN)))
+				if (iio_channel_is_output(chn))
 					continue;
 
-				if (strstr(buf, "_raw"))
-					sprintf(pretty, "%s: %.*s", device, (int)(end - strt) - 7, &strt[3]);
-				else
-					sprintf(pretty, "%s: %.*s", device, (int)(end - strt) - 4, &strt[3]);
+				if (iio_channel_attr_read(chn, "scale",
+							buf, sizeof(buf)) < 0)
+					continue;
 
 				if (iter3_valid) {
 					if (first) {
@@ -133,16 +176,24 @@ static void build_channel_list(void)
 					gtk_list_store_append(channel_list_store, &iter2);
 					iter3_valid = TRUE;
 				}
+
+				scale = strdup(buf);
+
+				devid = iio_device_get_id(dev);
+				name = iio_channel_get_name(chn);
+				id = iio_channel_get_id(chn);
+				if (!name)
+					name = id;
+
 				gtk_list_store_set(channel_list_store, &iter2,
-						0, pretty,	/* pretty channel name */
+						0, name,	/* channel name */
 						1, 0,		/* On/Off */
-						2, device, 	/* the actual device */
-						3, buf,		/* the actual channel name */
-						4, buf2,	/* scale */
+						2, devid,	/* device ID */
+						3, id,		/* channel ID */
+						4, scale,	/* scale */
 							-1);
 				iter3 = iter2;
 			}
-			free(elements);
 		} else {
 			loop2 = gtk_tree_model_get_iter_first(GTK_TREE_MODEL (channel_list_store), &iter2);
 			while (loop2) {
@@ -209,29 +260,33 @@ static void pick_all_channels(GtkCellRendererToggle* renderer, gchar* pathStr, g
 
 static void init_device_list(void)
 {
-	char *devices = NULL, *device, *elements;
-	unsigned int num;
+	unsigned int i, num = iio_context_get_devices_count(ctx);
 	GtkTreeIter iter;
 
 	gtk_list_store_clear(device_list_store);
 
-	num = find_iio_names(&devices, "iio:device");
-	if (devices != NULL) {
-		device = devices;
-		for (; num > 0; num--) {
-			if (!is_input_device(device)) {
-				if (find_scan_elements(device, &elements, ACCESS_NORM)) {
-					if (strstr(elements, "in_")) {
-						gtk_list_store_append(device_list_store, &iter);
-						gtk_list_store_set(device_list_store, &iter, 0, device,  1, 0, -1);
-					}
-				}
-			}
-			device += strlen(device) + 1;
-		}
-		free(devices);
-	}
+	for (i = 0; i < num; i++) {
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		unsigned int j, nch = iio_device_get_channels_count(dev);
+		const char *id;
+		bool input = false;
 
+		for (j = 0; !input && j < nch; j++) {
+			struct iio_channel *chn =
+				iio_device_get_channel(dev, j);
+			input = !iio_channel_is_output(chn);
+		}
+
+		if (!input)
+			continue;
+
+		id = iio_device_get_name(dev);
+		if (!id)
+			id = iio_device_get_id(dev);
+
+		gtk_list_store_append(device_list_store, &iter);
+		gtk_list_store_set(device_list_store, &iter, 0, id,  1, 0, -1);
+	}
 }
 
 static void dmm_update_thread(void)
@@ -240,7 +295,7 @@ static void dmm_update_thread(void)
 	GtkTreeIter tree_iter;
 	char *name, *device, *channel, *scale, tmp[128];
 	gboolean loop, enabled;
-	double value, sca;
+	double value;
 
 	GtkTextBuffer *buf;
 	GtkTextIter text_iter;
@@ -262,19 +317,32 @@ static void dmm_update_thread(void)
 						4, &scale,
 						-1);
 				if (enabled) {
-					set_dev_paths(device);
-					read_devattr_double(channel, &value);
-					if (scale)
-						read_devattr_double(scale, &sca);
-					else
-						sca = 1.0;
+					struct iio_device *dev =
+						get_device(device);
+					struct iio_channel *chn =
+						get_channel(dev, channel);
 
-					if(strstr(name, "voltage"))
-						sprintf(tmp, "%s = %f Volts\n", name, value * sca / 1000.0);
-					else if (strstr(name, "temp"))
-						sprintf(tmp, "%s = %f Celsius\n", name, value * sca / 1000.0);
+					if (has_attribute(chn, "raw"))
+						value = read_double_attr(chn, "raw");
+					else if (has_attribute(chn, "processed"))
+						value = read_double_attr(chn, "processed");
 					else
-						sprintf(tmp, "%s = %f\n", name, value * sca / 1000.0);
+						continue;
+
+					if (has_attribute(chn, "offset"))
+						value += read_double_attr(chn,
+								"offset");
+					if (has_attribute(chn, "scale"))
+						value *= read_double_attr(chn,
+								"scale");
+					value /= 1000.0;
+
+					if (!strncmp(channel, "voltage", 7))
+						sprintf(tmp, "%s = %f Volts\n", name, value);
+					else if (!strncmp(channel, "temp", 4))
+						sprintf(tmp, "%s = %f Celsius\n", name, value);
+					else
+						sprintf(tmp, "%s = %f\n", name, value);
 
 					gtk_text_buffer_insert(buf, &text_iter, tmp, -1);
 				}
@@ -499,25 +567,28 @@ static void update_active_page(gint active_page, gboolean is_detached)
 
 static bool dmm_identify(void)
 {
-	char *devices = NULL, *device, *elements;
-	unsigned int num;
+	unsigned int i, num;
 	bool ret = false;
 
-	num = find_iio_names(&devices, "iio:device");
-	if (devices != NULL) {
-		device = devices;
-		for (; num > 0; num--) {
-			if (!is_input_device(device) &&
-					(find_scan_elements(device, &elements, ACCESS_NORM))) {
-				if (strstr(elements, "in_")) {
-					ret = true;
-					break;
-				}
-			}
-			device += strlen(device) + 1;
+	ctx = osc_create_context();
+	if (!ctx)
+		return false;
+
+	num = iio_context_get_devices_count(ctx);
+	for (i = 0; !ret && i < num; i++) {
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		unsigned int j, nch = iio_device_get_channels_count(dev);
+
+		for (j = 0; !ret && j < nch; j++) {
+			struct iio_channel *chn =
+				iio_device_get_channel(dev, j);
+			if (!iio_channel_is_output(chn))
+				ret = true;
 		}
-		free(devices);
 	}
+
+	if (!ret)
+		iio_context_destroy(ctx);
 	return ret;
 }
 
