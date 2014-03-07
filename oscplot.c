@@ -2302,6 +2302,8 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 	fprintf(fp, "y_axis_min=%f\n", bottom);
 	fprintf(fp, "y_axis_max=%f\n", top);
 
+	fprintf(fp, "plot_title = %s\n", gtk_window_get_title(GTK_WINDOW(priv->window)));
+
 	next_dev_iter = gtk_tree_model_get_iter_first(model, &dev_iter);
 	while (next_dev_iter) {
 		gtk_tree_model_get(model, &dev_iter, ELEMENT_REFERENCE, &dev,
@@ -2497,6 +2499,8 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			} else if (MATCH_NAME("y_axis_max")) {
 				priv->plot_top = atof(value);
 				priv->read_scale_params++;
+			} else if (MATCH_NAME("plot_title")) {
+				gtk_window_set_title(GTK_WINDOW(priv->window), value);
 			} else if (MATCH_NAME("marker_type")) {
 				set_marker_labels(plot, (gchar *)value, MARKER_NULL);
 				for (i = 0; i <= MAX_MARKERS; i++)
