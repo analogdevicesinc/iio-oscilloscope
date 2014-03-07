@@ -178,6 +178,7 @@ struct _OscPlotPrivate
 	GtkWidget *title_edit_dialog;
 	GtkWidget *fullscreen_button;
 	GtkWidget *menu_fullscreen;
+	GtkWidget *menu_show_options;
 	GtkWidget *y_axis_max;
 	GtkWidget *y_axis_min;
 	GtkWidget *viewport_saveas_channels;
@@ -192,6 +193,7 @@ struct _OscPlotPrivate
 	GtkWidget *channel_color_menuitem;
 	GtkWidget *channel_math_menuitem;
 	GtkWidget *math_dialog;
+	GtkWidget *capture_options_box;
 
 	GtkTextBuffer* tbuf;
 
@@ -2304,6 +2306,8 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 
 	fprintf(fp, "plot_title = %s\n", gtk_window_get_title(GTK_WINDOW(priv->window)));
 
+	fprintf(fp, "show_capture_options = %d\n", gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(priv->menu_show_options)));
+
 	next_dev_iter = gtk_tree_model_get_iter_first(model, &dev_iter);
 	while (next_dev_iter) {
 		gtk_tree_model_get(model, &dev_iter, ELEMENT_REFERENCE, &dev,
@@ -2501,6 +2505,8 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				priv->read_scale_params++;
 			} else if (MATCH_NAME("plot_title")) {
 				gtk_window_set_title(GTK_WINDOW(priv->window), value);
+			} else if (MATCH_NAME("show_capture_options")) {
+				gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(priv->menu_show_options), atoi(value));
 			} else if (MATCH_NAME("marker_type")) {
 				set_marker_labels(plot, (gchar *)value, MARKER_NULL);
 				for (i = 0; i <= MAX_MARKERS; i++)
@@ -3198,6 +3204,14 @@ static void menu_title_edit_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	gtk_widget_hide(plot->priv->title_edit_dialog);
 }
 
+static void show_capture_options_toggled_cb(GtkCheckMenuItem *menu_item, OscPlot *plot)
+{
+	if (gtk_check_menu_item_get_active(menu_item))
+		gtk_widget_show(plot->priv->capture_options_box);
+	else
+		gtk_widget_hide(plot->priv->capture_options_box);
+}
+
 static void fullscreen_changed_cb(GtkWidget *widget, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -3269,6 +3283,7 @@ static void create_plot(OscPlot *plot)
 	priv->title_edit_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_plot_title_edit"));
 	priv->fullscreen_button = GTK_WIDGET(gtk_builder_get_object(builder, "fullscreen"));
 	priv->menu_fullscreen = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_fullscreen"));
+	priv->menu_show_options = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_show_options"));
 	priv->y_axis_max = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_max"));
 	priv->y_axis_min = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_min"));
 	priv->viewport_saveas_channels = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_channels_container"));
@@ -3278,6 +3293,7 @@ static void create_plot(OscPlot *plot)
 	priv->fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
 	priv->fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
 	priv->math_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_math_settings"));
+	priv->capture_options_box = GTK_WIDGET(gtk_builder_get_object(builder, "box_capture_options"));
 
 	priv->tbuf = NULL;
 	priv->ch_settings_list = NULL;
@@ -3401,6 +3417,9 @@ static void create_plot(OscPlot *plot)
 
 	g_builder_connect_signal(builder, "menuitem_window_title", "activate",
 		G_CALLBACK(menu_title_edit_cb), plot);
+
+	g_builder_connect_signal(builder, "menuitem_show_options", "toggled",
+		G_CALLBACK(show_capture_options_toggled_cb), plot);
 
 	g_builder_connect_signal(builder, "menuitem_fullscreen", "activate",
 		G_CALLBACK(fullscreen_changed_cb), plot);
