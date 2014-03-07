@@ -175,7 +175,9 @@ struct _OscPlotPrivate
 	GtkWidget *saveas_button;
 	GtkWidget *saveas_dialog;
 	GtkWidget *saveas_type_dialog;
+	GtkWidget *title_edit_dialog;
 	GtkWidget *fullscreen_button;
+	GtkWidget *menu_fullscreen;
 	GtkWidget *y_axis_max;
 	GtkWidget *y_axis_min;
 	GtkWidget *viewport_saveas_channels;
@@ -230,6 +232,8 @@ struct _OscPlotPrivate
 
 	gint redraw_function;
 	gint stop_redraw;
+
+	gboolean fullscreen_state;
 
 	bool profile_loaded_scale;
 
@@ -1166,16 +1170,6 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 	}
 }
 
-static void fullscreen_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
-{
-	OscPlot *plot = data;
-
-	if (gtk_toggle_tool_button_get_active(btn))
-		gtk_window_fullscreen(GTK_WINDOW(plot->priv->window));
-	else
-		gtk_window_unfullscreen(GTK_WINDOW(plot->priv->window));
-}
-
 static void iter_children_sensitivity_update(GtkTreeModel *model, GtkTreeIter *iter, void *data)
 {
 	GtkTreeIter child;
@@ -1391,14 +1385,10 @@ static GdkPixbuf * channel_color_icon_new(OscPlot *plot)
 	d = opendir("./icons");
 	if (!d) {
 		return gtk_image_get_pixbuf(GTK_IMAGE(gtk_image_new_from_file(OSC_GLADE_FILE_PATH"ch_color_icon.png")));
-
 	} else {
+		closedir(d);
 		return gtk_image_get_pixbuf(GTK_IMAGE(gtk_image_new_from_file("icons/ch_color_icon.png")));
 	}
-	closedir(d);
-
-
-
 }
 
 static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color)
@@ -1530,17 +1520,6 @@ static gboolean capture_button_icon_transform(GBinding *binding,
 		g_value_set_static_string(target_value, "gtk-stop");
 	else
 		g_value_set_static_string(target_value, "gtk-media-play");
-
-	return TRUE;
-}
-
-static gboolean fullscreen_button_icon_transform(GBinding *binding,
-	const GValue *source_value, GValue *target_value, gpointer user_data)
-{
-	if (g_value_get_boolean(source_value))
-		g_value_set_static_string(target_value, "gtk-leave-fullscreen");
-	else
-		g_value_set_static_string(target_value, "gtk-fullscreen");
 
 	return TRUE;
 }
@@ -3193,6 +3172,58 @@ static gboolean right_click_on_ch_list_cb(GtkTreeView *treeview, GdkEventButton 
 	return false;
 }
 
+static void menu_quit_cb(GtkMenuItem *menuitem, OscPlot *plot)
+{
+	osc_plot_destroy(plot);
+}
+
+static void menu_title_edit_cb(GtkMenuItem *menuitem, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkEntry *title_entry;
+	const gchar *title;
+	gint response;
+
+	response = gtk_dialog_run(GTK_DIALOG(priv->title_edit_dialog));
+	if (response == GTK_RESPONSE_OK) {
+		title_entry = GTK_ENTRY(gtk_builder_get_object(priv->builder, "title_entry"));
+		title = gtk_entry_get_text(title_entry);
+		gtk_window_set_title(GTK_WINDOW(priv->window), title);
+	}
+
+	gtk_widget_hide(plot->priv->title_edit_dialog);
+}
+
+static void fullscreen_changed_cb(GtkWidget *widget, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkWidget *img;
+
+	if (priv->fullscreen_state) {
+		gtk_window_unfullscreen(GTK_WINDOW(priv->window));
+		gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-fullscreen");
+		gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Fullscreen");
+		img = gtk_image_menu_item_get_image(GTK_IMAGE_MENU_ITEM(priv->menu_fullscreen));
+		gtk_image_set_from_stock(GTK_IMAGE(img), "gtk-fullscreen", GTK_ICON_SIZE_MENU);
+	} else {
+		gtk_window_fullscreen(GTK_WINDOW(priv->window));
+		gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-leave-fullscreen");
+		gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Leave Fullscreen");
+		img = gtk_image_menu_item_get_image(GTK_IMAGE_MENU_ITEM(priv->menu_fullscreen));
+		gtk_image_set_from_stock(GTK_IMAGE(img), "gtk-leave-fullscreen", GTK_ICON_SIZE_MENU);
+	}
+}
+
+static gboolean window_state_event_cb(GtkWidget *widget, GdkEventWindowState *event, OscPlot *plot)
+{
+	if (event->new_window_state & GDK_WINDOW_STATE_FULLSCREEN)
+		plot->priv->fullscreen_state = true;
+	else
+		plot->priv->fullscreen_state = false;
+
+	return FALSE;
+}
+
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -3231,7 +3262,9 @@ static void create_plot(OscPlot *plot)
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	priv->saveas_type_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_type_dialog"));
-	priv->fullscreen_button = GTK_WIDGET(gtk_builder_get_object(builder, "fullscreen_toggle"));
+	priv->title_edit_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_plot_title_edit"));
+	priv->fullscreen_button = GTK_WIDGET(gtk_builder_get_object(builder, "fullscreen"));
+	priv->menu_fullscreen = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_fullscreen"));
 	priv->y_axis_max = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_max"));
 	priv->y_axis_min = GTK_WIDGET(gtk_builder_get_object(builder, "spin_Y_min"));
 	priv->viewport_saveas_channels = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_channels_container"));
@@ -3305,6 +3338,8 @@ static void create_plot(OscPlot *plot)
 	/* Connect Signals */
 	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);
 
+	g_signal_connect(G_OBJECT(priv->window), "window-state-event",
+		G_CALLBACK(window_state_event_cb), plot);
 	priv->capture_button_hid =
 	g_signal_connect(priv->capture_button, "toggled",
 		G_CALLBACK(capture_button_clicked_cb), plot);
@@ -3320,8 +3355,8 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(gtk_widget_hide_on_delete), plot);
 	g_signal_connect(priv->saveas_type_dialog, "delete-event",
 		G_CALLBACK(gtk_widget_hide_on_delete), plot);
-	g_signal_connect(priv->fullscreen_button, "toggled",
-		G_CALLBACK(fullscreen_button_clicked_cb), plot);
+	g_signal_connect(priv->fullscreen_button, "clicked",
+		G_CALLBACK(fullscreen_changed_cb), plot);
 	g_signal_connect(priv->enable_auto_scale, "toggled",
 		G_CALLBACK(enable_auto_scale_cb), plot);
 	g_signal_connect(priv->y_axis_max, "value-changed",
@@ -3354,11 +3389,21 @@ static void create_plot(OscPlot *plot)
 	g_signal_connect(GTK_DATABOX(priv->databox), "button_release_event",
 		G_CALLBACK(marker_button), plot);
 
+	g_builder_connect_signal(builder, "menuitem_save_as", "activate",
+		G_CALLBACK(cb_saveas_chooser), plot);
+
+	g_builder_connect_signal(builder, "menuitem_quit", "activate",
+		G_CALLBACK(menu_quit_cb), plot);
+
+	g_builder_connect_signal(builder, "menuitem_window_title", "activate",
+		G_CALLBACK(menu_title_edit_cb), plot);
+
+	g_builder_connect_signal(builder, "menuitem_fullscreen", "activate",
+		G_CALLBACK(fullscreen_changed_cb), plot);
+
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,
 		"stock-id", 0, capture_button_icon_transform, NULL, plot, NULL);
-	g_object_bind_property_full(priv->fullscreen_button, "active", priv->fullscreen_button,
-		"stock-id", 0, fullscreen_button_icon_transform, NULL, NULL, NULL);
 	g_object_bind_property(priv->y_axis_max, "value", ruler_y, "lower", G_BINDING_DEFAULT);
 	g_object_bind_property(priv->y_axis_min, "value", ruler_y, "upper", G_BINDING_DEFAULT);
 
