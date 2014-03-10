@@ -154,6 +154,11 @@ struct string_and_plot {
 	OscPlot *plot;
 };
 
+struct plot_geometry {
+	gint width;
+	gint height;
+};
+
 struct _OscPlotPrivate
 {
 	GtkBuilder *builder;
@@ -196,6 +201,8 @@ struct _OscPlotPrivate
 	GtkWidget *capture_options_box;
 
 	GtkTextBuffer* tbuf;
+
+	struct plot_geometry size;
 
 	int frame_counter;
 	time_t last_update;
@@ -2308,6 +2315,10 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 
 	fprintf(fp, "show_capture_options = %d\n", gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(priv->menu_show_options)));
 
+	gtk_window_get_size(GTK_WINDOW(priv->window), &priv->size.width, &priv->size.height);
+	fprintf(fp, "plot_width = %d\n", priv->size.width);
+	fprintf(fp, "plot_height = %d\n", priv->size.height);
+
 	next_dev_iter = gtk_tree_model_get_iter_first(model, &dev_iter);
 	while (next_dev_iter) {
 		gtk_tree_model_get(model, &dev_iter, ELEMENT_REFERENCE, &dev,
@@ -2507,6 +2518,10 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				gtk_window_set_title(GTK_WINDOW(priv->window), value);
 			} else if (MATCH_NAME("show_capture_options")) {
 				gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(priv->menu_show_options), atoi(value));
+			} else if (MATCH_NAME("plot_width")) {
+				gtk_window_resize(GTK_WINDOW(priv->window), atoi(value), priv->size.height);
+			} else if (MATCH_NAME("plot_height")) {
+				gtk_window_resize(GTK_WINDOW(priv->window), priv->size.width, atoi(value));
 			} else if (MATCH_NAME("marker_type")) {
 				set_marker_labels(plot, (gchar *)value, MARKER_NULL);
 				for (i = 0; i <= MAX_MARKERS; i++)
@@ -3206,10 +3221,15 @@ static void menu_title_edit_cb(GtkMenuItem *menuitem, OscPlot *plot)
 
 static void show_capture_options_toggled_cb(GtkCheckMenuItem *menu_item, OscPlot *plot)
 {
-	if (gtk_check_menu_item_get_active(menu_item))
+	OscPlotPrivate *priv = plot->priv;
+
+	if (gtk_check_menu_item_get_active(menu_item)) {
+		gtk_window_get_size(GTK_WINDOW(priv->window), &priv->size.width, &priv->size.height);
 		gtk_widget_show(plot->priv->capture_options_box);
-	else
+	} else {
 		gtk_widget_hide(plot->priv->capture_options_box);
+		gtk_window_resize(GTK_WINDOW(priv->window), priv->size.width, priv->size.height);
+	}
 }
 
 static void fullscreen_changed_cb(GtkWidget *widget, OscPlot *plot)
@@ -3354,6 +3374,8 @@ static void create_plot(OscPlot *plot)
 	/* Create application's treeviews */
 	device_list_treeview_init(plot);
 	saveas_channels_list_fill(plot);
+
+	gtk_window_get_size(GTK_WINDOW(priv->window), &priv->size.width, &priv->size.height);
 
 	/* Connect Signals */
 	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);
