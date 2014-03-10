@@ -2519,9 +2519,11 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			} else if (MATCH_NAME("show_capture_options")) {
 				gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(priv->menu_show_options), atoi(value));
 			} else if (MATCH_NAME("plot_width")) {
-				gtk_window_resize(GTK_WINDOW(priv->window), atoi(value), priv->size.height);
+				priv->size.width = atoi(value);
+				gtk_window_resize(GTK_WINDOW(priv->window), priv->size.width, priv->size.height);
 			} else if (MATCH_NAME("plot_height")) {
-				gtk_window_resize(GTK_WINDOW(priv->window), priv->size.width, atoi(value));
+				priv->size.height = atoi(value);
+				gtk_window_resize(GTK_WINDOW(priv->window), priv->size.width, priv->size.height);
 			} else if (MATCH_NAME("marker_type")) {
 				set_marker_labels(plot, (gchar *)value, MARKER_NULL);
 				for (i = 0; i <= MAX_MARKERS; i++)
