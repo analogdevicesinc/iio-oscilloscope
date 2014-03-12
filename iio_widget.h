@@ -14,6 +14,7 @@ struct iio_widget {
 	const char *attr_name_avail;
 	GtkWidget *widget;
 	void *priv;
+	void *priv_progress;
 
 	void (*save)(struct iio_widget *);
 	void (*update)(struct iio_widget *);
@@ -64,4 +65,11 @@ void iio_spin_button_s64_init_from_builder(struct iio_widget *widget,
 void iio_spin_button_s64_init(struct iio_widget *widget,
 	const char *device_name, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale);
+
+void iio_spin_button_add_progress(struct iio_widget *iio_w);
+void iio_spin_button_progress_activate(struct iio_widget *iio_w);
+void iio_spin_button_set_on_complete_function(struct iio_widget *iio_w,
+	void(*on_complete)(void));
+void iio_spin_button_progress_deactivate(struct iio_widget *iio_w);
+void iio_spin_button_remove_progress(struct iio_widget *iio_w);
 #endif
