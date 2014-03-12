@@ -113,6 +113,7 @@ static int (*plugin_setup_validation_fct)(struct iio_channel_info*, int, char **
 static struct plugin_check_fct *setup_check_functions = NULL;
 static int num_check_fcts = 0;
 static bool profile_loaded_scale;
+static gint line_thickness = 1;
 
 const char *current_device;
 
@@ -1266,7 +1267,7 @@ static int fft_capture_setup(void)
 			set_marker_labels(NULL, marker_type);
 	}
 
-	fft_graph = gtk_databox_lines_new(num_samples_ploted, X, fft_channel, &color_graph[0], 1);
+	fft_graph = gtk_databox_lines_new(num_samples_ploted, X, fft_channel, &color_graph[0], line_thickness);
 	gtk_databox_graph_add(GTK_DATABOX(databox), fft_graph);
 
 	return 0;
@@ -1676,7 +1677,7 @@ static int time_capture_setup(void)
 					channel_data[1], &color_graph[0], 3);
 		else
 			fft_graph = gtk_databox_lines_new(num_samples, channel_data[0],
-					channel_data[1], &color_graph[0], 1);
+					channel_data[1], &color_graph[0], line_thickness);
 		gtk_databox_graph_add(GTK_DATABOX (databox), fft_graph);
 	} else {
 		j = 0;
@@ -1689,7 +1690,7 @@ static int time_capture_setup(void)
 					channel_data[j], &color_graph[i], 3);
 			else
 				channel_graph[j] = gtk_databox_lines_new(num_samples, X,
-					channel_data[j], &color_graph[i], 1);
+					channel_data[j], &color_graph[i], line_thickness);
 
 			gtk_databox_graph_add(GTK_DATABOX(databox), channel_graph[j]);
 			j++;
@@ -2530,6 +2531,8 @@ void capture_profile_save(const char *filename)
 	fprintf(inifp, "y_axis_min=%f\n", bottom);
 	fprintf(inifp, "y_axis_max=%f\n", top);
 
+	fprintf(inifp, "line_thickness = %i\n", line_thickness);
+
 	if (marker_type == MARKER_OFF)
 		fprintf(inifp, "marker_type = %s\n", OFF_MRK);
 	else if (marker_type == MARKER_PEAK)
@@ -2751,6 +2754,11 @@ int capture_profile_handler(const char* name, const char *value)
 							ret = 0;
 					} else
 						ret = 0;
+				}
+			} else if (MATCH_NAME("line_thickness")) {
+				if (value) {
+					if (atoi(value))
+						line_thickness = atoi(value);
 				}
 			} else if (MATCH_NAME("quit")) {
 				return 0;
