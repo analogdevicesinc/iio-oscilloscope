@@ -48,6 +48,7 @@ static struct iio_widget rx_widgets[50];
 static unsigned int rx1_gain, rx2_gain;
 static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_lo, tx_lo;
+static unsigned int rx_sample_freq, tx_sample_freq;
 
 /* Widgets for Global Settings */
 static GtkWidget *ensm_mode;
@@ -210,6 +211,12 @@ static void glb_settings_update_labels(void)
 
 }
 
+static void sample_frequency_changed_cb(void)
+{
+	glb_settings_update_labels();
+	rx_update_labels();
+}
+
 static void rssi_update_labels(void)
 {
 	char *buf = NULL;
@@ -293,17 +300,6 @@ void filter_fir_enable(void)
 	}
 
 	filter_fir_update();
-}
-
-static void save_button_clicked(GtkButton *btn, gpointer data)
-{
-	iio_save_widgets(glb_widgets, num_glb);
-	filter_fir_enable();
-	iio_save_widgets(tx_widgets, num_tx);
-	iio_save_widgets(rx_widgets, num_rx);
-	rx_update_labels();
-	glb_settings_update_labels();
-	rssi_update_labels();
 }
 
 static void reload_button_clicked(GtkButton *btn, gpointer data)
@@ -1162,6 +1158,39 @@ int channel_combination_check(struct iio_channel_info *channels, int ch_count, c
 	return 1;
 }
 
+static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
+{
+	set_dev_paths(iio_w->device_name);
+	iio_w->save(iio_w);
+}
+
+static void make_widget_update_signal_based(struct iio_widget *widgets,
+	unsigned int num_widgets)
+{
+	char signal_name[25];
+	unsigned int i;
+
+	for (i = 0; i < num_widgets; i++) {
+		if (GTK_IS_CHECK_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "toggled");
+		else if (GTK_IS_TOGGLE_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "toggled");
+		else if (GTK_IS_SPIN_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "value-changed");
+		else if (GTK_IS_COMBO_BOX_TEXT(widgets[i].widget))
+			sprintf(signal_name, "%s", "changed");
+		else
+			printf("unhandled widget type, attribute: %s\n", widgets[i].attr_name);
+
+		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
+			widgets[i].priv_progress != NULL) {
+				iio_spin_button_progress_activate(&widgets[i]);
+		} else {
+			g_signal_connect(G_OBJECT(widgets[i].widget), signal_name, G_CALLBACK(save_widget_value), &widgets[i]);
+		}
+	}
+}
+
 static int fmcomms2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -1177,7 +1206,9 @@ static int fmcomms2_init(GtkWidget *notebook)
 	is_2rx_2tx = iio_devattr_exists("ad9361-phy", "in_voltage1_hardwaregain");
 
 	fmcomms2_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms2_panel"));
+
 	/* Global settings */
+
 	ensm_mode = GTK_WIDGET(gtk_builder_get_object(builder, "ensm_mode"));
 	ensm_mode_available = GTK_WIDGET(gtk_builder_get_object(builder, "ensm_mode_available"));
 	calib_mode = GTK_WIDGET(gtk_builder_get_object(builder, "calib_mode"));
@@ -1199,7 +1230,9 @@ static int fmcomms2_init(GtkWidget *notebook)
 	rx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx2"));
 	enable_fir_filter_rx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_rx"));
 	rx_fastlock_profile = GTK_WIDGET(gtk_builder_get_object(builder, "rx_fastlock_profile"));
+
 	/* Transmit Chain */
+
 	rf_port_select_tx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_tx"));
 	fir_filter_en_tx = GTK_WIDGET(gtk_builder_get_object(builder, "fir_filter_en_tx"));
 	tx_fastlock_profile = GTK_WIDGET(gtk_builder_get_object(builder, "tx_fastlock_profile"));
@@ -1341,16 +1374,21 @@ static int fmcomms2_init(GtkWidget *notebook)
 			"ad9361-phy", "in_voltage1_hardwaregain", builder,
 			"hardware_gain_rx2", NULL);
 	}
+	rx_sample_freq = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage_sampling_frequency", builder,
 		"sampling_freq_rx", &mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage_rf_bandwidth", builder, "rf_bandwidth_rx",
 		&mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 	rx_lo = num_rx;
 	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "out_altvoltage0_RX_LO_frequency", builder,
 		"rx_lo_freq", &mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage_quadrature_tracking_en", builder,
 		"quad", 0);
@@ -1376,17 +1414,21 @@ static int fmcomms2_init(GtkWidget *notebook)
 		iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"ad9361-phy", "out_voltage1_hardwaregain", builder,
 			"hardware_gain_tx2", &inv_scale);
+	tx_sample_freq = num_tx;
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_voltage_sampling_frequency", builder,
 		"sampling_freq_tx", &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_voltage_rf_bandwidth", builder,
 		"rf_bandwidth_tx", &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	tx_lo = num_tx;
 	iio_spin_button_s64_init_from_builder(&tx_widgets[num_tx++],
 		"ad9361-phy", "out_altvoltage1_TX_LO_frequency", builder,
 		"tx_lo_freq", &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	shared_scale_available = iio_devattr_exists("cf-ad9361-dds-core-lpc",
 			"out_altvoltage_scale_available");
@@ -1394,27 +1436,35 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_frequency",
 			dds1_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_frequency",
 			dds2_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_frequency",
 			dds3_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_frequency",
 			dds4_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_frequency",
 			dds5_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_frequency",
 			dds6_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_frequency",
 			dds7_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_frequency",
 			dds8_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_scale",
 			shared_scale_available ?
@@ -1466,36 +1516,42 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_phase",
 			dds1_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_phase",
 			dds2_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_phase",
 			dds3_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_phase",
 			dds4_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_phase",
 			dds5_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_phase",
 			dds6_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_phase",
 			dds7_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_phase",
 			dds8_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	manage_dds_mode();
 
 	/* Signals connect */
 	g_signal_connect(dds_mode, "changed", G_CALLBACK(manage_dds_mode),
 		NULL);
-	g_builder_connect_signal(builder, "fmcomms2_settings_save", "clicked",
-		G_CALLBACK(save_button_clicked), NULL);
 
 	g_builder_connect_signal(builder, "fmcomms2_settings_reload", "clicked",
 		G_CALLBACK(reload_button_clicked), NULL);
@@ -1526,6 +1582,38 @@ static int fmcomms2_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "rx_toggle", "clicked",
 		G_CALLBACK(hide_section_cb),
 		GTK_WIDGET(gtk_builder_get_object(builder, "rx_settings")));
+
+	g_signal_connect_after(ensm_mode_available, "changed",
+		G_CALLBACK(glb_settings_update_labels), NULL);
+
+	g_signal_connect_after(calib_mode_available, "changed",
+		G_CALLBACK(glb_settings_update_labels), NULL);
+
+	g_signal_connect_after(trx_rate_governor_available, "changed",
+		G_CALLBACK(glb_settings_update_labels), NULL);
+
+	g_signal_connect_after(rx_gain_control_modes_rx1, "changed",
+		G_CALLBACK(glb_settings_update_labels), NULL);
+	g_signal_connect_after(rx_gain_control_modes_rx2, "changed",
+		G_CALLBACK(glb_settings_update_labels), NULL);
+
+	g_builder_connect_signal(builder, "enable_fir_filter_rx", "toggled",
+		G_CALLBACK(filter_fir_enable), NULL);
+	g_builder_connect_signal(builder, "fir_filter_en_tx", "toggled",
+		G_CALLBACK(filter_fir_enable), NULL);
+
+	make_widget_update_signal_based(glb_widgets, num_glb);
+	make_widget_update_signal_based(rx_widgets, num_rx);
+	make_widget_update_signal_based(tx_widgets, num_tx);
+
+	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
+		glb_settings_update_labels);
+	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
+		glb_settings_update_labels);
+	iio_spin_button_set_on_complete_function(&tx_widgets[rx_lo],
+		sample_frequency_changed_cb);
+	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
+		sample_frequency_changed_cb);
 
 	iio_update_widgets(glb_widgets, num_glb);
 	tx_update_values();
