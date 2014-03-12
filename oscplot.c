@@ -239,6 +239,8 @@ struct _OscPlotPrivate
 	GtkDataboxGraph *grid;
 	gfloat gridy[25], gridx[25];
 
+	gint line_thickness;
+
 	gint redraw_function;
 	gint stop_redraw;
 
@@ -1117,7 +1119,7 @@ static void plot_setup(OscPlot *plot)
 		if (strcmp(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type)), "Lines"))
 			graph = gtk_databox_points_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, 3);
 		else
-			graph = gtk_databox_lines_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, 1);
+			graph = gtk_databox_lines_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, priv->line_thickness);
 
 		ch_info = transform->channel_parent->extra_field;
 		if (transform->x_axis_size > max_x_axis)
@@ -2311,6 +2313,8 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 	fprintf(fp, "y_axis_min=%f\n", bottom);
 	fprintf(fp, "y_axis_max=%f\n", top);
 
+	fprintf(fp, "line_thickness = %i\n", priv->line_thickness);
+
 	fprintf(fp, "plot_title = %s\n", gtk_window_get_title(GTK_WINDOW(priv->window)));
 
 	fprintf(fp, "show_capture_options = %d\n", gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(priv->menu_show_options)));
@@ -2562,6 +2566,11 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 							ret = 0;
 					} else
 						ret = 0;
+				}
+			} else if (MATCH_NAME("line_thickness")) {
+				if (value) {
+					if (atoi(value))
+						priv->line_thickness = atoi(value);
 				}
 			} else if (MATCH_NAME("quit")) {
 				return 0;
@@ -3530,6 +3539,8 @@ static void create_plot(OscPlot *plot)
 	priv->dual_mrk.string_obj = DUAL_MRK;
 	priv->image_mrk.string_obj = IMAGE_MRK;
 	priv->off_mrk.string_obj = OFF_MRK;
+
+	priv->line_thickness = 1;
 
 	gtk_window_set_modal(GTK_WINDOW(priv->saveas_dialog), FALSE);
 	gtk_widget_show(priv->window);
