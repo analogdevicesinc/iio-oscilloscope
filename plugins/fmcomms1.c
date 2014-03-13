@@ -1396,20 +1396,23 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 	gtk_widget_hide(dialogs.calibrate);
 }
 
-static void enable_dds(bool on_off)
+static void enable_dds(bool dds_enable, bool buffer_enable)
 {
+	bool on_off = dds_enable || buffer_enable;
 	int ret;
 
 	set_dev_paths("cf-ad9122-core-lpc");
-	write_devattr_int("out_altvoltage0_1A_raw", on_off ? 1 : 0);
 
-	if (on_off || dac_data_loaded) {
-		ret = write_devattr_int("buffer/enable", !on_off);
-		if (ret < 0) {
-			fprintf(stderr, "Failed to enable buffer: %d\n", ret);
+	if (!dac_data_loaded)
+		buffer_enable = false;
 
-		}
+	ret = write_devattr_int("buffer/enable", buffer_enable ? 1 : 0);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
+
 	}
+
+	write_devattr_int("out_altvoltage0_1A_raw", on_off ? 1 : 0);
 }
 
 static void manage_dds_mode()
@@ -1421,7 +1424,7 @@ static void manage_dds_mode()
 	switch (active) {
 	case 0:
 		/* Disabled */
-		enable_dds(false);
+		enable_dds(false, false);
 		gtk_widget_hide(dds1_freq);
 		gtk_widget_hide(dds2_freq);
 		gtk_widget_hide(dds3_freq);
@@ -1456,7 +1459,7 @@ static void manage_dds_mode()
 		break;
 	case 1:
 		/* One tone */
-		enable_dds(true);
+		enable_dds(true, false);
 		gtk_widget_show(dds1_freq);
 		gtk_widget_hide(dds2_freq);
 		gtk_widget_hide(dds3_freq);
@@ -1536,7 +1539,7 @@ static void manage_dds_mode()
 		break;
 	case 2:
 		/* Two tones */
-		enable_dds(true);
+		enable_dds(true, false);
 		gtk_widget_show(dds1_freq);
 		gtk_widget_show(dds2_freq);
 		gtk_widget_hide(dds3_freq);
@@ -1598,7 +1601,7 @@ static void manage_dds_mode()
 		break;
 	case 3:
 		/* Independant/Individual control */
-		enable_dds(true);
+		enable_dds(true, false);
 		gtk_widget_show(dds1_freq);
 		gtk_widget_show(dds2_freq);
 		gtk_widget_show(dds3_freq);
@@ -1667,7 +1670,7 @@ static void manage_dds_mode()
 		break;
 	case 4:
 		/* Buffer */
-		enable_dds(false);
+		enable_dds(false, true);
 		gtk_widget_hide(dds1_freq);
 		gtk_widget_hide(dds2_freq);
 		gtk_widget_hide(dds3_freq);
