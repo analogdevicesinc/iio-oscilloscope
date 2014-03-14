@@ -2558,23 +2558,6 @@
         <property name="spacing">15</property>
         <property name="layout_style">center</property>
         <child>
-          <object class="GtkCheckButton" id="dynamic_save">
-            <property name="label" translatable="yes">Must click "Save"</property>
-            <property name="use_action_appearance">False</property>
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">False</property>
-            <property name="use_action_appearance">False</property>
-            <property name="xalign">1</property>
-            <property name="draw_indicator">True</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
           <object class="GtkButton" id="calibrate_dialog">
             <property name="label" translatable="yes">Calibrate</property>
             <property name="use_action_appearance">False</property>
@@ -2587,21 +2570,6 @@
             <property name="expand">False</property>
             <property name="fill">False</property>
             <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButton" id="fmcomms1_settings_save">
-            <property name="label">Save Settings</property>
-            <property name="use_action_appearance">False</property>
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <property name="use_action_appearance">False</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">2</property>
           </packing>
         </child>
       </object>

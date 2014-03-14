@@ -59,6 +59,7 @@ static gulong dds1_scale_hid = 0, dds2_scale_hid = 0;
 static gulong dds1_phase_hid = 0, dds2_phase_hid = 0;
 static int rx_lo_powerdown, tx_lo_powerdown;
 
+static GtkWidget *dac_interpolation;
 static GtkWidget *dac_shift;
 
 static GtkWidget *rx_lo_freq, *tx_lo_freq;
@@ -72,7 +73,9 @@ static GtkWidget *load_eeprom;
 static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
 static struct iio_widget cal_widgets[100];
-static unsigned int num_tx, num_rx, num_cal;
+static unsigned int num_tx, num_rx, num_cal,
+		num_adc_freq, num_dds2_freq, num_dds4_freq,
+		num_dac_shift;
 
 static const char *adc_freq_device;
 static const char *adc_freq_file;
@@ -116,6 +119,12 @@ static int oneover(const gchar *num)
 	return (int)close;
 
 }
+
+static void dac_shift_update(void)
+{
+	tx_widgets[num_dac_shift].update(&tx_widgets[num_dac_shift]);
+}
+
 static void rf_out_update(void)
 {
 	char buf[1024], dds1_m[16], dds2_m[16];
@@ -315,14 +324,6 @@ static void cal_save_values(void)
 {
 	iio_save_widgets(cal_widgets, num_cal);
 	iio_update_widgets(cal_widgets, num_cal);
-}
-
-static void save_button_clicked(GtkButton *btn, gpointer data)
-{
-	rf_out_update();
-	iio_save_widgets(tx_widgets, num_tx);
-	iio_save_widgets(rx_widgets, num_rx);
-	rx_update_labels();
 }
 
 void dac_buffer_config_file_set_cb(GtkFileChooser *chooser, gpointer data)
@@ -1855,6 +1856,38 @@ static void adc_cal_spin(GtkRange *range, gpointer user_data)
 
 }
 
+static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
+{
+	set_dev_paths(iio_w->device_name);
+	iio_w->save(iio_w);
+}
+
+static void make_widget_update_signal_based(struct iio_widget *widgets,
+	unsigned int num_widgets)
+{
+	char signal_name[25];
+	unsigned int i;
+
+	for (i = 0; i < num_widgets; i++) {
+		if (GTK_IS_CHECK_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "toggled");
+		else if (GTK_IS_TOGGLE_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "toggled");
+		else if (GTK_IS_SPIN_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "value-changed");
+		else if (GTK_IS_COMBO_BOX_TEXT(widgets[i].widget))
+			sprintf(signal_name, "%s", "changed");
+		else
+			printf("unhandled widget type, attribute: %s\n", widgets[i].attr_name);
+
+		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
+			widgets[i].priv_progress != NULL) {
+				iio_spin_button_progress_activate(&widgets[i]);
+		} else {
+			g_signal_connect(G_OBJECT(widgets[i].widget), signal_name, G_CALLBACK(save_widget_value), &widgets[i]);
+		}
+	}
+}
 
 static int fmcomms1_init(GtkWidget *notebook)
 {
@@ -1974,6 +2007,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	ad9122_temp = GTK_WIDGET(gtk_builder_get_object(builder, "dac_temp"));
 
 	rf_out =  GTK_WIDGET(gtk_builder_get_object(builder, "RF_out"));
+	dac_interpolation = GTK_WIDGET(gtk_builder_get_object(builder, "dac_interpolation_clock"));
 	dac_shift = GTK_WIDGET(gtk_builder_get_object(builder, "dac_fcenter_shift"));
 
 	if (iio_devattr_exists("cf-ad9643-core-lpc", "in_voltage_sampling_frequency")) {
@@ -2002,10 +2036,12 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", dac_sampling_freq_file,
 			builder, "dac_data_clock", &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage_interpolation_frequency",
 			"out_altvoltage_interpolation_frequency_available",
 			builder, "dac_interpolation_clock", NULL);
+	num_dac_shift = num_tx;
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc",
 			"out_altvoltage_interpolation_center_shift_frequency",
@@ -2015,15 +2051,21 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_frequency",
 			dds3_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage2_2A_frequency",
 			dds1_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	num_dds4_freq = num_tx;
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage1_1B_frequency",
 			dds4_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	num_dds2_freq = num_tx;
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage3_2B_frequency",
 			dds2_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_scale",
@@ -2053,20 +2095,26 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage0_1A_phase",
 			dds3_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage2_2A_phase",
 			dds1_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage1_1B_phase",
 			dds4_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9122-core-lpc", "out_altvoltage3_2B_phase",
 			dds2_phase, &khz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	num_tx_pll = num_tx;
 	iio_spin_button_int_init(&tx_widgets[num_tx++],
 			"adf4351-tx-lpc", "out_altvoltage0_frequency",
 			tx_lo_freq, &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
 	tx_lo_powerdown = num_tx;
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 			"adf4351-tx-lpc", "out_altvoltage0_powerdown",
@@ -2145,18 +2193,21 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			"adf4351-rx-lpc", "out_altvoltage0_frequency_resolution",
 			builder, "rx_lo_spacing", NULL);
-	num_rx_pll = num_rx;
 
+	num_rx_pll = num_rx;
 	iio_spin_button_int_init(&rx_widgets[num_rx++],
 			"adf4351-rx-lpc", "out_altvoltage0_frequency",
 			rx_lo_freq, &mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 	rx_lo_powerdown = num_rx;
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
 			"adf4351-rx-lpc", "out_altvoltage0_powerdown",
 			builder, "rx_lo_powerdown", 1);
+	num_adc_freq = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			adc_freq_device, adc_freq_file,
 			builder, "adc_freq", &mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
 	iio_spin_button_init(&rx_widgets[num_rx++],
 			"ad8366-lpc", "out_voltage0_hardwaregain",
@@ -2164,9 +2215,6 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_init(&rx_widgets[num_rx++],
 			"ad8366-lpc", "out_voltage1_hardwaregain",
 			vga_gain1, NULL);
-
-	g_builder_connect_signal(builder, "fmcomms1_settings_save", "clicked",
-		G_CALLBACK(save_button_clicked), NULL);
 
 	g_builder_connect_signal(builder, "calibrate_dialog", "clicked",
 		G_CALLBACK(cal_dialog), NULL);
@@ -2177,6 +2225,20 @@ static int fmcomms1_init(GtkWidget *notebook)
 	g_signal_connect(
 		GTK_WIDGET(gtk_builder_get_object(builder, "gain_amp_together")),
 		"toggled", G_CALLBACK(gain_amp_locked_cb), NULL);
+
+	g_signal_connect(dac_interpolation, "changed", G_CALLBACK(dac_shift_update), NULL);
+	g_signal_connect(dac_shift, "changed", G_CALLBACK(rf_out_update), NULL);
+	g_signal_connect(dds1_scale, "changed", G_CALLBACK(rf_out_update), NULL);
+	g_signal_connect(dds2_scale, "changed", G_CALLBACK(rf_out_update), NULL);
+
+	make_widget_update_signal_based(rx_widgets, num_rx);
+	make_widget_update_signal_based(tx_widgets, num_tx);
+
+	iio_spin_button_set_on_complete_function(&tx_widgets[num_tx_pll], rf_out_update);
+	iio_spin_button_set_on_complete_function(&rx_widgets[num_rx_pll], rx_update_labels);
+	iio_spin_button_set_on_complete_function(&rx_widgets[num_adc_freq], rx_update_labels);
+	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds2_freq], rf_out_update);
+	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds4_freq], rf_out_update);
 
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_I, "visible", 0);
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_Q, "visible", 0);
@@ -2268,8 +2330,6 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 
 	return NULL;
 }
-
-
 
 static const char *fmcomms1_sr_attribs[] = {
 	"cf-ad9122-core-lpc.out_altvoltage_1A_sampling_frequency",
