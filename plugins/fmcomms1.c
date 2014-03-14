@@ -2226,10 +2226,10 @@ static int fmcomms1_init(GtkWidget *notebook)
 		GTK_WIDGET(gtk_builder_get_object(builder, "gain_amp_together")),
 		"toggled", G_CALLBACK(gain_amp_locked_cb), NULL);
 
-	g_signal_connect(dac_interpolation, "changed", G_CALLBACK(dac_shift_update), NULL);
-	g_signal_connect(dac_shift, "changed", G_CALLBACK(rf_out_update), NULL);
-	g_signal_connect(dds1_scale, "changed", G_CALLBACK(rf_out_update), NULL);
-	g_signal_connect(dds2_scale, "changed", G_CALLBACK(rf_out_update), NULL);
+	g_signal_connect_after(dac_interpolation, "changed", G_CALLBACK(dac_shift_update), NULL);
+	g_signal_connect_after(dac_shift, "changed", G_CALLBACK(rf_out_update), NULL);
+	g_signal_connect_after(dds1_scale, "changed", G_CALLBACK(rf_out_update), NULL);
+	g_signal_connect_after(dds2_scale, "changed", G_CALLBACK(rf_out_update), NULL);
 
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
