@@ -1367,12 +1367,14 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage0_hardwaregain", builder,
 		"hardware_gain_rx1", NULL);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
 	if (is_2rx_2tx) {
 		rx2_gain = num_rx;
 		iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			"ad9361-phy", "in_voltage1_hardwaregain", builder,
 			"hardware_gain_rx2", NULL);
+		iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 	}
 	rx_sample_freq = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
