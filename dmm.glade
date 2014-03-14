@@ -13,6 +13,8 @@
       <column type="gchararray"/>
       <!-- column-name scale -->
       <column type="gchararray"/>
+      <!-- column-name offset -->
+      <column type="gchararray"/>
     </columns>
   </object>
   <object class="GtkListStore" id="device_list">
