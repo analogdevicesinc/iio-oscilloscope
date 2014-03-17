@@ -2760,8 +2760,12 @@ int capture_profile_handler(const char* name, const char *value)
 					if (atoi(value))
 						line_thickness = atoi(value);
 				}
-			} else if (MATCH_NAME("quit")) {
+			} else if (MATCH_NAME("quit") || MATCH_NAME("stop")) {
 				return 0;
+			} else if (MATCH_NAME("echo")) {
+				if (value)
+					printf("echoing : '%s'\n", value);
+				ret = 1;
 			} else
 				goto unhandled;
 			break;
@@ -2942,6 +2946,9 @@ static int load_default_profile (char * filename)
 			linecount++;
 			if (linecount == ret) {
 				tmp[strlen(tmp) - 1] = 0;
+				if (!strcmp(tmp, "stop = 1")) {
+					return 0;
+				}
 				if (strcmp(tmp, "quit = 1")) {
 					create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 							"INI parsing / test failure",
