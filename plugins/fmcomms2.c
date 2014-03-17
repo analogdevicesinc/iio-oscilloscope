@@ -72,6 +72,7 @@ static GtkWidget *rx_path_rates;
 static GtkWidget *tx_path_rates;
 static GtkWidget *fir_filter_en_tx;
 static GtkWidget *enable_fir_filter_rx;
+static GtkWidget *enable_fir_filter_rx_tx;
 static GtkWidget *rf_port_select_tx;
 static GtkWidget *rx_fastlock_profile;
 static GtkWidget *tx_fastlock_profile;
@@ -272,27 +273,33 @@ static void update_display (void *ptr)
 
 void filter_fir_update(void)
 {
-	bool rx, tx;
+	bool rx, tx, rxtx;
 
 	set_dev_paths("ad9361-phy");
 	read_devattr_bool("in_voltage_filter_fir_en", &rx);
 	read_devattr_bool("out_voltage_filter_fir_en", &tx);
+	read_devattr_bool("in_out_voltage_filter_fir_en", &rxtx);
 
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx), rx);
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx), tx);
+	if (rxtx) {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx), rxtx);
+	} else {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx), rx);
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx), tx);
+	}
 }
 
 void filter_fir_enable(void)
 {
-	bool rx, tx;
+	bool rx, tx, rxtx;
 
 	rx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx));
 	tx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx));
+	rxtx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx));
 
 	set_dev_paths("ad9361-phy");
 
-	if (rx == tx) {
-		write_devattr("in_out_voltage_filter_fir_en", rx ? "1" : "0");
+	if (rxtx) {
+		write_devattr("in_out_voltage_filter_fir_en", rxtx ? "1" : "0");
 	} else {
 		write_devattr("out_voltage_filter_fir_en", tx ? "1" : "0");
 		write_devattr("in_voltage_filter_fir_en", rx ? "1" : "0");
@@ -1229,6 +1236,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	rx1_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx1"));
 	rx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx2"));
 	enable_fir_filter_rx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_rx"));
+	enable_fir_filter_rx_tx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_tx_rx"));
 	rx_fastlock_profile = GTK_WIDGET(gtk_builder_get_object(builder, "rx_fastlock_profile"));
 
 	/* Transmit Chain */
@@ -1346,7 +1354,6 @@ static int fmcomms2_init(GtkWidget *notebook)
 		0);
 
 	/* Receive Chain */
-
 
 	iio_combo_box_init(&rx_widgets[num_rx++],
 		"ad9361-phy", "in_voltage0_gain_control_mode",
@@ -1599,9 +1606,11 @@ static int fmcomms2_init(GtkWidget *notebook)
 	g_signal_connect_after(rx_gain_control_modes_rx2, "changed",
 		G_CALLBACK(glb_settings_update_labels), NULL);
 
-	g_builder_connect_signal(builder, "enable_fir_filter_rx", "toggled",
+	g_signal_connect_after(enable_fir_filter_rx, "toggled",
 		G_CALLBACK(filter_fir_enable), NULL);
-	g_builder_connect_signal(builder, "fir_filter_en_tx", "toggled",
+	g_signal_connect_after(fir_filter_en_tx, "toggled",
+		G_CALLBACK(filter_fir_enable), NULL);
+	g_signal_connect_after(enable_fir_filter_rx_tx, "toggled",
 		G_CALLBACK(filter_fir_enable), NULL);
 
 	make_widget_update_signal_based(glb_widgets, num_glb);
