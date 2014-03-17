@@ -1658,8 +1658,10 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			return "1";
 	} else if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value) {
-			if (value[0])
+			if (value[0]) {
 				load_fir_filter(value);
+				gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filter_fir_config), value);
+			}
 		} else {
 			return last_fir_filter;
 		}
