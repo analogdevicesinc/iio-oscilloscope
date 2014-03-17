@@ -566,6 +566,25 @@ configuration:</property>
                             <property name="position">3</property>
                           </packing>
                         </child>
+                        <child>
+                          <object class="GtkRadioButton" id="enable_fir_filter_tx_rx">
+                            <property name="label" translatable="yes">Enable Rx Tx FIR Filters</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">False</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="xalign">0</property>
+                            <property name="active">True</property>
+                            <property name="draw_indicator">True</property>
+                            <property name="group">enable_fir_filter_rx</property>
+                          </object>
+                          <packing>
+                            <property name="expand">True</property>
+                            <property name="fill">False</property>
+                            <property name="position">4</property>
+                          </packing>
+                        </child>
                       </object>
                     </child>
                   </object>
@@ -659,22 +678,6 @@ configuration:</property>
                                 </child>
                                 <child>
                                   <placeholder/>
-                                </child>
-                                <child>
-                                  <object class="GtkCheckButton" id="enable_fir_filter_rx">
-                                    <property name="label" translatable="yes">Enable FIR Filter</property>
-                                    <property name="use_action_appearance">False</property>
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="receives_default">False</property>
-                                    <property name="use_action_appearance">False</property>
-                                    <property name="xalign">0</property>
-                                    <property name="draw_indicator">True</property>
-                                  </object>
-                                  <packing>
-                                    <property name="x_options">GTK_FILL</property>
-                                    <property name="y_options">GTK_FILL</property>
-                                  </packing>
                                 </child>
                                 <child>
                                   <object class="GtkAlignment" id="alignment10">
@@ -932,6 +935,23 @@ configuration:</property>
                                     <property name="right_attach">3</property>
                                     <property name="top_attach">2</property>
                                     <property name="bottom_attach">3</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkRadioButton" id="enable_fir_filter_rx">
+                                    <property name="label" translatable="yes">Enable FIR Filter</property>
+                                    <property name="use_action_appearance">False</property>
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="receives_default">False</property>
+                                    <property name="use_action_appearance">False</property>
+                                    <property name="xalign">0</property>
+                                    <property name="active">True</property>
+                                    <property name="draw_indicator">True</property>
+                                  </object>
+                                  <packing>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options">GTK_FILL</property>
                                   </packing>
                                 </child>
                               </object>
@@ -1446,22 +1466,6 @@ configuration:</property>
                               <placeholder/>
                             </child>
                             <child>
-                              <object class="GtkCheckButton" id="fir_filter_en_tx">
-                                <property name="label" translatable="yes">Enable FIR Filter</property>
-                                <property name="use_action_appearance">False</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">False</property>
-                                <property name="use_action_appearance">False</property>
-                                <property name="xalign">0</property>
-                                <property name="draw_indicator">True</property>
-                              </object>
-                              <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
-                              </packing>
-                            </child>
-                            <child>
                               <object class="GtkSpinButton" id="tx_lo_freq">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
@@ -1697,6 +1701,20 @@ configuration:</property>
                                 <property name="top_attach">2</property>
                                 <property name="bottom_attach">3</property>
                               </packing>
+                            </child>
+                            <child>
+                              <object class="GtkRadioButton" id="fir_filter_en_tx">
+                                <property name="label" translatable="yes">Enable FIR Filter</property>
+                                <property name="use_action_appearance">False</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="use_action_appearance">False</property>
+                                <property name="xalign">0</property>
+                                <property name="active">True</property>
+                                <property name="draw_indicator">True</property>
+                                <property name="group">enable_fir_filter_rx</property>
+                              </object>
                             </child>
                           </object>
                           <packing>
