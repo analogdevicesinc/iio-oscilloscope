@@ -269,6 +269,76 @@ static int libini_restore_handler(void *user, const char* section,
 	return ret;
 }
 
+static const char * unroll(const char *in_filename)
+{
+
+	FILE *in, *out;
+	char *out_filename, *replace;
+	char buf[1024];
+	char var[128], tmp[128], tmp2[128];
+	double i, first, inc, last;
+	fpos_t pos;
+	bool j = true, k = false;
+
+	out_filename = malloc(strlen(in_filename) + 10);
+	sprintf(out_filename, TMP_INI_FILE, in_filename);
+
+	in = fopen(in_filename, "r");
+	out = fopen (out_filename, "w");
+
+	while(fgets(buf, 1024, in) != NULL) {
+		if (strlen(buf)) {
+			j = true;
+			if (!strncmp(buf, "<SEQ>", 5)) {
+				k = true;
+				/* # seq [OPTION]... FIRST INCREMENT LAST */
+				sscanf(buf, "<SEQ> %s %lf %lf %lf", var, &first, &inc, &last);
+				sprintf(tmp, "<%s>", var);
+				fgetpos(in, &pos);
+				for(i = first; i <= last; i = i + inc) {
+					fsetpos(in, &pos);
+					while(fgets(buf, 1024, in) != NULL) {
+						j = true;
+						if (!strncmp(buf, "</SEQ>", 6)) {
+							k = false;
+							j = false;
+							break;
+						}
+						if ((replace = strstr(buf, tmp)) != NULL) {
+							j = false;
+							sprintf(tmp2, "%lf", i);
+							while (tmp2[strlen(tmp2) - 1] == '0')
+								tmp2[strlen(tmp2) -1] = 0;
+							if (tmp2[strlen(tmp2) - 1] == '.')
+								tmp2[strlen(tmp2) -1] = 0;
+
+							fprintf(out, "%.*s%s%.*s",
+								(int)(replace - buf), buf,
+								tmp2,
+								strlen(buf) - (int)(replace - buf) - strlen(tmp),
+								replace + strlen(tmp));
+
+						}
+						if (j)
+							fprintf(out, "%s", buf);
+					}
+				}
+			}
+		}
+		if (j)
+			fprintf(out, "%s", buf);
+	}
+
+	fclose(in);
+	fclose(out);
+
+	if (k) {
+		printf("loop isn't closed in %s\n", in_filename);
+		exit(1);
+	}
+	return out_filename;
+}
+
 int restore_all_plugins(const char *filename, gpointer user_data)
 {
 	GtkWidget *msg;
@@ -287,6 +357,9 @@ int restore_all_plugins(const char *filename, gpointer user_data)
 			ret++;
 		}
 	}
+
+	/* unroll loops */
+	filename = unroll(filename);
 
 	ret = ini_parse(filename, libini_restore_handler, NULL);
 

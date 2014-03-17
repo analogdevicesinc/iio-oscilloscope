@@ -16,6 +16,7 @@ extern const char *current_device;
 extern bool str_endswith(const char *str, const char *needle);
 extern bool is_input_device(const char *device);
 
+#define TMP_INI_FILE "/tmp/.%s.tmp"
 #ifndef MAX_MARKERS
 #define MAX_MARKERS 10
 #endif
