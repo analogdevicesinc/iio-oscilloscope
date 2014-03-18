@@ -557,9 +557,10 @@ static bool cal_rx_flag = false;
 static gfloat knob_max, knob_min, knob_steps;
 static int delay;
 
-static double find_min(GtkSpinButton *spin_button, int marker, gfloat min, gfloat max, gfloat step)
+static double find_min(GtkSpinButton *spin_button, int marker, gfloat min, gfloat max, gfloat step, gfloat noise_floor)
 {
 	gdouble i, level, min_level = FLT_MAX, min_value = 0;
+	gdouble nfloor_min = max, nfloor_max = min;
 	int bigger = -1;
 	gdouble last_val = FLT_MAX;
 
@@ -587,8 +588,18 @@ static double find_min(GtkSpinButton *spin_button, int marker, gfloat min, gfloa
 		if (bigger == 5)
 			break;
 
+		if (level <= noise_floor) {
+			if (nfloor_min > i)
+				nfloor_min = i;
+			if (nfloor_max < i)
+				nfloor_max = i;
+		}
 		last_val = level;
 	}
+
+	/* wandering around the noise floor - pick the middle */
+	if (nfloor_min != max && nfloor_max != min)
+		min_value = (nfloor_min + nfloor_max) / 2;
 
 	gdk_threads_enter();
 	gtk_spin_button_set_value(spin_button, min_value);
@@ -599,7 +610,7 @@ static double find_min(GtkSpinButton *spin_button, int marker, gfloat min, gfloa
 
 static void tx_thread_cal(void *ptr)
 {
-	gdouble min_i, min_q, tmp;
+	gdouble min_i, min_q, tmp, min_fsi, min_fsq, noise;
 	unsigned long long lo, sig;
 
 	gdk_threads_enter();
@@ -620,22 +631,35 @@ static void tx_thread_cal(void *ptr)
 	scpi_rx_trigger_sweep();
 	scpi_rx_trigger_sweep();
 
+	/* find the noise floor */
+	scpi_rx_trigger_sweep();
+	scpi_rx_set_center_frequency(lo);
+	scpi_rx_set_span_frequency(sig * 2);
+	scpi_rx_set_marker_freq(1, lo + sig / 2);
+	scpi_rx_get_marker_level(1, true, &noise);
+	/* noise thresold is 2dB up */
+	noise += 2;
+
 	/* rough approximation of carrier supression */
 	scpi_rx_set_center_frequency(lo);
 	scpi_rx_set_span_frequency(2000000);
 	scpi_rx_set_marker_freq(1, lo);
 
-	min_i = find_min(GTK_SPIN_BUTTON(I_dac_offs), 1, -500, 500, 100.0);
-	min_q = find_min(GTK_SPIN_BUTTON(Q_dac_offs), 1, -500, 500, 100.0);
+	min_i = find_min(GTK_SPIN_BUTTON(I_dac_offs), 1, -500, 500, 25, noise);
+	min_q = find_min(GTK_SPIN_BUTTON(Q_dac_offs), 1, -500, 500, 25, noise);
 
 	/* side band supression */
 	scpi_rx_set_center_frequency(lo - sig);
 	scpi_rx_set_marker_freq(1, lo - sig);
 
-	tmp = find_min(GTK_SPIN_BUTTON(I_dac_pha_adj), 1, -512, 512, 100);
-	tmp += find_min(GTK_SPIN_BUTTON(Q_dac_pha_adj), 1, -512, 512, 100);
-	find_min(GTK_SPIN_BUTTON(I_dac_fs_adj), 1, 0, 600, 100);
-	find_min(GTK_SPIN_BUTTON(Q_dac_fs_adj), 1, 0, 600, 100);
+	tmp = find_min(GTK_SPIN_BUTTON(I_dac_pha_adj), 1, -512, 512, 25, noise);
+	tmp += find_min(GTK_SPIN_BUTTON(Q_dac_pha_adj), 1, -512, 512, 25, noise);
+
+	min_fsi = find_min(GTK_SPIN_BUTTON(I_dac_fs_adj), 1, 400, 600, 10, noise);
+	min_fsq = find_min(GTK_SPIN_BUTTON(Q_dac_fs_adj), 1, 400, 600, 10, noise);
+
+	find_min(GTK_SPIN_BUTTON(I_dac_fs_adj), 1, min_fsi - 10, min_fsi + 10, 20, noise);
+	find_min(GTK_SPIN_BUTTON(Q_dac_fs_adj), 1, min_fsq - 10, min_fsq + 10, 20, noise);
 
 	if (tmp != -1024) {
 		gdk_threads_enter();
@@ -643,16 +667,19 @@ static void tx_thread_cal(void *ptr)
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_dac_pha_adj), tmp / 2);
 		gdk_threads_leave();
 
-		find_min(GTK_SPIN_BUTTON(I_dac_pha_adj), 1, tmp / 2 - 20, tmp / 2 + 20, 40);
-		find_min(GTK_SPIN_BUTTON(Q_dac_pha_adj), 1, tmp / 2 - 20, tmp / 2 + 20, 40);
+		find_min(GTK_SPIN_BUTTON(I_dac_pha_adj), 1, tmp / 2 - 20, tmp / 2 + 20, 40, noise);
+		find_min(GTK_SPIN_BUTTON(Q_dac_pha_adj), 1, tmp / 2 - 20, tmp / 2 + 20, 40, noise);
 	}
 
 	/* go back to carrier, and do it in smaller steps */
 	scpi_rx_set_center_frequency(lo);
 	scpi_rx_set_marker_freq(1, lo);
 
-	find_min(GTK_SPIN_BUTTON(I_dac_offs), 1, min_i - 10, min_i + 10, 20.0);
-	find_min(GTK_SPIN_BUTTON(Q_dac_offs), 1, min_q - 10, min_q + 10, 20.0);
+	min_i = find_min(GTK_SPIN_BUTTON(I_dac_offs), 1, min_i - 40, min_i + 40, 20.0, noise);
+	min_q = find_min(GTK_SPIN_BUTTON(Q_dac_offs), 1, min_q - 40, min_q + 40, 20.0, noise);
+
+	find_min(GTK_SPIN_BUTTON(I_dac_offs), 1, min_i - 10, min_i + 10, 20.0, noise);
+	find_min(GTK_SPIN_BUTTON(Q_dac_offs), 1, min_q - 10, min_q + 10, 20.0, noise);
 
 	scpi_rx_set_span_frequency(3 * sig);
 	scpi_rx_trigger_sweep();
@@ -661,11 +688,11 @@ static void tx_thread_cal(void *ptr)
 	kill_thread = 1;
 }
 
-static void cal_tx_button_clicked(void)
+static GThread * cal_tx_button_clicked(void)
 {
 	if (!scpi_rx_connected()) {
 		printf("not connected\n");
-		return;
+		return NULL;
 	}
 
 	/* make sure it's a single tone */
@@ -676,7 +703,7 @@ static void cal_tx_button_clicked(void)
 			(gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)) !=
 				gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds4_freq)))) {
 		printf("not a tone\n");
-		return;
+		return NULL;
 	}
 
 	scpi_rx_setup();
@@ -686,7 +713,7 @@ static void cal_tx_button_clicked(void)
 	scpi_rx_set_averaging(2);
 	scpi_rx_trigger_sweep();
 
-	g_thread_new("Tx calibration thread", (void *) &tx_thread_cal, NULL);
+	return g_thread_new("Tx calibration thread", (void *) &tx_thread_cal, NULL);
 }
 
 static void cal_rx_button_clicked(void)
@@ -767,6 +794,7 @@ static void display_cal(void *ptr)
 	while (!kill_thread) {
 		if (kill_thread) {
 			size = 0;
+			break;
 		} else {
 			size = plugin_data_capture_size(device_ref);
 			channels = plugin_data_capture_num_active_channels(device_ref);
@@ -1006,16 +1034,17 @@ skip_rx_cal:
 					}
 				}
 			}
+		} else {
+			/* wait 100 ms */
+			usleep(100000);
 		}
 	}
 
 display_call_ret:
 	/* free the buffers */
-	plugin_data_capture(NULL, (void **)&buf, &cooked_data, &markers);
+	if (buf || cooked_data || markers)
+		plugin_data_capture(NULL, (void **)&buf, &cooked_data, &markers);
 
-	gdk_threads_enter();
-	gtk_dialog_response(GTK_DIALOG(dialogs.calibrate), GTK_RESPONSE_CLOSE);
-	gdk_threads_leave();
 	kill_thread = 1;
 }
 
@@ -2265,7 +2294,7 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
 {
 	char *buf;
-	GThread *thr = NULL;
+	GThread *thr = NULL, *thid = NULL;
 
 	if (MATCH_ATTRIB(SYNC_RELOAD)) {
 		if (value) {
@@ -2298,8 +2327,8 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	} else if (MATCH_ATTRIB("calibrate_rx")) {
 		if (value && atoi(value) == 1) {
 			gtk_widget_show(dialogs.calibrate);
-			cal_rx_button_clicked();
 			kill_thread = 0;
+			cal_rx_button_clicked();
 			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
 			while (kill_thread == 0) {
 				gtk_main_iteration();
@@ -2311,13 +2340,14 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 		if (value && atoi(value) == 1) {
 			scpi_connect_functions();
 			gtk_widget_show(dialogs.calibrate);
-			cal_tx_button_clicked();
 			kill_thread = 0;
+			thid = cal_tx_button_clicked();
 			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
 			while (kill_thread == 0) {
 				gtk_main_iteration();
 			}
 			iio_thread_clear(thr);
+			iio_thread_clear(thid);
 			gtk_widget_hide(dialogs.calibrate);
 		}
 	} else {
