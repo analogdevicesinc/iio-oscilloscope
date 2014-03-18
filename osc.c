@@ -36,6 +36,8 @@
 #define SAMPLE_COUNT_MIN_VALUE 10
 #define SAMPLE_COUNT_MAX_VALUE 1000000ul
 
+extern char * get_filename_from_path(const char *path);
+
 GSList *plugin_list = NULL;
 
 static gfloat *X = NULL;

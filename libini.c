@@ -269,9 +269,9 @@ static int libini_restore_handler(void *user, const char* section,
 	return ret;
 }
 
-char * get_filename_from_path(const char *path)
+const char * get_filename_from_path(const char *path)
 {
-	char * filename;
+	const char *filename;
 
 	if (!path)
 		return NULL;
