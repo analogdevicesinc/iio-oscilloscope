@@ -38,7 +38,7 @@ static int count_char_in_string(char c, const char *s)
 static char * process_value(char* value)
 {
 	char *last, *next, *end;
-	char *tmp, *tmp2, *tmp3;
+	char *tmp, *tmp2, *tmp3, tmp4[128];
 	int elem_type, ret;
 	gchar **elems = NULL;
 	double val, val1;
@@ -78,9 +78,17 @@ static char * process_value(char* value)
 		val += val1;
 
 		tmp2 = malloc(1024);
-		sprintf(tmp2, "%.*s%f%.*s",
+
+		sprintf(tmp4, "%f", val);
+		/* strip trailing zeros */
+		while (tmp4[strlen(tmp4) - 1] == '0')
+			tmp4[strlen(tmp4) -1] = 0;
+		if (tmp4[strlen(tmp4) - 1] == '.')
+			tmp4[strlen(tmp4) -1] = 0;
+
+		sprintf(tmp2, "%.*s%s%.*s",
 			(int)(next - 1 - value), value,
-			val,
+			tmp4,
 			strlen(value) - 2 - strlen(tmp), next + 1 + strlen(tmp));
 		return tmp2;
 	}
@@ -106,12 +114,17 @@ static char * process_value(char* value)
 	}
 
 	tmp2 = malloc (1024);
+	sprintf(tmp4, "%f", val);
+	/* strip trailing zeros */
+	while (tmp4[strlen(tmp4) - 1] == '0')
+		tmp4[strlen(tmp4) -1] = 0;
+	if (tmp4[strlen(tmp4) - 1] == '.')
+		tmp4[strlen(tmp4) -1] = 0;
 
-	sprintf(tmp2, "%.*s%f%.*s",
+	sprintf(tmp2, "%.*s%s%.*s",
 			(int)(next - 1 - value), value,
-			val,
+			tmp4,
 			strlen(value) - 2 - strlen(tmp), next + 1 + strlen(tmp));
-
 	tmp3 = tmp2;
 	if (strchr(tmp2, '{'))
 		tmp3 = process_value(tmp2);
