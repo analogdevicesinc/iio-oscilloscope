@@ -720,7 +720,7 @@ static void cal_rx_button_clicked(void)
 {
 	cal_rx_flag = true;
 
-	delay = 50 * plugin_data_capture_size(NULL) * plugin_get_fft_avg(NULL);
+	delay = 2 * plugin_data_capture_size(NULL) * plugin_get_fft_avg(NULL);
 
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_phase_adj), 0);
 
@@ -906,11 +906,11 @@ static void display_cal(void *ptr)
 				gdk_threads_enter();
 				/* DC correction */
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_offset_adj),
-					gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_offset_adj)) +
-					(min_y + max_y) / -2.0);
+					gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_offset_adj)) -
+					avg_y);
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_offset_adj),
-					gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_offset_adj)) +
-					(min_x + max_x) / -2.0);
+					gtk_spin_button_get_value(GTK_SPIN_BUTTON(Q_adc_offset_adj)) -
+					avg_x);
 
 				/* Scale connection */
 				span_I_set = gtk_spin_button_get_value(GTK_SPIN_BUTTON(I_adc_gain_adj));
@@ -1035,8 +1035,8 @@ skip_rx_cal:
 				}
 			}
 		} else {
-			/* wait 100 ms */
-			usleep(100000);
+			/* wait 10 ms */
+			usleep(10000);
 		}
 	}
 
@@ -1046,6 +1046,7 @@ display_call_ret:
 		plugin_data_capture(NULL, (void **)&buf, &cooked_data, &markers);
 
 	kill_thread = 1;
+	g_thread_exit(NULL);
 }
 
 
@@ -2295,6 +2296,7 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 {
 	char *buf;
 	GThread *thr = NULL, *thid = NULL;
+	int i = 0;
 
 	if (MATCH_ATTRIB(SYNC_RELOAD)) {
 		if (value) {
@@ -2330,9 +2332,12 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			kill_thread = 0;
 			cal_rx_button_clicked();
 			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
-			while (kill_thread == 0) {
+			while (i <= 20) {
+				i += kill_thread;
 				gtk_main_iteration();
 			}
+			g_thread_join(thr);
+			cal_rx_flag = false;
 			iio_thread_clear(thr);
 			gtk_widget_hide(dialogs.calibrate);
 		}
@@ -2343,9 +2348,12 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			kill_thread = 0;
 			thid = cal_tx_button_clicked();
 			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
-			while (kill_thread == 0) {
+			while (i <= 20) {
+				i += kill_thread;
 				gtk_main_iteration();
 			}
+			g_thread_join(thid);
+			g_thread_join(thr);
 			iio_thread_clear(thr);
 			iio_thread_clear(thid);
 			gtk_widget_hide(dialogs.calibrate);
