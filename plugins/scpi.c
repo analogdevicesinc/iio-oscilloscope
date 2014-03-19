@@ -89,6 +89,11 @@ struct scpi_instrument {
 static struct scpi_instrument signal_generator;
 static struct scpi_instrument spectrum_analyzer;
 
+static char *supported_spectrum_analyzers[] = {
+	"Rohde&Schwarz,FSEA 20,839161/004,3.40.2",
+	NULL
+	};
+
 #define SOCKETS_BUFFER_SIZE  1024
 #define SOCKETS_TIMEOUT      2
 
@@ -644,8 +649,12 @@ static struct scpi_instrument *current_instrument;
 static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 		const char *value)
 {
-	gchar **elems;
+	gchar **elems, **min_max;
 	char *buf;
+	int i;
+	double lvl;
+	long long j;
+	FILE *fd;
 
 	if (value)
 		buf = NULL;
@@ -740,8 +749,42 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 		if (value)
 			scpi_rx_set_span_frequency(atoll(value));
 	} else if (!strncmp(attrib, "rx.marker", strlen("rx.marker"))) {
-		if (value)
-			scpi_rx_set_marker_freq(atoi(&attrib[strlen("rx.marker") + 1]), atoll(value));
+		if (value) {
+			i = atoi(&attrib[strlen("rx.marker")]);
+			j = atoll(value);
+			if (i && j)
+				scpi_rx_set_marker_freq(i, j);
+			else
+				printf("problems with %s = %s\n", attrib, value);
+		}
+	} else if (!strncmp(attrib, "rx.log.marker", strlen("rx.log.marker"))) {
+		if (value) {
+			i = atoi(&attrib[strlen("rx.log.marker")]);
+			if (i) {
+				scpi_rx_get_marker_level(i, true, &lvl);
+				fd = fopen(value, "a");
+				if (!fd)
+					return NULL;
+
+				fprintf (fd, "%f, ", lvl);
+				fclose (fd);
+			}
+		}
+	} else if (!strncmp(attrib, "rx.test.marker", strlen("rx.test.marker"))) {
+		if (value) {
+			i = atoi(&attrib[strlen("rx.test.marker")]);
+			if (i) {
+				scpi_rx_get_marker_level(i, true, &lvl);
+				min_max = g_strsplit(value, " ", 0);
+				if (lvl >= atof(min_max[1]) && lvl <= atof(min_max[0])) {
+					printf("Marker%i (%f) didn't match requirements (%f - %f)\n",
+						i, lvl, atof(min_max[0]), atof(min_max[1]));
+					return "FAIL";
+				}
+			} else {
+				return "FAIL";
+			}
+		}
 	} else {
 		printf("Unhandled tokens in ini file,\n"
 				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
@@ -936,7 +979,7 @@ static void init_scpi_device(struct scpi_instrument *device)
 
 static void connect_clicked_cb(void)
 {
-	int ret = -1;
+	int i, ret = -1;
 
 	if(current_instrument->network && current_instrument->ip_address) {
 		if (!current_instrument->main_port)
@@ -952,8 +995,19 @@ static void connect_clicked_cb(void)
 
 	if (ret == 0) {
 		scpi_fprintf(current_instrument, "*IDN?\n");
-		if (strlen(current_instrument->response))
+		if (strlen(current_instrument->response)) {
 			gtk_label_set_text(GTK_LABEL(scpi_id), current_instrument->response);
+			for (i = 0; i <= sizeof(supported_spectrum_analyzers); i++) {
+printf("%i\n", i);
+printf("%s\n", current_instrument->response);
+printf("%s\n", supported_spectrum_analyzers[i]);
+				if (supported_spectrum_analyzers[i] &&
+							!strcmp(supported_spectrum_analyzers[i], current_instrument->response)) {
+					gtk_label_set_text(GTK_LABEL(scpi_regex), current_instrument->response);
+					break;
+				}
+			}
+		}
 
 		if (current_instrument->id_regex)
 			gtk_entry_set_text(GTK_ENTRY(scpi_regex), current_instrument->id_regex);
