@@ -2666,6 +2666,9 @@ int capture_profile_handler(const char* name, const char *value)
 	switch (elem_type) {
 		case 0:
 			if (MATCH_NAME("capture_started")) {
+				if (capture_function && atoi(value))
+					goto handled;
+
 				check_valid_setup();
 				gtk_databox_graph_remove_all(GTK_DATABOX(databox));
 				add_grid();
@@ -2830,7 +2833,7 @@ unhandled:
 			ret = 0;
 			break;
 	}
-
+handled:
 	if (elems != NULL)
 		g_strfreev(elems);
 
