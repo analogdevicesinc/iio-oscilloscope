@@ -1785,7 +1785,7 @@ static bool fmcomms2_identify(void)
 }
 
 struct osc_plugin plugin = {
-	.name = "FMComms2/3",
+	.name = "FMComms2/3/4",
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
 	.save_restore_attribs = fmcomms2_sr_attribs,
