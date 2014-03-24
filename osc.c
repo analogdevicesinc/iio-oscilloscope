@@ -32,6 +32,7 @@
 #include "osc_plugin.h"
 
 extern int count_char_in_string(char c, const char *s);
+extern char *get_filename_from_path(const char *path);
 
 GSList *plugin_list = NULL;
 
