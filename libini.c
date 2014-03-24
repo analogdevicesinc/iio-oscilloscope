@@ -35,6 +35,90 @@ int count_char_in_string(char c, const char *s)
 	return i;
 }
 
+static char * process_value(char* value)
+{
+	char *last, *next, *end;
+	char *tmp, *tmp2, *tmp3;
+	int elem_type, ret;
+	gchar **elems = NULL;
+	double val, val1;
+
+	if (!value)
+		return NULL;
+
+	last = (char *)value;
+	while(last) {
+		next = last + 1;
+		last = strchr(next, '{') ;
+	}
+
+	if (!next) {
+		return NULL;
+	}
+
+	end = strchr(next, '}');
+
+	if (!end) {
+		return NULL;
+	}
+
+	tmp = malloc(end-next);
+	sprintf(tmp, "%.*s", (int)(end - next), next);
+
+	if (strstr(tmp, " + ") || strstr(tmp, " - ")) {
+		sscanf(tmp, "%lf", &val);
+		last = strstr(tmp, " + ");
+		if (!last) {
+			last = strstr(tmp, " - ");
+			sscanf(last + 3, "%lf", &val1);
+			val1 *= -1;
+		} else
+			sscanf(last + 3, "%lf", &val1);
+
+		val += val1;
+
+		tmp2 = malloc(1024);
+		sprintf(tmp2, "%.*s%f%.*s",
+			(int)(next - 1 - value), value,
+			val,
+			strlen(value) - 2 - strlen(tmp), next + 1 + strlen(tmp));
+		return tmp2;
+	}
+
+	elem_type = count_char_in_string('.', tmp);
+	switch(elem_type) {
+		case 0 :
+			sscanf(tmp, "%lf", &val);
+			break;
+		case 1 :
+			elems = g_strsplit(tmp, ".", 0);
+			set_dev_paths(elems[0]);
+			ret = read_devattr_double(elems[1], &val);
+			g_strfreev(elems);
+			if (ret < 0) {
+				printf("fail to read %s:%s\n", elems[0], elems[1]);
+				return NULL;
+			}
+			break;
+		default:
+			val = -99;
+			break;
+	}
+
+	tmp2 = malloc (1024);
+
+	sprintf(tmp2, "%.*s%f%.*s",
+			(int)(next - 1 - value), value,
+			val,
+			strlen(value) - 2 - strlen(tmp), next + 1 + strlen(tmp));
+
+	tmp3 = tmp2;
+	if (strchr(tmp2, '{'))
+		tmp3 = process_value(tmp2);
+
+	return tmp3;
+}
+
 /* Handler should return nonzero on success, zero on error. */
 static int libini_restore_handler(void *user, const char* section,
 				 const char* name, const char* value)
@@ -49,6 +133,10 @@ static int libini_restore_handler(void *user, const char* section,
 	GSList *node;
 	int ret = 1;
 	FILE *fd;
+
+	if (value[0] == '{' && value[strlen(value) - 1] == '}') {
+		value = process_value(strdup(value));
+	}
 
 	/* See if the section is from the main window */
 	if (MATCH_SECT(MULTI_OSC))
