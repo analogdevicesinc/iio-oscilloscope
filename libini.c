@@ -272,6 +272,23 @@ static int libini_restore_handler(void *user, const char* section,
 	return ret;
 }
 
+char * get_filename_from_path(const char *path)
+{
+	char * filename;
+
+	if (!path)
+		return NULL;
+
+	if (strstr(path, "/."))
+		filename = (char *)(memchr(path, '.', strlen(path)) + 1);
+	else if (strchr(path, '/'))
+		filename = (char *)(strrchr(path, '/') + 1);
+	else
+		filename = path;
+
+	return filename;
+}
+
 static const char * unroll(const char *in_filename)
 {
 
@@ -284,7 +301,7 @@ static const char * unroll(const char *in_filename)
 	bool j = true, k = false;
 
 	out_filename = malloc(strlen(in_filename) + 10);
-	sprintf(out_filename, TMP_INI_FILE, in_filename);
+	sprintf(out_filename, TMP_INI_FILE, get_filename_from_path(in_filename));
 
 	in = fopen(in_filename, "r");
 	out = fopen (out_filename, "w");

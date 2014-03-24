@@ -1820,7 +1820,7 @@ static int load_default_profile (char *filename)
 		return 0;
 
 	if (ret > 0) {
-		sprintf(tmp, TMP_INI_FILE, buf);
+		sprintf(tmp, TMP_INI_FILE, get_filename_from_path(buf));
 		fd = fopen(tmp, "r");
 		if (!fd)
 			return 0;
