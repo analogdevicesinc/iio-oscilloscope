@@ -1829,6 +1829,9 @@ static int load_default_profile (char *filename)
 			linecount++;
 			if (linecount == ret) {
 				tmp[strlen(tmp) - 1] = 0;
+				if (!strcmp(tmp, "stop = 1")) {
+					return 0;
+				}
 				if (strcmp(tmp, "quit = 1")) {
 					create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 						"INI parsing / test failure",

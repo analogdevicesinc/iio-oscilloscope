@@ -2572,8 +2572,12 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 					if (atoi(value))
 						priv->line_thickness = atoi(value);
 				}
-			} else if (MATCH_NAME("quit")) {
+			} else if (MATCH_NAME("quit") || MATCH_NAME("stop")) {
 				return 0;
+			} else if (MATCH_NAME("echo")) {
+				if (value)
+					printf("echoing : '%s'\n", value);
+				ret = 1;
 			} else {
 				goto unhandled;
 			}
