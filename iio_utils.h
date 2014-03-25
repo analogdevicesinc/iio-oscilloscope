@@ -7,6 +7,9 @@
  * the Free Software Foundation.
 */
 
+#ifndef __IIO_UTILS_H__
+#define __IIO_UTILS_H__
+
 /* Made up value to limit allocation sizes */
 #include <string.h>
 #include <stdlib.h>
@@ -775,3 +778,5 @@ int iio_buffer_open(bool read, int flags);
 int find_scan_elements(char *dev, char **elements, unsigned access);
 void scan_elements_sort(char **elements);
 void scan_elements_insert(char **elements, char *token, char *end);
+
+#endif /* __IIO_UTILS_H__ */
