@@ -2458,6 +2458,8 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 	switch(elem_type) {
 		case PLOT_ATTRIBUTE:
 			if (MATCH_NAME("capture_started")) {
+				if (priv->redraw_function && atoi(value))
+					goto handled;
 				treeview_expand_update(plot);
 				treeview_icon_color_update(plot);
 				max_y_axis_cb(GTK_SPIN_BUTTON(plot->priv->y_axis_max), plot);
@@ -2697,7 +2699,7 @@ unhandled:
 			ret = 0;
 			break;
 	}
-
+handled:
 	if (elems != NULL)
 		g_strfreev(elems);
 
