@@ -96,7 +96,6 @@ struct _transform {
 	gfloat **in_data;
 	gfloat *x_axis;
 	gfloat *y_axis;
-	unsigned *in_data_size;
 	unsigned x_axis_size;
 	unsigned y_axis_size;
 	bool destroy_x_axis;
@@ -148,7 +147,7 @@ Transform* Transform_new(int tr_type);
 void Transform_destroy(Transform *tr);
 void Transform_resize_x_axis(Transform *tr, int new_size);
 void Transform_resize_y_axis(Transform *tr, int new_size);
-void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref, unsigned *in_data_size);
+void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref);
 gfloat* Transform_get_x_axis_ref(Transform *tr);
 gfloat* Transform_get_y_axis_ref(Transform *tr);
 void Transform_attach_settings(Transform *tr, void *settings);

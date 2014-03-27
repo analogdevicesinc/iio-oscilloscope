@@ -20,7 +20,6 @@ Transform* Transform_new(int type)
 	tr->in_data = NULL;
 	tr->x_axis = NULL;
 	tr->y_axis = NULL;
-	tr->in_data_size = NULL;
 	tr->x_axis_size = 0;
 	tr->y_axis_size = 0;
 	tr->destroy_x_axis = false;
@@ -70,10 +69,9 @@ void Transform_resize_y_axis(Transform *tr, int new_size)
 	tr->y_axis = (gfloat *)realloc(tr->y_axis, sizeof(gfloat) * tr->y_axis_size);
 }
 
-void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref, unsigned *in_data_size)
+void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref)
 {
 	tr->in_data = data_ref;
-	tr->in_data_size = in_data_size;
 }
 
 gfloat* Transform_get_x_axis_ref(Transform *tr)

@@ -730,7 +730,7 @@ static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel_info *
 	transform->graph_color = &color_graph[0];
 	ch_info->shadow_of_enabled++;
 	priv->current_device = GET_CHANNEL_PARENT(ch0);
-	Transform_set_in_data_ref(transform, (gfloat **)&ch_info->data_ref, &priv->current_device->sample_count);
+	Transform_set_in_data_ref(transform, (gfloat **)&ch_info->data_ref);
 	switch (tr_type) {
 	case TIME_TRANSFORM:
 		Transform_attach_function(transform, time_transform_function);
