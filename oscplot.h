@@ -47,7 +47,7 @@ void          osc_plot_draw_stop        (OscPlot *plot);
 void          osc_plot_save_to_ini      (OscPlot *plot, char *filename);
 int           osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *name, const char *value);
 void          osc_plot_save_as          (OscPlot *plot, char *filename, int type);
-char *        osc_plot_get_active_device(OscPlot *plot);
+const char *  osc_plot_get_active_device(OscPlot *plot);
 int           osc_plot_get_fft_avg      (OscPlot *plot);
 int           osc_plot_get_marker_type  (OscPlot *plot);
 void          osc_plot_set_marker_type  (OscPlot *plot, int mtype);

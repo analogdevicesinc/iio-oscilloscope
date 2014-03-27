@@ -20,9 +20,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string.h>
+#include <dirent.h>
 
 #include <complex.h>
 #include <fftw3.h>
+#include <iio.h>
 
 #include "ini/ini.h"
 #include "osc.h"
@@ -37,12 +40,9 @@ extern char *get_filename_from_path(const char *path);
 
 GSList *plugin_list = NULL;
 
-struct _device_list *device_list = NULL;
-unsigned num_devices = 0;
 gint capture_function = 0;
 gfloat plugin_fft_corr = 0.0;
 static GList *plot_list = NULL;
-static const char *current_device;
 static int num_capturing_plots;
 G_LOCK_DEFINE_STATIC(buffer_full);
 static gboolean stop_capture;
@@ -50,6 +50,9 @@ static struct plugin_check_fct *setup_check_functions = NULL;
 static int num_check_fcts = 0;
 static GSList *dplugin_list = NULL;
 GtkWidget  *notebook;
+
+struct iio_context *ctx;
+unsigned int num_devices = 0;
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
 static void plugin_restore_ini_state(char *plugin_name, gboolean detached);
@@ -147,7 +150,7 @@ static void do_fft(Transform *tr)
 	}
 
 	if (fft->num_active_channels == 2) {
-		ch_info = tr->channel_parent2->extra_field;
+		ch_info = iio_channel_get_data(tr->channel_parent2);
 		in_data_c = ch_info->data_ref;
 		for (cnt = 0, i = 0; cnt < fft_size; cnt++) {
 			/* normalization and scaling see fft_corr */
@@ -429,13 +432,13 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	gfloat *i_1, *q_1;
 	int i;
 
-	ch_info = tr->channel_parent->extra_field;
+	ch_info = iio_channel_get_data(tr->channel_parent);
 	i_0 = ch_info->data_ref;
-	ch_info = tr->channel_parent2->extra_field;
+	ch_info = iio_channel_get_data(tr->channel_parent2);
 	q_0 = ch_info->data_ref;
-	ch_info = tr->channel_parent3->extra_field;
+	ch_info = iio_channel_get_data(tr->channel_parent3);
 	i_1 = ch_info->data_ref;
-	ch_info = tr->channel_parent4->extra_field;
+	ch_info = iio_channel_get_data(tr->channel_parent4);
 	q_1 = ch_info->data_ref;
 
 	if (init_transform) {
@@ -475,30 +478,32 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 
 void fft_transform_function(Transform *tr, gboolean init_transform)
 {
-	struct extra_info *ch_info = tr->channel_parent->extra_field;
+	struct iio_channel *chn = tr->channel_parent;
+	struct extra_info *ch_info = iio_channel_get_data(chn);
+	struct extra_dev_info *dev_info = iio_device_get_data(ch_info->dev);
 	struct _fft_settings *settings = tr->settings;
-	struct _device_list *device = ch_info->device_parent;
 	unsigned axis_length;
-	unsigned num_samples = device->sample_count;
+	unsigned num_samples = dev_info->sample_count;
 	double corr;
 	int i;
 
 	if (init_transform) {
+		unsigned int bits_used = iio_channel_get_data_format(chn)->bits;
 		axis_length = settings->fft_size * settings->fft_alg_data.num_active_channels / 2;
 		Transform_resize_x_axis(tr, axis_length);
 		Transform_resize_y_axis(tr, axis_length);
 		tr->y_axis_size = axis_length;
 		if (settings->fft_alg_data.num_active_channels == 2)
-			corr = device->adc_freq / 2;
+			corr = dev_info->adc_freq / 2.0;
 		else
 			corr = 0;
 		for (i = 0; i < axis_length; i++) {
-			tr->x_axis[i] = i * device->adc_freq / num_samples - corr;
+			tr->x_axis[i] = i * dev_info->adc_freq / num_samples - corr;
 			tr->y_axis[i] = FLT_MAX;
 		}
 
 		/* Compute FFT normalization and scaling offset */
-		settings->fft_alg_data.fft_corr = 20 * log10(2.0 / (1 << (tr->channel_parent->bits_used - 1)));
+		settings->fft_alg_data.fft_corr = 20 * log10(2.0 / (1 << (bits_used - 1)));
 		return;
 	}
 	do_fft(tr);
@@ -506,7 +511,7 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 
 void constellation_transform_function(Transform *tr, gboolean init_transform)
 {
-	struct extra_info *ch_info = tr->channel_parent2->extra_field;
+	struct extra_info *ch_info = iio_channel_get_data(tr->channel_parent2);
 	gfloat *y_axis = ch_info->data_ref;
 	struct _constellation_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
@@ -569,173 +574,27 @@ static void destroy_all_plots(void)
 	g_list_foreach(plot_list, gfunc_destroy_plot, NULL);
 }
 
-static int sign_extend(unsigned int val, unsigned int bits)
+static void disable_all_channels(struct iio_device *dev)
 {
-	unsigned int shift = 32 - bits;
-	return ((int )(val << shift)) >> shift;
-}
-
-static void demux_data_stream(void *data_in, gfloat **data_out,
-	unsigned int num_samples, unsigned int offset, unsigned int data_out_size,
-	struct iio_channel_info *channels, unsigned int num_channels)
-{
-	unsigned int i, j, n;
-	unsigned int val;
-	unsigned int k;
-
-	for (i = 0; i < num_samples; i++) {
-		n = (offset + i) % data_out_size;
-		k = 0;
-		for (j = 0; j < num_channels; j++) {
-			if (!channels[j].enabled)
-				continue;
-			switch (channels[j].bytes) {
-			case 1:
-				val = *(uint8_t *)data_in;
-				break;
-			case 2:
-				switch (channels[j].endianness) {
-				case IIO_BE:
-					val = be16toh(*(uint16_t *)data_in);
-					break;
-				case IIO_LE:
-					val = le16toh(*(uint16_t *)data_in);
-					break;
-				default:
-					val = 0;
-					break;
-				}
-				break;
-			case 4:
-				switch (channels[j].endianness) {
-				case IIO_BE:
-					val = be32toh(*(uint32_t *)data_in);
-					break;
-				case IIO_LE:
-					val = le32toh(*(uint32_t *)data_in);
-					break;
-				default:
-					val = 0;
-					break;
-				}
-				break;
-			default:
-				continue;
-			}
-			data_in += channels[j].bytes;
-			val >>= channels[j].shift;
-			val &= channels[j].mask;
-			if (channels[j].is_signed)
-				data_out[k][n] = sign_extend(val, channels[j].bits_used);
-			else
-				data_out[k][n] = val;
-			k++;
-		}
-	}
-
-}
-
-static int buffer_open(unsigned int length, int flags)
-{
-	int ret;
-	int fd;
-
-	if (!current_device)
-		return -ENODEV;
-
-	set_dev_paths(current_device);
-
-	fd = iio_buffer_open(true, flags);
-	if (fd < 0) {
-		ret = -errno;
-		fprintf(stderr, "Failed to open buffer: %d\n", ret);
-		return ret;
-	}
-
-	/* Setup ring buffer parameters */
-	ret = write_devattr_int("buffer/length", length);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to set buffer length: %d\n", ret);
-		goto err_close;
-	}
-
-	/* Enable the buffer */
-	ret = write_devattr_int("buffer/enable", 1);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
-		goto err_close;
-	}
-
-	return fd;
-
-err_close:
-	close(fd);
-	return ret;
-}
-
-static void buffer_close(unsigned int fd)
-{
-	int ret;
-
-	if (!current_device)
-		return;
-
-	set_dev_paths(current_device);
-
-	/* Enable the buffer */
-	ret = write_devattr_int("buffer/enable", 0);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to disable buffer: %d\n", ret);
-	}
-
-	close(fd);
-}
-
-unsigned int set_channel_attr_enable(const char *device_name, struct iio_channel_info *channel, unsigned enable)
-{
-	char buf[512];
-	FILE *f;
-	int ret;
-
-	set_dev_paths(device_name);
-	snprintf(buf, sizeof(buf), "%s/scan_elements/%s_en", dev_name_dir(), channel->name);
-	f = fopen(buf, "w");
-	if (f) {
-		fprintf(f, "%u\n", enable);
-		fclose(f);
-
-		f = fopen(buf, "r");
-		ret = fscanf(f, "%u", &enable);
-		if (ret != 1)
-			enable = 0;
-		fclose(f);
-	} else {
-		enable = 0;
-	}
-
-	return enable;
-}
-
-static void disable_all_channels(void)
-{
-	int i, j;
-
-	for (i = 0; i < num_devices; i++)
-		for (j = 0; j < device_list[i].num_channels; j++)
-			set_channel_attr_enable(device_list[i].device_name, &device_list[i].channel_list[j], 0);
+	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
+	for (i = 0; i < nb_channels; i++)
+		iio_channel_disable(iio_device_get_channel(dev, i));
 }
 
 static void close_active_buffers(void)
 {
-	int i;
+	unsigned int i;
 
-	for (i = 0; i < num_devices; i++)
-		if (device_list[i].buffer_fd >= 0) {
-			current_device = device_list[i].device_name;
-			buffer_close(device_list[i].buffer_fd);
-			device_list[i].buffer_fd = -1;
+	for (i = 0; i < num_devices; i++) {
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		struct extra_dev_info *info = iio_device_get_data(dev);
+		if (info->buffer) {
+			iio_buffer_destroy(info->buffer);
+			info->buffer = NULL;
 		}
-	disable_all_channels();
+
+		disable_all_channels(dev);
+	}
 }
 
 static void stop_sampling(void)
@@ -750,70 +609,6 @@ static void abort_sampling(void)
 {
 	stop_sampling();
 	close_all_plots();
-}
-
-static bool is_oneshot_mode(void)
-{
-	if (strncmp(current_device, "cf-ad9", 5) == 0)
-		return true;
-	if (strncmp(current_device, "ad-mc-", 5) == 0)
-		return true;
-
-	return false;
-}
-
-static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
-{
-	int ret;
-
-	ret = read(buffer_fd, buf->data + buf->available, buf->size - buf->available);
-
-	if (ret == 0)
-		return 0;
-	if (ret < 0) {
-		if (errno == EAGAIN)
-			return 0;
-		else
-			return -errno;
-	}
-
-	buf->available += ret;
-
-	return 0;
-}
-
-static  int sample_iio_data_oneshot(struct buffer *buf)
-{
-	int fd, ret;
-
-	fd = buffer_open(buf->size, 0);
-	if (fd < 0)
-		return fd;
-
-	ret = sample_iio_data_continuous(fd, buf);
-
-	buffer_close(fd);
-
-	return ret;
-}
-
-static int sample_iio_data(struct _device_list *device)
-{
-	int ret;
-	struct buffer *buf = &device->data_buffer;
-
-	if (is_oneshot_mode())
-		ret = sample_iio_data_oneshot(buf);
-	else
-		ret = sample_iio_data_continuous(device->buffer_fd, buf);
-
-	if ((buf->data_copy) && (buf->available == buf->size)) {
-		memcpy(buf->data_copy, buf->data, buf->size);
-		buf->data_copy = NULL;
-		G_UNLOCK(buffer_full);
-	}
-
-	return ret;
 }
 
 static void detach_plugin(GtkToolButton *btn, gpointer data);
@@ -972,34 +767,25 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	gtk_widget_show_all(vbox);
 }
 
-const char * device_name_check(const char *device_name)
+static struct iio_device * find_device_by_name(const char *name)
 {
-	int i;
-
-	if (!device_name)
-		return NULL;
+	unsigned int i;
 
 	for (i = 0; i < num_devices; i++) {
-		if (strcmp(device_name, device_list[i].device_name) == 0)
-			return device_list[i].device_name;
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		const char *id = iio_device_get_name(dev) ?:
+			iio_device_get_id(dev);
+		if (!strcmp(id, name))
+			return dev;
 	}
 
 	return NULL;
 }
 
-void * find_device_by_name(const char *device_name)
+static const char * device_name_check(const char *name)
 {
-	int i;
-
-	if (!device_name)
-		return NULL;
-
-	for (i = 0; i < num_devices; i++) {
-		if (strcmp(device_name, device_list[i].device_name) == 0)
-			return (void *)&device_list[i];
-	}
-
-	return NULL;
+	struct iio_device *dev = find_device_by_name(name);
+	return iio_device_get_name(dev) ?: iio_device_get_id(dev);
 }
 
 static OscPlot * find_a_fft_plot(GList *list)
@@ -1071,37 +857,44 @@ gdouble plugin_get_fft_avg(const char *device)
 
 int plugin_data_capture_size(const char *device)
 {
-	struct _device_list *dev;
-
-	dev = find_device_by_name(device);
+	struct extra_dev_info *info;
+	struct iio_device *dev = find_device_by_name(device);
 	if (!dev)
 		return 0;
 
-	return dev->data_buffer.size;
+	info = iio_device_get_data(dev);
+	return info->sample_count * iio_device_get_sample_size(dev);
 }
 
 int plugin_data_capture_num_active_channels(const char *device)
 {
-	struct _device_list *dev;
-
-	dev = find_device_by_name(device);
+	int nb_active = 0;
+	unsigned int i, nb_channels;
+	struct iio_device *dev = find_device_by_name(device);
 	if (!dev)
 		return 0;
 
-	return dev->num_active_channels;
+	nb_channels = iio_device_get_channels_count(dev);
+	for (i = 0; i < nb_channels; i++) {
+		struct iio_channel *chn = iio_device_get_channel(dev, i);
+		if (iio_channel_is_enabled(chn))
+			nb_active++;
+	}
+
+	return nb_active;
 }
 
 int plugin_data_capture_bytes_per_sample(const char *device)
 {
-	struct _device_list *dev;
-
-	dev = find_device_by_name(device);
+	struct iio_device *dev = find_device_by_name(device);
 	if (!dev)
 		return 0;
-
-	return dev->bytes_per_sample;
+	else
+		return iio_device_get_sample_size(dev);
 }
 
+#if 0
+/* TODO(pcercuei): convert this to libiio */
 int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data,
 			struct marker_type **markers_cp)
 {
@@ -1112,7 +905,7 @@ int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data,
 	bool is_fft_mode;
 	int i, j;
 	bool new = FALSE;
-	char *tmp = NULL;
+	const char *tmp = NULL;
 
 	dev = find_device_by_name(device);
 	fft_plot = find_a_fft_plot(plot_list);
@@ -1260,6 +1053,7 @@ capture_malloc_fail:
 	printf("%s:%s malloc failed\n", __FILE__, __func__);
 	return -ENOMEM;
 }
+#endif
 
 static bool force_plugin(const char *name)
 {
@@ -1425,38 +1219,61 @@ static void plugin_state_ini_save(gpointer data, gpointer user_data)
 	fprintf(fp, "plugin.%s.detached=%d\n", p->plugin->name, p->detached_state);
 }
 
-static gboolean capture_proccess(void)
+static ssize_t demux_sample(const struct iio_channel *chn,
+		void *sample, size_t size, void *d)
 {
-	unsigned int n;
-	int ret;
-	int i;
+	struct extra_info *info = iio_channel_get_data(chn);
+	struct extra_dev_info *dev_info = iio_device_get_data(info->dev);
 
-	for (i = 0; i < num_devices; i++) {
-		if (device_list[i].bytes_per_sample == 0)
-			continue;
-		current_device = device_list[i].device_name;
-		ret = sample_iio_data(&device_list[i]);
-		if (ret < 0) {
-			abort_sampling();
-			fprintf(stderr, "Failed to capture samples: %s\n", strerror(-ret));
-			return FALSE;
-		}
+	/* Prevent buffer overflow */
+	if (info->offset == dev_info->sample_count)
+		return 0;
+
+	if (size == 1) {
+		int8_t val;
+		iio_channel_convert(chn, &val, sample);
+		*(info->data_ref + info->offset++) = (gfloat) val;
+	} else if (size == 2) {
+		int16_t val;
+		iio_channel_convert(chn, &val, sample);
+		*(info->data_ref + info->offset++) = (gfloat) val;
+	} else {
+		int32_t val;
+		iio_channel_convert(chn, &val, sample);
+		*(info->data_ref + info->offset++) = (gfloat) val;
 	}
 
+	return size;
+}
+
+static gboolean capture_process(void)
+{
+	unsigned int i;
+
 	for (i = 0; i < num_devices; i++) {
-		if (device_list[i].bytes_per_sample == 0)
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+		unsigned int i, sample_size = iio_device_get_sample_size(dev);
+		unsigned int nb_channels = iio_device_get_channels_count(dev);
+		unsigned int sample_count = dev_info->sample_count;
+
+		if (sample_size == 0)
 			continue;
 
-		n = device_list[i].data_buffer.available / device_list[i].bytes_per_sample;
-		demux_data_stream(device_list[i].data_buffer.data, device_list[i].channel_data, n, device_list[i].current_sample,
-			device_list[i].sample_count, device_list[i].channel_list, device_list[i].num_channels);
-		device_list[i].current_sample = (device_list[i].current_sample + n) % device_list[i].sample_count;
-		device_list[i].data_buffer.available -= n * device_list[i].bytes_per_sample;
-		if (device_list[i].data_buffer.available != 0) {
-			memmove(device_list[i].data_buffer.data,
-				device_list[i].data_buffer.data + n * device_list[i].bytes_per_sample,
-				device_list[i].data_buffer.available);
+		/* Reset the data offset for all channels */
+		for (i = 0; i < nb_channels; i++) {
+			struct iio_channel *ch = iio_device_get_channel(dev, i);
+			struct extra_info *info = iio_channel_get_data(ch);
+			info->offset = 0;
 		}
+
+		do {
+			ssize_t ret;
+			iio_buffer_refill(dev_info->buffer);
+			ret = iio_buffer_foreach_sample(
+					dev_info->buffer, demux_sample, NULL);
+			sample_count -= ret / sample_size;
+		} while (sample_count);
 	}
 
 	update_all_plots();
@@ -1466,14 +1283,13 @@ static gboolean capture_proccess(void)
 	return !stop_capture;
 }
 
-static unsigned int max_sample_count_from_plots(struct _device_list *device)
+static unsigned int max_sample_count_from_plots(struct extra_dev_info *info)
 {
 	unsigned int max_count = 0;
 	struct plot_params *prm;
-	GSList *list;
 	GSList *node;
+	GSList *list = info->plots_sample_counts;
 
-	list = device->plots_sample_counts;
 	for (node = list; node; node = g_slist_next(node)) {
 		prm = node->data;
 		if (prm->sample_count > max_count)
@@ -1483,62 +1299,49 @@ static unsigned int max_sample_count_from_plots(struct _device_list *device)
 	return max_count;
 }
 
-static void resize_device_data(struct _device_list *device)
-{
-	struct iio_channel_info *channel;
-	struct extra_info *ch_info;
-	unsigned enable;
-	int i;
-	int k;
-
-	/* Check the enable status of the channels from all windows and update the channels enable attributes. */
-	device->bytes_per_sample = 0;
-	device->num_active_channels = 0;
-	for (i = 0; i < device->num_channels; i++) {
-		channel = &device->channel_list[i];
-		ch_info = channel->extra_field;
-		enable = (ch_info->shadow_of_enabled > 0) ? 1 : 0;
-		channel->enabled = enable;
-		enable = set_channel_attr_enable(device->device_name, channel, enable);
-		if (enable) {
-			device->bytes_per_sample += channel->bytes;
-			device->num_active_channels++;
-		}
-	}
-
-	/* Reallocate memory for the active channels of the device */
-	device->data_buffer.size = device->sample_count * device->bytes_per_sample;
-	device->data_buffer.data = g_renew(int8_t, device->data_buffer.data, device->data_buffer.size);
-	device->data_buffer.available = 0;
-	device->data_buffer.data_copy = NULL;
-	device->current_sample = 0;
-	k = 0;
-	for (i = 0; i < device->num_channels; i++) {
-		channel = &device->channel_list[i];
-		if (channel->enabled) {
-			ch_info = (struct extra_info *)channel->extra_field;
-			if (ch_info->data_ref)
-				g_free(ch_info->data_ref);
-			ch_info->data_ref = (gfloat *)g_new0(gfloat, device->sample_count);
-			/* Copy the channel data address to <channel_data> variable */
-			device->channel_data[k++] = ch_info->data_ref;
-		}
-	}
-}
-
 static int capture_setup(void)
 {
-	int i;
+	unsigned int i, j;
+
+	fprintf(stderr, "capture setup\n");
 
 	for (i = 0; i < num_devices; i++) {
-		device_list[i].sample_count = max_sample_count_from_plots(&device_list[i]);
-		resize_device_data(&device_list[i]);
-		current_device = device_list[i].device_name;
-		if ((!is_oneshot_mode()) && (device_list[i].bytes_per_sample != 0)) {
-			device_list[i].buffer_fd = buffer_open(device_list[i].sample_count, O_NONBLOCK);
-			if (device_list[i].buffer_fd < 0)
-				return -1;
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+		unsigned int nb_channels = iio_device_get_channels_count(dev);
+		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info);
+
+		for (j = 0; j < nb_channels; j++) {
+			struct iio_channel *ch = iio_device_get_channel(dev, j);
+			struct extra_info *info = iio_channel_get_data(ch);
+			if (info->shadow_of_enabled > 0)
+				iio_channel_enable(ch);
+			else
+				iio_channel_disable(ch);
 		}
+
+		sample_size = iio_device_get_sample_size(dev);
+		if (sample_size == 0)
+			continue;
+
+		for (j = 0; j < nb_channels; j++) {
+			struct iio_channel *ch = iio_device_get_channel(dev, j);
+			struct extra_info *info = iio_channel_get_data(ch);
+
+			if (info->data_ref)
+				g_free(info->data_ref);
+			info->data_ref = (gfloat *) g_new0(gfloat, sample_count);
+		}
+
+		dev_info->buffer = iio_device_create_buffer(dev,
+				sample_count, false);
+		if (!dev_info->buffer) {
+			fprintf(stderr, "Unable to create buffer\n");
+			return -1;
+		}
+		dev_info->sample_count = sample_count;
+
+		iio_device_set_data(dev, dev_info);
 	}
 
 	return 0;
@@ -1551,7 +1354,8 @@ static void capture_start(void)
 	}
 	else {
 		stop_capture = FALSE;
-		capture_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, (GSourceFunc) capture_proccess, NULL, NULL);
+		fprintf(stderr, "Starting capture process\n");
+		capture_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, (GSourceFunc) capture_process, NULL, NULL);
 	}
 }
 
@@ -1681,100 +1485,27 @@ void sigterm (int signum)
 	application_quit();
 }
 
-bool is_input_device(const char *device)
-{
-	struct iio_channel_info *channels = NULL;
-	unsigned int num_channels;
-	bool is_input = false;
-	int ret;
-	int i;
-
-	set_dev_paths(device);
-
-	ret = build_channel_array(dev_name_dir(), &channels, &num_channels);
-	if (ret)
-		return false;
-
-	for (i = 0; i < num_channels; i++) {
-		if (strncmp("in", channels[i].name, 2) == 0) {
-			is_input = true;
-			break;
-		}
-	}
-	free_channel_array(channels, num_channels);
-
-	return is_input;
-}
-
-static struct _device_list *add_device(struct _device_list *dev_list, const char *device)
-{
-	struct extra_info *ch_info;
-	int dev_name_len;
-	int ret;
-	int n;
-	int j;
-
-	/* Add device */
-	dev_list = (struct _device_list *)realloc(dev_list, sizeof(*dev_list) * num_devices);
-	set_dev_paths(device);
-
-	/* Init device */
-	n = num_devices - 1;
-
-	dev_name_len = strlen(device) + 1;
-	dev_list[n].device_name = (char *)malloc(sizeof(char) * dev_name_len);
-	snprintf(dev_list[n].device_name, dev_name_len, "%s", device);
-
-	ret = build_channel_array(dev_name_dir(), &dev_list[n].channel_list, &dev_list[n].num_channels);
-	if (ret)
-		return NULL;
-
-	for (j = 0; j < dev_list[n].num_channels; j++) {
-		ch_info  = (struct extra_info *)malloc(sizeof(struct extra_info));
-		ch_info->device_parent = NULL; /* Don't add the device parrent yet(dev_list addresses may change due to realloc) */
-		ch_info->data_ref = NULL;
-		ch_info->shadow_of_enabled = 0;
-		dev_list[n].channel_list[j].extra_field = ch_info;
-	}
-
-	dev_list[n].data_buffer.data = NULL;
-	dev_list[n].data_buffer.data_copy = NULL;
-	dev_list[n].sample_count = 400;
-	dev_list[n].plots_sample_counts = NULL;
-	dev_list[n].channel_data = (gfloat **)malloc(sizeof(gfloat *) * dev_list[n].num_channels);
-	dev_list[n].buffer_fd = -1;
-	dev_list[n].lo_freq = 0;
-
-	return dev_list;
-}
-
 static void init_device_list(void)
 {
-	char *devices = NULL, *device;
-	unsigned int num;
-	struct iio_channel_info *channel;
-	int i, j;
+	unsigned int i, j;
 
-	num = find_iio_names(&devices, "iio:device");
-	if (devices != NULL) {
-		device = devices;
-		for (; num > 0; num--) {
-			if (is_input_device(device)) {
-				num_devices++;
-				device_list = add_device(device_list, device);
-			}
-			device += strlen(device) + 1;
-		}
-	}
-	free(devices);
+	ctx = osc_create_context();
+	if (!ctx)
+		return;
 
-	/* Disable all channels. Link parent references to channels*/
-	for (i = 0;  i < num_devices; i++) {
-		for (j = 0; j < device_list[i].num_channels; j++) {
-			channel = &device_list[i].channel_list[j];
-			set_channel_attr_enable(device_list[i].device_name, channel, 0);
-			channel->enabled = 0;
-			((struct extra_info *)channel->extra_field)->device_parent = &device_list[i];
+	num_devices = iio_context_get_devices_count(ctx);
+
+	for (i = 0; i < num_devices; i++) {
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		unsigned int nb_channels = iio_device_get_channels_count(dev);
+		struct extra_dev_info *dev_info = calloc(1, sizeof(*dev_info));
+		iio_device_set_data(dev, dev_info);
+
+		for (j = 0; j < nb_channels; j++) {
+			struct iio_channel *ch = iio_device_get_channel(dev, j);
+			struct extra_info *info = calloc(1, sizeof(*info));
+			info->dev = dev;
+			iio_channel_set_data(ch, info);
 		}
 	}
 }
@@ -1790,68 +1521,95 @@ gboolean save_sample_count_cb(GtkWidget *widget, GdkEventKey *event, gpointer da
 	return FALSE;
 }
 
-static double read_sampling_frequency(const char *device)
+static double read_sampling_frequency(const struct iio_device *dev)
 {
-	double freq = 1.0;
-	int ret;
+	double freq = 400.0;
+	int ret = -1;
+	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
+	char buf[1024];
 
-	if (set_dev_paths(device) < 0)
-		return -1.0f;
+	for (i = 0; i < nb_channels; i++) {
+		struct iio_channel *ch = iio_device_get_channel(dev, i);
 
-	if (iio_devattr_exists(device, "in_voltage_sampling_frequency")) {
-		read_devattr_double("in_voltage_sampling_frequency", &freq);
-		if (freq < 0)
-			freq = ((double)4294967296) + freq;
-	} else if (iio_devattr_exists(device, "sampling_frequency")) {
-		read_devattr_double("sampling_frequency", &freq);
-	} else {
-		char *trigger;
+		if (iio_channel_is_output(ch) || strncmp(iio_channel_get_id(ch),
+					"voltage", sizeof("voltage") - 1))
+			continue;
 
-		ret = read_devattr("trigger/current_trigger", &trigger);
-		if (ret >= 0) {
-			if (*trigger != '\0') {
-				set_dev_paths(trigger);
-				if (iio_devattr_exists(trigger, "frequency"))
-					read_devattr_double("frequency", &freq);
-			}
-			free(trigger);
-		} else
-			freq = -1.0f;
+		ret = iio_channel_attr_read(ch, "sampling_frequency",
+				buf, sizeof(buf));
+		if (ret > 0)
+			break;
 	}
 
+	if (ret < 0)
+		ret = iio_device_attr_read(dev, "sampling_frequency",
+				buf, sizeof(buf));
+	if (ret < 0) {
+		const struct iio_device *trigger;
+		ret = iio_device_get_trigger(dev, &trigger);
+		if (!ret)
+			ret = iio_device_attr_read(trigger, "frequency",
+					buf, sizeof(buf));
+	}
+
+	if (ret > 0)
+		sscanf(buf, "%lf", &freq);
 	return freq;
+}
+
+static void set_lo_freq(struct iio_device *dev, const char *attr)
+{
+	struct extra_dev_info *info = iio_device_get_data(dev);
+	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
+
+	for (i = 0; i < nb_channels; i++) {
+		struct iio_channel *chn = iio_device_get_channel(dev, i);
+		const char *id = iio_channel_get_id(chn);
+		if (iio_channel_is_output(chn) && !strcmp(id, "altvoltage0")) {
+			char buf[1024];
+			int ret = iio_channel_attr_read(chn,
+					attr, buf, sizeof(buf));
+			if (ret > 0)
+				info->lo_freq = atof(buf);
+			break;
+		}
+	}
 }
 
 void rx_update_labels(void)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < num_devices; i++) {
-		device_list[i].adc_freq = read_sampling_frequency(device_list[i].device_name);
-		if (device_list[i].adc_freq >= 1000000) {
-			sprintf(device_list[i].adc_scale, "M");
-			device_list[i].adc_freq /= 1000000;
-		} else if(device_list[i].adc_freq >= 1000) {
-			sprintf(device_list[i].adc_scale, "k");
-			device_list[i].adc_freq /= 1000;
-		} else if(device_list[i].adc_freq >= 0) {
-			sprintf(device_list[i].adc_scale, " ");
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		struct extra_dev_info *info = iio_device_get_data(dev);
+		const char *name = iio_device_get_name(dev);
+
+		info->lo_freq = 0.0;
+		info->adc_freq = read_sampling_frequency(dev);
+
+		if (info->adc_freq >= 1000000) {
+			info->adc_scale = 'M';
+			info->adc_freq /= 1000000.0;
+		} else if (info->adc_freq >= 1000) {
+			info->adc_scale = 'k';
+			info->adc_freq /= 1000.0;
+		} else if (info->adc_freq >= 0) {
+			info->adc_scale = ' ';
 		} else {
-			sprintf(device_list[i].adc_scale, "?");
-			device_list[i].adc_freq = 0;
+			info->adc_scale = '?';
+			info->adc_freq = 0.0;
 		}
 
-		if (strcmp(device_list[i].device_name, "cf-ad9643-core-lpc") == 0) {
-			set_dev_paths("adf4351-rx-lpc");
-			read_devattr_double("out_altvoltage0_frequency", &device_list[i].lo_freq);
-		} else if (strcmp(device_list[i].device_name, "cf-ad9361-lpc") == 0) {
-			set_dev_paths("ad9361-phy");
-			read_devattr_double("out_altvoltage0_RX_LO_frequency", &device_list[i].lo_freq);
-		} else {
-			device_list[i].lo_freq = 0;
-		}
-		if (device_list[i].lo_freq)
-			device_list[i].lo_freq /= 1000000.0;
+		if (!name)
+			continue;
+
+		if (!strcmp(name, "adf4351-rx-lpc"))
+			set_lo_freq(dev, "frequency");
+		else if (!strcmp(name, "ad9361-phy"))
+			set_lo_freq(dev, "RX_LO_frequency");
+
+		info->lo_freq /= 1000000.0;
 	}
 
 	GList *node;
@@ -2193,5 +1951,14 @@ gint main (int argc, char **argv)
 		return 0;
 	else
 		return -1;
+}
+
+struct iio_context * osc_create_context(void)
+{
+	char *host = getenv("OSC_REMOTE");
+	if (host)
+		return iio_create_network_context(host);
+	else
+		return iio_create_local_context();
 }
 

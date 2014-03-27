@@ -9,10 +9,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <string.h>
 
 #include "osc.h"
 #include "iio_widget.h"
-#include "iio_utils.h"
 
 void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
 	const gchar *signal, GCallback callback, gpointer data)
@@ -50,14 +50,19 @@ void g_builder_bind_property(GtkBuilder *builder,
 }
 
 
-static void iio_widget_init(struct iio_widget *widget, const char *device_name,
-	const char *attr_name, const char *attr_name_avail, GtkWidget *gtk_widget, void *priv,
+static void iio_widget_init(struct iio_widget *widget,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
+	const char *attr_name_avail, GtkWidget *gtk_widget, void *priv,
 	void (*update)(struct iio_widget *), void (*save)(struct iio_widget *))
 {
-	if (!gtk_widget)
-		printf("Missing widget for %s/%s\n", device_name, attr_name);
+	if (!gtk_widget) {
+		const char *name = iio_device_get_name(dev) ?:
+			iio_device_get_id(dev);
+		printf("Missing widget for %s/%s\n", name, attr_name);
+	}
 
-	widget->device_name = device_name;
+	widget->dev = dev;
+	widget->chn = chn;
 	widget->attr_name = attr_name;
 	widget->attr_name_avail = attr_name_avail;
 	widget->widget = gtk_widget;
@@ -70,90 +75,112 @@ static void iio_spin_button_update(struct iio_widget *widget)
 {
 	gdouble freq;
 	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
+	int ret;
 
-	read_devattr_double(widget->attr_name, &freq);
+	if (widget->chn)
+		ret = iio_channel_attr_read_double(widget->chn,
+				widget->attr_name, &freq);
+	else
+		ret = iio_device_attr_read_double(widget->dev,
+				widget->attr_name, &freq);
+	if (ret < 0)
+		return;
+
 	freq /= scale;
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON (widget->widget), freq);
 }
 
+static void spin_button_save(struct iio_widget *widget, bool is_double)
+{
+	gdouble freq;
+	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
+
+	freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON (widget->widget));
+	freq *= scale;
+
+	if (widget->chn) {
+		if (is_double)
+			iio_channel_attr_write_double(widget->chn,
+					widget->attr_name, freq);
+		else
+			iio_channel_attr_write_longlong(widget->chn,
+					widget->attr_name, (long long) freq);
+	} else {
+		if (is_double)
+			iio_device_attr_write_double(widget->dev,
+					widget->attr_name, freq);
+		else
+			iio_device_attr_write_longlong(widget->dev,
+					widget->attr_name, (long long) freq);
+	}
+}
+
+static void iio_spin_button_savedbl(struct iio_widget *widget)
+{
+	return spin_button_save(widget, true);
+}
+
 static void iio_spin_button_save(struct iio_widget *widget)
 {
-	gdouble freq;
-	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
-
-	freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON (widget->widget));
-	freq *= scale;
-	write_devattr_double(widget->attr_name, freq);
+	return spin_button_save(widget, false);
 }
 
-static void iio_spin_button_int_save(struct iio_widget *widget)
-{
-	gdouble freq;
-	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
-
-	freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON (widget->widget));
-	freq *= scale;
-	write_devattr_int(widget->attr_name, freq);
-}
-
-static void iio_spin_button_s64_save(struct iio_widget *widget)
-{
-	gdouble freq;
-	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
-
-	freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON (widget->widget));
-	freq *= scale;
-	write_devattr_slonglong(widget->attr_name, (long long) freq);
-}
-
-void iio_spin_button_init(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+void iio_spin_button_init(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale)
 {
-	iio_widget_init(widget, device_name, attr_name, NULL, spin_button,
+	iio_widget_init(widget, dev, chn, attr_name, NULL, spin_button,
+		(void *)scale, iio_spin_button_update, iio_spin_button_savedbl);
+}
+
+void iio_spin_button_int_init(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name,
+	GtkWidget *spin_button, const gdouble *scale)
+{
+	iio_widget_init(widget, dev, chn, attr_name, NULL, spin_button,
 		(void *)scale, iio_spin_button_update, iio_spin_button_save);
 }
 
-void iio_spin_button_int_init(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+void iio_spin_button_s64_init(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale)
 {
-	iio_widget_init(widget, device_name, attr_name, NULL, spin_button,
-		(void *)scale, iio_spin_button_update, iio_spin_button_int_save);
-}
-
-void iio_spin_button_s64_init(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
-	GtkWidget *spin_button, const gdouble *scale)
-{
-	iio_widget_init(widget, device_name, attr_name, NULL, spin_button,
-		(void *)scale, iio_spin_button_update, iio_spin_button_s64_save);
+	iio_widget_init(widget, dev, chn, attr_name, NULL, spin_button,
+		(void *)scale, iio_spin_button_update, iio_spin_button_save);
 }
 
 static void iio_toggle_button_save(struct iio_widget *widget)
 {
-	bool active;
-
-	active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (widget->widget));
-
+	bool active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (widget->widget));
 	active = widget->priv ? !active : active;
-	write_devattr(widget->attr_name, active ? "1" : "0");
+
+	if (widget->chn)
+		iio_channel_attr_write_bool(widget->chn,
+				widget->attr_name, active);
+	else
+		iio_device_attr_write_bool(widget->dev,
+				widget->attr_name, active);
 }
 
 static void iio_toggle_button_update(struct iio_widget *widget)
 {
-	bool active = false;
+	bool active;
 
-	read_devattr_bool(widget->attr_name, &active);
+	if (widget->chn)
+		iio_channel_attr_read_bool(widget->chn,
+				widget->attr_name, &active);
+	else
+		iio_device_attr_read_bool(widget->dev,
+				widget->attr_name, &active);
 	active = widget->priv ? !active : active;
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (widget->widget), active);
 }
 
 static void iio_toggle_button_init(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	GtkWidget *toggle_button, const bool invert)
 {
-	iio_widget_init(widget, device_name, attr_name, NULL, toggle_button,
+	iio_widget_init(widget, dev, chn, attr_name, NULL, toggle_button,
 		(void *)invert, iio_toggle_button_update, iio_toggle_button_save);
 }
 
@@ -165,7 +192,10 @@ static void iio_combo_box_save(struct iio_widget *widget)
 	if (text == NULL)
 		return;
 
-	write_devattr(widget->attr_name, text);
+	if (widget->chn)
+		iio_channel_attr_write(widget->chn, widget->attr_name, text);
+	else
+		iio_device_attr_write(widget->dev, widget->attr_name, text);
 }
 
 static void iio_combo_box_update(struct iio_widget *widget)
@@ -174,12 +204,17 @@ static void iio_combo_box_update(struct iio_widget *widget)
 	GtkComboBox *combo_box;
 	GtkTreeIter iter;
 	GtkTreeModel *model;
-	char *text, *item, *text2;
+	char text[1024], text2[1024], *item;
 	gchar **items_avail = NULL, **saveditems_avail;
 	gboolean has_iter;
-	int ret;
+	ssize_t ret;
 
-	ret = read_devattr(widget->attr_name, &text);
+	if (widget->chn)
+		ret = iio_channel_attr_read(widget->chn,
+				widget->attr_name, text, sizeof(text));
+	else
+		ret = iio_device_attr_read(widget->dev,
+				widget->attr_name, text, sizeof(text));
 	if (ret < 0)
 		return;
 
@@ -187,7 +222,12 @@ static void iio_combo_box_update(struct iio_widget *widget)
 	model = gtk_combo_box_get_model(combo_box);
 
 	if (widget->attr_name_avail) {
-		ret = read_devattr(widget->attr_name_avail, &text2);
+		if (widget->chn)
+			ret = iio_channel_attr_read(widget->chn,
+					widget->attr_name_avail, text2, sizeof(text2));
+		else
+			ret = iio_device_attr_read(widget->dev,
+					widget->attr_name_avail, text2, sizeof(text2));
 		if (ret < 0)
 			return;
 
@@ -204,8 +244,6 @@ static void iio_combo_box_update(struct iio_widget *widget)
 
 		if (saveditems_avail)
 			g_strfreev(saveditems_avail);
-
-		free(text2);
 	}
 
 	if (widget->priv)
@@ -224,27 +262,23 @@ static void iio_combo_box_update(struct iio_widget *widget)
 		g_free(item);
 		has_iter = gtk_tree_model_iter_next(model, &iter);
 	}
-
-	free(text);
 }
 
-void iio_combo_box_init(struct iio_widget *widget,
-	const char *device_name, const char *attr_name, const char *attr_name_avail,
+void iio_combo_box_init(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name, const char *attr_name_avail,
 	GtkWidget *combo_box, int (*compare)(const char *a, const char *b))
 {
-	iio_widget_init(widget, device_name, attr_name, attr_name_avail, combo_box,
+	iio_widget_init(widget, dev, chn, attr_name, attr_name_avail, combo_box,
 		(void *)compare, iio_combo_box_update, iio_combo_box_save);
 }
 
 void iio_widget_update(struct iio_widget *widget)
 {
-	set_dev_paths(widget->device_name);
 	widget->update(widget);
 }
 
 void iio_widget_save(struct iio_widget *widget)
 {
-	set_dev_paths(widget->device_name);
 	widget->save(widget);
 	widget->update(widget);
 }
@@ -266,47 +300,48 @@ void iio_save_widgets(struct iio_widget *widgets, unsigned int num_widgets)
 }
 
 void iio_spin_button_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	GtkBuilder *builder, const char *widget_name, const gdouble *scale)
 {
-	iio_spin_button_init(widget, device_name, attr_name,
+	iio_spin_button_init(widget, dev, chn, attr_name,
 		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)),
 		scale);
 }
 
 void iio_spin_button_int_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	GtkBuilder *builder, const char *widget_name, const gdouble *scale)
 {
-	iio_spin_button_int_init(widget, device_name, attr_name,
+	iio_spin_button_int_init(widget, dev, chn, attr_name,
 		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)),
 		scale);
 }
 
 void iio_spin_button_s64_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	GtkBuilder *builder, const char *widget_name, const gdouble *scale)
 {
-	iio_spin_button_s64_init(widget, device_name, attr_name,
+	iio_spin_button_s64_init(widget, dev, chn, attr_name,
 		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)),
 		scale);
 }
 
 void iio_combo_box_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name, const char *attr_name_avail,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
+	const char *attr_name_avail,
 	GtkBuilder *builder, const char *widget_name,
 	int (*compare)(const char *a, const char *b))
 {
-	iio_combo_box_init(widget, device_name, attr_name, attr_name_avail,
+	iio_combo_box_init(widget, dev, chn, attr_name, attr_name_avail,
 		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)),
 		compare);
 }
 
 void iio_toggle_button_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	GtkBuilder *builder, const char *widget_name, const bool invert)
 {
-	iio_toggle_button_init(widget, device_name, attr_name,
+	iio_toggle_button_init(widget, dev, chn, attr_name,
 		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)), invert);
 }
 
@@ -381,8 +416,10 @@ void iio_spin_button_add_progress(struct iio_widget *iio_w)
 	struct progress_data *pdata;
 
 	if (GTK_IS_SPIN_BUTTON(iio_w->widget) == FALSE) {
+		const char *name = iio_device_get_name(iio_w->dev) ?:
+			iio_device_get_id(iio_w->dev);
 		printf("The widget connected to the attribute: %s of device: %s is not a GtkSpinButton\n",
-			iio_w->attr_name, iio_w->device_name);
+			iio_w->attr_name, name);
 		return;
 	}
 
@@ -404,8 +441,10 @@ void iio_spin_button_progress_activate(struct iio_widget *iio_w)
 	struct progress_data *pdata = iio_w->priv_progress;
 
 	if (GTK_IS_SPIN_BUTTON(iio_w->widget) == FALSE) {
+		const char *name = iio_device_get_name(iio_w->dev) ?:
+			iio_device_get_id(iio_w->dev);
 		printf("The widget connected to the attribute: %s of device: %s is not a GtkSpinButton\n",
-			iio_w->attr_name, iio_w->device_name);
+			iio_w->attr_name, name);
 		return;
 	}
 
@@ -423,8 +462,10 @@ void iio_spin_button_set_on_complete_function(struct iio_widget *iio_w,
 	struct progress_data *pdata = iio_w->priv_progress;
 
 	if (GTK_IS_SPIN_BUTTON(iio_w->widget) == FALSE) {
+		const char *name = iio_device_get_name(iio_w->dev) ?:
+			iio_device_get_id(iio_w->dev);
 		printf("The widget connected to the attribute: %s of device: %s is not a GtkSpinButton\n",
-			iio_w->attr_name, iio_w->device_name);
+			iio_w->attr_name, name);
 		return;
 	}
 
@@ -440,8 +481,10 @@ void iio_spin_button_progress_deactivate(struct iio_widget *iio_w)
 	struct progress_data *pdata = iio_w->priv_progress;
 
 	if (GTK_IS_SPIN_BUTTON(iio_w->widget) == FALSE) {
+		const char *name = iio_device_get_name(iio_w->dev) ?:
+			iio_device_get_id(iio_w->dev);
 		printf("The widget connected to the attribute: %s of device: %s is not a GtkSpinButton\n",
-			iio_w->attr_name, iio_w->device_name);
+			iio_w->attr_name, name);
 		return;
 	}
 
@@ -455,8 +498,10 @@ void iio_spin_button_progress_deactivate(struct iio_widget *iio_w)
 void iio_spin_button_remove_progress(struct iio_widget *iio_w)
 {
 	if (GTK_IS_SPIN_BUTTON(iio_w->widget) == FALSE) {
+		const char *name = iio_device_get_name(iio_w->dev) ?:
+			iio_device_get_id(iio_w->dev);
 		printf("The widget connected to the attribute: %s of device: %s is not a GtkSpinButton\n",
-			iio_w->attr_name, iio_w->device_name);
+			iio_w->attr_name, name);
 		return;
 	}
 

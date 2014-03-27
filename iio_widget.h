@@ -8,8 +8,11 @@
 #ifndef __IIO_WIDGET_H__
 #define __IIO_WIDGET_H__
 
+#include <iio.h>
+
 struct iio_widget {
-	const char *device_name;
+	struct iio_device *dev;
+	struct iio_channel *chn;
 	const char *attr_name;
 	const char *attr_name_avail;
 	GtkWidget *widget;
@@ -32,38 +35,38 @@ void iio_widget_update(struct iio_widget *widget);
 void iio_widget_save(struct iio_widget *widget);
 void iio_save_widgets(struct iio_widget *widgets, unsigned int num_widgets);
 
-void iio_spin_button_init(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
-	GtkWidget *gtk_widget, const gdouble *scale);
+void iio_spin_button_init(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name,
+	GtkWidget *spin_button, const gdouble *scale);
 void iio_spin_button_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	GtkBuilder *builder, const char *widget_name, const gdouble *scale);
 
-void iio_combo_box_init(struct iio_widget *widget,
-	const char *device_name, const char *attr_name, const char *attr_name_avail,
+void iio_combo_box_init(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name, const char *attr_name_avail,
 	GtkWidget *combo_box, int (*compare)(const char *a, const char *b));
 void iio_combo_box_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	const char *attr_name_avail,
 	GtkBuilder *builder, const char *widget_name,
 	int (*compare)(const char *a, const char *b));
 
 void iio_toggle_button_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	GtkBuilder *builder, const char *widget_name, const bool invert);
 
 void iio_spin_button_int_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	GtkBuilder *builder, const char *widget_name, const gdouble *scale);
-void iio_spin_button_int_init(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+void iio_spin_button_int_init(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale);
 
 void iio_spin_button_s64_init_from_builder(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	GtkBuilder *builder, const char *widget_name, const gdouble *scale);
-void iio_spin_button_s64_init(struct iio_widget *widget,
-	const char *device_name, const char *attr_name,
+void iio_spin_button_s64_init(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name,
 	GtkWidget *spin_button, const gdouble *scale);
 
 void iio_spin_button_add_progress(struct iio_widget *iio_w);

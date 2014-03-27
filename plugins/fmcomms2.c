@@ -21,6 +21,7 @@
 #include <values.h>
 #include <sys/stat.h>
 
+#include "../datatypes.h"
 #include "../osc.h"
 #include "../iio_widget.h"
 #include "../iio_utils.h"
@@ -1148,20 +1149,29 @@ static void manage_dds_mode()
  * Return 1 if the channel combination is valid
  * Return 0 if the combination is not valid
  */
-int channel_combination_check(struct iio_channel_info *channels, int ch_count, char **ch_names)
+int channel_combination_check(struct iio_device *dev, const char **ch_names)
 {
 	bool consecutive_ch = FALSE;
-	int i, k = 0;
+	unsigned int i, k, nb_channels = iio_device_get_channels_count(dev);
+	struct extra_info *prev_info = NULL;
 
-	for (i = 0; i < ch_count; i++)
-		if (channels[i].enabled) {
-			ch_names[k++] = channels[i].name;
-			if (i > 0)
-				if (channels[i - 1].enabled) {
+	for (i = 0, k = 0; i < nb_channels; i++) {
+		struct iio_channel *ch = iio_device_get_channel(dev, i);
+		struct extra_info *info = iio_channel_get_data(ch);
+
+		if (info->may_be_enabled) {
+			const char *name = iio_channel_get_name(ch) ?: iio_channel_get_id(ch);
+			ch_names[k++] = name;
+
+			if (i > 0) {
+				struct extra_info *prev = iio_channel_get_data(iio_device_get_channel(dev, i - 1));
+				if (prev->may_be_enabled) {
 					consecutive_ch = TRUE;
 					break;
 				}
+			}
 		}
+	}
 	if (!consecutive_ch)
 		return 0;
 

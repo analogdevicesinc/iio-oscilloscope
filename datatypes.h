@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #include <fftw3.h>
 
-#include "iio_utils.h"
+#include <iio.h>
 
 #define FORCE_UPDATE TRUE
 #define NORMAL_UPDATE FALSE
@@ -39,9 +39,19 @@ typedef struct _transform Transform;
 typedef struct _tr_list TrList;
 
 struct extra_info {
-	struct _device_list *device_parent;
+	struct iio_device *dev;
 	gfloat *data_ref;
+	off_t offset;
 	int shadow_of_enabled;
+	bool may_be_enabled;
+};
+
+struct extra_dev_info {
+	struct iio_buffer *buffer;
+	unsigned int sample_count;
+	double adc_freq, lo_freq;
+	char adc_scale;
+	GSList *plots_sample_counts;
 };
 
 struct buffer {
@@ -69,30 +79,12 @@ struct _fft_alg_data{
 	int num_active_channels;
 };
 
-struct _device_list {
-	char *device_name;
-	struct iio_channel_info *channel_list;
-	unsigned int num_channels;
-	unsigned int sample_count;
-	GSList *plots_sample_counts;
-	double adc_freq;
-	double lo_freq;
-	char adc_scale[10];
-	void *settings_dialog_builder;
-	struct buffer data_buffer;
-	unsigned int num_active_channels;
-	unsigned int bytes_per_sample;
-	unsigned int current_sample;
-	gfloat **channel_data;
-	int buffer_fd;
-};
-
 struct _transform {
 	int type_id;
-	struct iio_channel_info *channel_parent;
-	struct iio_channel_info *channel_parent2;
-	struct iio_channel_info *channel_parent3;
-	struct iio_channel_info *channel_parent4;
+	struct iio_channel *channel_parent,
+			   *channel_parent2,
+			   *channel_parent3,
+			   *channel_parent4;
 	gfloat **in_data;
 	gfloat *x_axis;
 	gfloat *y_axis;

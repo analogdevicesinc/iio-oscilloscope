@@ -20,7 +20,7 @@ PKG_CONFIG := env PKG_CONFIG_SYSROOT_DIR="$(SYSROOT)" \
 	PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" pkg-config
 
 LDFLAGS := $(shell $(PKG_CONFIG) --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
-	$(shell $(SYSROOT)/usr/bin/xml2-config --libs) -lmatio -lz
+	$(shell $(SYSROOT)/usr/bin/xml2-config --libs) -lmatio -lz -liio
 
 CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
 	$(shell $(SYSROOT)/usr/bin/xml2-config --cflags) \
