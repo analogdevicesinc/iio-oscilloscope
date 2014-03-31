@@ -17,18 +17,17 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <malloc.h>
+#include <string.h>
 
 #include "../osc.h"
 #include "../iio_widget.h"
-#include "../iio_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 
 static struct iio_widget tx_widgets[50];
 static unsigned int num_tx;
-static gboolean torque_controller_exists;
-static gboolean advanced_controller_exists;
-static char crt_device_name[100];
+static struct iio_device *crt_device, *trq_dev, *adv_dev;
+static struct iio_context *ctx;
 
 /* Global Widgets */
 static GtkWidget *controllers_notebook;
@@ -77,7 +76,6 @@ static void tx_update_values(void)
 
 void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
-	set_dev_paths(crt_device_name);
 	iio_w->save(iio_w);
 }
 
@@ -142,80 +140,82 @@ static gboolean spin_output_cb(GtkSpinButton *spin, gpointer data)
 static void gpo_toggled_cb(GtkToggleButton *btn, gpointer data)
 {
 	int id = *((int *)data);
-	int attribute_value;
+	long long value;
 
-	if (torque_controller_exists) {
-		set_dev_paths("ad-mc-torque-ctrl");
-		read_devattr_int("mc_torque_ctrl_gpo", &attribute_value);
+	if (trq_dev) {
+		iio_device_attr_read_longlong(trq_dev,
+				"mc_torque_ctrl_gpo", &value);
 		if (gtk_toggle_button_get_active(btn))
-			attribute_value |= (1ul << id);
+			value |= (1ul << id);
 		else
-			attribute_value &= ~(1ul << id);
-		write_devattr_int("mc_torque_ctrl_gpo", attribute_value);
+			value &= ~(1ul << id);
+		iio_device_attr_write_longlong(trq_dev,
+				"mc_torque_ctrl_gpo", value);
 	}
-	if (advanced_controller_exists) {
-		set_dev_paths("ad-mc-adv-ctrl");
-		read_devattr_int("mc_adv_ctrl_gpo", &attribute_value);
+	if (adv_dev) {
+		iio_device_attr_read_longlong(adv_dev,
+				"mc_adv_ctrl_gpo", &value);
 		if (gtk_toggle_button_get_active(btn))
-			attribute_value |= (1ul << id);
+			value |= (1ul << id);
 		else
-			attribute_value &= ~(1ul << id);
-		write_devattr_int("mc_adv_ctrl_gpo", attribute_value);
+			value &= ~(1ul << id);
+		iio_device_attr_write_longlong(adv_dev,
+				"mc_adv_ctrl_gpo", value);
 	}
 }
 
 void create_iio_bindings_for_torque_ctrl(GtkBuilder *builder)
 {
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_run",
+		trq_dev, NULL, "mc_torque_ctrl_run",
 		builder, "checkbutton_run", 0);
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_delta",
+		trq_dev, NULL, "mc_torque_ctrl_delta",
 		builder, "checkbutton_delta", 0);
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_matlab",
+		trq_dev, NULL, "mc_torque_ctrl_matlab",
 		builder, "togglebtn_controller_type", 0);
 	controller_type_torq = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_ref_speed",
+		trq_dev, NULL, "mc_torque_ctrl_ref_speed",
 		builder, "spinbutton_ref_speed", NULL);
 	ref_speed = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_kp",
+		trq_dev, NULL, "mc_torque_ctrl_kp",
 		builder, "spinbutton_kp", NULL);
 	kp = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_ki",
+		trq_dev, NULL, "mc_torque_ctrl_ki",
 		builder, "spinbutton_ki", NULL);
 	ki = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_kp1",
+		trq_dev, NULL, "mc_torque_ctrl_kp1",
 		builder, "spinbutton_kp1", NULL);
 	kp1 = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_ki1",
+		trq_dev, NULL, "mc_torque_ctrl_ki1",
 		builder, "spinbutton_ki1", NULL);
 	ki1 = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_kd1",
+		trq_dev, NULL, "mc_torque_ctrl_kd1",
 		builder, "spinbutton_kd1", NULL);
 	kd1 = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_pwm",
+		trq_dev, NULL, "mc_torque_ctrl_pwm",
 		builder, "spinbutton_pwm", NULL);
 	pwm_torq = tx_widgets[num_tx - 1].widget;
 
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-torque-ctrl", "mc_torque_ctrl_sensors",
+		trq_dev, NULL, "mc_torque_ctrl_sensors",
 		"mc_torque_ctrl_sensors_available", builder,
 		"comboboxtext_sensors", NULL);
 }
@@ -223,52 +223,52 @@ void create_iio_bindings_for_torque_ctrl(GtkBuilder *builder)
 void create_iio_bindings_for_advanced_ctrl(GtkBuilder *builder)
 {
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-adv-ctrl", "mc_adv_ctrl_run",
+		adv_dev, NULL, "mc_adv_ctrl_run",
 		builder, "checkbutton_run_adv", 0);
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-adv-ctrl", "mc_adv_ctrl_command",
+		adv_dev, NULL, "mc_adv_ctrl_command",
 		builder, "spinbutton_command", NULL);
 	command = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-adv-ctrl", "mc_adv_ctrl_velocity_p_gain",
+		adv_dev, NULL, "mc_adv_ctrl_velocity_p_gain",
 		builder, "spinbutton_velocity_p", NULL);
 	velocity_p = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-adv-ctrl", "mc_adv_ctrl_velocity_i_gain",
+		adv_dev, NULL, "mc_adv_ctrl_velocity_i_gain",
 		builder, "spinbutton_velocity_i", NULL);
 	velocity_i = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-adv-ctrl", "mc_adv_ctrl_current_p_gain",
+		adv_dev, NULL, "mc_adv_ctrl_current_p_gain",
 		builder, "spinbutton_current_p", NULL);
 	current_p = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-adv-ctrl", "mc_adv_ctrl_current_i_gain",
+		adv_dev, NULL, "mc_adv_ctrl_current_i_gain",
 		builder, "spinbutton_current_i", NULL);
 	current_i = tx_widgets[num_tx - 1].widget;
 
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-adv-ctrl", "mc_adv_ctrl_controller_mode",
+		adv_dev, NULL, "mc_adv_ctrl_controller_mode",
 		"mc_adv_ctrl_controller_mode_available", builder,
 		"combobox_controller_mode", NULL);
 	controller_mode = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-adv-ctrl", "mc_adv_ctrl_open_loop_bias",
+		adv_dev, NULL, "mc_adv_ctrl_open_loop_bias",
 		builder, "spinbutton_open_loop_bias", NULL);
 	openloop_bias = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-adv-ctrl", "mc_adv_ctrl_open_loop_scalar",
+		adv_dev, NULL, "mc_adv_ctrl_open_loop_scalar",
 		builder, "spinbutton_open_loop_scalar", NULL);
 	openloop_scalar = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad-mc-adv-ctrl", "mc_adv_ctrl_encoder_zero_offset",
+		adv_dev, NULL, "mc_adv_ctrl_encoder_zero_offset",
 		builder, "spinbutton_zero_offset", NULL);
 	zero_offset = tx_widgets[num_tx - 1].widget;
 }
@@ -280,9 +280,9 @@ static void controllers_notebook_page_switched_cb (GtkNotebook *notebook,
 
 	page_name = gtk_notebook_get_tab_label_text(notebook, page);
 	if (!strcmp(page_name, "Torque"))
-		sprintf(crt_device_name, "%s", "ad-mc-torque-ctrl");
+		crt_device = trq_dev;
 	else if (!strcmp(page_name, "Advanced"))
-		sprintf(crt_device_name, "%s", "ad-mc-adv-ctrl");
+		crt_device = adv_dev;
 	else
 		printf("Notebook page is unknown to the Motor Control Plugin\n");
 }
@@ -370,11 +370,11 @@ static int motor_control_init(GtkWidget *notebook)
 	torque_page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), 0);
 	advanced_page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), 1);
 
-	if (torque_controller_exists)
+	if (trq_dev)
 		torque_controller_init(builder);
 	else
 		gtk_widget_hide(torque_page);
-	if (advanced_controller_exists)
+	if (adv_dev)
 		advanced_controller_init(builder);
 	else
 		gtk_widget_hide(advanced_page);
@@ -425,16 +425,14 @@ static int motor_control_init(GtkWidget *notebook)
 
 static bool motor_control_identify(void)
 {
-	if (!set_dev_paths("ad-mc-torque-ctrl"))
-		torque_controller_exists = true;
-	else
-		torque_controller_exists = false;
-	if(!set_dev_paths("ad-mc-adv-ctrl"))
-		advanced_controller_exists = true;
-	else
-		advanced_controller_exists = false;
-
-	return torque_controller_exists || advanced_controller_exists;
+	bool found;
+	ctx = osc_create_context();
+	trq_dev = iio_context_find_device(ctx, "ad-mc-torque-ctrl");
+	adv_dev = iio_context_find_device(ctx, "ad-mc-adv-ctrl");
+	found = !!trq_dev || !!adv_dev;
+	if (!found)
+		iio_context_destroy(ctx);
+	return found;
 }
 
 struct osc_plugin plugin = {
