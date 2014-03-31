@@ -20,7 +20,6 @@
 
 #include "../osc.h"
 #include "../iio_widget.h"
-#include "../iio_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 
@@ -32,8 +31,10 @@
 static unsigned int buffer_size;
 static uint8_t *soft_buffer_ch0;
 static int current_sample = 0;
-static int buffer_fd;
 static gint fill_buffer_function = 0;
+static struct iio_device *dev;
+static bool dev_opened;
+static struct iio_context *ctx;
 
 static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
@@ -78,54 +79,20 @@ static gdouble wave_offset;
 
 static int buffer_open(unsigned int length)
 {
-	int ret;
-	int fd;
+	struct iio_device *trigger = iio_context_find_device(ctx, "hrtimer-1");
+	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", true);
+	unsigned int sample_size;
 
-	set_dev_paths("ad7303");
-	write_devattr("trigger/current_trigger", "hrtimer-1");
-	write_devattr("scan_elements/out_voltage0_en", "1");
+	iio_device_set_trigger(dev, trigger);
+	iio_channel_enable(ch0);
 
-	fd = iio_buffer_open(false, 0);
-	if (fd < 0) {
-		ret = -errno;
-		fprintf(stderr, "Failed to open buffer: %d\n", ret);
-		return ret;
-	}
-
-	/* Setup ring buffer parameters */
-	ret = write_devattr_int("buffer/length", length);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to set buffer length: %d\n", ret);
-		goto err_close;
-	}
-
-	/* Enable the buffer */
-	ret = write_devattr_int("buffer/enable", 1);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
-		goto err_close;
-	}
-
-	return fd;
-
-err_close:
-	close(fd);
-	return ret;
+	sample_size = iio_device_get_sample_size(dev);
+	return iio_device_open(dev, length / sample_size);
 }
 
-static void buffer_close(unsigned int fd)
+static int buffer_close()
 {
-	int ret;
-
-	set_dev_paths("ad7303");
-
-	/* Enable the buffer */
-	ret = write_devattr_int("buffer/enable", 0);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to disable buffer: %d\n", ret);
-	}
-
-	close(fd);
+	return iio_device_close(dev);
 }
 
 static int FillSoftBuffer(int waveType, uint8_t *softBuffer)
@@ -206,12 +173,12 @@ static int FillSoftBuffer(int waveType, uint8_t *softBuffer)
 static void generateWavePeriod(void)
 {
 	int waveType = 0;
-	int triggerFreq = 100;
 	double waveFreq;
 	int i;
+	struct iio_device *trigger = iio_context_find_device(ctx, "hrtimer-1");
+	unsigned long triggerFreq = 0;
 
-	set_dev_paths("hrtimer-1");
-	read_devattr_int("frequency", &triggerFreq);
+	iio_trigger_get_rate(trigger, &triggerFreq);
 
 	/* Set the maximum frequency that user cand select to 10% of the input generator frequency. */
 	if (triggerFreq >= 10)
@@ -265,9 +232,10 @@ static gboolean fillBuffer(void)
 	int ret;
 
 	samplesToSend = buffer_size - current_sample;
-	ret = write(buffer_fd, soft_buffer_ch0 + current_sample, samplesToSend);
+	ret = (int) iio_device_write_raw(dev,
+			soft_buffer_ch0 + current_sample, samplesToSend);
 	if (ret < 0)
-		printf("Error occured while writing to buffer: %d\n", errno);
+		printf("Error occured while writing to buffer: %d\n", ret);
 	else {
 		current_sample += ret;
 		if (current_sample >= buffer_size)
@@ -302,10 +270,10 @@ static void wave_param_changed(GtkRange *range, gpointer user_data)
 
 static void save_button_clicked(GtkButton *btn, gpointer data)
 {
-	if (buffer_fd) {
+	if (dev_opened) {
 		g_source_remove(fill_buffer_function);
-		buffer_close(buffer_fd);
-		buffer_fd = -1;
+		buffer_close();
+		dev_opened = false;
 	}
 
 	if (gtk_toggle_button_get_active((GtkToggleButton *)radio_single_val)){
@@ -314,13 +282,14 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 		rx_update_labels();
 	} else if (gtk_toggle_button_get_active((GtkToggleButton *)radio_waveform)){
 		generateWavePeriod();
-		buffer_fd = buffer_open(buffer_size * 10);
+		dev_opened = !buffer_open(buffer_size * 10);
 		startWaveGeneration();
 	}
 }
 
 static int AD7303_init(GtkWidget *notebook)
 {
+	struct iio_channel *ch0, *ch1;
 	GtkBuilder *builder;
 	GtkWidget *AD7303_panel;
 	GtkWidget *table;
@@ -342,18 +311,21 @@ static int AD7303_init(GtkWidget *notebook)
 	radio_waveform = GTK_WIDGET(gtk_builder_get_object(builder, "radioWaveform"));
 	preview_graph = GTK_WIDGET(gtk_builder_get_object(builder, "vboxDatabox"));
 
+	ch0 = iio_device_find_channel(dev, "voltage0", true);
+	ch1 = iio_device_find_channel(dev, "voltage1", true);
+
 	/* Bind the IIO device files to the GUI widgets */
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			"ad7303", "out_voltage0_raw",
+			dev, ch0, "raw",
 			builder, "spinbuttonValueCh0", NULL);
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			"ad7303", "out_voltage1_raw",
+			dev, ch1, "raw",
 			builder, "spinbuttonValueCh1", NULL);
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-			"AD7303", "out_voltage0_powerdown",
+			dev, ch0, "powerdown",
 			builder, "checkbuttonPwrDwn0", 0);
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-			"AD7303", "out_voltage1_powerdown",
+			dev, ch1, "powerdown",
 			builder, "checkbuttonPwrDwn1", 0);
 
 	g_signal_connect(btn_sine, "toggled", G_CALLBACK(wave_param_changed),
@@ -393,7 +365,11 @@ static int AD7303_init(GtkWidget *notebook)
 
 static bool AD7303_identify(void)
 {
-	return !set_dev_paths("ad7303");
+	ctx = osc_create_context();
+	dev = iio_context_find_device(ctx, "ad7303");
+	if (!dev)
+		iio_context_destroy(ctx);
+	return !!dev;
 }
 
 struct osc_plugin plugin = {
