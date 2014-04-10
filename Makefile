@@ -23,6 +23,7 @@ PLUGINS=\
 	plugins/fmcomms2.so \
 	plugins/fmcomms2_adv.so \
 	plugins/debug.so \
+	plugins/daq2.so \
 	plugins/AD5628_1.so \
 	plugins/AD7303.so \
 	plugins/motor_control.so \
