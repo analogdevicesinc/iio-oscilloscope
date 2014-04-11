@@ -870,6 +870,7 @@
                                   <item translatable="yes">Time Domain</item>
                                   <item translatable="yes">Frequency Domain</item>
                                   <item translatable="yes">Constellation (X vs Y)</item>
+                                  <item translatable="yes">Cross Correlation</item>
                                 </items>
                               </object>
                               <packing>

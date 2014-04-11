@@ -27,6 +27,7 @@
 extern void time_transform_function(Transform *tr, gboolean init_transform);
 extern void fft_transform_function(Transform *tr, gboolean init_transform);
 extern void constellation_transform_function(Transform *tr, gboolean init_transform);
+extern void cross_correlation_transform_function(Transform *tr, gboolean init_transform);
 extern void *find_setup_check_fct_by_devname(const char *dev_name);
 
 extern struct _device_list *device_list;
@@ -143,6 +144,7 @@ static GdkColor color_marker = {
 #define TIME_SETTINGS(obj) ((struct _time_settings *)obj->settings)
 #define FFT_SETTINGS(obj) ((struct _fft_settings *)obj->settings)
 #define CONSTELLATION_SETTINGS(obj) ((struct _constellation_settings *)obj->settings)
+#define XCORR_SETTINGS(obj) ((struct _cross_correlation_settings *)obj->settings)
 
 struct int_and_plot {
 	int int_obj;
@@ -701,11 +703,17 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 		TIME_SETTINGS(transform)->add_value = csettings->add_value;
 	} else if (plot_type == XY_PLOT){
 		CONSTELLATION_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+	} else if (plot_type == XCORR_PLOT){
+		XCORR_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+		XCORR_SETTINGS(transform)->signal_a = NULL;
+		XCORR_SETTINGS(transform)->signal_b = NULL;
+		XCORR_SETTINGS(transform)->xcorr_data = NULL;
 	}
 }
 
 static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel_info *ch0,
-	struct iio_channel_info *ch1, int tr_type, struct channel_settings *csettings)
+	struct iio_channel_info *ch1, struct iio_channel_info *ch2, struct iio_channel_info *ch3,
+	int tr_type, struct channel_settings *csettings)
 {
 	OscPlotPrivate *priv = plot->priv;
 	TrList *list = priv->transform_list;
@@ -713,6 +721,7 @@ static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel_info *
 	struct _time_settings *time_settings;
 	struct _fft_settings *fft_settings;
 	struct _constellation_settings *constellation_settings;
+	struct _cross_correlation_settings *xcross_settings;
 	struct extra_info *ch_info;
 
 	transform = Transform_new(tr_type);
@@ -753,6 +762,20 @@ static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel_info *
 		ch_info = ch1->extra_field;
 		ch_info->shadow_of_enabled++;
 		priv->active_transform_type = COMPLEX_FFT_TRANSFORM;
+		break;
+	case CROSS_CORRELATION_TRANSFORM:
+		transform->channel_parent2 = ch1;
+		transform->channel_parent3 = ch2;
+		transform->channel_parent4 = ch3;
+		Transform_attach_function(transform, cross_correlation_transform_function);
+		xcross_settings = (struct _cross_correlation_settings *)malloc(sizeof(struct _cross_correlation_settings));
+		Transform_attach_settings(transform, xcross_settings);
+		ch_info = ch1->extra_field;
+		ch_info->shadow_of_enabled++;
+		ch_info = ch2->extra_field;
+		ch_info->shadow_of_enabled++;
+		ch_info = ch3->extra_field;
+		ch_info->shadow_of_enabled++;
 		break;
 	default:
 		printf("Invalid transform\n");
@@ -965,6 +988,8 @@ struct params {
 	int plot_type;
 	int enabled_channels;
 	void *ch_pair_ref;
+	void *ch_3rd_ref;
+	void *ch_4th_ref;
 };
 
 static void channels_transform_assignment(GtkTreeModel *model,
@@ -981,16 +1006,16 @@ static void channels_transform_assignment(GtkTreeModel *model,
 	switch (prm->plot_type) {
 		case TIME_PLOT:
 			if (enabled)
-				add_transform_to_list(prm->plot, ch_ref, NULL, TIME_TRANSFORM, settings);
+				add_transform_to_list(prm->plot, ch_ref, NULL, NULL, NULL, TIME_TRANSFORM, settings);
 			break;
 		case FFT_PLOT:
 			if (prm->enabled_channels == 1 && enabled) {
-				add_transform_to_list(prm->plot, ch_ref, NULL, FFT_TRANSFORM, settings);
+				add_transform_to_list(prm->plot, ch_ref, NULL, NULL, NULL, FFT_TRANSFORM, settings);
 			} else if (prm->enabled_channels == 2 && enabled) {
 				if (!prm->ch_pair_ref)
 					prm->ch_pair_ref = ch_ref;
 				else
-					add_transform_to_list(prm->plot, prm->ch_pair_ref, ch_ref, COMPLEX_FFT_TRANSFORM, settings);
+					add_transform_to_list(prm->plot, prm->ch_pair_ref, ch_ref, NULL, NULL, COMPLEX_FFT_TRANSFORM, settings);
 			}
 			break;
 		case XY_PLOT:
@@ -998,9 +1023,20 @@ static void channels_transform_assignment(GtkTreeModel *model,
 				if (!prm->ch_pair_ref)
 					prm->ch_pair_ref = ch_ref;
 				else
-					add_transform_to_list(prm->plot, prm->ch_pair_ref, ch_ref, CONSTELLATION_TRANSFORM, settings);
+					add_transform_to_list(prm->plot, prm->ch_pair_ref, ch_ref, NULL, NULL, CONSTELLATION_TRANSFORM, settings);
 			}
 			break;
+		case XCORR_PLOT:
+			if (prm->enabled_channels == 4 && enabled) {
+				if (!prm->ch_pair_ref)
+					prm->ch_pair_ref = ch_ref;
+				else if (!prm->ch_3rd_ref)
+					prm->ch_3rd_ref = ch_ref;
+				else if (!prm->ch_4th_ref)
+					prm->ch_4th_ref = ch_ref;
+				else
+					add_transform_to_list(prm->plot, ch_ref, prm->ch_pair_ref, prm->ch_3rd_ref, prm->ch_4th_ref, CROSS_CORRELATION_TRANSFORM, settings);
+			}
 		default:
 			break;
 	}
@@ -1025,6 +1061,8 @@ static void devices_transform_assignment(OscPlot *plot)
 	prm.plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
 	prm.enabled_channels = 0;
 	prm.ch_pair_ref = NULL;
+	prm.ch_3rd_ref = NULL;
+	prm.ch_4th_ref = NULL;
 	for (i = 0; i < num_devices; i++){
 		prm.enabled_channels = enabled_channels_of_device(treeview, device_list[i].device_name);
 		foreach_channel_iter_of_device(GTK_TREE_VIEW(priv->channel_list_view),

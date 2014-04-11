@@ -59,6 +59,7 @@ enum marker_types {
 #define TIME_PLOT 0
 #define FFT_PLOT 1
 #define XY_PLOT 2
+#define XCORR_PLOT 3
 
 void rx_update_labels(void);
 void dialogs_init(GtkBuilder *builder);

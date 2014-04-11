@@ -15,6 +15,8 @@ Transform* Transform_new(int type)
 			type < TRANSFORMS_TYPES_COUNT) ? type : NO_TRANSFORM_TYPE;
 	tr->channel_parent = NULL;
 	tr->channel_parent2 = NULL;
+	tr->channel_parent3 = NULL;
+	tr->channel_parent4 = NULL;
 	tr->in_data = NULL;
 	tr->x_axis = NULL;
 	tr->y_axis = NULL;

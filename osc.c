@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <complex.h>
 #include <fftw3.h>
 
 #include "ini/ini.h"
@@ -150,8 +151,8 @@ static void do_fft(Transform *tr)
 		in_data_c = ch_info->data_ref;
 		for (cnt = 0, i = 0; cnt < fft_size; cnt++) {
 			/* normalization and scaling see fft_corr */
-			fft->in_c[cnt][0] = in_data[i] * fft->win[cnt];
-			fft->in_c[cnt][1] = in_data_c[i++] * fft->win[cnt];
+			fft->in_c[cnt] = in_data[i] * fft->win[cnt] + I * in_data_c[i] * fft->win[cnt];
+			i++;
 		}
 	} else {
 		for (cnt = 0, i = 0; i < fft_size; i++) {
@@ -183,8 +184,8 @@ static void do_fft(Transform *tr)
 				j = i;
 		}
 
-		mag = 10 * log10((fft->out[j][0] * fft->out[j][0] +
-				fft->out[j][1] * fft->out[j][1]) / (fft->m * fft->m)) +
+		mag = 10 * log10((creal(fft->out[j]) * creal(fft->out[j]) +
+				cimag(fft->out[j]) * cimag(fft->out[j])) / (fft->m * fft->m)) +
 			fft->fft_corr + pwr_offset + plugin_fft_corr;
 		/* it's better for performance to have seperate loops,
 		 * rather than do these tests inside the loop, but it makes
@@ -331,6 +332,53 @@ static void do_fft(Transform *tr)
 	}
 }
 
+static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *result, int N)
+{
+	fftw_complex * signala_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
+    fftw_complex * signalb_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
+    fftw_complex * outa = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
+    fftw_complex * outb = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
+    fftw_complex * out = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
+	fftw_complex scale;
+	int i;
+
+	if (!signala_ext || !signalb_ext || !outa || !outb || !out)
+		return;
+
+    fftw_plan pa = fftw_plan_dft_1d(2 * N - 1, signala_ext, outa, FFTW_FORWARD, FFTW_ESTIMATE);
+    fftw_plan pb = fftw_plan_dft_1d(2 * N - 1, signalb_ext, outb, FFTW_FORWARD, FFTW_ESTIMATE);
+    fftw_plan px = fftw_plan_dft_1d(2 * N - 1, out, result, FFTW_BACKWARD, FFTW_ESTIMATE);
+
+    //zeropadding
+    memset (signala_ext, 0, sizeof(fftw_complex) * (N - 1));
+    memcpy (signala_ext + (N - 1), signala, sizeof(fftw_complex) * N);
+    memcpy (signalb_ext, signalb, sizeof(fftw_complex) * N);
+    memset (signalb_ext + N, 0, sizeof(fftw_complex) * (N - 1));
+
+    fftw_execute(pa);
+    fftw_execute(pb);
+
+    scale = 1.0/(2 * N -1);
+    for (i = 0; i < 2 * N - 1; i++)
+        out[i] = outa[i] * conj(outb[i]) * scale;
+
+    fftw_execute(px);
+
+    fftw_destroy_plan(pa);
+    fftw_destroy_plan(pb);
+    fftw_destroy_plan(px);
+
+	fftw_free(signala_ext);
+	fftw_free(signalb_ext);
+	fftw_free(out);
+	fftw_free(outa);
+	fftw_free(outb);
+
+    fftw_cleanup();
+
+    return;
+}
+
 void time_transform_function(Transform *tr, gboolean init_transform)
 {
 	struct _time_settings *settings = tr->settings;
@@ -370,6 +418,59 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 		if (settings->apply_add_funct)
 			tr->y_axis[i] += settings->add_value;
 	}
+}
+
+void cross_correlation_transform_function(Transform *tr, gboolean init_transform)
+{
+	struct _cross_correlation_settings *settings = tr->settings;
+	unsigned axis_length = settings->num_samples;
+	struct extra_info *ch_info;
+	gfloat *i_0, *q_0;
+	gfloat *i_1, *q_1;
+	int i;
+
+	ch_info = tr->channel_parent->extra_field;
+	i_0 = ch_info->data_ref;
+	ch_info = tr->channel_parent2->extra_field;
+	q_0 = ch_info->data_ref;
+	ch_info = tr->channel_parent3->extra_field;
+	i_1 = ch_info->data_ref;
+	ch_info = tr->channel_parent4->extra_field;
+	q_1 = ch_info->data_ref;
+
+	if (init_transform) {
+		if (settings->signal_a) {
+			fftw_free(settings->signal_a);
+			settings->signal_a = NULL;
+		}
+		if (settings->signal_b) {
+			fftw_free(settings->signal_b);
+			settings->signal_b = NULL;
+		}
+		if (settings->xcorr_data) {
+			fftw_free(settings->xcorr_data);
+			settings->xcorr_data = NULL;
+		}
+		settings->signal_a = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length);
+		settings->signal_b = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length);
+		settings->xcorr_data = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length * 2);
+
+		Transform_resize_x_axis(tr, 2 * axis_length - 1);
+		Transform_resize_y_axis(tr, 2 * axis_length - 1);
+		for (i = 0; i < 2 * axis_length - 1; i++)
+			tr->x_axis[i] = i;
+		tr->y_axis_size = 2 * axis_length - 1;
+
+		return;
+	}
+	for (i = 0; i < axis_length; i++) {
+		settings->signal_a[i] = i_0[i] + I * q_0[i];
+		settings->signal_b[i] = i_1[i] + I * q_1[i];
+	}
+	xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length);
+	for (i = 0; i < 2 * axis_length - 1; i++)
+		tr->y_axis[i] = creal(settings->xcorr_data[i]);
+
 }
 
 void fft_transform_function(Transform *tr, gboolean init_transform)

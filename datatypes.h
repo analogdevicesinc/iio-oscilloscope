@@ -31,6 +31,7 @@ enum {
 	FFT_TRANSFORM,
 	CONSTELLATION_TRANSFORM,
 	COMPLEX_FFT_TRANSFORM,
+	CROSS_CORRELATION_TRANSFORM,
 	TRANSFORMS_TYPES_COUNT
 };
 
@@ -90,6 +91,8 @@ struct _transform {
 	int type_id;
 	struct iio_channel_info *channel_parent;
 	struct iio_channel_info *channel_parent2;
+	struct iio_channel_info *channel_parent3;
+	struct iio_channel_info *channel_parent4;
 	gfloat **in_data;
 	gfloat *x_axis;
 	gfloat *y_axis;
@@ -132,6 +135,13 @@ struct _fft_settings {
 
 struct _constellation_settings {
 	unsigned int num_samples;
+};
+
+struct _cross_correlation_settings {
+	unsigned int num_samples;
+	fftw_complex *signal_a;
+	fftw_complex *signal_b;
+	fftw_complex *xcorr_data;
 };
 
 Transform* Transform_new(int tr_type);
