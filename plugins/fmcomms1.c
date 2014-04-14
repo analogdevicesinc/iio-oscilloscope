@@ -20,6 +20,7 @@
 #include <malloc.h>
 #include <values.h>
 #include <sys/stat.h>
+#include <string.h>
 
 #include "../osc.h"
 #include "../iio_widget.h"
@@ -70,6 +71,9 @@ static GtkWidget *radius_IQ, *angle_IQ;
 
 static GtkWidget *load_eeprom;
 
+static struct iio_context *ctx;
+static struct iio_device *dac, *adc;
+
 static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
 static struct iio_widget cal_widgets[100];
@@ -77,7 +81,8 @@ static unsigned int num_tx, num_rx, num_cal,
 		num_adc_freq, num_dds2_freq, num_dds4_freq,
 		num_dac_shift;
 
-static const char *adc_freq_device;
+static struct iio_device *adc_freq_device;
+static struct iio_channel *adc_freq_channel;
 static const char *adc_freq_file;
 
 static int num_tx_pll, num_rx_pll;
@@ -328,10 +333,11 @@ static void cal_save_values(void)
 
 void dac_buffer_config_file_set_cb(GtkFileChooser *chooser, gpointer data)
 {
-	int ret, fd, size;
+	int ret, size;
 	struct stat st;
 	char *buf;
 	FILE *infile;
+	unsigned int i, nb_channels = iio_device_get_channels_count(dac);
 
 	char *file_name = gtk_file_chooser_get_filename(chooser);
 	ret = analyse_wavefile(file_name, &buf, &size);
@@ -349,28 +355,18 @@ void dac_buffer_config_file_set_cb(GtkFileChooser *chooser, gpointer data)
 		fclose(infile);
 	}
 
-	set_dev_paths("cf-ad9122-core-lpc");
-	write_devattr_int("buffer/enable", 0);
+	/* Enable all channels */
+	for (i = 0; i < nb_channels; i++)
+		iio_channel_enable(iio_device_get_channel(dac, i));
 
-	fd = iio_buffer_open(false, 0);
-	if (fd < 0) {
-		free(buf);
-		return;
-	}
-
-	ret = write(fd, buf, size);
+	ret = iio_device_open(dac, 0);
+	if (!ret)
+		ret = (int) iio_device_write_raw(dac, buf, size);
 	if (ret != size) {
 		fprintf(stderr, "Loading waveform failed %d\n", ret);
 	}
 
-	close(fd);
-	free(buf);
-
-	ret = write_devattr_int("buffer/enable", 1);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
-	}
-
+	iio_device_close(dac);
 	dac_data_loaded = true;
 }
 
@@ -416,23 +412,25 @@ void store_entry_hw(struct fmcomms1_calib_data_v1 *data, unsigned tx, unsigned r
 		return;
 
 	if (tx) {
-		set_dev_paths("cf-ad9122-core-lpc");
-		write_devattr_slonglong("out_voltage0_calibbias", data->i_dac_offset);
-		write_devattr_slonglong("out_voltage0_calibscale", data->i_dac_fs_adj);
-		write_devattr_slonglong("out_voltage0_phase", data->i_phase_adj);
-		write_devattr_slonglong("out_voltage1_calibbias", data->q_dac_offset);
-		write_devattr_slonglong("out_voltage1_calibscale", data->q_dac_fs_adj);
-		write_devattr_slonglong("out_voltage1_phase", data->q_phase_adj);
+		struct iio_channel *ch0 = iio_device_find_channel(dac, "voltage0", true),
+				   *ch1 = iio_device_find_channel(dac, "voltage1", true);
+		iio_channel_attr_write_longlong(ch0, "calibbias", data->i_dac_offset);
+		iio_channel_attr_write_longlong(ch0, "calibscale", data->i_dac_fs_adj);
+		iio_channel_attr_write_longlong(ch0, "phase", data->i_phase_adj);
+		iio_channel_attr_write_longlong(ch1, "calibbias", data->q_dac_offset);
+		iio_channel_attr_write_longlong(ch1, "calibscale", data->q_dac_fs_adj);
+		iio_channel_attr_write_longlong(ch1, "phase", data->q_phase_adj);
 		cal_update_values();
 	}
 
 	if (rx) {
-		set_dev_paths("cf-ad9643-core-lpc");
-		write_devattr_slonglong("in_voltage0_calibbias", data->i_adc_offset_adj);
-		write_devattr_double("in_voltage0_calibscale", fract1_1_14_to_float(data->i_adc_gain_adj));
-		write_devattr_slonglong("in_voltage1_calibbias", data->q_adc_offset_adj);
-		write_devattr_double("in_voltage1_calibscale", fract1_1_14_to_float(data->q_adc_gain_adj));
-		write_devattr_double("in_voltage0_calibphase", fract1_1_14_to_float(data->i_adc_phase_adj));
+		struct iio_channel *ch0 = iio_device_find_channel(adc, "voltage0", false),
+				   *ch1 = iio_device_find_channel(adc, "voltage1", false);
+		iio_channel_attr_write_longlong(ch0, "calibbias", data->i_adc_offset_adj);
+		iio_channel_attr_write_double(ch0, "calibscale", fract1_1_14_to_float(data->i_adc_gain_adj));
+		iio_channel_attr_write_longlong(ch1, "calibbias", data->q_adc_offset_adj);
+		iio_channel_attr_write_double(ch1, "calibscale", fract1_1_14_to_float(data->q_adc_gain_adj));
+		iio_channel_attr_write_double(ch0, "calibphase", fract1_1_14_to_float(data->i_adc_phase_adj));
 		cal_update_values();
 	}
 }
@@ -732,26 +730,20 @@ static void cal_rx_button_clicked(void)
 
 static void display_temp(void *ptr)
 {
-	double temp;
-	int tmp;
-	char buf[25];
+	double temp, tmp;
+	struct iio_channel *chn = iio_device_find_channel(dac, "temp0", false);
 
 	while (!kill_thread) {
-		if (set_dev_paths("cf-ad9122-core-lpc") < 0) {
-			kill_thread = 1;
-			break;
-		}
-
-		if (read_devattr_double("in_temp0_input", &temp) < 0) {
+		if (iio_channel_attr_read_double(chn, "input", &temp) < 0) {
 			/* Just assume it's 25C, units are in milli-degrees C */
 			temp = 25 * 1000;
-			write_devattr_double("in_temp0_input", temp);
-			read_devattr_int("in_temp0_calibbias", &tmp);
+			iio_channel_attr_write_double(chn, "input", temp);
+			iio_channel_attr_read_double(chn, "calibbias", &tmp);
 			/* This will eventually be stored in the EEPROM */
-			temp_calibbias = tmp;
-			printf("AD9122 temp cal value : %i\n", tmp);
+			temp_calibbias = (unsigned short) tmp;
+			printf("AD9122 temp cal value : %hi\n", temp_calibbias);
 		} else {
-
+			char buf[25];
 			sprintf(buf, "%2.1f", temp/1000);
 			gdk_threads_enter();
 			gtk_label_set_text(GTK_LABEL(ad9122_temp), buf);
@@ -1429,21 +1421,21 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 
 static void enable_dds(bool dds_enable, bool buffer_enable)
 {
+	struct iio_channel *ch = iio_device_find_channel(dac, "voltage0", true);
 	bool on_off = dds_enable || buffer_enable;
 	int ret;
-
-	set_dev_paths("cf-ad9122-core-lpc");
 
 	if (!dac_data_loaded)
 		buffer_enable = false;
 
-	ret = write_devattr_int("buffer/enable", buffer_enable ? 1 : 0);
-	if (ret < 0) {
+	if (buffer_enable)
+		ret = iio_device_close(dac);
+	else
+		ret = iio_device_open(dac, 0);
+	if (ret < 0)
 		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
 
-	}
-
-	write_devattr_int("out_altvoltage0_1A_raw", on_off ? 1 : 0);
+	iio_channel_attr_write_bool(ch, "1A_raw", on_off);
 }
 
 static void manage_dds_mode()
@@ -1856,39 +1848,67 @@ static int fmcomms1_cal_eeprom(void)
 	return -ENODEV;
 }
 
-static void dac_cal_spin(GtkRange *range, gpointer user_data)
-{
-	gdouble val, inc;
+struct attr_params {
+	struct iio_channel *chn;
+	const char *attr;
+};
 
-	val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(range));
+static void dac_cal_spin_helper(GtkRange *range,
+		struct iio_channel *chn, const char *attr)
+{
+	gdouble inc, val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(range));
 	gtk_spin_button_get_increments(GTK_SPIN_BUTTON(range), &inc, NULL);
 
-	set_dev_paths("cf-ad9122-core-lpc");
 	if (inc == 1.0)
-		write_devattr_slonglong((char *)user_data, (long long)val);
+		iio_channel_attr_write_longlong(chn, attr, (long long) val);
 	else
-		write_devattr_double((char *)user_data, val);
+		iio_channel_attr_write_double(chn, attr, val);
 }
 
-static void adc_cal_spin(GtkRange *range, gpointer user_data)
+static void dac_cal_spin0(GtkRange *range, gpointer user_data)
+{
+	dac_cal_spin_helper(range,
+			iio_device_find_channel(dac, "voltage0", true),
+			(const char *) user_data);
+}
+
+static void dac_cal_spin1(GtkRange *range, gpointer user_data)
+{
+	dac_cal_spin_helper(range,
+			iio_device_find_channel(dac, "voltage1", true),
+			(const char *) user_data);
+}
+
+static void adc_cal_spin_helper(GtkRange *range,
+		struct iio_channel *chn, const char *attr)
 {
 	gdouble val, inc;
 
 	val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(range));
 	gtk_spin_button_get_increments(GTK_SPIN_BUTTON(range), &inc, NULL);
 
-	set_dev_paths("cf-ad9643-core-lpc");
-
 	if (inc == 1.0)
-		write_devattr_slonglong((char *)user_data, (long long)val);
+		iio_channel_attr_write_longlong(chn, attr, (long long) val);
 	else
-		write_devattr_double((char *)user_data, val);
+		iio_channel_attr_write_double(chn, attr, val);
+}
 
+static void adc_cal_spin0(GtkRange *range, gpointer user_data)
+{
+	adc_cal_spin_helper(range,
+			iio_device_find_channel(adc, "voltage0", false),
+			(const char *) user_data);
+}
+
+static void adc_cal_spin1(GtkRange *range, gpointer user_data)
+{
+	adc_cal_spin_helper(range,
+			iio_device_find_channel(adc, "voltage1", false),
+			(const char *) user_data);
 }
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
-	set_dev_paths(iio_w->device_name);
 	iio_w->save(iio_w);
 }
 
@@ -1923,8 +1943,10 @@ static int fmcomms1_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *fmcomms1_panel;
-	bool shared_scale_available;
 	const char *dac_sampling_freq_file;
+	struct iio_device *dev = iio_context_find_device(ctx, "adf4351-tx-lpc");
+	struct iio_channel *ch0, *ch1, *ch2, *ch3;
+	const char *scale_available;
 
 	builder = gtk_builder_new();
 
@@ -2040,21 +2062,22 @@ static int fmcomms1_init(GtkWidget *notebook)
 	dac_interpolation = GTK_WIDGET(gtk_builder_get_object(builder, "dac_interpolation_clock"));
 	dac_shift = GTK_WIDGET(gtk_builder_get_object(builder, "dac_fcenter_shift"));
 
-	if (iio_devattr_exists("cf-ad9643-core-lpc", "in_voltage_sampling_frequency")) {
-		adc_freq_device = "cf-ad9643-core-lpc";
-		adc_freq_file = "in_voltage_sampling_frequency";
+	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
+	scale_available = iio_channel_find_attr(ch0, "scale_available");
+
+	ch1 = iio_device_find_channel(adc, "voltage0", false);
+	if (iio_channel_find_attr(ch1, "sampling_frequency")) {
+		adc_freq_device = adc;
+		adc_freq_channel = ch1;
+		adc_freq_file = "sampling_frequency";
 	} else {
-		adc_freq_device = "ad9523-lpc";
-		adc_freq_file = "out_altvoltage2_ADC_CLK_frequency";
+		adc_freq_device = iio_context_find_device(ctx, "ad9523-lpc");
+		adc_freq_channel = iio_device_find_channel(adc_freq_device, "altvoltage2", true);
+		adc_freq_file = "ADC_CLK_frequency";
 	}
 
-	if (iio_devattr_exists("cf-ad9122-core-lpc", "out_altvoltage_1A_sampling_frequency"))
-		dac_sampling_freq_file = "out_altvoltage_1A_sampling_frequency";
-	else
-		dac_sampling_freq_file = "out_altvoltage_sampling_frequency";
-
-	shared_scale_available = iio_devattr_exists("cf-ad9122-core-lpc",
-			"out_altvoltage_scale_available");
+	dac_sampling_freq_file = iio_channel_find_attr(ch0,
+			"1A_sampling_frequency") ?: "sampling_frequency";
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
 	manage_dds_mode();
@@ -2064,187 +2087,164 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	/* The next free frequency related widgets - keep in this order! */
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", dac_sampling_freq_file,
+			dac, ch0, dac_sampling_freq_file,
 			builder, "dac_data_clock", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage_interpolation_frequency",
-			"out_altvoltage_interpolation_frequency_available",
+			dac, ch0, "interpolation_frequency",
+			"interpolation_frequency_available",
 			builder, "dac_interpolation_clock", NULL);
 	num_dac_shift = num_tx;
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc",
-			"out_altvoltage_interpolation_center_shift_frequency",
-			"out_altvoltage_interpolation_center_shift_frequency_available",
+			dac, ch0, "interpolation_center_shift_frequency",
+			"interpolation_center_shift_frequency_available",
 			builder, "dac_fcenter_shift", NULL);
 	/* DDS */
+	ch1 = iio_device_find_channel(dac, "altvoltage1", true);
+	ch2 = iio_device_find_channel(dac, "altvoltage2", true);
+	ch3 = iio_device_find_channel(dac, "altvoltage3", true);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage0_1A_frequency",
-			dds3_freq, &mhz_scale);
+			dac, ch0, "1A_frequency", dds3_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage2_2A_frequency",
-			dds1_freq, &mhz_scale);
+			dac, ch2, "2A_frequency", dds1_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	num_dds4_freq = num_tx;
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage1_1B_frequency",
-			dds4_freq, &mhz_scale);
+			dac, ch1, "1B_frequency", dds4_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	num_dds2_freq = num_tx;
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage3_2B_frequency",
-			dds2_freq, &mhz_scale);
+			dac, ch3, "2B_frequency", dds2_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage0_1A_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_1A_scale_available",
+			dac, ch0, "1A_scale",
+			scale_available ?: "1A_scale_available",
 			dds3_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage2_2A_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_2A_scale_available",
+			dac, ch2, "2A_scale",
+			scale_available ?: "2A_scale_available",
 			dds1_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage1_1B_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_1B_scale_available",
+			dac, ch1, "1B_scale",
+			scale_available ?: "1B_scale_available",
 			dds4_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage3_2B_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_2B_scale_available",
+			dac, ch3, "2B_scale",
+			scale_available ?: "2B_scale_available",
 			dds2_scale, compare_gain);
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage0_1A_phase",
-			dds3_phase, &khz_scale);
+			dac, ch0, "1A_phase", dds3_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage2_2A_phase",
-			dds1_phase, &khz_scale);
+			dac, ch2, "2A_phase", dds1_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage1_1B_phase",
-			dds4_phase, &khz_scale);
+			dac, ch1, "1B_phase", dds4_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9122-core-lpc", "out_altvoltage3_2B_phase",
-			dds2_phase, &khz_scale);
+			dac, ch3, "2B_phase", dds2_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	num_tx_pll = num_tx;
+
+	ch0 = iio_device_find_channel(dev, "altvoltage0", true);
+
 	iio_spin_button_int_init(&tx_widgets[num_tx++],
-			"adf4351-tx-lpc", "out_altvoltage0_frequency",
-			tx_lo_freq, &mhz_scale);
+			dev, ch0, "frequency", tx_lo_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	tx_lo_powerdown = num_tx;
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-			"adf4351-tx-lpc", "out_altvoltage0_powerdown",
-			builder, "tx_lo_powerdown", 1);
+			dev, ch0, "powerdown", builder, "tx_lo_powerdown", 1);
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-			"adf4351-tx-lpc", "out_altvoltage0_frequency_resolution",
-			builder, "tx_lo_spacing", NULL);
+			dev, ch0, "frequency_resolution", builder, "tx_lo_spacing", NULL);
 
 	/* Calibration */
+	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
+	ch1 = iio_device_find_channel(dac, "altvoltage1", true);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"cf-ad9122-core-lpc", "out_voltage0_calibbias",
-			I_dac_offs, NULL);
+			dac, ch0, "calibbias", I_dac_offs, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"cf-ad9122-core-lpc", "out_voltage0_calibscale",
-			I_dac_fs_adj, NULL);
+			dac, ch0, "calibscale", I_dac_fs_adj, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"cf-ad9122-core-lpc", "out_voltage0_phase",
-			I_dac_pha_adj, NULL);
+			dac, ch0, "phase", I_dac_pha_adj, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"cf-ad9122-core-lpc", "out_voltage1_calibbias",
-			Q_dac_offs, NULL);
+			dac, ch1, "calibbias", Q_dac_offs, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"cf-ad9122-core-lpc", "out_voltage1_calibscale",
-			Q_dac_fs_adj, NULL);
+			dac, ch1, "calibscale", Q_dac_fs_adj, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"cf-ad9122-core-lpc", "out_voltage1_phase",
-			Q_dac_pha_adj, NULL);
+			dac, ch1, "phase", Q_dac_pha_adj, NULL);
 
 	g_signal_connect(I_dac_offs, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage0_calibbias");
+			G_CALLBACK(dac_cal_spin0), "calibbias");
 	g_signal_connect(I_dac_fs_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage0_calibscale");
+			G_CALLBACK(dac_cal_spin0), "calibscale");
 	g_signal_connect(I_dac_pha_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage0_phase");
+			G_CALLBACK(dac_cal_spin0), "phase");
 	g_signal_connect(Q_dac_offs, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage1_calibbias");
+			G_CALLBACK(dac_cal_spin1), "calibbias");
 	g_signal_connect(Q_dac_fs_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage1_calibscale");
+			G_CALLBACK(dac_cal_spin1), "calibscale");
 	g_signal_connect(Q_dac_pha_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage1_phase");
+			G_CALLBACK(dac_cal_spin1), "phase");
 
+	ch0 = iio_device_find_channel(dac, "voltage0", false);
+	ch1 = iio_device_find_channel(dac, "voltage1", false);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"cf-ad9643-core-lpc", "in_voltage0_calibbias",
-			I_adc_offset_adj, NULL);
+			adc, ch0, "calibbias", I_adc_offset_adj, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"cf-ad9643-core-lpc", "in_voltage1_calibbias",
-			Q_adc_offset_adj, NULL);
+			adc, ch1, "calibbias", Q_adc_offset_adj, NULL);
 	iio_spin_button_init(&cal_widgets[num_cal++],
-			"cf-ad9643-core-lpc", "in_voltage0_calibscale",
-			I_adc_gain_adj, NULL);
+			adc, ch0, "calibscale", I_adc_gain_adj, NULL);
 	iio_spin_button_init(&cal_widgets[num_cal++],
-			"cf-ad9643-core-lpc", "in_voltage1_calibscale",
-			Q_adc_gain_adj, NULL);
+			adc, ch1, "calibscale", Q_adc_gain_adj, NULL);
 	iio_spin_button_init(&cal_widgets[num_cal++],
-			"cf-ad9643-core-lpc", "in_voltage0_calibphase",
-			I_adc_phase_adj, NULL);
+			adc, ch0, "calibphase", I_adc_phase_adj, NULL);
 	iio_spin_button_init(&cal_widgets[num_cal++],
-			"cf-ad9643-core-lpc", "in_voltage1_calibphase",
-			Q_adc_phase_adj, NULL);
+			adc, ch1, "calibphase", Q_adc_phase_adj, NULL);
 
 	g_signal_connect(I_adc_gain_adj  , "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage0_calibscale");
+			G_CALLBACK(adc_cal_spin0), "calibscale");
 	g_signal_connect(I_adc_offset_adj, "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage0_calibbias");
+			G_CALLBACK(adc_cal_spin0), "calibbias");
 	g_signal_connect(I_adc_phase_adj , "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage0_calibphase");
+			G_CALLBACK(adc_cal_spin0), "calibphase");
 	g_signal_connect(Q_adc_gain_adj  , "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage1_calibscale");
+			G_CALLBACK(adc_cal_spin1), "calibscale");
 	g_signal_connect(Q_adc_offset_adj, "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage1_calibbias");
+			G_CALLBACK(adc_cal_spin1), "calibbias");
 	g_signal_connect(Q_adc_phase_adj , "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage1_calibphase");
+			G_CALLBACK(adc_cal_spin1), "calibphase");
 
 	/* Rx Widgets */
+	ch0 = iio_device_find_channel(dev, "altvoltage0", true);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			"adf4351-rx-lpc", "out_altvoltage0_frequency_resolution",
+			dev, ch0, "frequency_resolution",
 			builder, "rx_lo_spacing", NULL);
 
 	num_rx_pll = num_rx;
 	iio_spin_button_int_init(&rx_widgets[num_rx++],
-			"adf4351-rx-lpc", "out_altvoltage0_frequency",
-			rx_lo_freq, &mhz_scale);
+			dev, ch0, "frequency", rx_lo_freq, &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 	rx_lo_powerdown = num_rx;
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-			"adf4351-rx-lpc", "out_altvoltage0_powerdown",
-			builder, "rx_lo_powerdown", 1);
+			dev, ch0, "powerdown", builder, "rx_lo_powerdown", 1);
 	num_adc_freq = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			adc_freq_device, adc_freq_file,
+			adc_freq_device, adc_freq_channel, adc_freq_file,
 			builder, "adc_freq", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
+	dev = iio_context_find_device(ctx, "ad8366-lpc");
+	ch0 = iio_device_find_channel(dev, "voltage0", true);
+	ch1 = iio_device_find_channel(dev, "voltage0", true);
+
 	iio_spin_button_init(&rx_widgets[num_rx++],
-			"ad8366-lpc", "out_voltage0_hardwaregain",
-			vga_gain0, NULL);
+			dev, ch0, "hardwaregain", vga_gain0, NULL);
 	iio_spin_button_init(&rx_widgets[num_rx++],
-			"ad8366-lpc", "out_voltage1_hardwaregain",
-			vga_gain1, NULL);
+			dev, ch1, "hardwaregain", vga_gain1, NULL);
 
 	g_builder_connect_signal(builder, "calibrate_dialog", "clicked",
 		G_CALLBACK(cal_dialog), NULL);
@@ -2413,7 +2413,12 @@ static const char *fmcomms1_sr_attribs[] = {
 
 static bool fmcomms1_identify(void)
 {
-	return !set_dev_paths("cf-ad9122-core-lpc");
+	ctx = osc_create_context();
+	dac = iio_context_find_device(ctx, "cf-ad9122-core-lpc");
+	adc = iio_context_find_device(ctx, "cf-ad9643-core-lpc");
+	if (!dac || !adc)
+		iio_context_destroy(ctx);
+	return !!dac && !!adc;
 }
 
 struct osc_plugin plugin = {
