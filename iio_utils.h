@@ -752,7 +752,6 @@ static inline void dummy_funct_quiet(char *ptr)
 
 #define AVAILABLE_TOKEN "_available"
 #define SCALE_TOKEN "_scale"
-#define OFFSET_TOKEN "_offset"
 
 int set_dev_paths(const char *device_name);
 const char * dev_name_dir(void);

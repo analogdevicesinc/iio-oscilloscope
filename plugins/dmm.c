@@ -36,21 +36,12 @@ static gint this_page;
 static GtkNotebook *nbook;
 static gboolean plugin_detached;
 
-static inline int strend(const char *haystack, const char *needle)
-{
-	size_t len = strlen(needle);
-	size_t end = strlen(haystack);
-
-	return strncmp(&haystack[end - len], needle, len);
-}
-
-
 static void build_channel_list(void)
 {
 	GtkTreeIter iter, iter2, iter3;
-	unsigned int enabled, i, j;
-	char *device, *device2, *elements, *start, *strt, *end, *next, *scale, *offset;
-	char buf[128], buf2[128], buf3[128], pretty[128];
+	unsigned int enabled;
+	char *device, *device2, *elements, *start, *strt, *end, *next, *scale;
+	char buf[128], buf2[128], pretty[128];
 	gboolean first = FALSE, iter3_valid = FALSE, loop, loop2, all = FALSE;
 
 	loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL (device_list_store), &iter);
@@ -91,7 +82,6 @@ static void build_channel_list(void)
 
 			scan_elements_sort(&elements);
 			scan_elements_insert(&elements, SCALE_TOKEN, "_raw");
-			scan_elements_insert(&elements, OFFSET_TOKEN, "_raw");
 			while(isspace(elements[strlen(elements) - 1]))
 				elements[strlen(elements) - 1] = 0;
 			start = elements;
@@ -103,7 +93,6 @@ static void build_channel_list(void)
 					end = start + strlen(start);
 
 				scale = strstr(end + 1, SCALE_TOKEN);
-				offset = strstr(end + 1, OFFSET_TOKEN);
 				next = strchr(end + 1, ' ' );
 
 				if (!next)
@@ -112,42 +101,25 @@ static void build_channel_list(void)
 				sprintf(buf, "%.*s", (int)(end - start), start);
 
 				strt = start;
-				i = (unsigned int)(next - end) - 1;
-				j = (unsigned int)(end - start);
-				if (!offset || offset >= next) {
-					offset = NULL;
-					buf3[0] = 0;
-					start = end + 1;
-				} else {
-					sprintf(buf3, "%.*s", i, end + 1);
-					start = next + 1;
-					end = next;
-					next = strchr(next + 1, ' ');
-					i = (unsigned int)(next - end) - 1;
-				}
-
-				if(!scale || scale >= next) {
+				if(scale >= next) {
 					scale = NULL;
 					buf2[0] = 0;
 					start = end + 1;
 				} else {
-					sprintf(buf2, "%.*s", i, end + 1);
+					sprintf(buf2, "%.*s", (int)(next - end) - 1, end + 1);
 					start = next + 1;
 				}
 
+
 				/* if it doesn't start with "in_" or includes the scale,
 				 * skip it */
-				if (strncmp("in_", buf, 3) || !strend(buf, SCALE_TOKEN) ||
-						!strend(buf, OFFSET_TOKEN) || !strend(buf, AVAILABLE_TOKEN) ||
-						!strend(buf, "_mode") || !strend(buf, "_select") || !strend(buf, "en"))
+				if (strncmp("in_", buf, 3) || (strstr(buf, SCALE_TOKEN)))
 					continue;
 
 				if (strstr(buf, "_raw"))
-					sprintf(pretty, "%s: %.*s", device, j - 7, &strt[3]);
-				else if (strstr(buf, "_input"))
-					sprintf(pretty, "%s: %.*s", device, j - 9, &strt[3]);
+					sprintf(pretty, "%s: %.*s", device, (int)(end - strt) - 7, &strt[3]);
 				else
-					sprintf(pretty, "%s: %.*s", device, j - 3, &strt[3]);
+					sprintf(pretty, "%s: %.*s", device, (int)(end - strt) - 4, &strt[3]);
 
 				if (iter3_valid) {
 					if (first) {
@@ -165,9 +137,8 @@ static void build_channel_list(void)
 						0, pretty,	/* pretty channel name */
 						1, 0,		/* On/Off */
 						2, device, 	/* the actual device */
-						3, buf,		/* the actual attribute/channel name */
-						4, buf2,	/* scale: zero length string if none */
-						5, buf3,	/* offset: zero length string if none */
+						3, buf,		/* the actual channel name */
+						4, buf2,	/* scale */
 							-1);
 				iter3 = iter2;
 			}
@@ -267,9 +238,9 @@ static void dmm_update_thread(void)
 {
 
 	GtkTreeIter tree_iter;
-	char *name, *device, *channel, *scale, *offset, *units = NULL, *unit, *p, tmp[128];
+	char *name, *device, *channel, *scale, tmp[128];
 	gboolean loop, enabled;
-	double value, sca, off;
+	double value, sca;
 
 	GtkTextBuffer *buf;
 	GtkTextIter text_iter;
@@ -289,62 +260,23 @@ static void dmm_update_thread(void)
 						2, &device,
 						3, &channel,
 						4, &scale,
-						5, &offset,
 						-1);
 				if (enabled) {
 					set_dev_paths(device);
-					value = 0;
-					if (read_devattr(channel, &units) >= 0 && read_devattr_double(channel, &value) >=  0) {
-						unit = strchr(units, ' ');
+					read_devattr_double(channel, &value);
+					if (scale)
+						read_devattr_double(scale, &sca);
+					else
+						sca = 1.0;
 
-						if (strlen(offset)) {
-							read_devattr_double(offset, &off);
-							value += off;
-						}
-
-						if (strlen(scale)) {
-							read_devattr_double(scale, &sca);
-							value *= sca;
-						}
-
-						if ((!strncmp(channel, "in_voltage", 10) && !strend(channel, "_raw")) ||
-								!strncmp(channel, "in_temp", 7))
-							value = value / 1000;
-
-						sprintf(tmp, "%s = %f", name, value);
-
-						if (strchr(tmp, '.')) {
-							while (tmp[strlen(tmp) - 1] == '0')
-								tmp[strlen(tmp) - 1] = 0;
-							if (tmp[strlen(tmp) - 1] == '.')
-								tmp[strlen(tmp)] = '0';
-						}
-
-						p = &tmp[strlen(tmp)];
-
-						if (unit) 
-							sprintf(p, " %s\n", &unit[1]);
-						else if (!strncmp(channel, "in_temp", 7))
-							sprintf(p, " Celsius\n");
-						else if (!strend(channel, "_bandwidth"))
-							 sprintf(p, " Hz\n");
-						else if (!strend(channel, "_sampling_frequency"))
-							sprintf(p, " SPS\n");
-						else if(!strncmp(channel, "in_voltage", 10) && !strend(channel, "_raw"))
-							sprintf(p, " Volts\n");
-						else
-							sprintf(p, "\n");
-
-					} else {
-						sprintf(tmp, "error reading %s\n", name);
-					}
+					if(strstr(name, "voltage"))
+						sprintf(tmp, "%s = %f Volts\n", name, value * sca / 1000.0);
+					else if (strstr(name, "temp"))
+						sprintf(tmp, "%s = %f Celsius\n", name, value * sca / 1000.0);
+					else
+						sprintf(tmp, "%s = %f\n", name, value * sca / 1000.0);
 
 					gtk_text_buffer_insert(buf, &text_iter, tmp, -1);
-
-					if (units) {
-						free(units);
-						units = NULL;
-					}
 				}
 				loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(channel_list_store), &tree_iter);
 			}
