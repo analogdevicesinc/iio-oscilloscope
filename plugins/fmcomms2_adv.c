@@ -22,13 +22,17 @@
 #include <sys/stat.h>
 #include <string.h>
 
+#include <iio.h>
+
 #include "../osc.h"
-#include "../iio_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../iio_widget.h"
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+
+static struct iio_context *ctx;
+static struct iio_device *dev;
 
 static gint this_page;
 static GtkNotebook *nbook;
@@ -46,8 +50,6 @@ struct w_info {
 	enum fmcomms2adv_wtype type;
 	const char * const name;
 };
-
-static char dir_name[512];
 
 static struct w_info attrs[] = {
 	{SPINBUTTON, "adi,agc-adc-large-overload-exceed-counter"},
@@ -175,9 +177,10 @@ static void update_widget(GtkBuilder *builder, struct w_info *item)
 {
 	GtkWidget *widget;
 	int val;
+	long long value;
 
 	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
-	val = read_sysfs_posint(item->name, dir_name);
+	val = iio_device_debug_attr_read_longlong(dev, item->name, &value);
 
 	/* check for errors, in case there is a kernel <-> userspace mismatch */
 	if (val < 0) {
@@ -187,6 +190,7 @@ static void update_widget(GtkBuilder *builder, struct w_info *item)
 		return;
 	}
 
+	val = (int) value;
 	switch (item->type) {
 		case CHECKBOX:
 			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), !!val);
@@ -209,7 +213,6 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 {
 	struct w_info *item = data;
 	unsigned val;
-	char temp[40];
 
 	switch (item->type) {
 		case CHECKBOX:
@@ -224,10 +227,11 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 		case COMBOBOX:
 			val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 			break;
+		default:
+			return;
 	}
 
-	sprintf(temp, "%d\n", val);
-	write_sysfs_string(item->name, dir_name, temp);
+	iio_device_debug_attr_write_longlong(dev, item->name, val);
 }
 
 void bist_tone_cb (GtkWidget *widget, gpointer data)
@@ -251,10 +255,10 @@ void bist_tone_cb (GtkWidget *widget, gpointer data)
 	c1q = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
 		GTK_WIDGET(gtk_builder_get_object(builder, "c1q"))));
 
-	sprintf(temp, "%d %d %d %d\n", mode, freq, level * 6,
+	sprintf(temp, "%d %d %d %d", mode, freq, level * 6,
 		(c2q << 3) | (c2i << 2) | (c1q << 1) | c1i);
 
-	write_sysfs_string("bist_tone", dir_name, temp);
+	iio_device_debug_attr_write(dev, "bist_tone", temp);
 }
 
 static void connect_widget(GtkBuilder *builder, struct w_info *item)
@@ -262,9 +266,10 @@ static void connect_widget(GtkBuilder *builder, struct w_info *item)
 	GtkWidget *widget;
 	char *signal = NULL;
 	int val;
+	long long value;
 
 	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
-	val = read_sysfs_posint(item->name, dir_name);
+	val = iio_device_debug_attr_read_longlong(dev, item->name, &value);
 
 	/* check for errors, in case there is a kernel <-> userspace mismatch */
 	if (val < 0) {
@@ -274,6 +279,7 @@ static void connect_widget(GtkBuilder *builder, struct w_info *item)
 		return;
 	}
 
+	val = (int) value;
 	switch (item->type) {
 		case CHECKBOX:
 			signal = "toggled";
@@ -523,9 +529,13 @@ static void update_active_page(gint active_page, gboolean is_detached)
 
 static bool fmcomms2adv_identify(void)
 {
-	bool ret = !set_debugfs_paths("ad9361-phy");
-	strcpy(dir_name, debug_name_dir());
-	return ret;
+	ctx = osc_create_context();
+	dev = iio_context_find_device(ctx, "ad9361-phy");
+	if (dev && !iio_device_get_debug_attrs_count(dev))
+		dev = NULL;
+	if (!dev)
+		iio_context_destroy(ctx);
+	return !!dev;
 }
 
 struct osc_plugin plugin = {
