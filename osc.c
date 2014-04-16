@@ -464,12 +464,12 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		return;
 	}
 	for (i = 0; i < axis_length; i++) {
-		settings->signal_a[i] = i_0[i] + I * q_0[i];
-		settings->signal_b[i] = i_1[i] + I * q_1[i];
+		settings->signal_a[i] = q_0[i] + I * i_0[i];
+		settings->signal_b[i] = q_1[i] + I * i_1[i];
 	}
 	xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length);
 	for (i = 0; i < 2 * axis_length - 1; i++)
-		tr->y_axis[i] = creal(settings->xcorr_data[i]);
+		tr->y_axis[i] = fabs(creal(settings->xcorr_data[i]));
 
 }
 

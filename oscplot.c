@@ -1035,7 +1035,7 @@ static void channels_transform_assignment(GtkTreeModel *model,
 				else if (!prm->ch_4th_ref)
 					prm->ch_4th_ref = ch_ref;
 				else
-					add_transform_to_list(prm->plot, ch_ref, prm->ch_pair_ref, prm->ch_3rd_ref, prm->ch_4th_ref, CROSS_CORRELATION_TRANSFORM, settings);
+					add_transform_to_list(prm->plot, prm->ch_pair_ref, prm->ch_3rd_ref, prm->ch_4th_ref, ch_ref, CROSS_CORRELATION_TRANSFORM, settings);
 			}
 		default:
 			break;
