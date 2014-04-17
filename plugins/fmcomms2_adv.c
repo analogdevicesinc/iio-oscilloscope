@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013 Analog Devices, Inc.
+ * Copyright (C) 2013-2014 Analog Devices, Inc.
  *
  * Licensed under the GPL-2.
  *
@@ -168,6 +168,17 @@ static struct w_info attrs[] = {
 	{SPINBUTTON, "adi,tx-fastlock-delay-ns"},
 	{CHECKBOX, "adi,rx-fastlock-pincontrol-enable"},
 	{CHECKBOX, "adi,tx-fastlock-pincontrol-enable"},
+	{COMBOBOX, "adi,txmon-1-front-end-gain"},
+	{SPINBUTTON, "adi,txmon-1-lo-cm"},
+	{COMBOBOX, "adi,txmon-2-front-end-gain"},
+	{SPINBUTTON, "adi,txmon-2-lo-cm"},
+	{CHECKBOX, "adi,txmon-dc-tracking-enable"},
+	{SPINBUTTON, "adi,txmon-delay"},
+	{SPINBUTTON, "adi,txmon-duration"},
+	{SPINBUTTON, "adi,txmon-high-gain"},
+	{SPINBUTTON, "adi,txmon-low-gain"},
+	{SPINBUTTON, "adi,txmon-low-high-thresh"},
+	{CHECKBOX, "adi,txmon-one-shot-mode-enable"},
 	{COMBOBOX, "bist_prbs"},
 	{COMBOBOX, "loopback"},
 	{BUTTON, "initialize"},
@@ -307,7 +318,7 @@ void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 {
 	GtkWidget *tohide = user_data;
 
-	if (page_num == 5)
+	if (page_num == 7)
 		gtk_widget_hide(tohide); /* Hide Init button in BIST Tab */
 	else
 		gtk_widget_show(tohide);
@@ -517,6 +528,17 @@ static const char *fmcomms2_adv_sr_attribs[] = {
 	"debug.ad9361-phy.adi,tx-fastlock-delay-ns",
 	"debug.ad9361-phy.adi,rx-fastlock-pincontrol-enable",
 	"debug.ad9361-phy.adi,tx-fastlock-pincontrol-enable",
+	"debug.ad9361-phy.adi,txmon-1-front-end-gain",
+	"debug.ad9361-phy.adi,txmon-1-lo-cm",
+	"debug.ad9361-phy.adi,txmon-2-front-end-gain",
+	"debug.ad9361-phy.adi,txmon-2-lo-cm",
+	"debug.ad9361-phy.adi,txmon-dc-tracking-enable",
+	"debug.ad9361-phy.adi,txmon-delay",
+	"debug.ad9361-phy.adi,txmon-duration",
+	"debug.ad9361-phy.adi,txmon-high-gain",
+	"debug.ad9361-phy.adi,txmon-low-gain",
+	"debug.ad9361-phy.adi,txmon-low-high-thresh",
+	"debug.ad9361-phy.adi,txmon-one-shot-mode-enable",
 	SYNC_RELOAD,
 	NULL
 };
