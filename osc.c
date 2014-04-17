@@ -486,7 +486,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	}
 
 	for (i = 0; i < 2 * axis_length - 1; i++) {
-		tr->y_axis[i] = fabs(creal(settings->xcorr_data[i]));
+		tr->y_axis[i] = creal(settings->xcorr_data[i]);
 
 		if (!tr->has_the_marker)
 			continue;
