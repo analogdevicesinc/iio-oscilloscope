@@ -1365,7 +1365,7 @@ static void color_icon_renderer_visibility(GtkTreeViewColumn *col,
 		GtkCellRenderer *cell, GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
 	gboolean is_channel;
-	gchar plot_type;
+	gint plot_type;
 
 	gtk_tree_model_get(model, iter, IS_CHANNEL, &is_channel,
 			PLOT_TYPE, &plot_type, -1);
@@ -3352,6 +3352,12 @@ static gboolean window_state_event_cb(GtkWidget *widget, GdkEventWindowState *ev
 	return FALSE;
 }
 
+static void capture_window_realize_cb(GtkWidget *widget, OscPlot *plot)
+{
+	gtk_window_get_size(GTK_WINDOW(plot->priv->window),
+		&plot->priv->size.width, &plot->priv->size.height);
+}
+
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -3439,7 +3445,7 @@ static void create_plot(OscPlot *plot)
 									G_TYPE_BOOLEAN,   /* EXPANDED */
 									G_TYPE_POINTER,   /* CHANNEL_SETTINGS */
 									GDK_TYPE_PIXBUF,  /* CHANNEL_COLOR_ICON */
-									G_TYPE_CHAR,      /* PLOT_TYPE */
+									G_TYPE_INT ,      /* PLOT_TYPE */
 									G_TYPE_BOOLEAN);  /* SENSITIVE */
 	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 
@@ -3465,13 +3471,14 @@ static void create_plot(OscPlot *plot)
 	device_list_treeview_init(plot);
 	saveas_channels_list_fill(plot);
 
-	gtk_window_get_size(GTK_WINDOW(priv->window), &priv->size.width, &priv->size.height);
-
 	/* Connect Signals */
 	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);
 
 	g_signal_connect(G_OBJECT(priv->window), "window-state-event",
 		G_CALLBACK(window_state_event_cb), plot);
+	g_signal_connect(G_OBJECT(priv->window), "realize",
+		G_CALLBACK(capture_window_realize_cb), plot);
+
 	priv->capture_button_hid =
 	g_signal_connect(priv->capture_button, "toggled",
 		G_CALLBACK(capture_button_clicked_cb), plot);
