@@ -133,6 +133,8 @@ struct _cross_correlation_settings {
 	fftw_complex *signal_a;
 	fftw_complex *signal_b;
 	fftw_complex *xcorr_data;
+	struct marker_type *markers;
+	enum marker_types *marker_type;
 };
 
 Transform* Transform_new(int tr_type);

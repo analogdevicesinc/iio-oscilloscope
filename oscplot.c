@@ -705,6 +705,8 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 		XCORR_SETTINGS(transform)->signal_a = NULL;
 		XCORR_SETTINGS(transform)->signal_b = NULL;
 		XCORR_SETTINGS(transform)->xcorr_data = NULL;
+		XCORR_SETTINGS(transform)->markers = NULL;
+		XCORR_SETTINGS(transform)->marker_type = NULL;
 	}
 }
 
@@ -773,6 +775,7 @@ static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel *ch0,
 		ch_info->shadow_of_enabled++;
 		ch_info = iio_channel_get_data(ch3);
 		ch_info->shadow_of_enabled++;
+		priv->active_transform_type = CROSS_CORRELATION_TRANSFORM;
 		break;
 	default:
 		printf("Invalid transform\n");
@@ -795,6 +798,13 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	if (tr->type_id == CONSTELLATION_TRANSFORM ||
 		tr->type_id == COMPLEX_FFT_TRANSFORM) {
 		ch_info = iio_channel_get_data(tr->channel_parent2);
+		ch_info->shadow_of_enabled--;
+	} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
+		ch_info = iio_channel_get_data(tr->channel_parent2);
+		ch_info->shadow_of_enabled--;
+		ch_info = iio_channel_get_data(tr->channel_parent3);
+		ch_info->shadow_of_enabled--;
+		ch_info = iio_channel_get_data(tr->channel_parent4);
 		ch_info->shadow_of_enabled--;
 	}
 	if (tr->has_the_marker)
@@ -835,10 +845,15 @@ static void add_markers(OscPlot *plot, Transform *transform)
 
 	transform->has_the_marker = true;
 	priv->tr_with_marker = transform;
-	FFT_SETTINGS(transform)->markers = priv->markers;
-	FFT_SETTINGS(transform)->markers_copy = priv->markers_copy;
-	FFT_SETTINGS(transform)->marker_type = &priv->marker_type;
-	FFT_SETTINGS(transform)->marker_lock = &priv->g_marker_copy_lock;
+	if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
+		FFT_SETTINGS(transform)->markers = priv->markers;
+		FFT_SETTINGS(transform)->markers_copy = priv->markers_copy;
+		FFT_SETTINGS(transform)->marker_type = &priv->marker_type;
+		FFT_SETTINGS(transform)->marker_lock = &priv->g_marker_copy_lock;
+	} else if (priv->active_transform_type == CROSS_CORRELATION_TRANSFORM) {
+		XCORR_SETTINGS(transform)->markers = priv->markers;
+		XCORR_SETTINGS(transform)->marker_type = &priv->marker_type;
+	}
 }
 
 static unsigned int plot_sample_count_get(OscPlot *plot)
@@ -903,24 +918,39 @@ static void dispose_parameters_from_plot(OscPlot *plot)
 
 static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 {
-	struct _fft_settings *settings = tr->settings;
-	struct extra_info *ch_info = iio_channel_get_data(tr->channel_parent);
-	struct extra_dev_info *dev_info = iio_device_get_data(ch_info->dev);
-	struct marker_type *markers = settings->markers;
+	struct extra_info *ch_info;
+	struct extra_dev_info *dev_info;
+	struct marker_type *markers;
 	GtkTextIter iter;
 	char text[256];
 	int m;
+
+	if (tr->type_id == CROSS_CORRELATION_TRANSFORM)
+		markers = XCORR_SETTINGS(tr)->markers;
+	else if(tr->type_id == FFT_TRANSFORM)
+		markers = FFT_SETTINGS(tr)->markers;
+	else if(tr->type_id == COMPLEX_FFT_TRANSFORM)
+		markers = FFT_SETTINGS(tr)->markers;
+	else
+		return;
 
 	if (priv->tbuf == NULL) {
 			priv->tbuf = gtk_text_buffer_new(NULL);
 			gtk_text_view_set_buffer(GTK_TEXT_VIEW(priv->marker_label), priv->tbuf);
 	}
+	ch_info = iio_channel_get_data(tr->channel_parent);
+	dev_info = iio_device_get_data(ch_info->dev);
 	if (MAX_MARKERS && priv->marker_type != MARKER_OFF) {
 		for (m = 0; m <= MAX_MARKERS && markers[m].active; m++) {
-			sprintf(text, "M%i: %2.2f dBFS @ %2.3f %cHz%c",
+			if (tr->type_id == FFT_TRANSFORM || tr->type_id == COMPLEX_FFT_TRANSFORM) {
+				sprintf(text, "M%i: %2.2f dBFS @ %2.3f %cHz%c",
 					m, markers[m].y, dev_info->lo_freq + markers[m].x,
 					dev_info->adc_scale,
 					m != MAX_MARKERS ? '\n' : '\0');
+			} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
+				sprintf(text, "M%i: %2.2f @ %2.3f%c", m, markers[m].y, markers[m].x,
+					m != MAX_MARKERS ? '\n' : '\0');
+			}
 
 			if (m == 0) {
 				gtk_text_buffer_set_text(priv->tbuf, text, -1);
@@ -1173,7 +1203,9 @@ static void plot_setup(OscPlot *plot)
 		if (dev_info->adc_freq > max_adc_freq)
 			max_adc_freq = dev_info->adc_freq;
 
-		if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM)
+		if (priv->active_transform_type == FFT_TRANSFORM ||
+			priv->active_transform_type == COMPLEX_FFT_TRANSFORM ||
+			priv->active_transform_type == CROSS_CORRELATION_TRANSFORM)
 			add_markers(plot, transform);
 
 		gtk_databox_graph_add(GTK_DATABOX(priv->databox), graph);
@@ -2987,7 +3019,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 
 	/* FFT? */
 	if (priv->active_transform_type != FFT_TRANSFORM &&
-		priv->active_transform_type != COMPLEX_FFT_TRANSFORM)
+		priv->active_transform_type != COMPLEX_FFT_TRANSFORM &&
+		priv->active_transform_type != CROSS_CORRELATION_TRANSFORM)
 	return FALSE;
 
 	/* Right button */
@@ -3070,6 +3103,9 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gtk_widget_show(menuitem);
 	i++;
 
+	if (priv->active_transform_type == CROSS_CORRELATION_TRANSFORM)
+		goto skip_no_peak_markers;
+
 	menuitem = gtk_check_menu_item_new_with_label(FIX_MRK);
 	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
@@ -3109,6 +3145,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 		gtk_widget_show(menuitem);
 		i++;
 	}
+
+skip_no_peak_markers:
 
 	if (priv->marker_type != MARKER_OFF) {
 		menuitem = gtk_check_menu_item_new_with_label(OFF_MRK);
@@ -3152,6 +3190,7 @@ static void plot_domain_changed_cb(GtkComboBox *box, OscPlot *plot)
 {
 	gboolean force_sensitive = true;
 
+	plot->priv->marker_type = MARKER_OFF;
 	check_valid_setup(plot);
 
 	foreach_device_iter(GTK_TREE_VIEW(plot->priv->channel_list_view),

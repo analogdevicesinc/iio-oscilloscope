@@ -471,8 +471,64 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		settings->signal_b[i] = q_1[i] + I * i_1[i];
 	}
 	xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length);
-	for (i = 0; i < 2 * axis_length - 1; i++)
+
+	gfloat *out_data = tr->y_axis;
+	gfloat *X = tr->x_axis;
+	struct marker_type *markers = settings->markers;
+	enum marker_types marker_type = MARKER_OFF;
+	unsigned int maxx[MAX_MARKERS + 1];
+	gfloat maxY[MAX_MARKERS + 1];
+	int j, k;
+
+	if (settings->marker_type)
+		marker_type = *((enum marker_types *)settings->marker_type);
+
+	for (j = 0; j <= MAX_MARKERS; j++) {
+		maxx[j] = 0;
+		maxY[j] = -100.0f;
+	}
+
+	for (i = 0; i < 2 * axis_length - 1; i++) {
 		tr->y_axis[i] = creal(settings->xcorr_data[i]);
+		if (!tr->has_the_marker)
+			continue;
+
+		if (MAX_MARKERS && marker_type == MARKER_PEAK) {
+			if (i == 0) {
+				maxx[0] = 0;
+				maxY[0] = out_data[0];
+			} else {
+				for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
+					if  ((out_data[i - 1] > maxY[j]) &&
+						((!((out_data[i - 2] > out_data[i - 1]) &&
+						 (out_data[i - 1] > out_data[i]))) &&
+						 (!((out_data[i - 2] < out_data[i - 1]) &&
+						 (out_data[i - 1] < out_data[i]))))) {
+						if (marker_type == MARKER_PEAK) {
+							for (k = MAX_MARKERS; k > j; k--) {
+								maxY[k] = maxY[k - 1];
+								maxx[k] = maxx[k - 1];
+							}
+						}
+						maxY[j] = out_data[i - 1];
+						maxx[j] = i - 1;
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	if (!tr->has_the_marker)
+		return;
+
+	if (MAX_MARKERS && marker_type != MARKER_OFF)
+		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++)
+			if (marker_type == MARKER_PEAK) {
+				markers[j].x = (gfloat)X[maxx[j]];
+				markers[j].y = (gfloat)out_data[maxx[j]];
+				markers[j].bin = maxx[j];
+			}
 
 }
 
