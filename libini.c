@@ -186,8 +186,13 @@ static int libini_restore_handler(void *user, const char* section,
 					break;
 				ret = !plugin->handle_item(plugin, name, value);
 				break;
-			} else
+			} else {
+				if (strstr(elems[1], "hardwaregain") && strstr(value, " dB")) {
+					val_str = strstr(value, " dB");
+					*val_str = 0;
+				}
 				ret = !write_devattr(elems[1], value);
+			}
 			break;
 		case 2:
 			/* log something, according to:
