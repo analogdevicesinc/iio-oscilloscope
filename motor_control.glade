@@ -16,6 +16,11 @@
     <property name="step_increment">1</property>
     <property name="page_increment">100</property>
   </object>
+  <object class="GtkAdjustment" id="adjustment_kd">
+    <property name="upper">4294967296</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">100</property>
+  </object>
   <object class="GtkAdjustment" id="adjustment_kd1">
     <property name="upper">4294967296</property>
     <property name="step_increment">1</property>
@@ -32,11 +37,6 @@
     <property name="page_increment">100</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_kp">
-    <property name="upper">4294967296</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">100</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_kp1">
     <property name="upper">4294967296</property>
     <property name="step_increment">1</property>
     <property name="page_increment">100</property>
@@ -100,7 +100,7 @@
                   <object class="GtkTable" id="table_torque_ctrl_widgets">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="n_rows">6</property>
+                    <property name="n_rows">7</property>
                     <property name="n_columns">2</property>
                     <property name="column_spacing">5</property>
                     <child>
@@ -173,8 +173,8 @@
                         </child>
                       </object>
                       <packing>
-                        <property name="top_attach">3</property>
-                        <property name="bottom_attach">4</property>
+                        <property name="top_attach">4</property>
+                        <property name="bottom_attach">5</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
                       </packing>
@@ -187,13 +187,14 @@
                           <object class="GtkToggleButton" id="togglebtn_controller_type">
                             <property name="label" translatable="yes">Manual PWM</property>
                             <property name="use_action_appearance">False</property>
+                            <property name="width_request">175</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">True</property>
                             <property name="use_action_appearance">False</property>
                           </object>
                           <packing>
-                            <property name="expand">True</property>
+                            <property name="expand">False</property>
                             <property name="fill">True</property>
                             <property name="position">0</property>
                           </packing>
@@ -202,8 +203,8 @@
                       <packing>
                         <property name="left_attach">1</property>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">3</property>
-                        <property name="bottom_attach">4</property>
+                        <property name="top_attach">4</property>
+                        <property name="bottom_attach">5</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
                       </packing>
@@ -227,8 +228,8 @@
                         </child>
                       </object>
                       <packing>
-                        <property name="top_attach">4</property>
-                        <property name="bottom_attach">5</property>
+                        <property name="top_attach">5</property>
+                        <property name="bottom_attach">6</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
                       </packing>
@@ -279,12 +280,12 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkLabel" id="label_kp1">
+                          <object class="GtkLabel" id="label_kd">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="xalign">0</property>
                             <property name="ypad">4</property>
-                            <property name="label" translatable="yes">Kp1:</property>
+                            <property name="label" translatable="yes">Kd:</property>
                           </object>
                           <packing>
                             <property name="expand">True</property>
@@ -293,37 +294,15 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkLabel" id="label_ki1">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
-                            <property name="ypad">4</property>
-                            <property name="label" translatable="yes">Ki1:</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">5</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
-                          <object class="GtkLabel" id="label_kd1">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
-                            <property name="ypad">4</property>
-                            <property name="label" translatable="yes">Kd1:</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">6</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                       </object>
                       <packing>
-                        <property name="top_attach">5</property>
-                        <property name="bottom_attach">6</property>
+                        <property name="top_attach">6</property>
+                        <property name="bottom_attach">7</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
                       </packing>
@@ -352,8 +331,8 @@
                       <packing>
                         <property name="left_attach">1</property>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">4</property>
-                        <property name="bottom_attach">5</property>
+                        <property name="top_attach">5</property>
+                        <property name="bottom_attach">6</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
                       </packing>
@@ -415,12 +394,12 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkSpinButton" id="spinbutton_kp1">
+                          <object class="GtkSpinButton" id="spinbutton_kd">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="invisible_char">•</property>
                             <property name="invisible_char_set">True</property>
-                            <property name="adjustment">adjustment_kp1</property>
+                            <property name="adjustment">adjustment_kd</property>
                             <property name="digits">5</property>
                           </object>
                           <packing>
@@ -430,41 +409,17 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkSpinButton" id="spinbutton_ki1">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="invisible_char">•</property>
-                            <property name="invisible_char_set">True</property>
-                            <property name="adjustment">adjustment_ki1</property>
-                            <property name="digits">5</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">5</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
-                          <object class="GtkSpinButton" id="spinbutton_kd1">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="invisible_char">•</property>
-                            <property name="invisible_char_set">True</property>
-                            <property name="adjustment">adjustment_kd1</property>
-                            <property name="digits">5</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">6</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">5</property>
-                        <property name="bottom_attach">6</property>
+                        <property name="top_attach">6</property>
+                        <property name="bottom_attach">7</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
                       </packing>
@@ -544,8 +499,8 @@
                       <packing>
                         <property name="left_attach">1</property>
                         <property name="right_attach">2</property>
-                        <property name="top_attach">2</property>
-                        <property name="bottom_attach">3</property>
+                        <property name="top_attach">3</property>
+                        <property name="bottom_attach">4</property>
                         <property name="x_options">GTK_FILL</property>
                         <property name="y_options">GTK_FILL</property>
                       </packing>
@@ -569,6 +524,60 @@
                         </child>
                       </object>
                       <packing>
+                        <property name="top_attach">3</property>
+                        <property name="bottom_attach">4</property>
+                        <property name="x_options">GTK_FILL</property>
+                        <property name="y_options">GTK_FILL</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkVBox" id="vbox_direction_lbls">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <child>
+                          <object class="GtkLabel" id="label_direction">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="xalign">0</property>
+                            <property name="label" translatable="yes">Direction:</property>
+                          </object>
+                          <packing>
+                            <property name="expand">True</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="top_attach">2</property>
+                        <property name="bottom_attach">3</property>
+                        <property name="x_options">GTK_FILL</property>
+                        <property name="y_options">GTK_FILL</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkVBox" id="vbox_direction_widgets">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <child>
+                          <object class="GtkToggleButton" id="togglebtn_direction">
+                            <property name="label" translatable="yes">Counterclockwise</property>
+                            <property name="use_action_appearance">False</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">True</property>
+                            <property name="use_action_appearance">False</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="right_attach">2</property>
                         <property name="top_attach">2</property>
                         <property name="bottom_attach">3</property>
                         <property name="x_options">GTK_FILL</property>
@@ -602,7 +611,7 @@
               <object class="GtkLabel" id="label1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Torque</property>
+                <property name="label" translatable="yes">PID</property>
               </object>
               <packing>
                 <property name="tab_fill">False</property>
