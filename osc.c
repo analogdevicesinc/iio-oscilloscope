@@ -1313,6 +1313,9 @@ static gboolean capture_process(void)
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		unsigned int sample_count = dev_info->sample_count;
 
+		if (dev_info->input_device == false)
+			continue;
+
 		if (sample_size == 0)
 			continue;
 
@@ -1541,6 +1544,24 @@ void sigterm (int signum)
 	application_quit();
 }
 
+bool is_input_device(const struct iio_device *dev)
+{
+	struct iio_channel *ch;
+	int nb_channels, i;
+
+	if (!dev)
+		return false;
+
+	nb_channels = iio_device_get_channels_count(dev);
+	for (i = 0; i < nb_channels; i++) {
+		ch = iio_device_get_channel(dev, i);
+		if (iio_channel_is_scan_element(ch) && !iio_channel_is_output(ch))
+			return true;
+	}
+
+	return false;
+}
+
 static void init_device_list(void)
 {
 	unsigned int i, j;
@@ -1556,6 +1577,7 @@ static void init_device_list(void)
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		struct extra_dev_info *dev_info = calloc(1, sizeof(*dev_info));
 		iio_device_set_data(dev, dev_info);
+		dev_info->input_device = is_input_device(dev);
 
 		for (j = 0; j < nb_channels; j++) {
 			struct iio_channel *ch = iio_device_get_channel(dev, j);

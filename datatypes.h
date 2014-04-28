@@ -47,6 +47,7 @@ struct extra_info {
 };
 
 struct extra_dev_info {
+	bool input_device;
 	struct iio_buffer *buffer;
 	unsigned int sample_count;
 	double adc_freq, lo_freq;

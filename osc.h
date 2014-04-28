@@ -22,7 +22,6 @@
 extern GtkWidget *capture_graph;
 extern gint capture_function;
 extern bool str_endswith(const char *str, const char *needle);
-extern bool is_input_device(const char *device);
 
 #define TMP_INI_FILE "/tmp/.%s.tmp"
 #ifndef MAX_MARKERS

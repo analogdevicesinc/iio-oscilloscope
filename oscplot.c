@@ -206,6 +206,8 @@ struct _OscPlotPrivate
 
 	GtkTextBuffer* tbuf;
 
+	unsigned int nb_input_devices;
+
 	struct plot_geometry size;
 
 	int frame_counter;
@@ -636,6 +638,11 @@ static gboolean check_valid_setup(OscPlot *plot)
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
+		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+
+		if (dev_info->input_device == false)
+			continue;
+
 		is_valid = check_valid_setup_of_device(plot, dev);
 		if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == TIME_PLOT) {
 			if (!is_valid)
@@ -880,6 +887,9 @@ static void collect_parameters_from_plot(OscPlot *plot)
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *info = iio_device_get_data(dev);
 
+		if (info->input_device == false)
+			continue;
+
 		prms = malloc(sizeof(struct plot_params));
 		prms->plot_id = priv->object_id;
 		prms->sample_count = plot_sample_count_get(plot);
@@ -901,6 +911,9 @@ static void dispose_parameters_from_plot(OscPlot *plot)
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *info = iio_device_get_data(dev);
 		GSList *list = info->plots_sample_counts;
+
+		if (info->input_device == false)
+			continue;
 
 		for (node = list; node; node = g_slist_next(node)) {
 			prms = node->data;
@@ -1099,6 +1112,11 @@ static void devices_transform_assignment(OscPlot *plot)
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		const char *name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
+		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+
+		if (dev_info->input_device == false)
+			continue;
+
 		prm.enabled_channels = enabled_channels_of_device(treeview, name);
 		foreach_channel_iter_of_device(GTK_TREE_VIEW(priv->channel_list_view),
 			name, *channels_transform_assignment, &prm);
@@ -1532,16 +1550,22 @@ static void device_list_treeview_init(OscPlot *plot)
 
 	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
 
+	priv->nb_input_devices = 0;
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
+		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		const char *name = iio_device_get_name(dev) ?:
 			iio_device_get_id(dev);
 
+		if (dev_info->input_device == false)
+			continue;
+
 		gtk_tree_store_append(treestore, &iter, NULL);
 		gtk_tree_store_set(treestore, &iter, ELEMENT_NAME, name,
-			IS_DEVICE, TRUE, DEVICE_ACTIVE, !i, ELEMENT_REFERENCE,
-			dev, SENSITIVE, true, -1);
+			IS_DEVICE, TRUE, DEVICE_ACTIVE, !priv->nb_input_devices,
+			ELEMENT_REFERENCE, dev, SENSITIVE, true, -1);
+		priv->nb_input_devices++;
 
 		for (j = 0; j < nb_channels; j++) {
 			struct iio_channel *ch = iio_device_get_channel(dev, j);
@@ -1624,6 +1648,11 @@ static void saveas_channels_list_fill(OscPlot *plot)
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		const char *name = iio_device_get_name(dev) ?:
 			iio_device_get_id(dev);
+		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+
+		if (dev_info->input_device == false)
+			continue;
+
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(priv->device_combobox), name);
 	}
 
@@ -3196,7 +3225,7 @@ static void plot_domain_changed_cb(GtkComboBox *box, OscPlot *plot)
 	foreach_device_iter(GTK_TREE_VIEW(plot->priv->channel_list_view),
 			*iter_children_plot_type_update, plot);
 
-	if (num_devices < 2)
+	if (plot->priv->nb_input_devices < 2)
 		return;
 
 	if (gtk_combo_box_get_active(box) != TIME_PLOT) {
