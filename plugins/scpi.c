@@ -16,7 +16,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- 
+
  * The GNU General Public License is available at
  * http://www.gnu.org/copyleft/gpl.html.
  */
@@ -61,7 +61,6 @@
 #include <gtkdatabox_lines.h>
 
 #include "../osc.h"
-#include "../iio_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 
@@ -394,7 +393,7 @@ static int tty_connect(struct scpi_instrument *scpi)
 /* Main SCPI functions */
 
 /*
- * writes count bytes from the buffer (buf) to the 
+ * writes count bytes from the buffer (buf) to the
  * scpi instrument referred to by the descriptor *scpi.
  *
  * On  success, the number of bytes written is returned
@@ -796,30 +795,36 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 	return buf;
 }
 
-static const char *scpi_sr_attribs[] = {
-	"rx." SERIAL_TOK,
-	"rx." NET_TOK,
-	"rx." REGEX_TOK,
-	"rx." IP_TOK,
-	"rx." TTY_TOK,
-	"rx." GPIB_TOK,
-	"rx." CON_TOK,
-	"rx.setup",
-	"rx.center",
-	"rx.span",
-	"rx.marker",
-	"tx." SERIAL_TOK,
-	"tx." NET_TOK,
-	"tx." REGEX_TOK,
-	"tx." IP_TOK,
-	"tx." TTY_TOK,
-	"tx." GPIB_TOK,
-	"tx." CON_TOK,
-	"tx.freq",
-	"tx.mag",
-	"tx.on",
-	NULL,
-};
+static GSList *scpi_sr_attribs;
+
+static void build_plugin_profile_attribute_list(void)
+{
+	profile_elements_init(&scpi_sr_attribs);
+
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." SERIAL_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." NET_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." REGEX_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." IP_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." TTY_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." GPIB_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." CON_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx.setup");
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx.center");
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx.span");
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx.marker");
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." SERIAL_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." NET_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." REGEX_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." IP_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." TTY_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." GPIB_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." CON_TOK);
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx.freq");
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx.mag");
+	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx.on");
+
+	scpi_sr_attribs = g_slist_reverse(scpi_sr_attribs);
+}
 
 /*
  * All the GUI/Glade stuff
@@ -1147,6 +1152,8 @@ static int scpi_init(GtkWidget *notebook)
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(instrument_type), 0);
 
+	build_plugin_profile_attribute_list();
+
 	gtk_widget_hide(network_conf);
 	gtk_widget_hide(tty_conf);
 	gtk_widget_hide(scpi_output);
@@ -1159,7 +1166,7 @@ static int scpi_init(GtkWidget *notebook)
 	return 0;
 }
 
-/* This is normally used for test, and the GUI is used for 
+/* This is normally used for test, and the GUI is used for
  * setting up the test infrastructure
  */
 static bool scpi_identify(void)
@@ -1177,5 +1184,5 @@ struct osc_plugin plugin = {
 	.identify = scpi_identify,
 	.init = scpi_init,
 	.handle_item = scpi_handle_profile,
-	.save_restore_attribs = scpi_sr_attribs,
+	.save_restore_attribs = &scpi_sr_attribs,
 };
