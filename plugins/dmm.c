@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <malloc.h>
+#include <string.h>
 
 #include <iio.h>
 
@@ -552,12 +553,23 @@ static char *dmm_handle(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
-static const char *dmm_sr_attribs[] = {
-	DEVICE_LIST,
-	CHANNEL_LIST,
-	RUNNING,
-	NULL,
-};
+static struct iio_context *dmm_iio_context(void)
+{
+	return ctx;
+}
+
+static GSList *dmm_sr_attribs;
+
+static void build_plugin_profile_attribute_list(void)
+{
+	profile_elements_init(&dmm_sr_attribs);
+
+	profile_elements_add_plugin_attr(&dmm_sr_attribs, DEVICE_LIST);
+	profile_elements_add_plugin_attr(&dmm_sr_attribs, CHANNEL_LIST);
+	profile_elements_add_plugin_attr(&dmm_sr_attribs, RUNNING);
+
+	dmm_sr_attribs = g_slist_reverse(dmm_sr_attribs);
+}
 
 static void update_active_page(gint active_page, gboolean is_detached)
 {
@@ -587,8 +599,13 @@ static bool dmm_identify(void)
 		}
 	}
 
-	if (!ret)
+	build_plugin_profile_attribute_list();
+
+	if (!ret) {
 		iio_context_destroy(ctx);
+		ctx = NULL;
+	}
+
 	return ret;
 }
 
@@ -596,7 +613,8 @@ struct osc_plugin plugin = {
 	.name = "DMM",
 	.identify = dmm_identify,
 	.init = dmm_init,
-	.save_restore_attribs = dmm_sr_attribs,
+	.save_restore_attribs = &dmm_sr_attribs,
+	.get_iio_context = dmm_iio_context,
 	.handle_item = dmm_handle,
 	.update_active_page = update_active_page,
 };
