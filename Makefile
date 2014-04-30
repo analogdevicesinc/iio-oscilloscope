@@ -43,7 +43,7 @@ PLUGINS=\
 
 all: multiosc $(PLUGINS)
 
-multiosc: osc.o oscplot.o datatypes.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o
+multiosc: osc.o oscplot.o datatypes.o plugin_profile.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o
 	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -O2 -o $@
 
 osc.o: osc.c iio_widget.h iio_utils.h int_fft.h osc_plugin.h osc.h ./ini/ini.h
@@ -54,6 +54,9 @@ oscplot.o: oscplot.c oscplot.h osc.h datatypes.h iio_widget.h ./ini/ini.h
 
 datatypes.o: datatypes.c datatypes.h
 	$(CC) datatypes.c -c $(CFLAGS)
+
+plugin_profile.o: plugin_profile.c plugin_profile.h
+	$(CC) plugin_profile.c -c $(CFLAGS)
 
 int_fft.o: int_fft.c
 	$(CC) int_fft.c -c $(CFLAGS)
