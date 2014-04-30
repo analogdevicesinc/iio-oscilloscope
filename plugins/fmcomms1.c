@@ -72,7 +72,7 @@ static GtkWidget *radius_IQ, *angle_IQ;
 static GtkWidget *load_eeprom;
 
 static struct iio_context *ctx;
-static struct iio_device *dac, *adc;
+static struct iio_device *dac, *adc, *txpll, *rxpll, *vga;
 
 static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
@@ -1939,6 +1939,104 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
+static struct iio_context * fmcomms1_iio_context(void)
+{
+	return ctx;
+}
+
+#define SYNC_RELOAD "SYNC_RELOAD"
+
+static GSList *fmcomms1_sr_attribs;
+
+static void build_plugin_profile_attribute_list(void)
+{
+	struct iio_channel *dac_ch0 = iio_device_find_channel(dac, "voltage0", true),
+			*dac_ch1 = iio_device_find_channel(dac, "voltage1", true),
+			*dac_ch_1A = iio_device_find_channel(dac, "1A", true),
+			*dac_ch_1B = iio_device_find_channel(dac, "1B", true),
+			*dac_ch_2A = iio_device_find_channel(dac, "2A", true),
+			*dac_ch_2B = iio_device_find_channel(dac, "2B", true),
+			*adc_ch0 = iio_device_find_channel(adc, "voltage0", false),
+			*adc_ch1 = iio_device_find_channel(adc, "voltage1", false),
+			*txpll_ch0 = iio_device_find_channel(txpll, "altvoltage0", true),
+			*rxpll_ch0 = iio_device_find_channel(rxpll, "altvoltage0", true),
+			*vga_ch0 = iio_device_find_channel(vga, "voltage0", true),
+			*vga_ch1 = iio_device_find_channel(vga, "voltage1", true);
+
+	profile_elements_init(&fmcomms1_sr_attribs);
+
+	/* cf-ad9122-core-lpc */
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1A, "frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1A, "scale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1A, "phase");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1A, "scale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1A, "sampling_frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1A, "interpolation_frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1A, "interpolation_center_shift_frequency");
+
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1B, "frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1B, "scale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1B, "phase");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1B, "scale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1B, "sampling_frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1B, "interpolation_frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_1B, "interpolation_center_shift_frequency");
+
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2A, "frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2A, "scale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2A, "phase");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2A, "scale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2A, "sampling_frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2A, "interpolation_frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2A, "interpolation_center_shift_frequency");
+
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2B, "frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2B, "scale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2B, "phase");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2B, "scale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2B, "sampling_frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2B, "interpolation_frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch_2B, "interpolation_center_shift_frequency");
+
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch0, "calibbias");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch0, "calibscale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch0, "phase");
+
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch1, "calibbias");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch1, "calibscale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, dac, dac_ch1, "phase");
+
+	profile_elements_add_plugin_attr(&fmcomms1_sr_attribs, "dds_mode");
+
+	/* cf-ad9643-core-lpc */
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, adc_freq_device, adc_freq_channel, adc_freq_file);
+
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, adc, adc_ch0, "calibbias");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, adc, adc_ch0, "calibscale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, adc, adc_ch0, "phase");
+
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, adc, adc_ch1, "calibbias");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, adc, adc_ch1, "calibscale");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, adc, adc_ch1, "phase");
+
+	/* adf4351-tx-lpc */
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, txpll, txpll_ch0, "frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, txpll, txpll_ch0, "powerdown");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, txpll, txpll_ch0, "frequency_resolution");
+
+	/* adf4351-rx-lpc */
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, rxpll, rxpll_ch0, "frequency");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, rxpll, rxpll_ch0, "powerdown");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, rxpll, rxpll_ch0, "frequency_resolution");
+
+	/* ad8366-lpc */
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, vga, vga_ch0, "hardwaregain");
+	profile_elements_add_dev_attr(&fmcomms1_sr_attribs, vga, vga_ch1, "hardwaregain");
+
+	profile_elements_add_plugin_attr(&fmcomms1_sr_attribs, SYNC_RELOAD);
+	fmcomms1_sr_attribs = g_slist_reverse(fmcomms1_sr_attribs);
+}
+
 static int fmcomms1_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -2277,6 +2375,8 @@ static int fmcomms1_init(GtkWidget *notebook)
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", radius_IQ, "visible", 0);
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", angle_IQ, "visible", 0);
 
+	build_plugin_profile_attribute_list();
+
 	fmcomms1_cal_eeprom();
 	tx_update_values();
 	rx_update_values();
@@ -2288,8 +2388,6 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	return 0;
 }
-
-#define SYNC_RELOAD "SYNC_RELOAD"
 
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
@@ -2369,53 +2467,14 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
-static const char *fmcomms1_sr_attribs[] = {
-	"cf-ad9122-core-lpc.out_altvoltage_1A_sampling_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage_sampling_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage_interpolation_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage_interpolation_center_shift_frequency",
-	"dds_mode",
-	"cf-ad9122-core-lpc.out_altvoltage0_1A_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage2_2A_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage1_1B_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage3_2B_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage0_1A_scale",
-	"cf-ad9122-core-lpc.out_altvoltage2_2A_scale",
-	"cf-ad9122-core-lpc.out_altvoltage1_1B_scale",
-	"cf-ad9122-core-lpc.out_altvoltage3_2B_scale",
-	"cf-ad9122-core-lpc.out_altvoltage0_1A_phase",
-	"cf-ad9122-core-lpc.out_altvoltage1_1B_phase",
-	"cf-ad9122-core-lpc.out_altvoltage2_2A_phase",
-	"cf-ad9122-core-lpc.out_altvoltage3_2B_phase",
-	"adf4351-tx-lpc.out_altvoltage0_frequency",
-	"adf4351-tx-lpc.out_altvoltage0_powerdown",
-	"adf4351-tx-lpc.out_altvoltage0_frequency_resolution",
-	"cf-ad9122-core-lpc.out_voltage0_calibbias",
-	"cf-ad9122-core-lpc.out_voltage0_calibscale",
-	"cf-ad9122-core-lpc.out_voltage0_phase",
-	"cf-ad9122-core-lpc.out_voltage1_calibbias",
-	"cf-ad9122-core-lpc.out_voltage1_calibscale",
-	"cf-ad9122-core-lpc.out_voltage1_phase",
-	"cf-ad9643-core-lpc.in_voltage0_calibbias",
-	"cf-ad9643-core-lpc.in_voltage1_calibbias",
-	"cf-ad9643-core-lpc.in_voltage0_calibscale",
-	"cf-ad9643-core-lpc.in_voltage1_calibscale",
-	"cf-ad9643-core-lpc.in_voltage0_calibphase",
-	"cf-ad9643-core-lpc.in_voltage1_calibphase",
-	"adf4351-rx-lpc.out_altvoltage0_frequency_resolution",
-	"adf4351-rx-lpc.out_altvoltage0_frequency",
-	"adf4351-rx-lpc.out_altvoltage0_powerdown",
-	"ad8366-lpc.out_voltage0_hardwaregain",
-	"ad8366-lpc.out_voltage1_hardwaregain",
-	SYNC_RELOAD,
-	NULL,
-};
-
 static bool fmcomms1_identify(void)
 {
 	ctx = osc_create_context();
 	dac = iio_context_find_device(ctx, "cf-ad9122-core-lpc");
 	adc = iio_context_find_device(ctx, "cf-ad9643-core-lpc");
+	txpll = iio_context_find_device(ctx, "adf4351-tx-lpc"),
+	rxpll = iio_context_find_device(ctx, "adf4351-rx-lpc"),
+	vga = iio_context_find_device(ctx, "ad8366-lpc");
 	if (!dac || !adc)
 		iio_context_destroy(ctx);
 	return !!dac && !!adc;
@@ -2425,7 +2484,8 @@ struct osc_plugin plugin = {
 	.name = "FMComms1",
 	.identify = fmcomms1_identify,
 	.init = fmcomms1_init,
-	.save_restore_attribs = fmcomms1_sr_attribs,
+	.save_restore_attribs = &fmcomms1_sr_attribs,
+	.get_iio_context = fmcomms1_iio_context,
 	.handle_item = handle_item,
 
 };
