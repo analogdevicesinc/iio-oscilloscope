@@ -1210,6 +1210,113 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
+static struct iio_context * fmcomms2_iio_context(void)
+{
+	return ctx;
+}
+
+#define SYNC_RELOAD "SYNC_RELOAD"
+
+static GSList *fmcomms2_sr_attribs;
+
+static void build_plugin_profile_attribute_list(void)
+{
+	struct iio_channel *in_ch0 = iio_device_find_channel(dev, "voltage0", false),
+		*in_ch1 = iio_device_find_channel(dev, "voltage1", false),
+		*out_ch0 = iio_device_find_channel(dev, "voltage0", true),
+		*out_ch1 = iio_device_find_channel(dev, "voltage1", true),
+		*rxlo_ch = iio_device_find_channel(dev, "RX_LO", true),
+		*txlo_ch = iio_device_find_channel(dev, "TX_LO", true),
+		*tx1_i_f1_ch = iio_device_find_channel(dds, "TX1_I_F1", true),
+		*tx1_i_f2_ch = iio_device_find_channel(dds, "TX1_I_F2", true),
+		*tx1_q_f1_ch = iio_device_find_channel(dds, "TX1_Q_F1", true),
+		*tx1_q_f2_ch = iio_device_find_channel(dds, "TX1_Q_F2", true),
+		*tx2_i_f1_ch = iio_device_find_channel(dds, "TX2_I_F1", true),
+		*tx2_i_f2_ch = iio_device_find_channel(dds, "TX2_I_F2", true),
+		*tx2_q_f1_ch = iio_device_find_channel(dds, "TX2_Q_F1", true),
+		*tx2_q_f2_ch = iio_device_find_channel(dds, "TX2_Q_F2", true);
+
+	profile_elements_init(&fmcomms2_sr_attribs);
+
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, NULL, "trx_rate_governor");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, NULL, "dcxo_tune_coarse");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, NULL, "dcxo_tune_fine");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, NULL, "ensm_mode");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, NULL, "in_out_voltage_filter_fir_en");
+
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch0, "rf_port_select");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch0, "gain_control_mode");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch0, "hardwaregain");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch0, "bb_dc_offset_tracking_en");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch0, "quadrature_tracking_en");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch0, "rf_dc_offset_tracking_en");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch0, "rf_bandwidth");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch0, "filter_fir_en");
+
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch1, "gain_control_mode");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch1, "hardwaregain");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch1, "bb_dc_offset_tracking_en");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch1, "quadrature_tracking_en");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch1, "rf_dc_offset_tracking_en");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch1, "rf_bandwidth");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, in_ch1, "filter_fir_en");
+
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, out_ch0, "rf_port_select");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, out_ch0, "hardwaregain");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, out_ch0, "sampling_frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, out_ch0, "rf_bandwidth");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, out_ch0, "filter_fir_en");
+
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, out_ch1, "hardwaregain");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, out_ch1, "sampling_frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, out_ch1, "rf_bandwidth");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, out_ch1, "filter_fir_en");
+
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, rxlo_ch, "frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dev, txlo_ch, "frequency");
+
+	profile_elements_add_plugin_attr(&fmcomms2_sr_attribs, "load_fir_filter_file");
+	profile_elements_add_plugin_attr(&fmcomms2_sr_attribs, "dds_mode");
+	profile_elements_add_plugin_attr(&fmcomms2_sr_attribs, "dac_buf_filename");
+
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_i_f1_ch, "frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_i_f1_ch, "phase");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_i_f1_ch, "raw");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_i_f1_ch, "scale");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_i_f2_ch, "frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_i_f2_ch, "phase");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_i_f2_ch, "raw");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_i_f2_ch, "scale");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_q_f1_ch, "frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_q_f1_ch, "phase");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_q_f1_ch, "raw");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_q_f1_ch, "scale");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_q_f2_ch, "frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_q_f2_ch, "phase");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_q_f2_ch, "raw");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx1_q_f2_ch, "scale");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_i_f1_ch, "frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_i_f1_ch, "phase");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_i_f1_ch, "raw");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_i_f1_ch, "scale");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_i_f2_ch, "frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_i_f2_ch, "phase");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_i_f2_ch, "raw");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_i_f2_ch, "scale");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_q_f1_ch, "frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_q_f1_ch, "phase");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_q_f1_ch, "raw");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_q_f1_ch, "scale");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_q_f2_ch, "frequency");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_q_f2_ch, "phase");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_q_f2_ch, "raw");
+	profile_elements_add_dev_attr(&fmcomms2_sr_attribs, dds, tx2_q_f2_ch, "scale");
+
+	profile_elements_add_plugin_attr(&fmcomms2_sr_attribs, SYNC_RELOAD);
+
+	fmcomms2_sr_attribs = g_slist_reverse(fmcomms2_sr_attribs);
+}
+
 static int fmcomms2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -1638,12 +1745,12 @@ static int fmcomms2_init(GtkWidget *notebook)
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame10")));
 	}
 
+	build_plugin_profile_attribute_list();
+
 	g_thread_new("Update_thread", (void *) &update_display, NULL);
 
 	return 0;
 }
-
-#define SYNC_RELOAD "SYNC_RELOAD"
 
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
@@ -1691,69 +1798,6 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
-static const char *fmcomms2_sr_attribs[] = {
-	"ad9361-phy.trx_rate_governor",
-	"ad9361-phy.dcxo_tune_coarse",
-	"ad9361-phy.dcxo_tune_fine",
-	"ad9361-phy.ensm_mode",
-	"ad9361-phy.in_voltage0_rf_port_select",
-	"ad9361-phy.in_voltage0_gain_control_mode",
-	"ad9361-phy.in_voltage0_hardwaregain",
-	"ad9361-phy.in_voltage1_gain_control_mode",
-	"ad9361-phy.in_voltage1_hardwaregain",
-	"ad9361-phy.in_voltage_bb_dc_offset_tracking_en",
-	"ad9361-phy.in_voltage_quadrature_tracking_en",
-	"ad9361-phy.in_voltage_rf_dc_offset_tracking_en",
-	"ad9361-phy.out_voltage0_rf_port_select",
-	"ad9361-phy.out_altvoltage0_RX_LO_frequency",
-	"ad9361-phy.out_altvoltage1_TX_LO_frequency",
-	"ad9361-phy.out_voltage0_hardwaregain",
-	"ad9361-phy.out_voltage1_hardwaregain",
-	"ad9361-phy.out_voltage_sampling_frequency",
-	"ad9361-phy.in_voltage_rf_bandwidth",
-	"ad9361-phy.out_voltage_rf_bandwidth",
-	"load_fir_filter_file",
-	"ad9361-phy.in_voltage_filter_fir_en",
-	"ad9361-phy.out_voltage_filter_fir_en",
-	"ad9361-phy.in_out_voltage_filter_fir_en",
-	"dds_mode",
-	"dac_buf_filename",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_scale",
-	SYNC_RELOAD,
-	NULL,
-};
-
 static void update_active_page(gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
@@ -1774,7 +1818,8 @@ struct osc_plugin plugin = {
 	.name = "FMComms2/3/4",
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
-	.save_restore_attribs = fmcomms2_sr_attribs,
+	.save_restore_attribs = &fmcomms2_sr_attribs,
+	.get_iio_context = fmcomms2_iio_context,
 	.handle_item = handle_item,
 	.update_active_page = update_active_page,
 };
