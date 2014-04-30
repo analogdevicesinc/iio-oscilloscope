@@ -886,6 +886,85 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
+static struct iio_context * daq2_iio_context(void)
+{
+	return ctx;
+}
+
+#define SYNC_RELOAD "SYNC_RELOAD"
+
+static GSList *daq2_sr_attribs;
+
+static void build_plugin_profile_attribute_list(void)
+{
+	struct iio_channel *dac_ch0 = iio_device_find_channel(dac, "voltage0", true),
+			*dac_ch1 = iio_device_find_channel(dac, "voltage1", true),
+			*dac_ch_1A = iio_device_find_channel(dac, "1A", true),
+			*dac_ch_1B = iio_device_find_channel(dac, "1B", true),
+			*dac_ch_2A = iio_device_find_channel(dac, "2A", true),
+			*dac_ch_2B = iio_device_find_channel(dac, "2B", true),
+			*adc_ch0 = iio_device_find_channel(adc, "voltage0", false),
+			*adc_ch1 = iio_device_find_channel(adc, "voltage1", false);
+
+	profile_elements_init(&daq2_sr_attribs);
+
+	/* axi-ad9144-hpc */
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1A, "frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1A, "scale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1A, "phase");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1A, "scale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1A, "sampling_frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1A, "interpolation_frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1A, "interpolation_center_shift_frequency");
+
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1B, "frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1B, "scale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1B, "phase");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1B, "scale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1B, "sampling_frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1B, "interpolation_frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_1B, "interpolation_center_shift_frequency");
+
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2A, "frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2A, "scale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2A, "phase");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2A, "scale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2A, "sampling_frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2A, "interpolation_frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2A, "interpolation_center_shift_frequency");
+
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2B, "frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2B, "scale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2B, "phase");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2B, "scale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2B, "sampling_frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2B, "interpolation_frequency");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch_2B, "interpolation_center_shift_frequency");
+
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch0, "calibbias");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch0, "calibscale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch0, "phase");
+
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch1, "calibbias");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch1, "calibscale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, dac, dac_ch1, "phase");
+
+	profile_elements_add_plugin_attr(&daq2_sr_attribs, "dds_mode");
+
+	/* axi-ad9680-hpc */
+	profile_elements_add_dev_attr(&daq2_sr_attribs, adc, adc_ch0, "calibbias");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, adc, adc_ch0, "calibscale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, adc, adc_ch0, "phase");
+
+	profile_elements_add_dev_attr(&daq2_sr_attribs, adc, adc_ch1, "calibbias");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, adc, adc_ch1, "calibscale");
+	profile_elements_add_dev_attr(&daq2_sr_attribs, adc, adc_ch1, "phase");
+
+	profile_elements_add_plugin_attr(&daq2_sr_attribs, SYNC_RELOAD);
+
+	daq2_sr_attribs = g_slist_reverse(daq2_sr_attribs);
+}
+
 static int daq2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -1165,6 +1244,8 @@ static int daq2_init(GtkWidget *notebook)
 	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds2_freq], rf_out_update);
 	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds4_freq], rf_out_update);
 
+	build_plugin_profile_attribute_list();
+
 	tx_update_values();
 	rx_update_values();
 	cal_update_values();
@@ -1175,8 +1256,6 @@ static int daq2_init(GtkWidget *notebook)
 
 	return 0;
 }
-
-#define SYNC_RELOAD "SYNC_RELOAD"
 
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
@@ -1209,40 +1288,6 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
-static const char *daq2_sr_attribs[] = {
-	"axi-ad9144-hpc.out_altvoltage_1A_sampling_frequency",
-	"axi-ad9144-hpc.out_altvoltage_sampling_frequency",
-	"axi-ad9144-hpc.out_altvoltage_interpolation_frequency",
-	"axi-ad9144-hpc.out_altvoltage_interpolation_center_shift_frequency",
-	"dds_mode",
-	"axi-ad9144-hpc.out_altvoltage0_1A_frequency",
-	"axi-ad9144-hpc.out_altvoltage2_2A_frequency",
-	"axi-ad9144-hpc.out_altvoltage1_1B_frequency",
-	"axi-ad9144-hpc.out_altvoltage3_2B_frequency",
-	"axi-ad9144-hpc.out_altvoltage0_1A_scale",
-	"axi-ad9144-hpc.out_altvoltage2_2A_scale",
-	"axi-ad9144-hpc.out_altvoltage1_1B_scale",
-	"axi-ad9144-hpc.out_altvoltage3_2B_scale",
-	"axi-ad9144-hpc.out_altvoltage0_1A_phase",
-	"axi-ad9144-hpc.out_altvoltage1_1B_phase",
-	"axi-ad9144-hpc.out_altvoltage2_2A_phase",
-	"axi-ad9144-hpc.out_altvoltage3_2B_phase",
-	"axi-ad9144-hpc.out_voltage0_calibbias",
-	"axi-ad9144-hpc.out_voltage0_calibscale",
-	"axi-ad9144-hpc.out_voltage0_phase",
-	"axi-ad9144-hpc.out_voltage1_calibbias",
-	"axi-ad9144-hpc.out_voltage1_calibscale",
-	"axi-ad9144-hpc.out_voltage1_phase",
-	"axi-ad9680-hpc.in_voltage0_calibbias",
-	"axi-ad9680-hpc.in_voltage1_calibbias",
-	"axi-ad9680-hpc.in_voltage0_calibscale",
-	"axi-ad9680-hpc.in_voltage1_calibscale",
-	"axi-ad9680-hpc.in_voltage0_calibphase",
-	"axi-ad9680-hpc.in_voltage1_calibphase",
-	SYNC_RELOAD,
-	NULL,
-};
-
 static bool daq2_identify(void)
 {
 	ctx = osc_create_context();
@@ -1257,7 +1302,8 @@ struct osc_plugin plugin = {
 	.name = "DAQ2",
 	.identify = daq2_identify,
 	.init = daq2_init,
-	.save_restore_attribs = daq2_sr_attribs,
+	.save_restore_attribs = &daq2_sr_attribs,
+	.get_iio_context = daq2_iio_context,
 	.handle_item = handle_item,
 
 };
