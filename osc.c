@@ -661,12 +661,6 @@ static void stop_sampling(void)
 	G_UNLOCK(buffer_full);
 }
 
-static void abort_sampling(void)
-{
-	stop_sampling();
-	close_all_plots();
-}
-
 static void detach_plugin(GtkToolButton *btn, gpointer data);
 
 static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detachable_plugin *d_plugin)
@@ -861,6 +855,11 @@ static OscPlot * find_a_fft_plot(GList *list)
 /*
  * helper functions for plugins which want to look at data
  */
+
+struct iio_context *get_context_from_osc(void)
+{
+	return ctx;
+}
 
 const void * plugin_get_device_by_reference(const char * device_name)
 {
@@ -2045,4 +2044,3 @@ struct iio_context * osc_create_context(void)
 	else
 		return iio_create_local_context();
 }
-

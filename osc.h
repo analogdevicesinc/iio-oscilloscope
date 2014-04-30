@@ -70,6 +70,7 @@ void application_quit (void);
 void add_ch_setup_check_fct(char *device_name, void *fp);
 void *find_setup_check_fct_by_devname(const char *dev_name);
 
+struct iio_context * get_context_from_osc(void);
 const void * plugin_get_device_by_reference(const char *device_name);
 int plugin_data_capture_size(const char *device);
 int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data,
