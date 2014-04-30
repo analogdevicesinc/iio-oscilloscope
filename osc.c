@@ -1391,8 +1391,7 @@ static int capture_setup(void)
 			info->data_ref = (gfloat *) g_new0(gfloat, sample_count);
 		}
 
-		dev_info->buffer = iio_device_create_buffer(dev,
-				sample_count, false);
+		dev_info->buffer = iio_device_create_buffer(dev, sample_count);
 		if (!dev_info->buffer) {
 			fprintf(stderr, "Unable to create buffer\n");
 			return -1;
