@@ -36,6 +36,7 @@ extern gfloat plugin_fft_corr;
 static bool is_2rx_2tx;
 
 static const gdouble mhz_scale = 1000000.0;
+static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
 static char *dac_buf_filename = NULL;
@@ -59,6 +60,12 @@ static GtkWidget *trx_rate_governor;
 static GtkWidget *trx_rate_governor_available;
 static GtkWidget *filter_fir_config;
 static GtkWidget *dac_buffer;
+#define SECTION_GLOBAL 0
+#define SECTION_TX 1
+#define SECTION_RX 2
+#define SECTION_FPGA 3
+static GtkToggleToolButton *section_toggle[4];
+static GtkWidget *section_setting[4];
 
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control_rx1;
@@ -78,33 +85,26 @@ static GtkWidget *rf_port_select_tx;
 static GtkWidget *rx_fastlock_profile;
 static GtkWidget *tx_fastlock_profile;
 
-/* Widgets for Receive Settings */
-static GtkWidget *dds_mode;
-static GtkWidget *dds1_freq, *dds2_freq, *dds3_freq, *dds4_freq,
-                 *dds5_freq, *dds6_freq, *dds7_freq, *dds8_freq;
-static GtkWidget *dds1_scale, *dds2_scale, *dds3_scale, *dds4_scale,
-                 *dds5_scale, *dds6_scale, *dds7_scale, *dds8_scale;
-static GtkWidget *dds1_phase, *dds2_phase, *dds3_phase, *dds4_phase,
-                 *dds5_phase, *dds6_phase, *dds7_phase, *dds8_phase;
-static GtkWidget *dds1_freq, *dds2_freq, *dds3_freq, *dds4_freq,
-                 *dds5_freq, *dds6_freq, *dds7_freq, *dds8_freq;
-static GtkAdjustment *adj1_freq, *adj2_freq, *adj3_freq, *adj4_freq,
-                     *adj5_freq, *adj6_freq, *adj7_freq, *adj8_freq;
+/* Widgets for Transmitter Settings */
+static GtkWidget *dds_mode_tx[3];
+#define TX_OFF   0
+#define TX1_T1_I 1
+#define TX1_T2_I 2
+#define TX1_T1_Q 3
+#define TX1_T2_Q 4
+#define TX2_T1_I 5
+#define TX2_T2_I 6
+#define TX2_T1_Q 7
+#define TX2_T2_Q 8
 
-static GtkWidget *dds1_freq_l, *dds2_freq_l, *dds3_freq_l, *dds4_freq_l,
-                 *dds5_freq_l, *dds6_freq_l, *dds7_freq_l, *dds8_freq_l;
-static GtkWidget *dds1_scale_l, *dds2_scale_l, *dds3_scale_l, *dds4_scale_l,
-                 *dds5_scale_l, *dds6_scale_l, *dds7_scale_l, *dds8_scale_l;
-static GtkWidget *dds1_phase_l, *dds2_phase_l, *dds3_phase_l, *dds4_phase_l,
-                 *dds5_phase_l, *dds6_phase_l, *dds7_phase_l, *dds8_phase_l;
-static GtkWidget *dds_I_TX1_l, *dds_I1_TX1_l, *dds_I2_TX1_l,
-                 *dds_I_TX2_l, *dds_I1_TX2_l, *dds_I2_TX2_l;
-static GtkWidget *dds_Q_TX1_l, *dds_Q1_TX1_l, *dds_Q2_TX1_l,
-                 *dds_Q_TX2_l, *dds_Q1_TX2_l, *dds_Q2_TX2_l;
+static GtkWidget *dds_freq[9], *dds_scale[9], *dds_phase[9], *dds_freq[9];
+static GtkAdjustment *adj_freq[9];
 
-static gulong dds1_freq_hid = 0, dds2_freq_hid = 0, dds5_freq_hid = 0, dds6_freq_hid = 0;
-static gulong dds1_scale_hid = 0, dds2_scale_hid = 0, dds5_scale_hid = 0, dds6_scale_hid = 0;
-static gulong dds1_phase_hid = 0, dds2_phase_hid = 0, dds5_phase_hid = 0, dds6_phase_hid = 0;
+static GtkWidget *channel_I_tx[3], *channel_Q_tx[3];
+static GtkWidget *channel_I_tone2_tx[3];
+static GtkWidget *dds_I_TX_l[3];
+
+static gulong dds_freq_hid[9], dds_scale_hid[9], dds_phase_hid[9];
 
 static gint this_page;
 static GtkNotebook *nbook;
@@ -210,6 +210,9 @@ static void glb_settings_update_labels(void)
 	}
 	if (buf)
 		free(buf);
+
+	iio_widget_update(&rx_widgets[rx1_gain]);
+	iio_widget_update(&rx_widgets[rx2_gain]);
 
 }
 
@@ -576,69 +579,47 @@ static int compare_gain(const char *a, const char *b)
 		return 0;
 }
 
-static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer data)
+#define DDS_DISABLED  0
+#define DDS_ONE_TONE  1
+#define DDS_TWO_TONE  2
+#define DDS_INDEPDENT 3
+#define DDS_BUFFER    4
+
+static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer channel)
 {
-	gdouble freq1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq));
-	gdouble freq2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds2_freq));
-	gdouble freq5 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds5_freq));
-	gdouble freq6 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds6_freq));
+	gint ch1 = TX1_T1_I + (((int)channel - 1) * 4);
+	gint ch2 = TX1_T2_I + (((int)channel - 1) * 4);
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode))) {
-		case 1:
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_freq), freq1);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_freq), freq1);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_freq), freq1);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds6_freq), freq5);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_freq), freq5);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_freq), freq5);
+	gdouble phase1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_phase[ch1]));
+	gdouble phase2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_phase[ch2]));
+
+	gdouble freq1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch1]));
+	gdouble freq2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch2]));
+
+	gdouble inc1, inc2;
+
+	if (freq1 >= 0)
+		inc1 = 90.0;
+	else
+		inc1 = 270;
+
+	if ((phase1 - inc1) < 0)
+		phase1 += 360;
+
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel]))) {
+		case DDS_ONE_TONE:
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_phase[ch1 + 2]), phase1 - inc1);
 			break;
-		case 2:
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_freq), freq1);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_freq), freq2);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_freq), freq5);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_freq), freq6);
-			break;
-		default:
-			printf("%s: error\n", __func__);
-			break;
-	}
-}
-
-static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer data)
-{
-
-	gdouble phase1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_phase));
-	gdouble phase2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds2_phase));
-	gdouble phase5 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds5_phase));
-	gdouble phase6 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds6_phase));
-
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode))) {
-		case 1:
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_phase), phase1);
-			if ((phase1 - 90) < 0)
-				phase1 += 360;
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), phase1 - 90.0);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), phase1 - 90.0);
-
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds6_phase), phase5);
-			if ((phase5 - 90) < 0)
-				phase5 += 360;
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_phase), phase5 - 90.0);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_phase), phase5 - 90.0);
-			break;
-		case 2:
-			if ((phase1 - 90) < 0)
-				phase1 += 360;
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_phase), phase1 - 90.0);
-			if ((phase2 - 90) < 0)
+		case DDS_TWO_TONE:
+			if (freq2 >= 0)
+				inc2 = 90;
+			else
+				inc2 = 270;
+			if ((phase2 - inc2) < 0)
 				phase2 += 360;
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_phase), phase2 - 90.0);
-			if ((phase5 - 90) < 0)
-				phase5 += 360;
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds7_phase), phase5 - 90.0);
-			if ((phase6 - 90) < 0)
-				phase6 += 360;
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds8_phase), phase6 - 90.0);
+
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_phase[ch1 + 2]), phase1 - inc1);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_phase[ch2 + 2]), phase2 - inc2);
 			break;
 		default:
 			printf("%s: error\n", __func__);
@@ -646,160 +627,68 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer data)
 	}
 }
 
-static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer data)
+static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer channel)
 {
-	gint scale1 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds1_scale));
-	gint scale2 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds2_scale));
-	gint scale5 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds5_scale));
-	gint scale6 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds6_scale));
+	gint ch1 = TX1_T1_I + (((int)channel - 1) * 4);
+	gint ch2 = TX1_T2_I + (((int)channel - 1) * 4);
 
+	gdouble freq1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch1]));
+	gdouble freq2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch2]));
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode))) {
-		case 1:
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds2_scale), scale1);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds3_scale), scale1);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds4_scale), scale1);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds6_scale), scale5);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds7_scale), scale5);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds8_scale), scale5);
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel]))) {
+		case DDS_ONE_TONE:
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_freq[ch1 + 2]), freq1);
 			break;
-		case 2:
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds3_scale), scale1);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds4_scale), scale2);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds7_scale), scale5);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds8_scale), scale6);
+		case DDS_TWO_TONE:
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_freq[ch1 + 2]), freq1);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_freq[ch2 + 2]), freq2);
+			break;
+		default:
+			printf("%s: error : %i\n", __func__,
+					gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel])));
+			break;
+	}
+
+	dds_locked_phase_cb(NULL, channel);
+}
+
+
+static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer channel)
+{
+	gint ch1 = TX1_T1_I + (((int)channel - 1) * 4);
+	gint ch2 = TX1_T2_I + (((int)channel - 1) * 4);
+
+	gint scale1 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[ch1]));
+	gint scale2 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[ch2]));
+
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel]))) {
+		case DDS_ONE_TONE:
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[ch1 + 2]), scale1);
+			break;
+		case DDS_TWO_TONE:
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[ch1 + 2]), scale1);
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[ch2 + 2]), scale2);
 			break;
 		default:
 			break;
 	}
+
 }
 
-static void hide_all_I_and_Q(void)
-{
-	gtk_widget_hide(dds1_freq);
-	gtk_widget_hide(dds2_freq);
-	gtk_widget_hide(dds3_freq);
-	gtk_widget_hide(dds4_freq);
-	gtk_widget_hide(dds5_freq);
-	gtk_widget_hide(dds6_freq);
-	gtk_widget_hide(dds7_freq);
-	gtk_widget_hide(dds8_freq);
-	gtk_widget_hide(dds1_scale);
-	gtk_widget_hide(dds2_scale);
-	gtk_widget_hide(dds3_scale);
-	gtk_widget_hide(dds4_scale);
-	gtk_widget_hide(dds5_scale);
-	gtk_widget_hide(dds6_scale);
-	gtk_widget_hide(dds7_scale);
-	gtk_widget_hide(dds8_scale);
-	gtk_widget_hide(dds1_phase);
-	gtk_widget_hide(dds2_phase);
-	gtk_widget_hide(dds3_phase);
-	gtk_widget_hide(dds4_phase);
-	gtk_widget_hide(dds5_phase);
-	gtk_widget_hide(dds6_phase);
-	gtk_widget_hide(dds7_phase);
-	gtk_widget_hide(dds8_phase);
-	gtk_widget_hide(dds1_freq_l);
-	gtk_widget_hide(dds2_freq_l);
-	gtk_widget_hide(dds3_freq_l);
-	gtk_widget_hide(dds4_freq_l);
-	gtk_widget_hide(dds5_freq_l);
-	gtk_widget_hide(dds6_freq_l);
-	gtk_widget_hide(dds7_freq_l);
-	gtk_widget_hide(dds8_freq_l);
-	gtk_widget_hide(dds1_scale_l);
-	gtk_widget_hide(dds2_scale_l);
-	gtk_widget_hide(dds3_scale_l);
-	gtk_widget_hide(dds4_scale_l);
-	gtk_widget_hide(dds5_scale_l);
-	gtk_widget_hide(dds6_scale_l);
-	gtk_widget_hide(dds7_scale_l);
-	gtk_widget_hide(dds8_scale_l);
-	gtk_widget_hide(dds1_phase_l);
-	gtk_widget_hide(dds2_phase_l);
-	gtk_widget_hide(dds3_phase_l);
-	gtk_widget_hide(dds4_phase_l);
-	gtk_widget_hide(dds5_phase_l);
-	gtk_widget_hide(dds6_phase_l);
-	gtk_widget_hide(dds7_phase_l);
-	gtk_widget_hide(dds8_phase_l);
-	gtk_widget_hide(dds_I_TX1_l);
-	gtk_widget_hide(dds_I1_TX1_l);
-	gtk_widget_hide(dds_I2_TX1_l);
-	gtk_widget_hide(dds_I_TX2_l);
-	gtk_widget_hide(dds_I1_TX2_l);
-	gtk_widget_hide(dds_I2_TX2_l);
-	gtk_widget_hide(dds_Q_TX1_l);
-	gtk_widget_hide(dds_Q1_TX1_l);
-	gtk_widget_hide(dds_Q2_TX1_l);
-	gtk_widget_hide(dds_Q_TX2_l);
-	gtk_widget_hide(dds_Q1_TX2_l);
-	gtk_widget_hide(dds_Q2_TX2_l);
-}
 
-static void show_all_I_and_Q(void)
+static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data)
 {
-	gtk_widget_show(dds1_freq);
-	gtk_widget_show(dds2_freq);
-	gtk_widget_show(dds3_freq);
-	gtk_widget_show(dds4_freq);
-	gtk_widget_show(dds5_freq);
-	gtk_widget_show(dds6_freq);
-	gtk_widget_show(dds7_freq);
-	gtk_widget_show(dds8_freq);
-	gtk_widget_show(dds1_scale);
-	gtk_widget_show(dds2_scale);
-	gtk_widget_show(dds3_scale);
-	gtk_widget_show(dds4_scale);
-	gtk_widget_show(dds5_scale);
-	gtk_widget_show(dds6_scale);
-	gtk_widget_show(dds7_scale);
-	gtk_widget_show(dds8_scale);
-	gtk_widget_show(dds1_phase);
-	gtk_widget_show(dds2_phase);
-	gtk_widget_show(dds3_phase);
-	gtk_widget_show(dds4_phase);
-	gtk_widget_show(dds5_phase);
-	gtk_widget_show(dds6_phase);
-	gtk_widget_show(dds7_phase);
-	gtk_widget_show(dds8_phase);
-	gtk_widget_show(dds1_freq_l);
-	gtk_widget_show(dds2_freq_l);
-	gtk_widget_show(dds3_freq_l);
-	gtk_widget_show(dds4_freq_l);
-	gtk_widget_show(dds5_freq_l);
-	gtk_widget_show(dds6_freq_l);
-	gtk_widget_show(dds7_freq_l);
-	gtk_widget_show(dds8_freq_l);
-	gtk_widget_show(dds1_scale_l);
-	gtk_widget_show(dds2_scale_l);
-	gtk_widget_show(dds3_scale_l);
-	gtk_widget_show(dds4_scale_l);
-	gtk_widget_show(dds5_scale_l);
-	gtk_widget_show(dds6_scale_l);
-	gtk_widget_show(dds7_scale_l);
-	gtk_widget_show(dds8_scale_l);
-	gtk_widget_show(dds1_phase_l);
-	gtk_widget_show(dds2_phase_l);
-	gtk_widget_show(dds3_phase_l);
-	gtk_widget_show(dds4_phase_l);
-	gtk_widget_show(dds5_phase_l);
-	gtk_widget_show(dds6_phase_l);
-	gtk_widget_show(dds7_phase_l);
-	gtk_widget_show(dds8_phase_l);
-	gtk_widget_show(dds_I_TX1_l);
-	gtk_widget_show(dds_I1_TX1_l);
-	gtk_widget_show(dds_I2_TX1_l);
-	gtk_widget_show(dds_I_TX2_l);
-	gtk_widget_show(dds_I1_TX2_l);
-	gtk_widget_show(dds_I2_TX2_l);
-	gtk_widget_show(dds_Q_TX1_l);
-	gtk_widget_show(dds_Q1_TX1_l);
-	gtk_widget_show(dds_Q2_TX1_l);
-	gtk_widget_show(dds_Q_TX2_l);
-	gtk_widget_show(dds_Q1_TX2_l);
-	gtk_widget_show(dds_Q2_TX2_l);
+	gdouble val, rate;
+	int i;
+
+	rate = gtk_spin_button_get_value(spinbutton) / 2.0;
+	for (i = TX1_T1_I; i <= TX2_T2_Q ; i++) {
+		val = gtk_adjustment_get_value(adj_freq[i]);
+		if (fabs(val) > rate)
+			gtk_adjustment_set_value(adj_freq[i], rate);
+		gtk_adjustment_set_lower(adj_freq[i], -1 * rate);
+		gtk_adjustment_set_upper(adj_freq[i], rate);
+	}
 }
 
 static void enable_dds(bool on_off)
@@ -818,320 +707,236 @@ static void enable_dds(bool on_off)
 	}
 }
 
-static void manage_dds_mode()
-{
-	gint active;
-
-	active = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode));
-	switch (active) {
-	case 0:
-		/* Disabled */
-		enable_dds(false);
-		hide_all_I_and_Q();
-		gtk_widget_hide(dac_buffer);
-		break;
-	case 1:
-		/* One tone */
-		enable_dds(true);
-		gtk_widget_hide(dac_buffer);
-		gtk_label_set_markup(GTK_LABEL(dds_I_TX1_l),"<b>Single Tone</b>");
-		gtk_label_set_markup(GTK_LABEL(dds_I_TX2_l),"<b>Single Tone</b>");
-		gtk_widget_show(dds1_freq);
-		gtk_widget_hide(dds2_freq);
-		gtk_widget_hide(dds3_freq);
-		gtk_widget_hide(dds4_freq);
-		gtk_widget_show(dds5_freq);
-		gtk_widget_hide(dds6_freq);
-		gtk_widget_hide(dds7_freq);
-		gtk_widget_hide(dds8_freq);
-		gtk_widget_show(dds1_scale);
-		gtk_widget_hide(dds2_scale);
-		gtk_widget_hide(dds3_scale);
-		gtk_widget_hide(dds4_scale);
-		gtk_widget_show(dds5_scale);
-		gtk_widget_hide(dds6_scale);
-		gtk_widget_hide(dds7_scale);
-		gtk_widget_hide(dds8_scale);
-		gtk_widget_hide(dds1_phase);
-		gtk_widget_hide(dds2_phase);
-		gtk_widget_hide(dds3_phase);
-		gtk_widget_hide(dds4_phase);
-		gtk_widget_hide(dds5_phase);
-		gtk_widget_hide(dds6_phase);
-		gtk_widget_hide(dds7_phase);
-		gtk_widget_hide(dds8_phase);
-		gtk_widget_show(dds1_freq_l);
-		gtk_widget_hide(dds2_freq_l);
-		gtk_widget_hide(dds3_freq_l);
-		gtk_widget_hide(dds4_freq_l);
-		gtk_widget_show(dds5_freq_l);
-		gtk_widget_hide(dds6_freq_l);
-		gtk_widget_hide(dds7_freq_l);
-		gtk_widget_hide(dds8_freq_l);
-		gtk_widget_show(dds1_scale_l);
-		gtk_widget_hide(dds2_scale_l);
-		gtk_widget_hide(dds3_scale_l);
-		gtk_widget_hide(dds4_scale_l);
-		gtk_widget_show(dds5_scale_l);
-		gtk_widget_hide(dds6_scale_l);
-		gtk_widget_hide(dds7_scale_l);
-		gtk_widget_hide(dds8_scale_l);
-		gtk_widget_hide(dds1_phase_l);
-		gtk_widget_hide(dds2_phase_l);
-		gtk_widget_hide(dds3_phase_l);
-		gtk_widget_hide(dds4_phase_l);
-		gtk_widget_hide(dds5_phase_l);
-		gtk_widget_hide(dds6_phase_l);
-		gtk_widget_hide(dds7_phase_l);
-		gtk_widget_hide(dds8_phase_l);
-		gtk_widget_show(dds_I_TX1_l);
-		gtk_widget_show(dds_I1_TX1_l);
-		gtk_widget_hide(dds_I2_TX1_l);
-		gtk_widget_show(dds_I_TX2_l);
-		gtk_widget_show(dds_I1_TX2_l);
-		gtk_widget_hide(dds_I2_TX2_l);
-		gtk_widget_hide(dds_Q_TX1_l);
-		gtk_widget_hide(dds_Q1_TX1_l);
-		gtk_widget_hide(dds_Q2_TX1_l);
-		gtk_widget_hide(dds_Q_TX2_l);
-		gtk_widget_hide(dds_Q1_TX2_l);
-		gtk_widget_hide(dds_Q2_TX2_l);
-
-		/* Connect the widgets that are showing (1 & 5) */
 #define IIO_SPIN_SIGNAL "value-changed"
 #define IIO_COMBO_SIGNAL "changed"
 
-		if (!dds1_scale_hid)
-			dds1_scale_hid = g_signal_connect(dds1_scale , IIO_COMBO_SIGNAL,
-					G_CALLBACK(dds_locked_scale_cb), NULL);
-		if (!dds5_scale_hid)
-			dds5_scale_hid = g_signal_connect(dds5_scale , IIO_COMBO_SIGNAL,
-					G_CALLBACK(dds_locked_scale_cb), NULL);
+static void manage_dds_mode(GtkComboBox *box, gint channel)
+{
+	gint active, i, start, end;
+	static gint *mag = NULL;
 
-		if (!dds1_freq_hid)
-			dds1_freq_hid = g_signal_connect(dds1_freq , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_freq_cb), NULL);
-		if (!dds5_freq_hid)
-			dds5_freq_hid = g_signal_connect(dds5_freq , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_freq_cb), NULL);
+	if (!mag) {
+		mag = g_renew(gint, mag, 9);
+		mag[TX1_T1_I] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX1_T1_I]));
+		mag[TX1_T2_I] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX1_T2_I]));
+		mag[TX1_T1_Q] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX1_T1_Q]));
+		mag[TX1_T2_Q] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX1_T2_Q]));
+		mag[TX2_T1_I] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX2_T1_I]));
+		mag[TX2_T2_I] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX2_T2_I]));
+		mag[TX2_T1_Q] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX2_T1_Q]));
+		mag[TX2_T2_Q] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX2_T2_Q]));
+		active = mag[1];
+		while (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX1_T1_I])) >= 0) {
+			active++;
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[TX1_T1_I]), active);
+		}
+		mag[TX_OFF] = active - 1;
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[TX1_T1_I]), mag[TX1_T1_I]);
+	}
 
-		if (!dds1_phase_hid)
-			dds1_phase_hid = g_signal_connect(dds1_phase , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_phase_cb), NULL);
-		if (!dds5_phase_hid)
-			dds5_phase_hid = g_signal_connect(dds5_phase , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_phase_cb), NULL);
+	active = gtk_combo_box_get_active(box);
 
-		/* Disconnect the rest (2 & 6) */
-		if (dds2_scale_hid) {
-			g_signal_handler_disconnect(dds2_scale, dds2_scale_hid);
-			dds2_scale_hid = 0;
+	if (active != 4) {
+		if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])) == 4) {
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[1]), active);
+			manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[1]), 1);
 		}
-		if (dds6_scale_hid) {
-			g_signal_handler_disconnect(dds6_scale, dds6_scale_hid);
-			dds6_scale_hid = 0;
+		if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[2])) == 4) {
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[2]), active);
+			manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[2]), 2);
 		}
+	}
 
-		if (dds2_freq_hid) {
-			g_signal_handler_disconnect(dds2_freq, dds2_freq_hid);
-			dds2_freq_hid = 0;
-		}
-		if (dds6_freq_hid) {
-			g_signal_handler_disconnect(dds6_freq, dds6_freq_hid);
-			dds6_freq_hid = 0;
-		}
 
-		if (dds2_phase_hid) {
-			g_signal_handler_disconnect(dds2_phase, dds2_phase_hid);
-			dds2_phase_hid = 0;
+	switch (active) {
+	case DDS_DISABLED:
+		if (channel == 1) {
+		 	start = TX1_T1_I;
+			end = TX1_T2_Q;
+		} else {
+			start = TX2_T1_I;
+			end = TX2_T2_Q;
 		}
-		if (dds6_phase_hid) {
-			g_signal_handler_disconnect(dds6_phase, dds6_phase_hid);
-			dds6_phase_hid = 0;
+		for (i = start; i <= end; i++) {
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[i])) != mag[TX_OFF]) {
+				 mag[i] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[i]));
+				 gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[i]), mag[TX_OFF]);
+			}
+ 
 		}
+		start = 0;
+		for (i = TX1_T1_I; i <= TX2_T2_Q; i++) {
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[i])) !=  mag[TX_OFF])
+				start++;
+		}
+		if (!start)
+			enable_dds(false);
+		else
+			enable_dds(true);
 
-		dds_locked_scale_cb(NULL, NULL);
-		dds_locked_freq_cb(NULL, NULL);
-		dds_locked_phase_cb(NULL, NULL);
+		gtk_widget_hide(channel_I_tx[channel]);
+		gtk_widget_hide(channel_Q_tx[channel]);
+		gtk_widget_hide(dac_buffer);
+
 		break;
-	case 2:
-		/* Two tones */
+	case DDS_ONE_TONE:
 		enable_dds(true);
 		gtk_widget_hide(dac_buffer);
-		gtk_label_set_markup(GTK_LABEL(dds_I_TX1_l),"<b>Two Tones</b>");
-		gtk_label_set_markup(GTK_LABEL(dds_I_TX2_l),"<b>Two Tones</b>");
-		gtk_widget_show(dds1_freq);
-		gtk_widget_show(dds2_freq);
-		gtk_widget_hide(dds3_freq);
-		gtk_widget_hide(dds4_freq);
-		gtk_widget_show(dds5_freq);
-		gtk_widget_show(dds6_freq);
-		gtk_widget_hide(dds7_freq);
-		gtk_widget_hide(dds8_freq);
-		gtk_widget_show(dds1_scale);
-		gtk_widget_show(dds2_scale);
-		gtk_widget_hide(dds3_scale);
-		gtk_widget_hide(dds4_scale);
-		gtk_widget_show(dds5_scale);
-		gtk_widget_show(dds6_scale);
-		gtk_widget_hide(dds7_scale);
-		gtk_widget_hide(dds8_scale);
-		gtk_widget_show(dds1_phase);
-		gtk_widget_show(dds2_phase);
-		gtk_widget_hide(dds3_phase);
-		gtk_widget_hide(dds4_phase);
-		gtk_widget_show(dds5_phase);
-		gtk_widget_show(dds6_phase);
-		gtk_widget_hide(dds7_phase);
-		gtk_widget_hide(dds8_phase);
-		gtk_widget_show(dds1_freq_l);
-		gtk_widget_show(dds2_freq_l);
-		gtk_widget_hide(dds3_freq_l);
-		gtk_widget_hide(dds4_freq_l);
-		gtk_widget_show(dds5_freq_l);
-		gtk_widget_show(dds6_freq_l);
-		gtk_widget_hide(dds7_freq_l);
-		gtk_widget_hide(dds8_freq_l);
-		gtk_widget_show(dds1_scale_l);
-		gtk_widget_show(dds2_scale_l);
-		gtk_widget_hide(dds3_scale_l);
-		gtk_widget_hide(dds4_scale_l);
-		gtk_widget_show(dds5_scale_l);
-		gtk_widget_show(dds6_scale_l);
-		gtk_widget_hide(dds7_scale_l);
-		gtk_widget_hide(dds8_scale_l);
-		gtk_widget_show(dds1_phase_l);
-		gtk_widget_show(dds2_phase_l);
-		gtk_widget_hide(dds3_phase_l);
-		gtk_widget_hide(dds4_phase_l);
-		gtk_widget_show(dds5_phase_l);
-		gtk_widget_show(dds6_phase_l);
-		gtk_widget_hide(dds7_phase_l);
-		gtk_widget_hide(dds8_phase_l);
-		gtk_widget_show(dds_I_TX1_l);
-		gtk_widget_show(dds_I1_TX1_l);
-		gtk_widget_show(dds_I2_TX1_l);
-		gtk_widget_show(dds_I_TX2_l);
-		gtk_widget_show(dds_I1_TX2_l);
-		gtk_widget_show(dds_I2_TX2_l);
-		gtk_widget_hide(dds_Q_TX1_l);
-		gtk_widget_hide(dds_Q1_TX1_l);
-		gtk_widget_hide(dds_Q2_TX1_l);
-		gtk_widget_hide(dds_Q_TX2_l);
-		gtk_widget_hide(dds_Q1_TX2_l);
-		gtk_widget_hide(dds_Q2_TX2_l);
+		gtk_label_set_markup(GTK_LABEL(dds_I_TX_l[channel]),"<b>Single Tone</b>");
 
-		if (!dds1_scale_hid)
-			dds1_scale_hid = g_signal_connect(dds1_scale , IIO_COMBO_SIGNAL,
-					G_CALLBACK(dds_locked_scale_cb), NULL);
-		if (!dds2_scale_hid)
-			dds2_scale_hid = g_signal_connect(dds2_scale , IIO_COMBO_SIGNAL,
-					G_CALLBACK(dds_locked_scale_cb), NULL);
-		if (!dds5_scale_hid)
-			dds5_scale_hid = g_signal_connect(dds5_scale , IIO_COMBO_SIGNAL,
-					G_CALLBACK(dds_locked_scale_cb), NULL);
-		if (!dds6_scale_hid)
-			dds6_scale_hid = g_signal_connect(dds6_scale , IIO_COMBO_SIGNAL,
-					G_CALLBACK(dds_locked_scale_cb), NULL);
+		gtk_widget_show_all(channel_I_tx[channel]);
+		gtk_widget_hide(channel_I_tone2_tx[channel]);
+		gtk_widget_hide(channel_Q_tx[channel]);
 
-		if (!dds1_freq_hid)
-			dds1_freq_hid = g_signal_connect(dds1_freq , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_freq_cb), NULL);
-		if (!dds2_freq_hid)
-			dds2_freq_hid = g_signal_connect(dds2_freq , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_freq_cb), NULL);
-		if (!dds5_freq_hid)
-			dds5_freq_hid = g_signal_connect(dds5_freq , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_freq_cb), NULL);
-		if (!dds6_freq_hid)
-			dds6_freq_hid = g_signal_connect(dds6_freq , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_freq_cb), NULL);
-		if (!dds1_phase_hid)
-			dds1_phase_hid = g_signal_connect(dds1_phase , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_phase_cb), NULL);
-		if (!dds2_phase_hid)
-			dds2_phase_hid = g_signal_connect(dds2_phase , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_phase_cb), NULL);
-		if (!dds5_phase_hid)
-			dds5_phase_hid = g_signal_connect(dds5_phase , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_phase_cb), NULL);
-		if (!dds6_phase_hid)
-			dds6_phase_hid = g_signal_connect(dds6_phase , IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_phase_cb), NULL);
+		if (channel == 1) {
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX1_T1_I])) == mag[TX_OFF]) {
+				gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[TX1_T1_I]), mag[TX1_T1_I]);
+				gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[TX1_T1_Q]), mag[TX1_T1_Q]);
+			}
+
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX1_T2_I])) != mag[TX_OFF]) {
+				mag[TX1_T2_I] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX1_T2_I]));
+				gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[TX1_T2_I]), mag[TX_OFF]);
+				mag[TX1_T2_Q] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX1_T2_Q]));
+				gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[TX1_T2_Q]), mag[TX_OFF]);
+			}
+
+			start = TX1_T1_I;
+			end = TX1_T2_I;
+		} else {
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX2_T1_I])) == mag[TX_OFF]) {
+				gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[TX2_T1_I]), mag[TX2_T1_I]);
+				gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[TX2_T1_Q]), mag[TX2_T1_Q]);
+			}
+
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX2_T2_I])) != mag[TX_OFF]) {
+				mag[TX2_T2_I] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX2_T2_I]));
+				gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[TX2_T2_I]), mag[TX_OFF]);
+				mag[TX2_T2_Q] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[TX2_T2_Q]));
+				gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[TX2_T2_Q]), mag[TX_OFF]);
+			}
+
+			start = TX2_T1_I;
+			end = TX2_T2_I;
+		}
+
+		/* Connect the widgets that are showing */
+		if (!dds_scale_hid[start])
+			dds_scale_hid[start] = g_signal_connect(dds_scale[start], IIO_COMBO_SIGNAL,
+					G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
+		if (!dds_freq_hid[start])
+			dds_freq_hid[start] = g_signal_connect(dds_freq[start], IIO_SPIN_SIGNAL,
+					G_CALLBACK(dds_locked_freq_cb), (gpointer *)channel);
+		if (!dds_phase_hid[start])
+			dds_phase_hid[start] = g_signal_connect(dds_phase[start], IIO_SPIN_SIGNAL,
+					G_CALLBACK(dds_locked_phase_cb), (gpointer *)channel);
+
+		/* Disconnect the rest */
+		if (dds_scale_hid[end]) {
+			g_signal_handler_disconnect(dds_scale[end], dds_scale_hid[end]);
+			dds_scale_hid[end] = 0;
+		}
+		if (dds_freq_hid[end]) {
+			g_signal_handler_disconnect(dds_freq[end], dds_freq_hid[end]);
+			dds_freq_hid[end] = 0;
+		}
+		if (dds_phase_hid[end]) {
+			g_signal_handler_disconnect(dds_phase[end], dds_phase_hid[end]);
+			dds_phase_hid[end] = 0;
+		}
+
+		dds_locked_scale_cb(NULL, (gpointer *)channel);
+		dds_locked_freq_cb(NULL, (gpointer *)channel);
+		dds_locked_phase_cb(NULL, (gpointer *)channel);
+		break;
+	case DDS_TWO_TONE:
+		enable_dds(true);
+		gtk_widget_hide(dac_buffer);
+		gtk_widget_show_all(channel_I_tx[channel]);
+		gtk_widget_hide(channel_Q_tx[channel]);
+
+		gtk_label_set_markup(GTK_LABEL(dds_I_TX_l[channel]),"<b>Two Tones</b>");
+
+		if (channel == 1) {
+			start = TX1_T1_I;
+			end = TX1_T2_Q;
+		} else {
+			start = TX2_T1_I;
+			end = TX2_T2_Q;
+		}
+
+		for (i = start; i <= end; i++) {
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[i])) == mag[TX_OFF]) {
+				gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[i]), mag[i]);
+			}
+		}
+
+		if (channel == 1)
+			end = TX1_T2_I;
+		else 
+			end = TX2_T2_I;
+
+		for (i = start; i <= end; i++) {
+			if (!dds_scale_hid[i])
+				dds_scale_hid[i] = g_signal_connect(dds_scale[i], IIO_COMBO_SIGNAL,
+						G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
+			if (!dds_freq_hid[i])
+				dds_freq_hid[i] = g_signal_connect(dds_freq[i] , IIO_SPIN_SIGNAL,
+						G_CALLBACK(dds_locked_freq_cb), (gpointer *)channel);
+			if (!dds_phase_hid[i])
+				dds_phase_hid[i] = g_signal_connect(dds_phase[i], IIO_SPIN_SIGNAL,
+						G_CALLBACK(dds_locked_phase_cb), (gpointer *)channel);
+		}
 
 		/* Force sync */
-		dds_locked_scale_cb(NULL, NULL);
-		dds_locked_freq_cb(NULL, NULL);
-		dds_locked_phase_cb(NULL, NULL);
+		dds_locked_scale_cb(NULL, (gpointer *)channel);
+		dds_locked_freq_cb(NULL, (gpointer *)channel);
+		dds_locked_phase_cb(NULL, (gpointer *)channel);
 
 		break;
-	case 3:
+	case DDS_INDEPDENT:
 		/* Independant/Individual control */
 		enable_dds(true);
+		gtk_widget_show_all(channel_I_tx[channel]);
+		gtk_widget_show_all(channel_Q_tx[channel]);
 		gtk_widget_hide(dac_buffer);
-		gtk_label_set_markup(GTK_LABEL(dds_I_TX1_l),"<b>Channel I</b>");
-		gtk_label_set_markup(GTK_LABEL(dds_I_TX2_l),"<b>Channel I</b>");
-		show_all_I_and_Q();
+		gtk_label_set_markup(GTK_LABEL(dds_I_TX_l[channel]),"<b>Channel I</b>");
 
-		if (dds1_scale_hid) {
-			g_signal_handler_disconnect(dds1_scale, dds1_scale_hid);
-			dds1_scale_hid = 0;
-		}
-		if (dds2_scale_hid) {
-			g_signal_handler_disconnect(dds2_scale, dds2_scale_hid);
-			dds2_scale_hid = 0;
-		}
-		if (dds5_scale_hid) {
-			g_signal_handler_disconnect(dds5_scale, dds5_scale_hid);
-			dds5_scale_hid = 0;
-		}
-		if (dds6_scale_hid) {
-			g_signal_handler_disconnect(dds6_scale, dds6_scale_hid);
-			dds6_scale_hid = 0;
+		if (channel == 1) {
+			start = TX1_T1_I;
+			end = TX1_T2_Q;
+		} else {
+			start = TX2_T1_I;
+			end = TX2_T2_Q;
 		}
 
-		if (dds1_freq_hid) {
-			g_signal_handler_disconnect(dds1_freq, dds1_freq_hid);
-			dds1_freq_hid = 0;
-		}
-		if (dds2_freq_hid) {
-			g_signal_handler_disconnect(dds2_freq, dds2_freq_hid);
-			dds2_freq_hid = 0;
-		}
-		if (dds5_freq_hid) {
-			g_signal_handler_disconnect(dds5_freq, dds5_freq_hid);
-			dds5_freq_hid = 0;
-		}
-		if (dds6_freq_hid) {
-			g_signal_handler_disconnect(dds6_freq, dds6_freq_hid);
-			dds6_freq_hid = 0;
-		}
+		for (i = start; i <= end; i++) {
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[i])) == mag[TX_OFF])
+				 gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[i]), mag[i]);
 
-		if (dds1_phase_hid) {
-			g_signal_handler_disconnect(dds1_phase, dds1_phase_hid);
-			dds1_phase_hid = 0;
+			if (dds_scale_hid[i]) {
+				g_signal_handler_disconnect(dds_scale[i], dds_scale_hid[i]);
+				dds_scale_hid[i] = 0;
+			}
+			if (dds_freq_hid[i]) {
+				g_signal_handler_disconnect(dds_freq[i], dds_freq_hid[i]);
+				dds_freq_hid[i] = 0;
+			}
+			if (dds_phase_hid[i]) {
+				g_signal_handler_disconnect(dds_phase[i], dds_phase_hid[i]);
+				dds_phase_hid[i] = 0;
+			}
 		}
-
-		if (dds2_phase_hid) {
-			g_signal_handler_disconnect(dds2_phase, dds2_phase_hid);
-			dds2_phase_hid = 0;
-		}
-		if (dds5_phase_hid) {
-			g_signal_handler_disconnect(dds5_phase, dds5_phase_hid);
-			dds5_phase_hid = 0;
-		}
-
-		if (dds6_phase_hid) {
-			g_signal_handler_disconnect(dds6_phase, dds6_phase_hid);
-			dds6_phase_hid = 0;
-		}
-
 		break;
-	case 4:
-		/* Buffer */
-		gtk_widget_show(dac_buffer);
+	case DDS_BUFFER:
 		enable_dds(false);
-		hide_all_I_and_Q();
+		gtk_widget_show(dac_buffer);
+		gtk_widget_hide(channel_I_tx[1]);
+		gtk_widget_hide(channel_Q_tx[1]);
+		gtk_widget_hide(channel_I_tx[2]);
+		gtk_widget_hide(channel_Q_tx[2]);
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[1]), 4);
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[2]), 4);
 		break;
 	default:
 		printf("glade file out of sync with C file - please contact developers\n");
@@ -1209,6 +1014,13 @@ static int fmcomms2_init(GtkWidget *notebook)
 	GtkBuilder *builder;
 	GtkWidget *fmcomms2_panel;
 	bool shared_scale_available;
+	int i;
+
+	for (i = 0; i <= TX2_T2_Q; i++) {
+		dds_freq_hid[i] = 0;
+		dds_scale_hid[i] = 0;
+		dds_phase_hid[i] = 0;
+	}
 
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
@@ -1236,6 +1048,15 @@ static int fmcomms2_init(GtkWidget *notebook)
 	enable_fir_filter_rx_tx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_tx_rx"));
 	disable_all_fir_filters = GTK_WIDGET(gtk_builder_get_object(builder, "disable_all_fir_filters"));
 
+	section_toggle[SECTION_GLOBAL] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "global_settings_toggle"));
+	section_setting[SECTION_GLOBAL] = GTK_WIDGET(gtk_builder_get_object(builder, "global_settings"));
+	section_toggle[SECTION_TX] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "tx_toggle"));
+	section_setting[SECTION_TX] = GTK_WIDGET(gtk_builder_get_object(builder, "tx_settings"));
+	section_toggle[SECTION_RX] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "rx_toggle"));
+	section_setting[SECTION_RX] = GTK_WIDGET(gtk_builder_get_object(builder, "rx_settings"));
+	section_toggle[SECTION_FPGA] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "fpga_toggle"));
+	section_setting[SECTION_FPGA] = GTK_WIDGET(gtk_builder_get_object(builder, "fpga_settings"));
+
 	/* Receive Chain */
 
 	rf_port_select_rx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_rx"));
@@ -1251,90 +1072,64 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	rf_port_select_tx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_tx"));
 	tx_fastlock_profile = GTK_WIDGET(gtk_builder_get_object(builder, "tx_fastlock_profile"));
-	dds_mode = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode"));
+	dds_mode_tx[1] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode_tx1"));
+	dds_mode_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode_tx2"));
 
-	dds1_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_freq"));
-	dds2_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_freq"));
-	dds3_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_freq"));
-	dds4_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_freq"));
-	dds5_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_freq"));
-	dds6_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_freq"));
-	dds7_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_freq"));
-	dds8_freq = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_freq"));
+	dds_freq[TX1_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_freq"));
+	dds_freq[TX1_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_freq"));
+	dds_freq[TX1_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_freq"));
+	dds_freq[TX1_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_freq"));
 
-	dds1_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_scale"));
-	dds2_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_scale"));
-	dds3_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_scale"));
-	dds4_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_scale"));
-	dds5_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_scale"));
-	dds6_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_scale"));
-	dds7_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_scale"));
-	dds8_scale = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_scale"));
+	dds_freq[TX2_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_freq"));
+	dds_freq[TX2_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_freq"));
+	dds_freq[TX2_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_freq"));
+	dds_freq[TX2_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_freq"));
 
-	dds1_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_phase"));
-	dds2_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_phase"));
-	dds3_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_phase"));
-	dds4_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_phase"));
-	dds5_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_phase"));
-	dds6_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_phase"));
-	dds7_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_phase"));
-	dds8_phase = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_phase"));
+	dds_scale[TX1_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_scale"));
+	dds_scale[TX1_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_scale"));
+	dds_scale[TX1_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_scale"));
+	dds_scale[TX1_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_scale"));
 
-	adj1_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_I1_freq"));
-	adj2_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_I2_freq"));
-	adj3_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_Q1_freq"));
-	adj4_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_Q1_freq"));
-	adj5_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_I1_freq"));
-	adj6_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_I2_freq"));
-	adj7_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_Q1_freq"));
-	adj8_freq = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_Q2_freq"));
+	dds_scale[TX2_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_scale"));
+	dds_scale[TX2_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_scale"));
+	dds_scale[TX2_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_scale"));
+	dds_scale[TX2_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_scale"));
 
-	dds1_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_freq_txt"));
-	dds2_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_freq_txt"));
-	dds3_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_freq_txt"));
-	dds4_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_freq_txt"));
-	dds5_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_freq_txt"));
-	dds6_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_freq_txt"));
-	dds7_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_freq_txt"));
-	dds8_freq_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_freq_txt"));
+	dds_phase[TX1_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_phase"));
+	dds_phase[TX1_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_phase"));
+	dds_phase[TX1_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_phase"));
+	dds_phase[TX1_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_phase"));
 
-	dds1_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_scale_txt"));
-	dds2_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_scale_txt"));
-	dds3_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_scale_txt"));
-	dds4_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_scale_txt"));
-	dds5_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_scale_txt"));
-	dds6_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_scale_txt"));
-	dds7_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_scale_txt"));
-	dds8_scale_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_scale_txt"));
+	dds_phase[TX2_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_phase"));
+	dds_phase[TX2_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_phase"));
+	dds_phase[TX2_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_phase"));
+	dds_phase[TX2_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_phase"));
 
-	dds1_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_phase_txt"));
-	dds2_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_phase_txt"));
-	dds3_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_phase_txt"));
-	dds4_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_phase_txt"));
-	dds5_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_phase_txt"));
-	dds6_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_phase_txt"));
-	dds7_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_phase_txt"));
-	dds8_phase_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_phase_txt"));
+	adj_freq[TX1_T1_I] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_I1_freq"));
+	adj_freq[TX1_T2_I] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_I2_freq"));
+	adj_freq[TX1_T1_Q] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_Q1_freq"));
+	adj_freq[TX1_T2_Q] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_Q2_freq"));
+	adj_freq[TX2_T1_I] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_I1_freq"));
+	adj_freq[TX2_T2_I] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_I2_freq"));
+	adj_freq[TX2_T1_Q] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_Q1_freq"));
+	adj_freq[TX2_T2_Q] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_Q2_freq"));
 
-	dds_I_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_I_TX1_l"));
-	dds_I1_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_TX1_l"));
-	dds_I2_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_TX1_l"));
-	dds_I_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_I_TX2_l"));
-	dds_I1_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_TX2_l"));
-	dds_I2_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_TX2_l"));
-	dds_Q_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_Q_TX1_l"));
-	dds_Q1_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_TX1_l"));
-	dds_Q2_TX1_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_TX1_l"));
-	dds_Q_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_Q_TX2_l"));
-	dds_Q1_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_TX2_l"));
-	dds_Q2_TX2_l = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_TX2_l"));
+	dds_I_TX_l[1] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_I_TX1_l"));
+	dds_I_TX_l[2] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_I_TX2_l"));
+	channel_I_tx[1] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Channel_I_tx1"));
+	channel_Q_tx[1] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Channel_Q_tx1"));
+	channel_I_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Channel_I_tx2"));
+	channel_Q_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Channel_Q_tx2"));
+	channel_I_tone2_tx[1] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Tone2_ch_I_tx1"));
+	channel_I_tone2_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Tone2_ch_I_tx2"));
 	dac_buffer = GTK_WIDGET(gtk_builder_get_object(builder, "dac_buffer"));
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(ensm_mode_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(trx_rate_governor_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes_rx1), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes_rx2), 0);
-	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[1]), 1);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[2]), 1);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_rx), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_tx), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_fastlock_profile), 0);
@@ -1413,6 +1208,12 @@ static int fmcomms2_init(GtkWidget *notebook)
 		"ad9361-phy", "in_voltage_bb_dc_offset_tracking_en", builder,
 		"bbdc", 0);
 
+	iio_spin_button_init_from_builder(&rx_widgets[num_rx],
+		"cf-ad9361-lpc", "in_voltage1_calibphase",
+		builder, "rx1_phase_rotation", NULL);
+	iio_spin_button_add_progress(&rx_widgets[num_rx++]);
+
+
 	/* Transmit Chain */
 
 	iio_combo_box_init(&tx_widgets[num_tx++],
@@ -1449,123 +1250,124 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_frequency",
-			dds1_freq, &mhz_scale);
+			dds_freq[TX1_T1_I], &abs_mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_frequency",
-			dds2_freq, &mhz_scale);
+			dds_freq[TX1_T2_I], &abs_mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_frequency",
-			dds3_freq, &mhz_scale);
+			dds_freq[TX1_T1_Q], &abs_mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_frequency",
-			dds4_freq, &mhz_scale);
+			dds_freq[TX1_T2_Q], &abs_mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_frequency",
-			dds5_freq, &mhz_scale);
+			dds_freq[TX2_T1_I], &abs_mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_frequency",
-			dds6_freq, &mhz_scale);
+			dds_freq[TX2_T2_I], &abs_mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_frequency",
-			dds7_freq, &mhz_scale);
+			dds_freq[TX2_T1_Q], &abs_mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_frequency",
-			dds8_freq, &mhz_scale);
+			dds_freq[TX2_T2_Q], &abs_mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_scale",
 			shared_scale_available ?
 				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX1_I_F1_scale_available",
-			dds1_scale, compare_gain);
+			dds_scale[TX1_T1_I], compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_scale",
 			shared_scale_available ?
 				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX1_I_F2_scale_available",
-			dds2_scale, compare_gain);
+			dds_scale[TX1_T2_I], compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_scale",
 			shared_scale_available ?
 				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX1_Q_F1_scale_available",
-			dds3_scale, compare_gain);
+			dds_scale[TX1_T1_Q], compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_scale",
 			shared_scale_available ?
 				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX1_Q_F2_scale_available",
-			dds4_scale, compare_gain);
+			dds_scale[TX1_T2_Q], compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_scale",
 			shared_scale_available ?
 				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX2_I_F1_scale_available",
-			dds5_scale, compare_gain);
+			dds_scale[TX2_T1_I], compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_scale",
 			shared_scale_available ?
 				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX2_I_F2_scale_available",
-			dds6_scale, compare_gain);
+			dds_scale[TX2_T2_I], compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_scale",
 			shared_scale_available ?
 				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX2_Q_F1_scale_available",
-			dds7_scale, compare_gain);
+			dds_scale[TX2_T1_Q], compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_scale",
 			shared_scale_available ?
 				"out_altvoltage_scale_available" :
 				"out_altvoltage_TX2_Q_F2_scale_available",
-				dds8_scale, compare_gain);
+			dds_scale[TX2_T2_Q], compare_gain);
+
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_phase",
-			dds1_phase, &khz_scale);
+			dds_phase[TX1_T1_I], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_phase",
-			dds2_phase, &khz_scale);
+			dds_phase[TX1_T2_I], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_phase",
-			dds3_phase, &khz_scale);
+			dds_phase[TX1_T1_Q], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_phase",
-			dds4_phase, &khz_scale);
+			dds_phase[TX1_T2_Q], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_phase",
-			dds5_phase, &khz_scale);
+			dds_phase[TX2_T1_I], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_phase",
-			dds6_phase, &khz_scale);
+			dds_phase[TX2_T2_I], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_phase",
-			dds7_phase, &khz_scale);
+			dds_phase[TX2_T1_Q], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_phase",
-			dds8_phase, &khz_scale);
+			dds_phase[TX2_T2_Q], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
-	manage_dds_mode();
-
 	/* Signals connect */
-	g_signal_connect(dds_mode, "changed", G_CALLBACK(manage_dds_mode),
-		NULL);
+	g_signal_connect(dds_mode_tx[1], "changed", G_CALLBACK(manage_dds_mode),
+			(gpointer *)1);
+	g_signal_connect(dds_mode_tx[2], "changed", G_CALLBACK(manage_dds_mode),
+			(gpointer *)2);
 
 	g_builder_connect_signal(builder, "fmcomms2_settings_reload", "clicked",
 		G_CALLBACK(reload_button_clicked), NULL);
@@ -1585,17 +1387,20 @@ static int fmcomms2_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "tx_fastlock_recall", "clicked",
 		G_CALLBACK(fastlock_clicked), (gpointer) 4);
 
-	g_builder_connect_signal(builder, "global_settings_toggle", "clicked",
-		G_CALLBACK(hide_section_cb),
-		GTK_WIDGET(gtk_builder_get_object(builder, "global_settings")));
+	g_builder_connect_signal(builder, "sampling_freq_tx", "value-changed",
+			G_CALLBACK(tx_sample_rate_changed), NULL);
 
-	g_builder_connect_signal(builder, "tx_toggle", "clicked",
-		G_CALLBACK(hide_section_cb),
-		GTK_WIDGET(gtk_builder_get_object(builder, "tx_settings")));
+	g_signal_connect_after(section_toggle[SECTION_GLOBAL], "clicked",
+		G_CALLBACK(hide_section_cb), section_setting[SECTION_GLOBAL]);
 
-	g_builder_connect_signal(builder, "rx_toggle", "clicked",
-		G_CALLBACK(hide_section_cb),
-		GTK_WIDGET(gtk_builder_get_object(builder, "rx_settings")));
+	g_signal_connect_after(section_toggle[SECTION_TX], "clicked",
+		G_CALLBACK(hide_section_cb), section_setting[SECTION_TX]);
+
+	g_signal_connect_after(section_toggle[SECTION_RX], "clicked",
+		G_CALLBACK(hide_section_cb), section_setting[SECTION_RX]);
+
+	g_signal_connect_after(section_toggle[SECTION_FPGA], "clicked",
+		G_CALLBACK(hide_section_cb), section_setting[SECTION_FPGA]);
 
 	g_signal_connect_after(ensm_mode_available, "changed",
 		G_CALLBACK(glb_settings_update_labels), NULL);
@@ -1642,6 +1447,9 @@ static int fmcomms2_init(GtkWidget *notebook)
 	glb_settings_update_labels();
 	rssi_update_labels();
 
+	manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[1]), 1);
+	manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[2]), 2);
+
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
 	plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
 
@@ -1683,21 +1491,92 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 		} else {
 			return last_fir_filter;
 		}
-	} else if (MATCH_ATTRIB("dds_mode")) {
+	} else if (MATCH_ATTRIB("dds_mode_tx1")) {
 		if (value) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), atoi(value));
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[1]), atoi(value));
 		} else {
 			buf = malloc (10);
-			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
+			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("dds_mode_tx2")) {
+		if (value) {
+			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[2]), atoi(value));
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[2])));
 			return buf;
 		}
 	} else if (MATCH_ATTRIB("dac_buf_filename") &&
-				gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)) == 4) {
+				gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])) == 4) {
 		if (value) {
 			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dac_buffer), value);
 			process_dac_buffer_file(value);
 		} else
 			return dac_buf_filename;
+	} else if (MATCH_ATTRIB("global_settings_show")) {
+		if (value) {
+			if (atoi(value))
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], true);
+			else
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], false);
+			hide_section_cb(section_toggle[SECTION_GLOBAL], section_setting[SECTION_GLOBAL]);
+		} else {
+			buf = malloc (10);
+			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]))
+				sprintf(buf, "1 # show");
+			else
+				sprintf(buf, "0 # hide");
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_show")) {
+		if (value) {
+			if (atoi(value))
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], true);
+			else
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], false);
+			hide_section_cb(section_toggle[SECTION_TX], section_setting[SECTION_TX]);
+		} else {
+			buf = malloc (10);
+			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]))
+				sprintf(buf, "1 # show");
+			else
+				sprintf(buf, "0 # hide");
+			return buf;
+		}
+
+	} else if (MATCH_ATTRIB("rx_show")) {
+		if (value) {
+			if (atoi(value))
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], true);
+			else
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], false);
+			hide_section_cb(section_toggle[SECTION_RX], section_setting[SECTION_RX]);
+		} else {
+			buf = malloc (10);
+			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_RX]))
+				sprintf(buf, "1 # show");
+			else
+				sprintf(buf, "0 # hide");
+			return buf;
+		}
+
+	} else if (MATCH_ATTRIB("fpga_show")) {
+		if (value) {
+			if (atoi(value))
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], true);
+			else
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], false);
+			hide_section_cb(section_toggle[SECTION_FPGA], section_setting[SECTION_FPGA]);
+		} else {
+			buf = malloc (10);
+			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_FPGA]))
+				sprintf(buf, "1 # show");
+			else
+				sprintf(buf, "0 # hide");
+			return buf;
+		}
+
 	} else {
 		if (value) {
 			printf("Unhandled tokens in ini file,\n"
@@ -1735,7 +1614,12 @@ static const char *fmcomms2_sr_attribs[] = {
 	"ad9361-phy.in_voltage_filter_fir_en",
 	"ad9361-phy.out_voltage_filter_fir_en",
 	"ad9361-phy.in_out_voltage_filter_fir_en",
-	"dds_mode",
+	"global_settings_show",
+	"tx_show",
+	"rx_show",
+	"fpga_show",
+	"dds_mode_tx1",
+	"dds_mode_tx2",
 	"dac_buf_filename",
 	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_frequency",
 	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_phase",
