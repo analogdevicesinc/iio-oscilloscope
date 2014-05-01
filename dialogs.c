@@ -410,7 +410,8 @@ G_MODULE_EXPORT void save_as(const char *filename, int type)
 			break;
 		case SAVE_VSA:
 			/* Allow saving data when only in Time Domanin */
-			if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != TIME_PLOT) {
+			if ((gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != TIME_PLOT) &&
+			    (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != XY_PLOT)) {
 				create_blocking_popup(GTK_MESSAGE_WARNING, GTK_BUTTONS_CLOSE, "Invalid Plot Type",
 					"Please make sure to set the Plot Type to \"Time Domanin\" before saving data.");
 				return;
