@@ -176,9 +176,11 @@ static void generateWavePeriod(void)
 	double waveFreq;
 	int i;
 	struct iio_device *trigger = iio_context_find_device(ctx, "hrtimer-1");
-	unsigned long triggerFreq = 0;
+	unsigned long triggerFreq;
+	long long triggerFreqLL = 0;
 
-	iio_trigger_get_rate(trigger, &triggerFreq);
+	iio_device_attr_read_longlong(trigger, "frequency", &triggerFreqLL);
+	triggerFreq = triggerFreqLL;
 
 	/* Set the maximum frequency that user cand select to 10% of the input generator frequency. */
 	if (triggerFreq >= 10)
