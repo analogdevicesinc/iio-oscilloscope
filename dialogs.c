@@ -13,6 +13,7 @@
 #include <gtk/gtk.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <math.h>
 #include <matio.h>
 
 #include "fru.h"
@@ -22,6 +23,7 @@
 
 extern GtkWidget *plot_domain;
 extern gfloat **channel_data;
+extern struct iio_channel_info *channels;
 extern unsigned int num_samples;
 extern unsigned int num_active_channels;
 extern const char *current_device;
@@ -46,7 +48,7 @@ static GtkWidget *serial_num;
 static GtkWidget *fru_date;
 static GtkWidget *fru_file_list;
 
-static GtkWidget *save_csv, *save_mat, *save_vsa;
+static GtkWidget *save_csv, *save_mat, *save_mat_scale, *save_vsa;
 
 #ifdef FRU_FILES
 static time_t mins_since_jan_1_1996(void)
@@ -401,6 +403,7 @@ G_MODULE_EXPORT void save_as(const char *filename, int type)
 	gint width, height;
 	gboolean ret = true;
 	char *name;
+	gdouble *tmp_data;
 
 	name = malloc(strlen(filename) + 5);
 	switch(type) {
@@ -481,8 +484,19 @@ G_MODULE_EXPORT void save_as(const char *filename, int type)
 			if(mat) {
 				for (i = 0; i < num_active_channels; i++) {
 					sprintf(tmp, "in_voltage%d", i);
-					matvar = Mat_VarCreate(tmp, MAT_C_SINGLE,
-						MAT_T_SINGLE , 2, dims, channel_data[i], 0);
+					if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(save_mat_scale))) {
+						matvar = Mat_VarCreate(tmp, MAT_C_SINGLE,
+								MAT_T_SINGLE, 2, dims, channel_data[i], 0);
+					} else {
+						tmp_data = g_new(gdouble, num_samples);
+						for (j = 0; j < num_samples; j++) {
+							tmp_data[j] = (gdouble)channel_data[i][j] /
+									(pow(2.0, channels[i].bits_used));
+						}
+						matvar = Mat_VarCreate(tmp, MAT_C_DOUBLE,
+								MAT_T_DOUBLE, 2, dims, tmp_data, 0);
+						g_free(tmp_data);
+					}
 					if (!matvar)
 						printf("error creating matvar on channel %i\n", i);
 					else {
@@ -716,7 +730,8 @@ void dialogs_init(GtkBuilder *builder)
 
 	save_csv = GTK_WIDGET(gtk_builder_get_object(builder, "save_csv"));
 	save_vsa = GTK_WIDGET(gtk_builder_get_object(builder, "save_vsa"));
-	save_mat = GTK_WIDGET(gtk_builder_get_object(builder, "save_mat"));
+	save_mat = GTK_WIDGET(gtk_builder_get_object(builder, "save_MATLAB"));
+	save_mat_scale = GTK_WIDGET(gtk_builder_get_object(builder, "save_mat_scale"));
 
 	/* Bind some dialogs radio buttons to text/labels */
 	tmp2 = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));

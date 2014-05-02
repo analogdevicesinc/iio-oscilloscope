@@ -51,7 +51,7 @@ static int buffer_fd = -1;
 static struct buffer data_buffer;
 unsigned int num_samples;
 unsigned int num_samples_ploted;
-static struct iio_channel_info *channels;
+struct iio_channel_info *channels;
 unsigned int num_active_channels;
 int cached_num_active_channels = -1;
 static unsigned int num_channels;
