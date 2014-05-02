@@ -392,7 +392,7 @@ G_MODULE_EXPORT void save_as(const char *filename, int type)
 
 	FILE *fp;
 	unsigned int i, j;
-	double freq;
+	double freq, k;
 	mat_t *mat;
 	matvar_t *matvar;
 	int dims[2];
@@ -489,9 +489,14 @@ G_MODULE_EXPORT void save_as(const char *filename, int type)
 								MAT_T_SINGLE, 2, dims, channel_data[i], 0);
 					} else {
 						tmp_data = g_new(gdouble, num_samples);
+						if (channels[i].is_signed)
+							k = channels[i].bits_used - 1;
+						else
+							k = channels[i].bits_used;
+
 						for (j = 0; j < num_samples; j++) {
 							tmp_data[j] = (gdouble)channel_data[i][j] /
-									(pow(2.0, channels[i].bits_used));
+									(pow(2.0, k));
 						}
 						matvar = Mat_VarCreate(tmp, MAT_C_DOUBLE,
 								MAT_T_DOUBLE, 2, dims, tmp_data, 0);
