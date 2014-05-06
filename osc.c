@@ -813,7 +813,7 @@ static bool is_oneshot_mode(void)
 {
 	if (strncmp(current_device, "cf-ad9", 5) == 0)
 		return true;
-	if (strncmp(current_device, "axi-ad9", 5) == 0)
+	if (strncmp(current_device, "axi-ad9", 6) == 0)
 		return true;
 	if (strncmp(current_device, "ad-mc-", 5) == 0)
 		return true;
