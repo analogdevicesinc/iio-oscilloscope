@@ -426,6 +426,13 @@ static int motor_control_init(GtkWidget *notebook)
 static bool motor_control_identify(void)
 {
 	bool found;
+
+	/* Use the OSC's IIO context just to detect the devices */
+	struct iio_context *osc_ctx = get_context_from_osc();
+	if (!iio_context_find_device(osc_ctx, "ad-mc-torque-ctrl")
+		|| !iio_context_find_device(osc_ctx, "ad-mc-adv-ctrl"))
+		return false;
+
 	ctx = osc_create_context();
 	trq_dev = iio_context_find_device(ctx, "ad-mc-torque-ctrl");
 	adv_dev = iio_context_find_device(ctx, "ad-mc-adv-ctrl");

@@ -157,6 +157,11 @@ static int AD5628_1_init(GtkWidget *notebook)
 
 static bool AD5628_1_identify(void)
 {
+	/* Use the OSC's IIO context just to detect the devices */
+	struct iio_context *osc_ctx = get_context_from_osc();
+	if (!iio_context_find_device(osc_ctx, "ad5628-1"))
+		return false;
+
 	ctx = osc_create_context();
 	dev = iio_context_find_device(ctx, "ad5628-1");
 	if (!dev)

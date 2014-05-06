@@ -1806,6 +1806,12 @@ static void update_active_page(gint active_page, gboolean is_detached)
 
 static bool fmcomms2_identify(void)
 {
+	/* Use the OSC's IIO context just to detect the devices */
+	struct iio_context *osc_ctx = get_context_from_osc();
+	if (!iio_context_find_device(osc_ctx, "ad9361-phy")
+		|| !iio_context_find_device(osc_ctx, "cf-ad9361-dds-core-lpc"))
+		return false;
+
 	ctx = osc_create_context();
 	dev = iio_context_find_device(ctx, "ad9361-phy");
 	dds = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");

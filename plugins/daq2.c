@@ -1290,6 +1290,12 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 
 static bool daq2_identify(void)
 {
+	/* Use the OSC's IIO context just to detect the devices */
+	struct iio_context *osc_ctx = get_context_from_osc();
+	if (!iio_context_find_device(osc_ctx, "axi-ad9144-hpc")
+		|| !iio_context_find_device(osc_ctx, "axi-ad9680-hpc"))
+		return false;
+
 	ctx = osc_create_context();
 	dac = iio_context_find_device(ctx, "axi-ad9144-hpc");
 	adc = iio_context_find_device(ctx, "axi-ad9680-hpc");

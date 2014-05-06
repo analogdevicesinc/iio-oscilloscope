@@ -2469,6 +2469,12 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 
 static bool fmcomms1_identify(void)
 {
+	/* Use the OSC's IIO context just to detect the devices */
+	struct iio_context *osc_ctx = get_context_from_osc();
+	if (!iio_context_find_device(osc_ctx, "cf-ad9122-core-lpc")
+		|| !iio_context_find_device(osc_ctx, "cf-ad9643-core-lpc"))
+		return false;
+
 	ctx = osc_create_context();
 	dac = iio_context_find_device(ctx, "cf-ad9122-core-lpc");
 	adc = iio_context_find_device(ctx, "cf-ad9643-core-lpc");
