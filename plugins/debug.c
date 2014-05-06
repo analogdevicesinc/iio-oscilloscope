@@ -158,6 +158,8 @@ static void gtk_combo_box_text_remove_all (GtkWidget *combo_box);
 static void combo_box_text_sort(GtkComboBoxText *box, int column, int order);
 static bool combo_box_text_set_active_text(GtkComboBoxText *comboboxtext,
 		const char *text);
+static void combo_box_text_add_default_text(GtkComboBoxText *box,
+		const char *text);
 
 /******************************************************************************/
 /******************************** Callbacks ***********************************/
@@ -406,8 +408,16 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		gtk_widget_hide(scanel_read);
 		gtk_widget_hide(scanel_write);
 		gtk_widget_hide(warning_label);
+		gtk_entry_set_text(GTK_ENTRY(scanel_filename), "");
+		gtk_entry_set_text(GTK_ENTRY(scanel_value), "");
+		g_signal_handler_block(combobox_attr_type, attr_type_hid);
+		g_signal_handler_block(combobox_debug_scanel, debug_scanel_hid);
 		gtk_combo_box_text_remove_all(combobox_attr_type);
+		combo_box_text_add_default_text(GTK_COMBO_BOX_TEXT(combobox_attr_type), "None");
 		gtk_combo_box_text_remove_all(combobox_debug_scanel);
+		combo_box_text_add_default_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel), "None");
+		g_signal_handler_unblock(combobox_attr_type, attr_type_hid);
+		g_signal_handler_unblock(combobox_debug_scanel, debug_scanel_hid);
 	}
 }
 
@@ -866,6 +876,16 @@ static bool combo_box_text_set_active_text(GtkComboBoxText *box, const char *tex
 	}
 
 	return false;
+}
+
+/*
+ * Adds a default text element to a GtkComboBoxText that is empty and the sets
+ * the default text which sould have id 0 to be active.
+ */
+static void combo_box_text_add_default_text(GtkComboBoxText *box, const char *text)
+{
+	gtk_combo_box_text_append_text(box, text);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(box), 0);
 }
 
 /*
@@ -1336,17 +1356,11 @@ static int debug_init(GtkWidget *notebook)
 	/* Put in the correct values */
 	gtk_box_pack_start((GtkBox *)vbox_device_list, combobox_device_list,
 				TRUE, TRUE, 0);
-	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_device_list),
-				(const gchar *)"None");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_device_list), 0);
+	combo_box_text_add_default_text(GTK_COMBO_BOX_TEXT(combobox_device_list), "None");
 	gtk_box_pack_start((GtkBox *)vbox_scanel, combobox_debug_scanel,
 				TRUE, TRUE, 0);
-	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel),
-				(const gchar *)"None");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_debug_scanel), 0);
-	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_attr_type),
-				(const gchar *)"None");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_attr_type), 0);
+	combo_box_text_add_default_text(GTK_COMBO_BOX_TEXT(combobox_attr_type), "None");
+	combo_box_text_add_default_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel), "None");
 
 	/* Fill in device list */
 	int nb_devs = iio_context_get_devices_count(ctx);
