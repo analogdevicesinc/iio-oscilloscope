@@ -83,6 +83,7 @@ static GtkWidget *scanel_value;
 static GtkWidget *combobox_attr_type;
 static GtkWidget *combobox_debug_scanel;
 static GtkWidget *scanel_options;
+static GtkWidget *scanel_filename;
 static gulong attr_type_hid;
 static gulong debug_scanel_hid;
 
@@ -256,6 +257,12 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 		gtk_widget_show(scanel_value);
 		gtk_widget_hide(scanel_options);
 	}
+
+	if (current_ch)
+		gtk_entry_set_text(GTK_ENTRY(scanel_filename),
+				iio_channel_attr_get_filename(current_ch, attr));
+	else
+		gtk_entry_set_text(GTK_ENTRY(scanel_filename), attr);
 
 	scanel_read_clicked(GTK_BUTTON(scanel_read), NULL);
 }
@@ -1321,6 +1328,8 @@ static int debug_init(GtkWidget *notebook)
 	scanel_value = GTK_WIDGET(gtk_builder_get_object(builder, "debug_scanel_value"));
 	scanel_options = GTK_WIDGET(gtk_builder_get_object(builder, "debug_scanel_options"));
 	combobox_attr_type = GTK_WIDGET(gtk_builder_get_object(builder, "cmbtxt_attr_type"));
+	scanel_filename = GTK_WIDGET(gtk_builder_get_object(builder, "entry_attribute_filename"));
+
 	/* Create comboboxes for the Device List and for the Scan Elements */
 	combobox_device_list = gtk_combo_box_text_new();
 	combobox_debug_scanel = gtk_combo_box_text_new();
