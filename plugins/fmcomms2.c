@@ -381,9 +381,8 @@ static void load_fir_filter(const char *file_name)
 		len = fread(buf, 1, len, f);
 		fclose(f);
 
-		/* XXX(pcercuei): I seriously doubt that the IIO Daemon will
-		 * accept that ... */
-		ret = iio_device_attr_write(dev, "filter_fir_config", buf);
+		ret = iio_device_attr_write_raw(dev,
+				"filter_fir_config", buf, len);
 		free(buf);
 	}
 
