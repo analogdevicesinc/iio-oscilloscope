@@ -1406,6 +1406,11 @@ static int debug_init(GtkWidget *notebook)
 	return 0;
 }
 
+static void context_destroy(void)
+{
+	iio_context_destroy(ctx);
+}
+
 static bool debug_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
@@ -1429,4 +1434,5 @@ struct osc_plugin plugin = {
 	.name = "Debug",
 	.identify = debug_identify,
 	.init = debug_init,
+	.destroy = context_destroy,
 };

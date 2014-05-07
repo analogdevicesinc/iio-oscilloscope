@@ -2467,6 +2467,11 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
+static void context_destroy(void)
+{
+	iio_context_destroy(ctx);
+}
+
 static bool fmcomms1_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
@@ -2493,5 +2498,5 @@ struct osc_plugin plugin = {
 	.save_restore_attribs = &fmcomms1_sr_attribs,
 	.get_iio_context = fmcomms1_iio_context,
 	.handle_item = handle_item,
-
+	.destroy = context_destroy,
 };

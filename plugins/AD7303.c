@@ -365,6 +365,11 @@ static int AD7303_init(GtkWidget *notebook)
 	return 0;
 }
 
+static void context_destroy(void)
+{
+	iio_context_destroy(ctx);
+}
+
 static bool AD7303_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
@@ -383,4 +388,5 @@ struct osc_plugin plugin = {
 	.name = "AD7303",
 	.identify = AD7303_identify,
 	.init = AD7303_init,
+	.destroy = context_destroy,
 };

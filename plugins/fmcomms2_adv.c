@@ -562,6 +562,11 @@ static void update_active_page(gint active_page, gboolean is_detached)
 	plugin_detached = is_detached;
 }
 
+static void context_destroy(void)
+{
+	iio_context_destroy(ctx);
+}
+
 static bool fmcomms2adv_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
@@ -589,4 +594,5 @@ struct osc_plugin plugin = {
 	.get_iio_context = fmcomms2_adv_iio_context,
 	.handle_item = handle_item,
 	.update_active_page = update_active_page,
+	.destroy = context_destroy,
 };

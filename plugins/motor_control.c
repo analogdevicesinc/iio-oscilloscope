@@ -423,6 +423,11 @@ static int motor_control_init(GtkWidget *notebook)
 	return 0;
 }
 
+static void context_destroy(void)
+{
+	iio_context_destroy(ctx);
+}
+
 static bool motor_control_identify(void)
 {
 	bool found;
@@ -446,4 +451,5 @@ struct osc_plugin plugin = {
 	.name = "Motor Control",
 	.identify = motor_control_identify,
 	.init = motor_control_init,
+	.destroy = context_destroy,
 };

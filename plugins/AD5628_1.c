@@ -155,6 +155,11 @@ static int AD5628_1_init(GtkWidget *notebook)
 	return 0;
 }
 
+static void context_destroy(void)
+{
+	iio_context_destroy(ctx);
+}
+
 static bool AD5628_1_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
@@ -173,4 +178,5 @@ struct osc_plugin plugin = {
 	.name = "AD5628-1",
 	.identify = AD5628_1_identify,
 	.init = AD5628_1_init,
+	.destroy = context_destroy,
 };

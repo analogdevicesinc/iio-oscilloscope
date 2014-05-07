@@ -577,6 +577,11 @@ static void update_active_page(gint active_page, gboolean is_detached)
 	plugin_detached = is_detached;
 }
 
+static void context_destroy(void)
+{
+	iio_context_destroy(ctx);
+}
+
 static bool dmm_identify(void)
 {
 	unsigned int i, num;
@@ -617,4 +622,5 @@ struct osc_plugin plugin = {
 	.get_iio_context = dmm_iio_context,
 	.handle_item = dmm_handle,
 	.update_active_page = update_active_page,
+	.destroy = context_destroy,
 };
