@@ -21,6 +21,7 @@ struct osc_plugin {
 			      const char *value);
 	GSList **save_restore_attribs;
 	void (*update_active_page)(gint active_page, gboolean is_detached);
+	void (*destroy)(void);
 };
 
 void osc_plugin_register(const struct osc_plugin *plugin);

@@ -1183,6 +1183,8 @@ static void close_plugins(void)
 		plugin = node->data;
 		if (plugin) {
 			printf("Closing plugin: %s\n", plugin->name);
+			if (plugin->destroy)
+				plugin->destroy();
 			dlclose(plugin->handle);
 		}
 	}
@@ -1529,6 +1531,8 @@ void application_quit (void)
 
 	if (gtk_main_level())
 		gtk_main_quit();
+
+	iio_context_destroy(ctx);
 
 	/* This can't be done until all the windows are detroyed with main_quit
 	 * otherwise, the widgets need to be updated, but they don't exist anymore
