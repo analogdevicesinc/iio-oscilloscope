@@ -9,7 +9,6 @@
 #define __OSC_PLUGIN_H__
 
 #include <gtk/gtk.h>
-#include "plugin_profile.h"
 
 struct osc_plugin {
 	void *handle;
@@ -19,7 +18,7 @@ struct osc_plugin {
 	struct iio_context * (*get_iio_context)(void);
 	char *(*handle_item) (struct osc_plugin *plugin, const char *attrib,
 			      const char *value);
-	GSList **save_restore_attribs;
+	const char **save_restore_attribs;
 	void (*update_active_page)(gint active_page, gboolean is_detached);
 	void (*destroy)(void);
 };
