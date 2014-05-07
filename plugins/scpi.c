@@ -795,36 +795,30 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 	return buf;
 }
 
-static GSList *scpi_sr_attribs;
-
-static void build_plugin_profile_attribute_list(void)
-{
-	profile_elements_init(&scpi_sr_attribs);
-
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." SERIAL_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." NET_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." REGEX_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." IP_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." TTY_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." GPIB_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx." CON_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx.setup");
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx.center");
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx.span");
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "rx.marker");
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." SERIAL_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." NET_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." REGEX_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." IP_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." TTY_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." GPIB_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx." CON_TOK);
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx.freq");
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx.mag");
-	profile_elements_add_plugin_attr(&scpi_sr_attribs, "tx.on");
-
-	scpi_sr_attribs = g_slist_reverse(scpi_sr_attribs);
-}
+static const char *scpi_sr_attribs[] = {
+	"rx." SERIAL_TOK,
+	"rx." NET_TOK,
+	"rx." REGEX_TOK,
+	"rx." IP_TOK,
+	"rx." TTY_TOK,
+	"rx." GPIB_TOK,
+	"rx." CON_TOK,
+	"rx.setup",
+	"rx.center",
+	"rx.span",
+	"rx.marker",
+	"tx." SERIAL_TOK,
+	"tx." NET_TOK,
+	"tx." REGEX_TOK,
+	"tx." IP_TOK,
+	"tx." TTY_TOK,
+	"tx." GPIB_TOK,
+	"tx." CON_TOK,
+	"tx.freq",
+	"tx.mag",
+	"tx.on",
+	NULL,
+};
 
 /*
  * All the GUI/Glade stuff
@@ -1152,8 +1146,6 @@ static int scpi_init(GtkWidget *notebook)
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(instrument_type), 0);
 
-	build_plugin_profile_attribute_list();
-
 	gtk_widget_hide(network_conf);
 	gtk_widget_hide(tty_conf);
 	gtk_widget_hide(scpi_output);
@@ -1184,5 +1176,5 @@ struct osc_plugin plugin = {
 	.identify = scpi_identify,
 	.init = scpi_init,
 	.handle_item = scpi_handle_profile,
-	.save_restore_attribs = &scpi_sr_attribs,
+	.save_restore_attribs = scpi_sr_attribs,
 };
