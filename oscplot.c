@@ -2811,6 +2811,9 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			ch_name = elems[1];
 			ch_property = elems[2];
 
+			if (g_str_has_prefix(ch_name, "in_"))
+				ch_name = ch_name + strlen("in_");
+
 			if (MATCH(elems[0], "test")) {
 				if (MATCH(elems[1], "marker")) {
 					min_max = g_strsplit(value, " ", 0);
