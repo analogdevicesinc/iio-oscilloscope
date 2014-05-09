@@ -32,6 +32,7 @@ CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3) 
 PLUGINS=\
 	plugins/fmcomms1.so \
 	plugins/fmcomms2.so \
+	plugins/fmcomms2_hpc.so \
 	plugins/fmcomms2_adv.so \
 	plugins/debug.so \
 	plugins/daq2.so \
@@ -78,6 +79,9 @@ xml_utils.o: xml_utils.c xml_utils.h
 
 ini.o: ./ini/ini.c ./ini/ini.h
 	$(CC) ./ini/ini.c -c $(CFLAGS)
+
+plugins/fmcomms2_hpc.so: plugins/fmcomms2.c
+	$(CC) $+ $(CFLAGS) $(LDFLAGS) -DSLAVE -shared -fPIC -o $@
 
 %.so: %.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@

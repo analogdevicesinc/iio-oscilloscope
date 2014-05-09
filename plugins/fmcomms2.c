@@ -32,6 +32,14 @@
 
 #define HANNING_ENBW 1.50
 
+#ifndef SLAVE
+#define PHY_DEVICE "ad9361-phy"
+#define DDS_DEVICE "cf-ad9361-dds-core-lpc"
+#else
+#define PHY_DEVICE "ad9361-phy-hpc"
+#define DDS_DEVICE "cf-ad9361-dds-core-hpc"
+#endif
+
 extern gfloat plugin_fft_corr;
 
 static bool is_2rx_2tx;
@@ -1696,64 +1704,64 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 }
 
 static const char *fmcomms2_sr_attribs[] = {
-	"ad9361-phy.trx_rate_governor",
-	"ad9361-phy.dcxo_tune_coarse",
-	"ad9361-phy.dcxo_tune_fine",
-	"ad9361-phy.ensm_mode",
-	"ad9361-phy.in_voltage0_rf_port_select",
-	"ad9361-phy.in_voltage0_gain_control_mode",
-	"ad9361-phy.in_voltage0_hardwaregain",
-	"ad9361-phy.in_voltage1_gain_control_mode",
-	"ad9361-phy.in_voltage1_hardwaregain",
-	"ad9361-phy.in_voltage_bb_dc_offset_tracking_en",
-	"ad9361-phy.in_voltage_quadrature_tracking_en",
-	"ad9361-phy.in_voltage_rf_dc_offset_tracking_en",
-	"ad9361-phy.out_voltage0_rf_port_select",
-	"ad9361-phy.out_altvoltage0_RX_LO_frequency",
-	"ad9361-phy.out_altvoltage1_TX_LO_frequency",
-	"ad9361-phy.out_voltage0_hardwaregain",
-	"ad9361-phy.out_voltage1_hardwaregain",
-	"ad9361-phy.out_voltage_sampling_frequency",
-	"ad9361-phy.in_voltage_rf_bandwidth",
-	"ad9361-phy.out_voltage_rf_bandwidth",
+	PHY_DEVICE".trx_rate_governor",
+	PHY_DEVICE".dcxo_tune_coarse",
+	PHY_DEVICE".dcxo_tune_fine",
+	PHY_DEVICE".ensm_mode",
+	PHY_DEVICE".in_voltage0_rf_port_select",
+	PHY_DEVICE".in_voltage0_gain_control_mode",
+	PHY_DEVICE".in_voltage0_hardwaregain",
+	PHY_DEVICE".in_voltage1_gain_control_mode",
+	PHY_DEVICE".in_voltage1_hardwaregain",
+	PHY_DEVICE".in_voltage_bb_dc_offset_tracking_en",
+	PHY_DEVICE".in_voltage_quadrature_tracking_en",
+	PHY_DEVICE".in_voltage_rf_dc_offset_tracking_en",
+	PHY_DEVICE".out_voltage0_rf_port_select",
+	PHY_DEVICE".out_altvoltage0_RX_LO_frequency",
+	PHY_DEVICE".out_altvoltage1_TX_LO_frequency",
+	PHY_DEVICE".out_voltage0_hardwaregain",
+	PHY_DEVICE".out_voltage1_hardwaregain",
+	PHY_DEVICE".out_voltage_sampling_frequency",
+	PHY_DEVICE".in_voltage_rf_bandwidth",
+	PHY_DEVICE".out_voltage_rf_bandwidth",
 	"load_fir_filter_file",
-	"ad9361-phy.in_voltage_filter_fir_en",
-	"ad9361-phy.out_voltage_filter_fir_en",
-	"ad9361-phy.in_out_voltage_filter_fir_en",
+	PHY_DEVICE".in_voltage_filter_fir_en",
+	PHY_DEVICE".out_voltage_filter_fir_en",
+	PHY_DEVICE".in_out_voltage_filter_fir_en",
 	"dds_mode",
 	"dac_buf_filename",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_scale",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_frequency",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_phase",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_raw",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_scale",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_frequency",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_phase",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_raw",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_scale",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_frequency",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_phase",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_raw",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_scale",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_frequency",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_phase",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_raw",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_scale",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_frequency",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_phase",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_raw",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_scale",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_frequency",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_phase",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_raw",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_scale",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_frequency",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_phase",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_raw",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_scale",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_frequency",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_phase",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
 	SYNC_RELOAD,
 	NULL,
 };
@@ -1773,20 +1781,27 @@ static bool fmcomms2_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	if (!iio_context_find_device(osc_ctx, "ad9361-phy")
-		|| !iio_context_find_device(osc_ctx, "cf-ad9361-dds-core-lpc"))
+
+	if (!iio_context_find_device(osc_ctx, PHY_DEVICE)
+		|| !iio_context_find_device(osc_ctx, DDS_DEVICE))
 		return false;
 
 	ctx = osc_create_context();
-	dev = iio_context_find_device(ctx, "ad9361-phy");
-	dds = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
+	dev = iio_context_find_device(ctx, PHY_DEVICE);
+	dds = iio_context_find_device(ctx, DDS_DEVICE);
+
 	if (!dev || !dds)
 		iio_context_destroy(ctx);
 	return !!dev && !!dds;
 }
 
 struct osc_plugin plugin = {
+#ifdef SLAVE
+	.name = "FMComms2/3/4-HPC",
+#else
 	.name = "FMComms2/3/4",
+#endif
+
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
 	.save_restore_attribs = fmcomms2_sr_attribs,
