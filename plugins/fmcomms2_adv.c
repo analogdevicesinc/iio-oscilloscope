@@ -33,6 +33,7 @@
 
 static struct iio_context *ctx;
 static struct iio_device *dev;
+static struct iio_device *dev_slave;
 
 static gint this_page;
 static GtkNotebook *nbook;
@@ -179,6 +180,7 @@ static struct w_info attrs[] = {
 	{SPINBUTTON, "adi,txmon-low-gain"},
 	{SPINBUTTON, "adi,txmon-low-high-thresh"},
 	{CHECKBOX, "adi,txmon-one-shot-mode-enable"},
+	{CHECKBOX, "adi,rx1-rx2-phase-inversion-enable"},
 	{COMBOBOX, "bist_prbs"},
 	{COMBOBOX, "loopback"},
 	{BUTTON, "initialize"},
@@ -243,6 +245,9 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 	}
 
 	iio_device_debug_attr_write_longlong(dev, item->name, val);
+
+	if (dev_slave)
+		iio_device_debug_attr_write_longlong(dev_slave, item->name, val);
 }
 
 void bist_tone_cb (GtkWidget *widget, gpointer data)
@@ -270,6 +275,23 @@ void bist_tone_cb (GtkWidget *widget, gpointer data)
 		(c2q << 3) | (c2i << 2) | (c1q << 1) | c1i);
 
 	iio_device_debug_attr_write(dev, "bist_tone", temp);
+
+	if (dev_slave)
+		iio_device_debug_attr_write(dev_slave, "bist_tone", temp);
+
+}
+
+void mcs_cb (GtkWidget *widget, gpointer data)
+{
+	GtkBuilder *builder = data;
+	unsigned step;
+	char temp[40];
+
+	for (step = 1; step <= 5; step++) {
+		sprintf(temp, "%d", step);
+		iio_device_debug_attr_write(dev_slave, "multichip_sync", temp);
+		iio_device_debug_attr_write(dev, "multichip_sync", temp);
+	}
 }
 
 static void connect_widget(GtkBuilder *builder, struct w_info *item)
@@ -377,6 +399,12 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "c1i", "toggled",
 		G_CALLBACK(bist_tone_cb), builder);
 
+	if (dev_slave) {
+		g_builder_connect_signal(builder, "mcs_sync", "clicked",
+			G_CALLBACK(mcs_cb), builder);
+	} else {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "mcs_sync")));
+	}
 
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, "FMComms2 Advanced");
@@ -570,6 +598,8 @@ static bool fmcomms2adv_identify(void)
 
 	ctx = osc_create_context();
 	dev = iio_context_find_device(ctx, "ad9361-phy");
+	dev_slave = iio_context_find_device(ctx, "ad9361-phy-hpc");
+
 	if (dev && !iio_device_get_debug_attrs_count(dev))
 		dev = NULL;
 	if (!dev)
