@@ -113,6 +113,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 
 		} else {
 			fclose(infile);
+			ret = 0;
 			/* Is it a MATLAB file?
 			 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
 			 */
@@ -123,7 +124,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 			rep = 0;
 			matvars = malloc(sizeof(matvar_t *) * tx);
 
-			while ((matvars[rep] = Mat_VarReadNextInfo(matfp)) != NULL && rep < tx) {
+			while (rep < tx && (matvars[rep] = Mat_VarReadNextInfo(matfp)) != NULL) {
 				/* must be a vector */
 				if (matvars[rep]->rank !=2 || (matvars[rep]->dims[0] > 1 && matvars[rep]->dims[1] > 1))
 					return -1;
@@ -184,14 +185,14 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 				}
 			}
 
-			*buf = malloc((size + 1) * (tx == 2) ? 8 : 4);
+			*buf = malloc((size + 1) * ((tx == 2) ? 8 : 4));
 
 			if (*buf == NULL) {
 				printf("error %s:%d\n", __func__, __LINE__);
 				return 0;
 			}
 
-			*count = size * (tx == 2) ? 8 : 4;
+			*count = size * ((tx == 2) ? 8 : 4);
 
 			unsigned long long *sample = *((unsigned long long **) buf);
 			unsigned int *sample_32 = *((unsigned int **) buf);
@@ -233,8 +234,10 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 				im2 = ((double *)matvars[3]->data);
 			} else {
 				printf("Don't understand file type\n");
-				/* need to clean up, huge memory leak occurs here */
-				return -1;
+				free(*buf);
+				*buf = NULL;
+				ret = -1;
+				goto matvar_free;
 			}
 
 			if (tx == 2) {
@@ -250,12 +253,13 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 						       (convert(scale, im1[i]) << 0);
 				}
 			}
-
+		matvar_free:
 			for (j = 0; j <= rep; j++) {
 				Mat_VarFree(matvars[j]);
 			}
 			free(matvars);
 			Mat_Close(matfp);
+			return ret;
 		}
 	} else {
 		fclose(infile);
