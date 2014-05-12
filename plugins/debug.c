@@ -72,6 +72,9 @@ static GtkWidget *label_reg_notes;
 static GtkWidget *label_notes_tag;
 static GtkWidget *warning_label;
 static GtkWidget *reg_autoread;
+static GtkWidget *frm_regmaptype;
+static GtkWidget *spi_regmap;
+static GtkWidget *axicore_regmap;
 
 /* IIO Scan Elements widgets */
 static GtkWidget *scanel_read;
@@ -260,30 +263,42 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 	if (g_strcmp0("None\0", current_device)) {
 		ret = set_debugfs_paths(current_device);
 		if (!ret) {
-			find_device_xml_file(xmls_folder_path,  current_device, buf);
-			temp_path = malloc(strlen(xmls_folder_path) + strlen(buf) + 2);
-			if (!temp_path) {
-				printf("Failed to allocate memory with malloc\n");
-				return;
-			}
-			sprintf(temp_path, "%s/%s", xmls_folder_path, buf);
-			xml_doc = open_xml_file(temp_path, &root);
-			if (xml_doc) {
-				xml_file_opened = 1;
-				create_device_context();
-				g_signal_emit_by_name(spin_btn_reg_addr, "value-changed");
+			find_device_xml_file(xmls_folder_path, current_device, buf);
+			/* Check if device as a corresponding xml file */
+			if (!strcmp(buf, "")) {
+				gtk_widget_show(frm_regmaptype);
+				gtk_widget_show(btn_read_reg);
+				gtk_widget_hide(warning_label);
+				gtk_widget_set_sensitive(spin_btn_reg_value, true);
+				gtk_widget_set_sensitive(label_reg_hex_value,true);
 			} else {
-				printf("Cannot find or load the xml file for the %s device\n", current_device);
+				temp_path = malloc(strlen(xmls_folder_path) + strlen(buf) + 2);
+				if (!temp_path) {
+					printf("Failed to allocate memory with malloc\n");
+					return;
+				}
+				sprintf(temp_path, "%s/%s", xmls_folder_path, buf);
+				xml_doc = open_xml_file(temp_path, &root);
+				if (xml_doc) {
+					xml_file_opened = 1;
+					create_device_context();
+					g_signal_emit_by_name(spin_btn_reg_addr, "value-changed");
+				} else {
+					printf("Cannot load the file %s for the %s device\n",
+						temp_path, current_device);
+				}
+				free(temp_path);
+				gtk_widget_hide(frm_regmaptype);
+				gtk_widget_show(btn_read_reg);
+				gtk_widget_hide(warning_label);
+				gtk_widget_set_sensitive(spin_btn_reg_value, true);
+				gtk_widget_set_sensitive(label_reg_hex_value,true);
 			}
-			free(temp_path);
-			gtk_widget_show(btn_read_reg);
-			gtk_widget_hide(warning_label);
-			gtk_widget_set_sensitive(spin_btn_reg_value, true);
-			gtk_widget_set_sensitive(label_reg_hex_value,true);
 		} else {
 			int id = getuid();
 			if (id != 0)
 				gtk_widget_show(warning_label);
+			gtk_widget_hide(frm_regmaptype);
 			gtk_widget_hide(btn_read_reg);
 			gtk_widget_set_sensitive(spin_btn_reg_value, false);
 			gtk_widget_set_sensitive(label_reg_hex_value, false);
@@ -335,6 +350,7 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		gtk_widget_show(scanel_value);
 		gtk_widget_hide(scanel_options);
 	} else {
+		gtk_widget_hide(frm_regmaptype);
 		gtk_widget_hide(btn_read_reg);
 		gtk_widget_hide(btn_write_reg);
 		gtk_widget_hide(scanel_read);
@@ -346,18 +362,20 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 static void reg_read_clicked(GtkButton *button, gpointer user_data)
 {
 	int i;
-	int address;
-	char buf[10];
+	unsigned address;
+	char buf[16];
 
-	address = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_addr));
-	if (address < 0)
-		return;
+	address = (unsigned)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_addr));
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(axicore_regmap))) {
+		address |= 0x80000000;
+	}
 	i = read_reg(address);
 	if (i >= 0) {
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), i);
 		if (i == 0)
 			g_signal_emit_by_name(spin_btn_reg_value, "value-changed");
-		snprintf(buf, sizeof(buf), "0x%03X", i);
+		snprintf(buf, sizeof(buf), "0x%04X", i);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_value), buf);
 		if (xml_file_opened)
 			reveal_reg_map();
@@ -387,7 +405,7 @@ static void reg_address_value_changed_cb(GtkSpinButton *spinbutton,
 
 	if (!xml_file_opened) {
 		reg_addr = gtk_spin_button_get_value(spinbutton);
-		snprintf(buf, sizeof(buf), "0x%03X", reg_addr);
+		snprintf(buf, sizeof(buf), "0x%04X", reg_addr);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_addr), buf);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), (gdouble)0);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_value), "<unknown>");
@@ -433,7 +451,7 @@ updt_addr:
 	hide_reg_map();
 	reg_addr = (int)gtk_spin_button_get_value(spinbutton);
 	prev_addr = reg_addr;
-	snprintf(buf, sizeof(buf), "0x%.3x", reg_addr);
+	snprintf(buf, sizeof(buf), "0x%04x", reg_addr);
 	gtk_label_set_text((GtkLabel *)label_reg_hex_addr, buf);
 restore_widget:
 	gtk_widget_set_sensitive(spin_btn_reg_addr, TRUE);
@@ -445,13 +463,13 @@ restore_widget:
 
 static void reg_value_change_value_cb(GtkSpinButton *btn, gpointer user_data)
 {
-	int value;
-	int new_value;
-	char buf[10];
+	unsigned value;
+	unsigned new_value;
+	char buf[16];
 
 	if (!xml_file_opened) {
 		value = gtk_spin_button_get_value(btn);
-		snprintf(buf, sizeof(buf), "0x%03X", value);
+		snprintf(buf, sizeof(buf), "0x%04X", value);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_value), buf);
 		return;
 	}
@@ -462,7 +480,7 @@ static void reg_value_change_value_cb(GtkSpinButton *btn, gpointer user_data)
 	g_signal_handler_block(btn, reg_val_hid);
 	gtk_spin_button_set_value(btn, new_value);
 	g_signal_handler_unblock(btn, reg_val_hid);
-	snprintf(buf, sizeof(buf), "0x%03X", new_value);
+	snprintf(buf, sizeof(buf), "0x%04X", new_value);
 	gtk_label_set_text(GTK_LABEL(label_reg_hex_value), buf);
 }
 
@@ -501,7 +519,7 @@ static void spin_or_combo_changed_cb(GtkSpinButton *spinbutton,
 	g_signal_handler_block(spin_btn_reg_value, reg_val_hid);
 	gtk_spin_button_set_value((GtkSpinButton *)spin_btn_reg_value, spin_val);
 	g_signal_handler_unblock(spin_btn_reg_value, reg_val_hid);
-	snprintf(buf, sizeof(buf), "0x%03X", spin_val);
+	snprintf(buf, sizeof(buf), "0x%04X", spin_val);
 	gtk_label_set_text((GtkLabel *)label_reg_hex_value, buf);
 }
 
@@ -1208,7 +1226,10 @@ static int debug_init(GtkWidget *notebook)
 	reg_map_container = GTK_WIDGET(gtk_builder_get_object(builder, "regmap_container"));
 	warning_label = GTK_WIDGET(gtk_builder_get_object(builder, "label_warning"));
 	reg_autoread = GTK_WIDGET(gtk_builder_get_object(builder, "register_autoread"));
-	
+	frm_regmaptype = GTK_WIDGET(gtk_builder_get_object(builder, "frame_regmap_type"));
+	spi_regmap = GTK_WIDGET(gtk_builder_get_object(builder, "radiobtn_spi_map"));
+	axicore_regmap = GTK_WIDGET(gtk_builder_get_object(builder, "radiobtn_axicore_map"));
+
 	vbox_scanel =  GTK_WIDGET(gtk_builder_get_object(builder, "scanel_container"));
 	scanel_read = GTK_WIDGET(gtk_builder_get_object(builder, "debug_read_scan"));
 	scanel_write = GTK_WIDGET(gtk_builder_get_object(builder, "debug_write_scan"));
@@ -1229,7 +1250,7 @@ static int debug_init(GtkWidget *notebook)
 	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel),
 				(const gchar *)"None");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_debug_scanel), 0);
-	
+
 	/* Fill in device list */
 	ret = find_iio_names(&devices, "iio:device");
 	device=devices;
