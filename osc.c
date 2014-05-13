@@ -948,13 +948,12 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 		return iio_device_get_sample_size(dev);
 }
 
-#if 0
-/* TODO(pcercuei): convert this to libiio */
-int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data,
+int plugin_data_capture(const char *device, gfloat ***cooked_data,
 			struct marker_type **markers_cp)
 {
 	OscPlot *fft_plot;
-	struct _device_list *dev, *tmp_dev = NULL;
+	struct iio_device *dev, *tmp_dev = NULL;
+	struct extra_dev_info *dev_info;
 	struct marker_type *markers_copy;
 	GMutex *markers_lock;
 	bool is_fft_mode;
@@ -962,24 +961,25 @@ int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data,
 	bool new = FALSE;
 	const char *tmp = NULL;
 
-	dev = find_device_by_name(device);
+	if (device == NULL)
+		dev = NULL;
+	else
+		dev = iio_context_find_device(ctx, device);
 	fft_plot = find_a_fft_plot(plot_list);
 	if (fft_plot) {
 		tmp = osc_plot_get_active_device(fft_plot);
-		tmp_dev = find_device_by_name(tmp);
+		tmp_dev = iio_context_find_device(ctx, tmp);
 	}
 
 	/* if there isn't anything to send, clear everything */
-	if (dev == NULL || dev->data_buffer.size == 0) {
-		if (buf && *buf) {
-			g_free(*buf);
-			*buf = NULL;
-		}
+	if (dev == NULL) {
 		if (cooked_data && *cooked_data) {
 			if (tmp_dev)
-				for (i = 0; i < tmp_dev->num_active_channels; i++)
-					if ((*cooked_data)[i])
-			g_free((*cooked_data)[i]);
+				for (i = 0; i < iio_device_get_channels_count(tmp_dev); i++)
+					if ((*cooked_data)[i]) {
+						g_free((*cooked_data)[i]);
+						(*cooked_data)[i] = NULL;
+					}
 			g_free(*cooked_data);
 			*cooked_data = NULL;
 		}
@@ -994,22 +994,43 @@ int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data,
 	if (!dev)
 		return -ENXIO;
 
-	if (buf) {
+	if (cooked_data) {
+		dev_info = iio_device_get_data(dev);
+
 		/* One consumer at a time */
-		if (dev->data_buffer.data_copy)
+		if (dev_info->channels_data_copy)
 			return -EBUSY;
 
 		/* make sure space is allocated */
-		if (*buf)
-			*buf = g_renew(int8_t, *buf, dev->data_buffer.size);
-		else
-			*buf = g_new(int8_t, dev->data_buffer.size);
+		if (*cooked_data) {
+			*cooked_data = g_renew(gfloat *, *cooked_data,
+					iio_device_get_channels_count(dev));
+			new = false;
+		} else {
+			*cooked_data = g_new(gfloat *, iio_device_get_channels_count(dev));
+			new = true;
+		}
 
-		if (!*buf)
+		if (!*cooked_data)
 			goto capture_malloc_fail;
 
+		for (i = 0; i < iio_device_get_channels_count(dev); i++) {
+			if (new)
+				(*cooked_data)[i] = g_new(gfloat,
+						dev_info->sample_count);
+			else
+				(*cooked_data)[i] = g_renew(gfloat,
+						(*cooked_data)[i],
+						dev_info->sample_count);
+			if (!(*cooked_data)[i])
+				goto capture_malloc_fail;
+
+			for (j = 0; j < dev_info->sample_count; j++)
+				(*cooked_data)[i][j] = 0.0f;
+		}
+
 		/* where to put the copy */
-		dev->data_buffer.data_copy = *buf;
+		dev_info->channels_data_copy = *cooked_data;
 
 		/* Wait til the buffer is full */
 		G_LOCK(buffer_full);
@@ -1017,44 +1038,9 @@ int plugin_data_capture(const char *device, void **buf, gfloat ***cooked_data,
 		/* if the lock is released, but the copy is still there
 		 * that's because someone else broke the lock
 		 */
-		if (dev->data_buffer.data_copy) {
-			dev->data_buffer.data_copy = NULL;
+		if (dev_info->channels_data_copy) {
+			dev_info->channels_data_copy = NULL;
 			return -EINTR;
-		}
-
-		if (cooked_data) {
-			/* make sure space is allocated */
-			if (*cooked_data) {
-				*cooked_data = g_renew(gfloat *, *cooked_data,
-						dev->num_active_channels);
-				new = false;
-			} else {
-				*cooked_data = g_new(gfloat *, dev->num_active_channels);
-				new = true;
-			}
-
-			if (!*cooked_data)
-				goto capture_malloc_fail;
-
-			for (i = 0; i < dev->num_active_channels; i++) {
-				if (new)
-					(*cooked_data)[i] = g_new(gfloat,
-							dev->data_buffer.size / dev->bytes_per_sample);
-				else
-					(*cooked_data)[i] = g_renew(gfloat,
-							(*cooked_data)[i],
-							dev->data_buffer.size / dev->bytes_per_sample);
-				if (!(*cooked_data)[i])
-					goto capture_malloc_fail;
-
-				for (j = 0; j < dev->data_buffer.size / dev->bytes_per_sample; j++)
-					(*cooked_data)[i][j] = 0.0f;
-			}
-
-			/* Now that we have the space, process it */
-			demux_data_stream(*buf, *cooked_data,
-					dev->data_buffer.size / 4, 0, dev->data_buffer.size / 4,
-					dev->channel_list, dev->num_active_channels);
 		}
 	}
 
@@ -1108,7 +1094,6 @@ capture_malloc_fail:
 	printf("%s:%s malloc failed\n", __FILE__, __func__);
 	return -ENOMEM;
 }
-#endif
 
 static bool force_plugin(const char *name)
 {
@@ -1334,6 +1319,17 @@ static gboolean capture_process(void)
 					dev_info->buffer, demux_sample, NULL);
 			sample_count -= ret / sample_size;
 		} while (sample_count);
+
+		if (dev_info->channels_data_copy) {
+			for (i = 0; i < nb_channels; i++) {
+				struct iio_channel *ch = iio_device_get_channel(dev, i);
+				struct extra_info *info = iio_channel_get_data(ch);
+				memcpy(dev_info->channels_data_copy[i], info->data_ref,
+					dev_info->sample_count * sizeof(gfloat));
+			}
+			dev_info->channels_data_copy = NULL;
+			G_UNLOCK(buffer_full);
+		}
 	}
 
 	update_all_plots();

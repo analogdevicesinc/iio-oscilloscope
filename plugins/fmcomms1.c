@@ -24,7 +24,6 @@
 
 #include "../osc.h"
 #include "../iio_widget.h"
-#include "../iio_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
@@ -758,7 +757,6 @@ static void display_temp(void *ptr)
 static void display_cal(void *ptr)
 {
 	int size, channels, num_samples, i;
-	int8_t *buf = NULL;
 	gfloat **cooked_data = NULL;
 	struct marker_type *markers = NULL;
 	gfloat *channel_I, *channel_Q;
@@ -808,11 +806,11 @@ static void display_cal(void *ptr)
 			/* grab the data */
 			if (cal_rx_flag && cal_rx_level && plugin_get_marker_type(device_ref) == MARKER_IMAGE) {
 				do {
-					ret = plugin_data_capture(device_ref, (void **)&buf, &cooked_data, &markers);
+					ret = plugin_data_capture(device_ref, &cooked_data, &markers);
 				} while ((ret == -EBUSY) && !kill_thread);
 			} else {
 				do {
-					ret = plugin_data_capture(device_ref, (void **)&buf, &cooked_data, NULL);
+					ret = plugin_data_capture(device_ref, &cooked_data, NULL);
 				} while ((ret == -EBUSY) && !kill_thread);
 			}
 
@@ -935,7 +933,7 @@ static void display_cal(void *ptr)
 				if (attempt == 0) {
 					/* if the current value is OK, we leave it alone */
 					do {
-						ret = plugin_data_capture(device_ref, NULL, NULL, &markers);
+						ret = plugin_data_capture(device_ref, NULL, &markers);
 					} while ((ret == -EBUSY) && !kill_thread);
 
 					/* If the lock is broken, then die nicely */
@@ -973,7 +971,7 @@ static void display_cal(void *ptr)
 
 					/* grab the data */
 					do {
-						ret = plugin_data_capture(device_ref, NULL, NULL, &markers);
+						ret = plugin_data_capture(device_ref, NULL, &markers);
 					} while ((ret == -EBUSY) && !kill_thread);
 
 					/* If the lock is broken, then die nicely */
@@ -1034,8 +1032,8 @@ skip_rx_cal:
 
 display_call_ret:
 	/* free the buffers */
-	if (buf || cooked_data || markers)
-		plugin_data_capture(NULL, (void **)&buf, &cooked_data, &markers);
+	if (cooked_data || markers)
+		plugin_data_capture(NULL, &cooked_data, &markers);
 
 	kill_thread = 1;
 	g_thread_exit(NULL);
@@ -1402,15 +1400,12 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 	} while (ret != GTK_RESPONSE_CLOSE &&		/* Clicked on the close button */
 		 ret != GTK_RESPONSE_DELETE_EVENT);	/* Clicked on the close icon */
 
-	if (thid_rx) {
+	if (thid_rx)
 		kill_thread = 1;
-		iio_thread_clear(thid_rx);
-	}
 
 	if (thid_tmp) {
 		kill_thread = 1;
 		g_thread_join(thid_tmp);
-		iio_thread_clear(thid_tmp);
 	}
 
 	if (filename)
@@ -2343,7 +2338,6 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			}
 			g_thread_join(thr);
 			cal_rx_flag = false;
-			iio_thread_clear(thr);
 			gtk_widget_hide(dialogs.calibrate);
 		}
 	} else if (MATCH_ATTRIB("calibrate_tx")) {
@@ -2359,8 +2353,6 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			}
 			g_thread_join(thid);
 			g_thread_join(thr);
-			iio_thread_clear(thr);
-			iio_thread_clear(thid);
 			gtk_widget_hide(dialogs.calibrate);
 		}
 	} else {

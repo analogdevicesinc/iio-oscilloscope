@@ -52,6 +52,7 @@ struct extra_dev_info {
 	unsigned int sample_count;
 	double adc_freq, lo_freq;
 	char adc_scale;
+	gfloat **channels_data_copy;
 	GSList *plots_sample_counts;
 };
 
