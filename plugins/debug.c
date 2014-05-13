@@ -515,7 +515,7 @@ static void spin_or_combo_changed_cb(GtkSpinButton *spinbutton,
 		}
 	}
 	spin_val = gtk_spin_button_get_value((GtkSpinButton *)spin_btn_reg_value);
-	spin_val = spin_val & ~(((1 << width) - 1) << offs);
+	spin_val = spin_val & ~(((1ul << width) - 1) << offs);
 	spin_val = spin_val | opt_val;
 	g_signal_handler_block(spin_btn_reg_value, reg_val_hid);
 	gtk_spin_button_set_value((GtkSpinButton *)spin_btn_reg_value, spin_val);
@@ -859,7 +859,7 @@ static void draw_reg_map(int valid_register)
 			gtk_widget_show(bit_comboboxes[p_bit->offset]);
 		} else {
 			/* Configure the adjustment according with the bit group size */
-			gtk_adjustment_set_upper((GtkAdjustment *)bit_spin_adjustments[p_bit->offset], (1 << p_bit->width) - 1);
+			gtk_adjustment_set_upper((GtkAdjustment *)bit_spin_adjustments[p_bit->offset], (1ul << p_bit->width) - 1);
 			gtk_adjustment_set_value((GtkAdjustment *)bit_spin_adjustments[p_bit->offset], 0);
 			/* Set the spin button value to the default value of the bit group */
 			gtk_spin_button_set_value((GtkSpinButton *)bit_spinbuttons[p_bit->offset], p_bit->def_val);
@@ -1112,7 +1112,7 @@ static int update_regmap(int data)
     p_reg = &soft_reg;
     for (i = 0; i < p_reg->bgroup_cnt; i++){
         p_bit = &p_reg->bgroup_list[i];
-        mask = (1 << p_bit->width) - 1;
+        mask = (1ul << p_bit->width) - 1;
         mask = mask << p_bit->offset;
         bg_value = (data & mask) >> p_bit->offset;
         if (p_bit->options_cnt > 0){
@@ -1126,7 +1126,7 @@ static int update_regmap(int data)
 			gtk_spin_button_set_value((GtkSpinButton *) bit_spinbuttons[p_bit->offset], bg_value);
 			new_data |= bg_value << p_bit->offset;
 		} else {
-			new_data |= 1 << p_bit->offset;
+			new_data |= 1ul << p_bit->offset;
 		}
         }
     }
