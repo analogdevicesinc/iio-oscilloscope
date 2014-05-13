@@ -242,15 +242,15 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 
 			if (tx == 2) {
 				 for (i = 0 ; i < size; i++) {
-					sample[i] = ((unsigned long long) convert(scale, re2[i]) << 48) +
-						    ((unsigned long long) convert(scale, im2[i]) << 32) +
-									 (convert(scale, re1[i]) << 16) +
-									 (convert(scale, im1[i]) << 0);
+					sample[i] = ((unsigned long long) convert(scale, im2[i]) << 48) +
+						    ((unsigned long long) convert(scale, re2[i]) << 32) +
+									 (convert(scale, im1[i]) << 16) +
+									 (convert(scale, re1[i]) << 0);
 				 }
 			} else if (tx == 1) {
 				for (i = 0 ; i < size; i++) {
-					sample_32[i] = (convert(scale, re1[i]) << 16) +
-						       (convert(scale, im1[i]) << 0);
+					sample_32[i] = (convert(scale, im1[i]) << 16) +
+						       (convert(scale, re1[i]) << 0);
 				}
 			}
 		matvar_free:
