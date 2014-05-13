@@ -13,10 +13,12 @@
 #include <gtk/gtk.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
+
+#include <iio.h>
 
 #include "fru.h"
 #include "osc.h"
-#include "iio_utils.h"
 #include "config.h"
 
 typedef struct _Dialogs Dialogs;
@@ -232,7 +234,6 @@ void connect_fillin(Dialogs *data)
 	GtkTextIter iter;
 	char text[256];
 	int num, i;
-	char *devices=NULL, *device;
 	struct stat st;
 
 	/* flushes all open output streams */
@@ -313,19 +314,24 @@ void connect_fillin(Dialogs *data)
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
 
-	num = find_iio_names(&devices, NULL);
-	device=devices;
+	struct iio_context *ctx;
+	struct iio_device *dev;
+
+	ctx = get_context_from_osc();
+	if (!ctx)
+		return;
+	num = iio_context_get_devices_count(ctx);
 	if (num > 0) {
-		for (; num > 0; num--) {
-			sprintf(text, "%s\n", devices);
+		for (i = 0; i < num; i++) {
+			dev = iio_context_get_device(ctx, i);
+			sprintf(text, "%s\n", iio_device_get_name(dev));
 			gtk_text_buffer_insert(buf, &iter, text, -1);
-			devices += strlen(devices) + 1;
 		}
 	} else {
 		sprintf(text, "No iio devices found\n");
 		gtk_text_buffer_insert(buf, &iter, text, -1);
 	}
-	free(device);
+
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_iio), buf);
 	g_object_unref(buf);
 
