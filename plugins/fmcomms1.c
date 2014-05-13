@@ -1416,21 +1416,23 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 
 static void enable_dds(bool dds_enable, bool buffer_enable)
 {
-	struct iio_channel *ch = iio_device_find_channel(dac, "voltage0", true);
+	struct iio_channel *ch = iio_device_find_channel(dac, "altvoltage0", true);
 	bool on_off = dds_enable || buffer_enable;
 	int ret;
 
-	if (!dac_data_loaded)
-		buffer_enable = false;
+	ret = iio_channel_attr_write_bool(ch, "raw", on_off);
+	if (!ret) {
+		if (!dac_data_loaded)
+			buffer_enable = false;
 
-	if (buffer_enable)
-		ret = iio_device_close(dac);
-	else
-		ret = iio_device_open(dac, 0);
+		if (buffer_enable)
+			ret = iio_device_close(dac);
+		else
+			ret = iio_device_open(dac, 0);
+	}
+
 	if (ret < 0)
-		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
-
-	iio_channel_attr_write_bool(ch, "1A_raw", on_off);
+			fprintf(stderr, "Failed to enable buffer: %d\n", ret);
 }
 
 static void manage_dds_mode()
