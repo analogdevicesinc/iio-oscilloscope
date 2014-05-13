@@ -1946,7 +1946,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	const char *dac_sampling_freq_file;
 	struct iio_device *dev = iio_context_find_device(ctx, "adf4351-tx-lpc");
 	struct iio_channel *ch0, *ch1, *ch2, *ch3;
-	const char *scale_available;
+	const char *scale_available, *scale;
 
 	builder = gtk_builder_new();
 
@@ -2064,6 +2064,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
 	scale_available = iio_channel_find_attr(ch0, "scale_available");
+	scale = iio_channel_find_attr(ch0, "scale");
 
 	ch1 = iio_device_find_channel(adc, "voltage0", false);
 	if (iio_channel_find_attr(ch1, "sampling_frequency")) {
@@ -2117,19 +2118,19 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch0, "1A_scale",
+			dac, ch0, scale ?: "1A_scale",
 			scale_available ?: "1A_scale_available",
 			dds3_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch2, "2A_scale",
+			dac, ch2, scale ?: "2A_scale",
 			scale_available ?: "2A_scale_available",
 			dds1_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch1, "1B_scale",
+			dac, ch1, scale ?: "1B_scale",
 			scale_available ?: "1B_scale_available",
 			dds4_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch3, "2B_scale",
+			dac, ch3, scale ?: "2B_scale",
 			scale_available ?: "2B_scale_available",
 			dds2_scale, compare_gain);
 
