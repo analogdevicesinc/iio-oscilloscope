@@ -2193,6 +2193,32 @@ bool is_input_device(const char *device)
 	return is_input;
 }
 
+bool is_output_device(const char *device)
+{
+	struct iio_channel_info *channels = NULL;
+	unsigned int num_channels;
+	bool is_output = false;
+	int ret;
+	int i;
+
+	set_dev_paths(device);
+
+	ret = build_channel_array(dev_name_dir(), &channels, &num_channels);
+	if (ret)
+		return false;
+
+	for (i = 0; i < num_channels; i++) {
+		if (strncmp("out", channels[i].name, 3) == 0) {
+			is_output = true;
+			break;
+		}
+	}
+
+	free_channel_array(channels, num_channels);
+
+	return is_output;
+}
+
 struct plugin_check_fct {
 	void *fct_pointer;
 	char *dev_name;
