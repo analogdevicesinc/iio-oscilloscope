@@ -26,7 +26,7 @@
 
 static struct iio_widget tx_widgets[50];
 static unsigned int num_tx;
-static struct iio_device *crt_device, *trq_dev, *adv_dev;
+static struct iio_device *crt_device, *pid_dev, *adv_dev;
 static struct iio_context *ctx;
 
 /* Global Widgets */
@@ -34,15 +34,14 @@ static GtkWidget *controllers_notebook;
 static GtkWidget *gpo[11];
 static int gpo_id[11];
 
-/* Torque Controller Widgets */
-static GtkWidget *controller_type_torq;
-static GtkWidget *pwm_torq;
+/* PID Controller Widgets */
+static GtkWidget *controller_type_pid;
+static GtkWidget *pwm_pid;
+static GtkWidget *direction_pid;
 static GtkWidget *ref_speed;
 static GtkWidget *kp;
 static GtkWidget *ki;
-static GtkWidget *kp1;
-static GtkWidget *ki1;
-static GtkWidget *kd1;
+static GtkWidget *kd;
 
 /* Advanced Controller Widgets */
 static GtkWidget *command;
@@ -83,9 +82,20 @@ static gboolean change_controller_type_label(GBinding *binding,
 	const GValue *source_value, GValue *target_value, gpointer data)
 {
 	if (g_value_get_boolean(source_value))
-		g_value_set_static_string(target_value, "Torque Controller");
+		g_value_set_static_string(target_value, "PID Controller");
 	else
 		g_value_set_static_string(target_value, "Manual PWM");
+
+	return TRUE;
+}
+
+static gboolean change_direction_label(GBinding *binding,
+	const GValue *source_value, GValue *target_value, gpointer data)
+{
+	if (g_value_get_boolean(source_value))
+		g_value_set_static_string(target_value, "Clockwise");
+	else
+		g_value_set_static_string(target_value, "Counterclockwise");
 
 	return TRUE;
 }
@@ -142,15 +152,15 @@ static void gpo_toggled_cb(GtkToggleButton *btn, gpointer data)
 	int id = *((int *)data);
 	long long value;
 
-	if (trq_dev) {
-		iio_device_attr_read_longlong(trq_dev,
-				"mc_torque_ctrl_gpo", &value);
+	if (pid_dev) {
+		iio_device_attr_read_longlong(pid_dev,
+				"mc_pid_ctrl_gpo", &value);
 		if (gtk_toggle_button_get_active(btn))
 			value |= (1ul << id);
 		else
 			value &= ~(1ul << id);
-		iio_device_attr_write_longlong(trq_dev,
-				"mc_torque_ctrl_gpo", value);
+		iio_device_attr_write_longlong(pid_dev,
+				"mc_pid_ctrl_gpo", value);
 	}
 	if (adv_dev) {
 		iio_device_attr_read_longlong(adv_dev,
@@ -164,59 +174,49 @@ static void gpo_toggled_cb(GtkToggleButton *btn, gpointer data)
 	}
 }
 
-void create_iio_bindings_for_torque_ctrl(GtkBuilder *builder)
+void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder)
 {
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_run",
+		pid_dev, NULL, "mc_pid_ctrl_run",
 		builder, "checkbutton_run", 0);
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_delta",
+		pid_dev, NULL, "mc_pid_ctrl_delta",
 		builder, "checkbutton_delta", 0);
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_matlab",
+		pid_dev, NULL, "mc_pid_ctrl_direction",
+		builder, "togglebtn_direction", 0);
+	direction_pid = tx_widgets[num_tx - 1].widget;
+
+	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+		pid_dev, NULL, "mc_pid_ctrl_matlab",
 		builder, "togglebtn_controller_type", 0);
-	controller_type_torq = tx_widgets[num_tx - 1].widget;
+	controller_type_pid = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_ref_speed",
+		pid_dev, NULL, "mc_pid_ctrl_ref_speed",
 		builder, "spinbutton_ref_speed", NULL);
 	ref_speed = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_kp",
+		pid_dev, NULL, "mc_pid_ctrl_kp",
 		builder, "spinbutton_kp", NULL);
 	kp = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_ki",
-		builder, "spinbutton_ki", NULL);
-	ki = tx_widgets[num_tx - 1].widget;
+		pid_dev, NULL, "mc_pid_ctrl_kd",
+		builder, "spinbutton_kd", NULL);
+	kd = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_kp1",
-		builder, "spinbutton_kp1", NULL);
-	kp1 = tx_widgets[num_tx - 1].widget;
-
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_ki1",
-		builder, "spinbutton_ki1", NULL);
-	ki1 = tx_widgets[num_tx - 1].widget;
-
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_kd1",
-		builder, "spinbutton_kd1", NULL);
-	kd1 = tx_widgets[num_tx - 1].widget;
-
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_pwm",
+		pid_dev, NULL, "mc_pid_ctrl_pwm",
 		builder, "spinbutton_pwm", NULL);
-	pwm_torq = tx_widgets[num_tx - 1].widget;
+	pwm_pid = tx_widgets[num_tx - 1].widget;
 
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-		trq_dev, NULL, "mc_torque_ctrl_sensors",
-		"mc_torque_ctrl_sensors_available", builder,
+		pid_dev, NULL, "mc_pid_ctrl_sensors",
+		"mc_pid_ctrl_sensors_available", builder,
 		"comboboxtext_sensors", NULL);
 }
 
@@ -279,53 +279,51 @@ static void controllers_notebook_page_switched_cb (GtkNotebook *notebook,
 	const gchar *page_name;
 
 	page_name = gtk_notebook_get_tab_label_text(notebook, page);
-	if (!strcmp(page_name, "Torque"))
-		crt_device = trq_dev;
+	if (!strcmp(page_name, "PID"))
+		crt_device = pid_dev;
 	else if (!strcmp(page_name, "Advanced"))
 		crt_device = adv_dev;
 	else
 		printf("Notebook page is unknown to the Motor Control Plugin\n");
 }
 
-static void torque_controller_init(GtkBuilder *builder)
+static void pid_controller_init(GtkBuilder *builder)
 {
-	GtkWidget *box_manpwm_torq_widgets;
-	GtkWidget *box_manpwm_torq_lbls;
-	GtkWidget *box_controller_torq_widgets;
-	GtkWidget *box_controller_torq_lbls;
+	GtkWidget *box_manpwm_pid_widgets;
+	GtkWidget *box_manpwm_pid_lbls;
+	GtkWidget *box_controller_pid_widgets;
+	GtkWidget *box_controller_pid_lbls;
 
-	box_manpwm_torq_widgets = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_manual_pwm_widgets"));
-	box_manpwm_torq_lbls = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_manual_pwm_lbls"));
-	box_controller_torq_widgets = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_torque_ctrl_widgets"));
-	box_controller_torq_lbls = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_torque_ctrl_lbls"));
+	box_manpwm_pid_widgets = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_manual_pwm_widgets"));
+	box_manpwm_pid_lbls = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_manual_pwm_lbls"));
+	box_controller_pid_widgets = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_torque_ctrl_widgets"));
+	box_controller_pid_lbls = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_torque_ctrl_lbls"));
 
 	/* Bind the IIO device files to the GUI widgets */
-	create_iio_bindings_for_torque_ctrl(builder);
+	create_iio_bindings_for_pid_ctrl(builder);
 
 	/* Connect signals. */
-	g_signal_connect(G_OBJECT(pwm_torq), "input", G_CALLBACK(spin_input_cb), &PWM_PERCENT_FLAG);
-	g_signal_connect(G_OBJECT(pwm_torq), "output", G_CALLBACK(spin_output_cb), &PWM_PERCENT_FLAG);
+	g_signal_connect(G_OBJECT(pwm_pid), "input", G_CALLBACK(spin_input_cb), &PWM_PERCENT_FLAG);
+	g_signal_connect(G_OBJECT(pwm_pid), "output", G_CALLBACK(spin_output_cb), &PWM_PERCENT_FLAG);
 	g_signal_connect(G_OBJECT(kp), "input", G_CALLBACK(spin_input_cb), &Kxy_NUM_FRAC_BITS);
 	g_signal_connect(G_OBJECT(kp), "output", G_CALLBACK(spin_output_cb), &Kxy_NUM_FRAC_BITS);
 	g_signal_connect(G_OBJECT(ki), "input", G_CALLBACK(spin_input_cb), &Kxy_NUM_FRAC_BITS);
 	g_signal_connect(G_OBJECT(ki), "output", G_CALLBACK(spin_output_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(kp1), "input", G_CALLBACK(spin_input_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(kp1), "output", G_CALLBACK(spin_output_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(ki1), "input", G_CALLBACK(spin_input_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(ki1), "output", G_CALLBACK(spin_output_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(kd1), "input", G_CALLBACK(spin_input_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(kd1), "output", G_CALLBACK(spin_output_cb), &Kxy_NUM_FRAC_BITS);
+	g_signal_connect(G_OBJECT(kd), "input", G_CALLBACK(spin_input_cb), &Kxy_NUM_FRAC_BITS);
+	g_signal_connect(G_OBJECT(kd), "output", G_CALLBACK(spin_output_cb), &Kxy_NUM_FRAC_BITS);
 
 	/* Bind properties. */
 
-	/* Show widgets listed below when in "Torque Controller" state */
-	g_object_bind_property(controller_type_torq, "active", box_controller_torq_widgets, "visible", 0);
-	g_object_bind_property(controller_type_torq, "active", box_controller_torq_lbls, "visible", 0);
+	/* Show widgets listed below when in "PID Controller" state */
+	g_object_bind_property(controller_type_pid, "active", box_controller_pid_widgets, "visible", 0);
+	g_object_bind_property(controller_type_pid, "active", box_controller_pid_lbls, "visible", 0);
 	/* Show widgets listed below when in "Manual PWM" state */
-	g_object_bind_property(controller_type_torq, "active", box_manpwm_torq_widgets, "visible", G_BINDING_INVERT_BOOLEAN);
-	g_object_bind_property(controller_type_torq, "active", box_manpwm_torq_lbls, "visible", G_BINDING_INVERT_BOOLEAN);
-	/* Change between "Torque Controller" and "Manual PWM" labels on a toggle button */
-	g_object_bind_property_full(controller_type_torq, "active", controller_type_torq, "label", 0, change_controller_type_label, NULL, NULL, NULL);
+	g_object_bind_property(controller_type_pid, "active", box_manpwm_pid_widgets, "visible", G_BINDING_INVERT_BOOLEAN);
+	g_object_bind_property(controller_type_pid, "active", box_manpwm_pid_lbls, "visible", G_BINDING_INVERT_BOOLEAN);
+	/* Change between "PID Controller" and "Manual PWM" labels on a toggle button */
+	g_object_bind_property_full(controller_type_pid, "active", controller_type_pid, "label", 0, change_controller_type_label, NULL, NULL, NULL);
+	/* Change direction label between "CW" and "CCW" */
+	g_object_bind_property_full(direction_pid, "active", direction_pid, "label", 0, change_direction_label, NULL, NULL, NULL);
 }
 
 static void advanced_controller_init(GtkBuilder *builder)
@@ -356,7 +354,7 @@ static int motor_control_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *motor_control_panel;
-	GtkWidget *torque_page;
+	GtkWidget *pid_page;
 	GtkWidget *advanced_page;
 	int i;
 
@@ -367,13 +365,13 @@ static int motor_control_init(GtkWidget *notebook)
 	motor_control_panel = GTK_WIDGET(gtk_builder_get_object(builder, "tablePanelMotor_Control"));
 	controllers_notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook_controllers"));
 
-	torque_page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), 0);
+	pid_page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), 0);
 	advanced_page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), 1);
 
-	if (trq_dev)
-		torque_controller_init(builder);
+	if (pid_dev)
+		pid_controller_init(builder);
 	else
-		gtk_widget_hide(torque_page);
+		gtk_widget_hide(pid_page);
 	if (adv_dev)
 		advanced_controller_init(builder);
 	else
@@ -434,14 +432,14 @@ static bool motor_control_identify(void)
 
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	if (!iio_context_find_device(osc_ctx, "ad-mc-torque-ctrl")
+	if (!iio_context_find_device(osc_ctx, "ad-mc-pid-ctrl")
 		|| !iio_context_find_device(osc_ctx, "ad-mc-adv-ctrl"))
 		return false;
 
 	ctx = osc_create_context();
-	trq_dev = iio_context_find_device(ctx, "ad-mc-torque-ctrl");
+	pid_dev = iio_context_find_device(ctx, "ad-mc-pid-ctrl");
 	adv_dev = iio_context_find_device(ctx, "ad-mc-adv-ctrl");
-	found = !!trq_dev || !!adv_dev;
+	found = !!pid_dev || !!adv_dev;
 	if (!found)
 		iio_context_destroy(ctx);
 	return found;
