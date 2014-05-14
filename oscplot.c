@@ -203,6 +203,8 @@ struct _OscPlotPrivate
 	GtkWidget *channel_math_menuitem;
 	GtkWidget *math_dialog;
 	GtkWidget *capture_options_box;
+	GtkWidget *saveas_settings_box;
+	GtkWidget *save_mat_scale;
 
 	GtkTextBuffer* tbuf;
 
@@ -2058,6 +2060,7 @@ static void saveas_dialog_show(OscPlot *plot, gint saveas_type)
 	gtk_widget_show(save_vsa);
 	gtk_widget_show(save_mat);
 	gtk_widget_show(save_png);
+	gtk_widget_show(priv->saveas_settings_box);
 	gtk_widget_hide(priv->viewport_saveas_channels);
 	gtk_widget_hide(priv->saveas_select_channel_message);
 	switch(saveas_type) {
@@ -2070,11 +2073,13 @@ static void saveas_dialog_show(OscPlot *plot, gint saveas_type)
 			gtk_widget_hide(save_vsa);
 			gtk_widget_hide(save_mat);
 			gtk_widget_hide(save_png);
+			gtk_widget_hide(priv->saveas_settings_box);
 			break;
 		case SAVE_AS_PNG_IMAGE:
 			gtk_widget_hide(save_csv);
 			gtk_widget_hide(save_vsa);
 			gtk_widget_hide(save_mat);
+			gtk_widget_hide(priv->saveas_settings_box);
 			break;
 		default:
 			break;
@@ -2283,8 +2288,23 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				if (save_channels_mask[i] == 1)
 					continue;
 				sprintf(tmp, "%s:%s", dev_name, ch_name);
-				matvar = Mat_VarCreate(tmp, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims,
+				if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->save_mat_scale))) {
+						matvar = Mat_VarCreate(tmp, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims,
 					info->data_ref, 0);
+				} else {
+					const struct iio_data_format* format = iio_channel_get_data_format(chn);
+					gdouble *tmp_data;
+
+					tmp_data = g_new(gdouble, dev_info->sample_count);
+					for (j = 0; j < dev_info->sample_count; j++) {
+						tmp_data[j] = (gdouble)info->data_ref[j] /
+									(pow(2.0, format->bits));
+					}
+					matvar = Mat_VarCreate(tmp, MAT_C_DOUBLE, MAT_T_DOUBLE,
+							2, dims, tmp_data, 0);
+					g_free(tmp_data);
+				}
+
 				if (!matvar)
 					printf("error creating matvar on channel %s\n", tmp);
 				else {
@@ -3534,6 +3554,8 @@ static void create_plot(OscPlot *plot)
 	priv->fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
 	priv->math_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_math_settings"));
 	priv->capture_options_box = GTK_WIDGET(gtk_builder_get_object(builder, "box_capture_options"));
+	priv->saveas_settings_box = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_saveas_settings"));
+	priv->save_mat_scale = GTK_WIDGET(gtk_builder_get_object(builder, "save_mat_scale"));
 
 	priv->tbuf = NULL;
 	priv->ch_settings_list = NULL;
