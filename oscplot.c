@@ -2294,11 +2294,16 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				} else {
 					const struct iio_data_format* format = iio_channel_get_data_format(chn);
 					gdouble *tmp_data;
+					double k;
 
 					tmp_data = g_new(gdouble, dev_info->sample_count);
+					if (format->is_signed)
+						k = format->bits - 1;
+					else
+						k = format->bits;
 					for (j = 0; j < dev_info->sample_count; j++) {
 						tmp_data[j] = (gdouble)info->data_ref[j] /
-									(pow(2.0, format->bits));
+									(pow(2.0, k));
 					}
 					matvar = Mat_VarCreate(tmp, MAT_C_DOUBLE, MAT_T_DOUBLE,
 							2, dims, tmp_data, 0);
