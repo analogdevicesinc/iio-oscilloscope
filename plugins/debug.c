@@ -505,7 +505,7 @@ static void reg_address_value_changed_cb(GtkSpinButton *spinbutton,
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), (gdouble)0);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_value), "<unknown>");
 		gtk_widget_hide(btn_write_reg);
-		return;
+		goto reg_autoread;
 	}
 	gtk_widget_set_sensitive(spin_btn_reg_addr, FALSE);
 	if (!block_signal) {
@@ -552,6 +552,7 @@ restore_widget:
 	gtk_widget_set_sensitive(spin_btn_reg_addr, TRUE);
 	gtk_widget_grab_focus(spin_btn_reg_addr);
 	gtk_editable_select_region(GTK_EDITABLE(spinbutton), 0, 0);
+reg_autoread:
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(reg_autoread)))
 		g_signal_emit_by_name(btn_read_reg, "clicked", NULL);
 }
