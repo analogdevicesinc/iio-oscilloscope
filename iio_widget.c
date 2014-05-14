@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <string.h>
+#include <math.h>
 
 #include "osc.h"
 #include "iio_widget.h"
@@ -73,10 +74,12 @@ static void iio_widget_init(struct iio_widget *widget,
 
 static void iio_spin_button_update(struct iio_widget *widget)
 {
-	gdouble freq;
+	gdouble freq, mag, min, max;
 	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
 	int ret;
 
+	mag = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget->widget));
+	gtk_spin_button_get_range(GTK_SPIN_BUTTON(widget->widget), &min, &max);
 	if (widget->chn)
 		ret = iio_channel_attr_read_double(widget->chn,
 				widget->attr_name, &freq);
@@ -86,7 +89,15 @@ static void iio_spin_button_update(struct iio_widget *widget)
 	if (ret < 0)
 		return;
 
-	freq /= scale;
+	freq /= fabs(scale);
+
+	/* if scale is negative, we treat things a little differently */
+	if (scale < 0) {
+		/* if the setting is negative, and it can be set negative */
+		if (mag < 0 && min < 0)
+			freq *= -1;
+	}
+
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON (widget->widget), freq);
 }
 
@@ -96,7 +107,10 @@ static void spin_button_save(struct iio_widget *widget, bool is_double)
 	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
 
 	freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON (widget->widget));
-	freq *= scale;
+	if (scale < 0)
+		freq = fabs(freq * scale);
+	else
+		freq *= scale;
 
 	if (widget->chn) {
 		if (is_double)
