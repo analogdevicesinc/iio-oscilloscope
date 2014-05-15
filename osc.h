@@ -10,6 +10,7 @@
 #define IIO_THREADS
 
 #include <gtkdatabox.h>
+#include <iio.h>
 
 #define MULTI_OSC "MultiOsc"
 #define CAPTURE_CONF MULTI_OSC"_Capture_Configuration"
@@ -69,6 +70,8 @@ void application_quit (void);
 
 void add_ch_setup_check_fct(char *device_name, void *fp);
 void *find_setup_check_fct_by_devname(const char *dev_name);
+bool is_input_device(const struct iio_device *dev);
+bool is_output_device(const struct iio_device *dev);
 
 struct iio_context * get_context_from_osc(void);
 const void * plugin_get_device_by_reference(const char *device_name);

@@ -1542,7 +1542,11 @@ void sigterm (int signum)
 	application_quit();
 }
 
-bool is_input_device(const struct iio_device *dev)
+/*
+ * Check if a device has scan elements and if it is an output device (type = 0)
+ * or an input device (type = 1).
+ */
+static bool device_type_get(const struct iio_device *dev, int type)
 {
 	struct iio_channel *ch;
 	int nb_channels, i;
@@ -1553,11 +1557,22 @@ bool is_input_device(const struct iio_device *dev)
 	nb_channels = iio_device_get_channels_count(dev);
 	for (i = 0; i < nb_channels; i++) {
 		ch = iio_device_get_channel(dev, i);
-		if (iio_channel_is_scan_element(ch) && !iio_channel_is_output(ch))
+		if (iio_channel_is_scan_element(ch) &&
+			(type ? !iio_channel_is_output(ch) : iio_channel_is_output(ch)))
 			return true;
 	}
 
 	return false;
+}
+
+bool is_input_device(const struct iio_device *dev)
+{
+	return device_type_get(dev, 1);
+}
+
+bool is_output_device(const struct iio_device *dev)
+{
+	return device_type_get(dev, 0);
 }
 
 static void init_device_list(void)
