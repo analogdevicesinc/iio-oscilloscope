@@ -655,7 +655,7 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 				 mag[i] = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[i]));
 				 gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[i]), mag[TX_OFF]);
 			}
- 
+
 		}
 		start = 0;
 		for (i = TX1_T1_I; i <= TX2_T2_Q; i++) {
@@ -766,7 +766,7 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 
 		if (channel == 1)
 			end = TX1_T2_I;
-		else 
+		else
 			end = TX2_T2_I;
 
 		for (i = start; i <= end; i++) {
@@ -1323,10 +1323,10 @@ static int fmcomms2_init(GtkWidget *notebook)
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
-		glb_settings_update_labels);
+		sample_frequency_changed_cb);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
-		glb_settings_update_labels);
-	iio_spin_button_set_on_complete_function(&tx_widgets[rx_lo],
+		sample_frequency_changed_cb);
+	iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo],
 		sample_frequency_changed_cb);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
 		sample_frequency_changed_cb);
