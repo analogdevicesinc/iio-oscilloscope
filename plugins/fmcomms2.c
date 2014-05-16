@@ -1312,10 +1312,10 @@ static int fmcomms2_init(GtkWidget *notebook)
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
-		glb_settings_update_labels);
+		sample_frequency_changed_cb);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
-		glb_settings_update_labels);
-	iio_spin_button_set_on_complete_function(&tx_widgets[rx_lo],
+		sample_frequency_changed_cb);
+	iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo],
 		sample_frequency_changed_cb);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
 		sample_frequency_changed_cb);
