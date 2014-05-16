@@ -1455,16 +1455,12 @@ static bool debug_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	int i, nb_devices;
+	int nb_devices;
 
 	nb_devices = iio_context_get_devices_count(osc_ctx);
-	for (i = 0; i < nb_devices; i++) {
-		struct iio_device *dev = iio_context_get_device(osc_ctx, i);
-
-		if (dev && iio_device_get_debug_attrs_count(dev)) {
-			ctx = osc_create_context();
-			return !!ctx;
-		}
+	if (nb_devices > 0) {
+		ctx = osc_create_context();
+		return !!ctx;
 	}
 
 	return false;
