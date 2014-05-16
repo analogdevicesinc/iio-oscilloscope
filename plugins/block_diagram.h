@@ -8,10 +8,14 @@
 #ifndef __OSC_PLUGIN_BLOCK_H__
 #define __OSC_PLUGIN_BLOCK_H__
 
+#include <stdarg.h>
+
 static double scale_block = 1.0;
 static int x_block = 0, y_block = 0, redraw_block = 0;
 static GtkWidget *block_diagram_events;
-static char block_filename[256];
+static GtkWidget *next_pict, *previous_pict;
+static char *block_filename[256];
+static unsigned int block_num = 0;
 
 static gboolean zoom_image_press_cb (GtkWidget *event_box, GdkEventButton *event, gpointer data)
 {
@@ -22,6 +26,24 @@ static gboolean zoom_image_press_cb (GtkWidget *event_box, GdkEventButton *event
 	gtk_widget_queue_draw(block_diagram_events);
 
 	return TRUE;
+}
+
+static void next_image_cb (GtkButton *btn, gpointer data)
+{
+	block_num += (int)data;
+
+	if (block_filename[block_num + 1] == NULL)
+		gtk_widget_hide(next_pict);
+	else
+		gtk_widget_show(next_pict);
+
+	if (block_num == 0)
+		gtk_widget_hide(previous_pict);
+	else
+		gtk_widget_show(previous_pict);
+
+	scale_block = 1;
+	gtk_widget_queue_draw(block_diagram_events);
 }
 
 static void zoom_image_cb (GtkButton *btn, gpointer data)
@@ -76,11 +98,19 @@ static gboolean draw_block_diagram(GtkWidget *widget, cairo_t *cr, GtkImage *blo
 	scale = scale_block;
 	redraw_block = 0;
 
-	sprintf(name, "./block_diagrams/%s", block_filename);
+	sprintf(name, "./block_diagrams/%s", block_filename[block_num]);
 
-	pixbuf = gdk_pixbuf_new_from_file_at_scale(name, x_big , y_big, false, &err);
+	if (strstr(block_filename[block_num], ".svg"))
+		pixbuf = gdk_pixbuf_new_from_file_at_scale(name, x_big , y_big, false, &err);
+	else {
+		pixbuf = gdk_pixbuf_new_from_file_at_scale(name, x_in , y_in, true, &err);
+		x_in = gdk_pixbuf_get_width(pixbuf);
+		y_in = gdk_pixbuf_get_height(pixbuf);
+		scale_block = 1.0;
+	}
+
 	if (err || pixbuf == NULL) {
-		sprintf(name, "%s/block_diagrams/%s", OSC_PLUGIN_PATH, block_filename);
+		sprintf(name, "%s/block_diagrams/%s", OSC_PLUGIN_PATH, block_filename[block_num]);
 		err = NULL;
 		pixbuf = gdk_pixbuf_new_from_file_at_scale(name, x_big , y_big, false, &err);
 		if (err || pixbuf == NULL) {
@@ -119,15 +149,27 @@ static gboolean draw_block_diagram(GtkWidget *widget, cairo_t *cr, GtkImage *blo
 	return false;
 }
 
-static int block_diagram_init(GtkBuilder *builder, const char *filename)
+static int block_diagram_init(GtkBuilder *builder, int count, ...)
 {
 	GtkImage  *block_diagram;
 	GtkNotebook *noteb;
+	va_list ap;
+	int argno = 0;
 
-	strcpy(block_filename, filename);
+	va_start(ap, count);
+	while (count--) {
+		block_filename[argno++] = va_arg(ap, char *);
+	}
+	block_filename[argno] = NULL;
+	block_num = 0;
+
+	va_end(ap);
 
 	block_diagram = GTK_IMAGE(gtk_builder_get_object(builder, "block_diagram"));
 	block_diagram_events = GTK_WIDGET(gtk_builder_get_object(builder, "block_diagram_events"));
+	next_pict = GTK_WIDGET(gtk_builder_get_object(builder, "next_pict"));
+	previous_pict = GTK_WIDGET(gtk_builder_get_object(builder, "previous_pict"));
+
 	g_signal_connect(block_diagram_events, "expose-event", G_CALLBACK(draw_block_diagram),
 			block_diagram);
 
@@ -139,6 +181,9 @@ static int block_diagram_init(GtkBuilder *builder, const char *filename)
 	g_builder_connect_signal(builder, "unzoom_image", "clicked", G_CALLBACK(zoom_image_cb), (gpointer *)1);
 	g_builder_connect_signal(builder, "auto_image", "clicked", G_CALLBACK(zoom_image_cb), (gpointer *)2);
 	g_builder_connect_signal(builder, "block_diagram_events", "button_press_event", G_CALLBACK(zoom_image_press_cb), NULL);
+	g_builder_connect_signal(builder, "next_pict", "clicked", G_CALLBACK(next_image_cb), (gpointer *)1);
+	g_builder_connect_signal(builder, "previous_pict", "clicked", G_CALLBACK(next_image_cb), (gpointer *)-1);
+	next_image_cb(NULL, NULL);
 
 	return 0;
 }
