@@ -1359,8 +1359,6 @@ static int capture_setup(void)
 {
 	unsigned int i, j;
 
-	fprintf(stderr, "capture setup\n");
-
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
@@ -1409,7 +1407,6 @@ static void capture_start(void)
 	}
 	else {
 		stop_capture = FALSE;
-		fprintf(stderr, "Starting capture process\n");
 		capture_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, (GSourceFunc) capture_process, NULL, NULL);
 	}
 }

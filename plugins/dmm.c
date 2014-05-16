@@ -108,7 +108,6 @@ static void build_channel_list(void)
 	unsigned int enabled;
 	char *device, *device2;
 	gboolean first = FALSE, iter3_valid = FALSE, loop, loop2, all = FALSE;
-	fprintf(stderr, "get devices count\n");
 
 	loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL (device_list_store), &iter);
 	gtk_list_store_clear(channel_list_store);
