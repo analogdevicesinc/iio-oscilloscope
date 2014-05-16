@@ -1335,7 +1335,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
 	plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
 
-	block_diagram_init(builder, "fmcomms2.svg");
+	block_diagram_init(builder, 2, "fmcomms2.svg", "AD_FMCOMM2S2_RevC.jpg");
 
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2_panel, "FMComms2");
