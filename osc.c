@@ -1419,7 +1419,6 @@ static void start(OscPlot *plot, gboolean start_event)
 		stop_capture = TRUE;
 
 		G_TRYLOCK(buffer_full);
-		close_active_buffers();
 
 		/* Start the capture process */
 		capture_setup();
@@ -1427,6 +1426,7 @@ static void start(OscPlot *plot, gboolean start_event)
 		restart_all_running_plots();
 	} else {
 		G_TRYLOCK(buffer_full);
+		close_active_buffers();
 		G_UNLOCK(buffer_full);
 		num_capturing_plots--;
 		if (num_capturing_plots == 0)
