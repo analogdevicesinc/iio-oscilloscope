@@ -1844,7 +1844,6 @@ static void init_application (void)
 	g_signal_connect(G_OBJECT(btn_capture), "activate", G_CALLBACK(new_plot_cb), NULL);
 
 	dialogs_init(builder);
-	trigger_dialog_init(builder);
 	init_device_list();
 	load_plugins(notebook);
 	rx_update_labels();

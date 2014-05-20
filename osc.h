@@ -64,8 +64,7 @@ enum marker_types {
 void rx_update_labels(void);
 void dialogs_init(GtkBuilder *builder);
 void trigger_dialog_init(GtkBuilder *builder);
-void trigger_dialog_show(void);
-bool trigger_update_current_device(char *device);
+void trigger_settings_for_device(GtkBuilder *builder, const char *device);
 void application_quit (void);
 
 void add_ch_setup_check_fct(char *device_name, void *fp);

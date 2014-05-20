@@ -14,163 +14,165 @@
 
 #include "fru.h"
 #include "osc.h"
-#include "iio_utils.h"
 #include "iio_widget.h"
 
-static GtkWidget *trigger_dialog;
-static GtkWidget *trigger_list_widget;
-static GtkListStore *trigger_list_store;
-static GtkWidget *frequency_spin_button;
-static GtkWidget *frequency_spin_button_label;
-static char *current_device;
-
-static void trigger_change_trigger(void)
+static void trigger_change_trigger(GtkComboBox *box, GtkBuilder *builder)
 {
-	const char *current_trigger;
-	bool has_frequency;
-	GtkTreeIter iter;
+	struct iio_context *ctx;
+	struct iio_device *trigger;
+	long long trigger_freq;
+	GtkComboBoxText *trigger_combobox;
+	GtkSpinButton *spinbtn_freq;
+	GtkLabel *label_freq;
+	gchar *current_trigger;
+	gboolean has_frequency;
 
-	if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(trigger_list_widget), &iter)) {
-		gtk_tree_model_get(GTK_TREE_MODEL(trigger_list_store), &iter, 0,
-			&current_trigger, -1);
-
-		if (strcmp(current_trigger, "None") == 0)
-			has_frequency = false;
-		else
-			has_frequency = iio_devattr_exists(current_trigger, "frequency");
-	} else {
+	trigger_combobox = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(builder,
+			"comboboxtext_triggers"));
+	spinbtn_freq = GTK_SPIN_BUTTON(gtk_builder_get_object(builder,
+			"trigger_frequency"));
+	label_freq = GTK_LABEL(gtk_builder_get_object(builder,
+			"trigger_frequency_label"));
+	current_trigger = gtk_combo_box_text_get_active_text(trigger_combobox);
+	if (current_trigger && strcmp(current_trigger, "None"))
+		has_frequency = true;
+	else
 		has_frequency = false;
-	}
 
-	gtk_widget_set_sensitive(frequency_spin_button, has_frequency);
-	gtk_widget_set_sensitive(frequency_spin_button_label, has_frequency);
+	gtk_widget_set_sensitive(GTK_WIDGET(spinbtn_freq), has_frequency);
+	gtk_widget_set_sensitive(GTK_WIDGET(label_freq), has_frequency);
 
 	if (has_frequency) {
-		int freq;
-		set_dev_paths(current_trigger);
-		read_devattr_int("frequency", &freq);
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(frequency_spin_button), freq);
+		ctx = get_context_from_osc();
+		if (!ctx)
+			goto abort;
+		trigger = iio_context_find_device(ctx, current_trigger);
+		if (!trigger)
+			goto abort;
+		if (iio_device_attr_read_longlong(trigger, "frequency",
+				&trigger_freq))
+			goto abort;
+		gtk_spin_button_set_value(spinbtn_freq, trigger_freq);
 	} else {
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(frequency_spin_button), 0);
+		goto abort;
 	}
+
+	return;
+
+abort:
+	gtk_spin_button_set_value(spinbtn_freq, 0);
 }
 
-static void trigger_load_settings(void)
+static void trigger_load_settings(GtkBuilder *builder, const char *device)
 {
-	char *devices = NULL, *device;
-	char *current_trigger;
-	GtkTreeIter iter;
-	unsigned int num;
+	struct iio_context *ctx;
+	struct iio_device *dev;
+	const struct iio_device *trigger;
+	unsigned nb_devices, i;
+	GtkComboBoxText *trigger_combobox;
+	GtkListStore *liststore;
+	int pos, t_cnt;
+
+	ctx = get_context_from_osc();
+	if (!ctx)
+		return;
+
+	trigger_combobox = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(builder,
+				"comboboxtext_triggers"));
+	liststore = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(trigger_combobox)));
+	gtk_list_store_clear(liststore);
+	gtk_combo_box_text_append_text(trigger_combobox, "None");
+
+	dev = iio_context_find_device(ctx, device);
+	if (!dev)
+		return;
+	iio_device_get_trigger(dev, &trigger);
+	if (!trigger)
+		pos = 0;
+
+	nb_devices = iio_context_get_devices_count(ctx);
+	for (i = 0, t_cnt = 0; i < nb_devices; i++) {
+		dev = iio_context_get_device(ctx, i);
+		if (dev && iio_device_is_trigger(dev)) {
+			gtk_combo_box_text_append_text(trigger_combobox,
+					iio_device_get_name(dev));
+			t_cnt++;
+			if (trigger && !strcmp(iio_device_get_name(dev),
+					iio_device_get_name(trigger)))
+				pos = t_cnt;
+		}
+	}
+
+	gtk_combo_box_set_active(GTK_COMBO_BOX(trigger_combobox), pos);
+}
+
+static void trigger_save_settings(GtkBuilder *builder, const char *device)
+{
+	struct iio_context *ctx;
+	struct iio_device *dev;
+	struct iio_device *trigger;
+	GtkComboBoxText *trigger_combobox;
+	GtkSpinButton *spinbtn_freq;
+	gchar *current_trigger;
+
+	trigger_combobox = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(builder,
+			"comboboxtext_triggers"));
+	spinbtn_freq = GTK_SPIN_BUTTON(gtk_builder_get_object(builder,
+			"trigger_frequency"));
+
+	current_trigger = gtk_combo_box_text_get_active_text(trigger_combobox);
+	if (current_trigger) {
+		ctx = get_context_from_osc();
+		if (!ctx)
+			goto abort;
+		dev = iio_context_find_device(ctx, device);
+		if (!dev)
+			goto abort;
+		if (strcmp(current_trigger, "None")) {
+			trigger = iio_context_find_device(ctx, current_trigger);
+			if (!trigger)
+				goto abort;
+			iio_device_attr_write_longlong(trigger, "frequency",
+				(long long)gtk_spin_button_get_value(spinbtn_freq));
+			iio_device_set_trigger(dev, trigger);
+			rx_update_labels();
+		} else {
+			iio_device_set_trigger(dev, NULL);
+		}
+	}
+
+abort:
+	return;
+}
+
+void trigger_settings_for_device(GtkBuilder *builder, const char *device)
+{
+	GtkDialog *dialog;
 	int ret;
 
-	if (!current_device ||
-		!iio_devattr_exists(current_device, "trigger/current_trigger"))
-		return;
-
-	set_dev_paths(current_device);
-	ret = read_devattr("trigger/current_trigger", &current_trigger);
-	if (ret < 0)
-		return;
-
-	num = find_iio_names(&devices, "trigger");
-	if (devices == NULL)
-		return;
-
-	gtk_list_store_clear(trigger_list_store);
-
-	gtk_list_store_append(trigger_list_store, &iter);
-	gtk_list_store_set(trigger_list_store, &iter, 0, "None", -1);
-	gtk_combo_box_set_active_iter(GTK_COMBO_BOX(trigger_list_widget), &iter);
-
-	device = devices;
-	for (; num > 0; num--) {
-		gtk_list_store_append(trigger_list_store, &iter);
-		gtk_list_store_set(trigger_list_store, &iter, 0, device, -1);
-
-		if (strcmp(current_trigger, device) == 0)
-			gtk_combo_box_set_active_iter(GTK_COMBO_BOX(trigger_list_widget), &iter);
-
-		device += strlen(device) + 1;
-	}
-	free(devices);
-	free(current_trigger);
-
-	trigger_change_trigger();
-}
-
-static void trigger_save_settings()
-{
-	const char *current_trigger;
-	GtkTreeIter iter;
-	int freq;
-
-	if (!current_device ||
-		!iio_devattr_exists(current_device, "trigger/current_trigger"))
-		return;
-
-	if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(trigger_list_widget), &iter)) {
-		gtk_tree_model_get(GTK_TREE_MODEL(trigger_list_store), &iter, 0,
-			&current_trigger, -1);
-
-		if (strcmp(current_trigger, "None") == 0)
-			current_trigger = "";
-	} else {
-		current_trigger = "";
-	}
-
-	set_dev_paths(current_device);
-	write_devattr("trigger/current_trigger", current_trigger);
-
-	if (*current_trigger && iio_devattr_exists(current_trigger, "frequency")) {
-		set_dev_paths(current_trigger);
-		freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON(frequency_spin_button));
-		write_devattr_int("frequency", freq);
-	}
-	rx_update_labels();
-}
-
-void trigger_dialog_show(void)
-{
-	int ret;
-
-	trigger_load_settings();
-	ret = gtk_dialog_run(GTK_DIALOG(trigger_dialog));
+	dialog = GTK_DIALOG(gtk_builder_get_object(builder, "trigger_dialog"));
+	trigger_load_settings(builder, device);
+	ret = gtk_dialog_run(dialog);
 	switch(ret) {
 		case GTK_RESPONSE_CANCEL:
 			break;
 		case GTK_RESPONSE_OK:
-			trigger_save_settings();
+			trigger_save_settings(builder, device);
 			break;
 		default:
 			break;
 	}
 
-	gtk_widget_hide(trigger_dialog);
+	gtk_widget_hide(GTK_WIDGET(dialog));
 }
 
 void trigger_dialog_init(GtkBuilder *builder)
 {
-	trigger_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "trigger_dialog"));
-	trigger_list_widget = GTK_WIDGET(gtk_builder_get_object(builder, "trigger_list_combobox"));
-	trigger_list_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "trigger_list"));
-	frequency_spin_button = GTK_WIDGET(gtk_builder_get_object(builder,
-		"trigger_frequency"));
-	frequency_spin_button_label = GTK_WIDGET(gtk_builder_get_object(builder,
-		"trigger_frequency_label"));
+	GtkWidget *trigger_combobox;
 
-	g_signal_connect(trigger_list_widget, "changed",
-		G_CALLBACK(trigger_change_trigger), NULL);
-}
+	trigger_combobox = GTK_WIDGET(gtk_builder_get_object(builder,
+				"comboboxtext_triggers"));
 
-bool trigger_update_current_device(char *device)
-{
-	bool has_trigger;
-
-	current_device = device;
-	if (current_device)
-		has_trigger = iio_devattr_exists(current_device, "trigger/current_trigger");
-	else
-		has_trigger = false;
-	
-	return has_trigger;
+	g_signal_connect(trigger_combobox, "changed",
+		G_CALLBACK(trigger_change_trigger), builder);
 }

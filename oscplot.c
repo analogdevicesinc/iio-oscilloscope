@@ -198,6 +198,8 @@ struct _OscPlotPrivate
 	GtkWidget *fft_size_widget;
 	GtkWidget *fft_avg_widget;
 	GtkWidget *fft_pwr_offset_widget;
+	GtkWidget *device_settings_menu;
+	GtkWidget *device_trigger_menuitem;
 	GtkWidget *channel_settings_menu;
 	GtkWidget *channel_color_menuitem;
 	GtkWidget *channel_math_menuitem;
@@ -608,13 +610,23 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, struct iio_device *de
 		}
 	}
 
+	char warning_text[100];
+
+	/* Check if devices that need a trigger have one and it's configured */
+	const struct iio_device *trigger;
+	if (iio_device_get_trigger(dev, &trigger) == -EIO) {
+		snprintf(warning_text, sizeof(warning_text),
+				"Device %s needs a trigger", name);
+		gtk_widget_set_tooltip_text(priv->capture_button, warning_text);
+		return false;
+	}
+
 	/* Additional validation rules provided by the plugin of the device */
 	if (num_enabled != 2 || plot_type == TIME_PLOT)
 		return true;
 
 	bool valid_comb;
 	const char *ch_names[2];
-	char warning_text[100];
 
 	plugin_setup_validation_fct = find_setup_check_fct_by_devname(name);
 	if (plugin_setup_validation_fct) {
@@ -3317,6 +3329,29 @@ static gboolean tree_get_selected_row_iter(GtkTreeView *treeview, GtkTreeIter *i
 	return true;
 }
 
+static void device_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct iio_device *dev;
+	GtkTreeView *treeview;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	gboolean selected;
+
+	treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	model = gtk_tree_view_get_model(treeview);
+	selected = tree_get_selected_row_iter(treeview, &iter);
+	if (!selected)
+		return;
+	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &dev, -1);
+	if (!dev) {
+		fprintf(stderr, "Invalid reference of iio_device read from devicetree\n");
+		return;
+	}
+	trigger_settings_for_device(priv->builder, iio_device_get_name(dev));
+	check_valid_setup(plot);
+}
+
 static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -3405,18 +3440,34 @@ static void right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 	GtkTreeView *treeview;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
+	gboolean is_device = false;
 	gboolean is_channel = false;
 	gboolean selected;
+	gpointer ref;
 
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(treeview);
 	selected = tree_get_selected_row_iter(treeview, &iter);
 	if (!selected)
 		return;
-	gtk_tree_model_get(model, &iter, IS_CHANNEL, &is_channel, -1);
+	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &ref,
+		IS_DEVICE, &is_device, IS_CHANNEL, &is_channel, -1);
 
 	if (is_channel) {
+		if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot->priv->plot_domain)) != TIME_PLOT)
+			return;
 		gtk_menu_popup(GTK_MENU(priv->channel_settings_menu), NULL, NULL,
+			NULL, NULL,
+			(event != NULL) ? event->button : 0,
+			gdk_event_get_time((GdkEvent*)event));
+	} else if (is_device) {
+		/* Check if device needs a trigger */
+		struct iio_device *dev = ref;
+		const struct iio_device *trigger;
+		int ret = iio_device_get_trigger(dev, &trigger);
+		if (ret == -ENOENT)
+			return;
+		gtk_menu_popup(GTK_MENU(priv->device_settings_menu), NULL, NULL,
 			NULL, NULL,
 			(event != NULL) ? event->button : 0,
 			gdk_event_get_time((GdkEvent*)event));
@@ -3427,8 +3478,6 @@ static gboolean right_click_on_ch_list_cb(GtkTreeView *treeview, GdkEventButton 
 {
 	/* single click with the right mouse button */
 	if (event->type == GDK_BUTTON_PRESS && event->button == 3) {
-		if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot->priv->plot_domain)) != TIME_PLOT)
-			return false;
 		right_click_menu_show(plot, event);
 		return true;
 	}
@@ -3600,10 +3649,20 @@ static void create_plot(OscPlot *plot)
 									G_TYPE_BOOLEAN);  /* SENSITIVE */
 	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 
-	/* Create menus */
+	/* Create Device Settings Menu */
+	GtkWidget *image;
+	priv->device_settings_menu = gtk_menu_new();
+	priv->device_trigger_menuitem = gtk_image_menu_item_new_with_label("Impulse Generator");
+	image = gtk_image_new_from_stock(GTK_STOCK_PREFERENCES, GTK_ICON_SIZE_MENU);
+	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->device_trigger_menuitem), image);
+	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->device_trigger_menuitem), true);
+	gtk_menu_shell_append(GTK_MENU_SHELL(priv->device_settings_menu),
+		priv->device_trigger_menuitem);
+	gtk_widget_show_all(priv->device_settings_menu);
+
+	/* Create Channel Settings Menu */
 	priv->channel_settings_menu = gtk_menu_new();
 	priv->channel_color_menuitem = gtk_image_menu_item_new_with_label("Color Selection");
-	GtkWidget *image;
 
 	image = gtk_image_new_from_stock(GTK_STOCK_SELECT_COLOR, GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_color_menuitem), image);
@@ -3621,6 +3680,9 @@ static void create_plot(OscPlot *plot)
 	/* Create application's treeviews */
 	device_list_treeview_init(plot);
 	saveas_channels_list_fill(plot);
+
+	/* Initialize Impulse Generators (triggers) dialog */
+	trigger_dialog_init(builder);
 
 	/* Connect Signals */
 	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);
@@ -3660,6 +3722,8 @@ static void create_plot(OscPlot *plot)
 
 	g_signal_connect(priv->channel_list_view, "button-press-event",
 		G_CALLBACK(right_click_on_ch_list_cb), plot);
+	g_signal_connect(priv->device_trigger_menuitem, "activate",
+		G_CALLBACK(device_trigger_settings_cb), plot);
 	g_signal_connect(priv->channel_color_menuitem, "activate",
 		G_CALLBACK(channel_color_settings_cb), plot);
 	g_signal_connect(priv->channel_math_menuitem, "activate",
