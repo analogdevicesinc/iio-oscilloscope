@@ -2107,16 +2107,16 @@ static int fmcomms1_init(GtkWidget *notebook)
 	ch2 = iio_device_find_channel(dac, "altvoltage2", true);
 	ch3 = iio_device_find_channel(dac, "altvoltage3", true);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch0, "1A_frequency", dds3_freq, &mhz_scale);
+			dac, ch0, "frequency", dds3_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch2, "2A_frequency", dds1_freq, &mhz_scale);
+			dac, ch2, "frequency", dds1_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch1, "1B_frequency", dds4_freq, &mhz_scale);
+			dac, ch1, "frequency", dds4_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch3, "2B_frequency", dds2_freq, &mhz_scale);
+			dac, ch3, "frequency", dds2_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	iio_combo_box_init(&tx_widgets[num_tx++],
@@ -2137,16 +2137,16 @@ static int fmcomms1_init(GtkWidget *notebook)
 			dds2_scale, compare_gain);
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch0, "1A_phase", dds3_phase, &khz_scale);
+			dac, ch0, "phase", dds3_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch2, "2A_phase", dds1_phase, &khz_scale);
+			dac, ch2, "phase", dds1_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch1, "1B_phase", dds4_phase, &khz_scale);
+			dac, ch1, "phase", dds4_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch3, "2B_phase", dds2_phase, &khz_scale);
+			dac, ch3, "phase", dds2_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	num_tx_pll = num_tx;
