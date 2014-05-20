@@ -351,13 +351,15 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 			find_device_xml_file(xmls_folder_path, current_device, buf);
 
 			/* Attempt to associate AXI Core ADC xml or AXI Core DAC xml to the device */
-			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), false);
-			if (is_input_device(dev)) {
-				sprintf(buf, "adi_regmap_adc.xml");
-				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), true);
-			} else if (is_output_device(dev)) {
-				sprintf(buf, "adi_regmap_dac.xml");
-				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), true);
+			if (!strcmp(buf, "")) {
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), false);
+				if (is_input_device(dev)) {
+					sprintf(buf, "adi_regmap_adc.xml");
+					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), true);
+				} else if (is_output_device(dev)) {
+					sprintf(buf, "adi_regmap_dac.xml");
+					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), true);
+				}
 			}
 
 			if (!strcmp(buf, "")) {
