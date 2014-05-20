@@ -44,10 +44,10 @@ PLUGINS=\
 
 all: multiosc $(PLUGINS)
 
-multiosc: osc.o oscplot.o datatypes.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o
-	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -O2 -o $@
+multiosc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o
+	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
 
-osc.o: osc.c iio_widget.h iio_utils.h int_fft.h osc_plugin.h osc.h ./ini/ini.h
+osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h ./ini/ini.h
 	$(CC) osc.c -c $(CFLAGS)
 
 oscplot.o: oscplot.c oscplot.h osc.h datatypes.h iio_widget.h ./ini/ini.h
@@ -59,19 +59,16 @@ datatypes.o: datatypes.c datatypes.h
 int_fft.o: int_fft.c
 	$(CC) int_fft.c -c $(CFLAGS)
 
-iio_utils.o: iio_utils.c iio_utils.h
-	$(CC) iio_utils.c -c $(CFLAGS) -DIIO_THREADS
-
-iio_widget.o: iio_widget.c iio_widget.h iio_utils.h
+iio_widget.o: iio_widget.c iio_widget.h
 	$(CC) iio_widget.c -c $(CFLAGS)
 
 fru.o: fru.c fru.h
 	$(CC) fru.c -c $(CFLAGS)
 
-dialogs.o: dialogs.c fru.h osc.h iio_utils.h
+dialogs.o: dialogs.c fru.h osc.h
 	$(CC) dialogs.c -c $(CFLAGS) -DFRU_FILES=\"$(FRU_FILES)\"
 
-trigger_dialog.o: trigger_dialog.c fru.h osc.h iio_utils.h iio_widget.h
+trigger_dialog.o: trigger_dialog.c fru.h osc.h iio_widget.h
 	$(CC) trigger_dialog.c -c $(CFLAGS)
 
 xml_utils.o: xml_utils.c xml_utils.h
