@@ -24,7 +24,6 @@
 #include <iio.h>
 
 #include "../osc.h"
-#include "../iio_utils.h"
 #include "../iio_widget.h"
 #include "../osc_plugin.h"
 #include "../config.h"
@@ -369,7 +368,6 @@ static void dmm_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		thr = g_thread_new("Update_DMM", (void *)dmm_update_thread, NULL);
 	} else {
 		if (thr) {
-			iio_thread_clear(thr);
 			g_thread_unref(thr);
 			thr = NULL;
 		}
