@@ -2242,7 +2242,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	dev = iio_context_find_device(ctx, "ad8366-lpc");
 	ch0 = iio_device_find_channel(dev, "voltage0", true);
-	ch1 = iio_device_find_channel(dev, "voltage0", true);
+	ch1 = iio_device_find_channel(dev, "voltage1", true);
 
 	iio_spin_button_init(&rx_widgets[num_rx++],
 			dev, ch0, "hardwaregain", vga_gain0, NULL);
