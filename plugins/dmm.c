@@ -273,7 +273,8 @@ static void init_device_list(void)
 		for (j = 0; !input && j < nch; j++) {
 			struct iio_channel *chn =
 				iio_device_get_channel(dev, j);
-			input = !iio_channel_is_output(chn);
+			input = !iio_channel_is_output(chn) &&
+				!iio_channel_is_scan_element(chn);
 		}
 
 		if (!input)
