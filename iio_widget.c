@@ -103,11 +103,12 @@ static void iio_spin_button_update(struct iio_widget *widget)
 
 static void spin_button_save(struct iio_widget *widget, bool is_double)
 {
-	gdouble freq;
+	gdouble freq, min;
 	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
 
 	freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON (widget->widget));
-	if (scale < 0)
+	min = gtk_adjustment_get_lower(gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(widget->widget)));
+	if (scale < 0 && min < 0)
 		freq = fabs(freq * scale);
 	else
 		freq *= scale;
