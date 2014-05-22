@@ -2616,6 +2616,9 @@ static int device_find_by_name(const char *name)
 {
 	unsigned int i;
 
+	if (!name)
+		return -1;
+
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		const char *id = iio_device_get_name(dev) ?:
@@ -2630,6 +2633,9 @@ static int channel_find_by_name(int device_index, const char *name)
 {
 	struct iio_device *dev = iio_context_get_device(ctx, device_index);
 	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
+
+	if (!name)
+		return -1;
 
 	for (i = 0; i < nb_channels; i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
