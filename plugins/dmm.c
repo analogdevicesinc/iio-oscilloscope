@@ -110,6 +110,7 @@ static void build_channel_list(void)
 	unsigned int enabled;
 	char *device, *device2;
 	gboolean first = FALSE, iter3_valid = FALSE, loop, loop2, all = FALSE;
+	char dev_ch[256];
 
 	loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL (device_list_store), &iter);
 	gtk_list_store_clear(channel_list_store);
@@ -186,9 +187,12 @@ static void build_channel_list(void)
 				id = iio_channel_get_id(chn);
 				if (!name)
 					name = id;
-
+				
+				snprintf(dev_ch, sizeof(dev_ch), "%s:%s", 
+					device, name);
+				
 				gtk_list_store_set(channel_list_store, &iter2,
-						0, name,	/* channel name */
+						0, dev_ch,	/* device & channel name */
 						1, 0,		/* On/Off */
 						2, devid,	/* device ID */
 						3, id,		/* channel ID */
@@ -209,6 +213,10 @@ static void build_channel_list(void)
 		}
 		loop = gtk_tree_model_iter_next(GTK_TREE_MODEL (device_list_store), &iter);
 	}
+
+	gtk_tree_sortable_set_sort_column_id(
+		GTK_TREE_SORTABLE(GTK_TREE_MODEL(channel_list_store)),
+		0, GTK_SORT_ASCENDING);
 
 	if (all)
 		gtk_widget_show(select_all_channels);
@@ -290,6 +298,9 @@ static void init_device_list(void)
 		gtk_list_store_append(device_list_store, &iter);
 		gtk_list_store_set(device_list_store, &iter, 0, id,  1, 0, -1);
 	}
+	gtk_tree_sortable_set_sort_column_id(
+		GTK_TREE_SORTABLE(GTK_TREE_MODEL(device_list_store)),
+		0, GTK_SORT_ASCENDING);
 }
 
 static void dmm_update_thread(void)
