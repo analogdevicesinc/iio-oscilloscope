@@ -22,6 +22,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <complex.h>
 
 #include <fftw3.h>
 
@@ -446,7 +447,7 @@ static void rescale_databox(GtkDatabox *box, gfloat border)
 
 static void auto_scale_databox(GtkDatabox *box)
 {
-	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_auto_scale)))
+	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_auto_scale)) && !do_a_rescale_flag)
 		return;
 
 	/* Auto scale every 10 seconds */
@@ -645,7 +646,7 @@ static void do_fft(struct buffer *buf)
 	unsigned int maxx[MAX_MARKERS + 1];
 	gfloat maxY[MAX_MARKERS + 1];
 
-	static GtkTextBuffer *tbuf = NULL;
+	GtkTextBuffer *tbuf;
 	GtkTextIter iter;
 	char text[256];
 
@@ -691,8 +692,8 @@ static void do_fft(struct buffer *buf)
 	if (num_active_channels == 2) {
 		for (cnt = 0, i = 0; cnt < fft_size; cnt++) {
 			/* normalization and scaling see fft_corr */
-			in_c[cnt][0] = ((int16_t *)(buf->data))[i++] * win[cnt];
-			in_c[cnt][1] = ((int16_t *)(buf->data))[i++] * win[cnt];
+			in_c[cnt] = ((int16_t *)(buf->data))[i++] * win[cnt] ;
+			in_c[cnt] += I * ((int16_t *)(buf->data))[i++] * win[cnt];
 		}
 
 	} else  {
@@ -726,8 +727,8 @@ static void do_fft(struct buffer *buf)
 			j = i;
 		}
 
-		mag = 10 * log10((out[j][0] * out[j][0] +
-				out[j][1] * out[j][1]) / (m * m)) +
+		mag = 10 * log10((creal(out[j]) * creal(out[j]) +
+				cimag(out[j]) * cimag(out[j])) / (m * m)) +
 			fft_corr + pwr_offset + plugin_fft_corr;
 
 		/* it's better for performance to have seperate loops,
@@ -778,11 +779,6 @@ static void do_fft(struct buffer *buf)
 		}
 	}
 
-	if (tbuf == NULL) {
-		tbuf = gtk_text_buffer_new(NULL);
-		gtk_text_view_set_buffer(GTK_TEXT_VIEW(marker_label), tbuf);
-	}
-
 	if ((marker_type == MARKER_ONE_TONE || marker_type == MARKER_IMAGE) &&
 			((num_active_channels == 1 && maxx[0] == 0) ||
 			 (num_active_channels == 2 && maxx[0] == m/2))) {
@@ -793,6 +789,7 @@ static void do_fft(struct buffer *buf)
 		maxx[0] = max_tmp;
 	}
 
+	tbuf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label));
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
 		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
 			if (marker_type == MARKER_PEAK) {
@@ -887,6 +884,145 @@ static void do_fft(struct buffer *buf)
 }
 
 #endif
+
+static void do_xcorr(struct buffer *buf)
+{
+	static fftw_complex *signal_a = NULL, *signal_b = NULL;
+	double a, b, peak_a = 0.0, peak_b = 0.0;
+	double complex ac, bc;
+	static fftw_complex *out_a = NULL, *out_b = NULL;
+	static fftw_complex *dot = NULL, *result = NULL;
+	static fftw_plan pa, pb, px;
+	fftw_complex scale;
+	int i, j, max = 0;
+	static int cached_num_samples = -1;
+	GtkTextBuffer *tbuf;
+	char text[256];
+
+	if ((cached_num_samples == -1) || (cached_num_samples != num_samples) ||
+			(cached_num_active_channels != num_active_channels)) {
+		if (cached_num_samples != -1) {
+			fftw_destroy_plan(pa);
+			fftw_destroy_plan(pb);
+			fftw_destroy_plan(px);
+			fftw_free(signal_a);
+			fftw_free(signal_b);
+			fftw_free(dot);
+			fftw_free(result);
+			fftw_free(out_a);
+			fftw_free(out_b);
+			fftw_cleanup();
+		}
+		/* these need to be (2 * sum_samples) - 1, but for the malloc, we don't care */
+		signal_a = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * num_samples));
+		signal_b = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * num_samples));
+		out_a = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * num_samples));
+		out_b = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * num_samples));
+		dot = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * num_samples));
+		result = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * num_samples));
+
+		pa = fftw_plan_dft_1d(2 * num_samples - 1, signal_a, out_a, FFTW_FORWARD, FFTW_ESTIMATE);
+		pb = fftw_plan_dft_1d(2 * num_samples - 1, signal_b, out_b, FFTW_FORWARD, FFTW_ESTIMATE);
+		px = fftw_plan_dft_1d(2 * num_samples - 1, dot, result, FFTW_BACKWARD, FFTW_ESTIMATE);
+
+		cached_num_samples = num_samples;
+		cached_num_active_channels = num_active_channels;
+	}
+
+	if (!signal_a || !signal_b || !out_a || !out_b || !dot || !result)
+		return;
+
+	/* copy & zeropadding & find the peaks, for normalization */
+	j = 0;
+	memset (signal_a, 0, sizeof(fftw_complex) * (num_samples - 1));
+	memset (signal_b + num_samples, 0, sizeof(fftw_complex) * (num_samples - 1));
+
+	if (num_active_channels == 2) {
+		for (i = 0; i < num_samples; i++) {
+			a = ((int16_t *)(buf->data))[j++];
+			b = ((int16_t *)(buf->data))[j++];
+
+			signal_a[num_samples - 1 + i] = a;
+			signal_b[i] = b;
+			if (peak_a < a)
+				peak_a = a;
+			if (peak_b < b)
+				peak_b = b;
+		}
+	} else if (num_active_channels == 4) {
+		for (i = 0; i < num_samples; i++) {
+			ac =  ((int16_t *)(buf->data))[j++];
+			ac += ((int16_t *)(buf->data))[j++] * I;
+			bc =  ((int16_t *)(buf->data))[j++];
+			bc += ((int16_t *)(buf->data))[j++] * I;
+
+			signal_a[num_samples - 1 + i] = ac;
+			signal_b[i] = bc;
+
+			if (peak_a < cabs(ac))
+				peak_a = cabs(ac);
+			if (peak_b < cabs(bc))
+				peak_b = cabs(bc);
+		}
+	} else
+		return;
+
+	/* Do the FFT on the two signals */
+	fftw_execute(pa);
+	fftw_execute(pb);
+
+	scale = 1.0 / (2 * num_samples - 1);
+
+	/* Dot product, and scale */
+	for (i = 0; i < 2 * num_samples - 1; i++)
+		dot[i] = out_a[i] * conj(out_b[i]) * scale;
+
+	/* Inverse FFT on the dot product */
+	fftw_execute(px);
+
+	/* Normalize the results, and find the peak */
+	for (i = 0;  i < 2 * num_samples - 1; i++) {
+		fft_channel[i] = 2.0 * creal(result[i]) / ((gfloat)num_samples * peak_a * peak_b);
+		if (fft_channel[max] < fft_channel[i])
+			max = i;
+	}
+
+	if (MAX_MARKERS) {
+		markers[0].x = (gfloat)X[max];
+		markers[0].y = (gfloat)fft_channel[max];
+		markers[0].bin = max;
+
+		tbuf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(marker_label));
+		sprintf(text, "Peak (%f) @ %i samples\n", fft_channel[max], (int)X[max]);
+		gtk_text_buffer_set_text(tbuf, text, -1);
+	}
+
+	return;
+}
+
+static gboolean xcorr_capture_func(GtkDatabox *box)
+{
+	int ret;
+	ret = sample_iio_data(&data_buffer);
+
+	if (ret < 0) {
+		abort_sampling();
+		fprintf(stderr, "Failed to capture samples: %d\n", ret);
+		return FALSE;
+	}
+
+	if (data_buffer.available == data_buffer.size) {
+		do_xcorr(&data_buffer);
+		data_buffer.available = 0;
+		auto_scale_databox(box);
+		gtk_widget_queue_draw(GTK_WIDGET(box));
+	}
+
+	usleep(5000);
+	fps_counter();
+
+	return TRUE;
+}
 
 static gboolean fft_capture_func(GtkDatabox *box)
 {
@@ -1211,12 +1347,85 @@ static gint marker_button (GtkDatabox *box, GdkEventButton *event)
 
 }
 
+static void markers_init(float y_setting)
+{
+	int i;
+	char buf[10];
+
+	if (MAX_MARKERS) {
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			markers[i].x = 0.0f;
+			markers[i].y = y_setting;
+			if (markers[i].graph)
+				g_object_unref(markers[i].graph);
+
+			markers[i].graph =  gtk_databox_markers_new(1, &markers[i].x, &markers[i].y, &color_marker,
+					10, GTK_DATABOX_MARKERS_TRIANGLE);
+			gtk_databox_graph_add(GTK_DATABOX(databox), markers[i].graph);
+
+			sprintf(buf, "?%i", i);
+			gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph), 0,
+					GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+
+			if (marker_type == MARKER_OFF)
+				gtk_databox_graph_set_hide(markers[i].graph, TRUE);
+			else
+				gtk_databox_graph_set_hide(markers[i].graph, !markers[i].active);
+		}
+		if (marker_type != MARKER_OFF)
+			set_marker_labels(NULL, marker_type);
+	}
+}
+
 static int prev_num_active_ch = 0;
+
+static int xcorr_capture_setup(void)
+{
+	int i;
+
+	if (channel_data) {
+		for (i = 0; i < prev_num_active_ch; i++)
+			g_free(channel_data[i]);
+		g_free(channel_data);
+		channel_data = NULL;
+	}
+
+	num_samples = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fft_size_widget)));
+
+	data_buffer.size = num_samples * bytes_per_sample * num_active_channels;
+	data_buffer.data = g_renew(int8_t, data_buffer.data, data_buffer.size);
+	data_buffer.data_copy = NULL;
+	markers_copy = NULL;
+
+	num_samples_ploted = num_samples * 2;
+
+	X = g_renew(gfloat, X, num_samples_ploted);
+	fft_channel = g_renew(gfloat, fft_channel, num_samples_ploted);
+
+	for (i = 0; i < num_samples_ploted; i++) {
+		X[i] = i - (gfloat)num_samples + 1;
+		fft_channel[i] = 0;
+	}
+
+	is_fft_mode = false;
+
+	marker_type = MARKER_PEAK;
+	markers[0].active = 1;
+	for (i = 1; i <= MAX_MARKERS; i++)
+		markers[i].active = 0;
+
+	markers_init(0);
+
+	fft_graph = gtk_databox_lines_new(num_samples_ploted, X, fft_channel, &color_graph[0], line_thickness);
+	gtk_databox_graph_add(GTK_DATABOX(databox), fft_graph);
+	do_a_rescale_flag = 1;
+
+	return 0;
+}
 
 static int fft_capture_setup(void)
 {
 	int i;
-	char buf[10];
 
 	if (channel_data) {
 		for (i = 0; i < prev_num_active_ch; i++)
@@ -1244,37 +1453,17 @@ static int fft_capture_setup(void)
 	/* Compute FFT normalization and scaling offset */
 	fft_corr = 20 * log10(2.0 / (1 << (channels[0].bits_used - 1)));
 
-	/*
-	 * Init markers
-	 */
-	if (MAX_MARKERS) {
-		for (i = 0; i <= MAX_MARKERS; i++) {
-			markers[i].x = 0.0f;
-			markers[i].y = -100.0f;
-			if (markers[i].graph)
-				g_object_unref(markers[i].graph);
-
-			markers[i].graph =  gtk_databox_markers_new(1, &markers[i].x, &markers[i].y, &color_marker,
-					10, GTK_DATABOX_MARKERS_TRIANGLE);
-			gtk_databox_graph_add(GTK_DATABOX(databox), markers[i].graph);
-
-			sprintf(buf, "?%i", i);
-			gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph), 0,
-					GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
-
-			if (marker_type == MARKER_OFF)
-				gtk_databox_graph_set_hide(markers[i].graph, TRUE);
-			else
-				gtk_databox_graph_set_hide(markers[i].graph, !markers[i].active);
-		}
-		if (marker_type != MARKER_OFF)
-			set_marker_labels(NULL, marker_type);
-	}
+	markers_init(-100.0);
 
 	fft_graph = gtk_databox_lines_new(num_samples_ploted, X, fft_channel, &color_graph[0], line_thickness);
 	gtk_databox_graph_add(GTK_DATABOX(databox), fft_graph);
 
 	return 0;
+}
+
+static void xcorr_capture_start(void)
+{
+	capture_function = g_idle_add((GSourceFunc) xcorr_capture_func, databox);
 }
 
 static void fft_capture_start(void)
@@ -1748,7 +1937,13 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		} else {
 			gtk_label_set_text(GTK_LABEL(hor_scale), "Samples");
 			gtk_widget_hide(marker_label);
-			ret = time_capture_setup();
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == CORRELATION_PLOT) {
+				gtk_widget_show(marker_label);
+				ret = xcorr_capture_setup();
+			} else {
+				gtk_widget_hide(marker_label);
+				ret = time_capture_setup();
+			}
 		}
 
 		if (ret)
@@ -1766,6 +1961,8 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 
 		if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == FFT_PLOT)
 			fft_capture_start();
+		else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == CORRELATION_PLOT)
+			xcorr_capture_start();
 		else
 			time_capture_start();
 
@@ -2372,14 +2569,16 @@ static gboolean capture_button_icon_transform(GBinding *binding,
 static gboolean domain_is_fft(GBinding *binding,
         const GValue *source_value, GValue *target_value, gpointer user_data)
 {
-	g_value_set_boolean(target_value, g_value_get_int(source_value) == FFT_PLOT);
+	g_value_set_boolean(target_value, g_value_get_int(source_value) == FFT_PLOT ||
+			g_value_get_int(source_value) == CORRELATION_PLOT);
 	return TRUE;
 }
 
 static gboolean domain_is_time(GBinding *binding,
 	const GValue *source_value, GValue *target_value, gpointer user_data)
 {
-	g_value_set_boolean(target_value, g_value_get_int(source_value) != FFT_PLOT);
+	g_value_set_boolean(target_value, g_value_get_int(source_value) != FFT_PLOT &&
+			g_value_get_int(source_value) != CORRELATION_PLOT);
 	return TRUE;
 }
 
@@ -2427,6 +2626,14 @@ static gboolean check_valid_setup()
 	} else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == TIME_PLOT){
 		if (j == 0) {
 			gtk_widget_set_tooltip_text(capture_button, "Time Domain needs at least one channel");
+			goto capture_button_err;
+		}
+	} else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == CORRELATION_PLOT) {
+		if (j == 0) {
+			gtk_widget_set_tooltip_text(capture_button, "Correlation needs at least 2 channels");
+			goto capture_button_err;
+		} else if (j % 2) {
+			gtk_widget_set_tooltip_text(capture_button, "Correlation needs even number of channels");
 			goto capture_button_err;
 		}
 	} else {
@@ -2531,6 +2738,10 @@ void capture_profile_save(const char *filename)
 		fprintf(inifp, "%s\n", "constellation");
 	else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == TIME_PLOT)
 		fprintf(inifp, "%s\n", "time");
+	else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == CORRELATION_PLOT)
+		fprintf(inifp, "%s\n", "correlation");
+	else
+		fprintf(inifp, "%s\n", "unknown");
 
 	tmp_int = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(sample_count_widget));
 	fprintf(inifp, "sample_count=%d\n", tmp_int);
@@ -2721,6 +2932,10 @@ int capture_profile_handler(const char* name, const char *value)
 					gtk_combo_box_set_active(GTK_COMBO_BOX(plot_domain), FFT_PLOT);
 				else if (!strcmp(value, "constellation"))
 					gtk_combo_box_set_active(GTK_COMBO_BOX(plot_domain), XY_PLOT);
+				else if (!strcmp(value, "correlation"))
+					gtk_combo_box_set_active(GTK_COMBO_BOX(plot_domain), CORRELATION_PLOT);
+				else
+					printf("unknown plot type ('%s') in ini", value);
 			} else if (MATCH_NAME("sample_count")) {
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(sample_count_widget), atoi(value));
 			} else if (MATCH_NAME("fft_size")) {
