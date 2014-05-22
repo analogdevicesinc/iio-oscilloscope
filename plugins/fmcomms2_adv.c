@@ -34,6 +34,7 @@
 static struct iio_context *ctx;
 static struct iio_device *dev;
 static struct iio_device *dev_slave;
+static struct iio_device *dev_dds_master;
 
 static gint this_page;
 static GtkNotebook *nbook;
@@ -265,6 +266,91 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 	}
 }
 
+void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
+{
+	unsigned lp_slave, lp_master, sw;
+	char *rx_port, *tx_port;
+	unsigned val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+
+	/*
+	*  0 DISABLE
+	*  1 TX1B_B->RX1C_B: BIST_LOOPBACK on A
+	*  2 TX1B_A->RX1C_B: BIST_LOOPBACK on A
+	*  3 TX1B_B->RX1C_A: BIST_LOOPBACK on B
+	*  4 TX1B_A->RX1C_A: BIST_LOOPBACK on B
+	*
+	*/
+	switch (val) {
+	default:
+	case 0:
+		lp_slave = 0;
+		lp_master = 0;
+		sw = 0;
+		tx_port = "A";
+		rx_port = "A_BALANCED";
+		break;
+	case 1:
+	case 2:
+		lp_slave = 0;
+		lp_master = 1;
+		sw = val - 1;
+		tx_port = "B";
+		rx_port = "C_BALANCED";
+		break;
+	case 3:
+	case 4:
+		lp_slave = 1;
+		lp_master = 0;
+		sw = val - 1;
+		tx_port = "B";
+		rx_port = "C_BALANCED";
+		break;
+	}
+
+	iio_device_debug_attr_write_bool(dev, "loopback", lp_master);
+	iio_device_debug_attr_write_bool(dev_slave, "loopback", lp_slave);
+	iio_device_debug_attr_write_longlong(dev, "calibration_switch_control", sw);
+	iio_device_attr_write(dev, "in_voltage0_rf_port_select", rx_port);
+	iio_device_attr_write(dev_slave, "in_voltage0_rf_port_select", rx_port);
+	iio_device_attr_write(dev, "out_voltage0_rf_port_select", tx_port);
+	iio_device_attr_write(dev_slave, "out_voltage0_rf_port_select", tx_port);
+
+	return;
+
+}
+
+void mcs_cb (GtkWidget *widget, gpointer data)
+{
+	unsigned step;
+	char temp[40], ensm_mode[40];
+	struct iio_channel *out0;
+
+	iio_device_attr_read(dev, "ensm_mode", ensm_mode, sizeof(ensm_mode));
+
+	/* Move the parts int ALERT for MCS */
+	iio_device_attr_write(dev, "ensm_mode", "alert");
+	iio_device_attr_write(dev_slave, "ensm_mode", "alert");
+
+	for (step = 1; step <= 5; step++) {
+		sprintf(temp, "%d", step);
+		/* Don't change the order here - the master controls the SYNC GPIO */
+		iio_device_debug_attr_write(dev_slave, "multichip_sync", temp);
+		iio_device_debug_attr_write(dev, "multichip_sync", temp);
+		sleep(0.1);
+	}
+
+	iio_device_attr_write(dev, "ensm_mode", ensm_mode);
+	iio_device_attr_write(dev_slave, "ensm_mode", ensm_mode);
+
+	/* The two DDSs are synced by toggling the ENABLE bit */
+	if (dev_dds_master) {
+		out0 = iio_device_find_channel(dev_dds_master, "altvoltage0", true);
+
+		iio_channel_attr_write_bool(out0, "raw", 0);
+		iio_channel_attr_write_bool(out0, "raw", 1);
+	}
+}
+
 void bist_tone_cb (GtkWidget *widget, gpointer data)
 {
 	GtkBuilder *builder = data;
@@ -294,19 +380,6 @@ void bist_tone_cb (GtkWidget *widget, gpointer data)
 	if (dev_slave)
 		iio_device_debug_attr_write(dev_slave, "bist_tone", temp);
 
-}
-
-void mcs_cb (GtkWidget *widget, gpointer data)
-{
-	GtkBuilder *builder = data;
-	unsigned step;
-	char temp[40];
-
-	for (step = 1; step <= 5; step++) {
-		sprintf(temp, "%d", step);
-		iio_device_debug_attr_write(dev_slave, "multichip_sync", temp);
-		iio_device_debug_attr_write(dev, "multichip_sync", temp);
-	}
 }
 
 static void connect_widget(GtkBuilder *builder, struct w_info *item)
@@ -413,6 +486,9 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 
 	g_builder_connect_signal(builder, "c1i", "toggled",
 		G_CALLBACK(bist_tone_cb), builder);
+
+	g_builder_connect_signal(builder, "calibration_switch_control", "changed",
+		G_CALLBACK(cal_switch_ports_enable_cb), builder);
 
 	if (dev_slave) {
 		g_builder_connect_signal(builder, "mcs_sync", "clicked",
@@ -614,7 +690,7 @@ static bool fmcomms2adv_identify(void)
 	ctx = osc_create_context();
 	dev = iio_context_find_device(ctx, "ad9361-phy");
 	dev_slave = iio_context_find_device(ctx, "ad9361-phy-hpc");
-
+	dev_dds_master = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
 	if (dev && !iio_device_get_debug_attrs_count(dev))
 		dev = NULL;
 	if (!dev)
