@@ -18,6 +18,7 @@ struct osc_plugin {
 	struct iio_context * (*get_iio_context)(void);
 	char *(*handle_item) (struct osc_plugin *plugin, const char *attrib,
 			      const char *value);
+	int (*handle_external_request) (const char *request);
 	const char **save_restore_attribs;
 	void (*update_active_page)(gint active_page, gboolean is_detached);
 	void (*destroy)(void);

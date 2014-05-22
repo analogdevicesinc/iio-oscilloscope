@@ -248,6 +248,21 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 
 	if (dev_slave)
 		iio_device_debug_attr_write_longlong(dev_slave, item->name, val);
+	
+	if (!strcmp(item->name, "initialize")) {
+		struct osc_plugin *plugin;
+		GSList *node;
+		
+		for (node = plugin_list; node; node = g_slist_next(node)) {
+			plugin = node->data;
+			if (plugin && !strncmp(plugin->name, "FMComms2/3/4", 12)) {
+				if (plugin->handle_external_request) {
+					g_usleep(1 * G_USEC_PER_SEC);
+					plugin->handle_external_request("Reload Settings");
+				}
+			}
+		}
+	}
 }
 
 void bist_tone_cb (GtkWidget *widget, gpointer data)

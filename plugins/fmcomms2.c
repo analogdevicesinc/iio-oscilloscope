@@ -913,6 +913,18 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
+int handle_external_request (const char *request)
+{
+	int ret = 0;
+
+	if (!strcmp(request, "Reload Settings")) {
+		reload_button_clicked(NULL, 0);
+		ret = 1;
+	}
+
+	return ret;
+}
+
 static struct iio_context * fmcomms2_iio_context(void)
 {
 	return ctx;
@@ -1580,6 +1592,7 @@ struct osc_plugin plugin = {
 	.save_restore_attribs = fmcomms2_sr_attribs,
 	.get_iio_context = fmcomms2_iio_context,
 	.handle_item = handle_item,
+	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.destroy = context_destroy,
 };
