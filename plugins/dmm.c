@@ -62,6 +62,9 @@ static struct iio_channel * get_channel(const struct iio_device *dev,
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
 		const char *name = iio_channel_get_name(chn);
 
+		if (iio_channel_is_output(chn))
+			continue;
+
 		if (!strcmp(id, iio_channel_get_id(chn)) ||
 				(name && !strcmp(name, id)))
 			return chn;
