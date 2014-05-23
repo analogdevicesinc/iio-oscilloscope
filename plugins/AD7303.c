@@ -77,8 +77,10 @@ static gfloat *float_soft_buff;
 static gdouble wave_ampl;
 static gdouble wave_offset;
 
+#define TO_BE_UPDATED 0
 static int buffer_open(unsigned int length)
 {
+#if TO_BE_UPDATED
 	struct iio_device *trigger = iio_context_find_device(ctx, "hrtimer-1");
 	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", true);
 	unsigned int sample_size;
@@ -88,6 +90,9 @@ static int buffer_open(unsigned int length)
 
 	sample_size = iio_device_get_sample_size(dev);
 	return iio_device_open(dev, length / sample_size);
+#else
+return 0;
+#endif
 }
 
 static int buffer_close()

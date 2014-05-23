@@ -261,8 +261,11 @@ static void cal_update_values(void)
 	iio_update_widgets(cal_widgets, num_cal);
 }
 
+#define TO_BE_UPDATE 0
+
 void dac_buffer_config_file_set_cb(GtkFileChooser *chooser, gpointer data)
 {
+#if TO_BE_UPDATED
 	unsigned int i, nb_channels = iio_device_get_channels_count(dac);
 	int ret, size;
 	struct stat st;
@@ -302,6 +305,7 @@ void dac_buffer_config_file_set_cb(GtkFileChooser *chooser, gpointer data)
 
 	iio_device_close(dac);
 	dac_data_loaded = true;
+#endif
 }
 
 static int compare_gain(const char *a, const char *b)
@@ -496,9 +500,9 @@ static void enable_dds(bool dds_enable, bool buffer_enable)
 		buffer_enable = false;
 
 	if (buffer_enable)
-		ret = iio_device_close(dac);
+		;//ret = iio_device_close(dac); // TO BE UPDATED TO THE LATEST LIBIIO
 	else
-		ret = iio_device_open(dac, 0);
+		;//ret = iio_device_open(dac, 0); // TO BE UPDATED TO THE LATEST LIBIIO
 	if (ret < 0)
 		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
 

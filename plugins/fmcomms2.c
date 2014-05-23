@@ -410,9 +410,10 @@ void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 
 	load_fir_filter(file_name);
 }
-
+#define TO_BE_UPDATED 0
 static void process_dac_buffer_file (const char *file_name)
 {
+#if TO_BE_UPDATED
 	int ret, size = 0;
 	struct stat st;
 	char *buf = NULL;
@@ -455,6 +456,7 @@ static void process_dac_buffer_file (const char *file_name)
 		free(dac_buf_filename);
 	dac_buf_filename = malloc(strlen(file_name) + 1);
 	strcpy(dac_buf_filename, file_name);
+#endif
 }
 
 static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
@@ -595,9 +597,9 @@ static void enable_dds(bool on_off)
 			"raw", on_off);
 	if (!ret) {
 		if (on_off)
-			ret = iio_device_open(dds, 0);
+			;//ret = iio_device_open(dds, 0); // TO BE UPDATED TO THE LATEST LIBIIO
 		else if (dac_data_loaded)
-			ret = iio_device_close(dds);
+			;//ret = iio_device_close(dds); // TO BE UPDATED TO THE LATEST LIBIIO
 	}
 
 	if (ret < 0)
