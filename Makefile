@@ -1,8 +1,8 @@
 TMP = temp_resources
 DESTDIR=/usr/local
 PREFIX=/usr/local
-PSHARE=$(PREFIX)/share/osc
-PLIB=$(PREFIX)/lib/osc
+PSHARE=$(PREFIX)/share/multiosc
+PLIB=$(PREFIX)/lib/multiosc
 
 # this is where the master fru files are (assuming they are installed at all)
 FRU_FILES=$(PREFIX)/lib/fmc-tools/
@@ -90,13 +90,13 @@ install:
 	mv $(TMP)/osc.glade $(TMP)/multi_plot_osc.glade
 	mv $(TMP)/adi-osc.desktop $(TMP)/adi-multi_plot_osc.desktop
 	install -d $(DESTDIR)/bin
-	install -d $(DESTDIR)/share/osc/
-	install -d $(DESTDIR)/lib/osc/
-	install -d $(DESTDIR)/lib/osc/xmls
-	install -d $(DESTDIR)/lib/osc/filters
-	install -d $(DESTDIR)/lib/osc/waveforms
-	install -d $(DESTDIR)/lib/osc/multiosc/profiles
-	install -d $(DESTDIR)/lib/osc/block_diagrams
+	install -d $(DESTDIR)/share/multiosc/
+	install -d $(DESTDIR)/lib/multiosc/
+	install -d $(DESTDIR)/lib/multiosc/xmls
+	install -d $(DESTDIR)/lib/multiosc/filters
+	install -d $(DESTDIR)/lib/multiosc/waveforms
+	install -d $(DESTDIR)/lib/multiosc/profiles
+	install -d $(DESTDIR)/lib/multiosc/block_diagrams
 	install ./multiosc $(DESTDIR)/bin/
 	install ./$(TMP)/*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
@@ -109,7 +109,7 @@ install:
 	install ./xmls/* $(PLIB)/xmls
 	install ./filters/* $(PLIB)/filters
 	install ./waveforms/* $(PLIB)/waveforms
-	install ./profiles/* $(PLIB)/multiosc/profiles
+	install ./profiles/* $(PLIB)/profiles
 	install ./block_diagrams/* $(PLIB)/block_diagrams
 
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
