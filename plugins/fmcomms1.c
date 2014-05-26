@@ -2347,6 +2347,13 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
 			return buf;
 		}
+	} else if (MATCH_ATTRIB("dac_buf_filename") &&
+				gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)) == 4) {
+		if (value) {
+			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dac_buffer), value);
+			process_dac_buffer_file(value);
+		} else
+			return dac_buf_filename;
 	} else if (MATCH_ATTRIB("calibrate_rx_level")) {
 		if (value)
 			cal_rx_level = atof(value);
@@ -2411,6 +2418,7 @@ static const char *fmcomms1_sr_attribs[] = {
 	"cf-ad9122-core-lpc.out_altvoltage_interpolation_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage_interpolation_center_shift_frequency",
 	"dds_mode",
+	"dac_buf_filename",
 	"cf-ad9122-core-lpc.out_altvoltage0_1A_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage2_2A_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage1_1B_frequency",
