@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <malloc.h>
+#include <string.h>
 
 #include "../osc.h"
 #include "../iio_widget.h"
@@ -35,6 +36,7 @@ static gint fill_buffer_function = 0;
 static struct iio_device *dev;
 static bool dev_opened;
 static struct iio_context *ctx;
+static struct iio_buffer *dac_buff;
 
 static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
@@ -77,10 +79,8 @@ static gfloat *float_soft_buff;
 static gdouble wave_ampl;
 static gdouble wave_offset;
 
-#define TO_BE_UPDATED 0
 static int buffer_open(unsigned int length)
 {
-#if TO_BE_UPDATED
 	struct iio_device *trigger = iio_context_find_device(ctx, "hrtimer-1");
 	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", true);
 	unsigned int sample_size;
@@ -89,15 +89,18 @@ static int buffer_open(unsigned int length)
 	iio_channel_enable(ch0);
 
 	sample_size = iio_device_get_sample_size(dev);
-	return iio_device_open(dev, length / sample_size);
-#else
-return 0;
-#endif
+
+	dac_buff = iio_device_create_buffer(dev, length / sample_size, false);
+
+	return (dac_buff) ? 0 : 1;
 }
 
 static int buffer_close()
 {
-	return iio_device_close(dev);
+	iio_buffer_destroy(dac_buff);
+	dac_buff = NULL;
+
+	return 0;
 }
 
 static int FillSoftBuffer(int waveType, uint8_t *softBuffer)
@@ -239,8 +242,8 @@ static gboolean fillBuffer(void)
 	int ret;
 
 	samplesToSend = buffer_size - current_sample;
-	ret = (int) iio_device_write_raw(dev,
-			soft_buffer_ch0 + current_sample, samplesToSend);
+	memcpy(iio_buffer_start(dac_buff), soft_buffer_ch0 + current_sample, samplesToSend);
+	ret = iio_buffer_push(dac_buff);
 	if (ret < 0)
 		printf("Error occured while writing to buffer: %d\n", ret);
 	else {
@@ -372,6 +375,10 @@ static int AD7303_init(GtkWidget *notebook)
 
 static void context_destroy(void)
 {
+	if (dac_buff) {
+		iio_buffer_destroy(dac_buff);
+		dac_buff = NULL;
+	}
 	iio_context_destroy(ctx);
 }
 
