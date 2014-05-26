@@ -88,9 +88,9 @@ static char * process_value(char* value)
 			tmp4[strlen(tmp4) -1] = 0;
 
 		sprintf(tmp2, "%.*s%s%.*s",
-			(int)(next - 1 - value), value,
-			tmp4,
-			strlen(value) - 2 - strlen(tmp), next + 1 + strlen(tmp));
+			(int) (long) (next - 1 - value), value, tmp4,
+			(int) (long) (strlen(value) - 2 - strlen(tmp)),
+			next + 1 + strlen(tmp));
 		return tmp2;
 	}
 
@@ -136,9 +136,9 @@ static char * process_value(char* value)
 		tmp4[strlen(tmp4) -1] = 0;
 
 	sprintf(tmp2, "%.*s%s%.*s",
-			(int)(next - 1 - value), value,
-			tmp4,
-			strlen(value) - 2 - strlen(tmp), next + 1 + strlen(tmp));
+			(int) (long) (next - 1 - value), value, tmp4,
+			(int) (long) (strlen(value) - 2 - strlen(tmp)),
+			next + 1 + strlen(tmp));
 	tmp3 = tmp2;
 	if (strchr(tmp2, '{'))
 		tmp3 = process_value(tmp2);
@@ -405,9 +405,8 @@ static const char * unroll(const char *in_filename)
 								tmp2[strlen(tmp2) -1] = 0;
 
 							fprintf(out, "%.*s%s%.*s",
-								(int)(replace - buf), buf,
-								tmp2,
-								strlen(buf) - (int)(replace - buf) - strlen(tmp),
+								(int) (long) (replace - buf), buf, tmp2,
+								(int) (long) (strlen(buf) - (int)(replace - buf) - strlen(tmp)),
 								replace + strlen(tmp));
 
 						}

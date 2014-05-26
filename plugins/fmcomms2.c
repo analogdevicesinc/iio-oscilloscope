@@ -498,8 +498,8 @@ static int compare_gain(const char *a, const char *b)
 
 static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer channel)
 {
-	gint ch1 = TX1_T1_I + (((int)channel - 1) * 4);
-	gint ch2 = TX1_T2_I + (((int)channel - 1) * 4);
+	gint ch1 = TX1_T1_I + (((long) channel - 1) * 4);
+	gint ch2 = TX1_T2_I + (((long) channel - 1) * 4);
 
 	gdouble phase1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_phase[ch1]));
 	gdouble phase2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_phase[ch2]));
@@ -517,7 +517,7 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer channel)
 	if ((phase1 - inc1) < 0)
 		phase1 += 360;
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel]))) {
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel]))) {
 		case DDS_ONE_TONE:
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_phase[ch1 + 2]), phase1 - inc1);
 			break;
@@ -540,13 +540,13 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer channel)
 
 static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer channel)
 {
-	gint ch1 = TX1_T1_I + (((int)channel - 1) * 4);
-	gint ch2 = TX1_T2_I + (((int)channel - 1) * 4);
+	gint ch1 = TX1_T1_I + (((long)channel - 1) * 4);
+	gint ch2 = TX1_T2_I + (((long)channel - 1) * 4);
 
 	gdouble freq1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch1]));
 	gdouble freq2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch2]));
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel]))) {
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel]))) {
 		case DDS_ONE_TONE:
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_freq[ch1 + 2]), freq1);
 			break;
@@ -556,7 +556,7 @@ static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer channel)
 			break;
 		default:
 			printf("%s: error : %i\n", __func__,
-					gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel])));
+					gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel])));
 			break;
 	}
 
@@ -565,13 +565,13 @@ static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer channel)
 
 static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer channel)
 {
-	gint ch1 = TX1_T1_I + (((int)channel - 1) * 4);
-	gint ch2 = TX1_T2_I + (((int)channel - 1) * 4);
+	gint ch1 = TX1_T1_I + (((long)channel - 1) * 4);
+	gint ch2 = TX1_T2_I + (((long)channel - 1) * 4);
 
 	gint scale1 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[ch1]));
 	gint scale2 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[ch2]));
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel]))) {
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel]))) {
 		case DDS_ONE_TONE:
 			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[ch1 + 2]), scale1);
 			break;
@@ -602,7 +602,7 @@ static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data
 
 static void rx_phase_rotation(GtkSpinButton *spinbutton, gpointer user_data)
 {
-	gint offset = (gint) user_data;
+	glong offset = (glong) user_data;
 	struct iio_channel *out0, *out1;
 	gdouble val, phase;
 
@@ -644,7 +644,7 @@ static void enable_dds(bool on_off)
 #define IIO_SPIN_SIGNAL "value-changed"
 #define IIO_COMBO_SIGNAL "changed"
 
-static void manage_dds_mode(GtkComboBox *box, gint channel)
+static void manage_dds_mode(GtkComboBox *box, glong channel)
 {
 	gint active, i, start, end;
 	static gint *mag = NULL;

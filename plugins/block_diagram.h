@@ -30,7 +30,7 @@ static gboolean zoom_image_press_cb (GtkWidget *event_box, GdkEventButton *event
 
 static void next_image_cb (GtkButton *btn, gpointer data)
 {
-	block_num += (int)data;
+	block_num += (long) data;
 
 	if (block_filename[block_num + 1] == NULL)
 		gtk_widget_hide(next_pict);
@@ -48,7 +48,7 @@ static void next_image_cb (GtkButton *btn, gpointer data)
 
 static void zoom_image_cb (GtkButton *btn, gpointer data)
 {
-	switch ((int)data) {
+	switch ((long) data) {
 		case 0:
 			scale_block += .1;
 			break;
