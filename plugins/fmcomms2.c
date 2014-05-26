@@ -46,6 +46,7 @@
 extern gfloat plugin_fft_corr;
 
 static bool is_2rx_2tx;
+static bool dds_activated, dds_disabled;
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble abs_mhz_scale = -1000000.0;
@@ -53,7 +54,7 @@ static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
 static char *dac_buf_filename = NULL;
 
-static bool dac_data_loaded = false;
+static struct iio_buffer *dds_buffer;
 
 static struct iio_widget glb_widgets[50];
 static struct iio_widget tx_widgets[50];
@@ -126,6 +127,8 @@ static GtkNotebook *nbook;
 static gboolean plugin_detached;
 
 static char last_fir_filter[PATH_MAX];
+
+static void enable_dds(bool on_off);
 
 static void tx_update_values(void)
 {
@@ -412,13 +415,12 @@ void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 
 	load_fir_filter(file_name);
 }
-#define TO_BE_UPDATED 0
+
 static void process_dac_buffer_file (const char *file_name)
 {
-#if TO_BE_UPDATED
 	int ret, size = 0;
 	struct stat st;
-	char *buf = NULL;
+	char *buf = NULL, *tmp;
 	FILE *infile;
 	unsigned int i, nb_channels = iio_device_get_channels_count(dds);
 
@@ -436,29 +438,35 @@ static void process_dac_buffer_file (const char *file_name)
 		fclose(infile);
 	}
 
+	if (dds_buffer) {
+		iio_buffer_destroy(dds_buffer);
+		dds_buffer = NULL;
+	}
+
+	enable_dds(false);
+
 	/* Enable all channels */
 	for (i = 0; i < nb_channels; i++)
 		iio_channel_enable(iio_device_get_channel(dds, i));
 
-	ret = iio_device_open(dds, 0);
-	if (ret < 0) {
+	dds_buffer = iio_device_create_buffer(dds, size / iio_device_get_sample_size(dds), true);
+	if (!dds_buffer) {
+		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
 		free(buf);
 		return;
 	}
 
-	ret = iio_device_write_raw(dds, buf, size);
-	if (ret != size)
-		fprintf(stderr, "Loading waveform failed %d\n", ret);
+	memcpy(iio_buffer_start(dds_buffer), buf,
+			iio_buffer_end(dds_buffer) - iio_buffer_start(dds_buffer));
+
+	iio_buffer_push(dds_buffer);
 	free(buf);
 
-	iio_device_close(dds);
-	dac_data_loaded = true;
-
+	tmp = strdup(file_name);
 	if (dac_buf_filename)
 		free(dac_buf_filename);
-	dac_buf_filename = malloc(strlen(file_name) + 1);
-	strcpy(dac_buf_filename, file_name);
-#endif
+	dac_buf_filename = tmp;
+	printf("Waveform loaded\n");
 }
 
 static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
@@ -615,18 +623,22 @@ static void rx_phase_rotation(GtkSpinButton *spinbutton, gpointer user_data)
 
 static void enable_dds(bool on_off)
 {
-	int ret = iio_channel_attr_write_bool(
-			iio_device_find_channel(dds, "altvoltage0", true),
-			"raw", on_off);
-	if (!ret) {
-		if (on_off)
-			;//ret = iio_device_open(dds, 0); // TO BE UPDATED TO THE LATEST LIBIIO
-		else if (dac_data_loaded)
-			;//ret = iio_device_close(dds); // TO BE UPDATED TO THE LATEST LIBIIO
+	int ret;
+
+	if (on_off == dds_activated && !dds_disabled)
+		return;
+	dds_activated = on_off;
+
+	if (dds_buffer) {
+		iio_buffer_destroy(dds_buffer);
+		dds_buffer = NULL;
 	}
 
-	if (ret < 0)
+	ret = iio_channel_attr_write_bool(iio_device_find_channel(dds, "altvoltage0", true), "raw", on_off);
+	if (ret < 0) {
 		fprintf(stderr, "Failed to toggle DDS: %d\n", ret);
+		return;
+	}
 }
 
 #define IIO_SPIN_SIGNAL "value-changed"
@@ -669,7 +681,6 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 		}
 	}
 
-
 	switch (active) {
 	case DDS_DISABLED:
 		if (channel == 1) {
@@ -691,6 +702,11 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 			if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[i])) !=  mag[TX_OFF])
 				start++;
 		}
+		if (!dds_activated && dds_buffer) {
+			iio_buffer_destroy(dds_buffer);
+			dds_buffer = NULL;
+		}
+		dds_disabled = true;
 		if (!start)
 			enable_dds(false);
 		else
@@ -851,7 +867,10 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 		}
 		break;
 	case DDS_BUFFER:
-		enable_dds(false);
+		if ((dds_activated || dds_disabled) && dac_buf_filename) {
+			dds_disabled = false;
+			process_dac_buffer_file(dac_buf_filename);
+		}
 		gtk_widget_show(dac_buffer);
 		gtk_widget_hide(channel_I_tx[1]);
 		gtk_widget_hide(channel_Q_tx[1]);
