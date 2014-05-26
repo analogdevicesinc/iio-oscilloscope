@@ -36,9 +36,11 @@
 #ifndef SLAVE
 #define PHY_DEVICE "ad9361-phy"
 #define DDS_DEVICE "cf-ad9361-dds-core-lpc"
+#define CAP_DEVICE "cf-ad9361-lpc"
 #else
 #define PHY_DEVICE "ad9361-phy-hpc"
 #define DDS_DEVICE "cf-ad9361-dds-core-hpc"
+#define CAP_DEVICE "cf-ad9361-hpc"
 #endif
 
 extern gfloat plugin_fft_corr;
@@ -62,7 +64,7 @@ static unsigned int rx_lo, tx_lo;
 static unsigned int rx_sample_freq, tx_sample_freq;
 
 static struct iio_context *ctx;
-static struct iio_device *dev, *dds;
+static struct iio_device *dev, *dds, *cap;
 
 /* Widgets for Global Settings */
 static GtkWidget *ensm_mode;
@@ -585,6 +587,27 @@ static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data
 			gtk_adjustment_set_value(adj_freq[i], rate);
 		gtk_adjustment_set_lower(adj_freq[i], -1 * rate);
 		gtk_adjustment_set_upper(adj_freq[i], rate);
+	}
+}
+
+static void rx_phase_rotation(GtkSpinButton *spinbutton, gpointer user_data)
+{
+	gint offset = (gint) user_data;
+	struct iio_channel *out0, *out1;
+	gdouble val, phase;
+
+	val = gtk_spin_button_get_value(spinbutton);
+
+	phase = val * 2 * M_PI / 360.0;
+
+	out0 = iio_device_get_channel(cap, 0 + offset);
+	out1 = iio_device_get_channel(cap, 1 + offset);
+
+	if (out1 && out0) {
+		iio_channel_attr_write_double(out0, "calibscale", (double) cos(phase));
+		iio_channel_attr_write_double(out0, "calibphase", (double) (-1 * sin(phase)));
+		iio_channel_attr_write_double(out1, "calibscale", (double) cos(phase));
+		iio_channel_attr_write_double(out1, "calibphase", (double) sin(phase));
 	}
 }
 
@@ -1258,6 +1281,16 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	/* Signals connect */
+
+	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
+			G_CALLBACK(rx_phase_rotation), (gpointer *)0);
+
+	g_builder_connect_signal(builder, "rx2_phase_rotation", "value-changed",
+			G_CALLBACK(rx_phase_rotation), (gpointer *)2);
+
+	g_builder_connect_signal(builder, "sampling_freq_tx", "value-changed",
+			G_CALLBACK(tx_sample_rate_changed), NULL);
+
 	g_signal_connect(dds_mode_tx[1], "changed", G_CALLBACK(manage_dds_mode),
 			(gpointer *)1);
 	g_signal_connect(dds_mode_tx[2], "changed", G_CALLBACK(manage_dds_mode),
@@ -1574,10 +1607,12 @@ static bool fmcomms2_identify(void)
 	ctx = osc_create_context();
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
 	dds = iio_context_find_device(ctx, DDS_DEVICE);
+	cap = iio_context_find_device(ctx, CAP_DEVICE);
 
-	if (!dev || !dds)
+
+	if (!dev || !dds || !cap)
 		iio_context_destroy(ctx);
-	return !!dev && !!dds;
+	return !!dev && !!dds && !!cap;
 }
 
 struct osc_plugin plugin = {
