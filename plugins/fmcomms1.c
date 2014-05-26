@@ -32,8 +32,10 @@
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
+static char *dac_buf_filename = NULL;
 
-static bool dac_data_loaded = false;
+static bool dds_activated, dds_disabled;
+static struct iio_buffer *dds_buffer;
 
 #define VERSION_SUPPORTED 1
 static struct fmcomms1_calib_data_v1 *cal_data = NULL;
@@ -105,6 +107,7 @@ static GtkWidget *ad9122_temp;
 
 static int kill_thread;
 static int fmcomms1_cal_eeprom(void);
+static void enable_dds(bool on_off);
 
 static struct s_cal_eeprom_v1 {
 	struct fmcomms1_calib_header_v1 header;
@@ -204,7 +207,7 @@ short convert(double scale, float val)
 	return (unsigned short) (val * scale + 32767.0);
 }
 
-int analyse_wavefile(char *file_name, char **buf, int *count)
+int analyse_wavefile(const char *file_name, char **buf, int *count)
 {
 	int ret, j, i = 0, size, rep, tx = 1;
 	double max = 0.0, val[4], scale = 0.0;
@@ -329,23 +332,20 @@ static void cal_save_values(void)
 	iio_save_widgets(cal_widgets, num_cal);
 	iio_update_widgets(cal_widgets, num_cal);
 }
-#define TO_BE_UPDATED 0
-void dac_buffer_config_file_set_cb(GtkFileChooser *chooser, gpointer data)
+
+static void process_dac_buffer_file (const char *file_name)
 {
-#if TO_BE_UPDATED
-	int ret, size;
+	int ret, size = 0;
 	struct stat st;
-	char *buf;
+	char *buf = NULL, *tmp;
 	FILE *infile;
 	unsigned int i, nb_channels = iio_device_get_channels_count(dac);
 
-	char *file_name = gtk_file_chooser_get_filename(chooser);
 	ret = analyse_wavefile(file_name, &buf, &size);
 	if (ret == -3)
 		return;
 
 	if (ret == -1 || buf == NULL) {
-
 		stat(file_name, &st);
 		buf = malloc(st.st_size);
 		if (buf == NULL)
@@ -355,20 +355,42 @@ void dac_buffer_config_file_set_cb(GtkFileChooser *chooser, gpointer data)
 		fclose(infile);
 	}
 
+	if (dds_buffer) {
+		iio_buffer_destroy(dds_buffer);
+		dds_buffer = NULL;
+	}
+
+	enable_dds(false);
+
 	/* Enable all channels */
 	for (i = 0; i < nb_channels; i++)
 		iio_channel_enable(iio_device_get_channel(dac, i));
 
-	ret = iio_device_open(dac, 0);
-	if (!ret)
-		ret = (int) iio_device_write_raw(dac, buf, size);
-	if (ret != size) {
-		fprintf(stderr, "Loading waveform failed %d\n", ret);
+	dds_buffer = iio_device_create_buffer(dac, size / iio_device_get_sample_size(dac), true);
+	if (!dds_buffer) {
+		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
+		free(buf);
+		return;
 	}
 
-	iio_device_close(dac);
-	dac_data_loaded = true;
-#endif
+	memcpy(iio_buffer_start(dds_buffer), buf,
+			iio_buffer_end(dds_buffer) - iio_buffer_start(dds_buffer));
+
+	iio_buffer_push(dds_buffer);
+	free(buf);
+
+	tmp = strdup(file_name);
+	if (dac_buf_filename)
+		free(dac_buf_filename);
+	dac_buf_filename = tmp;
+	printf("Waveform loaded\n");
+}
+
+static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+{
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+	if (file_name)
+		process_dac_buffer_file((const char *)file_name);
 }
 
 static int compare_gain(const char *a, const char *b)
@@ -1416,25 +1438,24 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 	gtk_widget_hide(dialogs.calibrate);
 }
 
-static void enable_dds(bool dds_enable, bool buffer_enable)
+static void enable_dds(bool on_off)
 {
-	struct iio_channel *ch = iio_device_find_channel(dac, "altvoltage0", true);
-	bool on_off = dds_enable || buffer_enable;
 	int ret;
 
-	ret = iio_channel_attr_write_bool(ch, "raw", on_off);
-	if (!ret) {
-		if (!dac_data_loaded)
-			buffer_enable = false;
+	if (on_off == dds_activated && !dds_disabled)
+		return;
+	dds_activated = on_off;
 
-		if (buffer_enable)
-			;//ret = iio_device_close(dac); // TO BE UPDATED TO THE LATEST LIBIIO
-		else
-			;//ret = iio_device_open(dac, 0); // TO BE UPDATED TO THE LATEST LIBIIO
+	if (dds_buffer) {
+		iio_buffer_destroy(dds_buffer);
+		dds_buffer = NULL;
 	}
 
-	if (ret < 0)
-			fprintf(stderr, "Failed to enable buffer: %d\n", ret);
+	ret = iio_channel_attr_write_bool(iio_device_find_channel(dac, "altvoltage0", true), "raw", on_off);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to toggle DDS: %d\n", ret);
+		return;
+	}
 }
 
 static void manage_dds_mode()
@@ -1446,7 +1467,7 @@ static void manage_dds_mode()
 	switch (active) {
 	case 0:
 		/* Disabled */
-		enable_dds(false, false);
+		enable_dds(false);
 		gtk_widget_hide(dds1_freq);
 		gtk_widget_hide(dds2_freq);
 		gtk_widget_hide(dds3_freq);
@@ -1478,10 +1499,15 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q1_l);
 		gtk_widget_hide(dds_Q2_l);
 		gtk_widget_hide(dac_buffer);
+		if (!dds_activated && dds_buffer) {
+			iio_buffer_destroy(dds_buffer);
+			dds_buffer = NULL;
+		}
+		dds_disabled = true;
 		break;
 	case 1:
 		/* One tone */
-		enable_dds(true, false);
+		enable_dds(true);
 		gtk_widget_show(dds1_freq);
 		gtk_widget_hide(dds2_freq);
 		gtk_widget_hide(dds3_freq);
@@ -1561,7 +1587,7 @@ static void manage_dds_mode()
 		break;
 	case 2:
 		/* Two tones */
-		enable_dds(true, false);
+		enable_dds(true);
 		gtk_widget_show(dds1_freq);
 		gtk_widget_show(dds2_freq);
 		gtk_widget_hide(dds3_freq);
@@ -1623,7 +1649,7 @@ static void manage_dds_mode()
 		break;
 	case 3:
 		/* Independant/Individual control */
-		enable_dds(true, false);
+		enable_dds(true);
 		gtk_widget_show(dds1_freq);
 		gtk_widget_show(dds2_freq);
 		gtk_widget_show(dds3_freq);
@@ -1692,7 +1718,10 @@ static void manage_dds_mode()
 		break;
 	case 4:
 		/* Buffer */
-		enable_dds(false, true);
+		if ((dds_activated || dds_disabled) && dac_buf_filename) {
+			dds_disabled = false;
+			process_dac_buffer_file(dac_buf_filename);
+		}
 		gtk_widget_hide(dds1_freq);
 		gtk_widget_hide(dds2_freq);
 		gtk_widget_hide(dds3_freq);
