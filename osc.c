@@ -1387,7 +1387,7 @@ static int capture_setup(void)
 			info->data_ref = (gfloat *) g_new0(gfloat, sample_count);
 		}
 
-		dev_info->buffer = iio_device_create_buffer(dev, sample_count);
+		dev_info->buffer = iio_device_create_buffer(dev, sample_count, false);
 		if (!dev_info->buffer) {
 			fprintf(stderr, "Unable to create buffer\n");
 			return -1;
@@ -1426,11 +1426,12 @@ static void start(OscPlot *plot, gboolean start_event)
 		restart_all_running_plots();
 	} else {
 		G_TRYLOCK(buffer_full);
-		close_active_buffers();
 		G_UNLOCK(buffer_full);
 		num_capturing_plots--;
-		if (num_capturing_plots == 0)
+		if (num_capturing_plots == 0) {
 			stop_capture = TRUE;
+			close_active_buffers();
+		}
 	}
 }
 
