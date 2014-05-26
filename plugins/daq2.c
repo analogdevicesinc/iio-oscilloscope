@@ -1233,6 +1233,13 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
 			return buf;
 		}
+	} else if (MATCH_ATTRIB("dac_buf_filename") &&
+				gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)) == 4) {
+		if (value) {
+			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dac_buffer), value);
+			process_dac_buffer_file(value);
+		} else
+			return dac_buf_filename;
 	} else {
 		printf("Unhandled tokens in ini file,\n"
 				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
@@ -1255,6 +1262,7 @@ static const char *daq2_sr_attribs[] = {
 	"axi-ad9144-hpc.out_altvoltage_interpolation_frequency",
 	"axi-ad9144-hpc.out_altvoltage_interpolation_center_shift_frequency",
 	"dds_mode",
+	"dac_buf_filename",
 	"axi-ad9144-hpc.out_altvoltage0_1A_frequency",
 	"axi-ad9144-hpc.out_altvoltage2_2A_frequency",
 	"axi-ad9144-hpc.out_altvoltage1_1B_frequency",
