@@ -92,4 +92,4 @@ install:
 	xdg-desktop-menu install adi-osc.desktop
 
 clean:
-	rm -rf osc *.o plugins/*.so
+	rm -rf multiosc osc *.o plugins/*.so
