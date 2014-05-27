@@ -1647,29 +1647,21 @@ static double read_sampling_frequency(const struct iio_device *dev)
 	return freq;
 }
 
-static float get_rx_lo_freq(const char *dev_name, const char *attr)
+static float get_rx_lo_freq(const char *dev_name)
 {
+	struct iio_channel *chn;
+	unsigned int i;
+	double lo_freq = 0.0;
 	struct iio_device *dev = iio_context_find_device(ctx, dev_name);
-	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
-	float lo_freq = 0.0;
-
 	if (!dev)
-		return lo_freq;
+		return (float) lo_freq;
 
-	for (i = 0; i < nb_channels; i++) {
-		struct iio_channel *chn = iio_device_get_channel(dev, i);
-		const char *id = iio_channel_get_id(chn);
-		if (iio_channel_is_output(chn) && !strcmp(id, "altvoltage0")) {
-			char buf[1024];
-			int ret = iio_channel_attr_read(chn,
-					attr, buf, sizeof(buf));
-			if (ret > 0)
-				lo_freq = atof(buf);
-			break;
-		}
-	}
+	chn = iio_device_find_channel(dev, "altvoltage0", true);
+	if (!chn)
+		return (float) lo_freq;
 
-	return lo_freq;
+	iio_channel_attr_read_double(chn, "frequency", &lo_freq);
+	return (float) lo_freq;
 }
 
 void rx_update_labels(void)
@@ -1701,9 +1693,9 @@ void rx_update_labels(void)
 			continue;
 
 		if (!strcmp(name, "cf-ad9463-core-lpc"))
-			info->lo_freq = get_rx_lo_freq("adf4351-rx-lpc", "frequency");
+			info->lo_freq = get_rx_lo_freq("adf4351-rx-lpc");
 		else if (!strcmp(name, "cf-ad9361-lpc"))
-			info->lo_freq = get_rx_lo_freq("ad9361-phy", "frequency");
+			info->lo_freq = get_rx_lo_freq("ad9361-phy");
 
 		info->lo_freq /= 1000000.0;
 	}
