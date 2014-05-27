@@ -817,24 +817,9 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	gtk_widget_show_all(vbox);
 }
 
-static struct iio_device * find_device_by_name(const char *name)
-{
-	unsigned int i;
-
-	for (i = 0; i < num_devices; i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
-		const char *id = iio_device_get_name(dev) ?:
-			iio_device_get_id(dev);
-		if (!strcmp(id, name))
-			return dev;
-	}
-
-	return NULL;
-}
-
 static const char * device_name_check(const char *name)
 {
-	struct iio_device *dev = find_device_by_name(name);
+	struct iio_device *dev = iio_context_find_device(ctx, name);
 	return iio_device_get_name(dev) ?: iio_device_get_id(dev);
 }
 
@@ -913,7 +898,7 @@ gdouble plugin_get_fft_avg(const char *device)
 int plugin_data_capture_size(const char *device)
 {
 	struct extra_dev_info *info;
-	struct iio_device *dev = find_device_by_name(device);
+	struct iio_device *dev = iio_context_find_device(ctx, device);
 	if (!dev)
 		return 0;
 
@@ -925,7 +910,7 @@ int plugin_data_capture_num_active_channels(const char *device)
 {
 	int nb_active = 0;
 	unsigned int i, nb_channels;
-	struct iio_device *dev = find_device_by_name(device);
+	struct iio_device *dev = iio_context_find_device(ctx, device);
 	if (!dev)
 		return 0;
 
@@ -941,7 +926,7 @@ int plugin_data_capture_num_active_channels(const char *device)
 
 int plugin_data_capture_bytes_per_sample(const char *device)
 {
-	struct iio_device *dev = find_device_by_name(device);
+	struct iio_device *dev = iio_context_find_device(ctx, device);
 	if (!dev)
 		return 0;
 	else
@@ -1650,7 +1635,6 @@ static double read_sampling_frequency(const struct iio_device *dev)
 static float get_rx_lo_freq(const char *dev_name)
 {
 	struct iio_channel *chn;
-	unsigned int i;
 	double lo_freq = 0.0;
 	struct iio_device *dev = iio_context_find_device(ctx, dev_name);
 	if (!dev)
