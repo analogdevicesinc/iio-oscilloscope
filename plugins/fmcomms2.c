@@ -212,7 +212,8 @@ static void glb_settings_update_labels(void)
 	}
 
 	iio_widget_update(&rx_widgets[rx1_gain]);
-	iio_widget_update(&rx_widgets[rx2_gain]);
+	if (is_2rx_2tx)
+		iio_widget_update(&rx_widgets[rx2_gain]);
 }
 
 static void sample_frequency_changed_cb(void)
