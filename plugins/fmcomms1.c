@@ -739,9 +739,11 @@ static GThread * cal_tx_button_clicked(void)
 
 static void cal_rx_button_clicked(void)
 {
+	OscPlot *fft_plot = plugin_find_plot_with_domain(FFT_PLOT);
 	cal_rx_flag = true;
 
-	delay = 2 * plugin_data_capture_size(NULL) * plugin_get_fft_avg(NULL);
+	delay = 2 * plugin_data_capture_size(NULL) *
+		plugin_get_plot_fft_avg(fft_plot, NULL);
 
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_phase_adj), 0);
 
@@ -795,6 +797,7 @@ static void display_cal(void *ptr)
 	bool show = false;
 	const char *device_ref;
 	int ret, attempt = 0;
+	OscPlot *fft_plot;
 
 	device_ref = plugin_get_device_by_reference("cf-ad9643-core-lpc");
 	if (!device_ref)
@@ -818,6 +821,7 @@ static void display_cal(void *ptr)
 			else
 				num_samples = 0;
 		}
+		fft_plot = plugin_find_plot_with_domain(FFT_PLOT);
 
 		if (size != 0 && channels == 2) {
 			gdk_threads_enter();
@@ -828,7 +832,8 @@ static void display_cal(void *ptr)
 			gdk_threads_leave();
 
 			/* grab the data */
-			if (cal_rx_flag && cal_rx_level && plugin_get_marker_type(device_ref) == MARKER_IMAGE) {
+			if (cal_rx_flag && cal_rx_level &&
+					plugin_get_plot_marker_type(fft_plot, device_ref) == MARKER_IMAGE) {
 				do {
 					ret = plugin_data_capture(device_ref, &cooked_data, &markers);
 				} while ((ret == -EBUSY) && !kill_thread);
@@ -932,7 +937,8 @@ static void display_cal(void *ptr)
 				span_I_val = (max_y - min_y) / span_I_set;
 				span_Q_val = (max_x - min_x) / span_Q_set;
 
-				if (cal_rx_level && plugin_get_marker_type(device_ref) == MARKER_IMAGE) {
+				if (cal_rx_level &&
+						plugin_get_plot_marker_type(fft_plot, device_ref) == MARKER_IMAGE) {
 					if (attempt == 0)
 						gain = (span_I_set + span_I_set) / 2;
 					gain *= 1.0 / exp10((markers[0].y - cal_rx_level) / 20);
@@ -946,7 +952,7 @@ static void display_cal(void *ptr)
 				gdk_threads_leave ();
 
 				usleep(delay);
-				if (plugin_get_marker_type(device_ref) != MARKER_IMAGE)
+				if (plugin_get_plot_marker_type(fft_plot, device_ref) != MARKER_IMAGE)
 					cal_rx_flag = false;
 			}
 
