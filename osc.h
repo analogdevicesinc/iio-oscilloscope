@@ -12,6 +12,8 @@
 #include <gtkdatabox.h>
 #include <iio.h>
 
+#include "oscplot.h"
+
 #define MULTI_OSC "MultiOsc"
 #define CAPTURE_CONF MULTI_OSC"_Capture_Configuration"
 
@@ -79,9 +81,10 @@ int plugin_data_capture(const char *device, gfloat ***cooked_data,
 			struct marker_type **markers_cp);
 int plugin_data_capture_num_active_channels(const char *device);
 int plugin_data_capture_bytes_per_sample(const char *device);
-enum marker_types plugin_get_marker_type(const char *device);
-void plugin_set_marker_type(const char *device, enum marker_types type);
-gdouble plugin_get_fft_avg(const char *device);
+OscPlot * plugin_find_plot_with_domain(int domain);
+enum marker_types plugin_get_plot_marker_type(OscPlot *plot, const char *device);
+void plugin_set_plot_marker_type(OscPlot *plot, const char *device, enum marker_types type);
+gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device);
 
 void capture_profile_save(const char *filename);
 void main_setup_before_ini_load(void);

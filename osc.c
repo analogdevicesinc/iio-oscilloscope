@@ -29,7 +29,6 @@
 
 #include "ini/ini.h"
 #include "osc.h"
-#include "oscplot.h"
 #include "datatypes.h"
 #include "int_fft.h"
 #include "config.h"
@@ -823,20 +822,6 @@ static const char * device_name_check(const char *name)
 	return iio_device_get_name(dev) ?: iio_device_get_id(dev);
 }
 
-static OscPlot * find_a_fft_plot(GList *list)
-{
-	OscPlot *plot;
-	GList *node;
-
-	for (node = list; node; node = g_list_next(node)) {
-		plot = node->data;
-		if (osc_plot_get_plot_domain(plot) == FFT_PLOT)
-			return plot;
-	}
-
-	return NULL;
-}
-
 /*
  * helper functions for plugins which want to look at data
  */
@@ -851,48 +836,53 @@ const void * plugin_get_device_by_reference(const char * device_name)
 	return device_name_check(device_name);
 }
 
-enum marker_types plugin_get_marker_type(const char *device)
+OscPlot * plugin_find_plot_with_domain(int domain)
 {
-	OscPlot *fft_plot;
+	OscPlot *plot;
+	GList *node;
 
-	if (!device)
-		return 0;
-	fft_plot = find_a_fft_plot(plot_list);
-	if (!fft_plot)
-		return MARKER_NULL;
-	if (!strcmp(osc_plot_get_active_device(fft_plot), device))
-		return MARKER_NULL;
+	if (!plot_list)
+		return NULL;
 
-	return osc_plot_get_marker_type(fft_plot);
+	for (node = plot_list; node; node = g_list_next(node)) {
+		plot = node->data;
+		if (osc_plot_get_plot_domain(plot) == domain)
+			return plot;
+	}
+
+	return NULL;
 }
 
-void plugin_set_marker_type(const char *device, enum marker_types type)
+enum marker_types plugin_get_plot_marker_type(OscPlot *plot, const char *device)
 {
-	OscPlot *fft_plot;
+	if (!plot || !device)
+		return MARKER_NULL;
 
-	if (!device)
-		return;
-	fft_plot = find_a_fft_plot(plot_list);
-	if (!fft_plot)
-		return;
-	if (!strcmp(osc_plot_get_active_device(fft_plot), device))
-		return;
-	osc_plot_set_marker_type(fft_plot, type);
+	if (!strcmp(osc_plot_get_active_device(plot), device))
+		return MARKER_NULL;
+
+	return osc_plot_get_marker_type(plot);
 }
 
-gdouble plugin_get_fft_avg(const char *device)
+void plugin_set_plot_marker_type(OscPlot *plot, const char *device, enum marker_types type)
 {
-	OscPlot *fft_plot;
+	if (!plot || !device)
+		return;
 
-	if (!device)
-		return 0;
-	fft_plot = find_a_fft_plot(plot_list);
-	if (!fft_plot)
-		return 0;
-	if (!strcmp(osc_plot_get_active_device(fft_plot), device))
+	if (!strcmp(osc_plot_get_active_device(plot), device))
+		return;
+	osc_plot_set_marker_type(plot, type);
+}
+
+gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device)
+{
+	if (!plot || !device)
 		return 0;
 
-	return osc_plot_get_fft_avg(fft_plot);
+	if (!strcmp(osc_plot_get_active_device(plot), device))
+		return 0;
+
+	return osc_plot_get_fft_avg(plot);
 }
 
 int plugin_data_capture_size(const char *device)
@@ -950,7 +940,7 @@ int plugin_data_capture(const char *device, gfloat ***cooked_data,
 		dev = NULL;
 	else
 		dev = iio_context_find_device(ctx, device);
-	fft_plot = find_a_fft_plot(plot_list);
+	fft_plot = plugin_find_plot_with_domain(FFT_PLOT);
 	if (fft_plot) {
 		tmp = osc_plot_get_active_device(fft_plot);
 		tmp_dev = iio_context_find_device(ctx, tmp);
