@@ -529,6 +529,12 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 				markers[j].bin = maxx[j];
 			}
 
+	if (settings->markers_copy) {
+			memcpy(settings->markers_copy, settings->markers,
+				sizeof(struct marker_type) * MAX_MARKERS);
+			settings->markers_copy = NULL;
+			g_mutex_unlock(settings->marker_lock);
+		}
 }
 
 void fft_transform_function(Transform *tr, gboolean init_transform)

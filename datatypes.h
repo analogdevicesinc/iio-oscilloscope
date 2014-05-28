@@ -136,6 +136,8 @@ struct _cross_correlation_settings {
 	fftw_complex *signal_b;
 	fftw_complex *xcorr_data;
 	struct marker_type *markers;
+	struct marker_type *markers_copy;
+	GMutex *marker_lock;
 	enum marker_types *marker_type;
 };
 

@@ -727,6 +727,8 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 		XCORR_SETTINGS(transform)->signal_b = NULL;
 		XCORR_SETTINGS(transform)->xcorr_data = NULL;
 		XCORR_SETTINGS(transform)->markers = NULL;
+		XCORR_SETTINGS(transform)->markers_copy = NULL;
+		XCORR_SETTINGS(transform)->marker_lock = NULL;
 		XCORR_SETTINGS(transform)->marker_type = NULL;
 	}
 }
@@ -866,14 +868,17 @@ static void add_markers(OscPlot *plot, Transform *transform)
 
 	transform->has_the_marker = true;
 	priv->tr_with_marker = transform;
-	if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
+	if (priv->active_transform_type == FFT_TRANSFORM ||
+		priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
 		FFT_SETTINGS(transform)->markers = priv->markers;
 		FFT_SETTINGS(transform)->markers_copy = priv->markers_copy;
 		FFT_SETTINGS(transform)->marker_type = &priv->marker_type;
 		FFT_SETTINGS(transform)->marker_lock = &priv->g_marker_copy_lock;
 	} else if (priv->active_transform_type == CROSS_CORRELATION_TRANSFORM) {
 		XCORR_SETTINGS(transform)->markers = priv->markers;
+		XCORR_SETTINGS(transform)->markers_copy = priv->markers_copy;
 		XCORR_SETTINGS(transform)->marker_type = &priv->marker_type;
+		XCORR_SETTINGS(transform)->marker_lock = &priv->g_marker_copy_lock;
 	}
 }
 
