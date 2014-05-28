@@ -325,10 +325,10 @@ static void do_fft(Transform *tr)
 
 			}
 		}
-		if (settings->markers_copy) {
-			memcpy(settings->markers_copy, settings->markers,
+		if (*settings->markers_copy) {
+			memcpy(*settings->markers_copy, settings->markers,
 				sizeof(struct marker_type) * MAX_MARKERS);
-			settings->markers_copy = NULL;
+			*settings->markers_copy = NULL;
 			g_mutex_unlock(settings->marker_lock);
 		}
 	}
@@ -521,20 +521,20 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	if (!tr->has_the_marker)
 		return;
 
-	if (MAX_MARKERS && marker_type != MARKER_OFF)
+	if (MAX_MARKERS && marker_type != MARKER_OFF) {
 		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++)
 			if (marker_type == MARKER_PEAK) {
 				markers[j].x = (gfloat)X[maxx[j]];
 				markers[j].y = (gfloat)out_data[maxx[j]];
 				markers[j].bin = maxx[j];
 			}
-
-	if (settings->markers_copy) {
-			memcpy(settings->markers_copy, settings->markers,
+		if (*settings->markers_copy) {
+			memcpy(*settings->markers_copy, settings->markers,
 				sizeof(struct marker_type) * MAX_MARKERS);
-			settings->markers_copy = NULL;
+			*settings->markers_copy = NULL;
 			g_mutex_unlock(settings->marker_lock);
 		}
+	}
 }
 
 void fft_transform_function(Transform *tr, gboolean init_transform)
