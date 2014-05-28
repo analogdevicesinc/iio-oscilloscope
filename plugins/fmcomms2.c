@@ -213,7 +213,9 @@ static void glb_settings_update_labels(void)
 		free(buf);
 
 	iio_widget_update(&rx_widgets[rx1_gain]);
-	iio_widget_update(&rx_widgets[rx2_gain]);
+
+	if (is_2rx_2tx)
+		iio_widget_update(&rx_widgets[rx2_gain]);
 
 }
 
