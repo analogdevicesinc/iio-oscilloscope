@@ -499,7 +499,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 				maxY[0] = out_data[0];
 			} else {
 				for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
-					if  ((out_data[i - 1] > maxY[j]) &&
+					if  ((fabs(out_data[i - 1]) > maxY[j]) &&
 						((!((out_data[i - 2] > out_data[i - 1]) &&
 						 (out_data[i - 1] > out_data[i]))) &&
 						 (!((out_data[i - 2] < out_data[i - 1]) &&
@@ -510,7 +510,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 								maxx[k] = maxx[k - 1];
 							}
 						}
-						maxY[j] = out_data[i - 1];
+						maxY[j] = fabs(out_data[i - 1]);
 						maxx[j] = i - 1;
 						break;
 					}
