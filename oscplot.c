@@ -1608,9 +1608,14 @@ static void device_list_treeview_init(OscPlot *plot)
 			continue;
 
 		gtk_tree_store_append(treestore, &iter, NULL);
-		gtk_tree_store_set(treestore, &iter, ELEMENT_NAME, name,
-			IS_DEVICE, TRUE, DEVICE_ACTIVE, !priv->nb_input_devices,
-			ELEMENT_REFERENCE, dev, SENSITIVE, true, -1);
+		gtk_tree_store_set(treestore, &iter,
+				ELEMENT_NAME, name,
+				IS_DEVICE, TRUE,
+				DEVICE_ACTIVE, !priv->nb_input_devices,
+				ELEMENT_REFERENCE, dev,
+				SENSITIVE, true,
+				EXPANDED, true,
+				-1);
 		priv->nb_input_devices++;
 
 		for (j = 0; j < nb_channels; j++) {
@@ -1639,6 +1644,7 @@ static void device_list_treeview_init(OscPlot *plot)
 	}
 
 	create_channel_list_view(plot);
+	treeview_expand_update(plot);
 }
 
 static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
