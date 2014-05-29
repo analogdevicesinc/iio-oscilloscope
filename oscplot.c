@@ -2514,6 +2514,10 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 		fprintf(fp, "constellation\n");
 	else if (tmp_int == TIME_PLOT)
 		fprintf(fp, "time\n");
+	else if (tmp_int == XCORR_PLOT)
+		fprintf(fp, "correlation\n");
+	else
+		fprintf(fp, "unknown\n");
 
 	tmp_int = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	fprintf(fp, "sample_count=%d\n", tmp_int);
@@ -2740,6 +2744,10 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 					gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_domain), FFT_PLOT);
 				else if (!strcmp(value, "constellation"))
 					gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_domain), XY_PLOT);
+				else if (!strcmp(value, "correlation"))
+					gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_domain), XCORR_PLOT);
+				else
+					goto unhandled;
 			} else if (MATCH_NAME("sample_count")) {
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), atoi(value));
 			} else if (MATCH_NAME("fft_size")) {
