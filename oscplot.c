@@ -1046,6 +1046,26 @@ static int enabled_channels_of_device(GtkTreeView *treeview, const char *name)
 	return num_enabled;
 }
 
+static int enabled_channels_count(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	int count = 0, i;
+
+	for (i = 0; i < num_devices; i++) {
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		const char *name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
+		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+
+		if (dev_info->input_device == false)
+			continue;
+
+		count += enabled_channels_of_device(treeview, name);
+	}
+
+	return count;
+}
+
 struct params {
 	OscPlot *plot;
 	int plot_type;
@@ -1123,7 +1143,7 @@ static void devices_transform_assignment(OscPlot *plot)
 
 	prm.plot = plot;
 	prm.plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
-	prm.enabled_channels = 0;
+	prm.enabled_channels = enabled_channels_count(plot);
 	prm.ch_pair_ref = NULL;
 	prm.ch_3rd_ref = NULL;
 	prm.ch_4th_ref = NULL;
@@ -1136,7 +1156,6 @@ static void devices_transform_assignment(OscPlot *plot)
 		if (dev_info->input_device == false)
 			continue;
 
-		prm.enabled_channels = enabled_channels_of_device(treeview, name);
 		foreach_channel_iter_of_device(GTK_TREE_VIEW(priv->channel_list_view),
 			name, *channels_transform_assignment, &prm);
 	}
@@ -1313,6 +1332,8 @@ static void iter_children_sensitivity_update(GtkTreeModel *model, GtkTreeIter *i
 	next_iter = true;
 	while (next_iter) {
 		gtk_tree_store_set(GTK_TREE_STORE(model), &child, SENSITIVE, state, -1);
+		if (state == false)
+			gtk_tree_store_set(GTK_TREE_STORE(model), &child, CHANNEL_ACTIVE, state, -1);
 		next_iter = gtk_tree_model_iter_next(model, &child);
 	}
 }
@@ -1388,6 +1409,7 @@ static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpoi
 	}
 
 	foreach_device_iter(treeview, *iter_children_sensitivity_update, NULL);
+	check_valid_setup(plot);
 }
 
 static void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer plot)
@@ -1397,6 +1419,9 @@ static void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpo
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	gboolean active;
+
+	if (!gtk_cell_renderer_get_sensitive(GTK_CELL_RENDERER(renderer)))
+		return;
 
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->channel_list_view));
 	gtk_tree_model_get_iter(model, &iter, path);
@@ -3279,7 +3304,8 @@ static void plot_domain_changed_cb(GtkComboBox *box, OscPlot *plot)
 	if (plot->priv->nb_input_devices < 2)
 		return;
 
-	if (gtk_combo_box_get_active(box) != TIME_PLOT) {
+	if (gtk_combo_box_get_active(box) != TIME_PLOT &&
+		gtk_combo_box_get_active(box) != XCORR_PLOT) {
 		enable_tree_device_selection(plot, true);
 		foreach_device_iter(GTK_TREE_VIEW(plot->priv->channel_list_view),
 			*iter_children_sensitivity_update, NULL);
