@@ -43,6 +43,7 @@ static void next_image_cb (GtkButton *btn, gpointer data)
 		gtk_widget_show(previous_pict);
 
 	scale_block = 1;
+	redraw_block = 1;
 	gtk_widget_queue_draw(block_diagram_events);
 }
 
@@ -68,8 +69,10 @@ static void zoom_image_cb (GtkButton *btn, gpointer data)
 static gboolean erase_block_diagram(GtkNotebook *notebook, GtkWidget *page, guint page_num, GtkImage *block_diagram)
 {
 
-	if (page_num)
+	if (page_num) {
+		redraw_block = 1;
 		return true;
+	}
 
 	gtk_image_set_from_pixbuf(block_diagram, NULL);
 	return true;
