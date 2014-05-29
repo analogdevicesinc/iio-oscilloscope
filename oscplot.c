@@ -58,6 +58,7 @@ static void treeview_icon_color_update(OscPlot *plot);
 static int  cfg_read_handler(void *user, const char* section, const char* name, const char* value);
 static int device_find_by_name(const char *name);
 static int enabled_channels_of_device(GtkTreeView *treeview, const char *name);
+static int enabled_channels_count(OscPlot *plot);
 static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter, const char *dev_name, char *ch_name);
 static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type);
 static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color);
@@ -603,9 +604,15 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, struct iio_device *de
 			return false;
 		}
 	} else if (plot_type == TIME_PLOT) {
-		if (num_enabled == 0) {
+		if (enabled_channels_count(plot) == 0) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
 				"Time Domain needs at least one channel");
+			return false;
+		}
+	} else if (plot_type == XCORR_PLOT) {
+		if (enabled_channels_count(plot) != 4) {
+			gtk_widget_set_tooltip_text(priv->capture_button,
+				"Correlation needs 4 channels");
 			return false;
 		}
 	}
@@ -658,11 +665,6 @@ static gboolean check_valid_setup(OscPlot *plot)
 			continue;
 
 		is_valid = check_valid_setup_of_device(plot, dev);
-		if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == TIME_PLOT) {
-			if (!is_valid)
-				continue;
-			else break;
-		}
 		if (!is_valid)
 			goto capture_button_err;
 	}
