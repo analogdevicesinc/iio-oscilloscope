@@ -1085,12 +1085,6 @@ OscPlot * plugin_get_new_plot(void)
 	return OSC_PLOT(plot_create_and_init());
 }
 
-void plugin_destroy_plot(OscPlot *plot)
-{
-	if (plot)
-		plot_destroyed_cb(plot);
-}
-
 static bool force_plugin(const char *name)
 {
 	const char *force_plugin = getenv("OSC_FORCE_PLUGIN");
