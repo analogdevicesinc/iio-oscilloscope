@@ -457,10 +457,12 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		settings->signal_b = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length);
 		settings->xcorr_data = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length * 2);
 
-		Transform_resize_x_axis(tr, 2 * axis_length - 1);
-		Transform_resize_y_axis(tr, 2 * axis_length - 1);
-		for (i = 0; i < 2 * axis_length - 1; i++)
-			tr->x_axis[i] = i;
+		Transform_resize_x_axis(tr, 2 * axis_length);
+		Transform_resize_y_axis(tr, 2 * axis_length);
+		for (i = 0; i < 2 * axis_length - 1; i++) {
+			tr->x_axis[i] = i - (gfloat)axis_length + 1;
+			tr->y_axis[i] = 0;
+		}
 		tr->y_axis_size = 2 * axis_length - 1;
 
 		return;
@@ -488,7 +490,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	}
 
 	for (i = 0; i < 2 * axis_length - 1; i++) {
-		tr->y_axis[i] = creal(settings->xcorr_data[i]);
+		tr->y_axis[i] =  2 * creal(settings->xcorr_data[i]) / (gfloat)axis_length;
 		if (!tr->has_the_marker)
 			continue;
 
