@@ -15,7 +15,6 @@ struct osc_plugin {
 	const char *name;
 	bool (*identify)(void);
 	int (*init)(GtkWidget *notebook);
-	struct iio_context * (*get_iio_context)(void);
 	char *(*handle_item) (struct osc_plugin *plugin, const char *attrib,
 			      const char *value);
 	int (*handle_external_request) (const char *request);

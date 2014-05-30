@@ -565,11 +565,6 @@ static char *dmm_handle(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
-static struct iio_context *dmm_iio_context(void)
-{
-	return ctx;
-}
-
 static const char *dmm_sr_attribs[] = {
 	DEVICE_LIST,
 	CHANNEL_LIST,
@@ -618,7 +613,6 @@ struct osc_plugin plugin = {
 	.identify = dmm_identify,
 	.init = dmm_init,
 	.save_restore_attribs = dmm_sr_attribs,
-	.get_iio_context = dmm_iio_context,
 	.handle_item = dmm_handle,
 	.update_active_page = update_active_page,
 	.destroy = context_destroy,

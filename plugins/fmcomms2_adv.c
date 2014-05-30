@@ -804,11 +804,6 @@ void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
-static struct iio_context * fmcomms2_adv_iio_context(void)
-{
-	return ctx;
-}
-
 static int fmcomms2adv_init(GtkWidget *notebook)
 {
 	GtkWidget *fmcomms2adv_panel;
@@ -1081,7 +1076,6 @@ struct osc_plugin plugin = {
 	.identify = fmcomms2adv_identify,
 	.init = fmcomms2adv_init,
 	.save_restore_attribs = fmcomms2_adv_sr_attribs,
-	.get_iio_context = fmcomms2_adv_iio_context,
 	.handle_item = handle_item,
 	.update_active_page = update_active_page,
 	.destroy = context_destroy,

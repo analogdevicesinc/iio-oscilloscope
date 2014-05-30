@@ -916,11 +916,6 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static struct iio_context * daq2_iio_context(void)
-{
-	return ctx;
-}
-
 static int daq2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -1312,7 +1307,6 @@ struct osc_plugin plugin = {
 	.identify = daq2_identify,
 	.init = daq2_init,
 	.save_restore_attribs = daq2_sr_attribs,
-	.get_iio_context = daq2_iio_context,
 	.handle_item = handle_item,
 	.destroy = context_destroy,
 };

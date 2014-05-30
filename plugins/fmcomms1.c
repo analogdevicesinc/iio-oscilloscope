@@ -1973,11 +1973,6 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static struct iio_context * fmcomms1_iio_context(void)
-{
-	return ctx;
-}
-
 static int fmcomms1_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -2485,7 +2480,6 @@ struct osc_plugin plugin = {
 	.identify = fmcomms1_identify,
 	.init = fmcomms1_init,
 	.save_restore_attribs = fmcomms1_sr_attribs,
-	.get_iio_context = fmcomms1_iio_context,
 	.handle_item = handle_item,
 	.destroy = context_destroy,
 };

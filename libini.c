@@ -160,7 +160,7 @@ static int libini_restore_handler(void *user, const char* section,
 	GSList *node;
 	int ret = 1;
 	FILE *fd;
-	struct iio_context *ctx = NULL;
+	struct iio_context *ctx = get_context_from_osc();
 	struct iio_device *dev = NULL;
 	struct iio_channel *ch = NULL;
 	const char *attr;
@@ -187,14 +187,6 @@ static int libini_restore_handler(void *user, const char* section,
 	}
 
 	if (!plugin || !MATCH_SECT(plugin->name))
-		return 0;
-
-	if (plugin->get_iio_context)
-		ctx = plugin->get_iio_context();
-	else
-		ctx = get_context_from_osc();
-
-	if (!ctx)
 		return 0;
 
 	elem_type = count_char_in_string('.', name);
@@ -486,16 +478,13 @@ void save_all_plugins(const char *filename, gpointer user_data)
 	for (node = plugin_list; node; node = g_slist_next(node))
 	{
 		plugin = node->data;
-		struct iio_context *ctx = NULL;
+		struct iio_context *ctx = get_context_from_osc();
 		struct iio_device *dev = NULL;
 		struct iio_channel *ch = NULL;
 		const char *attr;
 
 		if (plugin && plugin->save_restore_attribs) {
 			attribs = plugin->save_restore_attribs;
-
-			if (plugin->get_iio_context)
-				ctx = plugin->get_iio_context();
 
 			fprintf(cfile, "\n[%s]\n", plugin->name);
 

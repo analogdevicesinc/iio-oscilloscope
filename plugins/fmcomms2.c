@@ -1034,11 +1034,6 @@ int handle_external_request (const char *request)
 	return ret;
 }
 
-static struct iio_context * fmcomms2_iio_context(void)
-{
-	return ctx;
-}
-
 static int fmcomms2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -1714,7 +1709,6 @@ struct osc_plugin plugin = {
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
 	.save_restore_attribs = fmcomms2_sr_attribs,
-	.get_iio_context = fmcomms2_iio_context,
 	.handle_item = handle_item,
 	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
