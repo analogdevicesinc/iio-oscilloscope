@@ -1294,11 +1294,18 @@ static gboolean capture_process(void)
 		}
 
 		do {
-			ssize_t ret;
+			ssize_t ret, nb;
 			iio_buffer_refill(dev_info->buffer);
 			ret = iio_buffer_foreach_sample(
 					dev_info->buffer, demux_sample, NULL);
-			sample_count -= ret / sample_size;
+			if (ret < 0) {
+				fprintf(stderr, "Error while reading data: %s\n", strerror(-ret));
+				stop_capture = TRUE;
+				return FALSE;
+			}
+
+			nb = ret / sample_size;
+			sample_count = (sample_count < nb) ? 0 : sample_count - nb;
 		} while (sample_count);
 
 		if (dev_info->channels_data_copy) {
@@ -1367,6 +1374,9 @@ static int capture_setup(void)
 				g_free(info->data_ref);
 			info->data_ref = (gfloat *) g_new0(gfloat, sample_count);
 		}
+
+		if (dev_info->buffer)
+			iio_buffer_destroy(dev_info->buffer);
 
 		dev_info->buffer = iio_device_create_buffer(dev, sample_count, false);
 		if (!dev_info->buffer) {
