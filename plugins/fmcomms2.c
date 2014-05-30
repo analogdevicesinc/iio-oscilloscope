@@ -611,8 +611,13 @@ static void rx_phase_rotation(GtkSpinButton *spinbutton, gpointer user_data)
 
 	phase = val * 2 * M_PI / 360.0;
 
-	out0 = iio_device_get_channel(cap, 0 + offset);
-	out1 = iio_device_get_channel(cap, 1 + offset);
+	if (offset == 2) {
+		out0 = iio_device_find_channel(cap, "voltage2", false);
+		out1 = iio_device_find_channel(cap, "voltage3", false);
+	} else {
+		out0 = iio_device_find_channel(cap, "voltage0", false);
+		out1 = iio_device_find_channel(cap, "voltage1", false);
+	}
 
 	if (out1 && out0) {
 		iio_channel_attr_write_double(out0, "calibscale", (double) cos(phase));
