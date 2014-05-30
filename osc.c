@@ -55,6 +55,8 @@ unsigned int num_devices = 0;
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
 static void plugin_restore_ini_state(char *plugin_name, gboolean detached);
+static GtkWidget * plot_create_and_init(void);
+static void plot_destroyed_cb(OscPlot *plot);
 
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
@@ -1076,6 +1078,17 @@ int plugin_data_capture(const char *device, gfloat ***cooked_data,
 capture_malloc_fail:
 	printf("%s:%s malloc failed\n", __FILE__, __func__);
 	return -ENOMEM;
+}
+
+OscPlot * plugin_get_new_plot(void)
+{
+	return OSC_PLOT(plot_create_and_init());
+}
+
+void plugin_destroy_plot(OscPlot *plot)
+{
+	if (plot)
+		plot_destroyed_cb(plot);
 }
 
 static bool force_plugin(const char *name)

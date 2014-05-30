@@ -59,9 +59,11 @@ static int  cfg_read_handler(void *user, const char* section, const char* name, 
 static int device_find_by_name(const char *name);
 static int enabled_channels_of_device(GtkTreeView *treeview, const char *name);
 static int enabled_channels_count(OscPlot *plot);
-static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter, const char *dev_name, char *ch_name);
+static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter, const char *dev_name, const char *ch_name);
 static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type);
 static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color);
+static int comboboxtext_set_active_by_string(GtkComboBox *combo_box, const char *name);
+static gboolean check_valid_setup(OscPlot *plot);
 
 /* IDs of signals */
 enum {
@@ -398,6 +400,13 @@ void osc_plot_restart (OscPlot *plot)
 	}
 }
 
+void osc_plot_draw_start (OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+
+	gtk_toggle_tool_button_set_active((GtkToggleToolButton *)priv->capture_button, TRUE);
+}
+
 void osc_plot_draw_stop (OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -468,6 +477,16 @@ void osc_plot_set_markers_copy (OscPlot *plot, void *value)
 	plot->priv->markers_copy = value;
 }
 
+void osc_plot_set_domain (OscPlot *plot, int domain)
+{
+	OscPlotPrivate *priv = plot->priv;
+
+	if (gtk_toggle_tool_button_get_active((GtkToggleToolButton *)priv->capture_button))
+		return;
+
+	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_domain), domain);
+}
+
 int osc_plot_get_plot_domain (OscPlot *plot)
 {
 	return gtk_combo_box_get_active(GTK_COMBO_BOX(plot->priv->plot_domain));
@@ -476,6 +495,77 @@ int osc_plot_get_plot_domain (OscPlot *plot)
 GMutex * osc_plot_get_marker_lock (OscPlot *plot)
 {
 	return &plot->priv->g_marker_copy_lock;
+}
+
+bool osc_plot_set_sample_count (OscPlot *plot, int sample_count)
+{
+	OscPlotPrivate *priv = plot->priv;
+	int ret;
+
+	if (gtk_toggle_tool_button_get_active((GtkToggleToolButton *)priv->capture_button))
+		return false;
+
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT) {
+		char s_count[32];
+		snprintf(s_count, sizeof(s_count), "%d", sample_count);
+		ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_size_widget), s_count);
+	} else {
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget),
+			(gdouble)sample_count);
+		ret = 1;
+	}
+
+	return (ret) ? true : false;
+}
+
+int osc_plot_get_sample_count (OscPlot *plot) {
+
+	OscPlotPrivate *priv = plot->priv;
+	int count;
+
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT) {
+		count = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->fft_size_widget)));
+	} else {
+		count = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+	}
+
+	return count;
+}
+
+void osc_plot_set_channel_state(OscPlot *plot, const char *dev, int channel, bool state)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct iio_device *iio_dev;
+	struct iio_channel *iio_ch;
+
+	if (gtk_toggle_tool_button_get_active((GtkToggleToolButton *)priv->capture_button))
+		return;
+
+	if (!plot || !dev)
+		return;
+
+	iio_dev = iio_context_find_device(ctx, dev);
+	if (!iio_dev || !is_input_device(iio_dev))
+		return;
+
+	if (channel >= iio_device_get_channels_count(iio_dev))
+		return;
+
+	iio_ch = iio_device_get_channel(iio_dev, channel);
+
+	if (!iio_ch)
+		return;
+
+	GtkTreeView *tree = GTK_TREE_VIEW(priv->channel_list_view);
+	GtkTreeModel *model = gtk_tree_view_get_model(tree);
+	GtkTreeIter ch_iter;
+	const char *ch;
+
+	ch = iio_channel_get_id(iio_ch);
+	get_iter_by_name(tree, &ch_iter, dev, ch);
+
+	gtk_tree_store_set(GTK_TREE_STORE(model), &ch_iter, CHANNEL_ACTIVE, state, -1);
+	check_valid_setup(plot);
 }
 
 static void osc_plot_dispose(GObject *object)
@@ -2441,7 +2531,7 @@ static void min_y_axis_cb(GtkSpinButton *btn, OscPlot *plot)
 }
 
 static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter,
-		const char *dev_name, char *ch_name)
+		const char *dev_name, const char *ch_name)
 {
 	GtkTreeModel *model;
 	GtkTreeIter dev_iter;

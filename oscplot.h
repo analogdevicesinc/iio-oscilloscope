@@ -43,6 +43,7 @@ void          osc_plot_destroy          (OscPlot *plot);
 void          osc_plot_data_update      (OscPlot *plot);
 void          osc_plot_update_rx_lbl    (OscPlot *plot, bool force_update);
 void          osc_plot_restart          (OscPlot *plot);
+void          osc_plot_draw_start       (OscPlot *plot);
 void          osc_plot_draw_stop        (OscPlot *plot);
 void          osc_plot_save_to_ini      (OscPlot *plot, char *filename);
 int           osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *name, const char *value);
@@ -53,9 +54,12 @@ int           osc_plot_get_marker_type  (OscPlot *plot);
 void          osc_plot_set_marker_type  (OscPlot *plot, int mtype);
 void *        osc_plot_get_markers_copy (OscPlot *plot);
 void          osc_plot_set_markers_copy (OscPlot *plot, void *value);
+void          osc_plot_set_domain       (OscPlot *plot, int domain);
 int           osc_plot_get_plot_domain  (OscPlot *plot);
 GMutex *      osc_plot_get_marker_lock  (OscPlot *plot);
-
+bool          osc_plot_set_sample_count (OscPlot *plot, int sample_count);
+int           osc_plot_get_sample_count (OscPlot *plot);
+void          osc_plot_set_channel_state(OscPlot *plot, const char *dev, int channel, bool state);
 G_END_DECLS
 
 #endif /* __OSC_PLOT__ */
