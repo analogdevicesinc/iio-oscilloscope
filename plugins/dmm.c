@@ -590,16 +590,14 @@ static void context_destroy(void)
 
 static bool dmm_identify(void)
 {
+	/* Use the OSC's IIO context just to detect the devices */
+	struct iio_context *osc_ctx = get_context_from_osc();
 	unsigned int i, num;
 	bool ret = false;
 
-	ctx = osc_create_context();
-	if (!ctx)
-		return false;
-
-	num = iio_context_get_devices_count(ctx);
+	num = iio_context_get_devices_count(osc_ctx);
 	for (i = 0; !ret && i < num; i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
+		struct iio_device *dev = iio_context_get_device(osc_ctx, i);
 		unsigned int j, nch = iio_device_get_channels_count(dev);
 
 		for (j = 0; !ret && j < nch; j++) {
@@ -610,12 +608,9 @@ static bool dmm_identify(void)
 		}
 	}
 
-	if (!ret) {
-		iio_context_destroy(ctx);
-		ctx = NULL;
-	}
-
-	return ret;
+	if (ret)
+		ctx = osc_create_context();
+	return ret && ctx;
 }
 
 struct osc_plugin plugin = {
