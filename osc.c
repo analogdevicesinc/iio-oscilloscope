@@ -931,8 +931,9 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 		return iio_device_get_sample_size(dev);
 }
 
-int plugin_data_capture(const char *device, gfloat ***cooked_data,
-			struct marker_type **markers_cp)
+
+int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
+			struct marker_type **markers_cp, int domain)
 {
 	OscPlot *fft_plot;
 	struct iio_device *dev, *tmp_dev = NULL;
@@ -948,7 +949,7 @@ int plugin_data_capture(const char *device, gfloat ***cooked_data,
 		dev = NULL;
 	else
 		dev = iio_context_find_device(ctx, device);
-	fft_plot = plugin_find_plot_with_domain(FFT_PLOT);
+	fft_plot = plugin_find_plot_with_domain(domain);
 	if (fft_plot) {
 		tmp = osc_plot_get_active_device(fft_plot);
 		tmp_dev = iio_context_find_device(ctx, tmp);
@@ -1032,6 +1033,7 @@ int plugin_data_capture(const char *device, gfloat ***cooked_data,
 	} else {
 		markers_copy = (struct marker_type *)osc_plot_get_markers_copy(fft_plot);
 		markers_lock = osc_plot_get_marker_lock(fft_plot);
+		is_fft_mode = true;
 	}
 
 	if (markers_cp) {

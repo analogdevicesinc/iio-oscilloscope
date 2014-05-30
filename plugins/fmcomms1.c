@@ -835,11 +835,11 @@ static void display_cal(void *ptr)
 			if (cal_rx_flag && cal_rx_level &&
 					plugin_get_plot_marker_type(fft_plot, device_ref) == MARKER_IMAGE) {
 				do {
-					ret = plugin_data_capture(device_ref, &cooked_data, &markers);
+					ret = plugin_data_capture_with_domain(device_ref, &cooked_data, &markers, FFT_PLOT);
 				} while ((ret == -EBUSY) && !kill_thread);
 			} else {
 				do {
-					ret = plugin_data_capture(device_ref, &cooked_data, NULL);
+					ret = plugin_data_capture_with_domain(device_ref, &cooked_data, NULL, FFT_PLOT);
 				} while ((ret == -EBUSY) && !kill_thread);
 			}
 
@@ -963,7 +963,7 @@ static void display_cal(void *ptr)
 				if (attempt == 0) {
 					/* if the current value is OK, we leave it alone */
 					do {
-						ret = plugin_data_capture(device_ref, NULL, &markers);
+						ret = plugin_data_capture_with_domain(device_ref, NULL, &markers, FFT_PLOT);
 					} while ((ret == -EBUSY) && !kill_thread);
 
 					/* If the lock is broken, then die nicely */
@@ -1001,7 +1001,7 @@ static void display_cal(void *ptr)
 
 					/* grab the data */
 					do {
-						ret = plugin_data_capture(device_ref, NULL, &markers);
+						ret = plugin_data_capture_with_domain(device_ref, NULL, &markers, FFT_PLOT);
 					} while ((ret == -EBUSY) && !kill_thread);
 
 					/* If the lock is broken, then die nicely */
@@ -1063,7 +1063,7 @@ skip_rx_cal:
 display_call_ret:
 	/* free the buffers */
 	if (cooked_data || markers)
-		plugin_data_capture(NULL, &cooked_data, &markers);
+		plugin_data_capture_with_domain(NULL, &cooked_data, &markers, FFT_PLOT);
 
 	kill_thread = 1;
 	g_thread_exit(NULL);
