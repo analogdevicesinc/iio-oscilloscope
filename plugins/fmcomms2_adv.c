@@ -249,11 +249,11 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 
 	if (dev_slave)
 		iio_device_debug_attr_write_longlong(dev_slave, item->name, val);
-	
+
 	if (!strcmp(item->name, "initialize")) {
 		struct osc_plugin *plugin;
 		GSList *node;
-		
+
 		for (node = plugin_list; node; node = g_slist_next(node)) {
 			plugin = node->data;
 			if (plugin && !strncmp(plugin->name, "FMComms2/3/4", 12)) {
@@ -266,18 +266,137 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 	}
 }
 
-void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
+static void rx_phase_rotation(struct iio_device *dev, gdouble val)
+{
+	struct iio_channel *out0, *out1;
+	gdouble phase;
+	unsigned offset;
+
+	phase = val * 2 * M_PI / 360.0;
+
+	/* Set both RX1 and RX2 */
+	for (offset = 0; offset <= 2; offset += 2) {
+		if (offset == 2) {
+			out0 = iio_device_find_channel(dev, "voltage2", false);
+			out1 = iio_device_find_channel(dev, "voltage3", false);
+		} else {
+			out0 = iio_device_find_channel(dev, "voltage0", false);
+			out1 = iio_device_find_channel(dev, "voltage1", false);
+		}
+
+		if (out1 && out0) {
+			iio_channel_attr_write_double(out0, "calibscale", (double) cos(phase));
+			iio_channel_attr_write_double(out0, "calibphase", (double) (-1 * sin(phase)));
+			iio_channel_attr_write_double(out1, "calibscale", (double) cos(phase));
+			iio_channel_attr_write_double(out1, "calibphase", (double) sin(phase));
+		}
+	}
+}
+
+static void tx_phase_rotation(struct iio_device *dev, gdouble val)
+{
+	long long i, q;
+
+	i = (val * 1000) + 90000;
+	q = val * 1000;
+
+	if (i > 360000)
+		i -= 360000;
+
+	if (q > 360000)
+		q -= 360000;
+
+
+	printf("%s:%d val %f ,  I = %d, Q = %d \n", __func__, __LINE__,val, (int)i,(int) q);
+
+
+		iio_device_attr_write_longlong(dev,
+				"out_altvoltage0_TX1_I_F1_phase",
+				i);
+		iio_device_attr_write_longlong(dev,
+				"out_altvoltage1_TX1_I_F2_phase",
+				i);
+		iio_device_attr_write_longlong(dev,
+				"out_altvoltage2_TX1_Q_F1_phase",
+				q);
+		iio_device_attr_write_longlong(dev,
+				"out_altvoltage3_TX1_Q_F2_phase",
+				q);
+		iio_device_attr_write_longlong(dev,
+				"out_altvoltage4_TX2_I_F1_phase",
+				i);
+		iio_device_attr_write_longlong(dev,
+				"out_altvoltage5_TX2_I_F2_phase",
+			       	i);
+		iio_device_attr_write_longlong(dev,
+				"out_altvoltage6_TX2_Q_F1_phase",
+				q);
+		iio_device_attr_write_longlong(dev,
+				"out_altvoltage7_TX2_Q_F2_phase",
+				q);
+
+}
+
+void near_end_loopback_ctrl(unsigned channel, bool enable)
+{
+
+	unsigned tmp;
+	struct iio_device *dev = iio_context_find_device(ctx, channel > 3 ?
+		"cf-ad9361-lpc" : "cf-ad9361-hpc");
+
+	if (channel > 3)
+		channel -= 4;
+
+	if (iio_device_reg_read(dev, 0x80000400 + channel * 0x40, &tmp))
+		return;
+
+	if (enable)
+		tmp |= 0x800;
+	else
+		tmp &= ~0x800;
+
+
+	iio_device_reg_write(dev, 0x80000400 + channel * 0x40, tmp);
+}
+
+void get_markers (int *offset, int *mag) /* FIXME */
+{
+	int ret;
+	struct marker_type *markers = NULL;
+	gfloat **cooked_data = NULL;
+	const char *device_ref = NULL;
+
+	device_ref = plugin_get_device_by_reference("cf-ad9361-lpc");
+
+	if (device_ref) {
+		do {
+			ret = plugin_data_capture_with_domain(device_ref, NULL, &markers, XCORR_PLOT);
+		} while ((ret == -EBUSY));
+	}
+
+	if (markers) {
+		printf("X: %f %f %f\n", markers[0].x,  markers[1].x,  markers[2].x);
+		printf("Y: %f %f %f\n", markers[0].y,  markers[1].y,  markers[2].y);
+
+		*offset = markers[0].x;
+		*mag =  markers[0].y;
+
+	}
+
+	plugin_data_capture_with_domain(NULL, NULL, &markers, XCORR_PLOT);
+}
+
+void __cal_switch_ports_enable_cb (unsigned val)
 {
 	unsigned lp_slave, lp_master, sw;
 	char *rx_port, *tx_port;
-	unsigned val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 
 	/*
 	*  0 DISABLE
-	*  1 TX1B_B->RX1C_B: BIST_LOOPBACK on A
-	*  2 TX1B_A->RX1C_B: BIST_LOOPBACK on A
-	*  3 TX1B_B->RX1C_A: BIST_LOOPBACK on B
-	*  4 TX1B_A->RX1C_A: BIST_LOOPBACK on B
+	*  1 TX1B_B (HPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
+	*  2 TX1B_A (LPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
+	*  3 TX1B_B (HPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
+	*  4 TX1B_A (LPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
 	*
 	*/
 	switch (val) {
@@ -307,8 +426,12 @@ void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
 		break;
 	}
 
-	iio_device_debug_attr_write_bool(dev, "loopback", lp_master);
-	iio_device_debug_attr_write_bool(dev_slave, "loopback", lp_slave);
+	near_end_loopback_ctrl(0, lp_slave); /* HPC */
+	near_end_loopback_ctrl(1, lp_slave); /* HPC */
+
+	near_end_loopback_ctrl(4, lp_master); /* LPC */
+	near_end_loopback_ctrl(5, lp_master); /* LPC */
+
 	iio_device_debug_attr_write_longlong(dev, "calibration_switch_control", sw);
 	iio_device_attr_write(dev, "in_voltage0_rf_port_select", rx_port);
 	iio_device_attr_write(dev_slave, "in_voltage0_rf_port_select", rx_port);
@@ -317,6 +440,11 @@ void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
 
 	return;
 
+}
+
+void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
+{
+	__cal_switch_ports_enable_cb(gtk_combo_box_get_active(GTK_COMBO_BOX(widget)));
 }
 
 void mcs_cb (GtkWidget *widget, gpointer data)
@@ -349,6 +477,248 @@ void mcs_cb (GtkWidget *widget, gpointer data)
 		iio_channel_attr_write_bool(out0, "raw", 0);
 		iio_channel_attr_write_bool(out0, "raw", 1);
 	}
+}
+
+double calc_phase_offset(unsigned type, double fsample, double dds_freq, int offset, int mag)
+{
+	double val;
+
+	printf("%s:%d offset = %d, mag = %d\n", __func__, __LINE__, offset , mag);
+
+	if ((type == 3) /*|| (type == 4)*/) {
+		offset *= -1;
+	}
+
+	val = 360.0 / ((fsample / dds_freq) / offset);
+
+
+	printf("%s:%d val= %f, mag = %d\n", __func__, __LINE__, val);
+
+
+// 	if ((mag < 0) && (offset >= 0))
+// 		val += 180.0;
+
+	if (mag < 0)
+		val += 180.0;
+
+	printf("%s:%d val= %f, mag = %d\n", __func__, __LINE__, val);
+
+	if (val > 360.0)
+		val -= 360.0;
+
+	printf("%s:%d val= %f, mag = %d\n", __func__, __LINE__, val);
+
+	if (val < 0)
+		val = 360.0 + val;
+
+	printf("%s:%d val= %f, mag = %d\n", __func__, __LINE__, val);
+
+	return val;
+}
+
+void calibrate (gpointer button)
+{
+	int offset, mag, i;
+	double rx_phase_lpc, rx_phase_hpc, tx_phase_lpc, tx_phase_hpc, tmp;
+	struct iio_device *fmc[2];
+
+	mcs_cb(NULL, NULL);
+
+	fmc[0] = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
+	fmc[1] = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
+
+	if (!fmc[0] || !fmc[1]) {
+		printf("could not fine dds cores\n");
+		goto calibrate_fail;
+	}
+
+	/* set some logical defaults / assumptions */
+#define CAL_TONE 1000000
+#define CAL_SCALE 0.12500
+#define CAL_PHASE 0
+#define CAL_FREQ 30720000
+
+	for (i = 0; i <= 1; i++) {
+		printf("%s : %i\n", __func__, i);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage0_TX1_I_F1_frequency",
+				CAL_TONE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage0_TX1_I_F1_phase",
+				CAL_PHASE + 90000);
+		iio_device_attr_write_double(fmc[i],
+				"out_altvoltage0_TX1_I_F1_scale",
+				CAL_SCALE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage1_TX1_I_F2_frequency",
+				CAL_TONE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage1_TX1_I_F2_phase",
+				CAL_PHASE + 90000);
+		iio_device_attr_write_double(fmc[i],
+				"out_altvoltage1_TX1_I_F2_scale",
+				CAL_SCALE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage2_TX1_Q_F1_frequency",
+				CAL_TONE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage2_TX1_Q_F1_phase",
+				CAL_PHASE);
+		iio_device_attr_write_double(fmc[i],
+				"out_altvoltage2_TX1_Q_F1_scale",
+				CAL_SCALE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage3_TX1_Q_F2_frequency",
+				CAL_TONE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage3_TX1_Q_F2_phase",
+				CAL_PHASE);
+		iio_device_attr_write_double(fmc[i],
+				"out_altvoltage3_TX1_Q_F2_scale",
+				CAL_SCALE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage4_TX2_I_F1_frequency",
+				CAL_TONE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage4_TX2_I_F1_phase",
+				CAL_PHASE + 90000);
+		iio_device_attr_write_double(fmc[i],
+				"out_altvoltage4_TX2_I_F1_scale",
+				CAL_SCALE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage5_TX2_I_F2_frequency",
+				CAL_TONE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage5_TX2_I_F2_phase",
+			       	CAL_PHASE + 90000);
+		iio_device_attr_write_double(fmc[i],
+				"out_altvoltage5_TX2_I_F2_scale",
+				CAL_SCALE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage6_TX2_Q_F1_frequency",
+				CAL_TONE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage6_TX2_Q_F1_phase",
+				CAL_PHASE);
+		iio_device_attr_write_double(fmc[i],
+				"out_altvoltage6_TX2_Q_F1_scale",
+				CAL_SCALE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage7_TX2_Q_F2_frequency",
+				CAL_TONE);
+		iio_device_attr_write_longlong(fmc[i],
+				"out_altvoltage7_TX2_Q_F2_phase",
+				CAL_PHASE);
+		iio_device_attr_write_double(fmc[i],
+				"out_altvoltage7_TX2_Q_F2_scale",
+				CAL_SCALE);
+	/*
+		iio_device_attr_write_longlong(tmp_dev,
+				"out_altvoltage_sampling_frequency",
+				CAL_FREQ);
+	*/
+	}
+
+	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), 0.0);
+	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), 0.0);
+
+	/* Toggle RAW on master to sync */
+	iio_device_attr_write_longlong(fmc[0],
+			"out_altvoltage1_TX1_I_F2_raw", 0);
+	iio_device_attr_write_longlong(fmc[0],
+			"out_altvoltage1_TX1_I_F2_raw", 1);
+
+
+	/* Calibrate RX */
+	__cal_switch_ports_enable_cb(1);
+	sleep(0.2);
+	get_markers(&offset, &mag);
+	rx_phase_hpc = calc_phase_offset(1, CAL_FREQ, CAL_TONE, offset, mag);
+	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), rx_phase_hpc);
+
+	printf("rx_phase_hpc %f\n", rx_phase_hpc);
+
+	//goto calibrate_fail;
+
+	/* revert */
+	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), 0.0);
+
+	__cal_switch_ports_enable_cb(3);
+	sleep(0.2);
+	get_markers(&offset, &mag);
+	rx_phase_lpc = calc_phase_offset(3, CAL_FREQ, CAL_TONE, offset, mag);
+	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), rx_phase_lpc);
+	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), rx_phase_hpc);
+
+	printf("rx_phase_lpc %f\n", rx_phase_lpc);
+
+
+	/* Calibrate TX
+	 * 2 TX1B_A (LPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
+	 */
+	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), 0.0);
+	__cal_switch_ports_enable_cb(2);
+	sleep(0.2);
+	get_markers(&offset, &mag);
+	tx_phase_lpc = calc_phase_offset(2, CAL_FREQ, CAL_TONE, offset, mag);
+	printf("tx_phase_lpc %f\n", tx_phase_lpc);
+
+	/* Calibrate TX
+	 * 4 TX1B_A (LPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
+	 */
+
+	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), 0.0);
+	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), rx_phase_lpc);
+	__cal_switch_ports_enable_cb(4);
+	sleep(0.2);
+	get_markers(&offset, &mag);
+	tx_phase_hpc = calc_phase_offset(4, CAL_FREQ, CAL_TONE, offset, mag);
+
+	printf("tx_phase_hpc %f\n", tx_phase_hpc);
+
+	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), rx_phase_hpc);
+
+	tmp = tx_phase_lpc - tx_phase_hpc;
+
+	if (tmp > 360.0)
+		tmp -= 360.0;
+
+	if (tmp < 0.0)
+		tmp += 360.0;
+
+	tx_phase_rotation(fmc[1], tmp);
+
+	/* Toggle RAW on master to sync */
+	iio_device_attr_write_longlong(fmc[0],
+			"out_altvoltage1_TX1_I_F2_raw", 0);
+	iio_device_attr_write_longlong(fmc[0],
+			"out_altvoltage1_TX1_I_F2_raw", 1);
+
+	/*
+	*  0 DISABLE
+	*  1 TX1B_B (HPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
+	*  2 TX1B_A (LPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
+	*  3 TX1B_B (HPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
+	*  4 TX1B_A (LPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
+	*
+	*/
+
+	 __cal_switch_ports_enable_cb(0);
+
+calibrate_fail:
+	gdk_threads_enter();
+	gtk_widget_show(GTK_WIDGET(button));
+	gdk_threads_leave();
+
+	g_thread_exit(NULL);
+}
+
+
+
+void do_calibration (GtkWidget *widget, gpointer data)
+{
+	g_thread_new("Calibrate_thread", (void *) &calibrate, data);
+	gtk_widget_hide(GTK_WIDGET(data));
 }
 
 void bist_tone_cb (GtkWidget *widget, gpointer data)
@@ -487,8 +857,15 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "c1i", "toggled",
 		G_CALLBACK(bist_tone_cb), builder);
 
+	gtk_combo_box_set_active(
+			GTK_COMBO_BOX(gtk_builder_get_object(builder, "calibration_switch_control")), 0);
+	__cal_switch_ports_enable_cb(0);
+
 	g_builder_connect_signal(builder, "calibration_switch_control", "changed",
 		G_CALLBACK(cal_switch_ports_enable_cb), builder);
+
+	g_builder_connect_signal(builder, "do_fmcomms5_cal", "clicked",
+			G_CALLBACK(do_calibration), gtk_builder_get_object(builder, "do_fmcomms5_cal"));
 
 	if (dev_slave) {
 		g_builder_connect_signal(builder, "mcs_sync", "clicked",
