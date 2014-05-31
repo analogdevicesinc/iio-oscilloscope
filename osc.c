@@ -885,6 +885,10 @@ static void do_fft(struct buffer *buf)
 
 #endif
 
+/* sections of the do_xcorr function are borrowed (under the GPL) from
+ * http://blog.dmaggot.org/2010/06/cross-correlation-using-fftw3/
+ * which is copyright David E. Narváez
+ */
 static void do_xcorr(struct buffer *buf)
 {
 	static fftw_complex *signal_a = NULL, *signal_b = NULL;
