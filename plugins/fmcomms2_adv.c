@@ -24,6 +24,7 @@
 
 #include <iio.h>
 
+#include "../libini2.h"
 #include "../osc.h"
 #include "../osc_plugin.h"
 #include "../config.h"
@@ -38,6 +39,8 @@
 
 #define DDS_DEVICE	"cf-ad9361-dds-core-lpc"
 #define DDS_SLAVE_DEVICE	"cf-ad9361-dds-core-B"
+
+#define THIS_DRIVER "FMComms2 Advanced"
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
@@ -212,6 +215,138 @@ static struct w_info attrs[] = {
 	{COMBOBOX, "bist_prbs"},
 	{COMBOBOX, "loopback"},
 	{BUTTON, "initialize"},
+};
+
+static const char *fmcomms2_adv_sr_attribs[] = {
+	"debug.ad9361-phy.adi,agc-adc-large-overload-exceed-counter",
+	"debug.ad9361-phy.adi,agc-adc-large-overload-inc-steps",
+	"debug.ad9361-phy.adi,agc-adc-lmt-small-overload-prevent-gain-inc-enable",
+	"debug.ad9361-phy.adi,agc-adc-small-overload-exceed-counter",
+	"debug.ad9361-phy.adi,agc-attack-delay-extra-margin-us",
+	"debug.ad9361-phy.adi,agc-dig-gain-step-size",
+	"debug.ad9361-phy.adi,agc-dig-saturation-exceed-counter",
+	"debug.ad9361-phy.adi,agc-gain-update-interval-us",
+	"debug.ad9361-phy.adi,agc-immed-gain-change-if-large-adc-overload-enable",
+	"debug.ad9361-phy.adi,agc-immed-gain-change-if-large-lmt-overload-enable",
+	"debug.ad9361-phy.adi,agc-inner-thresh-high",
+	"debug.ad9361-phy.adi,agc-inner-thresh-high-dec-steps",
+	"debug.ad9361-phy.adi,agc-inner-thresh-low",
+	"debug.ad9361-phy.adi,agc-inner-thresh-low-inc-steps",
+	"debug.ad9361-phy.adi,agc-lmt-overload-large-exceed-counter",
+	"debug.ad9361-phy.adi,agc-lmt-overload-large-inc-steps",
+	"debug.ad9361-phy.adi,agc-lmt-overload-small-exceed-counter",
+	"debug.ad9361-phy.adi,agc-outer-thresh-high",
+	"debug.ad9361-phy.adi,agc-outer-thresh-high-dec-steps",
+	"debug.ad9361-phy.adi,agc-outer-thresh-low",
+	"debug.ad9361-phy.adi,agc-outer-thresh-low-inc-steps",
+	"debug.ad9361-phy.adi,agc-sync-for-gain-counter-enable",
+	"debug.ad9361-phy.adi,aux-adc-decimation",
+	"debug.ad9361-phy.adi,aux-adc-rate",
+	"debug.ad9361-phy.adi,clk-output-mode-select",
+	"debug.ad9361-phy.adi,ctrl-outs-enable-mask",
+	"debug.ad9361-phy.adi,ctrl-outs-index",
+	"debug.ad9361-phy.adi,dc-offset-attenuation-high-range",
+	"debug.ad9361-phy.adi,dc-offset-attenuation-low-range",
+	"debug.ad9361-phy.adi,dc-offset-count-high-range",
+	"debug.ad9361-phy.adi,dc-offset-count-low-range",
+	"debug.ad9361-phy.adi,dc-offset-tracking-update-event-mask",
+	"debug.ad9361-phy.adi,elna-bypass-loss-mdB",
+	"debug.ad9361-phy.adi,elna-gain-mdB",
+	"debug.ad9361-phy.adi,elna-rx1-gpo0-control-enable",
+	"debug.ad9361-phy.adi,elna-rx2-gpo1-control-enable",
+	"debug.ad9361-phy.adi,elna-settling-delay-ns",
+	"debug.ad9361-phy.adi,ensm-enable-pin-pulse-mode-enable",
+	"debug.ad9361-phy.adi,ensm-enable-txnrx-control-enable",
+	"debug.ad9361-phy.adi,external-rx-lo-enable",
+	"debug.ad9361-phy.adi,external-tx-lo-enable",
+	"debug.ad9361-phy.adi,frequency-division-duplex-mode-enable",
+	"debug.ad9361-phy.adi,gc-adc-large-overload-thresh",
+	"debug.ad9361-phy.adi,gc-adc-ovr-sample-size",
+	"debug.ad9361-phy.adi,gc-adc-small-overload-thresh",
+	"debug.ad9361-phy.adi,gc-dec-pow-measurement-duration",
+	"debug.ad9361-phy.adi,gc-dig-gain-enable",
+	"debug.ad9361-phy.adi,gc-lmt-overload-high-thresh",
+	"debug.ad9361-phy.adi,gc-lmt-overload-low-thresh",
+	"debug.ad9361-phy.adi,gc-low-power-thresh",
+	"debug.ad9361-phy.adi,gc-max-dig-gain",
+	"debug.ad9361-phy.adi,gc-rx1-mode",
+	"debug.ad9361-phy.adi,gc-rx2-mode",
+	"debug.ad9361-phy.adi,mgc-dec-gain-step",
+	"debug.ad9361-phy.adi,mgc-inc-gain-step",
+	"debug.ad9361-phy.adi,mgc-rx1-ctrl-inp-enable",
+	"debug.ad9361-phy.adi,mgc-rx2-ctrl-inp-enable",
+	"debug.ad9361-phy.adi,mgc-split-table-ctrl-inp-gain-mode",
+	"debug.ad9361-phy.adi,rssi-delay",
+	"debug.ad9361-phy.adi,rssi-duration",
+	"debug.ad9361-phy.adi,rssi-restart-mode",
+	"debug.ad9361-phy.adi,rssi-wait",
+	"debug.ad9361-phy.adi,rx-rf-port-input-select",
+	"debug.ad9361-phy.adi,split-gain-table-mode-enable",
+	"debug.ad9361-phy.adi,tdd-skip-vco-cal-enable",
+	"debug.ad9361-phy.adi,tdd-use-dual-synth-mode-enable",
+	"debug.ad9361-phy.adi,tdd-use-fdd-vco-tables-enable",
+	"debug.ad9361-phy.adi,temp-sense-decimation",
+	"debug.ad9361-phy.adi,temp-sense-measurement-interval-ms",
+	"debug.ad9361-phy.adi,temp-sense-offset-signed",
+	"debug.ad9361-phy.adi,temp-sense-periodic-measurement-enable",
+	"debug.ad9361-phy.adi,tx-rf-port-input-select",
+	"debug.ad9361-phy.adi,update-tx-gain-in-alert-enable",
+	"debug.ad9361-phy.adi,xo-disable-use-ext-refclk-enable",
+	"debug.ad9361-phy.adi,fagc-dec-pow-measurement-duration",
+	"debug.ad9361-phy.adi,fagc-allow-agc-gain-increase-enable",
+	"debug.ad9361-phy.adi,fagc-energy-lost-stronger-sig-gain-lock-exit-cnt",
+	"debug.ad9361-phy.adi,fagc-final-overrange-count",
+	"debug.ad9361-phy.adi,fagc-gain-increase-after-gain-lock-enable",
+	"debug.ad9361-phy.adi,fagc-gain-index-type-after-exit-rx-mode",
+	"debug.ad9361-phy.adi,fagc-lmt-final-settling-steps",
+	"debug.ad9361-phy.adi,fagc-lock-level-gain-increase-upper-limit",
+	"debug.ad9361-phy.adi,fagc-lock-level-lmt-gain-increase-enable",
+	"debug.ad9361-phy.adi,fagc-lp-thresh-increment-steps",
+	"debug.ad9361-phy.adi,fagc-lp-thresh-increment-time",
+	"debug.ad9361-phy.adi,fagc-lpf-final-settling-steps",
+	"debug.ad9361-phy.adi,fagc-optimized-gain-offset",
+	"debug.ad9361-phy.adi,fagc-power-measurement-duration-in-state5",
+	"debug.ad9361-phy.adi,fagc-rst-gla-en-agc-pulled-high-enable",
+	"debug.ad9361-phy.adi,fagc-rst-gla-engergy-lost-goto-optim-gain-enable",
+	"debug.ad9361-phy.adi,fagc-rst-gla-engergy-lost-sig-thresh-below-ll",
+	"debug.ad9361-phy.adi,fagc-rst-gla-engergy-lost-sig-thresh-exceeded-enable",
+	"debug.ad9361-phy.adi,fagc-rst-gla-if-en-agc-pulled-high-mode",
+	"debug.ad9361-phy.adi,fagc-rst-gla-large-adc-overload-enable",
+	"debug.ad9361-phy.adi,fagc-rst-gla-large-lmt-overload-enable",
+	"debug.ad9361-phy.adi,fagc-rst-gla-stronger-sig-thresh-above-ll",
+	"debug.ad9361-phy.adi,fagc-rst-gla-stronger-sig-thresh-exceeded-enable",
+	"debug.ad9361-phy.adi,fagc-state-wait-time-ns",
+	"debug.ad9361-phy.adi,fagc-use-last-lock-level-for-set-gain-enable",
+	"debug.ad9361-phy.adi,aux-dac-manual-mode-enable",
+	"debug.ad9361-phy.adi,aux-dac1-active-in-alert-enable",
+	"debug.ad9361-phy.adi,aux-dac1-active-in-rx-enable",
+	"debug.ad9361-phy.adi,aux-dac1-active-in-tx-enable",
+	"debug.ad9361-phy.adi,aux-dac1-default-value-mV",
+	"debug.ad9361-phy.adi,aux-dac1-rx-delay-us",
+	"debug.ad9361-phy.adi,aux-dac1-tx-delay-us",
+	"debug.ad9361-phy.adi,aux-dac2-active-in-alert-enable",
+	"debug.ad9361-phy.adi,aux-dac2-active-in-rx-enable",
+	"debug.ad9361-phy.adi,aux-dac2-active-in-tx-enable",
+	"debug.ad9361-phy.adi,aux-dac2-default-value-mV",
+	"debug.ad9361-phy.adi,aux-dac2-rx-delay-us",
+	"debug.ad9361-phy.adi,aux-dac2-tx-delay-us",
+	"debug.ad9361-phy.adi,rx-fastlock-delay-ns",
+	"debug.ad9361-phy.adi,tx-fastlock-delay-ns",
+	"debug.ad9361-phy.adi,rx-fastlock-pincontrol-enable",
+	"debug.ad9361-phy.adi,tx-fastlock-pincontrol-enable",
+	"debug.ad9361-phy.adi,txmon-1-front-end-gain",
+	"debug.ad9361-phy.adi,txmon-1-lo-cm",
+	"debug.ad9361-phy.adi,txmon-2-front-end-gain",
+	"debug.ad9361-phy.adi,txmon-2-lo-cm",
+	"debug.ad9361-phy.adi,txmon-dc-tracking-enable",
+	"debug.ad9361-phy.adi,txmon-delay",
+	"debug.ad9361-phy.adi,txmon-duration",
+	"debug.ad9361-phy.adi,txmon-high-gain",
+	"debug.ad9361-phy.adi,txmon-low-gain",
+	"debug.ad9361-phy.adi,txmon-low-high-thresh",
+	"debug.ad9361-phy.adi,txmon-one-shot-mode-enable",
+	SYNC_RELOAD,
+	NULL
 };
 
 static void update_widget(GtkBuilder *builder, struct w_info *item)
@@ -1001,10 +1136,15 @@ void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
-static int fmcomms2adv_init(GtkWidget *notebook)
+static int fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkWidget *fmcomms2adv_panel;
 	int i;
+
+	if (ini_fn)
+		update_from_ini(ini_fn, THIS_DRIVER, dev,
+				fmcomms2_adv_sr_attribs,
+				ARRAY_SIZE(fmcomms2_adv_sr_attribs));
 
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
@@ -1088,8 +1228,6 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 	return 0;
 }
 
-#define SYNC_RELOAD "SYNC_RELOAD"
-
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
 {
@@ -1116,146 +1254,20 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
-static const char *fmcomms2_adv_sr_attribs[] = {
-	"debug.ad9361-phy.adi,agc-adc-large-overload-exceed-counter",
-	"debug.ad9361-phy.adi,agc-adc-large-overload-inc-steps",
-	"debug.ad9361-phy.adi,agc-adc-lmt-small-overload-prevent-gain-inc-enable",
-	"debug.ad9361-phy.adi,agc-adc-small-overload-exceed-counter",
-	"debug.ad9361-phy.adi,agc-attack-delay-extra-margin-us",
-	"debug.ad9361-phy.adi,agc-dig-gain-step-size",
-	"debug.ad9361-phy.adi,agc-dig-saturation-exceed-counter",
-	"debug.ad9361-phy.adi,agc-gain-update-interval-us",
-	"debug.ad9361-phy.adi,agc-immed-gain-change-if-large-adc-overload-enable",
-	"debug.ad9361-phy.adi,agc-immed-gain-change-if-large-lmt-overload-enable",
-	"debug.ad9361-phy.adi,agc-inner-thresh-high",
-	"debug.ad9361-phy.adi,agc-inner-thresh-high-dec-steps",
-	"debug.ad9361-phy.adi,agc-inner-thresh-low",
-	"debug.ad9361-phy.adi,agc-inner-thresh-low-inc-steps",
-	"debug.ad9361-phy.adi,agc-lmt-overload-large-exceed-counter",
-	"debug.ad9361-phy.adi,agc-lmt-overload-large-inc-steps",
-	"debug.ad9361-phy.adi,agc-lmt-overload-small-exceed-counter",
-	"debug.ad9361-phy.adi,agc-outer-thresh-high",
-	"debug.ad9361-phy.adi,agc-outer-thresh-high-dec-steps",
-	"debug.ad9361-phy.adi,agc-outer-thresh-low",
-	"debug.ad9361-phy.adi,agc-outer-thresh-low-inc-steps",
-	"debug.ad9361-phy.adi,agc-sync-for-gain-counter-enable",
-	"debug.ad9361-phy.adi,aux-adc-decimation",
-	"debug.ad9361-phy.adi,aux-adc-rate",
-	"debug.ad9361-phy.adi,clk-output-mode-select",
-	"debug.ad9361-phy.adi,ctrl-outs-enable-mask",
-	"debug.ad9361-phy.adi,ctrl-outs-index",
-	"debug.ad9361-phy.adi,dc-offset-attenuation-high-range",
-	"debug.ad9361-phy.adi,dc-offset-attenuation-low-range",
-	"debug.ad9361-phy.adi,dc-offset-count-high-range",
-	"debug.ad9361-phy.adi,dc-offset-count-low-range",
-	"debug.ad9361-phy.adi,dc-offset-tracking-update-event-mask",
-	"debug.ad9361-phy.adi,elna-bypass-loss-mdB",
-	"debug.ad9361-phy.adi,elna-gain-mdB",
-	"debug.ad9361-phy.adi,elna-rx1-gpo0-control-enable",
-	"debug.ad9361-phy.adi,elna-rx2-gpo1-control-enable",
-	"debug.ad9361-phy.adi,elna-settling-delay-ns",
-	"debug.ad9361-phy.adi,ensm-enable-pin-pulse-mode-enable",
-	"debug.ad9361-phy.adi,ensm-enable-txnrx-control-enable",
-	"debug.ad9361-phy.adi,external-rx-lo-enable",
-	"debug.ad9361-phy.adi,external-tx-lo-enable",
-	"debug.ad9361-phy.adi,frequency-division-duplex-mode-enable",
-	"debug.ad9361-phy.adi,gc-adc-large-overload-thresh",
-	"debug.ad9361-phy.adi,gc-adc-ovr-sample-size",
-	"debug.ad9361-phy.adi,gc-adc-small-overload-thresh",
-	"debug.ad9361-phy.adi,gc-dec-pow-measurement-duration",
-	"debug.ad9361-phy.adi,gc-dig-gain-enable",
-	"debug.ad9361-phy.adi,gc-lmt-overload-high-thresh",
-	"debug.ad9361-phy.adi,gc-lmt-overload-low-thresh",
-	"debug.ad9361-phy.adi,gc-low-power-thresh",
-	"debug.ad9361-phy.adi,gc-max-dig-gain",
-	"debug.ad9361-phy.adi,gc-rx1-mode",
-	"debug.ad9361-phy.adi,gc-rx2-mode",
-	"debug.ad9361-phy.adi,mgc-dec-gain-step",
-	"debug.ad9361-phy.adi,mgc-inc-gain-step",
-	"debug.ad9361-phy.adi,mgc-rx1-ctrl-inp-enable",
-	"debug.ad9361-phy.adi,mgc-rx2-ctrl-inp-enable",
-	"debug.ad9361-phy.adi,mgc-split-table-ctrl-inp-gain-mode",
-	"debug.ad9361-phy.adi,rssi-delay",
-	"debug.ad9361-phy.adi,rssi-duration",
-	"debug.ad9361-phy.adi,rssi-restart-mode",
-	"debug.ad9361-phy.adi,rssi-wait",
-	"debug.ad9361-phy.adi,rx-rf-port-input-select",
-	"debug.ad9361-phy.adi,split-gain-table-mode-enable",
-	"debug.ad9361-phy.adi,tdd-skip-vco-cal-enable",
-	"debug.ad9361-phy.adi,tdd-use-dual-synth-mode-enable",
-	"debug.ad9361-phy.adi,tdd-use-fdd-vco-tables-enable",
-	"debug.ad9361-phy.adi,temp-sense-decimation",
-	"debug.ad9361-phy.adi,temp-sense-measurement-interval-ms",
-	"debug.ad9361-phy.adi,temp-sense-offset-signed",
-	"debug.ad9361-phy.adi,temp-sense-periodic-measurement-enable",
-	"debug.ad9361-phy.adi,tx-rf-port-input-select",
-	"debug.ad9361-phy.adi,update-tx-gain-in-alert-enable",
-	"debug.ad9361-phy.adi,xo-disable-use-ext-refclk-enable",
-	"debug.ad9361-phy.adi,fagc-dec-pow-measurement-duration",
-	"debug.ad9361-phy.adi,fagc-allow-agc-gain-increase-enable",
-	"debug.ad9361-phy.adi,fagc-energy-lost-stronger-sig-gain-lock-exit-cnt",
-	"debug.ad9361-phy.adi,fagc-final-overrange-count",
-	"debug.ad9361-phy.adi,fagc-gain-increase-after-gain-lock-enable",
-	"debug.ad9361-phy.adi,fagc-gain-index-type-after-exit-rx-mode",
-	"debug.ad9361-phy.adi,fagc-lmt-final-settling-steps",
-	"debug.ad9361-phy.adi,fagc-lock-level-gain-increase-upper-limit",
-	"debug.ad9361-phy.adi,fagc-lock-level-lmt-gain-increase-enable",
-	"debug.ad9361-phy.adi,fagc-lp-thresh-increment-steps",
-	"debug.ad9361-phy.adi,fagc-lp-thresh-increment-time",
-	"debug.ad9361-phy.adi,fagc-lpf-final-settling-steps",
-	"debug.ad9361-phy.adi,fagc-optimized-gain-offset",
-	"debug.ad9361-phy.adi,fagc-power-measurement-duration-in-state5",
-	"debug.ad9361-phy.adi,fagc-rst-gla-en-agc-pulled-high-enable",
-	"debug.ad9361-phy.adi,fagc-rst-gla-engergy-lost-goto-optim-gain-enable",
-	"debug.ad9361-phy.adi,fagc-rst-gla-engergy-lost-sig-thresh-below-ll",
-	"debug.ad9361-phy.adi,fagc-rst-gla-engergy-lost-sig-thresh-exceeded-enable",
-	"debug.ad9361-phy.adi,fagc-rst-gla-if-en-agc-pulled-high-mode",
-	"debug.ad9361-phy.adi,fagc-rst-gla-large-adc-overload-enable",
-	"debug.ad9361-phy.adi,fagc-rst-gla-large-lmt-overload-enable",
-	"debug.ad9361-phy.adi,fagc-rst-gla-stronger-sig-thresh-above-ll",
-	"debug.ad9361-phy.adi,fagc-rst-gla-stronger-sig-thresh-exceeded-enable",
-	"debug.ad9361-phy.adi,fagc-state-wait-time-ns",
-	"debug.ad9361-phy.adi,fagc-use-last-lock-level-for-set-gain-enable",
-	"debug.ad9361-phy.adi,aux-dac-manual-mode-enable",
-	"debug.ad9361-phy.adi,aux-dac1-active-in-alert-enable",
-	"debug.ad9361-phy.adi,aux-dac1-active-in-rx-enable",
-	"debug.ad9361-phy.adi,aux-dac1-active-in-tx-enable",
-	"debug.ad9361-phy.adi,aux-dac1-default-value-mV",
-	"debug.ad9361-phy.adi,aux-dac1-rx-delay-us",
-	"debug.ad9361-phy.adi,aux-dac1-tx-delay-us",
-	"debug.ad9361-phy.adi,aux-dac2-active-in-alert-enable",
-	"debug.ad9361-phy.adi,aux-dac2-active-in-rx-enable",
-	"debug.ad9361-phy.adi,aux-dac2-active-in-tx-enable",
-	"debug.ad9361-phy.adi,aux-dac2-default-value-mV",
-	"debug.ad9361-phy.adi,aux-dac2-rx-delay-us",
-	"debug.ad9361-phy.adi,aux-dac2-tx-delay-us",
-	"debug.ad9361-phy.adi,rx-fastlock-delay-ns",
-	"debug.ad9361-phy.adi,tx-fastlock-delay-ns",
-	"debug.ad9361-phy.adi,rx-fastlock-pincontrol-enable",
-	"debug.ad9361-phy.adi,tx-fastlock-pincontrol-enable",
-	"debug.ad9361-phy.adi,txmon-1-front-end-gain",
-	"debug.ad9361-phy.adi,txmon-1-lo-cm",
-	"debug.ad9361-phy.adi,txmon-2-front-end-gain",
-	"debug.ad9361-phy.adi,txmon-2-lo-cm",
-	"debug.ad9361-phy.adi,txmon-dc-tracking-enable",
-	"debug.ad9361-phy.adi,txmon-delay",
-	"debug.ad9361-phy.adi,txmon-duration",
-	"debug.ad9361-phy.adi,txmon-high-gain",
-	"debug.ad9361-phy.adi,txmon-low-gain",
-	"debug.ad9361-phy.adi,txmon-low-high-thresh",
-	"debug.ad9361-phy.adi,txmon-one-shot-mode-enable",
-	SYNC_RELOAD,
-	NULL
-};
-
 static void update_active_page(gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void context_destroy(void)
+static void context_destroy(const char *ini_fn)
 {
+	FILE *f = fopen(ini_fn, "a");
+	if (f) {
+		save_to_ini(f, THIS_DRIVER, dev, fmcomms2_adv_sr_attribs,
+				ARRAY_SIZE(fmcomms2_adv_sr_attribs));
+		fclose(f);
+	}
 	iio_context_destroy(ctx);
 }
 
@@ -1294,7 +1306,7 @@ static bool fmcomms2adv_identify(void)
 }
 
 struct osc_plugin plugin = {
-	.name = "FMComms2 Advanced",
+	.name = THIS_DRIVER,
 	.identify = fmcomms2adv_identify,
 	.init = fmcomms2adv_init,
 	.save_restore_attribs = fmcomms2_adv_sr_attribs,
