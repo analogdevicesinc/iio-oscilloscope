@@ -26,6 +26,7 @@
 #include "../datatypes.h"
 #include "../osc.h"
 #include "../iio_widget.h"
+#include "../libini2.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
@@ -38,13 +39,17 @@
 #define PHY_DEVICE "ad9361-phy"
 #define DDS_DEVICE "cf-ad9361-dds-core-lpc" /* can be hpc as well */
 #define CAP_DEVICE "cf-ad9361-lpc"
+#define THIS_DRIVER "FMComms5-B"
 #else
 #define PHY_DEVICE "ad9361-phy-B"
 #define DDS_DEVICE "cf-ad9361-dds-core-B"
 #define CAP_DEVICE "cf-ad9361-B"
+#define THIS_DRIVER "FMComms2/3/4"
 #endif
 
 #define CAP_DEVICE_ALT "cf-ad9361-A"
+
+#define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 extern gfloat plugin_fft_corr;
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
@@ -139,6 +144,74 @@ static GtkWidget *fmcomms2_panel;
 static gboolean plugin_detached;
 
 static char last_fir_filter[PATH_MAX];
+
+static const char *fmcomms2_sr_attribs[] = {
+	PHY_DEVICE".trx_rate_governor",
+	PHY_DEVICE".dcxo_tune_coarse",
+	PHY_DEVICE".dcxo_tune_fine",
+	PHY_DEVICE".ensm_mode",
+	PHY_DEVICE".in_voltage0_rf_port_select",
+	PHY_DEVICE".in_voltage0_gain_control_mode",
+	PHY_DEVICE".in_voltage0_hardwaregain",
+	PHY_DEVICE".in_voltage1_gain_control_mode",
+	PHY_DEVICE".in_voltage1_hardwaregain",
+	PHY_DEVICE".in_voltage_bb_dc_offset_tracking_en",
+	PHY_DEVICE".in_voltage_quadrature_tracking_en",
+	PHY_DEVICE".in_voltage_rf_dc_offset_tracking_en",
+	PHY_DEVICE".out_voltage0_rf_port_select",
+	PHY_DEVICE".out_altvoltage0_RX_LO_frequency",
+	PHY_DEVICE".out_altvoltage1_TX_LO_frequency",
+	PHY_DEVICE".out_voltage0_hardwaregain",
+	PHY_DEVICE".out_voltage1_hardwaregain",
+	PHY_DEVICE".out_voltage_sampling_frequency",
+	PHY_DEVICE".in_voltage_rf_bandwidth",
+	PHY_DEVICE".out_voltage_rf_bandwidth",
+	"load_fir_filter_file",
+	PHY_DEVICE".in_voltage_filter_fir_en",
+	PHY_DEVICE".out_voltage_filter_fir_en",
+	PHY_DEVICE".in_out_voltage_filter_fir_en",
+	"global_settings_show",
+	"tx_show",
+	"rx_show",
+	"fpga_show",
+	"dds_mode_tx1",
+	"dds_mode_tx2",
+	"dac_buf_filename",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_frequency",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_phase",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_raw",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_scale",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_frequency",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_phase",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_raw",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_scale",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_frequency",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_phase",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_raw",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_scale",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_frequency",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_phase",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_raw",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_scale",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_frequency",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_phase",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_raw",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_scale",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_frequency",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_phase",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_raw",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_scale",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_frequency",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_phase",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_raw",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_scale",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_frequency",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_phase",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
+	SYNC_RELOAD,
+	NULL
+};
 
 static void enable_dds(bool on_off);
 
@@ -1291,7 +1364,7 @@ static gboolean scale_spin_button_output_cb(GtkSpinButton *spin, gpointer data)
 	return TRUE;
 }
 
-static int fmcomms2_init(GtkWidget *notebook)
+static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", false),
@@ -1299,6 +1372,13 @@ static int fmcomms2_init(GtkWidget *notebook)
 			   *ch2, *ch3, *ch4, *ch5, *ch6, *ch7;
 	const char *freq_name;
 	int i;
+
+	if (ini_fn) {
+		update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
+				ARRAY_SIZE(fmcomms2_sr_attribs));
+		update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
+				ARRAY_SIZE(fmcomms2_sr_attribs));
+	}
 
 	for (i = 0; i <= TX2_T2_Q; i++) {
 		dds_freq_hid[i] = 0;
@@ -1803,9 +1883,13 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
 		sample_frequency_changed_cb);
 
+	printf("Updating GLB widgets...\n");
 	iio_update_widgets(glb_widgets, num_glb);
+	printf("Updating TX values...\n");
 	tx_update_values();
+	printf("Updating RX values...\n");
 	rx_update_values();
+	printf("Updating FIR filter...\n");
 	filter_fir_update();
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
 
@@ -1843,8 +1927,6 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	return 0;
 }
-
-#define SYNC_RELOAD "SYNC_RELOAD"
 
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
@@ -1963,74 +2045,6 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
-static const char *fmcomms2_sr_attribs[] = {
-	PHY_DEVICE".trx_rate_governor",
-	PHY_DEVICE".dcxo_tune_coarse",
-	PHY_DEVICE".dcxo_tune_fine",
-	PHY_DEVICE".ensm_mode",
-	PHY_DEVICE".in_voltage0_rf_port_select",
-	PHY_DEVICE".in_voltage0_gain_control_mode",
-	PHY_DEVICE".in_voltage0_hardwaregain",
-	PHY_DEVICE".in_voltage1_gain_control_mode",
-	PHY_DEVICE".in_voltage1_hardwaregain",
-	PHY_DEVICE".in_voltage_bb_dc_offset_tracking_en",
-	PHY_DEVICE".in_voltage_quadrature_tracking_en",
-	PHY_DEVICE".in_voltage_rf_dc_offset_tracking_en",
-	PHY_DEVICE".out_voltage0_rf_port_select",
-	PHY_DEVICE".out_altvoltage0_RX_LO_frequency",
-	PHY_DEVICE".out_altvoltage1_TX_LO_frequency",
-	PHY_DEVICE".out_voltage0_hardwaregain",
-	PHY_DEVICE".out_voltage1_hardwaregain",
-	PHY_DEVICE".out_voltage_sampling_frequency",
-	PHY_DEVICE".in_voltage_rf_bandwidth",
-	PHY_DEVICE".out_voltage_rf_bandwidth",
-	"load_fir_filter_file",
-	PHY_DEVICE".in_voltage_filter_fir_en",
-	PHY_DEVICE".out_voltage_filter_fir_en",
-	PHY_DEVICE".in_out_voltage_filter_fir_en",
-	"global_settings_show",
-	"tx_show",
-	"rx_show",
-	"fpga_show",
-	"dds_mode_tx1",
-	"dds_mode_tx2",
-	"dac_buf_filename",
-	DDS_DEVICE".out_altvoltage0_TX1_I_F1_frequency",
-	DDS_DEVICE".out_altvoltage0_TX1_I_F1_phase",
-	DDS_DEVICE".out_altvoltage0_TX1_I_F1_raw",
-	DDS_DEVICE".out_altvoltage0_TX1_I_F1_scale",
-	DDS_DEVICE".out_altvoltage1_TX1_I_F2_frequency",
-	DDS_DEVICE".out_altvoltage1_TX1_I_F2_phase",
-	DDS_DEVICE".out_altvoltage1_TX1_I_F2_raw",
-	DDS_DEVICE".out_altvoltage1_TX1_I_F2_scale",
-	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_frequency",
-	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_phase",
-	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_raw",
-	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_scale",
-	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_frequency",
-	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_phase",
-	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_raw",
-	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_scale",
-	DDS_DEVICE".out_altvoltage4_TX2_I_F1_frequency",
-	DDS_DEVICE".out_altvoltage4_TX2_I_F1_phase",
-	DDS_DEVICE".out_altvoltage4_TX2_I_F1_raw",
-	DDS_DEVICE".out_altvoltage4_TX2_I_F1_scale",
-	DDS_DEVICE".out_altvoltage5_TX2_I_F2_frequency",
-	DDS_DEVICE".out_altvoltage5_TX2_I_F2_phase",
-	DDS_DEVICE".out_altvoltage5_TX2_I_F2_raw",
-	DDS_DEVICE".out_altvoltage5_TX2_I_F2_scale",
-	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_frequency",
-	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_phase",
-	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_raw",
-	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_scale",
-	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_frequency",
-	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_phase",
-	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
-	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
-	SYNC_RELOAD,
-	NULL,
-};
-
 static void update_active_page(gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
@@ -2045,8 +2059,16 @@ static void fmcomms2_get_preferred_size(int *width, int *height)
 		*height = 800;
 }
 
-static void context_destroy(void)
+static void context_destroy(const char *ini_fn)
 {
+	FILE *f = fopen(ini_fn, "a");
+	if (f) {
+		save_to_ini(f, THIS_DRIVER, dev, fmcomms2_sr_attribs,
+				ARRAY_SIZE(fmcomms2_sr_attribs));
+		save_to_ini(f, NULL, dds, fmcomms2_sr_attribs,
+				ARRAY_SIZE(fmcomms2_sr_attribs));
+		fclose(f);
+	}
 	iio_context_destroy(ctx);
 }
 
@@ -2077,12 +2099,7 @@ static bool fmcomms2_identify(void)
 }
 
 struct osc_plugin plugin = {
-#ifdef SLAVE
-	.name = "FMComms5-B",
-#else
-	.name = "FMComms2/3/4",
-#endif
-
+	.name = THIS_DRIVER,
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
 	.save_restore_attribs = fmcomms2_sr_attribs,
