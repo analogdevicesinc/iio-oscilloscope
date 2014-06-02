@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <string.h>
 
+#include "../libini2.h"
 #include "../osc.h"
 #include "../iio_widget.h"
 #include "../osc_plugin.h"
@@ -29,6 +30,12 @@
 #include "../eeprom.h"
 #include "../ini/ini.h"
 #include "scpi.h"
+
+#define THIS_DRIVER "FMComms1"
+
+#define SYNC_RELOAD "SYNC_RELOAD"
+
+#define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
@@ -105,6 +112,49 @@ static double cal_rx_level = 0;
 static struct marker_type *rx_marker = NULL;
 
 static GtkWidget *ad9122_temp;
+
+static const char *fmcomms1_sr_attribs[] = {
+	"cf-ad9122-core-lpc.out_altvoltage_1A_sampling_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage_sampling_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage_interpolation_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage_interpolation_center_shift_frequency",
+	"dds_mode",
+	"dac_buf_filename",
+	"cf-ad9122-core-lpc.out_altvoltage0_1A_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage2_2A_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage1_1B_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage3_2B_frequency",
+	"cf-ad9122-core-lpc.out_altvoltage0_1A_scale",
+	"cf-ad9122-core-lpc.out_altvoltage2_2A_scale",
+	"cf-ad9122-core-lpc.out_altvoltage1_1B_scale",
+	"cf-ad9122-core-lpc.out_altvoltage3_2B_scale",
+	"cf-ad9122-core-lpc.out_altvoltage0_1A_phase",
+	"cf-ad9122-core-lpc.out_altvoltage1_1B_phase",
+	"cf-ad9122-core-lpc.out_altvoltage2_2A_phase",
+	"cf-ad9122-core-lpc.out_altvoltage3_2B_phase",
+	"adf4351-tx-lpc.out_altvoltage0_frequency",
+	"adf4351-tx-lpc.out_altvoltage0_powerdown",
+	"adf4351-tx-lpc.out_altvoltage0_frequency_resolution",
+	"cf-ad9122-core-lpc.out_voltage0_calibbias",
+	"cf-ad9122-core-lpc.out_voltage0_calibscale",
+	"cf-ad9122-core-lpc.out_voltage0_phase",
+	"cf-ad9122-core-lpc.out_voltage1_calibbias",
+	"cf-ad9122-core-lpc.out_voltage1_calibscale",
+	"cf-ad9122-core-lpc.out_voltage1_phase",
+	"cf-ad9643-core-lpc.in_voltage0_calibbias",
+	"cf-ad9643-core-lpc.in_voltage1_calibbias",
+	"cf-ad9643-core-lpc.in_voltage0_calibscale",
+	"cf-ad9643-core-lpc.in_voltage1_calibscale",
+	"cf-ad9643-core-lpc.in_voltage0_calibphase",
+	"cf-ad9643-core-lpc.in_voltage1_calibphase",
+	"adf4351-rx-lpc.out_altvoltage0_frequency_resolution",
+	"adf4351-rx-lpc.out_altvoltage0_frequency",
+	"adf4351-rx-lpc.out_altvoltage0_powerdown",
+	"ad8366-lpc.out_voltage0_hardwaregain",
+	"ad8366-lpc.out_voltage1_hardwaregain",
+	SYNC_RELOAD,
+	NULL,
+};
 
 static int kill_thread;
 static int fmcomms1_cal_eeprom(void);
@@ -1979,7 +2029,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int fmcomms1_init(GtkWidget *notebook)
+static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *fmcomms1_panel;
@@ -1987,6 +2037,25 @@ static int fmcomms1_init(GtkWidget *notebook)
 	struct iio_device *dev = iio_context_find_device(ctx, "adf4351-tx-lpc");
 	struct iio_channel *ch0, *ch1, *ch2, *ch3;
 	const char *scale_available, *scale;
+
+	if (ini_fn) {
+		update_from_ini(ini_fn, THIS_DRIVER, dac, fmcomms1_sr_attribs,
+				ARRAY_SIZE(fmcomms1_sr_attribs));
+		update_from_ini(ini_fn, THIS_DRIVER, adc, fmcomms1_sr_attribs,
+				ARRAY_SIZE(fmcomms1_sr_attribs));
+		if (txpll)
+			update_from_ini(ini_fn, THIS_DRIVER, txpll,
+					fmcomms1_sr_attribs,
+				ARRAY_SIZE(fmcomms1_sr_attribs));
+		if (rxpll)
+			update_from_ini(ini_fn, THIS_DRIVER, rxpll,
+					fmcomms1_sr_attribs,
+					ARRAY_SIZE(fmcomms1_sr_attribs));
+		if (vga)
+			update_from_ini(ini_fn, THIS_DRIVER, vga,
+					fmcomms1_sr_attribs,
+					ARRAY_SIZE(fmcomms1_sr_attribs));
+	}
 
 	builder = gtk_builder_new();
 
@@ -2327,13 +2396,11 @@ static int fmcomms1_init(GtkWidget *notebook)
 	cal_update_values();
 
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms1_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms1_panel, "FMComms1");
+	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms1_panel, THIS_DRIVER);
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
 
 	return 0;
 }
-
-#define SYNC_RELOAD "SYNC_RELOAD"
 
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
@@ -2418,53 +2485,29 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
-static void context_destroy(void)
+static void context_destroy(const char *ini_fn)
 {
+	FILE *f = fopen(ini_fn, "a");
+	if (f) {
+		/* Write the section header */
+		save_to_ini(f, THIS_DRIVER, dac, fmcomms1_sr_attribs,
+				ARRAY_SIZE(fmcomms1_sr_attribs));
+		save_to_ini(f, NULL, adc, fmcomms1_sr_attribs,
+				ARRAY_SIZE(fmcomms1_sr_attribs));
+		if (txpll)
+			save_to_ini(f, NULL, txpll, fmcomms1_sr_attribs,
+					ARRAY_SIZE(fmcomms1_sr_attribs));
+		if (rxpll)
+			save_to_ini(f, NULL, rxpll, fmcomms1_sr_attribs,
+					ARRAY_SIZE(fmcomms1_sr_attribs));
+		if (vga)
+			save_to_ini(f, NULL, vga, fmcomms1_sr_attribs,
+					ARRAY_SIZE(fmcomms1_sr_attribs));
+		fclose(f);
+	}
+
 	iio_context_destroy(ctx);
 }
-
-static const char *fmcomms1_sr_attribs[] = {
-	"cf-ad9122-core-lpc.out_altvoltage_1A_sampling_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage_sampling_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage_interpolation_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage_interpolation_center_shift_frequency",
-	"dds_mode",
-	"dac_buf_filename",
-	"cf-ad9122-core-lpc.out_altvoltage0_1A_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage2_2A_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage1_1B_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage3_2B_frequency",
-	"cf-ad9122-core-lpc.out_altvoltage0_1A_scale",
-	"cf-ad9122-core-lpc.out_altvoltage2_2A_scale",
-	"cf-ad9122-core-lpc.out_altvoltage1_1B_scale",
-	"cf-ad9122-core-lpc.out_altvoltage3_2B_scale",
-	"cf-ad9122-core-lpc.out_altvoltage0_1A_phase",
-	"cf-ad9122-core-lpc.out_altvoltage1_1B_phase",
-	"cf-ad9122-core-lpc.out_altvoltage2_2A_phase",
-	"cf-ad9122-core-lpc.out_altvoltage3_2B_phase",
-	"adf4351-tx-lpc.out_altvoltage0_frequency",
-	"adf4351-tx-lpc.out_altvoltage0_powerdown",
-	"adf4351-tx-lpc.out_altvoltage0_frequency_resolution",
-	"cf-ad9122-core-lpc.out_voltage0_calibbias",
-	"cf-ad9122-core-lpc.out_voltage0_calibscale",
-	"cf-ad9122-core-lpc.out_voltage0_phase",
-	"cf-ad9122-core-lpc.out_voltage1_calibbias",
-	"cf-ad9122-core-lpc.out_voltage1_calibscale",
-	"cf-ad9122-core-lpc.out_voltage1_phase",
-	"cf-ad9643-core-lpc.in_voltage0_calibbias",
-	"cf-ad9643-core-lpc.in_voltage1_calibbias",
-	"cf-ad9643-core-lpc.in_voltage0_calibscale",
-	"cf-ad9643-core-lpc.in_voltage1_calibscale",
-	"cf-ad9643-core-lpc.in_voltage0_calibphase",
-	"cf-ad9643-core-lpc.in_voltage1_calibphase",
-	"adf4351-rx-lpc.out_altvoltage0_frequency_resolution",
-	"adf4351-rx-lpc.out_altvoltage0_frequency",
-	"adf4351-rx-lpc.out_altvoltage0_powerdown",
-	"ad8366-lpc.out_voltage0_hardwaregain",
-	"ad8366-lpc.out_voltage1_hardwaregain",
-	SYNC_RELOAD,
-	NULL,
-};
 
 static bool fmcomms1_identify(void)
 {
@@ -2486,7 +2529,7 @@ static bool fmcomms1_identify(void)
 }
 
 struct osc_plugin plugin = {
-	.name = "FMComms1",
+	.name = THIS_DRIVER,
 	.identify = fmcomms1_identify,
 	.init = fmcomms1_init,
 	.save_restore_attribs = fmcomms1_sr_attribs,
