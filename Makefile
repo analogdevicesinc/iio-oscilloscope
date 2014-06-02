@@ -20,7 +20,7 @@ PKG_CONFIG := env PKG_CONFIG_SYSROOT_DIR="$(SYSROOT)" \
 	PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" pkg-config
 
 LDFLAGS := $(shell $(PKG_CONFIG) --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
-	$(shell $(SYSROOT)/usr/bin/xml2-config --libs) -lmatio -lz -lm -liio
+	$(shell $(SYSROOT)/usr/bin/xml2-config --libs) -lmatio -lz -lm -liio -lini
 
 CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
 	$(shell $(SYSROOT)/usr/bin/xml2-config --cflags) \
@@ -44,7 +44,7 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o
+osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o libini2.o
 	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
 
 osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h ./ini/ini.h
