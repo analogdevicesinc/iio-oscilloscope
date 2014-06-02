@@ -940,7 +940,7 @@ int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
 	OscPlot *fft_plot;
 	struct iio_device *dev, *tmp_dev = NULL;
 	struct extra_dev_info *dev_info;
-	struct marker_type *markers_copy;
+	struct marker_type *markers_copy = NULL;
 	GMutex *markers_lock;
 	bool is_fft_mode;
 	int i, j;
@@ -978,6 +978,11 @@ int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
 	}
 
 	if (!dev)
+		return -ENXIO;
+	if (osc_plot_running_state(fft_plot) == FALSE)
+		return -ENXIO;
+	if (osc_plot_get_marker_type(fft_plot) == MARKER_OFF ||
+			osc_plot_get_marker_type(fft_plot) == MARKER_NULL)
 		return -ENXIO;
 
 	if (cooked_data) {

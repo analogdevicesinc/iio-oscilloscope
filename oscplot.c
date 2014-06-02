@@ -400,6 +400,11 @@ void osc_plot_restart (OscPlot *plot)
 	}
 }
 
+bool osc_plot_running_state (OscPlot *plot)
+{
+	return !!plot->priv->redraw_function;
+}
+
 void osc_plot_draw_start (OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
