@@ -457,27 +457,24 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 
 static void reg_read_clicked(GtkButton *button, gpointer user_data)
 {
-	long long i;
-	long long address;
+	uint32_t i;
+	uint32_t address;
 	char buf[16];
 	int ret;
 
-	address = (long long)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_addr));
+	address = (uint32_t)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_addr));
 	if (address < 0)
 		return;
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(axicore_regmap))) {
 		address |= 0x80000000;
 	}
-
-	iio_device_debug_attr_write_longlong(dev, "direct_reg_access", address);
-	ret = iio_device_debug_attr_read_longlong(dev, "direct_reg_access", &i);
-
-	if (ret >= 0) {
+	ret = iio_device_reg_read(dev, address, &i);
+	if (ret == 0) {
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), i);
 		if (i == 0)
 			g_signal_emit_by_name(spin_btn_reg_value, "value-changed");
-		snprintf(buf, sizeof(buf), "0x%04llX", i);
+		snprintf(buf, sizeof(buf), "0x%04X", i);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_value), buf);
 		if (xml_file_opened)
 			reveal_reg_map();
@@ -491,14 +488,12 @@ static void reg_read_clicked(GtkButton *button, gpointer user_data)
 
 static void reg_write_clicked(GtkButton *button, gpointer user_data)
 {
-	unsigned address;
-	unsigned val;
-	char attr_val[40];
+	uint32_t address;
+	uint32_t val;
 
-	address = (unsigned)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_addr));
-	val = (unsigned)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_value));
-	sprintf(attr_val, "0x%x 0x%x\n", address, val);
-	iio_device_debug_attr_write(dev, "direct_reg_access", attr_val);
+	address = (uint32_t)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_addr));
+	val = (uint32_t)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_value));
+	iio_device_reg_write(dev, address, val);
 }
 
 static void reg_address_value_changed_cb(GtkSpinButton *spinbutton,
