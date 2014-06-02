@@ -78,6 +78,7 @@ static GtkWidget *reg_autoread;
 static GtkWidget *frm_regmaptype;
 static GtkWidget *spi_regmap;
 static GtkWidget *axicore_regmap;
+static GtkWidget *toggle_detailed_regmap;
 
 /* IIO Scan Elements widgets */
 static GtkWidget *scanel_read;
@@ -163,6 +164,7 @@ static bool combo_box_text_set_active_text(GtkComboBoxText *comboboxtext,
 		const char *text);
 static void combo_box_text_add_default_text(GtkComboBoxText *box,
 		const char *text);
+static void debug_register_section_init(struct iio_device *iio_dev);
 
 /******************************************************************************/
 /******************************** Callbacks ***********************************/
@@ -334,8 +336,6 @@ static void attribute_type_changed_cb(GtkComboBoxText *cmbtext, gpointer data)
 
 static void debug_device_list_cb(GtkButton *btn, gpointer data)
 {
-	char buf[128];
-	char *temp_path;
 	char *current_device;
 	int i = 0;
 
@@ -346,65 +346,7 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 	current_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_device_list));
 	if (g_strcmp0("None\0", current_device)) {
 		dev = iio_context_find_device(ctx, current_device);
-		if (iio_device_get_debug_attrs_count(dev) > 0) {
-			/* Check if device as a corresponding xml file */
-			find_device_xml_file(xmls_folder_path, current_device, buf);
-
-			/* Attempt to associate AXI Core ADC xml or AXI Core DAC xml to the device */
-			if (!strcmp(buf, "")) {
-				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), false);
-				if (is_input_device(dev)) {
-					sprintf(buf, "adi_regmap_adc.xml");
-					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), true);
-				} else if (is_output_device(dev)) {
-					sprintf(buf, "adi_regmap_dac.xml");
-					gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), true);
-				}
-			}
-
-			if (!strcmp(buf, "")) {
-				gtk_widget_show(frm_regmaptype);
-				gtk_widget_show(btn_read_reg);
-				gtk_widget_hide(warning_label);
-				gtk_widget_set_sensitive(spin_btn_reg_value, true);
-				gtk_widget_set_sensitive(label_reg_hex_value,true);
-			} else {
-				temp_path = malloc(strlen(xmls_folder_path) + strlen(buf) + 2);
-				if (!temp_path) {
-					printf("Failed to allocate memory with malloc\n");
-					return;
-				}
-				sprintf(temp_path, "%s/%s", xmls_folder_path, buf);
-				xml_doc = open_xml_file(temp_path, &root);
-				if (xml_doc) {
-					xml_file_opened = 1;
-					create_device_context();
-					g_signal_emit_by_name(spin_btn_reg_addr, "value-changed");
-				} else {
-					printf("Cannot load the file %s for the %s device\n",
-						temp_path, current_device);
-				}
-				free(temp_path);
-				gtk_widget_hide(frm_regmaptype);
-				gtk_widget_show(btn_read_reg);
-				gtk_widget_hide(warning_label);
-				gtk_widget_set_sensitive(spin_btn_reg_value, true);
-				gtk_widget_set_sensitive(label_reg_hex_value,true);
-			}
-			temp_path = malloc(strlen(xmls_folder_path) + strlen(buf) + 2);
-			if (!temp_path) {
-				printf("Failed to allocate memory with malloc\n");
-				return;
-			}
-		} else {
-			int id = getuid();
-			if (id != 0)
-				gtk_widget_show(warning_label);
-			gtk_widget_hide(frm_regmaptype);
-			gtk_widget_hide(btn_read_reg);
-			gtk_widget_set_sensitive(spin_btn_reg_value, false);
-			gtk_widget_set_sensitive(label_reg_hex_value, false);
-		}
+		debug_register_section_init(dev);
 
 		gtk_widget_show(scanel_read);
 		gtk_widget_show(scanel_write);
@@ -442,6 +384,8 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		gtk_widget_hide(scanel_read);
 		gtk_widget_hide(scanel_write);
 		gtk_widget_hide(warning_label);
+		gtk_widget_set_sensitive(spin_btn_reg_value, false);
+		gtk_widget_set_sensitive(label_reg_hex_value, false);
 		gtk_entry_set_text(GTK_ENTRY(scanel_filename), "");
 		gtk_entry_set_text(GTK_ENTRY(scanel_value), "");
 		g_signal_handler_block(combobox_attr_type, attr_type_hid);
@@ -453,6 +397,7 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		g_signal_handler_unblock(combobox_attr_type, attr_type_hid);
 		g_signal_handler_unblock(combobox_debug_scanel, debug_scanel_hid);
 	}
+	g_free(current_device);
 }
 
 static void reg_read_clicked(GtkButton *button, gpointer user_data)
@@ -627,6 +572,21 @@ static void spin_or_combo_changed_cb(GtkSpinButton *spinbutton,
 	gtk_label_set_text((GtkLabel *)label_reg_hex_value, buf);
 }
 
+void detailed_regmap_toggled_cb(GtkToggleButton *btn, gpointer data)
+{
+	char *current_device;
+
+	destroy_regmap_widgets();
+	destroy_device_context();
+	clean_gui_reg_info();
+
+	current_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_device_list));
+	if (g_strcmp0("None\0", current_device)) {
+		dev = iio_context_find_device(ctx, current_device);
+		debug_register_section_init(dev);
+	}
+	g_free(current_device);
+}
 
 void debug_panel_destroy_cb(GObject *object, gpointer user_data)
 {
@@ -1175,7 +1135,7 @@ static void clean_gui_reg_info(void)
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_addr), (gdouble)0);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), (gdouble)0);
 	gtk_widget_hide(btn_write_reg);
-	gtk_label_set_text(GTK_LABEL(label_reg_hex_addr), "0x000");
+	gtk_label_set_text(GTK_LABEL(label_reg_hex_addr), "0x0000");
 	gtk_label_set_text(GTK_LABEL(label_reg_hex_value), "<unknown>");
 	gtk_widget_set_size_request(scrollwin_regmap, -1, -1);
 }
@@ -1287,6 +1247,101 @@ static int update_regmap(int data)
 }
 
 /*
+ * Search for xml files that contain the name of the device within their
+ * filename.
+ * Fill parameter "filename" with the name of the found xml file or fill with
+ * empty string otherwise.
+ */
+static void device_xml_file_selection(const char *device_name, char *filename)
+{
+	struct iio_device *iio_dev = iio_context_find_device(ctx, device_name);
+
+	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle_detailed_regmap))) {
+		sprintf(filename, "%s", "");
+		return;
+	}
+
+	/* Check if device has a corresponding xml file */
+	find_device_xml_file(xmls_folder_path, (char *)device_name, filename);
+
+	/* Attempt to associate AXI Core ADC xml or AXI Core DAC xml to the device */
+	if (!strcmp(filename, "")) {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), false);
+		if (is_input_device(iio_dev))
+			sprintf(filename, "adi_regmap_adc.xml");
+		else if (is_output_device(iio_dev))
+			sprintf(filename, "adi_regmap_dac.xml");
+		if (strcmp(filename, ""))
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), true);
+	}
+}
+
+/*
+ * Read data from xml file and initialise the context of the device
+ */
+static int device_xml_file_load(char *filename)
+{
+	char *temp_path;
+	int ret = 0;
+
+	temp_path = malloc(strlen(xmls_folder_path) + strlen(filename) + 2);
+	if (!temp_path) {
+		printf("Failed to allocate memory with malloc\n");
+		return -1;
+	}
+	sprintf(temp_path, "%s/%s", xmls_folder_path, filename);
+	xml_doc = open_xml_file(temp_path, &root);
+	if (xml_doc) {
+		xml_file_opened = 1;
+		create_device_context();
+		g_signal_emit_by_name(spin_btn_reg_addr, "value-changed");
+	} else {
+		printf("Cannot load the file %s\n", temp_path);
+		ret = -1;
+	}
+	free(temp_path);
+
+	return ret;
+}
+
+/*
+ * Initialize GUI and all data for the register section of the debug plugin
+ */
+static void debug_register_section_init(struct iio_device *iio_dev)
+{
+	char xml_filename[128];
+
+	if (!iio_dev)
+		return;
+
+	if (iio_device_get_debug_attrs_count(dev) > 0) {
+		device_xml_file_selection(iio_device_get_name(iio_dev), xml_filename);
+		if (!strcmp(xml_filename, "")) {
+			gtk_widget_show(frm_regmaptype);
+			gtk_widget_show(btn_read_reg);
+			gtk_widget_hide(warning_label);
+			gtk_widget_set_sensitive(spin_btn_reg_value, true);
+			gtk_widget_set_sensitive(label_reg_hex_value,true);
+		} else {
+			device_xml_file_load(xml_filename);
+			gtk_widget_hide(frm_regmaptype);
+			gtk_widget_show(btn_read_reg);
+			gtk_widget_hide(warning_label);
+			gtk_widget_set_sensitive(spin_btn_reg_value, true);
+			gtk_widget_set_sensitive(label_reg_hex_value,true);
+		}
+	} else {
+		int id = getuid();
+		if (id != 0)
+			gtk_widget_show(warning_label);
+		gtk_widget_hide(frm_regmaptype);
+		gtk_widget_hide(btn_read_reg);
+		gtk_widget_set_sensitive(spin_btn_reg_value, false);
+		gtk_widget_set_sensitive(label_reg_hex_value, false);
+	}
+}
+
+/*
  * Create a context for the selected ADI device. Retrieve a list of all
  * registers and their addresses. Find the width that applies to all registers.
  * Allocate memory for all lists of widgets. Create new widgets and draw a
@@ -1378,6 +1433,7 @@ static int debug_init(GtkWidget *notebook)
 	frm_regmaptype = GTK_WIDGET(gtk_builder_get_object(builder, "frame_regmap_type"));
 	spi_regmap = GTK_WIDGET(gtk_builder_get_object(builder, "radiobtn_spi_map"));
 	axicore_regmap = GTK_WIDGET(gtk_builder_get_object(builder, "radiobtn_axicore_map"));
+	toggle_detailed_regmap = GTK_WIDGET(gtk_builder_get_object(builder, "toggle_detailed_regmap"));
 
 	vbox_scanel =  GTK_WIDGET(gtk_builder_get_object(builder, "scanel_container"));
 	scanel_read = GTK_WIDGET(gtk_builder_get_object(builder, "debug_read_scan"));
@@ -1430,6 +1486,8 @@ static int debug_init(GtkWidget *notebook)
 			G_CALLBACK(scanel_read_clicked), NULL);
 	g_signal_connect(G_OBJECT(scanel_write), "clicked",
 			G_CALLBACK(scanel_write_clicked), NULL);
+	g_signal_connect(G_OBJECT(toggle_detailed_regmap), "toggled",
+			G_CALLBACK(detailed_regmap_toggled_cb), NULL);
 
 	/* Show window and hide(or set as inactive) some widgets. */
 	gtk_widget_show_all(debug_panel);
