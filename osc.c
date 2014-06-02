@@ -1243,7 +1243,8 @@ static bool force_plugin(const char *name)
 	return false;
 }
 
-static void load_plugin(const char *name, GtkWidget *notebook)
+static void load_plugin(const char *name, GtkWidget *notebook,
+		const char *ini_fn)
 {
 	struct detachable_plugin *d_plugin;
 	struct osc_plugin *plugin;
@@ -1271,7 +1272,7 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 
 	plugin->handle = lib;
 	plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
-	plugin->init(notebook);
+	plugin->init(notebook, ini_fn);
 
 	d_plugin = malloc(sizeof(struct detachable_plugin));
 	d_plugin->plugin = plugin;
@@ -1282,7 +1283,7 @@ static void load_plugin(const char *name, GtkWidget *notebook)
 	printf("Loaded plugin: %s\n", plugin->name);
 }
 
-static void close_plugins(void)
+static void close_plugins(const char *ini_fn)
 {
 	GSList *node;
 	struct osc_plugin *plugin = NULL;
@@ -1292,7 +1293,7 @@ static void close_plugins(void)
 		if (plugin) {
 			printf("Closing plugin: %s\n", plugin->name);
 			if (plugin->destroy)
-				plugin->destroy();
+				plugin->destroy(ini_fn);
 			dlclose(plugin->handle);
 		}
 	}
@@ -1352,7 +1353,7 @@ bool str_endswith(const char *str, const char *needle)
 	return *(pos + strlen(needle)) == '\0';
 }
 
-static void load_plugins(GtkWidget *notebook)
+static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 {
 	struct dirent *ent;
 	char *plugin_dir = "plugins";
@@ -1372,7 +1373,7 @@ static void load_plugins(GtkWidget *notebook)
 		if (!str_endswith(ent->d_name, ".so"))
 			continue;
 		snprintf(buf, sizeof(buf), "%s/%s", plugin_dir, ent->d_name);
-		load_plugin(buf, notebook);
+		load_plugin(buf, notebook, ini_fn);
 	}
 }
 
@@ -1760,7 +1761,6 @@ void application_quit (void)
 	/* Before we shut down, let's save the profile */
 	sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
 	capture_profile_save(buf);
-	save_all_plugins(buf, NULL);
 
 	stop_capture = TRUE;
 	G_TRYLOCK(buffer_full);
@@ -1779,7 +1779,7 @@ void application_quit (void)
 	/* This can't be done until all the windows are detroyed with main_quit
 	 * otherwise, the widgets need to be updated, but they don't exist anymore
 	 */
-	close_plugins();
+	close_plugins(buf);
 	g_slist_free(dplugin_list);
 }
 
@@ -1953,7 +1953,7 @@ static int load_default_profile (char *filename)
 {
 	const char *home_dir = getenv("HOME");
 	char buf[1024], tmp[1024];
-	int ret, linecount, flag = 0;
+	int ret = 0, linecount, flag = 0;
 	FILE *fd;
 
 	/* Don't load anything */
@@ -1974,8 +1974,6 @@ static int load_default_profile (char *filename)
 			return 0;
 		flag = 1;
 	}
-
-	ret = restore_all_plugins(buf, NULL);
 
 	if (flag)
 		return 0;
@@ -2058,7 +2056,7 @@ void tooltips_enable_cb (GtkCheckMenuItem *item, gpointer data)
 	g_object_set(settings, "gtk-enable-tooltips", enable, NULL);
 }
 
-static void init_application (void)
+static void init_application (const char *ini_fn)
 {
 	GtkBuilder *builder = NULL;
 	GtkWidget  *window;
@@ -2105,7 +2103,7 @@ static void init_application (void)
 	dialogs_init(builder);
 	init_device_list();
 	if (ctx) {
-		load_plugins(notebook);
+		load_plugins(notebook, ini_fn);
 		rx_update_labels();
 
 		int width = -1, height = -1;
@@ -2352,8 +2350,25 @@ gint main (int argc, char **argv)
 	signal(SIGINT, sigterm);
 	signal(SIGHUP, sigterm);
 
+	if (profile && strcmp(profile, "-"))
+		profile = NULL;
+
+	if (profile) {
+		char buf[1024];
+		strncpy(buf, profile, sizeof(buf));
+		profile = check_inifile(buf) ? strdup(buf) : NULL;
+	}
+
+	if (!profile) {
+		char buf[1024];
+		snprintf(buf, sizeof(buf), "%s/" DEFAULT_PROFILE_NAME,
+				getenv("HOME"));
+		if (check_inifile(buf))
+			profile = strdup(buf);
+	}
+
 	gdk_threads_enter();
-	init_application();
+	init_application(profile);
 	c = load_default_profile(profile);
 	create_default_plot();
 	if (c == 0)
@@ -2362,6 +2377,9 @@ gint main (int argc, char **argv)
 		application_quit();
 
 	gdk_threads_leave();
+
+	if (profile)
+	    free(profile);
 
 	if (c == 0 || c == -ENOTTY)
 		return 0;
