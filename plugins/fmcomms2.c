@@ -101,6 +101,8 @@ static GtkWidget *rf_port_select_tx;
 static GtkWidget *rx_fastlock_profile;
 static GtkWidget *tx_fastlock_profile;
 
+static GtkWidget *rx_phase_rotation[2];
+
 /* Widgets for Transmitter Settings */
 static GtkWidget *dds_mode_tx[3];
 #define TX_OFF   0
@@ -320,6 +322,62 @@ void filter_fir_enable(void)
 	filter_fir_update();
 }
 
+static void rx_phase_rotation_update()
+{
+	struct iio_channel *out[4];
+	gdouble val[4];
+	int i;
+
+	out[0] = iio_device_find_channel(cap, "voltage0", false);
+	out[1] = iio_device_find_channel(cap, "voltage1", false);
+	out[2] = iio_device_find_channel(cap, "voltage2", false);
+	out[3] = iio_device_find_channel(cap, "voltage3", false);
+
+	for (i = 0; i <= 2; i += 2) {
+		iio_channel_attr_read_double(out[i], "calibscale", &val[0]);
+		iio_channel_attr_read_double(out[i], "calibphase", &val[1]);
+		iio_channel_attr_read_double(out[i + 1], "calibscale", &val[2]);
+		iio_channel_attr_read_double(out[i + 1], "calibphase", &val[3]);
+
+		val[0] = acos(val[0]) * 360.0 / (2.0 * M_PI);
+		val[1] = asin(-1.0 * val[1]) * 360.0 / (2.0 * M_PI);
+		val[2] = acos(val[2]) * 360.0 / (2.0 * M_PI);
+		val[3] = asin(val[3]) * 360.0 / (2.0 * M_PI);
+
+		if (val[1] < 0.0)
+			val[0] *= -1.0;
+		if (val[3] < 0.0)
+			val[2] *= -1.0;
+		if (val[1] < -90.0)
+			val[0] = (val[0] * -1.0) - 180.0;
+		if (val[3] < -90.0)
+			val[0] = (val[0] * -1.0) - 180.0;
+	
+		if (fabs(val[0]) > 90.0) {
+			if (val[1] < 0.0)
+				val[1] = (val[1] * -1.0) - 180.0;
+			else
+				val[1] = 180 - val[1];
+		}
+		if (fabs(val[2]) > 90.0) {
+			if (val[3] < 0.0)
+				val[3] = (val[3] * -1.0) - 180.0;
+			else
+				val[3] = 180 - val[3];
+		}
+
+		if (round(val[0]) != round(val[1]) &&
+					round(val[0]) != round(val[2]) &&
+					round(val[0]) != round(val[3])) {
+			printf("error calculating phase rotations\n");
+			val[0] = 0.0;
+		} else
+			val[0] = (val[0] + val[1] + val[2] + val[3]) / 4.0;
+
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(rx_phase_rotation[i/2]), val[0]);
+	}
+}
+
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
 	iio_update_widgets(glb_widgets, num_glb);
@@ -329,6 +387,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	rx_update_labels();
 	glb_settings_update_labels();
 	rssi_update_labels();
+	rx_phase_rotation_update();
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
@@ -601,7 +660,7 @@ static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data
 	}
 }
 
-static void rx_phase_rotation(GtkSpinButton *spinbutton, gpointer user_data)
+static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
 {
 	glong offset = (glong) user_data;
 	struct iio_channel *out0, *out1;
@@ -1097,6 +1156,9 @@ static int fmcomms2_init(GtkWidget *notebook)
 	channel_I_tone2_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Tone2_ch_I_tx2"));
 	dac_buffer = GTK_WIDGET(gtk_builder_get_object(builder, "dac_buffer"));
 
+	rx_phase_rotation[0] = GTK_WIDGET(gtk_builder_get_object(builder, "rx1_phase_rotation"));
+	rx_phase_rotation[1] = GTK_WIDGET(gtk_builder_get_object(builder, "rx2_phase_rotation"));
+
 	gtk_combo_box_set_active(GTK_COMBO_BOX(ensm_mode_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(trx_rate_governor_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes_rx1), 0);
@@ -1310,10 +1372,10 @@ static int fmcomms2_init(GtkWidget *notebook)
 	/* Signals connect */
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
-			G_CALLBACK(rx_phase_rotation), (gpointer *)0);
+			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
 
 	g_builder_connect_signal(builder, "rx2_phase_rotation", "value-changed",
-			G_CALLBACK(rx_phase_rotation), (gpointer *)2);
+			G_CALLBACK(rx_phase_rotation_set), (gpointer *)2);
 
 	g_builder_connect_signal(builder, "sampling_freq_tx", "value-changed",
 			G_CALLBACK(tx_sample_rate_changed), NULL);
