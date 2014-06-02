@@ -46,7 +46,7 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o dac_data_manager.o
+osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o libini/libini.o libini2.o dac_data_manager.o
 	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
 
 osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h ./ini/ini.h
