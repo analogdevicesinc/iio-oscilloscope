@@ -272,6 +272,8 @@ static void rx_phase_rotation(struct iio_device *dev, gdouble val)
 	gdouble phase;
 	unsigned offset;
 
+	printf("rx_phase_rotation %f\n", val);
+
 	phase = val * 2 * M_PI / 360.0;
 
 	/* Set both RX1 and RX2 */
@@ -296,6 +298,9 @@ static void rx_phase_rotation(struct iio_device *dev, gdouble val)
 static void tx_phase_rotation(struct iio_device *dev, gdouble val)
 {
 	long long i, q;
+
+	if (val < 0)
+		val += 360.0;
 
 	i = (val * 1000) + 90000;
 	q = val * 1000;
@@ -359,11 +364,10 @@ void near_end_loopback_ctrl(unsigned channel, bool enable)
 	iio_device_reg_write(dev, 0x80000400 + channel * 0x40, tmp);
 }
 
-void get_markers (int *offset, int *mag) /* FIXME */
+void get_markers (int *offset, int *mag, int *mag1, int *mag2) /* FIXME */
 {
 	int ret;
 	struct marker_type *markers = NULL;
-	gfloat **cooked_data = NULL;
 	const char *device_ref = NULL;
 
 	device_ref = plugin_get_device_by_reference("cf-ad9361-lpc");
@@ -375,11 +379,14 @@ void get_markers (int *offset, int *mag) /* FIXME */
 	}
 
 	if (markers) {
-		printf("X: %f %f %f\n", markers[0].x,  markers[1].x,  markers[2].x);
-		printf("Y: %f %f %f\n", markers[0].y,  markers[1].y,  markers[2].y);
+//		printf("X: %f %f %f\n", markers[0].x,  markers[1].x,  markers[2].x);
+//		printf("Y: %f %f %f\n", markers[0].y,  markers[1].y,  markers[2].y);
 
 		*offset = markers[0].x;
 		*mag =  markers[0].y;
+		*mag1 =  markers[1].y;
+		*mag2 =  markers[2].y;
+
 
 	}
 
@@ -483,45 +490,32 @@ double calc_phase_offset(unsigned type, double fsample, double dds_freq, int off
 {
 	double val;
 
-	printf("%s:%d offset = %d, mag = %d\n", __func__, __LINE__, offset , mag);
-
-	if ((type == 3) /*|| (type == 4)*/) {
-		offset *= -1;
-	}
-
 	val = 360.0 / ((fsample / dds_freq) / offset);
-
-
-	printf("%s:%d val= %f, mag = %d\n", __func__, __LINE__, val);
-
-
-// 	if ((mag < 0) && (offset >= 0))
-// 		val += 180.0;
 
 	if (mag < 0)
 		val += 180.0;
 
-	printf("%s:%d val= %f, mag = %d\n", __func__, __LINE__, val);
-
 	if (val > 360.0)
 		val -= 360.0;
 
-	printf("%s:%d val= %f, mag = %d\n", __func__, __LINE__, val);
 
 	if (val < 0)
 		val = 360.0 + val;
 
-	printf("%s:%d val= %f, mag = %d\n", __func__, __LINE__, val);
+	printf("%s:%d offset = %d, mag = %d, phase %f \n", __func__, __LINE__, offset , mag, val);
 
 	return val;
 }
 
 void calibrate (gpointer button)
 {
-	int offset, mag, i;
-	double rx_phase_lpc, rx_phase_hpc, tx_phase_lpc, tx_phase_hpc, tmp;
+	int offset, mag, i, mag1, mag2, delta = 999999999, pdelta, min_delta;
+	double rx_phase_lpc, rx_phase_hpc, tx_phase_lpc, tx_phase_hpc, tmp, min_phase;
 	struct iio_device *fmc[2];
 
+	GtkWidget *tx_phase;
+
+	tx_phase = GTK_WIDGET(gtk_builder_get_object(builder, "tx_phase"));
 	mcs_cb(NULL, NULL);
 
 	fmc[0] = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
@@ -612,15 +606,8 @@ void calibrate (gpointer button)
 		iio_device_attr_write_double(fmc[i],
 				"out_altvoltage7_TX2_Q_F2_scale",
 				CAL_SCALE);
-	/*
-		iio_device_attr_write_longlong(tmp_dev,
-				"out_altvoltage_sampling_frequency",
-				CAL_FREQ);
-	*/
 	}
 
-	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), 0.0);
-	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), 0.0);
 
 	/* Toggle RAW on master to sync */
 	iio_device_attr_write_longlong(fmc[0],
@@ -628,40 +615,134 @@ void calibrate (gpointer button)
 	iio_device_attr_write_longlong(fmc[0],
 			"out_altvoltage1_TX1_I_F2_raw", 1);
 
+restart:
 
-	/* Calibrate RX */
+ 	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), 0.0);
+ 	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), 0.0);
+
+
+
+
+	/* Calibrate RX
+	 * 1 TX1B_B (HPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
+	 */
 	__cal_switch_ports_enable_cb(1);
-	sleep(0.2);
-	get_markers(&offset, &mag);
-	rx_phase_hpc = calc_phase_offset(1, CAL_FREQ, CAL_TONE, offset, mag);
-	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), rx_phase_hpc);
+	plugin_data_capture_revert_xcorr(false);
+	sleep(0.1);
+
+	min_delta = 999999999;
+	for (i = 0; i < 20; i++) {
+
+		get_markers(&offset, &mag, &mag1, &mag2);
+		get_markers(&offset, &mag, &mag1, &mag2);
+		if (i == 0) {
+			rx_phase_hpc = calc_phase_offset(1, CAL_FREQ, CAL_TONE, offset, mag);
+			rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), rx_phase_hpc);
+			continue;
+		}
+
+		if (i > 0) {
+			if (offset != 0) {
+				printf("offset %d\n", offset);
+				goto restart;
+			}
+		}
+
+		pdelta = delta;
+		delta = abs(mag1) - abs(mag2);
+
+		if (delta < min_delta) {
+			min_delta = delta;
+			min_phase = rx_phase_hpc;
+		}
+
+//		printf("pdelta %d delta %d rx_phase_hpc %f\n",pdelta, delta, rx_phase_hpc);
+
+		if (pdelta > delta)
+			rx_phase_hpc -= 0.75;
+		else
+			rx_phase_hpc += 0.75;
+
+		rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), rx_phase_hpc);
+
+
+	}
+	rx_phase_hpc = min_phase;
 
 	printf("rx_phase_hpc %f\n", rx_phase_hpc);
 
-	//goto calibrate_fail;
 
 	/* revert */
 	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), 0.0);
 
+	/* Calibrate RX
+	 * 3 TX1B_B (HPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
+	 */
+
 	__cal_switch_ports_enable_cb(3);
-	sleep(0.2);
-	get_markers(&offset, &mag);
-	rx_phase_lpc = calc_phase_offset(3, CAL_FREQ, CAL_TONE, offset, mag);
-	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), rx_phase_lpc);
+	plugin_data_capture_revert_xcorr(true);
+	sleep(0.1);
+
+	delta = 999999999;
+	min_delta = 999999999;
+
+	for (i = 0; i < 20; i++) {
+
+		get_markers(&offset, &mag, &mag1, &mag2);
+		get_markers(&offset, &mag, &mag1, &mag2);
+		if (i == 0) {
+			rx_phase_lpc = calc_phase_offset(3, CAL_FREQ, CAL_TONE, offset, mag);
+			rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), rx_phase_lpc);
+			continue;
+		}
+
+		if (i > 0) {
+			if (offset != 0) {
+				printf("offset %d\n", offset);
+				goto restart;
+			}
+		}
+
+		pdelta = delta;
+		delta = abs(mag1) - abs(mag2);
+
+		if (delta < min_delta) {
+			min_delta = delta;
+			min_phase = rx_phase_lpc;
+		}
+
+		//printf("pdelta %d delta %d rx_phase_lpc %f\n",pdelta, delta, rx_phase_lpc);
+
+
+		if (pdelta > delta)
+			rx_phase_lpc -= 0.75;
+		else
+			rx_phase_lpc += 0.75;
+
+
+		rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), rx_phase_lpc);
+
+	}
+	rx_phase_lpc = min_phase;
+
 	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), rx_phase_hpc);
 
 	printf("rx_phase_lpc %f\n", rx_phase_lpc);
 
-
+#if 0
 	/* Calibrate TX
 	 * 2 TX1B_A (LPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
 	 */
 	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), 0.0);
 	__cal_switch_ports_enable_cb(2);
+	plugin_data_capture_revert_xcorr(false);
+
 	sleep(0.2);
-	get_markers(&offset, &mag);
+	get_markers(&offset, &mag, &mag1, &mag2);
+	get_markers(&offset, &mag, &mag1, &mag2);
 	tx_phase_lpc = calc_phase_offset(2, CAL_FREQ, CAL_TONE, offset, mag);
 	printf("tx_phase_lpc %f\n", tx_phase_lpc);
+#endif
 
 	/* Calibrate TX
 	 * 4 TX1B_A (LPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
@@ -670,15 +751,17 @@ void calibrate (gpointer button)
 	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), 0.0);
 	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), rx_phase_lpc);
 	__cal_switch_ports_enable_cb(4);
-	sleep(0.2);
-	get_markers(&offset, &mag);
+	plugin_data_capture_revert_xcorr(true);
+	sleep(0.1);
+	get_markers(&offset, &mag, &mag1, &mag2);
+	get_markers(&offset, &mag, &mag1, &mag2);
 	tx_phase_hpc = calc_phase_offset(4, CAL_FREQ, CAL_TONE, offset, mag);
 
 	printf("tx_phase_hpc %f\n", tx_phase_hpc);
 
 	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), rx_phase_hpc);
 
-	tmp = tx_phase_lpc - tx_phase_hpc;
+	tmp = -1 * tx_phase_hpc;
 
 	if (tmp > 360.0)
 		tmp -= 360.0;
@@ -686,23 +769,12 @@ void calibrate (gpointer button)
 	if (tmp < 0.0)
 		tmp += 360.0;
 
-	tx_phase_rotation(fmc[1], tmp);
+//	tx_phase_rotation(fmc[1], tmp);
 
-	/* Toggle RAW on master to sync */
-	iio_device_attr_write_longlong(fmc[0],
-			"out_altvoltage1_TX1_I_F2_raw", 0);
-	iio_device_attr_write_longlong(fmc[0],
-			"out_altvoltage1_TX1_I_F2_raw", 1);
+	gtk_range_set_value(GTK_RANGE(tx_phase), tmp);
 
-	/*
-	*  0 DISABLE
-	*  1 TX1B_B (HPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
-	*  2 TX1B_A (LPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
-	*  3 TX1B_B (HPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
-	*  4 TX1B_A (LPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
-	*
-	*/
 
+	plugin_data_capture_revert_xcorr(false);
 	 __cal_switch_ports_enable_cb(0);
 
 calibrate_fail:
@@ -719,6 +791,31 @@ void do_calibration (GtkWidget *widget, gpointer data)
 {
 	g_thread_new("Calibrate_thread", (void *) &calibrate, data);
 	gtk_widget_hide(GTK_WIDGET(data));
+}
+
+
+void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
+{
+	static struct iio_device *fmc[2] = {NULL, NULL};
+
+	double value = gtk_range_get_value(hscale1);
+
+	if (fmc[0] == NULL)
+		fmc[0] = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
+	if (fmc[1] == NULL)
+		fmc[1] = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
+
+	if ((int)data)
+		tx_phase_rotation(fmc[0], value);
+	else
+		tx_phase_rotation(fmc[1], value);
+
+	/* Toggle RAW on master to sync */
+	iio_device_attr_write_longlong(fmc[0],
+			"out_altvoltage1_TX1_I_F2_raw", 0);
+	iio_device_attr_write_longlong(fmc[0],
+			"out_altvoltage1_TX1_I_F2_raw", 1);
+
 }
 
 void bist_tone_cb (GtkWidget *widget, gpointer data)
@@ -858,6 +955,10 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 
 	g_builder_connect_signal(builder, "calibration_switch_control", "changed",
 		G_CALLBACK(cal_switch_ports_enable_cb), builder);
+
+	g_builder_connect_signal(builder, "tx_phase", "value-changed",
+		G_CALLBACK(tx_phase_hscale_value_changed), 0);
+
 
 	g_builder_connect_signal(builder, "do_fmcomms5_cal", "clicked",
 			G_CALLBACK(do_calibration), gtk_builder_get_object(builder, "do_fmcomms5_cal"));

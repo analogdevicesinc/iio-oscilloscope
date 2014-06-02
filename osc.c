@@ -34,6 +34,8 @@
 #include "config.h"
 #include "osc_plugin.h"
 
+static int revert_xcorr = 0;
+
 extern int count_char_in_string(char c, const char *s);
 extern char *get_filename_from_path(const char *path);
 
@@ -473,7 +475,11 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		settings->signal_a[i] = q_0[i] + I * i_0[i];
 		settings->signal_b[i] = q_1[i] + I * i_1[i];
 	}
-	xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length);
+
+	if (revert_xcorr)
+		xcorr(settings->signal_b, settings->signal_a, settings->xcorr_data, axis_length);
+	else
+		xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length);
 
 	gfloat *out_data = tr->y_axis;
 	gfloat *X = tr->x_axis;
@@ -933,6 +939,10 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 		return iio_device_get_sample_size(dev);
 }
 
+void plugin_data_capture_revert_xcorr(int revert)
+{
+	revert_xcorr = revert;
+}
 
 int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
 			struct marker_type **markers_cp, int domain)
