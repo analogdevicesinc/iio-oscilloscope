@@ -63,6 +63,9 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 			if (max > 32767.0)
 				fprintf(stderr, "ERROR: DAC Waveform Samples > +/- 2047.0\n");
 
+			if ((size % 8) != 0)
+				size *= 2;
+
 			*buf = malloc(size);
 			if (*buf == NULL)
 				return 0;
@@ -106,6 +109,16 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 						}
 					}
 				}
+			}
+
+			/* When we are in 1 TX mode it is possible that the number of bytes
+			 * is not a multiple of 8, but only a multiple of 4. In this case
+			 * we'll send the same buffer twice to make sure that it becomes a
+			 * multiple of 8.
+			 */
+			if ((size % 8) != 0) {
+				memcpy(*buf + size, *buf, size);
+				size += size;
 			}
 
 			fclose(infile);
