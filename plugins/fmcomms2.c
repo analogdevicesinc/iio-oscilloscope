@@ -344,7 +344,6 @@ void filter_fir_update(void)
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx), rx);
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx), tx);
 	}
-	glb_settings_update_labels();
 }
 
 void filter_fir_enable(GtkToggleButton *button, gpointer data)
@@ -374,6 +373,7 @@ void filter_fir_enable(GtkToggleButton *button, gpointer data)
 	}
 
 	filter_fir_update();
+	glb_settings_update_labels();
 }
 
 static void rx_phase_rotation_update()
@@ -937,6 +937,23 @@ static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
 
+	/* Update all widgets with current values */
+
+	printf("Updating GLB widgets...\n");
+	iio_update_widgets(glb_widgets, num_glb);
+	printf("Updating TX values...\n");
+	tx_update_values();
+	printf("Updating RX values...\n");
+	rx_update_values();
+	printf("Updating FIR filter...\n");
+	filter_fir_update();
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
+	glb_settings_update_labels();
+	rssi_update_labels();
+	dac_data_manager_update_iio_widgets(dac_tx_manager);
+
+	/* Connect signals */
+
 	if (iio_channel_find_attr(ch1, "fastlock_store"))
 		tx_fastlock_store_name = "fastlock_store";
 	else
@@ -1020,19 +1037,6 @@ static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		sample_frequency_changed_cb, NULL);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
 		sample_frequency_changed_cb, NULL);
-
-	printf("Updating GLB widgets...\n");
-	iio_update_widgets(glb_widgets, num_glb);
-	printf("Updating TX values...\n");
-	tx_update_values();
-	printf("Updating RX values...\n");
-	rx_update_values();
-	printf("Updating FIR filter...\n");
-	filter_fir_update();
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
-	glb_settings_update_labels();
-	rssi_update_labels();
-	dac_data_manager_update_iio_widgets(dac_tx_manager);
 
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
 	plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
