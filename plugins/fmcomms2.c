@@ -487,7 +487,6 @@ void filter_fir_update(void)
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx), rx);
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx), tx);
 	}
-	glb_settings_update_labels();
 }
 
 void filter_fir_enable(void)
@@ -514,6 +513,7 @@ void filter_fir_enable(void)
 	}
 
 	filter_fir_update();
+	glb_settings_update_labels();
 }
 
 static void rx_phase_rotation_update()
@@ -1782,6 +1782,24 @@ static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(dds_mode_tx[2]), DDS_BUFFER);
 	}
 
+	/* Update all widgets with current values */
+
+	printf("Updating GLB widgets...\n");
+	iio_update_widgets(glb_widgets, num_glb);
+	printf("Updating TX values...\n");
+	tx_update_values();
+	printf("Updating RX values...\n");
+	rx_update_values();
+	printf("Updating FIR filter...\n");
+	filter_fir_update();
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
+
+	glb_settings_update_labels();
+	rssi_update_labels();
+
+	manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[1]), 1);
+	manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[2]), 2);
+
 	/* Signals connect */
 
 	if (!dds_discrete_values) {
@@ -1883,28 +1901,12 @@ static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
 		sample_frequency_changed_cb);
 
-	printf("Updating GLB widgets...\n");
-	iio_update_widgets(glb_widgets, num_glb);
-	printf("Updating TX values...\n");
-	tx_update_values();
-	printf("Updating RX values...\n");
-	rx_update_values();
-	printf("Updating FIR filter...\n");
-	filter_fir_update();
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
-
-	glb_settings_update_labels();
-	rssi_update_labels();
-
 	for (i = 0; i < iio_device_get_channels_count(dds); i++) {
 		struct iio_channel *ch = iio_device_get_channel(dds, i);
 
 		if (iio_channel_is_scan_element(ch))
 			dds_num_channels++;
 	}
-
-	manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[1]), 1);
-	manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[2]), 2);
 
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
 	plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
