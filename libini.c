@@ -370,6 +370,17 @@ static const char * unroll(const char *in_filename)
 	in = fopen(in_filename, "r");
 	out = fopen (out_filename, "w");
 
+	if (!in) {
+		fprintf(stderr, "Failed to open %s : %s\n", in_filename,
+			strerror(errno));
+		return "";
+	}
+	if (!out) {
+		fprintf(stderr, "Failed to open %s : %s\n", out_filename,
+			strerror(errno));
+		return "";
+	}
+
 	while(fgets(buf, 1024, in) != NULL) {
 		if (strlen(buf)) {
 			j = true;
