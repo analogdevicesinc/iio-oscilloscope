@@ -796,6 +796,20 @@ void do_calibration (GtkWidget *widget, gpointer data)
 	gtk_widget_hide(GTK_WIDGET(data));
 }
 
+void undo_calibration (GtkWidget *widget, gpointer data)
+{
+	static struct iio_device *fmc[2] = {NULL, NULL};
+
+	if (fmc[0] == NULL)
+		fmc[0] = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
+	if (fmc[1] == NULL)
+		fmc[1] = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
+
+	tx_phase_rotation(fmc[0], 0);
+	tx_phase_rotation(fmc[1], 0);
+	rx_phase_rotation(fmc[0], 0);
+	rx_phase_rotation(fmc[1], 0);
+}
 
 void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 {
@@ -965,6 +979,9 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 
 	g_builder_connect_signal(builder, "do_fmcomms5_cal", "clicked",
 			G_CALLBACK(do_calibration), gtk_builder_get_object(builder, "do_fmcomms5_cal"));
+
+	g_builder_connect_signal(builder, "undo_fmcomms5_cal", "clicked",
+			G_CALLBACK(undo_calibration), NULL);
 
 	if (dev_slave) {
 		g_builder_connect_signal(builder, "mcs_sync", "clicked",
