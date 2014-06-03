@@ -41,6 +41,13 @@ static GtkNotebook *nbook;
 static gboolean plugin_detached;
 static GtkBuilder *builder;
 
+#define CAL_TONE	1000000
+#define CAL_SCALE	0.12500
+#define CAL_PHASE	0
+#define CAL_FREQ	30720000
+#define MARKER_AVG	3
+
+
 enum fmcomms2adv_wtype {
 	CHECKBOX,
 	SPINBUTTON,
@@ -266,12 +273,6 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 	}
 }
 
-
-#define CAL_TONE 1000000
-#define CAL_SCALE 0.12500
-#define CAL_PHASE 0
-#define CAL_FREQ 30720000
-
 static void rx_phase_rotation(struct iio_device *dev, gdouble val)
 {
 	struct iio_channel *out0, *out1;
@@ -305,6 +306,9 @@ static void tx_phase_rotation(struct iio_device *dev, gdouble val)
 {
 	long long i, q;
 
+	if (!(dev && dev_dds_master))
+		return;
+
 	if (val < 0)
 		val += 360.0;
 
@@ -317,36 +321,35 @@ static void tx_phase_rotation(struct iio_device *dev, gdouble val)
 	if (q > 360000)
 		q -= 360000;
 
-
 	printf("%s:%d val %f ,  I = %d, Q = %d \n", __func__, __LINE__,val, (int)i,(int) q);
 
-
-		iio_device_attr_write_longlong(dev,
-				"out_altvoltage0_TX1_I_F1_phase",
-				i);
-		iio_device_attr_write_longlong(dev,
-				"out_altvoltage1_TX1_I_F2_phase",
-				i);
-		iio_device_attr_write_longlong(dev,
-				"out_altvoltage2_TX1_Q_F1_phase",
-				q);
-		iio_device_attr_write_longlong(dev,
-				"out_altvoltage3_TX1_Q_F2_phase",
-				q);
-		iio_device_attr_write_longlong(dev,
-				"out_altvoltage4_TX2_I_F1_phase",
-				i);
-		iio_device_attr_write_longlong(dev,
-				"out_altvoltage5_TX2_I_F2_phase",
-			       	i);
-		iio_device_attr_write_longlong(dev,
-				"out_altvoltage6_TX2_Q_F1_phase",
-				q);
-		iio_device_attr_write_longlong(dev,
-				"out_altvoltage7_TX2_Q_F2_phase",
-				q);
+	iio_device_attr_write_longlong(dev,
+			"out_altvoltage0_TX1_I_F1_phase",
+			i);
+	iio_device_attr_write_longlong(dev,
+			"out_altvoltage1_TX1_I_F2_phase",
+			i);
+	iio_device_attr_write_longlong(dev,
+			"out_altvoltage2_TX1_Q_F1_phase",
+			q);
+	iio_device_attr_write_longlong(dev,
+			"out_altvoltage3_TX1_Q_F2_phase",
+			q);
+	iio_device_attr_write_longlong(dev,
+			"out_altvoltage4_TX2_I_F1_phase",
+			i);
+	iio_device_attr_write_longlong(dev,
+			"out_altvoltage5_TX2_I_F2_phase",
+		       	i);
+	iio_device_attr_write_longlong(dev,
+			"out_altvoltage6_TX2_Q_F1_phase",
+			q);
+	iio_device_attr_write_longlong(dev,
+			"out_altvoltage7_TX2_Q_F2_phase",
+			q);
 
 	/* Toggle RAW on master to sync */
+
 	iio_device_attr_write_longlong(dev_dds_master,
 			"out_altvoltage1_TX1_I_F2_raw", 0);
 	iio_device_attr_write_longlong(dev_dds_master,
@@ -374,13 +377,11 @@ void near_end_loopback_ctrl(unsigned channel, bool enable)
 	else
 		tmp &= ~0x800;
 
-
 	iio_device_reg_write(dev, 0x80000400 + channel * 0x40, tmp);
 }
 
-void get_markers (int *offset, long long *mag, long long *mag1, long long *mag2) /* FIXME */
+void get_markers (int *offset, long long *mag, long long *mag1, long long *mag2)
 {
-#define MARKER_AVG	3
 	int ret, sum = MARKER_AVG;
 	struct marker_type *markers = NULL;
 	const char *device_ref = NULL;
@@ -470,6 +471,7 @@ void __cal_switch_ports_enable_cb (unsigned val)
 	iio_device_debug_attr_write_longlong(dev, "calibration_switch_control", sw);
 	iio_device_attr_write(dev, "in_voltage0_rf_port_select", rx_port);
 	iio_device_attr_write(dev, "out_voltage0_rf_port_select", tx_port);
+
 	if (dev_slave) {
 		iio_device_attr_write(dev_slave, "in_voltage0_rf_port_select", rx_port);
 		iio_device_attr_write(dev_slave, "out_voltage0_rf_port_select", tx_port);
@@ -535,7 +537,7 @@ double calc_phase_offset(unsigned type, double fsample, double dds_freq, int off
 }
 
 double tune_trx_phase_offset(struct iio_device *dev, double sign,
-			    double (*tune)(struct iio_device *dev, gdouble val))
+			    void (*tune)(struct iio_device *dev, gdouble val))
 {
 	long long mag, mag1, mag2, pdelta, delta = LLONG_MAX, min_delta = LLONG_MAX;
 	int i, offset, pos = 0, neg = 0;
@@ -600,9 +602,8 @@ double tune_trx_phase_offset(struct iio_device *dev, double sign,
 
 void calibrate (gpointer button)
 {
-	double rx_phase_lpc, rx_phase_hpc, tx_phase_lpc, tx_phase_hpc, tmp;
-	long long mag, mag1, mag2;
-	int offset, i;
+	double rx_phase_lpc, rx_phase_hpc, /*tx_phase_lpc,*/ tx_phase_hpc, tmp;
+	int i;
 	struct iio_device *fmc[2];
 	struct iio_device *cf_ad9361_lpc, *cf_ad9361_hpc;
 	GtkWidget *tx_phase;
@@ -759,9 +760,6 @@ void calibrate (gpointer button)
 	plugin_data_capture_revert_xcorr(true);
 	sleep(0.4);
 
-	get_markers(&offset, &mag, &mag1, &mag2);
-	get_markers(&offset, &mag, &mag1, &mag2);
-
 	tx_phase_hpc = tune_trx_phase_offset(fmc[1], -1.0 , tx_phase_rotation);
 
 	//tx_phase_hpc = calc_phase_offset(4, CAL_FREQ, CAL_TONE, offset, mag);
@@ -802,17 +800,24 @@ void do_calibration (GtkWidget *widget, gpointer data)
 void undo_calibration (GtkWidget *widget, gpointer data)
 {
 	static struct iio_device *fmc[2] = {NULL, NULL};
+	static struct iio_device *cf_ad9361_lpc = NULL, *cf_ad9361_hpc = NULL;
+
+	if (cf_ad9361_lpc == NULL)
+		cf_ad9361_lpc = iio_context_find_device(ctx, "cf-ad9361-lpc");
+	if (cf_ad9361_hpc == NULL)
+		cf_ad9361_hpc = iio_context_find_device(ctx, "cf-ad9361-hpc");
 
 	if (fmc[0] == NULL)
 		fmc[0] = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
 	if (fmc[1] == NULL)
 		fmc[1] = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
 
-	tx_phase_rotation(fmc[0], 0);
-	tx_phase_rotation(fmc[1], 0);
-	rx_phase_rotation(fmc[0], 0);
-	rx_phase_rotation(fmc[1], 0);
+	tx_phase_rotation(fmc[0], 0.0);
+	tx_phase_rotation(fmc[1], 0.0);
+	rx_phase_rotation(cf_ad9361_lpc, 0.0);
+	rx_phase_rotation(cf_ad9361_hpc, 0.0);
 }
+
 
 void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 {
@@ -825,7 +830,7 @@ void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 	if (fmc[1] == NULL)
 		fmc[1] = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
 
-	if ((int)data)
+	if ((unsigned long)data)
 		tx_phase_rotation(fmc[0], value);
 	else
 		tx_phase_rotation(fmc[1], value);
