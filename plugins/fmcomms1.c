@@ -2398,11 +2398,12 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			gtk_widget_hide(dialogs.calibrate);
 		}
 	} else {
-		printf("Unhandled tokens in ini file,\n"
+		if (value) {
+			printf("Unhandled tokens in ini file,\n"
 				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
 				"FMComms1", attrib, value);
-		if (value)
 			return "FAIL";
+		}
 	}
 
 	return NULL;
