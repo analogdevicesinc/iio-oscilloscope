@@ -272,7 +272,7 @@ static void rx_phase_rotation(struct iio_device *dev, gdouble val)
 	gdouble phase;
 	unsigned offset;
 
-	printf("rx_phase_rotation %f\n", val);
+	printf("%s %s %f\n", __func__, iio_device_get_name(dev), val);
 
 	phase = val * 2 * M_PI / 360.0;
 
@@ -509,7 +509,7 @@ double calc_phase_offset(unsigned type, double fsample, double dds_freq, int off
 
 void calibrate (gpointer button)
 {
-	int offset, mag, i, mag1, mag2, delta = 999999999, pdelta, min_delta;
+	int offset, mag, i, j, mag1, mag2, delta = 999999999, pdelta, min_delta;
 	double rx_phase_lpc, rx_phase_hpc, tx_phase_lpc, tx_phase_hpc, tmp, min_phase;
 	struct iio_device *fmc[2];
 
@@ -615,13 +615,12 @@ void calibrate (gpointer button)
 	iio_device_attr_write_longlong(fmc[0],
 			"out_altvoltage1_TX1_I_F2_raw", 1);
 
+	j = 0;
 restart:
-
+	j++;
+	printf("restarting %i times\n", j);
  	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-lpc"), 0.0);
  	rx_phase_rotation(iio_context_find_device(ctx, "cf-ad9361-hpc"), 0.0);
-
-
-
 
 	/* Calibrate RX
 	 * 1 TX1B_B (HPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
