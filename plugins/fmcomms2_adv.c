@@ -348,6 +348,8 @@ void near_end_loopback_ctrl(unsigned channel, bool enable)
 	unsigned tmp;
 	struct iio_device *dev = iio_context_find_device(ctx, channel > 3 ?
 		"cf-ad9361-lpc" : "cf-ad9361-hpc");
+	if (!dev)
+		return;
 
 	if (channel > 3)
 		channel -= 4;
@@ -441,9 +443,11 @@ void __cal_switch_ports_enable_cb (unsigned val)
 
 	iio_device_debug_attr_write_longlong(dev, "calibration_switch_control", sw);
 	iio_device_attr_write(dev, "in_voltage0_rf_port_select", rx_port);
-	iio_device_attr_write(dev_slave, "in_voltage0_rf_port_select", rx_port);
 	iio_device_attr_write(dev, "out_voltage0_rf_port_select", tx_port);
-	iio_device_attr_write(dev_slave, "out_voltage0_rf_port_select", tx_port);
+	if (dev_slave) {
+		iio_device_attr_write(dev_slave, "in_voltage0_rf_port_select", rx_port);
+		iio_device_attr_write(dev_slave, "out_voltage0_rf_port_select", tx_port);
+	}
 
 	return;
 
