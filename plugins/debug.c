@@ -409,7 +409,8 @@ static void reg_read_clicked(GtkButton *button, gpointer user_data)
 	if (address < 0)
 		return;
 
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(axicore_regmap))) {
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(axicore_regmap)) &&
+			!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle_detailed_regmap))) {
 		address |= 0x80000000;
 	}
 	ret = iio_device_reg_read(dev, address, &i);
