@@ -346,6 +346,12 @@ static void tx_phase_rotation(struct iio_device *dev, gdouble val)
 				"out_altvoltage7_TX2_Q_F2_phase",
 				q);
 
+	/* Toggle RAW on master to sync */
+	iio_device_attr_write_longlong(dev_dds_master,
+			"out_altvoltage1_TX1_I_F2_raw", 0);
+	iio_device_attr_write_longlong(dev_dds_master,
+			"out_altvoltage1_TX1_I_F2_raw", 1);
+
 }
 
 void near_end_loopback_ctrl(unsigned channel, bool enable)
@@ -522,20 +528,18 @@ double calc_phase_offset(unsigned type, double fsample, double dds_freq, int off
 	if (val > 360.0)
 		val -= 360.0;
 
-
 	if (val < 0)
 		val = 360.0 + val;
-
-	printf("%s:%d offset = %d, mag = %d, phase %f \n", __func__, __LINE__, offset , mag, val);
 
 	return val;
 }
 
-double tune_rx_phase_offset(struct iio_device *dev)
+double tune_trx_phase_offset(struct iio_device *dev, double sign,
+			    double (*tune)(struct iio_device *dev, gdouble val))
 {
 	long long mag, mag1, mag2, pdelta, delta = LLONG_MAX, min_delta = LLONG_MAX;
 	int i, offset, pos = 0, neg = 0;
-	double rx_phase = 0.0, step = 1.0;
+	double phase = 0.0, step = 1.0;
 
 	for (i = 0; i < 20; i++) {
 
@@ -543,15 +547,15 @@ double tune_rx_phase_offset(struct iio_device *dev)
 		get_markers(&offset, &mag, &mag1, &mag2);
 
 		if (i == 0) {
-			rx_phase = calc_phase_offset(1, CAL_FREQ, CAL_TONE, offset, mag);
-			rx_phase_rotation(dev, rx_phase);
+			phase = calc_phase_offset(1, CAL_FREQ, CAL_TONE, offset, mag);
+			tune(dev, phase * sign);
 			continue;
 		}
 
 		if (i > 0) {
 			if (offset != 0) {
-				rx_phase += (360.0 / ((CAL_FREQ / CAL_TONE) / offset) / 2);
-				rx_phase_rotation(dev, rx_phase);
+				phase += (360.0 / ((CAL_FREQ / CAL_TONE) / offset) / 2);
+				tune(dev, phase * sign);
 				continue;
 			}
 		}
@@ -569,7 +573,7 @@ double tune_rx_phase_offset(struct iio_device *dev)
 				pos = 0;
 			}
 
-			rx_phase -= step;
+			phase -= step;
 			neg = 1;
 
 		} else {
@@ -578,20 +582,20 @@ double tune_rx_phase_offset(struct iio_device *dev)
 				neg = 0;
 			}
 
-			rx_phase += step;
+			phase += step;
 			pos = 1;
 		}
 
 		printf("step %f\n", step);
 
-		rx_phase_rotation(dev, rx_phase);
+		tune(dev, phase * sign);
 
 		if (step < 0.005)
 			break;
 
 	}
 
-	return rx_phase;
+	return phase * sign;
 }
 
 void calibrate (gpointer button)
@@ -715,7 +719,7 @@ void calibrate (gpointer button)
 	__cal_switch_ports_enable_cb(1);
 	plugin_data_capture_revert_xcorr(false);
 	sleep(0.3);
-	rx_phase_hpc = tune_rx_phase_offset(cf_ad9361_hpc);
+	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, 1.0, rx_phase_rotation);
 	printf("rx_phase_hpc %f\n", rx_phase_hpc);
 
 	/* revert */
@@ -728,7 +732,7 @@ void calibrate (gpointer button)
 	__cal_switch_ports_enable_cb(3);
 	plugin_data_capture_revert_xcorr(true);
 	sleep(0.3);
-	rx_phase_lpc = tune_rx_phase_offset(cf_ad9361_lpc);
+	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, 1.0, rx_phase_rotation);
 	printf("rx_phase_lpc %f\n", rx_phase_lpc);
 
 #if 0
@@ -758,13 +762,15 @@ void calibrate (gpointer button)
 	get_markers(&offset, &mag, &mag1, &mag2);
 	get_markers(&offset, &mag, &mag1, &mag2);
 
-	tx_phase_hpc = calc_phase_offset(4, CAL_FREQ, CAL_TONE, offset, mag);
+	tx_phase_hpc = tune_trx_phase_offset(fmc[1], -1.0 , tx_phase_rotation);
+
+	//tx_phase_hpc = calc_phase_offset(4, CAL_FREQ, CAL_TONE, offset, mag);
 
 	printf("tx_phase_hpc %f\n", tx_phase_hpc);
 
 	rx_phase_rotation(cf_ad9361_hpc, rx_phase_hpc);
 
-	tmp = -1 * tx_phase_hpc;
+	tmp = tx_phase_hpc;
 
 	if (tmp > 360.0)
 		tmp -= 360.0;
@@ -772,10 +778,7 @@ void calibrate (gpointer button)
 	if (tmp < 0.0)
 		tmp += 360.0;
 
-	//tx_phase_rotation(fmc[1], tmp);
-
 	gtk_range_set_value(GTK_RANGE(tx_phase), tmp);
-
 
 	plugin_data_capture_revert_xcorr(false);
 	 __cal_switch_ports_enable_cb(0);
@@ -826,12 +829,6 @@ void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 		tx_phase_rotation(fmc[0], value);
 	else
 		tx_phase_rotation(fmc[1], value);
-
-	/* Toggle RAW on master to sync */
-	iio_device_attr_write_longlong(fmc[0],
-			"out_altvoltage1_TX1_I_F2_raw", 0);
-	iio_device_attr_write_longlong(fmc[0],
-			"out_altvoltage1_TX1_I_F2_raw", 1);
 
 }
 
