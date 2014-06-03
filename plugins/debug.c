@@ -92,6 +92,7 @@ static gulong attr_type_hid;
 static gulong debug_scanel_hid;
 
 /* Register map widgets */
+static GtkWidget *register_section;
 static GtkWidget *scrollwin_regmap;
 static GtkWidget *reg_map_container;
 static GtkWidget *hbox_bits_container;
@@ -378,14 +379,11 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		g_signal_handler_unblock(combobox_attr_type, attr_type_hid);
 		gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_attr_type), 0);
 	} else {
+		gtk_widget_set_sensitive(register_section, false);
 		gtk_widget_hide(frm_regmaptype);
-		gtk_widget_hide(btn_read_reg);
-		gtk_widget_hide(btn_write_reg);
 		gtk_widget_hide(scanel_read);
 		gtk_widget_hide(scanel_write);
 		gtk_widget_hide(warning_label);
-		gtk_widget_set_sensitive(spin_btn_reg_value, false);
-		gtk_widget_set_sensitive(label_reg_hex_value, false);
 		gtk_entry_set_text(GTK_ENTRY(scanel_filename), "");
 		gtk_entry_set_text(GTK_ENTRY(scanel_value), "");
 		g_signal_handler_block(combobox_attr_type, attr_type_hid);
@@ -1134,7 +1132,6 @@ static void clean_gui_reg_info(void)
 	gtk_widget_hide(label_notes_tag);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_addr), (gdouble)0);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), (gdouble)0);
-	gtk_widget_hide(btn_write_reg);
 	gtk_label_set_text(GTK_LABEL(label_reg_hex_addr), "0x0000");
 	gtk_label_set_text(GTK_LABEL(label_reg_hex_value), "<unknown>");
 	gtk_widget_set_size_request(scrollwin_regmap, -1, -1);
@@ -1318,26 +1315,16 @@ static void debug_register_section_init(struct iio_device *iio_dev)
 		device_xml_file_selection(iio_device_get_name(iio_dev), xml_filename);
 		if (!strcmp(xml_filename, "")) {
 			gtk_widget_show(frm_regmaptype);
-			gtk_widget_show(btn_read_reg);
-			gtk_widget_hide(warning_label);
-			gtk_widget_set_sensitive(spin_btn_reg_value, true);
-			gtk_widget_set_sensitive(label_reg_hex_value,true);
 		} else {
 			device_xml_file_load(xml_filename);
 			gtk_widget_hide(frm_regmaptype);
-			gtk_widget_show(btn_read_reg);
-			gtk_widget_hide(warning_label);
-			gtk_widget_set_sensitive(spin_btn_reg_value, true);
-			gtk_widget_set_sensitive(label_reg_hex_value,true);
 		}
+		gtk_widget_set_sensitive(register_section, true);
 	} else {
 		int id = getuid();
 		if (id != 0)
 			gtk_widget_show(warning_label);
-		gtk_widget_hide(frm_regmaptype);
-		gtk_widget_hide(btn_read_reg);
-		gtk_widget_set_sensitive(spin_btn_reg_value, false);
-		gtk_widget_set_sensitive(label_reg_hex_value, false);
+			gtk_widget_set_sensitive(register_section, false);
 	}
 }
 
@@ -1416,6 +1403,7 @@ static int debug_init(GtkWidget *notebook)
 
 	debug_panel = GTK_WIDGET(gtk_builder_get_object(builder, "reg_debug_panel"));
 	vbox_device_list = GTK_WIDGET(gtk_builder_get_object(builder, "device_list_container"));
+	register_section = GTK_WIDGET(gtk_builder_get_object(builder, "frameRegister"));
 	btn_read_reg = GTK_WIDGET(gtk_builder_get_object(builder, "debug_read_reg"));
 	btn_write_reg = GTK_WIDGET(gtk_builder_get_object(builder, "debug_write_reg"));
 	label_reg_hex_addr = GTK_WIDGET(gtk_builder_get_object(builder, "debug_reg_address_hex"));
@@ -1489,10 +1477,7 @@ static int debug_init(GtkWidget *notebook)
 	g_signal_connect(G_OBJECT(toggle_detailed_regmap), "toggled",
 			G_CALLBACK(detailed_regmap_toggled_cb), NULL);
 
-	/* Show window and hide(or set as inactive) some widgets. */
 	gtk_widget_show_all(debug_panel);
-	gtk_widget_hide(btn_read_reg);
-	gtk_widget_hide(btn_write_reg);
 
 	/* Show the panel */
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), debug_panel, NULL);

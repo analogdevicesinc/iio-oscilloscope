@@ -261,6 +261,7 @@
     <child>
       <object class="GtkFrame" id="frameRegister">
         <property name="visible">True</property>
+        <property name="sensitive">False</property>
         <property name="can_focus">False</property>
         <property name="label_xalign">0</property>
         <child>
@@ -268,6 +269,9 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="n_rows">6</property>
+            <child>
+              <placeholder/>
+            </child>
             <child>
               <object class="GtkTable" id="gridValAndAddr">
                 <property name="visible">True</property>
@@ -283,7 +287,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="xalign">0</property>
-                    <property name="label" translatable="yes">0x000</property>
+                    <property name="label" translatable="yes">0x0000</property>
                     <property name="justify">right</property>
                   </object>
                   <packing>
@@ -297,7 +301,6 @@
                   <object class="GtkLabel" id="debug_reg_value_hex">
                     <property name="width_request">82</property>
                     <property name="visible">True</property>
-                    <property name="sensitive">False</property>
                     <property name="can_focus">False</property>
                     <property name="xalign">0</property>
                     <property name="label" translatable="yes">&lt;value&gt;</property>
@@ -333,7 +336,6 @@
                 <child>
                   <object class="GtkSpinButton" id="debug_reg_value">
                     <property name="visible">True</property>
-                    <property name="sensitive">False</property>
                     <property name="can_focus">True</property>
                     <property name="invisible_char">●</property>
                     <property name="xalign">1</property>
