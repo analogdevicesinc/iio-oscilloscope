@@ -96,6 +96,8 @@ static void iio_spin_button_update(struct iio_widget *widget)
 		/* if the setting is negative, and it can be set negative */
 		if (mag < 0 && min < 0)
 			freq *= -1;
+		else if (min >= 0)
+			freq *= -1;
 	}
 
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON (widget->widget), freq);
