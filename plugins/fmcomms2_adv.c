@@ -35,6 +35,8 @@ static struct iio_context *ctx;
 static struct iio_device *dev;
 static struct iio_device *dev_slave;
 static struct iio_device *dev_dds_master;
+static struct iio_device *dev_dds_slave;
+struct iio_device *cf_ad9361_lpc, *cf_ad9361_hpc;
 
 static gint this_page;
 static GtkNotebook *nbook;
@@ -47,6 +49,13 @@ static GtkBuilder *builder;
 #define CAL_FREQ	30720000
 #define MARKER_AVG	3
 
+//#define DEBUG
+
+#ifdef DEBUG
+#define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
+#else
+#define DBG(D...)
+#endif
 
 enum fmcomms2adv_wtype {
 	CHECKBOX,
@@ -273,13 +282,34 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 	}
 }
 
+double scale_phase_0_360(double val)
+{
+	if (val >= 360.0)
+		val -= 360.0;
+
+	if (val < 0)
+		val += 360.0;
+
+	return val;
+}
+
+double calc_phase_offset(double fsample, double dds_freq, int offset, int mag)
+{
+	double val = 360.0 / ((fsample / dds_freq) / offset);
+
+	if (mag < 0)
+		val += 180.0;
+
+	return scale_phase_0_360(val);
+}
+
 static void rx_phase_rotation(struct iio_device *dev, gdouble val)
 {
 	struct iio_channel *out0, *out1;
 	gdouble phase;
 	unsigned offset;
 
-	printf("%s %s %f\n", __func__, iio_device_get_name(dev), val);
+	DBG("%s %f\n", iio_device_get_name(dev), val);
 
 	phase = val * 2 * M_PI / 360.0;
 
@@ -309,19 +339,11 @@ static void tx_phase_rotation(struct iio_device *dev, gdouble val)
 	if (!(dev && dev_dds_master))
 		return;
 
-	if (val < 0)
-		val += 360.0;
+	i = scale_phase_0_360(val + 90.0) * 1000;
+	q = scale_phase_0_360(val) * 1000;
 
-	i = (val * 1000) + 90000;
-	q = val * 1000;
 
-	if (i > 360000)
-		i -= 360000;
-
-	if (q > 360000)
-		q -= 360000;
-
-	printf("%s:%d val %f ,  I = %d, Q = %d \n", __func__, __LINE__,val, (int)i,(int) q);
+	DBG("Val %f, I = %d, Q = %d", val, (int)i,(int) q);
 
 	iio_device_attr_write_longlong(dev,
 			"out_altvoltage0_TX1_I_F1_phase",
@@ -361,8 +383,8 @@ void near_end_loopback_ctrl(unsigned channel, bool enable)
 {
 
 	unsigned tmp;
-	struct iio_device *dev = iio_context_find_device(ctx, channel > 3 ?
-		"cf-ad9361-lpc" : "cf-ad9361-hpc");
+	struct iio_device *dev = (channel > 3) ?
+		cf_ad9361_lpc : cf_ad9361_hpc;
 	if (!dev)
 		return;
 
@@ -401,9 +423,6 @@ void get_markers (int *offset, long long *mag, long long *mag1, long long *mag2)
 		}
 
 		if (markers) {
-	//		printf("X: %f %f %f\n", markers[0].x,  markers[1].x,  markers[2].x);
-	//		printf("Y: %f %f %f\n", markers[0].y,  markers[1].y,  markers[2].y);
-
 			*offset += markers[0].x;
 			*mag += markers[0].y;
 			*mag1 += markers[1].y;
@@ -416,7 +435,7 @@ void get_markers (int *offset, long long *mag, long long *mag1, long long *mag2)
 	*mag1 /= MARKER_AVG;
 	*mag2 /= MARKER_AVG;
 
-//	printf("offset: %d	 MAG0 %d MAG1 %d MAG2 %d\n", *offset,  *mag, *mag1, *mag2);
+	DBG("offset: %d	, MAG0 %d, MAG1 %d, MAG2 %d", *offset, (int)*mag, (int)*mag1, (int)*mag2);
 
 	plugin_data_capture_with_domain(NULL, NULL, &markers, XCORR_PLOT);
 }
@@ -518,30 +537,13 @@ void mcs_cb (GtkWidget *widget, gpointer data)
 	}
 }
 
-double calc_phase_offset(unsigned type, double fsample, double dds_freq, int offset, int mag)
-{
-	double val;
-
-	val = 360.0 / ((fsample / dds_freq) / offset);
-
-	if (mag < 0)
-		val += 180.0;
-
-	if (val > 360.0)
-		val -= 360.0;
-
-	if (val < 0)
-		val = 360.0 + val;
-
-	return val;
-}
-
 double tune_trx_phase_offset(struct iio_device *dev, double sign,
 			    void (*tune)(struct iio_device *dev, gdouble val))
 {
-	long long mag, mag1, mag2, pdelta, delta = LLONG_MAX, min_delta = LLONG_MAX;
+	long long mag, mag1, mag2, pdelta, delta = LLONG_MAX,
+		min_delta = LLONG_MAX;
 	int i, offset, pos = 0, neg = 0;
-	double phase = 0.0, step = 1.0;
+	double min_phase, phase = 0.0, step = 1.0;
 
 	for (i = 0; i < 20; i++) {
 
@@ -549,7 +551,7 @@ double tune_trx_phase_offset(struct iio_device *dev, double sign,
 		get_markers(&offset, &mag, &mag1, &mag2);
 
 		if (i == 0) {
-			phase = calc_phase_offset(1, CAL_FREQ, CAL_TONE, offset, mag);
+			phase = calc_phase_offset(CAL_FREQ, CAL_TONE, offset, mag);
 			tune(dev, phase * sign);
 			continue;
 		}
@@ -567,6 +569,7 @@ double tune_trx_phase_offset(struct iio_device *dev, double sign,
 
 		if (delta < min_delta) {
 			min_delta = delta;
+			min_phase = phase;
 		}
 
 		if (pdelta > delta) {
@@ -588,47 +591,22 @@ double tune_trx_phase_offset(struct iio_device *dev, double sign,
 			pos = 1;
 		}
 
-		printf("step %f\n", step);
-
-		tune(dev, phase * sign);
-
 		if (step < 0.005)
 			break;
 
+		DBG("Step: %f Phase: %f, min_Phase: %f, delta %d, min_delta %d",
+		    step, phase, min_phase, (int)delta, (int)min_delta);
+
+		tune(dev, phase * sign);
 	}
 
 	return phase * sign;
 }
 
-void calibrate (gpointer button)
+void default_dds(void)
 {
-	double rx_phase_lpc, rx_phase_hpc, /*tx_phase_lpc,*/ tx_phase_hpc, tmp;
+	struct iio_device *fmc[2] = {dev_dds_master, dev_dds_slave};
 	int i;
-	struct iio_device *fmc[2];
-	struct iio_device *cf_ad9361_lpc, *cf_ad9361_hpc;
-	GtkWidget *tx_phase;
-
-	cf_ad9361_lpc = iio_context_find_device(ctx, "cf-ad9361-lpc");
-	cf_ad9361_hpc = iio_context_find_device(ctx, "cf-ad9361-hpc");
-
-	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
-		printf("could not fine capture cores\n");
-		goto calibrate_fail;
-	}
-
-	tx_phase = GTK_WIDGET(gtk_builder_get_object(builder, "tx_phase"));
-	mcs_cb(NULL, NULL);
-
-	fmc[0] = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
-	fmc[1] = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
-
-	if (!fmc[0] || !fmc[1]) {
-		printf("could not fine dds cores\n");
-		goto calibrate_fail;
-	}
-
-	/* set some logical defaults / assumptions */
-
 
 	for (i = 0; i <= 1; i++) {
 		iio_device_attr_write_longlong(fmc[i],
@@ -706,35 +684,62 @@ void calibrate (gpointer button)
 	}
 
 	/* Toggle RAW on master to sync */
-	iio_device_attr_write_longlong(fmc[0],
+	iio_device_attr_write_longlong(dev_dds_master,
 			"out_altvoltage1_TX1_I_F2_raw", 0);
-	iio_device_attr_write_longlong(fmc[0],
+	iio_device_attr_write_longlong(dev_dds_master,
 			"out_altvoltage1_TX1_I_F2_raw", 1);
 
+}
+
+void calibrate (gpointer button)
+{
+	double rx_phase_lpc, rx_phase_hpc, /*tx_phase_lpc,*/ tx_phase_hpc;
+	GtkWidget *tx_phase;
+
+
+	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
+		printf("could not fine capture cores\n");
+		goto calibrate_fail;
+	}
+
+	tx_phase = GTK_WIDGET(gtk_builder_get_object(builder, "tx_phase"));
+	mcs_cb(NULL, NULL);
+
+
+	if (!dev_dds_master || !dev_dds_slave) {
+		printf("could not fine dds cores\n");
+		goto calibrate_fail;
+	}
+
+	/*
+	 * set some logical defaults / assumptions
+	 */
+
+	default_dds();
  	rx_phase_rotation(cf_ad9361_lpc, 0.0);
  	rx_phase_rotation(cf_ad9361_hpc, 0.0);
 
-	/* Calibrate RX
+	/*
+	 * Calibrate RX:
 	 * 1 TX1B_B (HPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
 	 */
 	__cal_switch_ports_enable_cb(1);
 	plugin_data_capture_revert_xcorr(false);
 	sleep(0.3);
 	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, 1.0, rx_phase_rotation);
-	printf("rx_phase_hpc %f\n", rx_phase_hpc);
+	DBG("rx_phase_hpc %f", rx_phase_hpc);
 
-	/* revert */
-	rx_phase_rotation(cf_ad9361_hpc, 0.0);
-
-	/* Calibrate RX
+	/*
+	 * Calibrate RX:
 	 * 3 TX1B_B (HPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
 	 */
 
+	rx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(3);
 	plugin_data_capture_revert_xcorr(true);
 	sleep(0.3);
 	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, 1.0, rx_phase_rotation);
-	printf("rx_phase_lpc %f\n", rx_phase_lpc);
+	DBG("rx_phase_lpc %f", rx_phase_lpc);
 
 #if 0
 	/* Calibrate TX
@@ -747,11 +752,12 @@ void calibrate (gpointer button)
 	sleep(0.3);
 	get_markers(&offset, &mag, &mag1, &mag2);
 	get_markers(&offset, &mag, &mag1, &mag2);
-	tx_phase_lpc = calc_phase_offset(2, CAL_FREQ, CAL_TONE, offset, mag);
+	tx_phase_lpc = calc_phase_offset(CAL_FREQ, CAL_TONE, offset, mag);
 	printf("tx_phase_lpc %f\n", tx_phase_lpc);
 #endif
 
-	/* Calibrate TX
+	/*
+	 * Calibrate TX:
 	 * 4 TX1B_A (LPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
 	 */
 
@@ -759,24 +765,13 @@ void calibrate (gpointer button)
 	__cal_switch_ports_enable_cb(4);
 	plugin_data_capture_revert_xcorr(true);
 	sleep(0.4);
+	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, -1.0 , tx_phase_rotation);
 
-	tx_phase_hpc = tune_trx_phase_offset(fmc[1], -1.0 , tx_phase_rotation);
-
-	//tx_phase_hpc = calc_phase_offset(4, CAL_FREQ, CAL_TONE, offset, mag);
-
-	printf("tx_phase_hpc %f\n", tx_phase_hpc);
+	DBG("tx_phase_hpc %f", tx_phase_hpc);
 
 	rx_phase_rotation(cf_ad9361_hpc, rx_phase_hpc);
 
-	tmp = tx_phase_hpc;
-
-	if (tmp > 360.0)
-		tmp -= 360.0;
-
-	if (tmp < 0.0)
-		tmp += 360.0;
-
-	gtk_range_set_value(GTK_RANGE(tx_phase), tmp);
+	gtk_range_set_value(GTK_RANGE(tx_phase), scale_phase_0_360(tx_phase_hpc));
 
 	plugin_data_capture_revert_xcorr(false);
 	 __cal_switch_ports_enable_cb(0);
@@ -789,8 +784,6 @@ calibrate_fail:
 	g_thread_exit(NULL);
 }
 
-
-
 void do_calibration (GtkWidget *widget, gpointer data)
 {
 	g_thread_new("Calibrate_thread", (void *) &calibrate, data);
@@ -799,41 +792,20 @@ void do_calibration (GtkWidget *widget, gpointer data)
 
 void undo_calibration (GtkWidget *widget, gpointer data)
 {
-	static struct iio_device *fmc[2] = {NULL, NULL};
-	static struct iio_device *cf_ad9361_lpc = NULL, *cf_ad9361_hpc = NULL;
-
-	if (cf_ad9361_lpc == NULL)
-		cf_ad9361_lpc = iio_context_find_device(ctx, "cf-ad9361-lpc");
-	if (cf_ad9361_hpc == NULL)
-		cf_ad9361_hpc = iio_context_find_device(ctx, "cf-ad9361-hpc");
-
-	if (fmc[0] == NULL)
-		fmc[0] = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
-	if (fmc[1] == NULL)
-		fmc[1] = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
-
-	tx_phase_rotation(fmc[0], 0.0);
-	tx_phase_rotation(fmc[1], 0.0);
+	tx_phase_rotation(dev_dds_master, 0.0);
+	tx_phase_rotation(dev_dds_slave, 0.0);
 	rx_phase_rotation(cf_ad9361_lpc, 0.0);
 	rx_phase_rotation(cf_ad9361_hpc, 0.0);
 }
 
-
 void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 {
-	static struct iio_device *fmc[2] = {NULL, NULL};
-
 	double value = gtk_range_get_value(hscale1);
 
-	if (fmc[0] == NULL)
-		fmc[0] = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
-	if (fmc[1] == NULL)
-		fmc[1] = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
-
 	if ((unsigned long)data)
-		tx_phase_rotation(fmc[0], value);
+		tx_phase_rotation(dev_dds_master, value);
 	else
-		tx_phase_rotation(fmc[1], value);
+		tx_phase_rotation(dev_dds_slave, value);
 
 }
 
@@ -968,28 +940,30 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "c1i", "toggled",
 		G_CALLBACK(bist_tone_cb), builder);
 
-	gtk_combo_box_set_active(
-			GTK_COMBO_BOX(gtk_builder_get_object(builder, "calibration_switch_control")), 0);
-	__cal_switch_ports_enable_cb(0);
-
-	g_builder_connect_signal(builder, "calibration_switch_control", "changed",
-		G_CALLBACK(cal_switch_ports_enable_cb), builder);
-
-	g_builder_connect_signal(builder, "tx_phase", "value-changed",
-		G_CALLBACK(tx_phase_hscale_value_changed), 0);
-
-
-	g_builder_connect_signal(builder, "do_fmcomms5_cal", "clicked",
-			G_CALLBACK(do_calibration), gtk_builder_get_object(builder, "do_fmcomms5_cal"));
-
-	g_builder_connect_signal(builder, "undo_fmcomms5_cal", "clicked",
-			G_CALLBACK(undo_calibration), NULL);
 
 	if (dev_slave) {
 		g_builder_connect_signal(builder, "mcs_sync", "clicked",
 			G_CALLBACK(mcs_cb), builder);
+
+		gtk_combo_box_set_active(
+				GTK_COMBO_BOX(gtk_builder_get_object(builder, "calibration_switch_control")), 0);
+		__cal_switch_ports_enable_cb(0);
+
+		g_builder_connect_signal(builder, "calibration_switch_control", "changed",
+			G_CALLBACK(cal_switch_ports_enable_cb), builder);
+
+		g_builder_connect_signal(builder, "tx_phase", "value-changed",
+			G_CALLBACK(tx_phase_hscale_value_changed), 0);
+
+
+		g_builder_connect_signal(builder, "do_fmcomms5_cal", "clicked",
+				G_CALLBACK(do_calibration), gtk_builder_get_object(builder, "do_fmcomms5_cal"));
+
+		g_builder_connect_signal(builder, "undo_fmcomms5_cal", "clicked",
+				G_CALLBACK(undo_calibration), NULL);
 	} else {
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "mcs_sync")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fmcomms5")));
 	}
 
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, NULL);
@@ -1185,7 +1159,17 @@ static bool fmcomms2adv_identify(void)
 	ctx = osc_create_context();
 	dev = iio_context_find_device(ctx, "ad9361-phy");
 	dev_slave = iio_context_find_device(ctx, "ad9361-phy-hpc");
-	dev_dds_master = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
+
+	if (dev_slave) {
+		cf_ad9361_lpc = iio_context_find_device(ctx, "cf-ad9361-lpc");
+		cf_ad9361_hpc = iio_context_find_device(ctx, "cf-ad9361-hpc");
+
+		dev_dds_master = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
+		dev_dds_slave = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
+		if (!(cf_ad9361_lpc && cf_ad9361_hpc && dev_dds_master && dev_dds_slave))
+			dev = NULL;
+	}
+
 	if (dev && !iio_device_get_debug_attrs_count(dev))
 		dev = NULL;
 	if (!dev)

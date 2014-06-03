@@ -5169,7 +5169,7 @@ power for (sample periods)</property>
           </packing>
         </child>
         <child>
-          <object class="GtkFrame" id="frame28">
+          <object class="GtkFrame" id="frame_fmcomms5">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="label_xalign">0</property>
