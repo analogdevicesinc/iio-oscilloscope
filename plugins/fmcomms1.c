@@ -34,8 +34,6 @@
 
 #define THIS_DRIVER "FMComms1"
 
-#define SYNC_RELOAD "SYNC_RELOAD"
-
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 static const gdouble mhz_scale = 1000000.0;
@@ -107,10 +105,6 @@ static const char *fmcomms1_sr_attribs[] = {
 	"cf-ad9122-core-lpc.out_altvoltage_sampling_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage_interpolation_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage_interpolation_center_shift_frequency",
-	"dds_mode",
-	"dac_buf_filename",
-	"tx_channel_0",
-	"tx_channel_1",
 	"cf-ad9122-core-lpc.out_altvoltage0_1A_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage2_2A_frequency",
 	"cf-ad9122-core-lpc.out_altvoltage1_1B_frequency",
@@ -145,8 +139,6 @@ static const char *fmcomms1_sr_attribs[] = {
 	"gain_locked",
 	"ad8366-lpc.out_voltage0_hardwaregain",
 	"ad8366-lpc.out_voltage1_hardwaregain",
-	SYNC_RELOAD,
-	NULL,
 };
 
 static int kill_thread;
@@ -1534,6 +1526,96 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
+static void update_widgets_from_ini(const char *ini_fn)
+{
+	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode");
+	if (value) {
+		dac_data_manager_set_dds_mode(dac_tx_manager, "cf-ad9122-core-lpc", 1, atoi(value));
+		free(value);
+	}
+
+	if (dac_data_manager_get_dds_mode(dac_tx_manager, "cf-ad9122-core-lpc", 1) == DDS_BUFFER) {
+		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
+		if (value) {
+			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
+			free(value);
+		}
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "calibrate_rx_level");
+	if (value) {
+		cal_rx_level = atof(value);
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "cal_clear");
+	if (value) {
+		memset(&cal_eeprom_v1, 0, sizeof(cal_eeprom_v1));
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "cal_add");
+	if (value) {
+		cal_entry_add(&cal_eeprom_v1);
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "cal_save");
+	if (value) {
+		cal_save_to_eeprom(&cal_eeprom_v1);
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "calibrate_rx");
+	if (value) {
+		if (atoi(value) == 1) {
+			GThread *thr;
+			unsigned int i = 0;
+
+			gtk_widget_show(dialogs.calibrate);
+			kill_thread = 0;
+			cal_rx_button_clicked();
+			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
+			while (i <= 20) {
+				i += kill_thread;
+				gtk_main_iteration();
+			}
+			g_thread_join(thr);
+			cal_rx_flag = false;
+			gtk_widget_hide(dialogs.calibrate);
+		}
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "calibrate_tx");
+	if (value) {
+		if (atoi(value) == 1) {
+			GThread *thr, *thid;
+			unsigned int i = 0;
+
+			scpi_connect_functions();
+			gtk_widget_show(dialogs.calibrate);
+			kill_thread = 0;
+			thid = cal_tx_button_clicked();
+			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
+			while (i <= 20) {
+				i += kill_thread;
+				gtk_main_iteration();
+			}
+			g_thread_join(thid);
+			g_thread_join(thr);
+			gtk_widget_hide(dialogs.calibrate);
+		}
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "gain_locked");
+	if (value) {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gain_locked), atoi(value));
+		free(value);
+	}
+}
+
 static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
@@ -1653,6 +1735,8 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	dds2_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_I, WIDGET_PHASE);
 	dds3_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_Q, WIDGET_PHASE);
 	dds4_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_Q, WIDGET_PHASE);
+
+	update_widgets_from_ini(ini_fn);
 
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
 	ch1 = iio_device_find_channel(adc, "voltage0", false);
@@ -1831,117 +1915,21 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	return fmcomms1_panel;
 }
 
-static char *handle_item(struct osc_plugin *plugin, const char *attrib,
-			 const char *value)
+static void save_widgets_to_ini(FILE *f)
 {
-	char *buf;
-	GThread *thr = NULL, *thid = NULL;
-	int i = 0;
-	bool state;
+	char buf[0x1000];
 
-	if (MATCH_ATTRIB(SYNC_RELOAD)) {
-		if (value) {
-			tx_update_values();
-			rx_update_values();
-			dac_data_manager_update_iio_widgets(dac_tx_manager);
-		} else {
-			return "1";
-		}
-	} else if (MATCH_ATTRIB("dds_mode")) {
-		if (value) {
-			dac_data_manager_set_dds_mode(dac_tx_manager, "cf-ad9122-core-lpc", 1, atoi(value));
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, "cf-ad9122-core-lpc", 1));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("dac_buf_filename") &&
-				dac_data_manager_get_dds_mode(dac_tx_manager, "cf-ad9122-core-lpc", 1) == DDS_BUFFER) {
-		if (value) {
-			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
-		} else {
-			return dac_data_manager_get_buffer_chooser_filename(dac_tx_manager);
-		}
-	} else if (MATCH_ATTRIB("tx_channel_0")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 0, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 0));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("tx_channel_1")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 1));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("calibrate_rx_level")) {
-		if (value)
-			cal_rx_level = atof(value);
-	} else if (MATCH_ATTRIB("cal_clear")) {
-		if (value)
-			memset(&cal_eeprom_v1, 0, sizeof(cal_eeprom_v1));
-	} else if (MATCH_ATTRIB("cal_add")) {
-		if (value)
-			cal_entry_add(&cal_eeprom_v1);
-	} else if (MATCH_ATTRIB("cal_save")) {
-		if (value)
-			cal_save_to_eeprom(&cal_eeprom_v1);
-
-	} else if (MATCH_ATTRIB("calibrate_rx")) {
-		if (value && atoi(value) == 1) {
-			gtk_widget_show(dialogs.calibrate);
-			kill_thread = 0;
-			cal_rx_button_clicked();
-			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
-			while (i <= 20) {
-				i += kill_thread;
-				gtk_main_iteration();
-			}
-			g_thread_join(thr);
-			cal_rx_flag = false;
-			gtk_widget_hide(dialogs.calibrate);
-		}
-	} else if (MATCH_ATTRIB("calibrate_tx")) {
-		if (value && atoi(value) == 1) {
-			scpi_connect_functions();
-			gtk_widget_show(dialogs.calibrate);
-			kill_thread = 0;
-			thid = cal_tx_button_clicked();
-			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
-			while (i <= 20) {
-				i += kill_thread;
-				gtk_main_iteration();
-			}
-			g_thread_join(thid);
-			g_thread_join(thr);
-			gtk_widget_hide(dialogs.calibrate);
-		}
-	} else if (MATCH_ATTRIB("gain_locked")) {
-		if (value) {
-			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gain_locked),
-					atoi(value));
-		} else {
-			if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gain_locked)))
-				return "1";
-			else
-				return "0";
-		}
-	} else {
-		if (value) {
-			printf("Unhandled tokens in ini file,\n"
-				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-				"FMComms1", attrib, value);
-			return "FAIL";
-		}
-	}
-
-	return NULL;
+	snprintf(buf, sizeof(buf), "dds_mode = %i\n"
+			"dac_buf_filename = %s\n"
+			"tx_channel_0 = %i\n"
+			"tx_channel_1 = %i\n"
+			"gain_locked = %i\n",
+			dac_data_manager_get_dds_mode(dac_tx_manager, "cf-ad9122-core-lpc", 1),
+			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 0),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 1),
+			!!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gain_locked)));
+	fwrite(buf, 1, strlen(buf), f);
 }
 
 static void context_destroy(const char *ini_fn)
@@ -1962,6 +1950,7 @@ static void context_destroy(const char *ini_fn)
 		if (vga)
 			save_to_ini(f, NULL, vga, fmcomms1_sr_attribs,
 					ARRAY_SIZE(fmcomms1_sr_attribs));
+		save_widgets_to_ini(f);
 		fclose(f);
 	}
 
@@ -1985,7 +1974,5 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = fmcomms1_identify,
 	.init = fmcomms1_init,
-	.save_restore_attribs = fmcomms1_sr_attribs,
-	.handle_item = handle_item,
 	.destroy = context_destroy,
 };
