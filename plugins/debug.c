@@ -1528,6 +1528,8 @@ static GtkWidget * debug_init(GtkWidget *notebook, const char *ini_fn)
 
 static void context_destroy(const char *ini_fn)
 {
+	destroy_device_context();
+	destroy_regmap_widgets();
 	iio_context_destroy(ctx);
 }
 

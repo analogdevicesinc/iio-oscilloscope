@@ -2038,6 +2038,11 @@ static void context_destroy(const char *ini_fn)
 		save_widgets_to_ini(f);
 		fclose(f);
 	}
+
+	if (dac_buf_filename)
+		free(dac_buf_filename);
+	if (dds_buffer)
+		iio_buffer_destroy(dds_buffer);
 	iio_context_destroy(ctx);
 }
 
