@@ -38,6 +38,8 @@ static struct iio_device *dev_dds_master;
 static struct iio_device *dev_dds_slave;
 struct iio_device *cf_ad9361_lpc, *cf_ad9361_hpc;
 
+static struct iio_channel *dds_out[2][8];
+
 static gint this_page;
 static GtkNotebook *nbook;
 static gboolean plugin_detached;
@@ -49,7 +51,7 @@ static GtkBuilder *builder;
 #define CAL_FREQ	30720000
 #define MARKER_AVG	3
 
-//#define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
 #define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
@@ -282,7 +284,7 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 	}
 }
 
-double scale_phase_0_360(double val)
+static double scale_phase_0_360(double val)
 {
 	if (val >= 360.0)
 		val -= 360.0;
@@ -293,7 +295,7 @@ double scale_phase_0_360(double val)
 	return val;
 }
 
-double calc_phase_offset(double fsample, double dds_freq, int offset, int mag)
+static double calc_phase_offset(double fsample, double dds_freq, int offset, int mag)
 {
 	double val = 360.0 / ((fsample / dds_freq) / offset);
 
@@ -301,6 +303,36 @@ double calc_phase_offset(double fsample, double dds_freq, int offset, int mag)
 		val += 180.0;
 
 	return scale_phase_0_360(val);
+}
+
+static int dds_sync(void)
+{
+	iio_channel_attr_write_bool(dds_out[0][0], "raw", 0);
+	return iio_channel_attr_write_bool(dds_out[0][0], "raw", 1);
+}
+
+static int get_dds_channels(void)
+{
+	struct iio_device *dev;
+	int i, j;
+	char name[16];
+
+	for (i = 0; i < 2; i++) {
+
+		if (i == 0)
+			dev = dev_dds_master;
+		else
+			dev = dev_dds_slave;
+
+		for (j = 0; j < 8; j++) {
+			snprintf(name, sizeof(name), "altvoltage%d", j);
+			dds_out[i][j] = iio_device_find_channel(dev, name, true);
+			if (!dds_out[i][j])
+				return -errno;
+		}
+	}
+
+	return 0;
 }
 
 static void rx_phase_rotation(struct iio_device *dev, gdouble val)
@@ -335,9 +367,12 @@ static void rx_phase_rotation(struct iio_device *dev, gdouble val)
 static void tx_phase_rotation(struct iio_device *dev, gdouble val)
 {
 	long long i, q;
+	int d, j;
 
-	if (!(dev && dev_dds_master))
-		return;
+	if (dev == dev_dds_slave)
+		d = 1;
+	else
+		d = 0;
 
 	i = scale_phase_0_360(val + 90.0) * 1000;
 	q = scale_phase_0_360(val) * 1000;
@@ -345,41 +380,40 @@ static void tx_phase_rotation(struct iio_device *dev, gdouble val)
 
 	DBG("Val %f, I = %d, Q = %d", val, (int)i,(int) q);
 
-	iio_device_attr_write_longlong(dev,
-			"out_altvoltage0_TX1_I_F1_phase",
-			i);
-	iio_device_attr_write_longlong(dev,
-			"out_altvoltage1_TX1_I_F2_phase",
-			i);
-	iio_device_attr_write_longlong(dev,
-			"out_altvoltage2_TX1_Q_F1_phase",
-			q);
-	iio_device_attr_write_longlong(dev,
-			"out_altvoltage3_TX1_Q_F2_phase",
-			q);
-	iio_device_attr_write_longlong(dev,
-			"out_altvoltage4_TX2_I_F1_phase",
-			i);
-	iio_device_attr_write_longlong(dev,
-			"out_altvoltage5_TX2_I_F2_phase",
-		       	i);
-	iio_device_attr_write_longlong(dev,
-			"out_altvoltage6_TX2_Q_F1_phase",
-			q);
-	iio_device_attr_write_longlong(dev,
-			"out_altvoltage7_TX2_Q_F2_phase",
-			q);
+	for (j = 0; j < 8; j++) {
+		switch (j) {
+			case 0:
+			case 1:
+			case 4:
+			case 5:
+				iio_channel_attr_write_longlong(dds_out[d][j], "phase", i);
+				break;
+			default:
+				iio_channel_attr_write_longlong(dds_out[d][j], "phase", q);
+		}
+	}
 
-	/* Toggle RAW on master to sync */
-
-	iio_device_attr_write_longlong(dev_dds_master,
-			"out_altvoltage1_TX1_I_F2_raw", 0);
-	iio_device_attr_write_longlong(dev_dds_master,
-			"out_altvoltage1_TX1_I_F2_raw", 1);
-
+	dds_sync();
 }
 
-void near_end_loopback_ctrl(unsigned channel, bool enable)
+static int default_dds(long long freq, double scale)
+{
+	int i, j, ret = 0;
+
+	for (i = 0; i < 2; i++) {
+		for (j = 0; j < 8; j++) {
+			ret |= iio_channel_attr_write_longlong(dds_out[i][j], "frequency", freq);
+			ret |= iio_channel_attr_write_double(dds_out[i][j], "scale", scale);
+
+		}
+
+		tx_phase_rotation(i ? dev_dds_slave : dev_dds_master, 0.0);
+	}
+
+	return ret;
+}
+
+static void near_end_loopback_ctrl(unsigned channel, bool enable)
 {
 
 	unsigned tmp;
@@ -402,7 +436,7 @@ void near_end_loopback_ctrl(unsigned channel, bool enable)
 	iio_device_reg_write(dev, 0x80000400 + channel * 0x40, tmp);
 }
 
-void get_markers (int *offset, long long *mag, long long *mag1, long long *mag2)
+static void get_markers (int *offset, long long *mag, long long *mag1, long long *mag2)
 {
 	int ret, sum = MARKER_AVG;
 	struct marker_type *markers = NULL;
@@ -435,13 +469,13 @@ void get_markers (int *offset, long long *mag, long long *mag1, long long *mag2)
 	*mag1 /= MARKER_AVG;
 	*mag2 /= MARKER_AVG;
 
-	DBG("offset: %d	, MAG0 %d, MAG1 %d, MAG2 %d", *offset, (int)*mag, (int)*mag1, (int)*mag2);
+	DBG("offset: %d, MAG0 %d, MAG1 %d, MAG2 %d", *offset, (int)*mag, (int)*mag1, (int)*mag2);
 
 	plugin_data_capture_with_domain(NULL, NULL, &markers, XCORR_PLOT);
 }
 
 
-void __cal_switch_ports_enable_cb (unsigned val)
+static void __cal_switch_ports_enable_cb (unsigned val)
 {
 	unsigned lp_slave, lp_master, sw;
 	char *rx_port, *tx_port;
@@ -500,16 +534,15 @@ void __cal_switch_ports_enable_cb (unsigned val)
 
 }
 
-void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
+static void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
 {
 	__cal_switch_ports_enable_cb(gtk_combo_box_get_active(GTK_COMBO_BOX(widget)));
 }
 
-void mcs_cb (GtkWidget *widget, gpointer data)
+static void mcs_cb (GtkWidget *widget, gpointer data)
 {
 	unsigned step;
 	char temp[40], ensm_mode[40];
-	struct iio_channel *out0;
 
 	iio_device_attr_read(dev, "ensm_mode", ensm_mode, sizeof(ensm_mode));
 
@@ -529,15 +562,11 @@ void mcs_cb (GtkWidget *widget, gpointer data)
 	iio_device_attr_write(dev_slave, "ensm_mode", ensm_mode);
 
 	/* The two DDSs are synced by toggling the ENABLE bit */
-	if (dev_dds_master) {
-		out0 = iio_device_find_channel(dev_dds_master, "altvoltage0", true);
-
-		iio_channel_attr_write_bool(out0, "raw", 0);
-		iio_channel_attr_write_bool(out0, "raw", 1);
-	}
+	if (dev_dds_master)
+		dds_sync();
 }
 
-double tune_trx_phase_offset(struct iio_device *dev, double sign,
+static double tune_trx_phase_offset(struct iio_device *dev, double sign,
 			    void (*tune)(struct iio_device *dev, gdouble val))
 {
 	long long mag, mag1, mag2, pdelta, delta = LLONG_MAX,
@@ -603,98 +632,13 @@ double tune_trx_phase_offset(struct iio_device *dev, double sign,
 	return phase * sign;
 }
 
-void default_dds(void)
-{
-	struct iio_device *fmc[2] = {dev_dds_master, dev_dds_slave};
-	int i;
 
-	for (i = 0; i <= 1; i++) {
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage0_TX1_I_F1_frequency",
-				CAL_TONE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage0_TX1_I_F1_phase",
-				CAL_PHASE + 90000);
-		iio_device_attr_write_double(fmc[i],
-				"out_altvoltage0_TX1_I_F1_scale",
-				CAL_SCALE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage1_TX1_I_F2_frequency",
-				CAL_TONE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage1_TX1_I_F2_phase",
-				CAL_PHASE + 90000);
-		iio_device_attr_write_double(fmc[i],
-				"out_altvoltage1_TX1_I_F2_scale",
-				CAL_SCALE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage2_TX1_Q_F1_frequency",
-				CAL_TONE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage2_TX1_Q_F1_phase",
-				CAL_PHASE);
-		iio_device_attr_write_double(fmc[i],
-				"out_altvoltage2_TX1_Q_F1_scale",
-				CAL_SCALE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage3_TX1_Q_F2_frequency",
-				CAL_TONE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage3_TX1_Q_F2_phase",
-				CAL_PHASE);
-		iio_device_attr_write_double(fmc[i],
-				"out_altvoltage3_TX1_Q_F2_scale",
-				CAL_SCALE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage4_TX2_I_F1_frequency",
-				CAL_TONE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage4_TX2_I_F1_phase",
-				CAL_PHASE + 90000);
-		iio_device_attr_write_double(fmc[i],
-				"out_altvoltage4_TX2_I_F1_scale",
-				CAL_SCALE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage5_TX2_I_F2_frequency",
-				CAL_TONE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage5_TX2_I_F2_phase",
-			       	CAL_PHASE + 90000);
-		iio_device_attr_write_double(fmc[i],
-				"out_altvoltage5_TX2_I_F2_scale",
-				CAL_SCALE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage6_TX2_Q_F1_frequency",
-				CAL_TONE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage6_TX2_Q_F1_phase",
-				CAL_PHASE);
-		iio_device_attr_write_double(fmc[i],
-				"out_altvoltage6_TX2_Q_F1_scale",
-				CAL_SCALE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage7_TX2_Q_F2_frequency",
-				CAL_TONE);
-		iio_device_attr_write_longlong(fmc[i],
-				"out_altvoltage7_TX2_Q_F2_phase",
-				CAL_PHASE);
-		iio_device_attr_write_double(fmc[i],
-				"out_altvoltage7_TX2_Q_F2_scale",
-				CAL_SCALE);
-	}
 
-	/* Toggle RAW on master to sync */
-	iio_device_attr_write_longlong(dev_dds_master,
-			"out_altvoltage1_TX1_I_F2_raw", 0);
-	iio_device_attr_write_longlong(dev_dds_master,
-			"out_altvoltage1_TX1_I_F2_raw", 1);
-
-}
-
-void calibrate (gpointer button)
+static void calibrate (gpointer button)
 {
 	double rx_phase_lpc, rx_phase_hpc, /*tx_phase_lpc,*/ tx_phase_hpc;
 	GtkWidget *tx_phase;
+	int ret;
 
 
 	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
@@ -703,20 +647,28 @@ void calibrate (gpointer button)
 	}
 
 	tx_phase = GTK_WIDGET(gtk_builder_get_object(builder, "tx_phase"));
-	mcs_cb(NULL, NULL);
-
 
 	if (!dev_dds_master || !dev_dds_slave) {
 		printf("could not fine dds cores\n");
 		goto calibrate_fail;
 	}
 
+	mcs_cb(NULL, NULL);
+
+	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "0");
+	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "0");
+
 	/*
 	 * set some logical defaults / assumptions
 	 */
 
-	default_dds();
- 	rx_phase_rotation(cf_ad9361_lpc, 0.0);
+	ret = default_dds(CAL_TONE, CAL_SCALE);
+	if (ret < 0) {
+		printf("could not set dds cores\n");
+		goto calibrate_fail;
+	}
+
+	rx_phase_rotation(cf_ad9361_lpc, 0.0);
  	rx_phase_rotation(cf_ad9361_hpc, 0.0);
 
 	/*
@@ -774,7 +726,10 @@ void calibrate (gpointer button)
 	gtk_range_set_value(GTK_RANGE(tx_phase), scale_phase_0_360(tx_phase_hpc));
 
 	plugin_data_capture_revert_xcorr(false);
-	 __cal_switch_ports_enable_cb(0);
+	__cal_switch_ports_enable_cb(0);
+
+	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "1");
+	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "1");
 
 calibrate_fail:
 	gdk_threads_enter();
@@ -1168,6 +1123,9 @@ static bool fmcomms2adv_identify(void)
 		dev_dds_slave = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
 		if (!(cf_ad9361_lpc && cf_ad9361_hpc && dev_dds_master && dev_dds_slave))
 			dev = NULL;
+		else
+			if (get_dds_channels())
+				dev = NULL;
 	}
 
 	if (dev && !iio_device_get_debug_attrs_count(dev))
