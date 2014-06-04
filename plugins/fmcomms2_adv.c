@@ -345,8 +345,6 @@ static const char *fmcomms2_adv_sr_attribs[] = {
 	"debug.ad9361-phy.adi,txmon-low-gain",
 	"debug.ad9361-phy.adi,txmon-low-high-thresh",
 	"debug.ad9361-phy.adi,txmon-one-shot-mode-enable",
-	SYNC_RELOAD,
-	NULL
 };
 
 static void update_widget(GtkBuilder *builder, struct w_info *item)
@@ -1236,32 +1234,6 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 	return fmcomms2adv_panel;
 }
 
-static char *handle_item(struct osc_plugin *plugin, const char *attrib,
-			 const char *value)
-{
-	int i;
-
-	if (MATCH_ATTRIB(SYNC_RELOAD)) {
-		if (value) {
-			for (i = 0; i < ARRAY_SIZE(attrs); i++)
-				update_widget(builder, &attrs[i]);
-			gtk_button_clicked(GTK_BUTTON(gtk_builder_get_object(builder,
-					"initialize")));
-		} else {
-			return "1";
-		}
-	} else {
-		if (value) {
-			printf("Unhandled tokens in ini file,\n"
-				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-				"FMComms2 Advanced", attrib, value);
-			return "FAIL";
-		}
-	}
-
-	return NULL;
-}
-
 static void update_active_page(gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
@@ -1300,8 +1272,6 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = fmcomms2adv_identify,
 	.init = fmcomms2adv_init,
-	.save_restore_attribs = fmcomms2_adv_sr_attribs,
-	.handle_item = handle_item,
 	.update_active_page = update_active_page,
 	.destroy = context_destroy,
 };
