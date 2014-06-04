@@ -24,6 +24,9 @@ struct osc_plugin {
 	void (*update_active_page)(gint active_page, gboolean is_detached);
 	void (*get_preferred_size)(int *width, int *size);
 	void (*destroy)(const char *ini_fn);
+
+	void (*save_profile)(const char *ini_fn);
+	void (*load_profile)(const char *ini_fn);
 };
 
 void osc_plugin_register(const struct osc_plugin *plugin);

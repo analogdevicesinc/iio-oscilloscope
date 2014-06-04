@@ -689,9 +689,16 @@ int handle_external_request (const char *request)
 	return ret;
 }
 
-static void update_widgets_from_ini(const char *ini_fn)
+static void load_profile(const char *ini_fn)
 {
-	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "load_fir_filter_file");
+	char *value;
+
+	update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
+			ARRAY_SIZE(fmcomms2_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
+			ARRAY_SIZE(fmcomms2_sr_attribs));
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "load_fir_filter_file");
 	if (value) {
 		if (value[0]) {
 			load_fir_filter(value);
@@ -794,13 +801,6 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	if (!dac_tx_manager) {
 		iio_context_destroy(ctx);
 		return NULL;
-	}
-
-	if (ini_fn) {
-		update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
-				ARRAY_SIZE(fmcomms2_sr_attribs));
-		update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
-				ARRAY_SIZE(fmcomms2_sr_attribs));
 	}
 
 	builder = gtk_builder_new();
@@ -1018,16 +1018,16 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
 
-	/* Update all widgets with current values */
+	if (ini_fn)
+		load_profile(ini_fn);
 
+	/* Update all widgets with current values */
 	printf("Updating GLB widgets...\n");
 	iio_update_widgets(glb_widgets, num_glb);
 	printf("Updating TX values...\n");
 	tx_update_values();
 	printf("Updating RX values...\n");
 	rx_update_values();
-	printf("Updating widgets from INI...\n");
-	update_widgets_from_ini(ini_fn);
 	printf("Updating FIR filter...\n");
 	filter_fir_update();
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
@@ -1185,7 +1185,7 @@ static void save_widgets_to_ini(FILE *f)
 	fwrite(buf, 1, strlen(buf), f);
 }
 
-static void context_destroy(const char *ini_fn)
+static void save_profile(const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -1196,6 +1196,11 @@ static void context_destroy(const char *ini_fn)
 		save_widgets_to_ini(f);
 		fclose(f);
 	}
+}
+
+static void context_destroy(const char *ini_fn)
+{
+	save_profile(ini_fn);
 
 	if (dac_tx_manager) {
 		dac_data_manager_free(dac_tx_manager);
@@ -1227,5 +1232,7 @@ struct osc_plugin plugin = {
 	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.get_preferred_size = fmcomms2_get_preferred_size,
+	.save_profile = save_profile,
+	.load_profile = load_profile,
 	.destroy = context_destroy,
 };
