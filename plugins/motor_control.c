@@ -326,7 +326,7 @@ static void advanced_controller_init(GtkBuilder *builder)
 	g_signal_connect(G_OBJECT(zero_offset), "output", G_CALLBACK(spin_output_cb), &OENCODER_NUM_FRAC_BITS);
 }
 
-static GtkWidget * motor_control_init(GtkWidget *notebook)
+static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *motor_control_panel;
@@ -409,7 +409,7 @@ static GtkWidget * motor_control_init(GtkWidget *notebook)
 	return motor_control_panel;
 }
 
-static void context_destroy(void)
+static void context_destroy(const char *ini_fn)
 {
 	iio_context_destroy(ctx);
 }

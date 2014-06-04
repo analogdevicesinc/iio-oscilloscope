@@ -1071,7 +1071,7 @@ static void scpi_cmd_cb (GtkButton *button, GtkEntry *box)
 /*
  *  Main function
  */
-static GtkWidget * scpi_init(GtkWidget *notebook)
+static GtkWidget * scpi_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *scpi_panel;

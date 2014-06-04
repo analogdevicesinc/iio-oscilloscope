@@ -48,7 +48,7 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	rx_update_labels();
 }
 
-static GtkWidget * AD5628_1_init(GtkWidget *notebook)
+static GtkWidget * AD5628_1_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *AD5628_1_panel;
@@ -157,7 +157,7 @@ static GtkWidget * AD5628_1_init(GtkWidget *notebook)
 	return AD5628_1_panel;
 }
 
-static void context_destroy(void)
+static void context_destroy(const char *ini_fn)
 {
 	iio_context_destroy(ctx);
 }

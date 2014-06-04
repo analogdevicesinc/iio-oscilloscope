@@ -403,7 +403,7 @@ static gboolean dmm_button_icon_transform(GBinding *binding,
 /*
  *  Main function
  */
-static GtkWidget * dmm_init(GtkWidget *notebook)
+static GtkWidget * dmm_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *dmm_panel;
@@ -578,7 +578,7 @@ static void update_active_page(gint active_page, gboolean is_detached)
 	plugin_detached = is_detached;
 }
 
-static void context_destroy(void)
+static void context_destroy(const char *ini_fn)
 {
 	iio_context_destroy(ctx);
 }
