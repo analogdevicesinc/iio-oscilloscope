@@ -24,6 +24,7 @@
 
 #include <iio.h>
 
+#include "../libini2.h"
 #include "../osc.h"
 #include "../iio_widget.h"
 #include "../osc_plugin.h"
@@ -31,6 +32,12 @@
 #include "../eeprom.h"
 #include "../ini/ini.h"
 #include "dac_data_manager.h"
+
+#define THIS_DRIVER "DAQ2"
+
+#define SYNC_RELOAD "SYNC_RELOAD"
+
+#define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
@@ -115,6 +122,29 @@ static const char *dds_scale_get_string_value(GtkWidget *scale)
 
 	return NULL;
 }
+
+static const char *daq2_sr_attribs[] = {
+	"axi-ad9680-hpc.in_voltage_sampling_frequency",
+	"axi-ad9144-hpc.out_altvoltage_sampling_frequency",
+	"dds_mode",
+	"dac_buf_filename",
+	"tx_channel_0",
+	"tx_channel_1",
+	"axi-ad9144-hpc.out_altvoltage0_1A_frequency",
+	"axi-ad9144-hpc.out_altvoltage2_2A_frequency",
+	"axi-ad9144-hpc.out_altvoltage1_1B_frequency",
+	"axi-ad9144-hpc.out_altvoltage3_2B_frequency",
+	"axi-ad9144-hpc.out_altvoltage0_1A_scale",
+	"axi-ad9144-hpc.out_altvoltage2_2A_scale",
+	"axi-ad9144-hpc.out_altvoltage1_1B_scale",
+	"axi-ad9144-hpc.out_altvoltage3_2B_scale",
+	"axi-ad9144-hpc.out_altvoltage0_1A_phase",
+	"axi-ad9144-hpc.out_altvoltage1_1B_phase",
+	"axi-ad9144-hpc.out_altvoltage2_2A_phase",
+	"axi-ad9144-hpc.out_altvoltage3_2B_phase",
+	SYNC_RELOAD,
+	NULL,
+};
 
 static int oneover(const gchar *num)
 {
@@ -329,7 +359,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static GtkWidget * daq2_init(GtkWidget *notebook)
+static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *daq2_panel;
@@ -348,6 +378,13 @@ static GtkWidget * daq2_init(GtkWidget *notebook)
 	if (!dac_tx_manager) {
 		iio_context_destroy(ctx);
 		return NULL;
+	}
+
+	if (ini_fn) {
+		update_from_ini(ini_fn, THIS_DRIVER, dac, daq2_sr_attribs,
+				ARRAY_SIZE(daq2_sr_attribs));
+		update_from_ini(ini_fn, THIS_DRIVER, adc, daq2_sr_attribs,
+				ARRAY_SIZE(daq2_sr_attribs));
 	}
 
 	builder = gtk_builder_new();
@@ -468,8 +505,6 @@ static GtkWidget * daq2_init(GtkWidget *notebook)
 	return daq2_panel;
 }
 
-#define SYNC_RELOAD "SYNC_RELOAD"
-
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
 {
@@ -528,37 +563,25 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
-static void context_destroy(void)
+static void context_destroy(const char *ini_fn)
 {
+	FILE *f = fopen(ini_fn, "a");
+	if (f) {
+		/* Write the section header */
+		save_to_ini(f, THIS_DRIVER, dac, daq2_sr_attribs,
+				ARRAY_SIZE(daq2_sr_attribs));
+		save_to_ini(f, NULL, adc, daq2_sr_attribs,
+				ARRAY_SIZE(daq2_sr_attribs));
+		fclose(f);
+	}
+
 	if (dac_tx_manager) {
 		dac_data_manager_free(dac_tx_manager);
 		dac_tx_manager = NULL;
 	}
+
 	iio_context_destroy(ctx);
 }
-
-static const char *daq2_sr_attribs[] = {
-	"axi-ad9680-hpc.in_voltage_sampling_frequency",
-	"axi-ad9144-hpc.out_altvoltage_sampling_frequency",
-	"dds_mode",
-	"dac_buf_filename",
-	"tx_channel_0",
-	"tx_channel_1",
-	"axi-ad9144-hpc.out_altvoltage0_1A_frequency",
-	"axi-ad9144-hpc.out_altvoltage2_2A_frequency",
-	"axi-ad9144-hpc.out_altvoltage1_1B_frequency",
-	"axi-ad9144-hpc.out_altvoltage3_2B_frequency",
-	"axi-ad9144-hpc.out_altvoltage0_1A_scale",
-	"axi-ad9144-hpc.out_altvoltage2_2A_scale",
-	"axi-ad9144-hpc.out_altvoltage1_1B_scale",
-	"axi-ad9144-hpc.out_altvoltage3_2B_scale",
-	"axi-ad9144-hpc.out_altvoltage0_1A_phase",
-	"axi-ad9144-hpc.out_altvoltage1_1B_phase",
-	"axi-ad9144-hpc.out_altvoltage2_2A_phase",
-	"axi-ad9144-hpc.out_altvoltage3_2B_phase",
-	SYNC_RELOAD,
-	NULL,
-};
 
 static bool daq2_identify(void)
 {
@@ -569,7 +592,7 @@ static bool daq2_identify(void)
 }
 
 struct osc_plugin plugin = {
-	.name = "DAQ2",
+	.name = THIS_DRIVER,
 	.identify = daq2_identify,
 	.init = daq2_init,
 	.save_restore_attribs = daq2_sr_attribs,
