@@ -326,7 +326,7 @@ static void advanced_controller_init(GtkBuilder *builder)
 	g_signal_connect(G_OBJECT(zero_offset), "output", G_CALLBACK(spin_output_cb), &OENCODER_NUM_FRAC_BITS);
 }
 
-static int motor_control_init(GtkWidget *notebook)
+static GtkWidget * motor_control_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *motor_control_panel;
@@ -336,7 +336,7 @@ static int motor_control_init(GtkWidget *notebook)
 
 	ctx = osc_create_context();
 	if (!ctx)
-		return -1;
+		return NULL;
 
 	pid_dev = iio_context_find_device(ctx, "ad-mc-ctrl");
 	adv_dev = iio_context_find_device(ctx, "ad-mc-adv-ctrl");
@@ -406,10 +406,7 @@ static int motor_control_init(GtkWidget *notebook)
 	controllers_notebook_page_switched_cb(GTK_NOTEBOOK(controllers_notebook),
 		gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), p), p, NULL);
 
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), motor_control_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), motor_control_panel, "Motor Control");
-
-	return 0;
+	return motor_control_panel;
 }
 
 static void context_destroy(void)

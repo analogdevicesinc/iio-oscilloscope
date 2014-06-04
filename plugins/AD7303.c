@@ -299,7 +299,7 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	}
 }
 
-static int AD7303_init(GtkWidget *notebook)
+static GtkWidget * AD7303_init(GtkWidget *notebook)
 {
 	struct iio_channel *ch0, *ch1;
 	GtkBuilder *builder;
@@ -308,7 +308,7 @@ static int AD7303_init(GtkWidget *notebook)
 
 	ctx = osc_create_context();
 	if (!ctx)
-		return -1;
+		return NULL;
 
 	thread_ctx = osc_create_context();
 	dev = iio_context_find_device(thread_ctx, "ad7303");
@@ -376,10 +376,7 @@ static int AD7303_init(GtkWidget *notebook)
 	tx_update_values();
 	rx_update_values();
 
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), AD7303_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), AD7303_panel, "AD7303");
-
-	return 0;
+	return AD7303_panel;
 }
 
 static void context_destroy(void)

@@ -1364,7 +1364,7 @@ static gboolean scale_spin_button_output_cb(GtkSpinButton *spin, gpointer data)
 	return TRUE;
 }
 
-static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *fmcomms2_panel;
@@ -1374,7 +1374,7 @@ static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	ctx = osc_create_context();
 	if (!ctx)
-		return -1;
+		return NULL;
 
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
 	dds = iio_context_find_device(ctx, DDS_DEVICE);
@@ -1922,8 +1922,6 @@ static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	block_diagram_init(builder, 2, "fmcomms2.svg", "AD_FMCOMM2S2_RevC.jpg");
 
-	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2_panel, "FMComms2");
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
 
@@ -1936,7 +1934,7 @@ static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	g_thread_new("Update_thread", (void *) &update_display, NULL);
 
-	return 0;
+	return fmcomms2_panel;
 }
 
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,

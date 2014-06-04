@@ -1136,14 +1136,14 @@ void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
-static int fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkWidget *fmcomms2adv_panel;
 	int i;
 
 	ctx = osc_create_context();
 	if (!ctx)
-		return -1;
+		return NULL;
 
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
 	dev_slave = iio_context_find_device(ctx, PHY_SLAVE_DEVICE);
@@ -1229,14 +1229,11 @@ static int fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fmcomms5")));
 	}
 
-	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, "FMComms2 Advanced");
-
 	g_builder_connect_signal(builder, "notebook1", "switch-page",
 		G_CALLBACK(change_page_cb),
 		GTK_WIDGET(gtk_builder_get_object(builder, "initialize")));
 
-	return 0;
+	return fmcomms2adv_panel;
 }
 
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,

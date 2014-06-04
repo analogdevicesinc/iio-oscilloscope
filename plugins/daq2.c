@@ -906,7 +906,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int daq2_init(GtkWidget *notebook)
+static GtkWidget * daq2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *daq2_panel;
@@ -914,7 +914,7 @@ static int daq2_init(GtkWidget *notebook)
 
 	ctx = osc_create_context();
 	if (!ctx)
-		return -1;
+		return NULL;
 
 	dac = iio_context_find_device(ctx, "axi-ad9144-hpc");
 	adc = iio_context_find_device(ctx, "axi-ad9680-hpc");
@@ -1106,11 +1106,9 @@ static int daq2_init(GtkWidget *notebook)
 	rx_update_values();
 	cal_update_values();
 
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), daq2_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), daq2_panel, "DAQ2");
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
 
-	return 0;
+	return daq2_panel;
 }
 
 #define SYNC_RELOAD "SYNC_RELOAD"

@@ -1071,7 +1071,7 @@ static void scpi_cmd_cb (GtkButton *button, GtkEntry *box)
 /*
  *  Main function
  */
-static int scpi_init(GtkWidget *notebook)
+static GtkWidget * scpi_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *scpi_panel;
@@ -1151,11 +1151,7 @@ static int scpi_init(GtkWidget *notebook)
 	gtk_widget_hide(scpi_output);
 	gtk_widget_hide(connect);
 
-	/* Show the panel */
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), scpi_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), scpi_panel, "SCPI");
-
-	return 0;
+	return scpi_panel;
 }
 
 /* This is normally used for test, and the GUI is used for

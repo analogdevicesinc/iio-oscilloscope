@@ -1216,46 +1216,6 @@ static bool force_plugin(const char *name)
 	return false;
 }
 
-static void load_plugin(const char *name, GtkWidget *notebook,
-		const char *ini_fn)
-{
-	struct detachable_plugin *d_plugin;
-	struct osc_plugin *plugin;
-	void *lib;
-
-	lib = dlopen(name, RTLD_LOCAL | RTLD_LAZY);
-	if (!lib) {
-		fprintf(stderr, "Failed to load plugin \"%s\": %s\n", name, dlerror());
-		return;
-	}
-
-	plugin = dlsym(lib, "plugin");
-	if (!plugin) {
-		fprintf(stderr, "Failed to load plugin \"%s\": Could not find plugin\n",
-				name);
-		return;
-	}
-
-	printf("Found plugin: %s\n", plugin->name);
-
-	if (!plugin->identify() && !force_plugin(plugin->name)) {
-		dlclose(lib);
-		return;
-	}
-
-	plugin->handle = lib;
-	plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
-	plugin->init(notebook, ini_fn);
-
-	d_plugin = malloc(sizeof(struct detachable_plugin));
-	d_plugin->plugin = plugin;
-	dplugin_list = g_slist_append(dplugin_list, (gpointer)d_plugin);
-
-	plugin_make_detachable(d_plugin);
-
-	printf("Loaded plugin: %s\n", plugin->name);
-}
-
 static void close_plugins(const char *ini_fn)
 {
 	GSList *node;
@@ -1326,8 +1286,24 @@ bool str_endswith(const char *str, const char *needle)
 	return *(pos + strlen(needle)) == '\0';
 }
 
+static void * init_plugin(void *data)
+{
+	GtkWidget *widget;
+	struct {
+		struct osc_plugin *plugin;
+		GtkWidget *notebook;
+		const char *ini_fn;
+	} *params = data;
+
+	widget = params->plugin->init(params->notebook, params->ini_fn);
+	free(data);
+	return widget;
+}
+
 static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 {
+	GSList *node;
+	struct osc_plugin *plugin;
 	struct dirent *ent;
 	char *plugin_dir = "plugins";
 	char buf[512];
@@ -1341,12 +1317,79 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 	}
 
 	while ((ent = readdir(d))) {
+		void *lib;
+		struct params {
+			struct osc_plugin *plugin;
+			GtkWidget *notebook;
+			const char *ini_fn;
+		} *params;
+
 		if (ent->d_type != DT_REG)
 			continue;
 		if (!str_endswith(ent->d_name, ".so"))
 			continue;
 		snprintf(buf, sizeof(buf), "%s/%s", plugin_dir, ent->d_name);
-		load_plugin(buf, notebook, ini_fn);
+
+		lib = dlopen(buf, RTLD_LOCAL | RTLD_LAZY);
+		if (!lib) {
+			fprintf(stderr, "Failed to load plugin \"%s\": %s\n",
+					ent->d_name, dlerror());
+			continue;
+		}
+
+		plugin = dlsym(lib, "plugin");
+		if (!plugin) {
+			fprintf(stderr, "Failed to load plugin \"%s\": "
+					"Could not find plugin\n", ent->d_name);
+			continue;
+		}
+
+		printf("Found plugin: %s\n", plugin->name);
+
+		if (!plugin->identify() && !force_plugin(plugin->name)) {
+			dlclose(lib);
+			continue;
+		}
+
+		plugin->handle = lib;
+		plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
+
+		params = malloc(sizeof(*params));
+		params->plugin = plugin;
+		params->notebook = notebook;
+		params->ini_fn = ini_fn;
+
+		/* Call plugin->init() in a thread to speed up boot time */
+		plugin->thd = g_thread_new(plugin->name, init_plugin, params);
+	}
+
+	/* Wait for all init functions to finish */
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		struct detachable_plugin *d_plugin;
+		GtkWidget *widget;
+		gint page;
+
+		plugin = node->data;
+		if (!plugin || !plugin->thd)
+			continue;
+
+		widget = g_thread_join(plugin->thd);
+		if (!widget)
+			continue;
+
+		printf("Loaded plugin: %s\n", plugin->name);
+		page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
+				widget, NULL);
+		gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),
+				widget, plugin->name);
+
+		if (plugin->update_active_page)
+			plugin->update_active_page(page, FALSE);
+
+		d_plugin = malloc(sizeof(*d_plugin));
+		d_plugin->plugin = plugin;
+		dplugin_list = g_slist_append(dplugin_list, (gpointer)d_plugin);
+		plugin_make_detachable(d_plugin);
 	}
 }
 

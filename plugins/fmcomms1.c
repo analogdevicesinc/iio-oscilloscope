@@ -2029,7 +2029,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *fmcomms1_panel;
@@ -2039,7 +2039,7 @@ static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 
 	ctx = osc_create_context();
 	if (!ctx)
-		return -1;
+		return NULL;
 
 	dac = iio_context_find_device(ctx, "cf-ad9122-core-lpc");
 	adc = iio_context_find_device(ctx, "cf-ad9643-core-lpc");
@@ -2403,11 +2403,9 @@ static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	rx_update_values();
 	cal_update_values();
 
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms1_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms1_panel, THIS_DRIVER);
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
 
-	return 0;
+	return fmcomms1_panel;
 }
 
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,
