@@ -108,8 +108,6 @@ static const char *daq2_sr_attribs[] = {
 	"axi-ad9144-hpc.out_altvoltage1_1B_phase",
 	"axi-ad9144-hpc.out_altvoltage2_2A_phase",
 	"axi-ad9144-hpc.out_altvoltage3_2B_phase",
-	SYNC_RELOAD,
-	NULL,
 };
 
 //static unsigned short temp_calibbias;
@@ -932,6 +930,24 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
+static void update_widgets_from_ini(const char *ini_fn)
+{
+	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode");
+	if (value) {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), atoi(value));
+		free(value);
+	}
+
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)) == 4) {
+		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
+		if (value) {
+			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dac_buffer), value);
+			process_dac_buffer_file(value);
+			free(value);
+		}
+	}
+}
+
 static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
@@ -1058,6 +1074,8 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	dac_interpolation = GTK_WIDGET(gtk_builder_get_object(builder, "dac_interpolation_clock"));
 	dac_shift = GTK_WIDGET(gtk_builder_get_object(builder, "dac_fcenter_shift"));
 
+	update_widgets_from_ini(ini_fn);
+
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
 	manage_dds_mode();
 	g_signal_connect( dds_mode, "changed", G_CALLBACK(manage_dds_mode), NULL);
@@ -1144,43 +1162,15 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	return daq2_panel;
 }
 
-static char *handle_item(struct osc_plugin *plugin, const char *attrib,
-			 const char *value)
+static void save_widgets_to_ini(FILE *f)
 {
-	char *buf;
+	char buf[0x1000];
 
-	if (MATCH_ATTRIB(SYNC_RELOAD)) {
-		if (value) {
-			tx_update_values();
-			rx_update_values();
-		} else {
-			return "1";
-		}
-	} else if (MATCH_ATTRIB("dds_mode")) {
-		if (value) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), atoi(value));
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("dac_buf_filename") &&
-				gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)) == 4) {
-		if (value) {
-			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dac_buffer), value);
-			process_dac_buffer_file(value);
-		} else
-			return dac_buf_filename;
-	} else {
-		if (value) {
-			printf("Unhandled tokens in ini file,\n"
-					"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-					"DAQ2", attrib, value);
-			return "FAIL";
-		}
-	}
-
-	return NULL;
+	snprintf(buf, sizeof(buf), "dds_mode = %i\n"
+			"dac_buf_filename = %s\n",
+			gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)),
+			dac_buf_filename ?: "");
+	fwrite(buf, 1, strlen(buf), f);
 }
 
 static void context_destroy(const char *ini_fn)
@@ -1192,6 +1182,7 @@ static void context_destroy(const char *ini_fn)
 				ARRAY_SIZE(daq2_sr_attribs));
 		save_to_ini(f, NULL, adc, daq2_sr_attribs,
 				ARRAY_SIZE(daq2_sr_attribs));
+		save_widgets_to_ini(f);
 		fclose(f);
 	}
 	iio_context_destroy(ctx);
@@ -1209,7 +1200,5 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = daq2_identify,
 	.init = daq2_init,
-	.save_restore_attribs = daq2_sr_attribs,
-	.handle_item = handle_item,
 	.destroy = context_destroy,
 };
