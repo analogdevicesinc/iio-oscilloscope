@@ -166,17 +166,9 @@ static const char *fmcomms2_sr_attribs[] = {
 	PHY_DEVICE".out_voltage_sampling_frequency",
 	PHY_DEVICE".in_voltage_rf_bandwidth",
 	PHY_DEVICE".out_voltage_rf_bandwidth",
-	"load_fir_filter_file",
 	PHY_DEVICE".in_voltage_filter_fir_en",
 	PHY_DEVICE".out_voltage_filter_fir_en",
 	PHY_DEVICE".in_out_voltage_filter_fir_en",
-	"global_settings_show",
-	"tx_show",
-	"rx_show",
-	"fpga_show",
-	"dds_mode_tx1",
-	"dds_mode_tx2",
-	"dac_buf_filename",
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_frequency",
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_phase",
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_raw",
@@ -209,8 +201,6 @@ static const char *fmcomms2_sr_attribs[] = {
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_phase",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
-	SYNC_RELOAD,
-	NULL
 };
 
 static void enable_dds(bool on_off);
@@ -1364,6 +1354,67 @@ static gboolean scale_spin_button_output_cb(GtkSpinButton *spin, gpointer data)
 	return TRUE;
 }
 
+static void update_widgets_from_ini(const char *ini_fn)
+{
+	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "load_fir_filter_file");
+	if (value) {
+		if (value[0]) {
+			load_fir_filter(value);
+			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filter_fir_config), value);
+		}
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode_tx1");
+	if (value) {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[1]), atoi(value));
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode_tx2");
+	if (value) {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[2]), atoi(value));
+		free(value);
+	}
+
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])) == 4) {
+		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
+		if (value) {
+			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dac_buffer), value);
+			process_dac_buffer_file(value);
+			free(value);
+		}
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "global_settings_show");
+	if (value) {
+		gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_GLOBAL], section_setting[SECTION_GLOBAL]);
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_show");
+	if (value) {
+		gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_TX], section_setting[SECTION_TX]);
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "rx_show");
+	if (value) {
+		gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_RX], section_setting[SECTION_RX]);
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "fpga_show");
+	if (value) {
+		gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_FPGA], section_setting[SECTION_FPGA]);
+		free(value);
+	}
+}
+
 static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
@@ -1799,6 +1850,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	tx_update_values();
 	printf("Updating RX values...\n");
 	rx_update_values();
+	printf("Updating widgets from INI...\n");
+	update_widgets_from_ini(ini_fn);
 	printf("Updating FIR filter...\n");
 	filter_fir_update();
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
@@ -1937,123 +1990,6 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	return fmcomms2_panel;
 }
 
-static char *handle_item(struct osc_plugin *plugin, const char *attrib,
-			 const char *value)
-{
-	char *buf;
-
-	if (MATCH_ATTRIB(SYNC_RELOAD)) {
-		if (value)
-			reload_button_clicked(NULL, 0);
-		else
-			return "1";
-	} else if (MATCH_ATTRIB("load_fir_filter_file")) {
-		if (value) {
-			if (value[0]) {
-				load_fir_filter(value);
-				gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filter_fir_config), value);
-			}
-		} else {
-			return last_fir_filter;
-		}
-	} else if (MATCH_ATTRIB("dds_mode_tx1")) {
-		if (value) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[1]), atoi(value));
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("dds_mode_tx2")) {
-		if (value) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[2]), atoi(value));
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[2])));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("dac_buf_filename") &&
-				gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])) == 4) {
-		if (value) {
-			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dac_buffer), value);
-			process_dac_buffer_file(value);
-		} else
-			return dac_buf_filename;
-	} else if (MATCH_ATTRIB("global_settings_show")) {
-		if (value) {
-			if (atoi(value))
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], true);
-			else
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], false);
-			hide_section_cb(section_toggle[SECTION_GLOBAL], section_setting[SECTION_GLOBAL]);
-		} else {
-			buf = malloc (10);
-			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]))
-				sprintf(buf, "1 # show");
-			else
-				sprintf(buf, "0 # hide");
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("tx_show")) {
-		if (value) {
-			if (atoi(value))
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], true);
-			else
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], false);
-			hide_section_cb(section_toggle[SECTION_TX], section_setting[SECTION_TX]);
-		} else {
-			buf = malloc (10);
-			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]))
-				sprintf(buf, "1 # show");
-			else
-				sprintf(buf, "0 # hide");
-			return buf;
-		}
-
-	} else if (MATCH_ATTRIB("rx_show")) {
-		if (value) {
-			if (atoi(value))
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], true);
-			else
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], false);
-			hide_section_cb(section_toggle[SECTION_RX], section_setting[SECTION_RX]);
-		} else {
-			buf = malloc (10);
-			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_RX]))
-				sprintf(buf, "1 # show");
-			else
-				sprintf(buf, "0 # hide");
-			return buf;
-		}
-
-	} else if (MATCH_ATTRIB("fpga_show")) {
-		if (value) {
-			if (atoi(value))
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], true);
-			else
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], false);
-			hide_section_cb(section_toggle[SECTION_FPGA], section_setting[SECTION_FPGA]);
-		} else {
-			buf = malloc (10);
-			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_FPGA]))
-				sprintf(buf, "1 # show");
-			else
-				sprintf(buf, "0 # hide");
-			return buf;
-		}
-
-	} else {
-		if (value) {
-			printf("Unhandled tokens in ini file,\n"
-				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-				"FMComms2", attrib, value);
-			return "FAIL";
-		}
-	}
-
-	return NULL;
-}
-
 static void update_active_page(gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
@@ -2068,6 +2004,29 @@ static void fmcomms2_get_preferred_size(int *width, int *height)
 		*height = 800;
 }
 
+static void save_widgets_to_ini(FILE *f)
+{
+	char buf[0x1000];
+
+	snprintf(buf, sizeof(buf), "load_fir_filter_file = %s\n"
+			"dds_mode_tx1 = %i\n"
+			"dds_mode_tx2 = %i\n"
+			"dac_buf_filename = %s\n"
+			"global_settings_show = %i\n"
+			"tx_show = %i\n"
+			"rx_show = %i\n"
+			"fpga_show = %i\n",
+			last_fir_filter,
+			gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])),
+			gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[2])),
+			dac_buf_filename ?: "",
+			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]),
+			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]),
+			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_RX]),
+			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_FPGA]));
+	fwrite(buf, 1, strlen(buf), f);
+}
+
 static void context_destroy(const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
@@ -2076,6 +2035,7 @@ static void context_destroy(const char *ini_fn)
 				ARRAY_SIZE(fmcomms2_sr_attribs));
 		save_to_ini(f, NULL, dds, fmcomms2_sr_attribs,
 				ARRAY_SIZE(fmcomms2_sr_attribs));
+		save_widgets_to_ini(f);
 		fclose(f);
 	}
 	iio_context_destroy(ctx);
@@ -2102,8 +2062,6 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
-	.save_restore_attribs = fmcomms2_sr_attribs,
-	.handle_item = handle_item,
 	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.get_preferred_size = fmcomms2_get_preferred_size,
