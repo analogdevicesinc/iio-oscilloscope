@@ -13,8 +13,10 @@
 struct osc_plugin {
 	void *handle;
 	const char *name;
+	GThread *thd;
+
 	bool (*identify)(void);
-	int (*init)(GtkWidget *notebook, const char *ini_fn);
+	GtkWidget * (*init)(GtkWidget *notebook, const char *ini_fn);
 	char *(*handle_item) (struct osc_plugin *plugin, const char *attrib,
 			      const char *value);
 	int (*handle_external_request) (const char *request);

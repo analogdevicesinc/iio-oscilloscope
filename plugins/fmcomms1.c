@@ -1534,7 +1534,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *fmcomms1_panel;
@@ -1544,7 +1544,7 @@ static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 
 	ctx = osc_create_context();
 	if (!ctx)
-		return -1;
+		return NULL;
 
 	dac = iio_context_find_device(ctx, "cf-ad9122-core-lpc");
 	adc = iio_context_find_device(ctx, "cf-ad9643-core-lpc");
@@ -1553,8 +1553,10 @@ static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	vga = iio_context_find_device(ctx, "ad8366-lpc");
 
 	dac_tx_manager = dac_data_manager_new(dac, NULL, ctx);
-	if (!dac_tx_manager)
-		return -1;
+	if (!dac_tx_manager) {
+		iio_context_destroy(ctx);
+		return NULL;
+	}
 
 	if (ini_fn) {
 		update_from_ini(ini_fn, THIS_DRIVER, dac, fmcomms1_sr_attribs,
@@ -1824,11 +1826,9 @@ static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	tx_sample_rate_changed(NULL);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms1_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms1_panel, THIS_DRIVER);
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
 
-	return 0;
+	return fmcomms1_panel;
 }
 
 static char *handle_item(struct osc_plugin *plugin, const char *attrib,

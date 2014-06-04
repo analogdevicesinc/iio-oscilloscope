@@ -48,7 +48,7 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	rx_update_labels();
 }
 
-static int AD5628_1_init(GtkWidget *notebook)
+static GtkWidget * AD5628_1_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *AD5628_1_panel;
@@ -56,7 +56,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 
 	ctx = osc_create_context();
 	if (!ctx)
-		return -1;
+		return NULL;
 	dev = iio_context_find_device(ctx, "ad5628-1");
 
 	builder = gtk_builder_new();
@@ -154,10 +154,7 @@ static int AD5628_1_init(GtkWidget *notebook)
 	tx_update_values();
 	rx_update_values();
 
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), AD5628_1_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), AD5628_1_panel, "AD5628-1");
-
-	return 0;
+	return AD5628_1_panel;
 }
 
 static void context_destroy(void)

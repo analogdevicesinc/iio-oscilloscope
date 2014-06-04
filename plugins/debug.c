@@ -1457,7 +1457,7 @@ static void destroy_regmap_widgets(void)
 /*
  *  Main function
  */
-static int debug_init(GtkWidget *notebook)
+static GtkWidget * debug_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *debug_panel;
@@ -1467,7 +1467,7 @@ static int debug_init(GtkWidget *notebook)
 
 	ctx = osc_create_context();
 	if (!ctx)
-		return -1;
+		return NULL;
 
 	/* Check the local xmls folder first */
 	d = opendir("./xmls");
@@ -1568,11 +1568,7 @@ static int debug_init(GtkWidget *notebook)
 
 	gtk_widget_show_all(debug_panel);
 
-	/* Show the panel */
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), debug_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), debug_panel, "Debug");
-
-	return 0;
+	return debug_panel;
 }
 
 static void context_destroy(void)

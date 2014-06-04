@@ -403,7 +403,7 @@ static gboolean dmm_button_icon_transform(GBinding *binding,
 /*
  *  Main function
  */
-static int dmm_init(GtkWidget *notebook)
+static GtkWidget * dmm_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *dmm_panel;
@@ -413,7 +413,7 @@ static int dmm_init(GtkWidget *notebook)
 
 	ctx = osc_create_context();
 	if (!ctx)
-		return -1;
+		return NULL;
 
 	if (!gtk_builder_add_from_file(builder, "dmm.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "dmm.glade", NULL);
@@ -449,16 +449,12 @@ static int dmm_init(GtkWidget *notebook)
 	gtk_widget_show_all(dmm_panel);
 	gtk_widget_hide(select_all_channels);
 
-	/* Show the panel */
-	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), dmm_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), dmm_panel, "DMM");
-
 	init_device_list();
 
 	/* we are looking for almost random numbers, so this will work */
 	srand((unsigned int)time(NULL));
 
-	return 0;
+	return dmm_panel;
 }
 
 #define DEVICE_LIST "device_list"
