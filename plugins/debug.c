@@ -1457,7 +1457,7 @@ static void destroy_regmap_widgets(void)
 /*
  *  Main function
  */
-static GtkWidget * debug_init(GtkWidget *notebook)
+static GtkWidget * debug_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *debug_panel;
@@ -1571,7 +1571,7 @@ static GtkWidget * debug_init(GtkWidget *notebook)
 	return debug_panel;
 }
 
-static void context_destroy(void)
+static void context_destroy(const char *ini_fn)
 {
 	iio_context_destroy(ctx);
 }

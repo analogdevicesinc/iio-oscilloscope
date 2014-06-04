@@ -299,7 +299,7 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	}
 }
 
-static GtkWidget * AD7303_init(GtkWidget *notebook)
+static GtkWidget * AD7303_init(GtkWidget *notebook, const char *ini_fn)
 {
 	struct iio_channel *ch0, *ch1;
 	GtkBuilder *builder;
@@ -379,7 +379,7 @@ static GtkWidget * AD7303_init(GtkWidget *notebook)
 	return AD7303_panel;
 }
 
-static void context_destroy(void)
+static void context_destroy(const char *ini_fn)
 {
 	if (dac_buff) {
 		iio_buffer_destroy(dac_buff);
