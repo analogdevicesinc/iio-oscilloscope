@@ -930,9 +930,16 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static void update_widgets_from_ini(const char *ini_fn)
+static void load_profile(const char *ini_fn)
 {
-	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode");
+	char *value;
+
+	update_from_ini(ini_fn, THIS_DRIVER, dac, daq2_sr_attribs,
+			ARRAY_SIZE(daq2_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, adc, daq2_sr_attribs,
+			ARRAY_SIZE(daq2_sr_attribs));
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode");
 	if (value) {
 		gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), atoi(value));
 		free(value);
@@ -960,13 +967,6 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 
 	dac = iio_context_find_device(ctx, "axi-ad9144-hpc");
 	adc = iio_context_find_device(ctx, "axi-ad9680-hpc");
-
-	if (ini_fn) {
-		update_from_ini(ini_fn, THIS_DRIVER, dac, daq2_sr_attribs,
-				ARRAY_SIZE(daq2_sr_attribs));
-		update_from_ini(ini_fn, THIS_DRIVER, adc, daq2_sr_attribs,
-				ARRAY_SIZE(daq2_sr_attribs));
-	}
 
 	builder = gtk_builder_new();
 
@@ -1074,7 +1074,8 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	dac_interpolation = GTK_WIDGET(gtk_builder_get_object(builder, "dac_interpolation_clock"));
 	dac_shift = GTK_WIDGET(gtk_builder_get_object(builder, "dac_fcenter_shift"));
 
-	update_widgets_from_ini(ini_fn);
+	if (ini_fn)
+		load_profile(ini_fn);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
 	manage_dds_mode();
@@ -1173,7 +1174,7 @@ static void save_widgets_to_ini(FILE *f)
 	fwrite(buf, 1, strlen(buf), f);
 }
 
-static void context_destroy(const char *ini_fn)
+static void save_profile(const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -1185,6 +1186,11 @@ static void context_destroy(const char *ini_fn)
 		save_widgets_to_ini(f);
 		fclose(f);
 	}
+}
+
+static void context_destroy(const char *ini_fn)
+{
+	save_profile(ini_fn);
 
 	if (dac_buf_filename)
 		free(dac_buf_filename);
@@ -1205,5 +1211,7 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = daq2_identify,
 	.init = daq2_init,
+	.save_profile = save_profile,
+	.load_profile = load_profile,
 	.destroy = context_destroy,
 };

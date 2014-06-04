@@ -1134,6 +1134,13 @@ void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
+static void load_profile(const char *ini_fn)
+{
+	update_from_ini(ini_fn, THIS_DRIVER, dev,
+			fmcomms2_adv_sr_attribs,
+			ARRAY_SIZE(fmcomms2_adv_sr_attribs));
+}
+
 static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkWidget *fmcomms2adv_panel;
@@ -1151,9 +1158,7 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 	dev_dds_slave = iio_context_find_device(ctx, DDS_SLAVE_DEVICE);
 
 	if (ini_fn)
-		update_from_ini(ini_fn, THIS_DRIVER, dev,
-				fmcomms2_adv_sr_attribs,
-				ARRAY_SIZE(fmcomms2_adv_sr_attribs));
+		load_profile(ini_fn);
 
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
@@ -1240,7 +1245,7 @@ static void update_active_page(gint active_page, gboolean is_detached)
 	plugin_detached = is_detached;
 }
 
-static void context_destroy(const char *ini_fn)
+static void save_profile(const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -1248,6 +1253,11 @@ static void context_destroy(const char *ini_fn)
 				ARRAY_SIZE(fmcomms2_adv_sr_attribs));
 		fclose(f);
 	}
+}
+
+static void context_destroy(const char *ini_fn)
+{
+	save_profile(ini_fn);
 	iio_context_destroy(ctx);
 }
 
@@ -1273,5 +1283,7 @@ struct osc_plugin plugin = {
 	.identify = fmcomms2adv_identify,
 	.init = fmcomms2adv_init,
 	.update_active_page = update_active_page,
+	.save_profile = save_profile,
+	.load_profile = load_profile,
 	.destroy = context_destroy,
 };

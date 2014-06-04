@@ -2023,9 +2023,28 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static void update_widgets_from_ini(const char *ini_fn)
+static void load_profile(const char *ini_fn)
 {
-	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode");
+	char *value;
+
+	update_from_ini(ini_fn, THIS_DRIVER, dac, fmcomms1_sr_attribs,
+			ARRAY_SIZE(fmcomms1_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, adc, fmcomms1_sr_attribs,
+			ARRAY_SIZE(fmcomms1_sr_attribs));
+	if (txpll)
+		update_from_ini(ini_fn, THIS_DRIVER, txpll,
+				fmcomms1_sr_attribs,
+				ARRAY_SIZE(fmcomms1_sr_attribs));
+	if (rxpll)
+		update_from_ini(ini_fn, THIS_DRIVER, rxpll,
+				fmcomms1_sr_attribs,
+				ARRAY_SIZE(fmcomms1_sr_attribs));
+	if (vga)
+		update_from_ini(ini_fn, THIS_DRIVER, vga,
+				fmcomms1_sr_attribs,
+				ARRAY_SIZE(fmcomms1_sr_attribs));
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode");
 	if (value) {
 		gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), atoi(value));
 		free(value);
@@ -2125,25 +2144,6 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	txpll = iio_context_find_device(ctx, "adf4351-tx-lpc"),
 	rxpll = iio_context_find_device(ctx, "adf4351-rx-lpc"),
 	vga = iio_context_find_device(ctx, "ad8366-lpc");
-
-	if (ini_fn) {
-		update_from_ini(ini_fn, THIS_DRIVER, dac, fmcomms1_sr_attribs,
-				ARRAY_SIZE(fmcomms1_sr_attribs));
-		update_from_ini(ini_fn, THIS_DRIVER, adc, fmcomms1_sr_attribs,
-				ARRAY_SIZE(fmcomms1_sr_attribs));
-		if (txpll)
-			update_from_ini(ini_fn, THIS_DRIVER, txpll,
-					fmcomms1_sr_attribs,
-				ARRAY_SIZE(fmcomms1_sr_attribs));
-		if (rxpll)
-			update_from_ini(ini_fn, THIS_DRIVER, rxpll,
-					fmcomms1_sr_attribs,
-					ARRAY_SIZE(fmcomms1_sr_attribs));
-		if (vga)
-			update_from_ini(ini_fn, THIS_DRIVER, vga,
-					fmcomms1_sr_attribs,
-					ARRAY_SIZE(fmcomms1_sr_attribs));
-	}
 
 	builder = gtk_builder_new();
 
@@ -2260,7 +2260,8 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	dac_interpolation = GTK_WIDGET(gtk_builder_get_object(builder, "dac_interpolation_clock"));
 	dac_shift = GTK_WIDGET(gtk_builder_get_object(builder, "dac_fcenter_shift"));
 
-	update_widgets_from_ini(ini_fn);
+	if (ini_fn)
+		load_profile(ini_fn);
 
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
 	scale_available = iio_channel_find_attr(ch0, "scale_available");
@@ -2500,7 +2501,7 @@ static void save_widgets_to_ini(FILE *f)
 	fwrite(buf, 1, strlen(buf), f);
 }
 
-static void context_destroy(const char *ini_fn)
+static void save_profile(const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -2521,6 +2522,11 @@ static void context_destroy(const char *ini_fn)
 		save_widgets_to_ini(f);
 		fclose(f);
 	}
+}
+
+static void context_destroy(const char *ini_fn)
+{
+	save_profile(ini_fn);
 
 	if (dac_buf_filename)
 		free(dac_buf_filename);
@@ -2541,5 +2547,7 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = fmcomms1_identify,
 	.init = fmcomms1_init,
+	.save_profile = save_profile,
+	.load_profile = load_profile,
 	.destroy = context_destroy,
 };

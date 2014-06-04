@@ -1354,9 +1354,16 @@ static gboolean scale_spin_button_output_cb(GtkSpinButton *spin, gpointer data)
 	return TRUE;
 }
 
-static void update_widgets_from_ini(const char *ini_fn)
+static void load_profile(const char *ini_fn)
 {
-	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "load_fir_filter_file");
+	char *value;
+
+	update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
+			ARRAY_SIZE(fmcomms2_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
+			ARRAY_SIZE(fmcomms2_sr_attribs));
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "load_fir_filter_file");
 	if (value) {
 		if (value[0]) {
 			load_fir_filter(value);
@@ -1432,13 +1439,6 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	cap = iio_context_find_device(ctx, CAP_DEVICE);
 	ch0 = iio_device_find_channel(dev, "voltage0", false);
 	ch1 = iio_device_find_channel(dev, "voltage1", false);
-
-	if (ini_fn) {
-		update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
-				ARRAY_SIZE(fmcomms2_sr_attribs));
-		update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
-				ARRAY_SIZE(fmcomms2_sr_attribs));
-	}
 
 	for (i = 0; i <= TX2_T2_Q; i++) {
 		dds_freq_hid[i] = 0;
@@ -1842,16 +1842,16 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(dds_mode_tx[2]), DDS_BUFFER);
 	}
 
-	/* Update all widgets with current values */
+	if (ini_fn)
+		load_profile(ini_fn);
 
+	/* Update all widgets with current values */
 	printf("Updating GLB widgets...\n");
 	iio_update_widgets(glb_widgets, num_glb);
 	printf("Updating TX values...\n");
 	tx_update_values();
 	printf("Updating RX values...\n");
 	rx_update_values();
-	printf("Updating widgets from INI...\n");
-	update_widgets_from_ini(ini_fn);
 	printf("Updating FIR filter...\n");
 	filter_fir_update();
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
@@ -2027,7 +2027,7 @@ static void save_widgets_to_ini(FILE *f)
 	fwrite(buf, 1, strlen(buf), f);
 }
 
-static void context_destroy(const char *ini_fn)
+static void save_profile(const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -2038,6 +2038,11 @@ static void context_destroy(const char *ini_fn)
 		save_widgets_to_ini(f);
 		fclose(f);
 	}
+}
+
+static void context_destroy(const char *ini_fn)
+{
+	save_profile(ini_fn);
 
 	if (dac_buf_filename)
 		free(dac_buf_filename);
@@ -2070,5 +2075,7 @@ struct osc_plugin plugin = {
 	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.get_preferred_size = fmcomms2_get_preferred_size,
+	.save_profile = save_profile,
+	.load_profile = load_profile,
 	.destroy = context_destroy,
 };
