@@ -142,8 +142,6 @@ static const char *daq2_sr_attribs[] = {
 	"axi-ad9144-hpc.out_altvoltage1_1B_phase",
 	"axi-ad9144-hpc.out_altvoltage2_2A_phase",
 	"axi-ad9144-hpc.out_altvoltage3_2B_phase",
-	SYNC_RELOAD,
-	NULL,
 };
 
 static int oneover(const gchar *num)
@@ -359,6 +357,35 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
+static void update_widgets_from_ini(const char *ini_fn)
+{
+	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode");
+	if (value) {
+		dac_data_manager_set_dds_mode(dac_tx_manager, "axi-ad9144-hpc", 1, atoi(value));
+		free(value);
+	}
+
+	if (dac_data_manager_get_dds_mode(dac_tx_manager, "axi-ad9144-hpc", 1) == DDS_BUFFER) {
+		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
+		if (value) {
+			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
+			free(value);
+		}
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_0");
+	if (value) {
+		dac_data_manager_set_tx_channel_state(dac_tx_manager, 0, !!atoi(value));
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_1");
+	if (value) {
+		dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, !!atoi(value));
+		free(value);
+	}
+}
+
 static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
@@ -452,6 +479,8 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	dds3_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_Q, WIDGET_PHASE);
 	dds4_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_Q, WIDGET_PHASE);
 
+	update_widgets_from_ini(ini_fn);
+
 	/* Bind the IIO device files to the GUI widgets */
 
 	char attr_val[256];
@@ -505,62 +534,19 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	return daq2_panel;
 }
 
-static char *handle_item(struct osc_plugin *plugin, const char *attrib,
-			 const char *value)
+static void save_widgets_to_ini(FILE *f)
 {
-	char *buf;
-	bool state;
+	char buf[0x1000];
 
-	if (MATCH_ATTRIB(SYNC_RELOAD)) {
-		if (value) {
-			tx_update_values();
-			rx_update_values();
-		} else {
-			return "1";
-		}
-	} else if (MATCH_ATTRIB("dds_mode")) {
-		if (value) {
-			dac_data_manager_set_dds_mode(dac_tx_manager, "axi-ad9144-hpc", 1, atoi(value));
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, "axi-ad9144-hpc", 1));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("dac_buf_filename") &&
-				dac_data_manager_get_dds_mode(dac_tx_manager, "axi-ad9144-hpc", 1) == DDS_BUFFER) {
-		if (value) {
-			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
-		} else {
-			return dac_data_manager_get_buffer_chooser_filename(dac_tx_manager);
-		}
-	} else if (MATCH_ATTRIB("tx_channel_0")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 0, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 0));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("tx_channel_1")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 1));
-			return buf;
-		}
-	} else {
-		if (value) {
-			printf("Unhandled tokens in ini file,\n"
-					"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-					"DAQ2", attrib, value);
-			return "FAIL";
-		}
-	}
-
-	return NULL;
+	snprintf(buf, sizeof(buf), "dds_mode = %i\n"
+			"dac_buf_filename = %s\n"
+			"tx_channel_0 = %i\n"
+			"tx_channel_1 = %i\n",
+			dac_data_manager_get_dds_mode(dac_tx_manager, "axi-ad9144-hpc", 1),
+			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 0),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 1));
+	fwrite(buf, 1, strlen(buf), f);
 }
 
 static void context_destroy(const char *ini_fn)
@@ -572,6 +558,7 @@ static void context_destroy(const char *ini_fn)
 				ARRAY_SIZE(daq2_sr_attribs));
 		save_to_ini(f, NULL, adc, daq2_sr_attribs,
 				ARRAY_SIZE(daq2_sr_attribs));
+		save_widgets_to_ini(f);
 		fclose(f);
 	}
 
@@ -595,7 +582,5 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = daq2_identify,
 	.init = daq2_init,
-	.save_restore_attribs = daq2_sr_attribs,
-	.handle_item = handle_item,
 	.destroy = context_destroy,
 };
