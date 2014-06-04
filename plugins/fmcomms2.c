@@ -1367,11 +1367,20 @@ static gboolean scale_spin_button_output_cb(GtkSpinButton *spin, gpointer data)
 static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
-	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", false),
-			   *ch1 = iio_device_find_channel(dev, "voltage1", false),
-			   *ch2, *ch3, *ch4, *ch5, *ch6, *ch7;
+	GtkWidget *fmcomms2_panel;
+	struct iio_channel *ch0, *ch1, *ch2, *ch3, *ch4, *ch5, *ch6, *ch7;
 	const char *freq_name;
 	int i;
+
+	ctx = osc_create_context();
+	if (!ctx)
+		return -1;
+
+	dev = iio_context_find_device(ctx, PHY_DEVICE);
+	dds = iio_context_find_device(ctx, DDS_DEVICE);
+	cap = iio_context_find_device(ctx, CAP_DEVICE);
+	ch0 = iio_device_find_channel(dev, "voltage0", false);
+	ch1 = iio_device_find_channel(dev, "voltage1", false);
 
 	if (ini_fn) {
 		update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
@@ -2081,23 +2090,14 @@ static bool fmcomms2_identify(void)
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
 
-	if (!iio_context_find_device(osc_ctx, PHY_DEVICE)
-		|| !iio_context_find_device(osc_ctx, DDS_DEVICE))
-		return false;
-
-	ctx = osc_create_context();
-	dev = iio_context_find_device(ctx, PHY_DEVICE);
-	dds = iio_context_find_device(ctx, DDS_DEVICE);
-	cap = iio_context_find_device(ctx, CAP_DEVICE);
-
+	cap = iio_context_find_device(osc_ctx, CAP_DEVICE);
 	if (!cap) {
-		cap = iio_context_find_device(ctx, CAP_DEVICE_ALT);
+		cap = iio_context_find_device(osc_ctx, CAP_DEVICE_ALT);
 		plugin.name = "FMComms5-A-MASTER";
 	}
 
-	if (!dev || !dds || !cap)
-		iio_context_destroy(ctx);
-	return !!dev && !!dds && !!cap;
+	return !!cap && !!iio_context_find_device(osc_ctx, PHY_DEVICE) &&
+		!!iio_context_find_device(osc_ctx, DDS_DEVICE);
 }
 
 struct osc_plugin plugin = {

@@ -912,6 +912,13 @@ static int daq2_init(GtkWidget *notebook)
 	GtkWidget *daq2_panel;
 	struct iio_channel *ch0, *ch1, *ch2, *ch3;
 
+	ctx = osc_create_context();
+	if (!ctx)
+		return -1;
+
+	dac = iio_context_find_device(ctx, "axi-ad9144-hpc");
+	adc = iio_context_find_device(ctx, "axi-ad9680-hpc");
+
 	builder = gtk_builder_new();
 
 	if (!gtk_builder_add_from_file(builder, "daq2.glade", NULL))
@@ -1177,16 +1184,8 @@ static bool daq2_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	if (!iio_context_find_device(osc_ctx, "axi-ad9144-hpc")
-		|| !iio_context_find_device(osc_ctx, "axi-ad9680-hpc"))
-		return false;
-
-	ctx = osc_create_context();
-	dac = iio_context_find_device(ctx, "axi-ad9144-hpc");
-	adc = iio_context_find_device(ctx, "axi-ad9680-hpc");
-	if (!dac || !adc)
-		iio_context_destroy(ctx);
-	return !!dac && !!adc;
+	return !!iio_context_find_device(osc_ctx, "axi-ad9144-hpc") &&
+		!!iio_context_find_device(osc_ctx, "axi-ad9680-hpc");
 }
 
 struct osc_plugin plugin = {

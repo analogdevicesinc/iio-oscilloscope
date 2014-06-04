@@ -2034,9 +2034,18 @@ static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	GtkBuilder *builder;
 	GtkWidget *fmcomms1_panel;
 	const char *dac_sampling_freq_file;
-	struct iio_device *dev = iio_context_find_device(ctx, "adf4351-tx-lpc");
 	struct iio_channel *ch0, *ch1, *ch2, *ch3;
 	const char *scale_available, *scale;
+
+	ctx = osc_create_context();
+	if (!ctx)
+		return -1;
+
+	dac = iio_context_find_device(ctx, "cf-ad9122-core-lpc");
+	adc = iio_context_find_device(ctx, "cf-ad9643-core-lpc");
+	txpll = iio_context_find_device(ctx, "adf4351-tx-lpc"),
+	rxpll = iio_context_find_device(ctx, "adf4351-rx-lpc"),
+	vga = iio_context_find_device(ctx, "ad8366-lpc");
 
 	if (ini_fn) {
 		update_from_ini(ini_fn, THIS_DRIVER, dac, fmcomms1_sr_attribs,
@@ -2260,18 +2269,18 @@ static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 
 	num_tx_pll = num_tx;
 
-	ch0 = iio_device_find_channel(dev, "altvoltage0", true);
+	ch0 = iio_device_find_channel(txpll, "altvoltage0", true);
 
 	iio_spin_button_int_init(&tx_widgets[num_tx++],
-			dev, ch0, "frequency", tx_lo_freq, &mhz_scale);
+			txpll, ch0, "frequency", tx_lo_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	tx_lo_powerdown = num_tx;
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-			dev, ch0, "powerdown", builder, "tx_lo_powerdown", 1);
+			txpll, ch0, "powerdown", builder, "tx_lo_powerdown", 1);
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-			dev, ch0, "frequency_resolution", builder, "tx_lo_spacing", NULL);
+			txpll, ch0, "frequency_resolution", builder, "tx_lo_spacing", NULL);
 
 	/* Calibration */
 	ch0 = iio_device_find_channel(dac, "voltage0", true);
@@ -2331,32 +2340,31 @@ static int fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 			G_CALLBACK(adc_cal_spin1), "calibphase");
 
 	/* Rx Widgets */
-	ch0 = iio_device_find_channel(dev, "altvoltage0", true);
+	ch0 = iio_device_find_channel(txpll, "altvoltage0", true);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			dev, ch0, "frequency_resolution",
+			txpll, ch0, "frequency_resolution",
 			builder, "rx_lo_spacing", NULL);
 
 	num_rx_pll = num_rx;
 	iio_spin_button_int_init(&rx_widgets[num_rx++],
-			dev, ch0, "frequency", rx_lo_freq, &mhz_scale);
+			txpll, ch0, "frequency", rx_lo_freq, &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 	rx_lo_powerdown = num_rx;
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-			dev, ch0, "powerdown", builder, "rx_lo_powerdown", 1);
+			txpll, ch0, "powerdown", builder, "rx_lo_powerdown", 1);
 	num_adc_freq = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			adc_freq_device, adc_freq_channel, adc_freq_file,
 			builder, "adc_freq", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
-	dev = iio_context_find_device(ctx, "ad8366-lpc");
-	ch0 = iio_device_find_channel(dev, "voltage0", true);
-	ch1 = iio_device_find_channel(dev, "voltage1", true);
+	ch0 = iio_device_find_channel(vga, "voltage0", true);
+	ch1 = iio_device_find_channel(vga, "voltage1", true);
 
 	iio_spin_button_init(&rx_widgets[num_rx++],
-			dev, ch0, "hardwaregain", vga_gain0, NULL);
+			vga, ch0, "hardwaregain", vga_gain0, NULL);
 	iio_spin_button_init(&rx_widgets[num_rx++],
-			dev, ch1, "hardwaregain", vga_gain1, NULL);
+			vga, ch1, "hardwaregain", vga_gain1, NULL);
 
 	g_builder_connect_signal(builder, "calibrate_dialog", "clicked",
 		G_CALLBACK(cal_dialog), NULL);
@@ -2513,19 +2521,8 @@ static bool fmcomms1_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	if (!iio_context_find_device(osc_ctx, "cf-ad9122-core-lpc")
-		|| !iio_context_find_device(osc_ctx, "cf-ad9643-core-lpc"))
-		return false;
-
-	ctx = osc_create_context();
-	dac = iio_context_find_device(ctx, "cf-ad9122-core-lpc");
-	adc = iio_context_find_device(ctx, "cf-ad9643-core-lpc");
-	txpll = iio_context_find_device(ctx, "adf4351-tx-lpc"),
-	rxpll = iio_context_find_device(ctx, "adf4351-rx-lpc"),
-	vga = iio_context_find_device(ctx, "ad8366-lpc");
-	if (!dac || !adc)
-		iio_context_destroy(ctx);
-	return !!dac && !!adc;
+	return !!iio_context_find_device(osc_ctx, "cf-ad9122-core-lpc") &&
+		!!iio_context_find_device(osc_ctx, "cf-ad9643-core-lpc");
 }
 
 struct osc_plugin plugin = {

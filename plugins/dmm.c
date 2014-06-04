@@ -411,6 +411,10 @@ static int dmm_init(GtkWidget *notebook)
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
+	ctx = osc_create_context();
+	if (!ctx)
+		return -1;
+
 	if (!gtk_builder_add_from_file(builder, "dmm.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "dmm.glade", NULL);
 
@@ -603,9 +607,7 @@ static bool dmm_identify(void)
 		}
 	}
 
-	if (ret)
-		ctx = osc_create_context();
-	return ret && ctx;
+	return ret;
 }
 
 struct osc_plugin plugin = {
