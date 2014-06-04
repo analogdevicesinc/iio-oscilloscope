@@ -51,7 +51,7 @@ static GtkBuilder *builder;
 #define CAL_FREQ	30720000
 #define MARKER_AVG	3
 
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
 #define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
@@ -436,7 +436,7 @@ static void near_end_loopback_ctrl(unsigned channel, bool enable)
 	iio_device_reg_write(dev, 0x80000400 + channel * 0x40, tmp);
 }
 
-static void get_markers (int *offset, long long *mag, long long *mag1, long long *mag2)
+static void get_markers (int *offset, long long *mag, long long *mag1, long long *mag2, long long *x1)
 {
 	int ret, sum = MARKER_AVG;
 	struct marker_type *markers = NULL;
@@ -448,8 +448,9 @@ static void get_markers (int *offset, long long *mag, long long *mag1, long long
 	*mag = 0;
 	*mag1 = 0;
 	*mag2 = 0;
+	*x1 = 0;
 
-	while (sum--) {
+	for (sum = 0; sum < MARKER_AVG; sum++) {
 		if (device_ref) {
 			do {
 				ret = plugin_data_capture_with_domain(device_ref, NULL, &markers, XCORR_PLOT);
@@ -461,6 +462,7 @@ static void get_markers (int *offset, long long *mag, long long *mag1, long long
 			*mag += markers[0].y;
 			*mag1 += markers[1].y;
 			*mag2 += markers[2].y;
+			*x1 += markers[1].x;
 		}
 	}
 
@@ -468,6 +470,8 @@ static void get_markers (int *offset, long long *mag, long long *mag1, long long
 	*mag /= MARKER_AVG;
 	*mag1 /= MARKER_AVG;
 	*mag2 /= MARKER_AVG;
+	*x1 /= MARKER_AVG;
+
 
 	DBG("offset: %d, MAG0 %d, MAG1 %d, MAG2 %d", *offset, (int)*mag, (int)*mag1, (int)*mag2);
 
@@ -515,12 +519,17 @@ static void __cal_switch_ports_enable_cb (unsigned val)
 		break;
 	}
 
+
+#if 0
+	iio_device_debug_attr_write_bool(dev, "loopback", lp_master);
+	iio_device_debug_attr_write_bool(dev_slave, "loopback", lp_slave);
+#else
 	near_end_loopback_ctrl(0, lp_slave); /* HPC */
 	near_end_loopback_ctrl(1, lp_slave); /* HPC */
 
 	near_end_loopback_ctrl(4, lp_master); /* LPC */
 	near_end_loopback_ctrl(5, lp_master); /* LPC */
-
+#endif
 	iio_device_debug_attr_write_longlong(dev, "calibration_switch_control", sw);
 	iio_device_attr_write(dev, "in_voltage0_rf_port_select", rx_port);
 	iio_device_attr_write(dev, "out_voltage0_rf_port_select", tx_port);
@@ -566,67 +575,65 @@ static void mcs_cb (GtkWidget *widget, gpointer data)
 		dds_sync();
 }
 
-static double tune_trx_phase_offset(struct iio_device *dev, double sign,
-			    void (*tune)(struct iio_device *dev, gdouble val))
+static double tune_trx_phase_offset(struct iio_device *ldev,
+			long long cal_freq, long long cal_tone,
+			double sign, double abort,
+			void (*tune)(struct iio_device *, gdouble))
 {
-	long long mag, mag1, mag2, pdelta, delta = LLONG_MAX,
-		min_delta = LLONG_MAX;
+	long long y, y1, y2, pdelta, delta = LLONG_MAX,
+		min_delta = LLONG_MAX, a, b, x1;
 	int i, offset, pos = 0, neg = 0;
 	double min_phase, phase = 0.0, step = 1.0;
 
-	for (i = 0; i < 20; i++) {
+	for (i = 0; i < 30; i++) {
 
-		get_markers(&offset, &mag, &mag1, &mag2);
-		get_markers(&offset, &mag, &mag1, &mag2);
+		get_markers(&offset, &y, &y1, &y2, &x1);
+		get_markers(&offset, &y, &y1, &y2, &x1);
 
 		if (i == 0) {
-			phase = calc_phase_offset(CAL_FREQ, CAL_TONE, offset, mag);
-			tune(dev, phase * sign);
+			phase = calc_phase_offset(cal_freq, cal_tone, offset, y);
+			tune(ldev, phase * sign);
 			continue;
 		}
 
-		if (i > 0) {
-			if (offset != 0) {
-				phase += (360.0 / ((CAL_FREQ / CAL_TONE) / offset) / 2);
-				tune(dev, phase * sign);
-				continue;
-			}
+
+		if (offset != 0) {
+			phase += (360.0 / ((cal_freq / cal_tone) / offset) / 2);
+			tune(ldev, phase * sign);
+			step = 1.0;
+			continue;
 		}
 
-		pdelta = delta;
-		delta = abs(mag1) - abs(mag2);
+		delta = abs(y1) - abs(y2);
 
 		if (delta < min_delta) {
 			min_delta = delta;
 			min_phase = phase;
 		}
 
-		if (pdelta > delta) {
+		if (x1 > 0) {
 			if (pos == 1) {
 				step /= 2;
 				pos = 0;
 			}
-
 			phase -= step;
 			neg = 1;
-
 		} else {
 			if (neg == 1) {
 				step /= 2;
 				neg = 0;
 			}
-
 			phase += step;
 			pos = 1;
 		}
 
-		if (step < 0.005)
+		if (step < abort)
 			break;
 
-		DBG("Step: %f Phase: %f, min_Phase: %f, delta %d, min_delta %d",
+		DBG("Step: %f Phase: %f, min_Phase: %f\ndelta %d, pdelta %d, min_delta %d\n",
 		    step, phase, min_phase, (int)delta, (int)min_delta);
 
-		tune(dev, phase * sign);
+		tune(ldev, phase * sign);
 	}
 
 	return phase * sign;
@@ -637,6 +644,7 @@ static double tune_trx_phase_offset(struct iio_device *dev, double sign,
 static void calibrate (gpointer button)
 {
 	double rx_phase_lpc, rx_phase_hpc, /*tx_phase_lpc,*/ tx_phase_hpc;
+	long long cal_tone, cal_freq;
 	GtkWidget *tx_phase;
 	int ret;
 
@@ -668,6 +676,11 @@ static void calibrate (gpointer button)
 		goto calibrate_fail;
 	}
 
+	iio_channel_attr_read_longlong(dds_out[0][0], "frequency", &cal_tone);
+	iio_channel_attr_read_longlong(dds_out[0][0], "sampling_frequency", &cal_freq);
+
+	DBG("cal_tone %d cal_freq %d", cal_tone, cal_freq);
+
 	rx_phase_rotation(cf_ad9361_lpc, 0.0);
  	rx_phase_rotation(cf_ad9361_hpc, 0.0);
 
@@ -675,10 +688,10 @@ static void calibrate (gpointer button)
 	 * Calibrate RX:
 	 * 1 TX1B_B (HPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
 	 */
-	__cal_switch_ports_enable_cb(1);
 	plugin_data_capture_revert_xcorr(false);
+	__cal_switch_ports_enable_cb(1);
 	sleep(0.3);
-	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, 1.0, rx_phase_rotation);
+	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, cal_freq, cal_tone, 1.0, 0.01, rx_phase_rotation);
 	DBG("rx_phase_hpc %f", rx_phase_hpc);
 
 	/*
@@ -686,11 +699,11 @@ static void calibrate (gpointer button)
 	 * 3 TX1B_B (HPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
 	 */
 
+	plugin_data_capture_revert_xcorr(true);
 	rx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(3);
-	plugin_data_capture_revert_xcorr(true);
 	sleep(0.3);
-	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, 1.0, rx_phase_rotation);
+	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, cal_freq, cal_tone, 1.0, 0.01, rx_phase_rotation);
 	DBG("rx_phase_lpc %f", rx_phase_lpc);
 
 #if 0
@@ -713,11 +726,11 @@ static void calibrate (gpointer button)
 	 * 4 TX1B_A (LPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
 	 */
 
+	plugin_data_capture_revert_xcorr(true);
 	rx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(4);
-	plugin_data_capture_revert_xcorr(true);
 	sleep(0.4);
-	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, -1.0 , tx_phase_rotation);
+	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, cal_freq, cal_tone, -1.0 , 0.001, tx_phase_rotation);
 
 	DBG("tx_phase_hpc %f", tx_phase_hpc);
 
