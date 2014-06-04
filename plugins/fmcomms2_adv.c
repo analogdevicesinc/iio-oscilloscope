@@ -458,30 +458,6 @@ static double calc_phase_offset(double fsample, double dds_freq, int offset, int
 	return scale_phase_0_360(val);
 }
 
-static int get_dds_channels(void)
-{
-	struct iio_device *dev;
-	int i, j;
-	char name[16];
-
-	for (i = 0; i < 2; i++) {
-
-		if (i == 0)
-			dev = dev_dds_master;
-		else
-			dev = dev_dds_slave;
-
-		for (j = 0; j < 8; j++) {
-			snprintf(name, sizeof(name), "altvoltage%d", j);
-			dds_out[i][j] = iio_device_find_channel(dev, name, true);
-			if (!dds_out[i][j])
-				return -errno;
-		}
-	}
-
-	return 0;
-}
-
 static void trx_phase_rotation(struct iio_device *dev, gdouble val)
 {
 	struct iio_channel *out0, *out1;
@@ -1162,6 +1138,17 @@ static int fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 	GtkWidget *fmcomms2adv_panel;
 	int i;
 
+	ctx = osc_create_context();
+	if (!ctx)
+		return -1;
+
+	dev = iio_context_find_device(ctx, PHY_DEVICE);
+	dev_slave = iio_context_find_device(ctx, PHY_SLAVE_DEVICE);
+	cf_ad9361_lpc = iio_context_find_device(ctx, CAP_DEVICE_ALT);
+	cf_ad9361_hpc = iio_context_find_device(ctx, CAP_SLAVE_DEVICE);
+	dev_dds_master = iio_context_find_device(ctx, DDS_DEVICE);
+	dev_dds_slave = iio_context_find_device(ctx, DDS_SLAVE_DEVICE);
+
 	if (ini_fn)
 		update_from_ini(ini_fn, THIS_DRIVER, dev,
 				fmcomms2_adv_sr_attribs,
@@ -1311,34 +1298,17 @@ static bool fmcomms2adv_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	struct iio_device *osc_dev = iio_context_find_device(
-			osc_ctx, PHY_DEVICE);
-	if (!osc_dev || !iio_device_get_debug_attrs_count(osc_dev))
-		return false;
 
-	ctx = osc_create_context();
-	dev = iio_context_find_device(ctx, PHY_DEVICE);
-	dev_slave = iio_context_find_device(ctx, PHY_SLAVE_DEVICE);
+	dev = iio_context_find_device(osc_ctx, PHY_DEVICE);
+	dev_slave = iio_context_find_device(osc_ctx, PHY_SLAVE_DEVICE);
+	cf_ad9361_lpc = iio_context_find_device(osc_ctx, CAP_DEVICE_ALT);
+	cf_ad9361_hpc = iio_context_find_device(osc_ctx, CAP_SLAVE_DEVICE);
+	dev_dds_master = iio_context_find_device(osc_ctx, DDS_DEVICE);
+	dev_dds_slave = iio_context_find_device(osc_ctx, DDS_SLAVE_DEVICE);
 
-	if (dev_slave) {
-		cf_ad9361_lpc = iio_context_find_device(ctx, CAP_DEVICE_ALT);
-		cf_ad9361_hpc = iio_context_find_device(ctx, CAP_SLAVE_DEVICE);
-
-		dev_dds_master = iio_context_find_device(ctx, DDS_DEVICE);
-		dev_dds_slave = iio_context_find_device(ctx, DDS_SLAVE_DEVICE);
-		if (!(cf_ad9361_lpc && cf_ad9361_hpc && dev_dds_master && dev_dds_slave))
-			dev = NULL;
-		else
-			if (get_dds_channels())
-				dev = NULL;
-	}
-
-	if (dev && !iio_device_get_debug_attrs_count(dev))
-		dev = NULL;
-	if (!dev)
-		iio_context_destroy(ctx);
-
-	return !!dev;
+	return !!dev && iio_device_get_debug_attrs_count(dev)
+		&& (!dev_slave || (!!cf_ad9361_lpc && !!cf_ad9361_hpc &&
+					!!dev_dds_master && !!dev_dds_slave));
 }
 
 struct osc_plugin plugin = {

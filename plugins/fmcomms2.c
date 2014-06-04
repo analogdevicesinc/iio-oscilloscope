@@ -707,9 +707,18 @@ static int fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *dds_container;
-	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", false),
-			   *ch1 = iio_device_find_channel(dev, "voltage1", false);
+	struct iio_channel *ch0, *ch1;
 	const char *freq_name;
+
+	ctx = osc_create_context();
+	if (!ctx)
+		return -1;
+
+	dev = iio_context_find_device(ctx, PHY_DEVICE);
+	dds = iio_context_find_device(ctx, DDS_DEVICE);
+	cap = iio_context_find_device(ctx, CAP_DEVICE);
+	ch0 = iio_device_find_channel(dev, "voltage0", false);
+	ch1 = iio_device_find_channel(dev, "voltage1", false);
 
 	dac_tx_manager = dac_data_manager_new(dds, NULL, ctx);
 	if (!dac_tx_manager)
@@ -1256,18 +1265,9 @@ static bool fmcomms2_identify(void)
 	if (!iio_context_find_device(osc_ctx, PHY_DEVICE)
 		|| !iio_context_find_device(osc_ctx, DDS_DEVICE))
 		return false;
+
 	/* Check if FMComms5 is used */
-	if (iio_context_find_device(osc_ctx, "ad9361-phy-B"))
-		return false;
-
-	ctx = osc_create_context();
-	dev = iio_context_find_device(ctx, PHY_DEVICE);
-	dds = iio_context_find_device(ctx, DDS_DEVICE);
-	cap = iio_context_find_device(ctx, CAP_DEVICE);
-
-	if (!dev || !dds || !cap)
-		iio_context_destroy(ctx);
-	return !!dev && !!dds && !!cap;
+	return !iio_context_find_device(osc_ctx, "ad9361-phy-B");
 }
 
 struct osc_plugin plugin = {

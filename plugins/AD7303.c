@@ -306,6 +306,13 @@ static int AD7303_init(GtkWidget *notebook)
 	GtkWidget *AD7303_panel;
 	GtkWidget *table;
 
+	ctx = osc_create_context();
+	if (!ctx)
+		return -1;
+
+	thread_ctx = osc_create_context();
+	dev = iio_context_find_device(thread_ctx, "ad7303");
+
 	builder = gtk_builder_new();
 
 	if (!gtk_builder_add_from_file(builder, "AD7303.glade", NULL))
@@ -389,17 +396,7 @@ static bool AD7303_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	if (!iio_context_find_device(osc_ctx, "ad7303"))
-		return false;
-
-	ctx = osc_create_context();
-	thread_ctx = osc_create_context();
-	dev = iio_context_find_device(thread_ctx, "ad7303");
-	if (!dev) {
-		iio_context_destroy(ctx);
-		iio_context_destroy(thread_ctx);
-	}
-	return !!dev;
+	return !!iio_context_find_device(osc_ctx, "ad7303");
 }
 
 struct osc_plugin plugin = {

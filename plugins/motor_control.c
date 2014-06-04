@@ -365,6 +365,13 @@ static int motor_control_init(GtkWidget *notebook)
 	GtkWidget *advanced_page;
 	int i;
 
+	ctx = osc_create_context();
+	if (!ctx)
+		return -1;
+
+	pid_dev = iio_context_find_device(ctx, "ad-mc-ctrl");
+	adv_dev = iio_context_find_device(ctx, "ad-mc-adv-ctrl");
+
 	builder = gtk_builder_new();
 	if (!gtk_builder_add_from_file(builder, "motor_control.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "motor_control.glade", NULL);
@@ -509,21 +516,10 @@ static void context_destroy(void)
 
 static bool motor_control_identify(void)
 {
-	bool found;
-
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	if (!iio_context_find_device(osc_ctx, "ad-mc-ctrl")
-		&& !iio_context_find_device(osc_ctx, "ad-mc-adv-ctrl"))
-		return false;
-
-	ctx = osc_create_context();
-	pid_dev = iio_context_find_device(ctx, "ad-mc-ctrl");
-	adv_dev = iio_context_find_device(ctx, "ad-mc-adv-ctrl");
-	found = !!pid_dev || !!adv_dev;
-	if (!found)
-		iio_context_destroy(ctx);
-	return found;
+	return !!iio_context_find_device(osc_ctx, "ad-mc-ctrl") &&
+		!!iio_context_find_device(osc_ctx, "ad-mc-adv-ctrl");
 }
 
 static const char *motor_control_sr_attribs[] = {

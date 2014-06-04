@@ -1465,6 +1465,10 @@ static int debug_init(GtkWidget *notebook)
 	GtkWidget *vbox_scanel;
 	DIR *d;
 
+	ctx = osc_create_context();
+	if (!ctx)
+		return -1;
+
 	/* Check the local xmls folder first */
 	d = opendir("./xmls");
 	if (!d) {
@@ -1580,15 +1584,7 @@ static bool debug_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	int nb_devices;
-
-	nb_devices = iio_context_get_devices_count(osc_ctx);
-	if (nb_devices > 0) {
-		ctx = osc_create_context();
-		return !!ctx;
-	}
-
-	return false;
+	return iio_context_get_devices_count(osc_ctx) > 0;
 }
 
 struct osc_plugin plugin = {

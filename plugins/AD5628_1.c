@@ -54,6 +54,11 @@ static int AD5628_1_init(GtkWidget *notebook)
 	GtkWidget *AD5628_1_panel;
 	struct iio_channel *chn;
 
+	ctx = osc_create_context();
+	if (!ctx)
+		return -1;
+	dev = iio_context_find_device(ctx, "ad5628-1");
+
 	builder = gtk_builder_new();
 
 	if (!gtk_builder_add_from_file(builder, "AD5628_1.glade", NULL))
@@ -164,14 +169,7 @@ static bool AD5628_1_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	if (!iio_context_find_device(osc_ctx, "ad5628-1"))
-		return false;
-
-	ctx = osc_create_context();
-	dev = iio_context_find_device(ctx, "ad5628-1");
-	if (!dev)
-		iio_context_destroy(ctx);
-	return !!dev;
+	return !!iio_context_find_device(osc_ctx, "ad5628-1");
 }
 
 struct osc_plugin plugin = {
