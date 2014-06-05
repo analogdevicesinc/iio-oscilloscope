@@ -27,6 +27,7 @@
 #include <fftw3.h>
 #include <iio.h>
 
+#include "libini2.h"
 #include "ini/ini.h"
 #include "osc.h"
 #include "datatypes.h"
@@ -42,7 +43,6 @@ GSList *plugin_list = NULL;
 gint capture_function = 0;
 gfloat plugin_fft_corr = 0.0;
 static GtkWidget  *main_window;
-static gint window_x_pos, window_y_pos;
 static GList *plot_list = NULL;
 static int num_capturing_plots;
 G_LOCK_DEFINE_STATIC(buffer_full);
@@ -56,7 +56,8 @@ struct iio_context *ctx;
 unsigned int num_devices = 0;
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
-static int plugin_restore_ini_state(char *plugin_name, char *attribute, const char *value);
+static void plugin_restore_ini_state(const char *plugin_name,
+		const char *attribute, int value);
 static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
 static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
@@ -1933,7 +1934,7 @@ void rx_update_labels(void)
 }
 
 /* Before we really start, let's load the last saved profile */
-static bool check_inifile(char *filepath)
+static bool check_inifile(const char *filepath)
 {
 	struct stat sts;
 	FILE *fd;
@@ -1964,60 +1965,23 @@ static bool check_inifile(char *filepath)
 
 static int load_default_profile (char *filename)
 {
-	const char *home_dir = getenv("HOME");
-	char buf[1024], tmp[1024];
-	int ret = 0, linecount, flag = 0;
-	FILE *fd;
-
 	/* Don't load anything */
 	if (filename && !strcmp(filename, "-"))
 		return 0;
 
-	if (filename) {
-		strncpy(buf, filename, 1023);
-		if (!check_inifile(buf))
-		filename = NULL;
+	if (filename && check_inifile(filename)) {
+		load_complete_profile(filename);
+	} else {
+		char buf[1024];
+		sprintf(buf, "%s/" DEFAULT_PROFILE_NAME, getenv("HOME"));
+
+		/* if this is bad, we don't load anything and
+		 * return success, so we still run */
+		if (check_inifile(buf))
+			load_complete_profile(buf);
 	}
 
-	if (!filename) {
-		sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
-	/* if this is bad, we don't load anything and
-	 * return success, so we still run */
-		if (!check_inifile(buf))
-			return 0;
-		flag = 1;
-	}
-
-	if (flag)
-		return 0;
-
-	if (ret > 0) {
-		sprintf(tmp, TMP_INI_FILE, get_filename_from_path(buf));
-		fd = fopen(tmp, "r");
-		if (!fd)
-			return 0;
-
-		linecount = 0;
-		while (NULL != fgets(tmp, 1023, fd)) {
-			linecount++;
-			if (linecount == ret) {
-				tmp[strlen(tmp) - 1] = 0;
-				if (!strcmp(tmp, "stop = 1")) {
-					return 0;
-				}
-				if (strcmp(tmp, "quit = 1")) {
-					create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
-						"INI parsing / test failure",
-						"Error parsing file '%s'\n\tline %i : '%s'\n",
-						buf, ret, tmp);
-				} else
-					ret = -ENOTTY;
-				break;
-			}
-		}
-	}
-
-	return ret;
+	return 0;
 }
 
 static void plugins_get_preferred_size(GSList *plist, int *width, int *height)
@@ -2116,32 +2080,36 @@ static char *prev_section;
 
 /*
  * Check for settings in sections [MultiOsc_Capture_Configuration1,2,..]
- * Handler should return nonzero on success, zero on error.
+ * Handler should return zero on success, a nagative number on error.
  */
-int capture_profile_handler(const char *section, const char *name, const char *value)
+int capture_profile_handler(const char *section,
+		const char *name, const char *value)
 {
 	static GtkWidget *plot = NULL;
-	int ret = 1;
+
+	if (strncmp(section, CAPTURE_INI_SECTION, sizeof(CAPTURE_INI_SECTION) - 1))
+		return -1;
 
 	/* Check if a new section has been reached */
-	if (strcmp(section, prev_section) != 0) {
-		g_free(prev_section);
+	if (!prev_section || strcmp(section, prev_section) != 0) {
+		if (prev_section)
+			g_free(prev_section);
 		/* Remember the last section */
 		prev_section = g_strdup(section);
 		/* Create a capture window and parse the line from ini file*/
 		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
 			plot = new_plot_cb(NULL, NULL);
 			osc_plot_set_visible(OSC_PLOT(plot), false);
-			ret = osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
+			return osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
 		}
 	} else {
 		/* Parse the line from ini file */
 		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
-			ret = osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
+			return osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
 		}
 	}
 
-	return ret;
+	return 0;
 }
 
 /*
@@ -2173,12 +2141,10 @@ int main_profile_handler(const char *section, const char *name, const char *valu
 			break;
 		case 2:
 			elems = g_strsplit(name, ".", 3);
-			if (!strcmp(elems[0], "plugin")) {
-				if (plugin_restore_ini_state(elems[1], elems[2], value) < 0)
-					goto unhandled;
-			} else {
+			if (!strcmp(elems[0], "plugin"))
+				plugin_restore_ini_state(elems[1], elems[2], atoi(value));
+			else
 				goto unhandled;
-			}
 			break;
 		default:
 			goto unhandled;
@@ -2238,52 +2204,38 @@ static gint plugin_names_cmp(gconstpointer a, gconstpointer b)
 	return strcmp(p->plugin->name, key);
 }
 
-static int plugin_restore_ini_state(char *plugin_name, char *attribute, const char *value)
+static void plugin_restore_ini_state(const char *plugin_name,
+		const char *attribute, int value)
 {
 	struct detachable_plugin *dplugin;
 	GSList *found_plugin;
 	GtkWindow *plugin_window;
 	GtkWidget *button;
-	int ret = 0;
 
 	found_plugin = g_slist_find_custom(dplugin_list,
 		(gconstpointer)plugin_name, plugin_names_cmp);
 	if (found_plugin == NULL)
-		return 0;
+		return;
 
 	dplugin = found_plugin->data;
 	button = dplugin->detach_attach_button;
+
 	if (!strcmp(attribute, "detached")) {
-		if (value) {
-			bool detached = atoi(value);
-			if ((dplugin->detached_state) ^ (detached))
-				g_signal_emit_by_name(button, "clicked", dplugin);
-		} else {
-			ret = -1;
-		}
+		if ((dplugin->detached_state) ^ (value))
+			g_signal_emit_by_name(button, "clicked", dplugin);
 	} else if (!strcmp(attribute, "x_pos")) {
 		plugin_window = GTK_WINDOW(gtk_widget_get_toplevel(button));
-		if (value) {
-			if (dplugin->detached_state == true) {
-				dplugin->xpos = atoi(value);
-				gtk_window_move(plugin_window, dplugin->xpos, dplugin->ypos);
-			}
-		} else
-			ret = -1;
+		if (dplugin->detached_state == true) {
+			dplugin->xpos = value;
+			gtk_window_move(plugin_window, dplugin->xpos, dplugin->ypos);
+		}
 	} else if (!strcmp(attribute, "y_pos")) {
 		plugin_window = GTK_WINDOW(gtk_widget_get_toplevel(button));
-		if (value) {
-			if (dplugin->detached_state == true) {
-				dplugin->ypos = atoi(value);
-				gtk_window_move(plugin_window, dplugin->xpos, dplugin->ypos);
-			}
-		} else
-			ret = -1;
-	} else {
-		ret = -1;
+		if (dplugin->detached_state == true) {
+			dplugin->ypos = value;
+			gtk_window_move(plugin_window, dplugin->xpos, dplugin->ypos);
+		}
 	}
-
-	return ret;
 }
 
 void main_setup_before_ini_load(void)
@@ -2296,6 +2248,47 @@ void main_setup_before_ini_load(void)
 void main_setup_after_ini_load(void)
 {
 	g_free(prev_section);
+}
+
+void save_complete_profile(const char *filename)
+{
+	GSList *node;
+
+	capture_profile_save(filename);
+
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		struct osc_plugin *plugin = node->data;
+		if (plugin->save_profile)
+			plugin->save_profile(filename);
+	}
+}
+
+void load_complete_profile(const char *filename)
+{
+	GSList *node;
+
+	close_all_plots();
+	destroy_all_plots();
+	foreach_in_ini(filename, capture_profile_handler);
+	if (prev_section)
+		g_free(prev_section);
+
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		struct osc_plugin *plugin = node->data;
+		char *value;
+		char buf[1024];
+
+		if (plugin->load_profile)
+			plugin->load_profile(filename);
+
+		snprintf(buf, sizeof(buf), "plugin.%s.detached", plugin->name);
+		value = read_token_from_ini(filename, OSC_INI_SECTION, buf);
+		if (!value)
+			continue;
+
+		plugin_restore_ini_state(plugin->name, "detached", !!atoi(value));
+		free(value);
+	}
 }
 
 void usage(char *program)
