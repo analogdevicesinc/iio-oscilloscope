@@ -44,13 +44,13 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o libini2.o
+osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini2.o
 	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
 
-osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h ./ini/ini.h
+osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
 	$(CC) osc.c -c $(CFLAGS)
 
-oscplot.o: oscplot.c oscplot.h osc.h datatypes.h iio_widget.h ./ini/ini.h
+oscplot.o: oscplot.c oscplot.h osc.h datatypes.h iio_widget.h libini2.h
 	$(CC) oscplot.c -c $(CFLAGS)
 
 datatypes.o: datatypes.c datatypes.h
@@ -73,9 +73,6 @@ trigger_dialog.o: trigger_dialog.c fru.h osc.h iio_widget.h
 
 xml_utils.o: xml_utils.c xml_utils.h
 	$(CC) xml_utils.c -c $(CFLAGS)
-
-ini.o: ./ini/ini.c ./ini/ini.h
-	$(CC) ./ini/ini.c -c $(CFLAGS)
 
 plugins/fmcomms2_hpc.so: plugins/fmcomms2.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -DSLAVE -shared -fPIC -o $@

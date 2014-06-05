@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <string.h>
 
+#include <ini.h>
 #include <iio.h>
 
 #include "../libini2.h"
@@ -30,7 +31,7 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
-#include "../ini/ini.h"
+#include "scpi.h"
 
 #define THIS_DRIVER "DAQ2"
 
