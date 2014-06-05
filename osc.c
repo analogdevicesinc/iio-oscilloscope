@@ -34,8 +34,6 @@
 #include "config.h"
 #include "osc_plugin.h"
 
-static int revert_xcorr = 0;
-
 extern int count_char_in_string(char c, const char *s);
 extern char *get_filename_from_path(const char *path);
 
@@ -937,14 +935,6 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 		return 0;
 	else
 		return iio_device_get_sample_size(dev);
-}
-
-void plugin_data_capture_revert_xcorr(OscPlot *plot, int revert)
-{
-	if (!plot)
-		return;
-
-	revert_xcorr = revert;
 }
 
 int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
