@@ -446,7 +446,7 @@ G_MODULE_EXPORT void load_save_profile_cb(GtkButton *button, Dialogs *data)
 				else
 					sprintf(name, "%s.ini", filename);
 
-				save_all_plugins(name, NULL);
+				save_complete_profile(name);
 				break;
 			case 2:
 				/* load_ini */
@@ -455,7 +455,7 @@ G_MODULE_EXPORT void load_save_profile_cb(GtkButton *button, Dialogs *data)
 				else
 					sprintf(name, "%s.ini", filename);
 
-				restore_all_plugins(name, NULL);
+				load_complete_profile(name);
 				break;
 			default:
 				printf("ret : %i\n", ret);
