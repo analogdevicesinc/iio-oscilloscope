@@ -61,6 +61,8 @@ GMutex *      osc_plot_get_marker_lock  (OscPlot *plot);
 bool          osc_plot_set_sample_count (OscPlot *plot, int sample_count);
 int           osc_plot_get_sample_count (OscPlot *plot);
 void          osc_plot_set_channel_state(OscPlot *plot, const char *dev, int channel, bool state);
+void          osc_plot_xcorr_revert     (OscPlot *plot, int revert);
+
 G_END_DECLS
 
 #endif /* __OSC_PLOT__ */

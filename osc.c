@@ -476,7 +476,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		settings->signal_b[i] = q_1[i] + I * i_1[i];
 	}
 
-	if (revert_xcorr)
+	if (settings->revert_xcorr)
 		xcorr(settings->signal_b, settings->signal_a, settings->xcorr_data, axis_length);
 	else
 		xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length);
@@ -939,8 +939,11 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 		return iio_device_get_sample_size(dev);
 }
 
-void plugin_data_capture_revert_xcorr(int revert)
+void plugin_data_capture_revert_xcorr(OscPlot *plot, int revert)
 {
+	if (!plot)
+		return;
+
 	revert_xcorr = revert;
 }
 

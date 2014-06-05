@@ -132,6 +132,7 @@ struct _constellation_settings {
 
 struct _cross_correlation_settings {
 	unsigned int num_samples;
+	int revert_xcorr;
 	fftw_complex *signal_a;
 	fftw_complex *signal_b;
 	fftw_complex *xcorr_data;

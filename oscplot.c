@@ -573,6 +573,18 @@ void osc_plot_set_channel_state(OscPlot *plot, const char *dev, int channel, boo
 	check_valid_setup(plot);
 }
 
+void osc_plot_xcorr_revert (OscPlot *plot, int revert)
+{
+	TrList *tr_list = plot->priv->transform_list;
+	Transform *transform;
+	int i;
+
+	for (i = 0; i < tr_list->size; i++) {
+		transform = tr_list->transforms[i];
+		XCORR_SETTINGS(transform)->revert_xcorr = revert;
+	}
+}
+
 static void osc_plot_dispose(GObject *object)
 {
 	G_OBJECT_CLASS(osc_plot_parent_class)->dispose(object);
@@ -820,6 +832,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 		CONSTELLATION_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	} else if (plot_type == XCORR_PLOT){
 		XCORR_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+		XCORR_SETTINGS(transform)->revert_xcorr = 0;
 		XCORR_SETTINGS(transform)->signal_a = NULL;
 		XCORR_SETTINGS(transform)->signal_b = NULL;
 		XCORR_SETTINGS(transform)->xcorr_data = NULL;
