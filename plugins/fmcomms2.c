@@ -56,10 +56,9 @@ static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
 
-static struct iio_widget glb_widgets[50];
-static struct iio_widget tx_widgets[50];
-static struct iio_widget rx_widgets[50];
 static unsigned int dcxo_coarse_num, dcxo_fine_num;
+static struct iio_widget widgets[100];
+static struct iio_widget *glb_widgets, *tx_widgets, *rx_widgets;
 static unsigned int rx1_gain, rx2_gain;
 static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_lo, tx_lo;
@@ -135,6 +134,7 @@ static const char *fmcomms2_sr_attribs[] = {
 	PHY_DEVICE".in_voltage_filter_fir_en",
 	PHY_DEVICE".out_voltage_filter_fir_en",
 	PHY_DEVICE".in_out_voltage_filter_fir_en",
+
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_frequency",
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_phase",
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_raw",
@@ -168,17 +168,6 @@ static const char *fmcomms2_sr_attribs[] = {
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
 };
-
-static void tx_update_values(void)
-{
-	iio_update_widgets(tx_widgets, num_tx);
-}
-
-static void rx_update_values(void)
-{
-	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels();
-}
 
 static void glb_settings_update_labels(void)
 {
@@ -435,18 +424,23 @@ static void dxco_widgets_update(void)
 		gtk_widget_show(glb_widgets[dcxo_fine_num].widget);
 }
 
+static void update_widgets(void)
+{
+	iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dev);
+	iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dds);
+	dac_data_manager_update_iio_widgets(dac_tx_manager);
+	dxco_widgets_update();
+}
+
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
-	iio_update_widgets(glb_widgets, num_glb);
-	iio_update_widgets(tx_widgets, num_tx);
-	iio_update_widgets(rx_widgets, num_rx);
-	dac_data_manager_update_iio_widgets(dac_tx_manager);
+	update_widgets();
+
 	filter_fir_update();
 	rx_update_labels();
 	glb_settings_update_labels();
 	rssi_update_labels();
 	rx_phase_rotation_update();
-	dxco_widgets_update();
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
@@ -880,6 +874,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	/* Bind the IIO device files to the GUI widgets */
 
+	glb_widgets = widgets;
+
 	/* Global settings */
 	iio_combo_box_init(&glb_widgets[num_glb++],
 		dev, NULL, "ensm_mode", "ensm_mode_available",
@@ -899,6 +895,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
 		dev, NULL, "dcxo_tune_fine", builder, "dcxo_fine_tune",
 		0);
+
+	rx_widgets = &glb_widgets[num_glb];
 
 	/* Receive Chain */
 
@@ -978,6 +976,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	/* Transmit Chain */
 
+	tx_widgets = &rx_widgets[num_rx];
+
 	ch0 = iio_device_find_channel(dev, "voltage0", true);
 	if (is_2rx_2tx)
 		ch1 = iio_device_find_channel(dev, "voltage1", true);
@@ -1022,12 +1022,9 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		load_profile(ini_fn);
 
 	/* Update all widgets with current values */
-	printf("Updating GLB widgets...\n");
-	iio_update_widgets(glb_widgets, num_glb);
-	printf("Updating TX values...\n");
-	tx_update_values();
-	printf("Updating RX values...\n");
-	rx_update_values();
+	printf("Updating widgets...\n");
+	update_widgets();
+	rx_update_labels();
 	printf("Updating FIR filter...\n");
 	filter_fir_update();
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
