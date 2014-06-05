@@ -28,15 +28,11 @@
 #include <iio.h>
 
 #include "libini2.h"
-#include "ini/ini.h"
 #include "osc.h"
 #include "datatypes.h"
 #include "int_fft.h"
 #include "config.h"
 #include "osc_plugin.h"
-
-extern int count_char_in_string(char c, const char *s);
-extern char *get_filename_from_path(const char *path);
 
 GSList *plugin_list = NULL;
 
@@ -44,7 +40,6 @@ gint capture_function = 0;
 gfloat plugin_fft_corr = 0.0;
 static GtkWidget *main_window;
 static GtkWidget *tooltips_en;
-static gint window_x_pos, window_y_pos;
 static GList *plot_list = NULL;
 static int num_capturing_plots;
 G_LOCK_DEFINE_STATIC(buffer_full);
@@ -63,6 +58,7 @@ static void plugin_restore_ini_state(const char *plugin_name,
 static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
 static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
+static void capture_profile_save(const char *filename);
 
 static char * dma_devices[] = {
 	"ad9122",
@@ -2127,7 +2123,7 @@ static char *prev_section;
  * Check for settings in sections [MultiOsc_Capture_Configuration1,2,..]
  * Handler should return zero on success, a nagative number on error.
  */
-int capture_profile_handler(const char *section,
+static int capture_profile_handler(const char *section,
 		const char *name, const char *value)
 {
 	static GtkWidget *plot = NULL;
@@ -2157,57 +2153,6 @@ int capture_profile_handler(const char *section,
 	return 0;
 }
 
-/*
- * Check for settings in the section for the main application
- */
-int main_profile_handler(const char *section, const char *name, const char *value)
-{
-	int elem_type;
-	gchar **elems = NULL;
-
-	elem_type = count_char_in_string('.', name);
-	switch(elem_type) {
-		case 0:
-			if (!strcmp(name, "window_x_pos")) {
-				if (value)
-					if (atoi(value)) {
-						window_x_pos = atoi(value);
-						gtk_window_move(GTK_WINDOW(main_window), window_x_pos, window_y_pos);
-					}
-			} else if (!strcmp(name, "window_y_pos")) {
-				if (value)
-					if (atoi(value)) {
-						window_y_pos = atoi(value);
-						gtk_window_move(GTK_WINDOW(main_window), window_x_pos, window_y_pos);
-					}
-			} else if (!strcmp(name, "tooltips_enable")) {
-				if (value)
-					gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tooltips_en), !!atoi(value));
-			} else {
-				goto unhandled;
-			}
-			break;
-		case 2:
-			elems = g_strsplit(name, ".", 3);
-			if (!strcmp(elems[0], "plugin"))
-				plugin_restore_ini_state(elems[1], elems[2], atoi(value));
-			else
-				goto unhandled;
-			break;
-		default:
-			goto unhandled;
-	};
-
-	return 1;
-
-unhandled:
-	printf("Unhandled tokens in ini file, \n"
-		"\tSection %s\n\tAttribute : %s\n\tValue: %s\n",
-		section, name, value);
-
-	return 0;
-}
-
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data)
 {
 	OscPlot *plot = OSC_PLOT(data);
@@ -2216,7 +2161,7 @@ static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data)
 	osc_plot_save_to_ini(plot, filename);
 }
 
-void capture_profile_save(const char *filename)
+static void capture_profile_save(const char *filename)
 {
 	FILE *fp;
 
@@ -2286,18 +2231,6 @@ static void plugin_restore_ini_state(const char *plugin_name,
 			gtk_window_move(plugin_window, dplugin->xpos, dplugin->ypos);
 		}
 	}
-}
-
-void main_setup_before_ini_load(void)
-{
-	close_all_plots();
-	destroy_all_plots();
-	prev_section = strdup("");
-}
-
-void main_setup_after_ini_load(void)
-{
-	g_free(prev_section);
 }
 
 void save_complete_profile(const char *filename)

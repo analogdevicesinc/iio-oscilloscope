@@ -22,7 +22,6 @@
 
 #include <iio.h>
 
-#include "ini/ini.h"
 #include "osc.h"
 #include "oscplot.h"
 #include "config.h"

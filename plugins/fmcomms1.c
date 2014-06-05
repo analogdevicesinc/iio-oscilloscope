@@ -28,7 +28,6 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
-#include "../ini/ini.h"
 #include "scpi.h"
 #include "dac_data_manager.h"
 
@@ -1015,7 +1014,7 @@ static const char *dds_scale_get_string_value(GtkWidget *scale)
 	return NULL;
 }
 
-static int parse_cal_handler(void* user, const char* section, const char* name, const char* value)
+static int parse_cal_handler(const char* section, const char* name, const char* value)
 {
 
 	if (MATCH_SECT("SYS_SETTINGS")) {
@@ -1077,17 +1076,12 @@ static int parse_cal_handler(void* user, const char* section, const char* name, 
 		else if (MATCH_NAME(ADC_Q_P))
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(Q_adc_phase_adj), atof(value));
 	}
-	return 1;
+	return 0;
 }
 
 void load_cal(char * resfile)
 {
-
-	if (ini_parse(resfile, parse_cal_handler, NULL) >= 0) {
-		/* Sucess */
-	}
-
-	return;
+	foreach_in_ini(resfile, parse_cal_handler);
 }
 
 static int cal_entry_add(struct s_cal_eeprom_v1 *eeprom)
