@@ -470,6 +470,7 @@ int osc_plot_get_marker_type (OscPlot *plot)
 void osc_plot_set_marker_type (OscPlot *plot, int mtype)
 {
 	plot->priv->marker_type = mtype;
+	set_marker_labels(plot, NULL, mtype);
 }
 
 void * osc_plot_get_markers_copy(OscPlot *plot)

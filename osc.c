@@ -880,11 +880,16 @@ enum marker_types plugin_get_plot_marker_type(OscPlot *plot, const char *device)
 
 void plugin_set_plot_marker_type(OscPlot *plot, const char *device, enum marker_types type)
 {
+	int plot_domain;
+
 	if (!plot || !device)
 		return;
 
-	if (!strcmp(osc_plot_get_active_device(plot), device))
-		return;
+	plot_domain = osc_plot_get_plot_domain(plot);
+	if (plot_domain == FFT_PLOT || plot_domain == XY_PLOT)
+		if (!strcmp(osc_plot_get_active_device(plot), device))
+			return;
+
 	osc_plot_set_marker_type(plot, type);
 }
 
