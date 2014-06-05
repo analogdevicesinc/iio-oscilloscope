@@ -48,8 +48,6 @@ static GtkBuilder *builder;
 
 #define CAL_TONE	1000000
 #define CAL_SCALE	0.12500
-#define CAL_PHASE	0
-#define CAL_FREQ	30720000
 #define MARKER_AVG	3
 
 //#define DEBUG
@@ -405,7 +403,6 @@ static int default_dds(long long freq, double scale)
 		for (j = 0; j < 8; j++) {
 			ret |= iio_channel_attr_write_longlong(dds_out[i][j], "frequency", freq);
 			ret |= iio_channel_attr_write_double(dds_out[i][j], "scale", scale);
-
 		}
 
 		tx_phase_rotation(i ? dev_dds_slave : dev_dds_master, 0.0);
@@ -591,8 +588,6 @@ static double tune_trx_phase_offset(struct iio_device *ldev,
 		get_markers(&offset, &y, &y1, &y2, &x1);
 		get_markers(&offset, &y, &y1, &y2, &x1);
 
-
-
 		if (i == 0) {
 			phase = calc_phase_offset(cal_freq, cal_tone, offset, y);
 			tune(ldev, phase * sign);
@@ -641,9 +636,6 @@ static double tune_trx_phase_offset(struct iio_device *ldev,
 	return phase * sign;
 }
 
-
-
-
 static void calibrate (gpointer button)
 {
 	double rx_phase_lpc, rx_phase_hpc, tx_phase_hpc;
@@ -652,11 +644,13 @@ static void calibrate (gpointer button)
 
 	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
 		printf("could not fine capture cores\n");
+		ret = -ENODEV;
 		goto calibrate_fail;
 	}
 
 	if (!dev_dds_master || !dev_dds_slave) {
 		printf("could not fine dds cores\n");
+		ret = -ENODEV;
 		goto calibrate_fail;
 	}
 
@@ -678,7 +672,6 @@ static void calibrate (gpointer button)
 	samples = exp2(ceil(log2(cal_freq/cal_tone)) + 1);
 
 	DBG("cal_tone %u cal_freq %u samples %d", cal_tone, cal_freq, samples);
-
 
 	gdk_threads_enter();
 	osc_plot_set_sample_count(plot_xcorr_4ch, samples);
@@ -740,9 +733,16 @@ static void calibrate (gpointer button)
 	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "1");
 	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "1");
 
+	ret = 0;
+
 calibrate_fail:
 
 	gdk_threads_enter();
+
+	create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
+			"FMCOMMS5", "Calibration finished %s",
+			ret ? "with Error" : "Successfully");
+
 	osc_plot_destroy(plot_time_8ch);
 	osc_plot_destroy(plot_xcorr_4ch);
 	gtk_widget_show(GTK_WIDGET(button));
