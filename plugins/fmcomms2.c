@@ -67,9 +67,8 @@ static gdouble scale_minus_infinite;
 
 static struct iio_buffer *dds_buffer;
 
-static struct iio_widget glb_widgets[50];
-static struct iio_widget tx_widgets[50];
-static struct iio_widget rx_widgets[50];
+static struct iio_widget widgets[100];
+static struct iio_widget *glb_widgets, *tx_widgets, *rx_widgets;
 static unsigned int rx1_gain, rx2_gain;
 static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_lo, tx_lo;
@@ -169,6 +168,7 @@ static const char *fmcomms2_sr_attribs[] = {
 	PHY_DEVICE".in_voltage_filter_fir_en",
 	PHY_DEVICE".out_voltage_filter_fir_en",
 	PHY_DEVICE".in_out_voltage_filter_fir_en",
+
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_frequency",
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_phase",
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_raw",
@@ -314,17 +314,6 @@ static void tx_channel_list_init(GtkBuilder *builder)
 	g_builder_connect_signal(builder, "cellrenderertogglechannel", "toggled",
 			G_CALLBACK(tx_channel_toggled), NULL);
 	tx_channels_check_valid_setup();
-}
-
-static void tx_update_values(void)
-{
-	iio_update_widgets(tx_widgets, num_tx);
-}
-
-static void rx_update_values(void)
-{
-	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels();
 }
 
 static void glb_settings_update_labels(void)
@@ -566,11 +555,15 @@ static void rx_phase_rotation_update()
 	}
 }
 
+static void update_widgets(void)
+{
+	iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dev);
+	iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dds);
+}
+
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
-	iio_update_widgets(glb_widgets, num_glb);
-	iio_update_widgets(tx_widgets, num_tx);
-	iio_update_widgets(rx_widgets, num_rx);
+	update_widgets();
 	filter_fir_update();
 	rx_update_labels();
 	glb_settings_update_labels();
@@ -1602,6 +1595,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	/* Bind the IIO device files to the GUI widgets */
 
+	glb_widgets = widgets;
+
 	/* Global settings */
 	iio_combo_box_init(&glb_widgets[num_glb++],
 		dev, NULL, "ensm_mode", "ensm_mode_available",
@@ -1619,6 +1614,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
 		dev, NULL, "dcxo_tune_fine", builder, "dcxo_fine_tune",
 		0);
+
+	rx_widgets = &glb_widgets[num_glb];
 
 	/* Receive Chain */
 
@@ -1686,6 +1683,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_add_progress(&rx_widgets[num_rx++]);
 
 	/* Transmit Chain */
+
+	tx_widgets = &rx_widgets[num_rx];
 
 	ch0 = iio_device_find_channel(dev, "voltage0", true);
 	if (is_2rx_2tx)
@@ -1846,12 +1845,9 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		load_profile(ini_fn);
 
 	/* Update all widgets with current values */
-	printf("Updating GLB widgets...\n");
-	iio_update_widgets(glb_widgets, num_glb);
-	printf("Updating TX values...\n");
-	tx_update_values();
-	printf("Updating RX values...\n");
-	rx_update_values();
+	printf("Updating widgets...\n");
+	update_widgets();
+	rx_update_labels();
 	printf("Updating FIR filter...\n");
 	filter_fir_update();
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
