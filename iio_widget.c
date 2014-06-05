@@ -15,6 +15,11 @@
 #include "osc.h"
 #include "iio_widget.h"
 
+struct update_widgets_params {
+	struct iio_widget *widgets;
+	unsigned int nb;
+};
+
 void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
 	const gchar *signal, GCallback callback, gpointer data)
 {
@@ -54,7 +59,9 @@ void g_builder_bind_property(GtkBuilder *builder,
 static void iio_widget_init(struct iio_widget *widget,
 	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	const char *attr_name_avail, GtkWidget *gtk_widget, void *priv,
-	void (*update)(struct iio_widget *), void (*save)(struct iio_widget *))
+	void (*update)(struct iio_widget *),
+	void (*update_value)(struct iio_widget *, const char *, size_t),
+	void (*save)(struct iio_widget *))
 {
 	if (!gtk_widget) {
 		const char *name = iio_device_get_name(dev) ?:
@@ -68,29 +75,24 @@ static void iio_widget_init(struct iio_widget *widget,
 	widget->attr_name_avail = attr_name_avail;
 	widget->widget = gtk_widget;
 	widget->update = update;
+	widget->update_value = update_value;
 	widget->save = save;
 	widget->priv = priv;
 }
 
-static void iio_spin_button_update(struct iio_widget *widget)
+static void iio_spin_button_update_value(struct iio_widget *widget,
+		const char *src, size_t len)
 {
 	gdouble freq, mag, min, max;
 	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
-	int ret;
+	char *end;
 
 	mag = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget->widget));
 	gtk_spin_button_get_range(GTK_SPIN_BUTTON(widget->widget), &min, &max);
-	if (widget->chn)
-		ret = iio_channel_attr_read_double(widget->chn,
-				widget->attr_name, &freq);
-	else
-		ret = iio_device_attr_read_double(widget->dev,
-				widget->attr_name, &freq);
-	if (ret < 0) {
-		if (ret == -ENODEV)
-			gtk_widget_hide(widget->widget);
+
+	freq = strtod(src, &end);
+	if (end == src)
 		return;
-	}
 
 	if (widget->priv_convert_function)
 		freq = ((double (*)(double, bool))widget->priv_convert_function)(freq, true);
@@ -107,6 +109,23 @@ static void iio_spin_button_update(struct iio_widget *widget)
 	}
 
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON (widget->widget), freq);
+}
+
+static void iio_spin_button_update(struct iio_widget *widget)
+{
+	ssize_t ret;
+	char buf[0x100];
+
+	if (widget->chn)
+		ret = iio_channel_attr_read(widget->chn,
+				widget->attr_name, buf, sizeof(buf));
+	else
+		ret = iio_device_attr_read(widget->dev,
+				widget->attr_name, buf, sizeof(buf));
+	if (ret > 0)
+		iio_spin_button_update_value(widget, buf, ret);
+	else if (ret == -ENODEV)
+		gtk_widget_hide(widget->widget);
 }
 
 static void spin_button_save(struct iio_widget *widget, bool is_double)
@@ -156,7 +175,8 @@ void iio_spin_button_init(struct iio_widget *widget, struct iio_device *dev,
 	GtkWidget *spin_button, const gdouble *scale)
 {
 	iio_widget_init(widget, dev, chn, attr_name, NULL, spin_button,
-		(void *)scale, iio_spin_button_update, iio_spin_button_savedbl);
+		(void *)scale, iio_spin_button_update,
+		iio_spin_button_update_value, iio_spin_button_savedbl);
 }
 
 void iio_spin_button_int_init(struct iio_widget *widget, struct iio_device *dev,
@@ -164,7 +184,8 @@ void iio_spin_button_int_init(struct iio_widget *widget, struct iio_device *dev,
 	GtkWidget *spin_button, const gdouble *scale)
 {
 	iio_widget_init(widget, dev, chn, attr_name, NULL, spin_button,
-		(void *)scale, iio_spin_button_update, iio_spin_button_save);
+		(void *)scale, iio_spin_button_update,
+		iio_spin_button_update_value, iio_spin_button_save);
 }
 
 void iio_spin_button_s64_init(struct iio_widget *widget, struct iio_device *dev,
@@ -172,7 +193,8 @@ void iio_spin_button_s64_init(struct iio_widget *widget, struct iio_device *dev,
 	GtkWidget *spin_button, const gdouble *scale)
 {
 	iio_widget_init(widget, dev, chn, attr_name, NULL, spin_button,
-		(void *)scale, iio_spin_button_update, iio_spin_button_save);
+		(void *)scale, iio_spin_button_update,
+		iio_spin_button_update_value, iio_spin_button_save);
 }
 
 static void iio_toggle_button_save(struct iio_widget *widget)
@@ -188,27 +210,34 @@ static void iio_toggle_button_save(struct iio_widget *widget)
 				widget->attr_name, active);
 }
 
-static void iio_toggle_button_update(struct iio_widget *widget)
+static void iio_toggle_button_update_value(struct iio_widget *widget,
+		const char *src, size_t len)
 {
 	bool active;
-	int ret;
 
-	if (widget->chn)
-		ret = iio_channel_attr_read_bool(widget->chn,
-				widget->attr_name, &active);
-	else
-		ret = iio_device_attr_read_bool(widget->dev,
-				widget->attr_name, &active);
-
-	if (ret < 0) {
-		if (ret == -ENODEV)
-			gtk_widget_hide(widget->widget);
-
+	if (len != 2)
 		return;
-	}
 
+	active = src[0] == '1' || src[0] == 'Y';
 	active = widget->priv ? !active : active;
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (widget->widget), active);
+}
+
+static void iio_toggle_button_update(struct iio_widget *widget)
+{
+	char buf[0x100];
+	ssize_t ret;
+
+	if (widget->chn)
+		ret = iio_channel_attr_read(widget->chn,
+				widget->attr_name, buf, sizeof(buf));
+	else
+		ret = iio_device_attr_read(widget->dev,
+				widget->attr_name, buf, sizeof(buf));
+	if (ret > 0)
+		iio_toggle_button_update_value(widget, buf, ret);
+	else if (ret == -ENODEV)
+		gtk_widget_hide(widget->widget);
 }
 
 static void iio_toggle_button_init(struct iio_widget *widget,
@@ -216,7 +245,8 @@ static void iio_toggle_button_init(struct iio_widget *widget,
 	GtkWidget *toggle_button, const bool invert)
 {
 	iio_widget_init(widget, dev, chn, attr_name, NULL, toggle_button,
-		(void *)invert, iio_toggle_button_update, iio_toggle_button_save);
+		(void *)invert, iio_toggle_button_update,
+		iio_toggle_button_update_value, iio_toggle_button_save);
 }
 
 static void iio_combo_box_save(struct iio_widget *widget)
@@ -233,25 +263,17 @@ static void iio_combo_box_save(struct iio_widget *widget)
 		iio_device_attr_write(widget->dev, widget->attr_name, text);
 }
 
-static void iio_combo_box_update(struct iio_widget *widget)
+static void iio_combo_box_update_value(struct iio_widget *widget,
+		const char *src, size_t len)
 {
 	int (*compare)(const char *, const char *);
 	GtkComboBox *combo_box;
 	GtkTreeIter iter;
 	GtkTreeModel *model;
-	char text[1024], text2[1024], *item;
+	char text2[1024], *item;
 	gchar **items_avail = NULL, **saveditems_avail;
 	gboolean has_iter;
 	ssize_t ret;
-
-	if (widget->chn)
-		ret = iio_channel_attr_read(widget->chn,
-				widget->attr_name, text, sizeof(text));
-	else
-		ret = iio_device_attr_read(widget->dev,
-				widget->attr_name, text, sizeof(text));
-	if (ret < 0)
-		return;
 
 	combo_box = GTK_COMBO_BOX(widget->widget);
 	model = gtk_combo_box_get_model(combo_box);
@@ -289,7 +311,7 @@ static void iio_combo_box_update(struct iio_widget *widget)
 	has_iter = gtk_tree_model_get_iter_first(model, &iter);
 	while (has_iter) {
 		gtk_tree_model_get(model, &iter, 0, &item, -1);
-		if (compare (text, item) == 0) {
+		if (compare (src, item) == 0) {
 			gtk_combo_box_set_active_iter(combo_box, &iter);
 			g_free(item);
 			break;
@@ -299,12 +321,28 @@ static void iio_combo_box_update(struct iio_widget *widget)
 	}
 }
 
+static void iio_combo_box_update(struct iio_widget *widget)
+{
+	ssize_t len;
+	char text[1024];
+
+	if (widget->chn)
+		len = iio_channel_attr_read(widget->chn,
+				widget->attr_name, text, sizeof(text));
+	else
+		len = iio_device_attr_read(widget->dev,
+				widget->attr_name, text, sizeof(text));
+	if (len > 0)
+		iio_combo_box_update_value(widget, text, len);
+}
+
 void iio_combo_box_init(struct iio_widget *widget, struct iio_device *dev,
 	struct iio_channel *chn, const char *attr_name, const char *attr_name_avail,
 	GtkWidget *combo_box, int (*compare)(const char *a, const char *b))
 {
 	iio_widget_init(widget, dev, chn, attr_name, attr_name_avail, combo_box,
-		(void *)compare, iio_combo_box_update, iio_combo_box_save);
+		(void *)compare, iio_combo_box_update,
+		iio_combo_box_update_value, iio_combo_box_save);
 }
 
 void iio_widget_update(struct iio_widget *widget)
@@ -324,6 +362,59 @@ void iio_update_widgets(struct iio_widget *widgets, unsigned int num_widgets)
 
 	for (i = 0; i < num_widgets; i++)
 		iio_widget_update(&widgets[i]);
+}
+
+static int __cb_dev_update(struct iio_device *dev, const char *attr,
+		const char *value, size_t len, void *d)
+{
+	unsigned int i;
+	struct update_widgets_params *params = d;
+
+	for (i = 0; i < params->nb; i++) {
+		struct iio_widget *widget = &params->widgets[i];
+		if (widget->update_value && !widget->chn &&
+				widget->dev == dev &&
+				!strcmp(widget->attr_name, attr)) {
+			widget->update_value(widget, value, len);
+			return 0;
+		}
+	}
+
+	return 0;
+}
+
+static int __cb_chn_update(struct iio_channel *chn, const char *attr,
+		const char *value, size_t len, void *d)
+{
+	unsigned int i;
+	struct update_widgets_params *params = d;
+
+	for (i = 0; i < params->nb; i++) {
+		struct iio_widget *widget = &params->widgets[i];
+		if (widget->update_value && widget->chn == chn &&
+				!strcmp(widget->attr_name, attr)) {
+			widget->update_value(widget, value, len);
+			return 0;
+		}
+	}
+
+	return 0;
+}
+
+void iio_update_widgets_of_device(struct iio_widget *widgets,
+		unsigned int num_widgets, struct iio_device *dev)
+{
+	unsigned int i;
+	struct update_widgets_params params = {
+		.widgets = widgets,
+		.nb = num_widgets,
+	};
+
+	iio_device_attr_read_all(dev, __cb_dev_update, &params);
+
+	for (i = 0; i < iio_device_get_channels_count(dev); i++)
+		iio_channel_attr_read_all(iio_device_get_channel(dev, i),
+				__cb_chn_update, &params);
 }
 
 void iio_save_widgets(struct iio_widget *widgets, unsigned int num_widgets)
