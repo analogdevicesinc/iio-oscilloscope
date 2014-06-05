@@ -39,6 +39,7 @@ static struct iio_device *dev_dds_slave;
 struct iio_device *cf_ad9361_lpc, *cf_ad9361_hpc;
 
 static struct iio_channel *dds_out[2][8];
+OscPlot *plot_time_8ch, *plot_xcorr_4ch;
 
 static gint this_page;
 static GtkNotebook *nbook;
@@ -580,8 +581,8 @@ static double tune_trx_phase_offset(struct iio_device *ldev,
 			double sign, double abort,
 			void (*tune)(struct iio_device *, gdouble))
 {
-	long long y, y1, y2, pdelta, delta = LLONG_MAX,
-		min_delta = LLONG_MAX, a, b, x1;
+	long long y, y1, y2, delta = LLONG_MAX,
+		min_delta = LLONG_MAX, x1;
 	int i, offset, pos = 0, neg = 0;
 	double min_phase, phase = 0.0, step = 1.0;
 
@@ -589,6 +590,8 @@ static double tune_trx_phase_offset(struct iio_device *ldev,
 
 		get_markers(&offset, &y, &y1, &y2, &x1);
 		get_markers(&offset, &y, &y1, &y2, &x1);
+
+
 
 		if (i == 0) {
 			phase = calc_phase_offset(cal_freq, cal_tone, offset, y);
@@ -600,7 +603,6 @@ static double tune_trx_phase_offset(struct iio_device *ldev,
 		if (offset != 0) {
 			phase += (360.0 / ((cal_freq / cal_tone) / offset) / 2);
 			tune(ldev, phase * sign);
-			step = 1.0;
 			continue;
 		}
 
@@ -641,20 +643,17 @@ static double tune_trx_phase_offset(struct iio_device *ldev,
 
 
 
+
 static void calibrate (gpointer button)
 {
-	double rx_phase_lpc, rx_phase_hpc, /*tx_phase_lpc,*/ tx_phase_hpc;
+	double rx_phase_lpc, rx_phase_hpc, tx_phase_hpc;
 	long long cal_tone, cal_freq;
-	GtkWidget *tx_phase;
-	int ret;
-
+	int ret, samples;
 
 	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
 		printf("could not fine capture cores\n");
 		goto calibrate_fail;
 	}
-
-	tx_phase = GTK_WIDGET(gtk_builder_get_object(builder, "tx_phase"));
 
 	if (!dev_dds_master || !dev_dds_slave) {
 		printf("could not fine dds cores\n");
@@ -662,9 +661,6 @@ static void calibrate (gpointer button)
 	}
 
 	mcs_cb(NULL, NULL);
-
-	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "0");
-	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "0");
 
 	/*
 	 * set some logical defaults / assumptions
@@ -679,7 +675,21 @@ static void calibrate (gpointer button)
 	iio_channel_attr_read_longlong(dds_out[0][0], "frequency", &cal_tone);
 	iio_channel_attr_read_longlong(dds_out[0][0], "sampling_frequency", &cal_freq);
 
-	DBG("cal_tone %d cal_freq %d", cal_tone, cal_freq);
+	samples = exp2(ceil(log2(cal_freq/cal_tone)) + 1);
+
+	DBG("cal_tone %u cal_freq %u samples %d", cal_tone, cal_freq, samples);
+
+
+	gdk_threads_enter();
+	osc_plot_set_sample_count(plot_xcorr_4ch, samples);
+	osc_plot_set_sample_count(plot_time_8ch, samples);
+	osc_plot_draw_start(plot_time_8ch);
+	osc_plot_draw_start(plot_xcorr_4ch);
+	gdk_threads_leave();
+
+
+	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "0");
+	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "0");
 
 	rx_phase_rotation(cf_ad9361_lpc, 0.0);
  	rx_phase_rotation(cf_ad9361_hpc, 0.0);
@@ -688,7 +698,7 @@ static void calibrate (gpointer button)
 	 * Calibrate RX:
 	 * 1 TX1B_B (HPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
 	 */
-	plugin_data_capture_revert_xcorr(false);
+	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
 	__cal_switch_ports_enable_cb(1);
 	sleep(0.3);
 	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, cal_freq, cal_tone, 1.0, 0.01, rx_phase_rotation);
@@ -699,34 +709,19 @@ static void calibrate (gpointer button)
 	 * 3 TX1B_B (HPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
 	 */
 
-	plugin_data_capture_revert_xcorr(true);
+	osc_plot_xcorr_revert(plot_xcorr_4ch, true);
 	rx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(3);
 	sleep(0.3);
 	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, cal_freq, cal_tone, 1.0, 0.01, rx_phase_rotation);
 	DBG("rx_phase_lpc %f", rx_phase_lpc);
 
-#if 0
-	/* Calibrate TX
-	 * 2 TX1B_A (LPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
-	 */
-	rx_phase_rotation(cf_ad9361_lpc, 0.0);
-	__cal_switch_ports_enable_cb(2);
-	plugin_data_capture_revert_xcorr(false);
-
-	sleep(0.3);
-	get_markers(&offset, &mag, &mag1, &mag2);
-	get_markers(&offset, &mag, &mag1, &mag2);
-	tx_phase_lpc = calc_phase_offset(CAL_FREQ, CAL_TONE, offset, mag);
-	printf("tx_phase_lpc %f\n", tx_phase_lpc);
-#endif
-
 	/*
 	 * Calibrate TX:
 	 * 4 TX1B_A (LPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
 	 */
 
-	plugin_data_capture_revert_xcorr(true);
+	osc_plot_xcorr_revert(plot_xcorr_4ch, true);
 	rx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(4);
 	sleep(0.4);
@@ -736,16 +731,20 @@ static void calibrate (gpointer button)
 
 	rx_phase_rotation(cf_ad9361_hpc, rx_phase_hpc);
 
-	gtk_range_set_value(GTK_RANGE(tx_phase), scale_phase_0_360(tx_phase_hpc));
+	gtk_range_set_value(GTK_RANGE(GTK_WIDGET(gtk_builder_get_object(builder,
+			"tx_phase"))), scale_phase_0_360(tx_phase_hpc));
 
-	plugin_data_capture_revert_xcorr(false);
+	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
 	__cal_switch_ports_enable_cb(0);
 
 	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "1");
 	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "1");
 
 calibrate_fail:
+
 	gdk_threads_enter();
+	osc_plot_destroy(plot_time_8ch);
+	osc_plot_destroy(plot_xcorr_4ch);
 	gtk_widget_show(GTK_WIDGET(button));
 	gdk_threads_leave();
 
@@ -754,6 +753,28 @@ calibrate_fail:
 
 void do_calibration (GtkWidget *widget, gpointer data)
 {
+
+	int i;
+
+	plot_time_8ch = plugin_get_new_plot();
+	plot_xcorr_4ch = plugin_get_new_plot();
+
+	if (plot_time_8ch && plot_xcorr_4ch) {
+
+		for (i = 0; i < 8; i++)
+			osc_plot_set_channel_state(plot_time_8ch, "cf-ad9361-lpc", i, true);
+		osc_plot_set_domain(plot_time_8ch, TIME_PLOT);
+
+		osc_plot_set_channel_state(plot_xcorr_4ch, "cf-ad9361-lpc", 0, true);
+		osc_plot_set_channel_state(plot_xcorr_4ch, "cf-ad9361-lpc", 1, true);
+		osc_plot_set_channel_state(plot_xcorr_4ch, "cf-ad9361-lpc", 4, true);
+		osc_plot_set_channel_state(plot_xcorr_4ch, "cf-ad9361-lpc", 5, true);
+
+		osc_plot_set_domain(plot_xcorr_4ch, XCORR_PLOT);
+		osc_plot_set_marker_type(plot_xcorr_4ch,  MARKER_PEAK);
+	} else
+		return;
+
 	g_thread_new("Calibrate_thread", (void *) &calibrate, data);
 	gtk_widget_hide(GTK_WIDGET(data));
 }
