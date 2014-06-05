@@ -49,7 +49,7 @@ static void rescale_databox(OscPlotPrivate *priv, GtkDatabox *box, gfloat border
 static void call_all_transform_functions(OscPlotPrivate *priv);
 static void capture_start(OscPlotPrivate *priv);
 static void plot_profile_save(OscPlot *plot, char *filename);
-static void add_markers(OscPlot *plot, Transform *transform);
+static void transform_add_plot_markers(OscPlot *plot, Transform *transform);
 static void osc_plot_finalize(GObject *object);
 static void osc_plot_dispose(GObject *object);
 static void save_as(OscPlot *plot, const char *filename, int type);
@@ -951,13 +951,20 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	}
 }
 
-static void add_markers(OscPlot *plot, Transform *transform)
+static void markers_init(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 	GtkDatabox *databox = GTK_DATABOX(plot->priv->databox);
 	struct marker_type *markers = priv->markers;
+	const char *empty_text = " ";
 	char buf[10];
 	int i;
+
+	/* Clear marker information text box */
+	if (priv->tbuf)
+		gtk_text_buffer_set_text(priv->tbuf, empty_text, -1);
+
+	priv->markers_copy = NULL;
 
 	for (i = 0; i <= MAX_MARKERS; i++) {
 		markers[i].x = 0.0f;
@@ -968,7 +975,8 @@ static void add_markers(OscPlot *plot, Transform *transform)
 			10, GTK_DATABOX_MARKERS_TRIANGLE);
 		gtk_databox_graph_add(databox, markers[i].graph);
 		sprintf(buf, "?%i", i);
-		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph), 0, GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph),
+			0, GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
 		if (priv->marker_type == MARKER_OFF)
 			gtk_databox_graph_set_hide(markers[i].graph, TRUE);
 		else
@@ -976,6 +984,11 @@ static void add_markers(OscPlot *plot, Transform *transform)
 	}
 	if (priv->marker_type != MARKER_OFF)
 		set_marker_labels(plot, NULL, priv->marker_type);
+}
+
+static void transform_add_plot_markers(OscPlot *plot, Transform *transform)
+{
+	OscPlotPrivate *priv = plot->priv;
 
 	transform->has_the_marker = true;
 	priv->tr_with_marker = transform;
@@ -1340,17 +1353,10 @@ static void plot_setup(OscPlot *plot)
 	int max_x_axis = 0;
 	gfloat max_adc_freq = 0;
 	GtkDataboxGraph *graph;
-	const char *empty_text = " ";
 	int i;
 
 	gtk_databox_graph_remove_all(GTK_DATABOX(priv->databox));
-
-	/* Remove FFT Marker info */
-	if (priv->tbuf)
-		gtk_text_buffer_set_text(priv->tbuf, empty_text, -1);
-
-	priv->markers_copy = NULL;
-
+	markers_init(plot);
 	for (i = 0; i < tr_list->size; i++) {
 		transform = tr_list->transforms[i];
 		Transform_setup(transform);
@@ -1373,7 +1379,7 @@ static void plot_setup(OscPlot *plot)
 		if (priv->active_transform_type == FFT_TRANSFORM ||
 			priv->active_transform_type == COMPLEX_FFT_TRANSFORM ||
 			priv->active_transform_type == CROSS_CORRELATION_TRANSFORM)
-			add_markers(plot, transform);
+			transform_add_plot_markers(plot, transform);
 
 		gtk_databox_graph_add(GTK_DATABOX(priv->databox), graph);
 	}
