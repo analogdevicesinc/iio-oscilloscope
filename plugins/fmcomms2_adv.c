@@ -1028,25 +1028,13 @@ void bist_tone_cb (GtkWidget *widget, gpointer data)
 
 }
 
-static void connect_widget(GtkBuilder *builder, struct w_info *item)
+static void connect_widget(GtkBuilder *builder, struct w_info *item, int val)
 {
-	GtkWidget *widget;
 	char *signal = NULL;
-	int val;
-	long long value;
+	GtkWidget *widget;
 
 	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
-	val = iio_device_debug_attr_read_longlong(dev, item->name, &value);
 
-	/* check for errors, in case there is a kernel <-> userspace mismatch */
-	if (val < 0) {
-		printf("%s:%s: error accessing '%s' (%s)\n",
-			__FILE__, __func__, item->name, strerror(-val));
-		gtk_widget_hide(widget);
-		return;
-	}
-
-	val = (int) value;
 	switch (item->type) {
 		case CHECKBOX:
 			signal = "toggled";
@@ -1067,6 +1055,27 @@ static void connect_widget(GtkBuilder *builder, struct w_info *item)
 
 	g_builder_connect_signal(builder, item->name, signal,
 		G_CALLBACK(signal_handler_cb), item);
+}
+
+static int __connect_widget(struct iio_device *dev, const char *attr,
+		const char *value, size_t len, void *d)
+{
+	unsigned int i, nb_items = ARRAY_SIZE(attrs);
+	GtkBuilder *builder = (GtkBuilder *) d;
+
+	for (i = 0; i < nb_items; i++) {
+		if (!strcmp(attrs[i].name, attr)) {
+			connect_widget(builder, &attrs[i], atoi(value));
+			return 0;
+		}
+	}
+
+	return 0;
+}
+
+static int connect_widgets(GtkBuilder *builder)
+{
+	return iio_device_debug_attr_read_all(dev, __connect_widget, builder);
 }
 
 void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
@@ -1105,7 +1114,6 @@ static void load_profile(const char *ini_fn)
 static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkWidget *fmcomms2adv_panel;
-	int i;
 
 	ctx = osc_create_context();
 	if (!ctx)
@@ -1129,8 +1137,7 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 
 	fmcomms2adv_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms2adv_panel"));
 
-	for (i = 0; i < ARRAY_SIZE(attrs); i++)
-		connect_widget(builder, &attrs[i]);
+	connect_widgets(builder);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(
 		GTK_WIDGET(gtk_builder_get_object(builder, "bist_tone"))), 0);
@@ -1163,7 +1170,6 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 
 	g_builder_connect_signal(builder, "c1i", "toggled",
 		G_CALLBACK(bist_tone_cb), builder);
-
 
 	if (dev_slave) {
 		g_builder_connect_signal(builder, "mcs_sync", "clicked",
