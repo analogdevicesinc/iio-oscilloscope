@@ -58,6 +58,7 @@ static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
 static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
 static void capture_profile_save(const char *filename);
+static void load_profile(const char *filename, bool load_plugins);
 
 static char * dma_devices[] = {
 	"ad9122",
@@ -1967,7 +1968,7 @@ static int load_default_profile (char *filename)
 		return 0;
 
 	if (filename && check_inifile(filename)) {
-		load_complete_profile(filename);
+		load_profile(filename, false);
 	} else {
 		char buf[1024];
 		sprintf(buf, "%s/" DEFAULT_PROFILE_NAME, getenv("HOME"));
@@ -1975,7 +1976,7 @@ static int load_default_profile (char *filename)
 		/* if this is bad, we don't load anything and
 		 * return success, so we still run */
 		if (check_inifile(buf))
-			load_complete_profile(buf);
+			load_profile(buf, false);
 	}
 
 	return 0;
@@ -2200,7 +2201,7 @@ void save_complete_profile(const char *filename)
 	}
 }
 
-void load_complete_profile(const char *filename)
+static void load_profile(const char *filename, bool load_plugins)
 {
 	GSList *node;
 
@@ -2215,7 +2216,7 @@ void load_complete_profile(const char *filename)
 		char *value;
 		char buf[1024];
 
-		if (plugin->load_profile)
+		if (load_plugins && plugin->load_profile)
 			plugin->load_profile(filename);
 
 		snprintf(buf, sizeof(buf), "plugin.%s.detached", plugin->name);
@@ -2226,6 +2227,11 @@ void load_complete_profile(const char *filename)
 		plugin_restore_ini_state(plugin->name, "detached", !!atoi(value));
 		free(value);
 	}
+}
+
+void load_complete_profile(const char *filename)
+{
+	load_profile(filename, true);
 }
 
 void usage(char *program)
