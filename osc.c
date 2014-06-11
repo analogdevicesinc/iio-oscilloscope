@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <complex.h>
+#include <poll.h>
 
 #include <fftw3.h>
 
@@ -46,7 +47,6 @@ static gfloat *fft_channel = NULL;
 static gfloat fft_corr = 0.0;
 gfloat plugin_fft_corr = 0.0;
 
-gint capture_function = 0;
 static int buffer_fd = -1;
 
 static struct buffer data_buffer;
@@ -117,6 +117,16 @@ static struct plugin_check_fct *setup_check_functions = NULL;
 static int num_check_fcts = 0;
 static bool profile_loaded_scale;
 static gint line_thickness = 1;
+
+static GThread *plot_redraw_thid;
+static GThread *capture_thid;
+static volatile bool capture_thread_kill;
+static volatile bool plot_redraw_thread_kill;
+static volatile bool data_ready;
+static volatile bool valid_data;
+static volatile bool capture_failed;
+static GMutex data_mutex;
+static GCond data_cond;
 
 const char *current_device;
 
@@ -295,6 +305,15 @@ static int sample_iio_data_oneshot(struct buffer *buf)
 static int sample_iio_data_continuous(int buffer_fd, struct buffer *buf)
 {
 	int ret;
+	struct pollfd pfd;
+
+	pfd.fd = buffer_fd;
+	pfd.events = POLLIN;
+	ret = poll(&pfd, 1, 5000); // 5 second timeout
+	if (ret == 0) {
+		printf("timeout, abort sampling\n");
+		return -EAGAIN;
+	}
 
 	ret = read(buffer_fd, buf->data + buf->available,
 			buf->size - buf->available);
@@ -316,7 +335,7 @@ static int sample_iio_data_oneshot(struct buffer *buf)
 {
 	int fd, ret;
 
-	fd = buffer_open(buf->size, 0);
+	fd = buffer_open(buf->size, O_NONBLOCK);
 	if (fd < 0)
 		return fd;
 
@@ -521,61 +540,6 @@ static void demux_data_stream(void *data_in, gfloat **data_out,
 		}
 	}
 
-}
-
-static void abort_sampling(void)
-{
-	if (buffer_fd >= 0) {
-		buffer_close(buffer_fd);
-		buffer_fd = -1;
-	}
-	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button),
-			FALSE);
-	G_TRYLOCK(buffer_full);
-	G_UNLOCK(buffer_full);
-	G_TRYLOCK(markers_copy);
-	G_UNLOCK(markers_copy);
-}
-
-static gboolean time_capture_func(GtkDatabox *box)
-{
-	unsigned int n;
-	int ret;
-
-	if (!GTK_IS_DATABOX(box))
-		return FALSE;
-
-	ret = sample_iio_data(&data_buffer);
-	if (ret < 0) {
-		abort_sampling();
-		fprintf(stderr, "Failed to capture samples: %s\n", strerror(-ret));
-		return FALSE;
-	}
-
-	n = data_buffer.available / bytes_per_sample;
-
-	demux_data_stream(data_buffer.data, channel_data, n, current_sample,
-			num_samples, channels, num_channels);
-	current_sample = (current_sample + n) % num_samples;
-	data_buffer.available -= n * bytes_per_sample;
-	if (data_buffer.available != 0) {
-		memmove(data_buffer.data, data_buffer.data +  n * bytes_per_sample,
-			data_buffer.available);
-	}
-/*
-	for (j = 1; j < num_samples; j++) {
-		if (data[j * 2 - 2] < trigger && data[j * 2] >= trigger)
-			break;
-	}
-*/
-	auto_scale_databox(box);
-
-	gtk_widget_queue_draw(GTK_WIDGET(box));
-	usleep(50000);
-
-	fps_counter();
-
-	return TRUE;
 }
 
 #if NO_FFTW
@@ -1004,54 +968,6 @@ static void do_xcorr(struct buffer *buf)
 	return;
 }
 
-static gboolean xcorr_capture_func(GtkDatabox *box)
-{
-	int ret;
-	ret = sample_iio_data(&data_buffer);
-
-	if (ret < 0) {
-		abort_sampling();
-		fprintf(stderr, "Failed to capture samples: %d\n", ret);
-		return FALSE;
-	}
-
-	if (data_buffer.available == data_buffer.size) {
-		do_xcorr(&data_buffer);
-		data_buffer.available = 0;
-		auto_scale_databox(box);
-		gtk_widget_queue_draw(GTK_WIDGET(box));
-	}
-
-	usleep(5000);
-	fps_counter();
-
-	return TRUE;
-}
-
-static gboolean fft_capture_func(GtkDatabox *box)
-{
-	int ret;
-
-	ret = sample_iio_data(&data_buffer);
-	if (ret < 0) {
-		abort_sampling();
-		fprintf(stderr, "Failed to capture samples: %d\n", ret);
-		return FALSE;
-	}
-	if (data_buffer.available == data_buffer.size) {
-		do_fft(&data_buffer);
-		data_buffer.available = 0;
-		auto_scale_databox(box);
-		gtk_widget_queue_draw(GTK_WIDGET(box));
-	}
-
-	usleep(5000);
-
-	fps_counter();
-
-	return TRUE;
-}
-
 static void fft_update_scale(bool force_update)
 {
 	double corr;
@@ -1463,16 +1379,6 @@ static int fft_capture_setup(void)
 	gtk_databox_graph_add(GTK_DATABOX(databox), fft_graph);
 
 	return 0;
-}
-
-static void xcorr_capture_start(void)
-{
-	capture_function = g_idle_add((GSourceFunc) xcorr_capture_func, databox);
-}
-
-static void fft_capture_start(void)
-{
-	capture_function = g_idle_add((GSourceFunc) fft_capture_func, databox);
 }
 
 static void detach_plugin(GtkToolButton *btn, gpointer data);
@@ -1905,9 +1811,100 @@ static int time_capture_setup(void)
 	return 0;
 }
 
-static void time_capture_start()
+/* A data "producer" thread */
+static gpointer capture_thread(gpointer data)
 {
-	capture_function = g_idle_add((GSourceFunc) time_capture_func, databox);
+	int domain;
+	int ret;
+	int n;
+
+	capture_thread_kill = false;
+
+	while (!capture_thread_kill) {
+		g_mutex_lock(&data_mutex);
+
+		/* Get data from device */
+		capture_failed = false;
+		ret = sample_iio_data(&data_buffer);
+		if (ret < 0) {
+			capture_failed = true;
+			fprintf(stderr, "Failed to capture samples: %s\n", strerror(-ret));
+			capture_thread_kill = true;
+			gdk_threads_enter();
+			gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button), false);
+			gdk_threads_leave();
+			goto signal_consumer;
+		}
+
+		/* Process/Demux data */
+		gdk_threads_enter();
+		domain = gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain));
+		gdk_threads_leave();
+
+		if (!capture_failed) {
+			valid_data = false;
+			if (domain == FFT_PLOT) {
+				if (data_buffer.available == data_buffer.size) {
+					do_fft(&data_buffer);
+					data_buffer.available = 0;
+					valid_data = true;
+				}
+			} else if (domain == CORRELATION_PLOT) {
+				if (data_buffer.available == data_buffer.size) {
+					do_xcorr(&data_buffer);
+					data_buffer.available = 0;
+					valid_data = true;
+				}
+			} else {
+				n = data_buffer.available / bytes_per_sample;
+				demux_data_stream(data_buffer.data, channel_data, n, current_sample,
+					num_samples, channels, num_channels);
+				current_sample = (current_sample + n) % num_samples;
+				data_buffer.available -= n * bytes_per_sample;
+				if (data_buffer.available != 0) {
+					memmove(data_buffer.data, data_buffer.data +  n * bytes_per_sample,
+						data_buffer.available);
+				}
+				valid_data = true;
+			}
+		}
+
+signal_consumer:
+		data_ready = true;
+		g_cond_signal(&data_cond);
+		g_mutex_unlock(&data_mutex);
+		usleep(50000);
+	}
+
+	return NULL;
+}
+
+/* A data "consumer" thread */
+static gpointer plot_redraw_thread(gpointer data)
+{
+	plot_redraw_thread_kill = false;
+
+	while (!plot_redraw_thread_kill) {
+		g_mutex_lock(&data_mutex);
+		while (!data_ready)
+			g_cond_wait(&data_cond, &data_mutex);
+
+		if (capture_failed) {
+			gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(capture_button),
+				false);
+		} else if (valid_data) {
+			gdk_threads_enter();
+			auto_scale_databox(GTK_DATABOX(databox));
+			gtk_widget_queue_draw(databox);
+			fps_counter();
+			gdk_threads_leave();
+		}
+
+		data_ready = false;
+		g_mutex_unlock(&data_mutex);
+	}
+
+	return NULL;
 }
 
 static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
@@ -1963,12 +1960,8 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		gtk_widget_queue_draw(GTK_WIDGET(databox));
 		frame_counter = 0;
 
-		if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == FFT_PLOT)
-			fft_capture_start();
-		else if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) == CORRELATION_PLOT)
-			xcorr_capture_start();
-		else
-			time_capture_start();
+		capture_thid = g_thread_new("Capture Thread", capture_thread, NULL);
+		plot_redraw_thid = g_thread_new("Plot Redraw", plot_redraw_thread, NULL);
 
 	} else {
 		G_TRYLOCK(buffer_full);
@@ -1976,14 +1969,18 @@ static void capture_button_clicked(GtkToggleToolButton *btn, gpointer data)
 		G_TRYLOCK(markers_copy);
 		G_UNLOCK(markers_copy);
 
-		if (capture_function > 0) {
-			g_source_remove(capture_function);
-			capture_function = 0;
-		}
 		if (buffer_fd >= 0) {
 			buffer_close(buffer_fd);
 			buffer_fd = -1;
 		}
+
+		capture_thread_kill = true;
+		iio_thread_clear(capture_thid);
+
+		data_ready = true;
+		g_cond_signal(&data_cond);
+		plot_redraw_thread_kill = true;
+		iio_thread_clear(plot_redraw_thid);
 	}
 
 	return;
@@ -2796,7 +2793,7 @@ void capture_profile_save(const char *filename)
 			fprintf(inifp, "marker.%i = %i\n", tmp_int, markers[tmp_int].bin);
 	}
 
-	fprintf(inifp, "capture_started = %d\n", (capture_function) ? 1 : 0);
+	fprintf(inifp, "capture_started = %d\n", (!capture_thread_kill) ? 1 : 0);
 
 	g_slist_foreach(dplugin_list, plugin_state_ini_save, inifp);
 
@@ -2909,7 +2906,7 @@ int capture_profile_handler(const char* name, const char *value)
 	switch (elem_type) {
 		case 0:
 			if (MATCH_NAME("capture_started")) {
-				if (capture_function && atoi(value))
+				if (!capture_thread_kill && atoi(value))
 					goto handled;
 
 				check_valid_setup();
@@ -3098,9 +3095,7 @@ void application_quit (void)
 	capture_profile_save(buf);
 	save_all_plugins(buf, NULL);
 
-	if (capture_function > 0) {
-		g_source_remove(capture_function);
-		capture_function = 0;
+	if (!capture_thread_kill) {
 		G_TRYLOCK(buffer_full);
 		G_UNLOCK(buffer_full);
 		G_TRYLOCK(markers_copy);
@@ -3110,6 +3105,7 @@ void application_quit (void)
 		buffer_close(buffer_fd);
 		buffer_fd = -1;
 	}
+
 	free_setup_check_fct_list();
 
 	if (gtk_main_level())
