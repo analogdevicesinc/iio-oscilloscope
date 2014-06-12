@@ -352,7 +352,7 @@ static void rx_phase_rotation_update()
 			val[0] = (val[0] * -1.0) - 180.0;
 		if (val[3] < -90.0)
 			val[0] = (val[0] * -1.0) - 180.0;
-	
+
 		if (fabs(val[0]) > 90.0) {
 			if (val[1] < 0.0)
 				val[1] = (val[1] * -1.0) - 180.0;
@@ -478,13 +478,16 @@ void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 
 static void process_dac_buffer_file (const char *file_name)
 {
-	int ret, size = 0;
+	int ret, size = 0, s_size;
 	struct stat st;
 	char *buf = NULL, *tmp;
 	FILE *infile;
 	unsigned int i, nb_channels = iio_device_get_channels_count(dds);
 
-	ret = analyse_wavefile(file_name, &buf, &size, is_2rx_2tx ? 2 : 1);
+	if (nb_channels <= 8)
+		return;
+
+	ret = analyse_wavefile(file_name, &buf, &size, (nb_channels - 8) / 2);
 	if (ret == -3)
 		return;
 
@@ -509,7 +512,14 @@ static void process_dac_buffer_file (const char *file_name)
 	for (i = 0; i < nb_channels; i++)
 		iio_channel_enable(iio_device_get_channel(dds, i));
 
-	dds_buffer = iio_device_create_buffer(dds, size / iio_device_get_sample_size(dds), true);
+	s_size = iio_device_get_sample_size(dds);
+	if (!s_size) {
+		fprintf(stderr, "Unable to create buffer due to sample size: %s\n", strerror(errno));
+		free(buf);
+		return;
+	}
+
+	dds_buffer = iio_device_create_buffer(dds, size / s_size, true);
 	if (!dds_buffer) {
 		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
 		free(buf);
@@ -706,6 +716,36 @@ static void enable_dds(bool on_off)
 	}
 }
 
+/* The Slave device doesn't have a own DMA, therefore no buffer and enable
+ * however the select mux still needs to be set.
+ * This is a temp workaround
+ */
+
+static void slave_enable_dma_mux(bool enable)
+{
+#ifdef SLAVE
+#define ADI_REG_CNTRL_2	0x0048
+#define ADI_DATA_SEL(x)	(((x) & 0xF) << 0)
+#define 	DATA_SEL_DDS	0
+#define 	DATA_SEL_SED	1
+#define 	DATA_SEL_DMA	2
+
+unsigned tmp;
+
+	if (iio_device_reg_read(dds, 0x80000000 | ADI_REG_CNTRL_2, &tmp))
+		return;
+
+	tmp &= ~ADI_DATA_SEL(~0);
+
+	if (enable)
+		tmp |= DATA_SEL_DMA;
+	else
+		tmp |= DATA_SEL_DDS;
+
+	iio_device_reg_write(dds, 0x80000000 | ADI_REG_CNTRL_2, tmp);
+#endif
+}
+
 #define IIO_SPIN_SIGNAL "value-changed"
 #define IIO_COMBO_SIGNAL "changed"
 
@@ -748,6 +788,7 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 
 	switch (active) {
 	case DDS_DISABLED:
+		slave_enable_dma_mux(0);
 		if (channel == 1) {
 		 	start = TX1_T1_I;
 			end = TX1_T2_Q;
@@ -783,6 +824,7 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 
 		break;
 	case DDS_ONE_TONE:
+		slave_enable_dma_mux(0);
 		enable_dds(true);
 		gtk_widget_hide(dac_buffer);
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX_l[channel]),"<b>Single Tone</b>");
@@ -853,6 +895,7 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		dds_locked_phase_cb(NULL, (gpointer *)channel);
 		break;
 	case DDS_TWO_TONE:
+		slave_enable_dma_mux(0);
 		enable_dds(true);
 		gtk_widget_hide(dac_buffer);
 		gtk_widget_show_all(channel_I_tx[channel]);
@@ -899,6 +942,7 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		break;
 	case DDS_INDEPDENT:
 		/* Independant/Individual control */
+		slave_enable_dma_mux(0);
 		enable_dds(true);
 		gtk_widget_show_all(channel_I_tx[channel]);
 		gtk_widget_show_all(channel_Q_tx[channel]);
@@ -932,6 +976,7 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		}
 		break;
 	case DDS_BUFFER:
+		slave_enable_dma_mux(1);
 		if ((dds_activated || dds_disabled) && dac_buf_filename) {
 			dds_disabled = false;
 			process_dac_buffer_file(dac_buf_filename);
