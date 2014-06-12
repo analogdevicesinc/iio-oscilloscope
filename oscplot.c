@@ -63,6 +63,7 @@ static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter, const cha
 static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type);
 static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color);
 static int comboboxtext_set_active_by_string(GtkComboBox *combo_box, const char *name);
+static int comboboxtext_get_active_text_as_int(GtkComboBoxText* combobox);
 static gboolean check_valid_setup(OscPlot *plot);
 
 /* IDs of signals */
@@ -529,11 +530,10 @@ int osc_plot_get_sample_count (OscPlot *plot) {
 	OscPlotPrivate *priv = plot->priv;
 	int count;
 
-	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT) {
-		count = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->fft_size_widget)));
-	} else {
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT)
+		count = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
+	else
 		count = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
-	}
 
 	return count;
 }
@@ -809,7 +809,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 
 	plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
 	if (plot_type == FFT_PLOT) {
-		FFT_SETTINGS(transform)->fft_size = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->fft_size_widget)));
+		FFT_SETTINGS(transform)->fft_size = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 		FFT_SETTINGS(transform)->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
 		FFT_SETTINGS(transform)->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_pwr_offset_widget));
 		FFT_SETTINGS(transform)->fft_alg_data.cached_fft_size = -1;
@@ -1012,7 +1012,7 @@ static unsigned int plot_sample_count_get(OscPlot *plot)
 	unsigned int sample_count;
 
 	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT)
-		sample_count = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->fft_size_widget)));
+		sample_count = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 	else
 		sample_count = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 
@@ -1363,10 +1363,12 @@ static void plot_setup(OscPlot *plot)
 		transform_x_axis = Transform_get_x_axis_ref(transform);
 		transform_y_axis = Transform_get_y_axis_ref(transform);
 
-		if (strcmp(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type)), "Lines"))
+		gchar *plot_type_str = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type));
+		if (strcmp(plot_type_str, "Lines"))
 			graph = gtk_databox_points_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, 3);
 		else
 			graph = gtk_databox_lines_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, priv->line_thickness);
+		g_free(plot_type_str);
 
 		ch_info = iio_channel_get_data(transform->channel_parent);
 		dev_info = iio_device_get_data(ch_info->dev);
@@ -2643,7 +2645,7 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 	tmp_int = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	fprintf(fp, "sample_count=%d\n", tmp_int);
 
-	tmp_int = atoi(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->fft_size_widget)));
+	tmp_int = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 	fprintf(fp, "fft_size=%d\n", tmp_int);
 
 	tmp_int = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
@@ -2759,6 +2761,20 @@ static int comboboxtext_set_active_by_string(GtkComboBox *combo_box, const char 
 	}
 
 	return 0;
+}
+
+static int comboboxtext_get_active_text_as_int(GtkComboBoxText* combobox)
+{
+	gchar *active_text;
+	int value = 0;
+
+	active_text = gtk_combo_box_text_get_active_text(combobox);
+	if (active_text) {
+		value = atoi(active_text);
+		g_free(active_text);
+	}
+
+	return value;
 }
 
 #define MATCH(s1, s2) strcmp(s1, s2) == 0
