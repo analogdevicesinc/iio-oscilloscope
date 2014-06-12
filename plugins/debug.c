@@ -418,7 +418,7 @@ static void reg_read_clicked(GtkButton *button, gpointer user_data)
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), i);
 		if (i == 0)
 			g_signal_emit_by_name(spin_btn_reg_value, "value-changed");
-		snprintf(buf, sizeof(buf), "0x%04X", i);
+		snprintf(buf, sizeof(buf), "%u", i);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_value), buf);
 		if (xml_file_opened)
 			reveal_reg_map();
@@ -452,7 +452,7 @@ static void reg_address_value_changed_cb(GtkSpinButton *spinbutton,
 
 	if (!xml_file_opened) {
 		reg_addr = gtk_spin_button_get_value(spinbutton);
-		snprintf(buf, sizeof(buf), "0x%04X", reg_addr);
+		snprintf(buf, sizeof(buf), "%u", reg_addr);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_addr), buf);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), (gdouble)0);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_value), "<unknown>");
@@ -498,7 +498,7 @@ updt_addr:
 	hide_reg_map();
 	reg_addr = (int)gtk_spin_button_get_value(spinbutton);
 	prev_addr = reg_addr;
-	snprintf(buf, sizeof(buf), "0x%.4x", reg_addr);
+	snprintf(buf, sizeof(buf), "%u", reg_addr);
 	gtk_label_set_text((GtkLabel *)label_reg_hex_addr, buf);
 restore_widget:
 	gtk_widget_set_sensitive(spin_btn_reg_addr, TRUE);
@@ -517,7 +517,7 @@ static void reg_value_change_value_cb(GtkSpinButton *btn, gpointer user_data)
 
 	if (!xml_file_opened) {
 		value = gtk_spin_button_get_value(btn);
-		snprintf(buf, sizeof(buf), "0x%04X", value);
+		snprintf(buf, sizeof(buf), "%u", value);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_value), buf);
 		return;
 	}
@@ -528,7 +528,7 @@ static void reg_value_change_value_cb(GtkSpinButton *btn, gpointer user_data)
 	g_signal_handler_block(btn, reg_val_hid);
 	gtk_spin_button_set_value(btn, new_value);
 	g_signal_handler_unblock(btn, reg_val_hid);
-	snprintf(buf, sizeof(buf), "0x%04X", new_value);
+	snprintf(buf, sizeof(buf), "%u", new_value);
 	gtk_label_set_text(GTK_LABEL(label_reg_hex_value), buf);
 }
 
@@ -590,6 +590,33 @@ void detailed_regmap_toggled_cb(GtkToggleButton *btn, gpointer data)
 void debug_panel_destroy_cb(GObject *object, gpointer user_data)
 {
 	destroy_device_context();
+}
+
+static gint spinbtn_input_cb(GtkSpinButton *btn, gpointer new_value, gpointer data)
+{
+	gdouble value;
+	const char *entry_buf;
+
+	entry_buf = gtk_entry_get_text(GTK_ENTRY(btn));
+	value = g_strtod(entry_buf , NULL);
+	*((gdouble *)new_value) = value;
+
+	return TRUE;
+}
+
+static gboolean spinbtn_output_cb(GtkSpinButton *spin, gpointer data)
+{
+	GtkAdjustment *adj;
+	gchar *text;
+	unsigned value;
+
+	adj = gtk_spin_button_get_adjustment(spin);
+	value = (unsigned)gtk_adjustment_get_value(adj);
+	text = g_strdup_printf("0x%X", value);
+	gtk_entry_set_text(GTK_ENTRY(spin), text);
+	g_free(text);
+
+	return TRUE;
 }
 
 /******************************************************************************/
@@ -1477,6 +1504,14 @@ static int debug_init(GtkWidget *notebook)
 			G_CALLBACK(scanel_write_clicked), NULL);
 	g_signal_connect(G_OBJECT(toggle_detailed_regmap), "toggled",
 			G_CALLBACK(detailed_regmap_toggled_cb), NULL);
+	g_signal_connect(G_OBJECT(spin_btn_reg_addr), "input",
+			G_CALLBACK(spinbtn_input_cb), NULL);
+	g_signal_connect(G_OBJECT(spin_btn_reg_addr), "output",
+			G_CALLBACK(spinbtn_output_cb), NULL);
+	g_signal_connect(G_OBJECT(spin_btn_reg_value), "input",
+			G_CALLBACK(spinbtn_input_cb), NULL);
+	g_signal_connect(G_OBJECT(spin_btn_reg_value), "output",
+			G_CALLBACK(spinbtn_output_cb), NULL);
 
 	gtk_widget_show_all(debug_panel);
 
