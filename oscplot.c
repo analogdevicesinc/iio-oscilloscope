@@ -1006,19 +1006,6 @@ static void transform_add_plot_markers(OscPlot *plot, Transform *transform)
 	}
 }
 
-static unsigned int plot_sample_count_get(OscPlot *plot)
-{
-	OscPlotPrivate *priv = plot->priv;
-	unsigned int sample_count;
-
-	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT)
-		sample_count = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
-	else
-		sample_count = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
-
-	return sample_count;
-}
-
 static void collect_parameters_from_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -1035,7 +1022,7 @@ static void collect_parameters_from_plot(OscPlot *plot)
 
 		prms = malloc(sizeof(struct plot_params));
 		prms->plot_id = priv->object_id;
-		prms->sample_count = plot_sample_count_get(plot);
+		prms->sample_count = osc_plot_get_sample_count(plot);
 		list = info->plots_sample_counts;
 		list = g_slist_prepend(list, prms);
 		info->plots_sample_counts = list;
