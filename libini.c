@@ -14,15 +14,16 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <iio.h>
+
 #include "fru.h"
 #include "osc.h"
-#include "iio_utils.h"
 #include "osc_plugin.h"
 #include "ini/ini.h"
 
 #define MATCH_SECT(s) (strcmp(section, s) == 0)
 
-static int count_char_in_string(char c, const char *s)
+int count_char_in_string(char c, const char *s)
 {
 	int i;
 
@@ -87,11 +88,16 @@ static char * process_value(char* value)
 			tmp4[strlen(tmp4) -1] = 0;
 
 		sprintf(tmp2, "%.*s%s%.*s",
-			(int)(next - 1 - value), value,
-			tmp4,
-			strlen(value) - 2 - strlen(tmp), next + 1 + strlen(tmp));
+			(int) (long) (next - 1 - value), value, tmp4,
+			(int) (long) (strlen(value) - 2 - strlen(tmp)),
+			next + 1 + strlen(tmp));
 		return tmp2;
 	}
+
+	struct iio_context *ctx = get_context_from_osc();
+	struct iio_device *dev = NULL;
+	struct iio_channel *ch = NULL;
+	const char *attr;
 
 	elem_type = count_char_in_string('.', tmp);
 	switch(elem_type) {
@@ -100,14 +106,22 @@ static char * process_value(char* value)
 			break;
 		case 1 :
 			elems = g_strsplit(tmp, ".", 0);
-			set_dev_paths(elems[0]);
-			ret = read_devattr_double(elems[1], &val);
+			dev = iio_context_find_device(ctx, elems[0]);
+			ret = iio_device_identify_filename(dev, elems[1], &ch, &attr);
+			if (ret != 0)
+				goto read_failed;
+			if (ch)
+				ret = iio_channel_attr_read_double(ch, attr, &val);
+			else
+				ret = iio_device_attr_read_double(dev, attr, &val);
+
 			g_strfreev(elems);
-			if (ret < 0) {
-				printf("fail to read %s:%s\n", elems[0], elems[1]);
-				return NULL;
-			}
+			if (ret < 0)
+				goto read_failed;
 			break;
+		read_failed:
+			printf("fail to read %s:%s\n", elems[0], elems[1]);
+			return NULL;
 		default:
 			val = -99;
 			break;
@@ -122,9 +136,9 @@ static char * process_value(char* value)
 		tmp4[strlen(tmp4) -1] = 0;
 
 	sprintf(tmp2, "%.*s%s%.*s",
-			(int)(next - 1 - value), value,
-			tmp4,
-			strlen(value) - 2 - strlen(tmp), next + 1 + strlen(tmp));
+			(int) (long) (next - 1 - value), value, tmp4,
+			(int) (long) (strlen(value) - 2 - strlen(tmp)),
+			next + 1 + strlen(tmp));
 	tmp3 = tmp2;
 	if (strchr(tmp2, '{'))
 		tmp3 = process_value(tmp2);
@@ -132,35 +146,42 @@ static char * process_value(char* value)
 	return tmp3;
 }
 
-/*Handler should return nonzero on success, zero on error. */
+/* Handler should return nonzero on success, zero on error. */
 static int libini_restore_handler(void *user, const char* section,
 				 const char* name, const char* value)
 {
 	struct osc_plugin *plugin = NULL;
 	int elem_type;
-	int val_i, min_i, max_i;
+	long long val_i, min_i, max_i;
 	double val_d, min_d, max_d;
-	char *val_str;
+	char val_str[1024];
 	char *str = NULL;
 	gchar **elems = NULL, **min_max = NULL;
 	GSList *node;
 	int ret = 1;
 	FILE *fd;
+	struct iio_context *ctx = get_context_from_osc();
+	struct iio_device *dev = NULL;
+	struct iio_channel *ch = NULL;
+	const char *attr;
 
 	if (value[0] == '{' && value[strlen(value) - 1] == '}') {
 		value = process_value(strdup(value));
 	}
 
-	/* See if the section is from the main capture window */
-	if (MATCH_SECT(CAPTURE_CONF)) {
-		return capture_profile_handler(name, value);
-	}
+	/* See if the section is from the main window */
+	if (MATCH_SECT(MULTI_OSC))
+		return main_profile_handler(section, name, value);
+
+	/* See if the section is from a capture window */
+	if (!strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF)))
+		return capture_profile_handler(section, name, value);
 
 	/* needs to be a plugin */
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		plugin = node->data;
 		if (plugin && plugin->save_restore_attribs &&
-				MATCH_SECT(plugin->name)) {
+			MATCH_SECT(plugin->name)) {
 			break;
 		}
 	}
@@ -181,17 +202,24 @@ static int libini_restore_handler(void *user, const char* section,
 			 */
 			elems = g_strsplit(name, ".", 0);
 
-			if (set_dev_paths(elems[0])) {
+			if ( !(dev = iio_context_find_device(ctx, elems[0])) ) {
 				if (!plugin->handle_item)
 					break;
-				ret = !plugin->handle_item(plugin, name, value);
+				plugin->handle_item(plugin, name, value);
 				break;
 			} else {
 				if (strstr(elems[1], "hardwaregain") && strstr(value, " dB")) {
-					val_str = strstr(value, " dB");
-					*val_str = 0;
+					str = strstr(value, " dB");
+					*str = 0;
 				}
-				ret = !write_devattr(elems[1], value);
+				if (iio_device_identify_filename(dev, elems[1], &ch, &attr)) {
+					ret = 0;
+					break;
+				}
+				if (ch)
+					ret = iio_channel_attr_write(ch, attr, value);
+				else
+					ret = iio_device_attr_write(dev, attr, value);
 			}
 			break;
 		case 2:
@@ -200,8 +228,16 @@ static int libini_restore_handler(void *user, const char* section,
 			 */
 			elems = g_strsplit(name, ".", 0);
 
-			if (!strcmp("log", elems[0]) && !set_dev_paths(elems[1])) {
-				ret = read_devattr(elems[2], &val_str);
+			if (!strcmp("log", elems[0]) &&
+					(dev = iio_context_find_device(ctx, elems[1])) ) {
+				if (iio_device_identify_filename(dev, elems[2], &ch, &attr)) {
+					ret = 0;
+					break;
+				}
+				if (ch)
+					ret = iio_channel_attr_read(ch, attr, val_str, sizeof(val_str));
+				else
+					ret = iio_device_attr_read(dev, attr, val_str, sizeof(val_str));
 
 				if (ret >= 0) {
 					fd = fopen(value, "a");
@@ -211,17 +247,16 @@ static int libini_restore_handler(void *user, const char* section,
 					}
 					fprintf(fd, "%s, ", val_str);
 					fclose (fd);
-					free (val_str);
 				} else
 					ret = 0;
 			} else if (!strcmp("debug", elems[0])) {
-				if (set_debugfs_paths(elems[1])) {
+				if (!(dev = iio_context_find_device(ctx, elems[1])) || iio_device_get_debug_attrs_count(dev) == 0) {
 					if (!plugin->handle_item)
 						break;
 					ret = !plugin->handle_item(plugin, name, value);
 					break;
 				} else
-					ret = !write_sysfs_string(elems[2], debug_name_dir(), value);
+					ret = iio_device_debug_attr_write(dev, elems[2], value);
 				break;
 			} else {
 				if (plugin->handle_item)
@@ -231,7 +266,7 @@ static int libini_restore_handler(void *user, const char* section,
 			}
 			break;
 		case 3:
-			/* Test something, according it:
+			/* Test something, according to:
 			 * test.device.attribute.type = min max
 			 */
 			ret = 0;
@@ -242,17 +277,31 @@ static int libini_restore_handler(void *user, const char* section,
 			min_max = g_strsplit(value, " ", 0);
 
 			if (!strcmp(elems[0], "test")) {
-				if (!set_dev_paths(elems[1])) {
+				if ( (dev = iio_context_find_device(ctx, elems[1])) ) {
 					if (!strcmp(elems[3], "int")) {
-						read_devattr_int(elems[2], &val_i);
+						if (iio_device_identify_filename(dev, elems[2], &ch, &attr)) {
+							ret = 0;
+							break;
+						}
+						if (ch)
+							iio_channel_attr_read_longlong(ch, attr, &val_i);
+						else
+							iio_device_attr_read_longlong(dev, attr, &val_i);
 						min_i = atoi(min_max[0]);
 						max_i = atoi(min_max[1]);
 						if (val_i >= min_i && val_i <= max_i)
 							ret = 1;
 						else
-							printf("value = %i\n", val_i);
+							printf("value = %lld\n", val_i);
 					} else if (!strcmp(elems[3], "double")) {
-						read_devattr_double(elems[2], &val_d);
+						if (iio_device_identify_filename(dev, elems[2], &ch, &attr)) {
+							ret = 0;
+							break;
+						}
+						if (ch)
+							iio_channel_attr_read_double(ch, attr, &val_d);
+						else
+							iio_device_attr_read_double(dev, attr, &val_d);
 						min_d = atof(min_max[0]);
 						max_d = atof(min_max[1]);
 						if (val_d >= min_d && val_d <= max_d)
@@ -289,7 +338,7 @@ static int libini_restore_handler(void *user, const char* section,
 
 const char * get_filename_from_path(const char *path)
 {
-	const char *filename;
+	const char * filename;
 
 	if (!path)
 		return NULL;
@@ -321,6 +370,17 @@ static const char * unroll(const char *in_filename)
 	in = fopen(in_filename, "r");
 	out = fopen (out_filename, "w");
 
+	if (!in) {
+		fprintf(stderr, "Failed to open %s : %s\n", in_filename,
+			strerror(errno));
+		return "";
+	}
+	if (!out) {
+		fprintf(stderr, "Failed to open %s : %s\n", out_filename,
+			strerror(errno));
+		return "";
+	}
+
 	while(fgets(buf, 1024, in) != NULL) {
 		if (strlen(buf)) {
 			j = true;
@@ -348,9 +408,8 @@ static const char * unroll(const char *in_filename)
 								tmp2[strlen(tmp2) -1] = 0;
 
 							fprintf(out, "%.*s%s%.*s",
-								(int)(replace - buf), buf,
-								tmp2,
-								strlen(buf) - (int)(replace - buf) - strlen(tmp),
+								(int) (long) (replace - buf), buf, tmp2,
+								(int) (long) (strlen(buf) - (int)(replace - buf) - strlen(tmp)),
 								replace + strlen(tmp));
 
 						}
@@ -396,7 +455,9 @@ int restore_all_plugins(const char *filename, gpointer user_data)
 	/* unroll loops */
 	filename = unroll(filename);
 
+	main_setup_before_ini_load();
 	ret = ini_parse(filename, libini_restore_handler, NULL);
+	main_setup_after_ini_load();
 
 	if (msg)
 		gtk_widget_destroy(msg);
@@ -410,9 +471,11 @@ void save_all_plugins(const char *filename, gpointer user_data)
 	const char **attribs;
 	int elem_type;
 	char *str;
+	char val_str[1024];
 	gchar **elems;
 	GSList *node;
 	FILE* cfile;
+	int ret;
 
 	capture_profile_save(filename);
 
@@ -426,6 +489,10 @@ void save_all_plugins(const char *filename, gpointer user_data)
 	for (node = plugin_list; node; node = g_slist_next(node))
 	{
 		plugin = node->data;
+		struct iio_context *ctx = get_context_from_osc();
+		struct iio_device *dev = NULL;
+		struct iio_channel *ch = NULL;
+		const char *attr;
 
 		if (plugin && plugin->save_restore_attribs) {
 			attribs = plugin->save_restore_attribs;
@@ -449,7 +516,7 @@ void save_all_plugins(const char *filename, gpointer user_data)
 					case 1:
 						elems = g_strsplit(*attribs, ".", 0);
 
-						if (set_dev_paths(elems[0])) {
+						if (ctx == NULL || !(dev = iio_context_find_device(ctx, elems[0])) ) {
 							if (elems != NULL)
 								g_strfreev(elems);
 
@@ -460,14 +527,18 @@ void save_all_plugins(const char *filename, gpointer user_data)
 							break;
 						}
 						str = NULL;
-						if (read_devattr(elems[1], &str) >= 0) {
-							if (str) {
-								fprintf(cfile, "%s = %s\n",
+
+						if (iio_device_identify_filename(dev, elems[1], &ch, &attr))
+							break;
+						if (ch)
+							ret = iio_channel_attr_read(ch, attr, val_str, sizeof(val_str));
+						else
+							ret = iio_device_attr_read(dev, attr, val_str, sizeof(val_str));
+
+						if (ret >= 0)
+							fprintf(cfile, "%s = %s\n",
 									*attribs,
-									str);
-								free(str);
-							}
-						}
+									val_str);
 
 						if (elems != NULL)
 							g_strfreev(elems);
@@ -479,7 +550,7 @@ void save_all_plugins(const char *filename, gpointer user_data)
 						elems = g_strsplit(*attribs, ".", 0);
 
 						if (!strcmp(elems[0], "debug")) {
-							if (set_debugfs_paths(elems[1])) {
+							if (ctx == NULL || !(dev = iio_context_find_device(ctx, elems[1])) ) {
 								if (elems != NULL)
 								g_strfreev(elems);
 
@@ -491,14 +562,10 @@ void save_all_plugins(const char *filename, gpointer user_data)
 							}
 
 							str = NULL;
-							if (read_sysfs_string(elems[2], debug_name_dir(), &str) >= 0) {
-								if (str) {
+							if (iio_device_debug_attr_read(dev, elems[2], val_str, sizeof(val_str)) >= 0)
 									fprintf(cfile, "%s = %s\n",
 										*attribs,
-										str);
-									free(str);
-								}
-							}
+										val_str);
 						}
 
 						if (elems != NULL)

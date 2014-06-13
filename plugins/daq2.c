@@ -20,10 +20,12 @@
 #include <malloc.h>
 #include <values.h>
 #include <sys/stat.h>
+#include <string.h>
+
+#include <iio.h>
 
 #include "../osc.h"
 #include "../iio_widget.h"
-#include "../iio_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
@@ -32,8 +34,13 @@
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
+static char *dac_buf_filename = NULL;
 
-static bool dac_data_loaded = false;
+static bool dds_activated, dds_disabled;
+static struct iio_buffer *dds_buffer;
+
+static struct iio_context *ctx;
+static struct iio_device *dac, *adc;
 
 static GtkWidget *rf_out;
 
@@ -66,7 +73,8 @@ static unsigned int num_tx, num_rx, num_cal,
 		num_adc_freq, num_dds2_freq, num_dds4_freq,
 		num_dac_shift;
 
-static const char *adc_freq_device;
+static struct iio_device *adc_freq_device;
+static struct iio_channel *adc_freq_channel;
 static const char *adc_freq_file;
 
 typedef struct _Dialogs Dialogs;
@@ -85,6 +93,8 @@ static GtkWidget *Q_adc_offset_adj, *Q_adc_gain_adj, *Q_adc_phase_adj;
 static GtkWidget *ad9122_temp;
 
 //static unsigned short temp_calibbias;
+
+static void enable_dds(bool on_off);
 
 static int oneover(const gchar *num)
 {
@@ -135,7 +145,7 @@ short convert(double scale, float val)
 	return (unsigned short) (val * scale + 32767.0);
 }
 
-int analyse_wavefile(char *file_name, char **buf, int *count)
+int analyse_wavefile(const char *file_name, char **buf, int *count)
 {
 	int ret, j, i = 0, size, rep, tx = 1;
 	double max = 0.0, val[4], scale = 0.0;
@@ -255,20 +265,19 @@ static void cal_update_values(void)
 	iio_update_widgets(cal_widgets, num_cal);
 }
 
-void dac_buffer_config_file_set_cb(GtkFileChooser *chooser, gpointer data)
+static void process_dac_buffer_file (const char *file_name)
 {
-	int ret, fd, size;
+	int ret, size = 0;
 	struct stat st;
-	char *buf;
+	char *buf = NULL, *tmp;
 	FILE *infile;
+	unsigned int i, nb_channels = iio_device_get_channels_count(dac);
 
-	char *file_name = gtk_file_chooser_get_filename(chooser);
 	ret = analyse_wavefile(file_name, &buf, &size);
 	if (ret == -3)
 		return;
 
 	if (ret == -1 || buf == NULL) {
-
 		stat(file_name, &st);
 		buf = malloc(st.st_size);
 		if (buf == NULL)
@@ -278,29 +287,42 @@ void dac_buffer_config_file_set_cb(GtkFileChooser *chooser, gpointer data)
 		fclose(infile);
 	}
 
-	set_dev_paths("axi-ad9144-hpc");
-	write_devattr_int("buffer/enable", 0);
+	if (dds_buffer) {
+		iio_buffer_destroy(dds_buffer);
+		dds_buffer = NULL;
+	}
 
-	fd = iio_buffer_open(false, 0);
-	if (fd < 0) {
+	enable_dds(false);
+
+	/* Enable all channels */
+	for (i = 0; i < nb_channels; i++)
+		iio_channel_enable(iio_device_get_channel(dac, i));
+
+	dds_buffer = iio_device_create_buffer(dac, size / iio_device_get_sample_size(dac), true);
+	if (!dds_buffer) {
+		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
 		free(buf);
 		return;
 	}
 
-	ret = write(fd, buf, size);
-	if (ret != size) {
-		fprintf(stderr, "Loading waveform failed %d\n", ret);
-	}
+	memcpy(iio_buffer_start(dds_buffer), buf,
+			iio_buffer_end(dds_buffer) - iio_buffer_start(dds_buffer));
 
-	close(fd);
+	iio_buffer_push(dds_buffer);
 	free(buf);
 
-	ret = write_devattr_int("buffer/enable", 1);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
-	}
+	tmp = strdup(file_name);
+	if (dac_buf_filename)
+		free(dac_buf_filename);
+	dac_buf_filename = tmp;
+	printf("Waveform loaded\n");
+}
 
-	dac_data_loaded = true;
+static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+{
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+	if (file_name)
+		process_dac_buffer_file((const char *)file_name);
 }
 
 static int compare_gain(const char *a, const char *b)
@@ -485,23 +507,24 @@ static void combo_box_set_active_text(GtkWidget *combobox, const char* text)
 }
 #endif
 
-static void enable_dds(bool dds_enable, bool buffer_enable)
+static void enable_dds(bool on_off)
 {
-	bool on_off = dds_enable || buffer_enable;
 	int ret;
 
-	set_dev_paths("axi-ad9144-hpc");
+	if (on_off == dds_activated && !dds_disabled)
+		return;
+	dds_activated = on_off;
 
-	if (!dac_data_loaded)
-		buffer_enable = false;
-
-	ret = write_devattr_int("buffer/enable", buffer_enable ? 1 : 0);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
-
+	if (dds_buffer) {
+		iio_buffer_destroy(dds_buffer);
+		dds_buffer = NULL;
 	}
 
-	write_devattr_int("out_altvoltage0_1A_raw", on_off ? 1 : 0);
+	ret = iio_channel_attr_write_bool(iio_device_find_channel(dac, "altvoltage0", true), "1A_raw", on_off);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to toggle DDS: %d\n", ret);
+		return;
+	}
 }
 
 static void manage_dds_mode()
@@ -513,7 +536,7 @@ static void manage_dds_mode()
 	switch (active) {
 	case 0:
 		/* Disabled */
-		enable_dds(false, false);
+		enable_dds(false);
 		gtk_widget_hide(dds1_freq);
 		gtk_widget_hide(dds2_freq);
 		gtk_widget_hide(dds3_freq);
@@ -545,10 +568,15 @@ static void manage_dds_mode()
 		gtk_widget_hide(dds_Q1_l);
 		gtk_widget_hide(dds_Q2_l);
 		gtk_widget_hide(dac_buffer);
+		if (!dds_activated && dds_buffer) {
+			iio_buffer_destroy(dds_buffer);
+			dds_buffer = NULL;
+		}
+		dds_disabled = true;
 		break;
 	case 1:
 		/* One tone */
-		enable_dds(true, false);
+		enable_dds(true);
 		gtk_widget_show(dds1_freq);
 		gtk_widget_hide(dds2_freq);
 		gtk_widget_hide(dds3_freq);
@@ -628,7 +656,7 @@ static void manage_dds_mode()
 		break;
 	case 2:
 		/* Two tones */
-		enable_dds(true, false);
+		enable_dds(true);
 		gtk_widget_show(dds1_freq);
 		gtk_widget_show(dds2_freq);
 		gtk_widget_hide(dds3_freq);
@@ -690,7 +718,7 @@ static void manage_dds_mode()
 		break;
 	case 3:
 		/* Independant/Individual control */
-		enable_dds(true, false);
+		enable_dds(true);
 		gtk_widget_show(dds1_freq);
 		gtk_widget_show(dds2_freq);
 		gtk_widget_show(dds3_freq);
@@ -759,7 +787,10 @@ static void manage_dds_mode()
 		break;
 	case 4:
 		/* Buffer */
-		enable_dds(false, true);
+		if ((dds_activated || dds_disabled) && dac_buf_filename) {
+			dds_disabled = false;
+			process_dac_buffer_file(dac_buf_filename);
+		}
 		gtk_widget_hide(dds1_freq);
 		gtk_widget_hide(dds2_freq);
 		gtk_widget_hide(dds3_freq);
@@ -799,39 +830,62 @@ static void manage_dds_mode()
 
 }
 
-static void dac_cal_spin(GtkRange *range, gpointer user_data)
+static void dac_cal_spin_helper(GtkRange *range,
+		struct iio_channel *chn, const char *attr)
 {
-	gdouble val, inc;
-
-	val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(range));
+	gdouble inc, val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(range));
 	gtk_spin_button_get_increments(GTK_SPIN_BUTTON(range), &inc, NULL);
 
-	set_dev_paths("axi-ad9144-hpc");
 	if (inc == 1.0)
-		write_devattr_slonglong((char *)user_data, (long long)val);
+		iio_channel_attr_write_longlong(chn, attr, (long long) val);
 	else
-		write_devattr_double((char *)user_data, val);
+		iio_channel_attr_write_double(chn, attr, val);
 }
 
-static void adc_cal_spin(GtkRange *range, gpointer user_data)
+static void dac_cal_spin0(GtkRange *range, gpointer user_data)
+{
+	dac_cal_spin_helper(range,
+			iio_device_find_channel(dac, "voltage0", true),
+			(const char *) user_data);
+}
+
+static void dac_cal_spin1(GtkRange *range, gpointer user_data)
+{
+	dac_cal_spin_helper(range,
+			iio_device_find_channel(dac, "voltage1", true),
+			(const char *) user_data);
+}
+
+static void adc_cal_spin_helper(GtkRange *range,
+		struct iio_channel *chn, const char *attr)
 {
 	gdouble val, inc;
 
 	val = gtk_spin_button_get_value(GTK_SPIN_BUTTON(range));
 	gtk_spin_button_get_increments(GTK_SPIN_BUTTON(range), &inc, NULL);
 
-	set_dev_paths("axi-ad9680-hpc");
-
 	if (inc == 1.0)
-		write_devattr_slonglong((char *)user_data, (long long)val);
+		iio_channel_attr_write_longlong(chn, attr, (long long) val);
 	else
-		write_devattr_double((char *)user_data, val);
+		iio_channel_attr_write_double(chn, attr, val);
+}
 
+static void adc_cal_spin0(GtkRange *range, gpointer user_data)
+{
+	adc_cal_spin_helper(range,
+			iio_device_find_channel(adc, "voltage0", false),
+			(const char *) user_data);
+}
+
+static void adc_cal_spin1(GtkRange *range, gpointer user_data)
+{
+	adc_cal_spin_helper(range,
+			iio_device_find_channel(adc, "voltage1", false),
+			(const char *) user_data);
 }
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
-	set_dev_paths(iio_w->device_name);
 	iio_w->save(iio_w);
 }
 
@@ -866,8 +920,8 @@ static int daq2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *daq2_panel;
-	bool shared_scale_available;
-	const char *dac_sampling_freq_file;
+	struct iio_channel *ch0, *ch1, *ch2, *ch3;
+	const char *scale_available;
 
 	builder = gtk_builder_new();
 
@@ -975,21 +1029,16 @@ static int daq2_init(GtkWidget *notebook)
 	dac_interpolation = GTK_WIDGET(gtk_builder_get_object(builder, "dac_interpolation_clock"));
 	dac_shift = GTK_WIDGET(gtk_builder_get_object(builder, "dac_fcenter_shift"));
 
-	if (iio_devattr_exists("axi-ad9680-hpc", "in_voltage_sampling_frequency")) {
-		adc_freq_device = "axi-ad9680-hpc";
-		adc_freq_file = "in_voltage_sampling_frequency";
+	ch1 = iio_device_find_channel(adc, "voltage0", false);
+	if (iio_channel_find_attr(ch1, "sampling_frequency")) {
+		adc_freq_device = adc;
+		adc_freq_channel = ch1;
+		adc_freq_file = "sampling_frequency";
 	} else {
-		adc_freq_device = "ad9523-lpc";
-		adc_freq_file = "out_altvoltage2_ADC_CLK_frequency";
+		adc_freq_device = iio_context_find_device(ctx, "ad9523-lpc");
+		adc_freq_channel = iio_device_find_channel(adc_freq_device, "altvoltage2", true);
+		adc_freq_file = "ADC_CLK_frequency";
 	}
-
-	if (iio_devattr_exists("axi-ad9144-hpc", "out_altvoltage_1A_sampling_frequency"))
-		dac_sampling_freq_file = "out_altvoltage_1A_sampling_frequency";
-	else
-		dac_sampling_freq_file = "out_altvoltage_sampling_frequency";
-
-	shared_scale_available = iio_devattr_exists("axi-ad9144-hpc",
-			"out_altvoltage_scale_available");
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
 	manage_dds_mode();
@@ -998,153 +1047,134 @@ static int daq2_init(GtkWidget *notebook)
 	/* Bind the IIO device files to the GUI widgets */
 
 	/* The next free frequency related widgets - keep in this order! */
+	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
+	scale_available = iio_channel_find_attr(ch0, "scale_available");
+
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", dac_sampling_freq_file,
+			dac, ch0, "sampling_frequency",
 			builder, "dac_data_clock", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage_interpolation_frequency",
-			"out_altvoltage_interpolation_frequency_available",
+			dac, ch0, "interpolation_frequency",
+			"interpolation_frequency_available",
 			builder, "dac_interpolation_clock", NULL);
 	num_dac_shift = num_tx;
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc",
-			"out_altvoltage_interpolation_center_shift_frequency",
-			"out_altvoltage_interpolation_center_shift_frequency_available",
+			dac, ch0, "interpolation_center_shift_frequency",
+			"interpolation_center_shift_frequency_available",
 			builder, "dac_fcenter_shift", NULL);
 	/* DDS */
+	ch1 = iio_device_find_channel(dac, "altvoltage1", true);
+	ch2 = iio_device_find_channel(dac, "altvoltage2", true);
+	ch3 = iio_device_find_channel(dac, "altvoltage3", true);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage0_1A_frequency",
-			dds3_freq, &mhz_scale);
+			dac, ch0, "1A_frequency", dds3_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage2_2A_frequency",
-			dds1_freq, &mhz_scale);
+			dac, ch2, "2A_frequency", dds1_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	num_dds4_freq = num_tx;
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage1_1B_frequency",
-			dds4_freq, &mhz_scale);
+			dac, ch1, "1B_frequency", dds4_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	num_dds2_freq = num_tx;
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage3_2B_frequency",
-			dds2_freq, &mhz_scale);
+			dac, ch3, "2B_frequency", dds2_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage0_1A_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_1A_scale_available",
+			dac, ch0, "1A_scale",
+			scale_available ?: "1A_scale_available",
 			dds3_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage2_2A_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_2A_scale_available",
+			dac, ch2, "2A_scale",
+			scale_available ?: "2A_scale_available",
 			dds1_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage1_1B_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_1B_scale_available",
+			dac, ch1, "1B_scale",
+			scale_available ?: "1B_scale_available",
 			dds4_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage3_2B_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_2B_scale_available",
+			dac, ch3, "2B_scale",
+			scale_available ?: "2B_scale_available",
 			dds2_scale, compare_gain);
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage0_1A_phase",
-			dds3_phase, &khz_scale);
+			dac, ch0, "1A_phase", dds3_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage2_2A_phase",
-			dds1_phase, &khz_scale);
+			dac, ch2, "2A_phase", dds1_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage1_1B_phase",
-			dds4_phase, &khz_scale);
+			dac, ch1, "1B_phase", dds4_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"axi-ad9144-hpc", "out_altvoltage3_2B_phase",
-			dds2_phase, &khz_scale);
+			dac, ch3, "2B_phase", dds2_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 
 	/* Calibration */
+	ch0 = iio_device_find_channel(dac, "voltage0", true);
+	ch1 = iio_device_find_channel(dac, "voltage1", true);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"axi-ad9144-hpc", "out_voltage0_calibbias",
-			I_dac_offs, NULL);
+			dac, ch0, "calibbias", I_dac_offs, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"axi-ad9144-hpc", "out_voltage0_calibscale",
-			I_dac_fs_adj, NULL);
+			dac, ch0, "calibscale", I_dac_fs_adj, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"axi-ad9144-hpc", "out_voltage0_phase",
-			I_dac_pha_adj, NULL);
+			dac, ch0, "phase", I_dac_pha_adj, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"axi-ad9144-hpc", "out_voltage1_calibbias",
-			Q_dac_offs, NULL);
+			dac, ch1, "calibbias", Q_dac_offs, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"axi-ad9144-hpc", "out_voltage1_calibscale",
-			Q_dac_fs_adj, NULL);
+			dac, ch1, "calibscale", Q_dac_fs_adj, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"axi-ad9144-hpc", "out_voltage1_phase",
-			Q_dac_pha_adj, NULL);
+			dac, ch1, "phase", Q_dac_pha_adj, NULL);
 
 	g_signal_connect(I_dac_offs, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage0_calibbias");
+			G_CALLBACK(dac_cal_spin0), "calibbias");
 	g_signal_connect(I_dac_fs_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage0_calibscale");
+			G_CALLBACK(dac_cal_spin0), "calibscale");
 	g_signal_connect(I_dac_pha_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage0_phase");
+			G_CALLBACK(dac_cal_spin0), "phase");
 	g_signal_connect(Q_dac_offs, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage1_calibbias");
+			G_CALLBACK(dac_cal_spin1), "calibbias");
 	g_signal_connect(Q_dac_fs_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage1_calibscale");
+			G_CALLBACK(dac_cal_spin1), "calibscale");
 	g_signal_connect(Q_dac_pha_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin), "out_voltage1_phase");
+			G_CALLBACK(dac_cal_spin1), "phase");
 
+	ch0 = iio_device_find_channel(adc, "voltage0", false);
+	ch1 = iio_device_find_channel(adc, "voltage1", false);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"axi-ad9680-hpc", "in_voltage0_calibbias",
-			I_adc_offset_adj, NULL);
+			adc, ch0, "calibbias", I_adc_offset_adj, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			"axi-ad9680-hpc", "in_voltage1_calibbias",
-			Q_adc_offset_adj, NULL);
+			adc, ch1, "calibbias", Q_adc_offset_adj, NULL);
 	iio_spin_button_init(&cal_widgets[num_cal++],
-			"axi-ad9680-hpc", "in_voltage0_calibscale",
-			I_adc_gain_adj, NULL);
+			adc, ch0, "calibscale", I_adc_gain_adj, NULL);
 	iio_spin_button_init(&cal_widgets[num_cal++],
-			"axi-ad9680-hpc", "in_voltage1_calibscale",
-			Q_adc_gain_adj, NULL);
+			adc, ch1, "calibscale", Q_adc_gain_adj, NULL);
 	iio_spin_button_init(&cal_widgets[num_cal++],
-			"axi-ad9680-hpc", "in_voltage0_calibphase",
-			I_adc_phase_adj, NULL);
+			adc, ch0, "calibphase", I_adc_phase_adj, NULL);
 	iio_spin_button_init(&cal_widgets[num_cal++],
-			"axi-ad9680-hpc", "in_voltage1_calibphase",
-			Q_adc_phase_adj, NULL);
+			adc, ch1, "calibphase", Q_adc_phase_adj, NULL);
 
 	g_signal_connect(I_adc_gain_adj  , "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage0_calibscale");
+			G_CALLBACK(adc_cal_spin0), "calibscale");
 	g_signal_connect(I_adc_offset_adj, "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage0_calibbias");
+			G_CALLBACK(adc_cal_spin0), "calibbias");
 	g_signal_connect(I_adc_phase_adj , "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage0_calibphase");
+			G_CALLBACK(adc_cal_spin0), "calibphase");
 	g_signal_connect(Q_adc_gain_adj  , "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage1_calibscale");
+			G_CALLBACK(adc_cal_spin1), "calibscale");
 	g_signal_connect(Q_adc_offset_adj, "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage1_calibbias");
+			G_CALLBACK(adc_cal_spin1), "calibbias");
 	g_signal_connect(Q_adc_phase_adj , "value-changed",
-			G_CALLBACK(adc_cal_spin), "in_voltage1_calibphase");
+			G_CALLBACK(adc_cal_spin1), "calibphase");
 
 	/* Rx Widgets */
 
 	num_adc_freq = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			adc_freq_device, adc_freq_file,
+			adc_freq_device, adc_freq_channel, adc_freq_file,
 			builder, "adc_freq", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
@@ -1198,6 +1228,13 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)));
 			return buf;
 		}
+	} else if (MATCH_ATTRIB("dac_buf_filename") &&
+				gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode)) == 4) {
+		if (value) {
+			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dac_buffer), value);
+			process_dac_buffer_file(value);
+		} else
+			return dac_buf_filename;
 	} else {
 		printf("Unhandled tokens in ini file,\n"
 				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
@@ -1209,12 +1246,18 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
+static void context_destroy(void)
+{
+	iio_context_destroy(ctx);
+}
+
 static const char *daq2_sr_attribs[] = {
 	"axi-ad9144-hpc.out_altvoltage_1A_sampling_frequency",
 	"axi-ad9144-hpc.out_altvoltage_sampling_frequency",
 	"axi-ad9144-hpc.out_altvoltage_interpolation_frequency",
 	"axi-ad9144-hpc.out_altvoltage_interpolation_center_shift_frequency",
 	"dds_mode",
+	"dac_buf_filename",
 	"axi-ad9144-hpc.out_altvoltage0_1A_frequency",
 	"axi-ad9144-hpc.out_altvoltage2_2A_frequency",
 	"axi-ad9144-hpc.out_altvoltage1_1B_frequency",
@@ -1245,7 +1288,18 @@ static const char *daq2_sr_attribs[] = {
 
 static bool daq2_identify(void)
 {
-	return !set_dev_paths("axi-ad9144-hpc");
+	/* Use the OSC's IIO context just to detect the devices */
+	struct iio_context *osc_ctx = get_context_from_osc();
+	if (!iio_context_find_device(osc_ctx, "axi-ad9144-hpc")
+		|| !iio_context_find_device(osc_ctx, "axi-ad9680-hpc"))
+		return false;
+
+	ctx = osc_create_context();
+	dac = iio_context_find_device(ctx, "axi-ad9144-hpc");
+	adc = iio_context_find_device(ctx, "axi-ad9680-hpc");
+	if (!dac || !adc)
+		iio_context_destroy(ctx);
+	return !!dac && !!adc;
 }
 
 struct osc_plugin plugin = {
@@ -1254,5 +1308,5 @@ struct osc_plugin plugin = {
 	.init = daq2_init,
 	.save_restore_attribs = daq2_sr_attribs,
 	.handle_item = handle_item,
-
+	.destroy = context_destroy,
 };

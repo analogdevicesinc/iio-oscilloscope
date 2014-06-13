@@ -12,11 +12,11 @@
 #	define PREFIX "/usr/local/"
 #endif
 
-#define OSC_GLADE_FILE_PATH PREFIX "/share/osc/"
-#define OSC_PLUGIN_PATH PREFIX "/lib/osc/"
-#define OSC_XML_PATH PREFIX "/lib/osc/xmls"
-#define OSC_FILTER_FILE_PATH PREFIX "/lib/osc/filters"
-#define OSC_WAVEFORM_FILE_PATH PREFIX "/lib/osc/waveforms"
-#define OSC_PROFILES_FILE_PATH PREFIX "/lib/osc/profiles"
+#define OSC_GLADE_FILE_PATH PREFIX "/share/multiosc/"
+#define OSC_PLUGIN_PATH PREFIX "/lib/multiosc/"
+#define OSC_XML_PATH PREFIX "/lib/multiosc/xmls"
+#define OSC_FILTER_FILE_PATH PREFIX "/lib/multiosc/filters"
+#define OSC_WAVEFORM_FILE_PATH PREFIX "/lib/multiosc/waveforms"
+#define OSC_PROFILES_FILE_PATH PREFIX "/lib/multiosc/profiles"
 
 #endif

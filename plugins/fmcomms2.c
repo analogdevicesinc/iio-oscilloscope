@@ -20,10 +20,11 @@
 #include <malloc.h>
 #include <values.h>
 #include <sys/stat.h>
+#include <string.h>
 
+#include "../datatypes.h"
 #include "../osc.h"
 #include "../iio_widget.h"
-#include "../iio_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
@@ -32,9 +33,20 @@
 
 #define HANNING_ENBW 1.50
 
+#ifndef SLAVE
+#define PHY_DEVICE "ad9361-phy"
+#define DDS_DEVICE "cf-ad9361-dds-core-lpc"
+#define CAP_DEVICE "cf-ad9361-lpc"
+#else
+#define PHY_DEVICE "ad9361-phy-hpc"
+#define DDS_DEVICE "cf-ad9361-dds-core-hpc"
+#define CAP_DEVICE "cf-ad9361-hpc"
+#endif
+
 extern gfloat plugin_fft_corr;
 
 static bool is_2rx_2tx;
+static bool dds_activated, dds_disabled;
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble abs_mhz_scale = -1000000.0;
@@ -42,7 +54,7 @@ static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
 static char *dac_buf_filename = NULL;
 
-static bool dac_data_loaded = false;
+static struct iio_buffer *dds_buffer;
 
 static struct iio_widget glb_widgets[50];
 static struct iio_widget tx_widgets[50];
@@ -51,6 +63,9 @@ static unsigned int rx1_gain, rx2_gain;
 static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_lo, tx_lo;
 static unsigned int rx_sample_freq, tx_sample_freq;
+
+static struct iio_context *ctx;
+static struct iio_device *dev, *dds, *cap;
 
 /* Widgets for Global Settings */
 static GtkWidget *ensm_mode;
@@ -86,6 +101,8 @@ static GtkWidget *rf_port_select_tx;
 static GtkWidget *rx_fastlock_profile;
 static GtkWidget *tx_fastlock_profile;
 
+static GtkWidget *rx_phase_rotation[2];
+
 /* Widgets for Transmitter Settings */
 static GtkWidget *dds_mode_tx[3];
 #define TX_OFF   0
@@ -113,6 +130,8 @@ static gboolean plugin_detached;
 
 static char last_fir_filter[PATH_MAX];
 
+static void enable_dds(bool on_off);
+
 static void tx_update_values(void)
 {
 	iio_update_widgets(tx_widgets, num_tx);
@@ -126,62 +145,48 @@ static void rx_update_values(void)
 
 static void glb_settings_update_labels(void)
 {
-	char *buf = NULL;
 	float rates[6];
-	char tmp[160];
-	int ret;
+	char tmp[160], buf[1024];
+	ssize_t ret;
 
-	set_dev_paths("ad9361-phy");
-	ret = read_devattr("ensm_mode", &buf);
-	if (ret >= 0)
+	ret = iio_device_attr_read(dev, "ensm_mode", buf, sizeof(buf));
+	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(ensm_mode), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(ensm_mode), "<error>");
-	if (buf) {
-		free(buf);
-		buf = NULL;
-	}
 
-	ret = read_devattr("calib_mode", &buf);
-	if (ret >= 0)
+	ret = iio_device_attr_read(dev, "calib_mode", buf, sizeof(buf));
+	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(calib_mode), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(calib_mode), "<error>");
-	if (buf) {
-		free(buf);
-		buf = NULL;
-	}
 
-	ret = read_devattr("trx_rate_governor", &buf);
-	if (ret >= 0)
+	ret = iio_device_attr_read(dev, "trx_rate_governor", buf, sizeof(buf));
+	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(trx_rate_governor), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(trx_rate_governor), "<error>");
-	if (buf) {
-		free(buf);
-		buf = NULL;
-	}
 
-	ret = read_devattr("in_voltage0_gain_control_mode", &buf);
-	if (ret >= 0)
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev, "voltage0", false),
+			"gain_control_mode", buf, sizeof(buf));
+	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx1), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx1), "<error>");
-	if (buf)
-		free(buf);
 
 	if (is_2rx_2tx) {
-		ret = read_devattr("in_voltage1_gain_control_mode", &buf);
-		if (ret >= 0)
+		ret = iio_channel_attr_read(
+				iio_device_find_channel(dev, "voltage1", false),
+				"gain_control_mode", buf, sizeof(buf));
+		if (ret > 0)
 			gtk_label_set_text(GTK_LABEL(rx_gain_control_rx2), buf);
 		else
 			gtk_label_set_text(GTK_LABEL(rx_gain_control_rx2), "<error>");
-		if (buf)
-			free(buf);
 	}
 
-	ret = read_devattr("rx_path_rates", &buf);
-	if (ret >= 0) {
+	ret = iio_device_attr_read(dev, "rx_path_rates", buf, sizeof(buf));
+	if (ret > 0) {
 		sscanf(buf, "BBPLL:%f ADC:%f R2:%f R1:%f RF:%f RXSAMP:%f",
 		        &rates[0], &rates[1], &rates[2], &rates[3], &rates[4],
 			&rates[5]);
@@ -193,11 +198,9 @@ static void glb_settings_update_labels(void)
 	} else {
 		gtk_label_set_text(GTK_LABEL(rx_path_rates), "<error>");
 	}
-	if (buf)
-		free(buf);
 
-	ret = read_devattr("tx_path_rates", &buf);
-	if (ret >= 0) {
+	ret = iio_device_attr_read(dev, "tx_path_rates", buf, sizeof(buf));
+	if (ret > 0) {
 		sscanf(buf, "BBPLL:%f DAC:%f T2:%f T1:%f TF:%f TXSAMP:%f",
 		        &rates[0], &rates[1], &rates[2], &rates[3], &rates[4],
 			&rates[5]);
@@ -209,14 +212,10 @@ static void glb_settings_update_labels(void)
 	} else {
 		gtk_label_set_text(GTK_LABEL(tx_path_rates), "<error>");
 	}
-	if (buf)
-		free(buf);
 
 	iio_widget_update(&rx_widgets[rx1_gain]);
-
 	if (is_2rx_2tx)
 		iio_widget_update(&rx_widgets[rx2_gain]);
-
 }
 
 static void sample_frequency_changed_cb(void)
@@ -227,33 +226,27 @@ static void sample_frequency_changed_cb(void)
 
 static void rssi_update_labels(void)
 {
-	char *buf = NULL;
+	char buf[1024];
 	int ret;
 
-	set_dev_paths("ad9361-phy");
-	ret = read_devattr("in_voltage0_rssi", &buf);
-	if (ret >= 0)
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev, "voltage0", false),
+			"rssi", buf, sizeof(buf));
+	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(rx1_rssi), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(rx1_rssi), "<error>");
-	if (buf) {
-		free(buf);
-		buf = NULL;
-	}
 
 	if (!is_2rx_2tx)
 		return;
 
-	ret = read_devattr("in_voltage1_rssi", &buf);
-	if (ret >= 0)
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev, "voltage1", false),
+			"rssi", buf, sizeof(buf));
+	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(rx2_rssi), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(rx2_rssi), "<error>");
-	if (buf) {
-		free(buf);
-		buf = NULL;
-	}
-
 }
 
 static void update_display (void *ptr)
@@ -280,12 +273,17 @@ static void update_display (void *ptr)
 
 void filter_fir_update(void)
 {
-	bool rx, tx, rxtx;
+	bool rx = false, tx = false, rxtx = false;
+	struct iio_channel *chn;
 
-	set_dev_paths("ad9361-phy");
-	read_devattr_bool("in_voltage_filter_fir_en", &rx);
-	read_devattr_bool("out_voltage_filter_fir_en", &tx);
-	read_devattr_bool("in_out_voltage_filter_fir_en", &rxtx);
+	iio_device_attr_read_bool(dev, "in_out_voltage_filter_fir_en", &rxtx);
+
+	chn = iio_device_find_channel(dev, "voltage0", false);
+	if (chn)
+		iio_channel_attr_read_bool(chn, "filter_fir_en", &rx);
+	chn = iio_device_find_channel(dev, "voltage0", true);
+	if (chn)
+		iio_channel_attr_read_bool(chn, "filter_fir_en", &tx);
 
 	if (rxtx) {
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx), rxtx);
@@ -307,18 +305,77 @@ void filter_fir_enable(void)
 	rxtx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx));
 	disable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters));
 
-	set_dev_paths("ad9361-phy");
-
-	if (rxtx) {
-		write_devattr("in_out_voltage_filter_fir_en", "1");
-	} else if (disable) {
-		write_devattr("in_out_voltage_filter_fir_en", "0");
+	if (rxtx || disable) {
+		iio_device_attr_write_bool(dev,
+				"in_out_voltage_filter_fir_en", rxtx);
 	} else {
-		write_devattr("out_voltage_filter_fir_en", tx ? "1" : "0");
-		write_devattr("in_voltage_filter_fir_en", rx ? "1" : "0");
+		struct iio_channel *chn;
+		chn = iio_device_find_channel(dev, "voltage0", true);
+		if (chn)
+			iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
+
+		chn = iio_device_find_channel(dev, "voltage0", false);
+		if (chn)
+			iio_channel_attr_write_bool(chn, "filter_fir_en", rx);
 	}
 
 	filter_fir_update();
+}
+
+static void rx_phase_rotation_update()
+{
+	struct iio_channel *out[4];
+	gdouble val[4];
+	int i;
+
+	out[0] = iio_device_find_channel(cap, "voltage0", false);
+	out[1] = iio_device_find_channel(cap, "voltage1", false);
+	out[2] = iio_device_find_channel(cap, "voltage2", false);
+	out[3] = iio_device_find_channel(cap, "voltage3", false);
+
+	for (i = 0; i <= 2; i += 2) {
+		iio_channel_attr_read_double(out[i], "calibscale", &val[0]);
+		iio_channel_attr_read_double(out[i], "calibphase", &val[1]);
+		iio_channel_attr_read_double(out[i + 1], "calibscale", &val[2]);
+		iio_channel_attr_read_double(out[i + 1], "calibphase", &val[3]);
+
+		val[0] = acos(val[0]) * 360.0 / (2.0 * M_PI);
+		val[1] = asin(-1.0 * val[1]) * 360.0 / (2.0 * M_PI);
+		val[2] = acos(val[2]) * 360.0 / (2.0 * M_PI);
+		val[3] = asin(val[3]) * 360.0 / (2.0 * M_PI);
+
+		if (val[1] < 0.0)
+			val[0] *= -1.0;
+		if (val[3] < 0.0)
+			val[2] *= -1.0;
+		if (val[1] < -90.0)
+			val[0] = (val[0] * -1.0) - 180.0;
+		if (val[3] < -90.0)
+			val[0] = (val[0] * -1.0) - 180.0;
+
+		if (fabs(val[0]) > 90.0) {
+			if (val[1] < 0.0)
+				val[1] = (val[1] * -1.0) - 180.0;
+			else
+				val[1] = 180 - val[1];
+		}
+		if (fabs(val[2]) > 90.0) {
+			if (val[3] < 0.0)
+				val[3] = (val[3] * -1.0) - 180.0;
+			else
+				val[3] = 180 - val[3];
+		}
+
+		if (round(val[0]) != round(val[1]) &&
+					round(val[0]) != round(val[2]) &&
+					round(val[0]) != round(val[3])) {
+			printf("error calculating phase rotations\n");
+			val[0] = 0.0;
+		} else
+			val[0] = (val[0] + val[1] + val[2] + val[3]) / 4.0;
+
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(rx_phase_rotation[i/2]), val[0]);
+	}
 }
 
 static void reload_button_clicked(GtkButton *btn, gpointer data)
@@ -330,6 +387,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	rx_update_labels();
 	glb_settings_update_labels();
 	rssi_update_labels();
+	rx_phase_rotation_update();
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
@@ -348,33 +406,38 @@ static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
 	}
 }
 
+static int write_int(struct iio_channel *chn, const char *attr, int val)
+{
+	return iio_channel_attr_write_longlong(chn, attr, (long long) val);
+}
+
 static void fastlock_clicked(GtkButton *btn, gpointer data)
 {
 	int profile;
 
-	switch ((int)data) {
+	switch ((uintptr_t) data) {
 		case 1: /* RX Store */
 			iio_widget_save(&rx_widgets[rx_lo]);
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile));
-			set_dev_paths("ad9361-phy");
-			write_devattr_int("out_altvoltage0_RX_LO_fastlock_store", profile);
+			write_int(iio_device_find_channel(dev, "altvoltage0", true),
+					"RX_LO_fastlock_store", profile);
 			break;
 		case 2: /* TX Store */
 			iio_widget_save(&tx_widgets[tx_lo]);
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile));
-			set_dev_paths("ad9361-phy");
-			write_devattr_int("out_altvoltage1_TX_LO_fastlock_store", profile);
+			write_int(iio_device_find_channel(dev, "altvoltage1", true),
+					"TX_LO_fastlock_store", profile);
 			break;
 		case 3: /* RX Recall */
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile));
-			set_dev_paths("ad9361-phy");
-			write_devattr_int("out_altvoltage0_RX_LO_fastlock_recall", profile);
+			write_int(iio_device_find_channel(dev, "altvoltage0", true),
+					"RX_LO_fastlock_recall", profile);
 			iio_widget_update(&rx_widgets[rx_lo]);
 			break;
 		case 4: /* TX Recall */
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile));
-			set_dev_paths("ad9361-phy");
-			write_devattr_int("out_altvoltage1_TX_LO_fastlock_recall", profile);
+			write_int(iio_device_find_channel(dev, "altvoltage1", true),
+					"TX_LO_fastlock_recall", profile);
 			iio_widget_update(&tx_widgets[tx_lo]);
 			break;
 	}
@@ -382,12 +445,24 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 
 static void load_fir_filter(const char *file_name)
 {
-	char str[4096];
-	int ret;
+	int ret = -1;
+	FILE *f = fopen(file_name, "r");
+	if (f) {
+		char *buf;
+		ssize_t len;
 
-	set_dev_paths("ad9361-phy");
-	sprintf(str, "cat %s > %s/filter_fir_config ", file_name, dev_name_dir());
-	ret = system(str);
+		fseek(f, 0, SEEK_END);
+		len = ftell(f);
+		buf = malloc(len);
+		fseek(f, 0, SEEK_SET);
+		len = fread(buf, 1, len, f);
+		fclose(f);
+
+		ret = iio_device_attr_write_raw(dev,
+				"filter_fir_config", buf, len);
+		free(buf);
+	}
+
 	if (ret < 0)
 		fprintf(stderr, "FIR filter config failed\n");
 	else
@@ -403,12 +478,16 @@ void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 
 static void process_dac_buffer_file (const char *file_name)
 {
-	int ret, fd, size = 0;
+	int ret, size = 0, s_size;
 	struct stat st;
-	char *buf = NULL;
+	char *buf = NULL, *tmp;
 	FILE *infile;
+	unsigned int i, nb_channels = iio_device_get_channels_count(dds);
 
-	ret = analyse_wavefile(file_name, &buf, &size, is_2rx_2tx ? 2 : 1);
+	if (nb_channels <= 8)
+		return;
+
+	ret = analyse_wavefile(file_name, &buf, &size, (nb_channels - 8) / 2);
 	if (ret == -3)
 		return;
 
@@ -422,35 +501,42 @@ static void process_dac_buffer_file (const char *file_name)
 		fclose(infile);
 	}
 
-	set_dev_paths("cf-ad9361-dds-core-lpc");
-	write_devattr_int("buffer/enable", 0);
+	if (dds_buffer) {
+		iio_buffer_destroy(dds_buffer);
+		dds_buffer = NULL;
+	}
 
-	fd = iio_buffer_open(false, 0);
-	if (fd < 0) {
+	enable_dds(false);
+
+	/* Enable all channels */
+	for (i = 0; i < nb_channels; i++)
+		iio_channel_enable(iio_device_get_channel(dds, i));
+
+	s_size = iio_device_get_sample_size(dds);
+	if (!s_size) {
+		fprintf(stderr, "Unable to create buffer due to sample size: %s\n", strerror(errno));
 		free(buf);
 		return;
 	}
 
-	ret = write(fd, buf, size);
-	if (ret != size) {
-		fprintf(stderr, "Loading waveform failed %d\n", ret);
+	dds_buffer = iio_device_create_buffer(dds, size / s_size, true);
+	if (!dds_buffer) {
+		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
+		free(buf);
+		return;
 	}
 
-	close(fd);
+	memcpy(iio_buffer_start(dds_buffer), buf,
+			iio_buffer_end(dds_buffer) - iio_buffer_start(dds_buffer));
+
+	iio_buffer_push(dds_buffer);
 	free(buf);
 
-	ret = write_devattr_int("buffer/enable", 1);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to enable buffer: %d\n", ret);
-	}
-
-	dac_data_loaded = true;
-
+	tmp = strdup(file_name);
 	if (dac_buf_filename)
 		free(dac_buf_filename);
-	dac_buf_filename = malloc(strlen(file_name) + 1);
-	strcpy(dac_buf_filename, file_name);
-
+	dac_buf_filename = tmp;
+	printf("Waveform loaded\n");
 }
 
 static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
@@ -482,8 +568,8 @@ static int compare_gain(const char *a, const char *b)
 
 static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer channel)
 {
-	gint ch1 = TX1_T1_I + (((int)channel - 1) * 4);
-	gint ch2 = TX1_T2_I + (((int)channel - 1) * 4);
+	gint ch1 = TX1_T1_I + (((long) channel - 1) * 4);
+	gint ch2 = TX1_T2_I + (((long) channel - 1) * 4);
 
 	gdouble phase1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_phase[ch1]));
 	gdouble phase2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_phase[ch2]));
@@ -501,7 +587,7 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer channel)
 	if ((phase1 - inc1) < 0)
 		phase1 += 360;
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel]))) {
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel]))) {
 		case DDS_ONE_TONE:
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_phase[ch1 + 2]), phase1 - inc1);
 			break;
@@ -524,13 +610,13 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer channel)
 
 static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer channel)
 {
-	gint ch1 = TX1_T1_I + (((int)channel - 1) * 4);
-	gint ch2 = TX1_T2_I + (((int)channel - 1) * 4);
+	gint ch1 = TX1_T1_I + (((long)channel - 1) * 4);
+	gint ch2 = TX1_T2_I + (((long)channel - 1) * 4);
 
 	gdouble freq1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch1]));
 	gdouble freq2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch2]));
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel]))) {
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel]))) {
 		case DDS_ONE_TONE:
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_freq[ch1 + 2]), freq1);
 			break;
@@ -540,23 +626,22 @@ static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer channel)
 			break;
 		default:
 			printf("%s: error : %i\n", __func__,
-					gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel])));
+					gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel])));
 			break;
 	}
 
 	dds_locked_phase_cb(NULL, channel);
 }
 
-
 static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer channel)
 {
-	gint ch1 = TX1_T1_I + (((int)channel - 1) * 4);
-	gint ch2 = TX1_T2_I + (((int)channel - 1) * 4);
+	gint ch1 = TX1_T1_I + (((long)channel - 1) * 4);
+	gint ch2 = TX1_T2_I + (((long)channel - 1) * 4);
 
 	gint scale1 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[ch1]));
 	gint scale2 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[ch2]));
 
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(int)channel]))) {
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel]))) {
 		case DDS_ONE_TONE:
 			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_scale[ch1 + 2]), scale1);
 			break;
@@ -569,7 +654,6 @@ static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer channel)
 	}
 
 }
-
 
 static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data)
 {
@@ -586,26 +670,86 @@ static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data
 	}
 }
 
+static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
+{
+	glong offset = (glong) user_data;
+	struct iio_channel *out0, *out1;
+	gdouble val, phase;
+
+	val = gtk_spin_button_get_value(spinbutton);
+
+	phase = val * 2 * M_PI / 360.0;
+
+	if (offset == 2) {
+		out0 = iio_device_find_channel(cap, "voltage2", false);
+		out1 = iio_device_find_channel(cap, "voltage3", false);
+	} else {
+		out0 = iio_device_find_channel(cap, "voltage0", false);
+		out1 = iio_device_find_channel(cap, "voltage1", false);
+	}
+
+	if (out1 && out0) {
+		iio_channel_attr_write_double(out0, "calibscale", (double) cos(phase));
+		iio_channel_attr_write_double(out0, "calibphase", (double) (-1 * sin(phase)));
+		iio_channel_attr_write_double(out1, "calibscale", (double) cos(phase));
+		iio_channel_attr_write_double(out1, "calibphase", (double) sin(phase));
+	}
+}
+
 static void enable_dds(bool on_off)
 {
 	int ret;
 
-	set_dev_paths("cf-ad9361-dds-core-lpc");
-	write_devattr_int("out_altvoltage0_TX1_I_F1_raw", on_off ? 1 : 0);
+	if (on_off == dds_activated && !dds_disabled)
+		return;
+	dds_activated = on_off;
 
-	if (on_off || dac_data_loaded) {
-		ret = write_devattr_int("buffer/enable", !on_off);
-		if (ret < 0) {
-			fprintf(stderr, "Failed to enable buffer: %d\n", ret);
-
-		}
+	if (dds_buffer) {
+		iio_buffer_destroy(dds_buffer);
+		dds_buffer = NULL;
 	}
+
+	ret = iio_channel_attr_write_bool(iio_device_find_channel(dds, "altvoltage0", true), "raw", on_off);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to toggle DDS: %d\n", ret);
+		return;
+	}
+}
+
+/* The Slave device doesn't have a own DMA, therefore no buffer and enable
+ * however the select mux still needs to be set.
+ * This is a temp workaround
+ */
+
+static void slave_enable_dma_mux(bool enable)
+{
+#ifdef SLAVE
+#define ADI_REG_CNTRL_2	0x0048
+#define ADI_DATA_SEL(x)	(((x) & 0xF) << 0)
+#define 	DATA_SEL_DDS	0
+#define 	DATA_SEL_SED	1
+#define 	DATA_SEL_DMA	2
+
+unsigned tmp;
+
+	if (iio_device_reg_read(dds, 0x80000000 | ADI_REG_CNTRL_2, &tmp))
+		return;
+
+	tmp &= ~ADI_DATA_SEL(~0);
+
+	if (enable)
+		tmp |= DATA_SEL_DMA;
+	else
+		tmp |= DATA_SEL_DDS;
+
+	iio_device_reg_write(dds, 0x80000000 | ADI_REG_CNTRL_2, tmp);
+#endif
 }
 
 #define IIO_SPIN_SIGNAL "value-changed"
 #define IIO_COMBO_SIGNAL "changed"
 
-static void manage_dds_mode(GtkComboBox *box, gint channel)
+static void manage_dds_mode(GtkComboBox *box, glong channel)
 {
 	gint active, i, start, end;
 	static gint *mag = NULL;
@@ -642,9 +786,9 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 		}
 	}
 
-
 	switch (active) {
 	case DDS_DISABLED:
+		slave_enable_dma_mux(0);
 		if (channel == 1) {
 		 	start = TX1_T1_I;
 			end = TX1_T2_Q;
@@ -664,6 +808,11 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 			if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_scale[i])) !=  mag[TX_OFF])
 				start++;
 		}
+		if (!dds_activated && dds_buffer) {
+			iio_buffer_destroy(dds_buffer);
+			dds_buffer = NULL;
+		}
+		dds_disabled = true;
 		if (!start)
 			enable_dds(false);
 		else
@@ -675,6 +824,7 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 
 		break;
 	case DDS_ONE_TONE:
+		slave_enable_dma_mux(0);
 		enable_dds(true);
 		gtk_widget_hide(dac_buffer);
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX_l[channel]),"<b>Single Tone</b>");
@@ -745,6 +895,7 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 		dds_locked_phase_cb(NULL, (gpointer *)channel);
 		break;
 	case DDS_TWO_TONE:
+		slave_enable_dma_mux(0);
 		enable_dds(true);
 		gtk_widget_hide(dac_buffer);
 		gtk_widget_show_all(channel_I_tx[channel]);
@@ -791,6 +942,7 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 		break;
 	case DDS_INDEPDENT:
 		/* Independant/Individual control */
+		slave_enable_dma_mux(0);
 		enable_dds(true);
 		gtk_widget_show_all(channel_I_tx[channel]);
 		gtk_widget_show_all(channel_Q_tx[channel]);
@@ -824,7 +976,11 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
 		}
 		break;
 	case DDS_BUFFER:
-		enable_dds(false);
+		slave_enable_dma_mux(1);
+		if ((dds_activated || dds_disabled) && dac_buf_filename) {
+			dds_disabled = false;
+			process_dac_buffer_file(dac_buf_filename);
+		}
 		gtk_widget_show(dac_buffer);
 		gtk_widget_hide(channel_I_tx[1]);
 		gtk_widget_hide(channel_Q_tx[1]);
@@ -848,20 +1004,28 @@ static void manage_dds_mode(GtkComboBox *box, gint channel)
  * Return 1 if the channel combination is valid
  * Return 0 if the combination is not valid
  */
-int channel_combination_check(struct iio_channel_info *channels, int ch_count, char **ch_names)
+int channel_combination_check(struct iio_device *dev, const char **ch_names)
 {
 	bool consecutive_ch = FALSE;
-	int i, k = 0;
+	unsigned int i, k, nb_channels = iio_device_get_channels_count(dev);
 
-	for (i = 0; i < ch_count; i++)
-		if (channels[i].enabled) {
-			ch_names[k++] = channels[i].name;
-			if (i > 0)
-				if (channels[i - 1].enabled) {
+	for (i = 0, k = 0; i < nb_channels; i++) {
+		struct iio_channel *ch = iio_device_get_channel(dev, i);
+		struct extra_info *info = iio_channel_get_data(ch);
+
+		if (info->may_be_enabled) {
+			const char *name = iio_channel_get_name(ch) ?: iio_channel_get_id(ch);
+			ch_names[k++] = name;
+
+			if (i > 0) {
+				struct extra_info *prev = iio_channel_get_data(iio_device_get_channel(dev, i - 1));
+				if (prev->may_be_enabled) {
 					consecutive_ch = TRUE;
 					break;
 				}
+			}
 		}
+	}
 	if (!consecutive_ch)
 		return 0;
 
@@ -873,7 +1037,6 @@ int channel_combination_check(struct iio_channel_info *channels, int ch_count, c
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
-	set_dev_paths(iio_w->device_name);
 	iio_w->save(iio_w);
 }
 
@@ -904,11 +1067,25 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
+int handle_external_request (const char *request)
+{
+	int ret = 0;
+
+	if (!strcmp(request, "Reload Settings")) {
+		reload_button_clicked(NULL, 0);
+		ret = 1;
+	}
+
+	return ret;
+}
+
 static int fmcomms2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
 	GtkWidget *fmcomms2_panel;
-	bool shared_scale_available;
+	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", false),
+			   *ch1 = iio_device_find_channel(dev, "voltage1", false),
+			   *ch2, *ch3, *ch4, *ch5, *ch6, *ch7;
 	int i;
 
 	for (i = 0; i <= TX2_T2_Q; i++) {
@@ -923,7 +1100,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	if (!gtk_builder_add_from_file(builder, "fmcomms2.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms2.glade", NULL);
 
-	is_2rx_2tx = iio_devattr_exists("ad9361-phy", "in_voltage1_hardwaregain");
+	is_2rx_2tx = ch1 && iio_channel_find_attr(ch1, "hardwaregain");
 
 	fmcomms2_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms2_panel"));
 
@@ -1019,6 +1196,9 @@ static int fmcomms2_init(GtkWidget *notebook)
 	channel_I_tone2_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Tone2_ch_I_tx2"));
 	dac_buffer = GTK_WIDGET(gtk_builder_get_object(builder, "dac_buffer"));
 
+	rx_phase_rotation[0] = GTK_WIDGET(gtk_builder_get_object(builder, "rx1_phase_rotation"));
+	rx_phase_rotation[1] = GTK_WIDGET(gtk_builder_get_object(builder, "rx2_phase_rotation"));
+
 	gtk_combo_box_set_active(GTK_COMBO_BOX(ensm_mode_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(trx_rate_governor_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes_rx1), 0);
@@ -1034,231 +1214,212 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	/* Global settings */
 	iio_combo_box_init(&glb_widgets[num_glb++],
-		"ad9361-phy", "ensm_mode", "ensm_mode_available",
+		dev, NULL, "ensm_mode", "ensm_mode_available",
 		ensm_mode_available, NULL);
 	iio_combo_box_init(&glb_widgets[num_glb++],
-		"ad9361-phy", "calib_mode", "calib_mode_available",
+		dev, NULL, "calib_mode", "calib_mode_available",
 		calib_mode_available, NULL);
 	iio_combo_box_init(&glb_widgets[num_glb++],
-		"ad9361-phy", "trx_rate_governor", "trx_rate_governor_available",
+		dev, NULL, "trx_rate_governor", "trx_rate_governor_available",
 		trx_rate_governor_available, NULL);
 
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
-		"ad9361-phy", "dcxo_tune_coarse", builder, "dcxo_coarse_tune",
+		dev, NULL, "dcxo_tune_coarse", builder, "dcxo_coarse_tune",
 		0);
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
-		"ad9361-phy", "dcxo_tune_fine", builder, "dcxo_fine_tune",
+		dev, NULL, "dcxo_tune_fine", builder, "dcxo_fine_tune",
 		0);
 
 	/* Receive Chain */
 
 	iio_combo_box_init(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage0_gain_control_mode",
-		"in_voltage_gain_control_mode_available",
+		dev, ch0, "gain_control_mode",
+		"gain_control_mode_available",
 		rx_gain_control_modes_rx1, NULL);
 
 	iio_combo_box_init(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage0_rf_port_select",
-		"in_voltage_rf_port_select_available",
+		dev, ch0, "rf_port_select",
+		"rf_port_select_available",
 		rf_port_select_rx, NULL);
 
 	if (is_2rx_2tx)
 		iio_combo_box_init(&rx_widgets[num_rx++],
-			"ad9361-phy", "in_voltage1_gain_control_mode",
-			"in_voltage_gain_control_mode_available",
+			dev, ch1, "gain_control_mode",
+			"gain_control_mode_available",
 			rx_gain_control_modes_rx2, NULL);
 	rx1_gain = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage0_hardwaregain", builder,
+		dev, ch0, "hardwaregain", builder,
 		"hardware_gain_rx1", NULL);
 
 	if (is_2rx_2tx) {
 		rx2_gain = num_rx;
 		iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			"ad9361-phy", "in_voltage1_hardwaregain", builder,
+			dev, ch1, "hardwaregain", builder,
 			"hardware_gain_rx2", NULL);
 	}
 	rx_sample_freq = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage_sampling_frequency", builder,
+		dev, ch0, "sampling_frequency", builder,
 		"sampling_freq_rx", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage_rf_bandwidth", builder, "rf_bandwidth_rx",
+		dev, ch0, "rf_bandwidth", builder, "rf_bandwidth_rx",
 		&mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 	rx_lo = num_rx;
+
+	ch1 = iio_device_find_channel(dev, "altvoltage0", true);
 	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "out_altvoltage0_RX_LO_frequency", builder,
+		dev, ch1, "frequency", builder,
 		"rx_lo_freq", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage_quadrature_tracking_en", builder,
+		dev, ch0, "quadrature_tracking_en", builder,
 		"quad", 0);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage_rf_dc_offset_tracking_en", builder,
+		dev, ch0, "rf_dc_offset_tracking_en", builder,
 		"rfdc", 0);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-		"ad9361-phy", "in_voltage_bb_dc_offset_tracking_en", builder,
+		dev, ch0, "bb_dc_offset_tracking_en", builder,
 		"bbdc", 0);
 
 	iio_spin_button_init_from_builder(&rx_widgets[num_rx],
-		"cf-ad9361-lpc", "in_voltage1_calibphase",
+		dev, ch1, "calibphase",
 		builder, "rx1_phase_rotation", NULL);
 	iio_spin_button_add_progress(&rx_widgets[num_rx++]);
 
-
 	/* Transmit Chain */
 
+	ch0 = iio_device_find_channel(dev, "voltage0", true);
+	if (is_2rx_2tx)
+		ch1 = iio_device_find_channel(dev, "voltage1", true);
+
 	iio_combo_box_init(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_voltage0_rf_port_select",
-		"out_voltage_rf_port_select_available",
+		dev, ch0, "rf_port_select",
+		"rf_port_select_available",
 		rf_port_select_tx, NULL);
 
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_voltage0_hardwaregain", builder,
+		dev, ch0, "hardwaregain", builder,
 		"hardware_gain_tx1", &inv_scale);
 
 	if (is_2rx_2tx)
 		iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			"ad9361-phy", "out_voltage1_hardwaregain", builder,
+			dev, ch1, "hardwaregain", builder,
 			"hardware_gain_tx2", &inv_scale);
 	tx_sample_freq = num_tx;
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_voltage_sampling_frequency", builder,
+		dev, ch0, "sampling_frequency", builder,
 		"sampling_freq_tx", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_voltage_rf_bandwidth", builder,
+		dev, ch0, "rf_bandwidth", builder,
 		"rf_bandwidth_tx", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	tx_lo = num_tx;
+	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
+
 	iio_spin_button_s64_init_from_builder(&tx_widgets[num_tx++],
-		"ad9361-phy", "out_altvoltage1_TX_LO_frequency", builder,
-		"tx_lo_freq", &mhz_scale);
+		dev, ch1, "frequency", builder, "tx_lo_freq", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
-	shared_scale_available = iio_devattr_exists("cf-ad9361-dds-core-lpc",
-			"out_altvoltage_scale_available");
+	ch0 = iio_device_find_channel(dds, "TX1_I_F1", true);
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_frequency",
-			dds_freq[TX1_T1_I], &abs_mhz_scale);
+			dds, ch0, "frequency", dds_freq[TX1_T1_I], &abs_mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_frequency",
-			dds_freq[TX1_T2_I], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_frequency",
-			dds_freq[TX1_T1_Q], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_frequency",
-			dds_freq[TX1_T2_Q], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_frequency",
-			dds_freq[TX2_T1_I], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_frequency",
-			dds_freq[TX2_T2_I], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_frequency",
-			dds_freq[TX2_T1_Q], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_frequency",
-			dds_freq[TX2_T2_Q], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_TX1_I_F1_scale_available",
-			dds_scale[TX1_T1_I], compare_gain);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_TX1_I_F2_scale_available",
-			dds_scale[TX1_T2_I], compare_gain);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_TX1_Q_F1_scale_available",
-			dds_scale[TX1_T1_Q], compare_gain);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_TX1_Q_F2_scale_available",
-			dds_scale[TX1_T2_Q], compare_gain);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_TX2_I_F1_scale_available",
-			dds_scale[TX2_T1_I], compare_gain);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_TX2_I_F2_scale_available",
-			dds_scale[TX2_T2_I], compare_gain);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_TX2_Q_F1_scale_available",
-			dds_scale[TX2_T1_Q], compare_gain);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_scale",
-			shared_scale_available ?
-				"out_altvoltage_scale_available" :
-				"out_altvoltage_TX2_Q_F2_scale_available",
-			dds_scale[TX2_T2_Q], compare_gain);
 
+	ch1 = iio_device_find_channel(dds, "TX1_I_F2", true);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage0_TX1_I_F1_phase",
+			dds, ch1, "frequency", dds_freq[TX1_T2_I], &abs_mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
+	ch2 = iio_device_find_channel(dds, "TX1_Q_F1", true);
+	iio_spin_button_init(&tx_widgets[num_tx++],
+			dds, ch2, "frequency", dds_freq[TX1_T1_Q], &abs_mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
+	ch3 = iio_device_find_channel(dds, "TX1_Q_F2", true);
+	iio_spin_button_init(&tx_widgets[num_tx++],
+			dds, ch3, "frequency", dds_freq[TX1_T2_Q], &abs_mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
+	ch4 = iio_device_find_channel(dds, "TX2_I_F1", true);
+	iio_spin_button_init(&tx_widgets[num_tx++],
+			dds, ch4, "frequency", dds_freq[TX2_T1_I], &abs_mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
+	ch5 = iio_device_find_channel(dds, "TX2_I_F2", true);
+	iio_spin_button_init(&tx_widgets[num_tx++],
+			dds, ch5, "frequency", dds_freq[TX2_T2_I], &abs_mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
+	ch6 = iio_device_find_channel(dds, "TX2_Q_F1", true);
+	iio_spin_button_init(&tx_widgets[num_tx++],
+			dds, ch6, "frequency", dds_freq[TX2_T1_Q], &abs_mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
+	ch7 = iio_device_find_channel(dds, "TX2_Q_F2", true);
+	iio_spin_button_init(&tx_widgets[num_tx++],
+			dds, ch7, "frequency", dds_freq[TX2_T2_Q], &abs_mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
+	iio_combo_box_init(&tx_widgets[num_tx++], dds, ch0, "scale",
+			"scale_available", dds_scale[TX1_T1_I], compare_gain);
+	iio_combo_box_init(&tx_widgets[num_tx++], dds, ch1, "scale",
+			"scale_available", dds_scale[TX1_T2_I], compare_gain);
+	iio_combo_box_init(&tx_widgets[num_tx++], dds, ch2, "scale",
+			"scale_available", dds_scale[TX1_T1_Q], compare_gain);
+	iio_combo_box_init(&tx_widgets[num_tx++], dds, ch3, "scale",
+			"scale_available", dds_scale[TX1_T2_Q], compare_gain);
+	iio_combo_box_init(&tx_widgets[num_tx++], dds, ch4, "scale",
+			"scale_available", dds_scale[TX2_T1_I], compare_gain);
+	iio_combo_box_init(&tx_widgets[num_tx++], dds, ch5, "scale",
+			"scale_available", dds_scale[TX2_T2_I], compare_gain);
+	iio_combo_box_init(&tx_widgets[num_tx++], dds, ch6, "scale",
+			"scale_available", dds_scale[TX2_T1_Q], compare_gain);
+	iio_combo_box_init(&tx_widgets[num_tx++], dds, ch7, "scale",
+			"scale_available", dds_scale[TX2_T2_Q], compare_gain);
+
+	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch0, "phase",
 			dds_phase[TX1_T1_I], &khz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage1_TX1_I_F2_phase",
+	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch1, "phase",
 			dds_phase[TX1_T2_I], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage2_TX1_Q_F1_phase",
+	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch2, "phase",
 			dds_phase[TX1_T1_Q], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage3_TX1_Q_F2_phase",
+	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch3, "phase",
 			dds_phase[TX1_T2_Q], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage4_TX2_I_F1_phase",
+	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch4, "phase",
 			dds_phase[TX2_T1_I], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage5_TX2_I_F2_phase",
+	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch5, "phase",
 			dds_phase[TX2_T2_I], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage6_TX2_Q_F1_phase",
+	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch6, "phase",
 			dds_phase[TX2_T1_Q], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			"cf-ad9361-dds-core-lpc", "out_altvoltage7_TX2_Q_F2_phase",
+	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch7, "phase",
 			dds_phase[TX2_T2_Q], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	/* Signals connect */
+
+	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
+			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
+
+	g_builder_connect_signal(builder, "rx2_phase_rotation", "value-changed",
+			G_CALLBACK(rx_phase_rotation_set), (gpointer *)2);
+
+	g_builder_connect_signal(builder, "sampling_freq_tx", "value-changed",
+			G_CALLBACK(tx_sample_rate_changed), NULL);
+
 	g_signal_connect(dds_mode_tx[1], "changed", G_CALLBACK(manage_dds_mode),
 			(gpointer *)1);
 	g_signal_connect(dds_mode_tx[2], "changed", G_CALLBACK(manage_dds_mode),
@@ -1485,30 +1646,30 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 }
 
 static const char *fmcomms2_sr_attribs[] = {
-	"ad9361-phy.trx_rate_governor",
-	"ad9361-phy.dcxo_tune_coarse",
-	"ad9361-phy.dcxo_tune_fine",
-	"ad9361-phy.ensm_mode",
-	"ad9361-phy.in_voltage0_rf_port_select",
-	"ad9361-phy.in_voltage0_gain_control_mode",
-	"ad9361-phy.in_voltage0_hardwaregain",
-	"ad9361-phy.in_voltage1_gain_control_mode",
-	"ad9361-phy.in_voltage1_hardwaregain",
-	"ad9361-phy.in_voltage_bb_dc_offset_tracking_en",
-	"ad9361-phy.in_voltage_quadrature_tracking_en",
-	"ad9361-phy.in_voltage_rf_dc_offset_tracking_en",
-	"ad9361-phy.out_voltage0_rf_port_select",
-	"ad9361-phy.out_altvoltage0_RX_LO_frequency",
-	"ad9361-phy.out_altvoltage1_TX_LO_frequency",
-	"ad9361-phy.out_voltage0_hardwaregain",
-	"ad9361-phy.out_voltage1_hardwaregain",
-	"ad9361-phy.out_voltage_sampling_frequency",
-	"ad9361-phy.in_voltage_rf_bandwidth",
-	"ad9361-phy.out_voltage_rf_bandwidth",
+	PHY_DEVICE".trx_rate_governor",
+	PHY_DEVICE".dcxo_tune_coarse",
+	PHY_DEVICE".dcxo_tune_fine",
+	PHY_DEVICE".ensm_mode",
+	PHY_DEVICE".in_voltage0_rf_port_select",
+	PHY_DEVICE".in_voltage0_gain_control_mode",
+	PHY_DEVICE".in_voltage0_hardwaregain",
+	PHY_DEVICE".in_voltage1_gain_control_mode",
+	PHY_DEVICE".in_voltage1_hardwaregain",
+	PHY_DEVICE".in_voltage_bb_dc_offset_tracking_en",
+	PHY_DEVICE".in_voltage_quadrature_tracking_en",
+	PHY_DEVICE".in_voltage_rf_dc_offset_tracking_en",
+	PHY_DEVICE".out_voltage0_rf_port_select",
+	PHY_DEVICE".out_altvoltage0_RX_LO_frequency",
+	PHY_DEVICE".out_altvoltage1_TX_LO_frequency",
+	PHY_DEVICE".out_voltage0_hardwaregain",
+	PHY_DEVICE".out_voltage1_hardwaregain",
+	PHY_DEVICE".out_voltage_sampling_frequency",
+	PHY_DEVICE".in_voltage_rf_bandwidth",
+	PHY_DEVICE".out_voltage_rf_bandwidth",
 	"load_fir_filter_file",
-	"ad9361-phy.in_voltage_filter_fir_en",
-	"ad9361-phy.out_voltage_filter_fir_en",
-	"ad9361-phy.in_out_voltage_filter_fir_en",
+	PHY_DEVICE".in_voltage_filter_fir_en",
+	PHY_DEVICE".out_voltage_filter_fir_en",
+	PHY_DEVICE".in_out_voltage_filter_fir_en",
 	"global_settings_show",
 	"tx_show",
 	"rx_show",
@@ -1516,38 +1677,38 @@ static const char *fmcomms2_sr_attribs[] = {
 	"dds_mode_tx1",
 	"dds_mode_tx2",
 	"dac_buf_filename",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage0_TX1_I_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage2_TX1_Q_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage3_TX1_Q_F2_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage4_TX2_I_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage5_TX2_I_F2_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage6_TX2_Q_F1_scale",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_frequency",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_phase",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_raw",
-	"cf-ad9361-dds-core-lpc.out_altvoltage7_TX2_Q_F2_scale",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_frequency",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_phase",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_raw",
+	DDS_DEVICE".out_altvoltage0_TX1_I_F1_scale",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_frequency",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_phase",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_raw",
+	DDS_DEVICE".out_altvoltage1_TX1_I_F2_scale",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_frequency",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_phase",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_raw",
+	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_scale",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_frequency",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_phase",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_raw",
+	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_scale",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_frequency",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_phase",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_raw",
+	DDS_DEVICE".out_altvoltage4_TX2_I_F1_scale",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_frequency",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_phase",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_raw",
+	DDS_DEVICE".out_altvoltage5_TX2_I_F2_scale",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_frequency",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_phase",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_raw",
+	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_scale",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_frequency",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_phase",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
+	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
 	SYNC_RELOAD,
 	NULL,
 };
@@ -1558,16 +1719,43 @@ static void update_active_page(gint active_page, gboolean is_detached)
 	plugin_detached = is_detached;
 }
 
+static void context_destroy(void)
+{
+	iio_context_destroy(ctx);
+}
+
 static bool fmcomms2_identify(void)
 {
-	return !set_dev_paths("ad9361-phy");
+	/* Use the OSC's IIO context just to detect the devices */
+	struct iio_context *osc_ctx = get_context_from_osc();
+
+	if (!iio_context_find_device(osc_ctx, PHY_DEVICE)
+		|| !iio_context_find_device(osc_ctx, DDS_DEVICE))
+		return false;
+
+	ctx = osc_create_context();
+	dev = iio_context_find_device(ctx, PHY_DEVICE);
+	dds = iio_context_find_device(ctx, DDS_DEVICE);
+	cap = iio_context_find_device(ctx, CAP_DEVICE);
+
+
+	if (!dev || !dds || !cap)
+		iio_context_destroy(ctx);
+	return !!dev && !!dds && !!cap;
 }
 
 struct osc_plugin plugin = {
+#ifdef SLAVE
+	.name = "FMComms2/3/4-HPC",
+#else
 	.name = "FMComms2/3/4",
+#endif
+
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
 	.save_restore_attribs = fmcomms2_sr_attribs,
 	.handle_item = handle_item,
+	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
+	.destroy = context_destroy,
 };

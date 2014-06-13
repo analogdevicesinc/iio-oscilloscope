@@ -13,28 +13,18 @@
 #include <gtk/gtk.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <math.h>
-#include <matio.h>
+#include <dirent.h>
+
+#include <iio.h>
 
 #include "fru.h"
 #include "osc.h"
-#include "iio_utils.h"
 #include "config.h"
-
-extern GtkWidget *plot_domain;
-extern gfloat **channel_data;
-extern struct iio_channel_info *channels;
-extern unsigned int num_samples;
-extern unsigned int num_active_channels;
-extern const char *current_device;
-extern double adc_freq;
-extern char adc_scale[10];
 
 typedef struct _Dialogs Dialogs;
 struct _Dialogs
 {
 	GtkWidget *about;
-	GtkWidget *saveas;
 	GtkWidget *connect;
 	GtkWidget *connect_fru;
 	GtkWidget *connect_iio;
@@ -47,8 +37,6 @@ static Dialogs dialogs;
 static GtkWidget *serial_num;
 static GtkWidget *fru_date;
 static GtkWidget *fru_file_list;
-
-static GtkWidget *save_csv, *save_mat, *save_mat_scale, *save_vsa;
 
 #ifdef FRU_FILES
 static time_t mins_since_jan_1_1996(void)
@@ -68,7 +56,6 @@ static time_t mins_since_jan_1_1996(void)
 
 	return (time_t) (now - (time_t)mktime(&j)) / 60;
 }
-
 
 static size_t write_fru(char *eeprom)
 {
@@ -247,7 +234,6 @@ void connect_fillin(Dialogs *data)
 	GtkTextIter iter;
 	char text[256];
 	int num, i;
-	char *devices=NULL, *device;
 	struct stat st;
 
 	/* flushes all open output streams */
@@ -328,19 +314,24 @@ void connect_fillin(Dialogs *data)
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
 
-	num = find_iio_names(&devices, NULL);
-	device=devices;
+	struct iio_context *ctx;
+	struct iio_device *dev;
+
+	ctx = get_context_from_osc();
+	if (!ctx)
+		return;
+	num = iio_context_get_devices_count(ctx);
 	if (num > 0) {
-		for (; num > 0; num--) {
-			sprintf(text, "%s\n", devices);
+		for (i = 0; i < num; i++) {
+			dev = iio_context_get_device(ctx, i);
+			sprintf(text, "%s\n", iio_device_get_name(dev));
 			gtk_text_buffer_insert(buf, &iter, text, -1);
-			devices += strlen(devices) + 1;
 		}
 	} else {
 		sprintf(text, "No iio devices found\n");
 		gtk_text_buffer_insert(buf, &iter, text, -1);
 	}
-	free(device);
+
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_iio), buf);
 	g_object_unref(buf);
 
@@ -351,7 +342,6 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 {
 	/* Connect Dialog */
 	gint ret;
-
 	connect_fillin(data);
 
 	do {
@@ -374,7 +364,6 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 
 	return ret;
 }
-
 gint fru_connect(void)
 {
 	return cb_connect(NULL, &dialogs);
@@ -385,223 +374,6 @@ G_MODULE_EXPORT void cb_show_about(GtkButton *button, Dialogs *data)
 	/* About dialog */
 	gtk_dialog_run(GTK_DIALOG(data->about));
 	gtk_widget_hide(data->about);
-}
-
-G_MODULE_EXPORT void save_as(const char *filename, int type)
-{
-
-	FILE *fp;
-	unsigned int i, j;
-	double freq, k;
-	mat_t *mat;
-	matvar_t *matvar;
-	int dims[2];
-	char tmp[20];
-	GdkPixbuf *pixbuf;
-	GError *err=NULL;
-	GdkColormap *cmap;
-	gint width, height;
-	gboolean ret = true;
-	char *name;
-	gdouble *tmp_data;
-
-	name = malloc(strlen(filename) + 5);
-	switch(type) {
-		/* Response Codes encoded in glade file */
-		case GTK_RESPONSE_DELETE_EVENT:
-		case GTK_RESPONSE_CANCEL:
-			break;
-		case SAVE_VSA:
-			/* Allow saving data when only in Time Domanin */
-			if ((gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != TIME_PLOT) &&
-			    (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != XY_PLOT)) {
-				create_blocking_popup(GTK_MESSAGE_WARNING, GTK_BUTTONS_CLOSE, "Invalid Plot Type",
-					"Please make sure to set the Plot Type to \"Time Domanin\" before saving data.");
-				return;
-			}
-			/* Save as Agilent VSA formatted file */
-			if (!strncasecmp(&filename[strlen(filename)-4], ".txt", 4))
-				strcpy(name, filename);
-			else
-				sprintf(name, "%s.txt", filename);
-
-			fp = fopen(name, "w");
-			if (!fp)
-				break;
-			fprintf(fp, "InputZoom\tTRUE\n");
-			fprintf(fp, "InputCenter\t0\n");
-			fprintf(fp, "InputRange\t1\n");
-			fprintf(fp, "InputRefImped\t50\n");
-			fprintf(fp, "XStart\t0\n");
-			if (!strcmp(adc_scale, "M"))
-				freq = adc_freq * 1000000;
-			else if (!strcmp(adc_scale, "k"))
-				freq = adc_freq * 1000;
-			else {
-				printf("error in writing\n");
-				break;
-			}
-
-			fprintf(fp, "XDelta\t%-.17f\n", 1.0/freq);
-			fprintf(fp, "XDomain\t2\n");
-			fprintf(fp, "XUnit\tSec\n");
-			fprintf(fp, "YUnit\tV\n");
-			fprintf(fp, "FreqValidMax\t%e\n", freq / 2);
-			fprintf(fp, "FreqValidMin\t-%e\n", freq / 2);
-			fprintf(fp, "Y\n");
-
-			for (j = 0; j < num_samples; j++) {
-				for (i = 0; i < num_active_channels ; i++) {
-					fprintf(fp, "%g", channel_data[i][j]);
-					if (i < (num_active_channels - 1))
-						fprintf(fp, "\t");
-				}
-				fprintf(fp, "\n");
-			}
-			fprintf(fp, "\n");
-			fclose(fp);
-
-			break;
-		case SAVE_MAT:
-			/* Allow saving data when only in Time Domanin */
-			if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != TIME_PLOT) {
-				create_blocking_popup(GTK_MESSAGE_WARNING, GTK_BUTTONS_CLOSE, "Invalid Plot Type",
-					"Please make sure to set the Plot Type to \"Time Domanin\" before saving data.");
-				return;
-			}
-			/* Matlab file
-			 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
-			 */
-			if (!strncasecmp(&filename[strlen(filename)-4], ".mat", 4))
-				strcpy(name, filename);
-			else
-				sprintf(name, "%s.mat", filename);
-
-			dims[1] = 1;
-			dims[0] = num_samples;
-
-			mat = Mat_Open(name, MAT_ACC_RDWR);
-			if(mat) {
-				for (i = 0; i < num_active_channels; i++) {
-					sprintf(tmp, "in_voltage%d", i);
-					if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(save_mat_scale))) {
-						matvar = Mat_VarCreate(tmp, MAT_C_SINGLE,
-								MAT_T_SINGLE, 2, dims, channel_data[i], 0);
-					} else {
-						tmp_data = g_new(gdouble, num_samples);
-						if (channels[i].is_signed)
-							k = channels[i].bits_used - 1;
-						else
-							k = channels[i].bits_used;
-
-						for (j = 0; j < num_samples; j++) {
-							tmp_data[j] = (gdouble)channel_data[i][j] /
-									(pow(2.0, k));
-						}
-						matvar = Mat_VarCreate(tmp, MAT_C_DOUBLE,
-								MAT_T_DOUBLE, 2, dims, tmp_data, 0);
-						g_free(tmp_data);
-					}
-					if (!matvar)
-						printf("error creating matvar on channel %i\n", i);
-					else {
-						Mat_VarWrite(mat, matvar, 0);
-						Mat_VarFree(matvar);
-					}
-				}
-				Mat_Close(mat);
-			}
-			break;
-		case SAVE_CSV:
-			/* Allow saving data when only in Time Domanin */
-			if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot_domain)) != TIME_PLOT) {
-				create_blocking_popup(GTK_MESSAGE_WARNING, GTK_BUTTONS_CLOSE, "Invalid Plot Type",
-					"Please make sure to set the Plot Type to \"Time Domanin\" before saving data.");
-				return;
-			}
-			/* save comma seperated valus (csv) */
-			if (!strncasecmp(&filename[strlen(filename)-4], ".csv", 4))
-				strcpy(name, filename);
-			else
-				sprintf(name, "%s.csv", filename);
-
-			fp = fopen(name, "w");
-			if (!fp)
-				break;
-
-			for (j = 0; j < num_samples; j++) {
-				for (i = 0; i < num_active_channels ; i++) {
-					fprintf(fp, "%g", channel_data[i][j]);
-					if (i < (num_active_channels - 1))
-						fprintf(fp, ", ");
-				}
-				fprintf(fp, "\n");
-			}
-			fprintf(fp, "\n");
-			fclose(fp);
-			break;
-		case SAVE_PNG:
-			/* save_png */
-			if (!strncasecmp(&filename[strlen(filename)-4], ".png", 4))
-				strcpy(name, filename);
-			else
-				sprintf(name, "%s.png", filename);
-
-			cmap = gdk_window_get_colormap(
-					GDK_DRAWABLE(gtk_widget_get_window(capture_graph)));
-			gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
-					&width, &height);
-			pixbuf = gdk_pixbuf_get_from_drawable(NULL,
-					GDK_DRAWABLE(gtk_widget_get_window(capture_graph)),
-					cmap, 0, 0, 0, 0, width, height);
-
-			if (pixbuf)
-				ret = gdk_pixbuf_save(pixbuf, name, "png", &err, NULL);
-			if (!pixbuf || !ret)
-				printf("error creating %s\n", name);
-			break;
-		default:
-			printf("ret : %i\n", ret);
-	}
-	free(name);
-}
-
-G_MODULE_EXPORT void cb_saveas(GtkButton *button, Dialogs *data)
-{
-	/* Save as Dialog */
-	gint ret;
-	static char *filename = NULL;
-
-	if (!channel_data || !num_active_channels) {
-		gtk_widget_hide(save_csv);
-		gtk_widget_hide(save_vsa);
-		gtk_widget_hide(save_mat);
-	} else {
-		gtk_widget_show(save_csv);
-		gtk_widget_show(save_vsa);
-		gtk_widget_show(save_mat);
-	}
-
-	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (data->saveas), GTK_FILE_CHOOSER_ACTION_SAVE);
-	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(data->saveas), TRUE);
-
-	if(!filename) {
-		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (data->saveas), getenv("HOME"));
-		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER (data->saveas), current_device);
-	} else {
-		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (data->saveas), filename);
-		g_free(filename);
-		filename = NULL;
-
-	}
-
-	ret = gtk_dialog_run(GTK_DIALOG(data->saveas));
-
-	filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (data->saveas));
-	if (filename) {
-		save_as(filename, ret);
-	}
-	gtk_widget_hide(data->saveas);
 }
 
 G_MODULE_EXPORT void load_save_profile_cb(GtkButton *button, Dialogs *data)
@@ -616,7 +388,7 @@ G_MODULE_EXPORT void load_save_profile_cb(GtkButton *button, Dialogs *data)
 
 	if(!filename) {
 		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (data->load_save_profile), OSC_PROFILES_FILE_PATH);
-		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER (data->load_save_profile), current_device);
+		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER (data->load_save_profile), "profile1");
 	} else {
 		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (data->load_save_profile), filename);
 		g_free(filename);
@@ -719,24 +491,17 @@ gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 	return run;
 }
 
-
 void dialogs_init(GtkBuilder *builder)
 {
 	GtkWidget *tmp, *tmp2;
 
 	dialogs.about = GTK_WIDGET(gtk_builder_get_object(builder, "About_dialog"));
-	dialogs.saveas = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	dialogs.connect = GTK_WIDGET(gtk_builder_get_object(builder, "connect_dialog"));
 	dialogs.connect_fru = GTK_WIDGET(gtk_builder_get_object(builder, "fru_info"));
 	dialogs.serial_num = GTK_WIDGET(gtk_builder_get_object(builder, "serial_number_popup"));
 	dialogs.connect_iio = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_devices"));
 	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
 	gtk_builder_connect_signals(builder, &dialogs);
-
-	save_csv = GTK_WIDGET(gtk_builder_get_object(builder, "save_csv"));
-	save_vsa = GTK_WIDGET(gtk_builder_get_object(builder, "save_vsa"));
-	save_mat = GTK_WIDGET(gtk_builder_get_object(builder, "save_MATLAB"));
-	save_mat_scale = GTK_WIDGET(gtk_builder_get_object(builder, "save_mat_scale"));
 
 	/* Bind some dialogs radio buttons to text/labels */
 	tmp2 = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));

@@ -16,7 +16,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- 
+
  * The GNU General Public License is available at
  * http://www.gnu.org/copyleft/gpl.html.
  */
@@ -61,7 +61,6 @@
 #include <gtkdatabox_lines.h>
 
 #include "../osc.h"
-#include "../iio_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
 
@@ -394,7 +393,7 @@ static int tty_connect(struct scpi_instrument *scpi)
 /* Main SCPI functions */
 
 /*
- * writes count bytes from the buffer (buf) to the 
+ * writes count bytes from the buffer (buf) to the
  * scpi instrument referred to by the descriptor *scpi.
  *
  * On  success, the number of bytes written is returned
@@ -1159,7 +1158,7 @@ static int scpi_init(GtkWidget *notebook)
 	return 0;
 }
 
-/* This is normally used for test, and the GUI is used for 
+/* This is normally used for test, and the GUI is used for
  * setting up the test infrastructure
  */
 static bool scpi_identify(void)

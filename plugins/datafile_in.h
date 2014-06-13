@@ -51,7 +51,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 					if (fabs(val[i]) > max)
 						max = fabs(val[i]);
 
-				size += ((tx == 2) ? 8 : 4);
+				size += tx * 4;
 
 
 			}
@@ -84,28 +84,37 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 						ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
 								&i1, &q1, &i2, &q2);
 						for (j = 0; j < rep; j++) {
-							if (ret == 4 && tx == 2) {
+							if (ret == 4 && tx >= 2) {
 								sample[i++] = ((unsigned long long) convert(scale, q2) << 48) +
 								    ((unsigned long long) convert(scale, i2) << 32) +
 								    (convert(scale, q1) << 16) +
 								    (convert(scale, i1) << 0);
 
-								size += 8;
-							}
-							if (ret == 2 && tx == 2) {
+								if (tx == 4)
+									sample[i++] = ((unsigned long long) convert(scale, q2) << 48) +
+									((unsigned long long) convert(scale, i2) << 32) +
+									(convert(scale, q1) << 16) +
+									(convert(scale, i1) << 0);
+
+							} else if (ret == 2 && tx >= 2) {
+
 								sample[i++] = ((unsigned long long) convert(scale, q1) << 48) +
 								    ((unsigned long long) convert(scale, i1) << 32) +
 								    (convert(scale, q1) << 16) +
 								    (convert(scale, i1) << 0);
 
-								size += 8;
-							}
-							if (tx == 1) {
-								sample_32[i++] = (convert(scale, q1) << 16) +
+								if (tx == 4)
+									sample[i++] = ((unsigned long long) convert(scale, q1) << 48) +
+									((unsigned long long) convert(scale, i1) << 32) +
+									(convert(scale, q1) << 16) +
 									(convert(scale, i1) << 0);
 
-								size += 4;
+							} else if (tx == 1) {
+								sample_32[i++] = (convert(scale, q1) << 16) +
+									(convert(scale, i1) << 0);
 							}
+
+							size += tx * 4;
 						}
 					}
 				}
@@ -116,6 +125,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 			 * we'll send the same buffer twice to make sure that it becomes a
 			 * multiple of 8.
 			 */
+
 			if ((size % 8) != 0) {
 				memcpy(*buf + size, *buf, size);
 				size += size;
@@ -198,14 +208,14 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 				}
 			}
 
-			*buf = malloc((size + 1) * ((tx == 2) ? 8 : 4));
+			*buf = malloc((size + 1) * tx * 4);
 
 			if (*buf == NULL) {
 				printf("error %s:%d\n", __func__, __LINE__);
 				return 0;
 			}
 
-			*count = size * ((tx == 2) ? 8 : 4);
+			*count = size * tx * 4;
 
 			unsigned long long *sample = *((unsigned long long **) buf);
 			unsigned int *sample_32 = *((unsigned int **) buf);
@@ -264,6 +274,17 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 				for (i = 0 ; i < size; i++) {
 					sample_32[i] = (convert(scale, im1[i]) << 16) +
 						       (convert(scale, re1[i]) << 0);
+				}
+			} else if (tx == 4) {
+				for (i = 0, j = 0; i < size; i++) {
+					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) +
+						    ((unsigned long long) convert(scale, re2[i]) << 32) +
+									 (convert(scale, im1[i]) << 16) +
+									 (convert(scale, re1[i]) << 0);
+					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) +
+						    ((unsigned long long) convert(scale, re2[i]) << 32) +
+									 (convert(scale, im1[i]) << 16) +
+									 (convert(scale, re1[i]) << 0);
 				}
 			}
 		matvar_free:
