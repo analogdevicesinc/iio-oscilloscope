@@ -42,9 +42,9 @@ PLUGINS=\
 	plugins/dmm.so \
 	plugins/scpi.so
 
-all: multiosc $(PLUGINS)
+all: osc $(PLUGINS)
 
-multiosc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o
+osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o
 	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
 
 osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h ./ini/ini.h
@@ -97,7 +97,7 @@ install:
 	install -d $(DESTDIR)/lib/multiosc/waveforms
 	install -d $(DESTDIR)/lib/multiosc/profiles
 	install -d $(DESTDIR)/lib/multiosc/block_diagrams
-	install ./multiosc $(DESTDIR)/bin/
+	install ./osc $(DESTDIR)/bin/
 	install ./$(TMP)/*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
 	install ./icons/IIOlogo.png $(PSHARE)
@@ -123,4 +123,4 @@ install:
 	rm -r $(TMP)
 
 clean:
-	rm -rf multiosc *.o plugins/*.so
+	rm -rf osc *.o plugins/*.so
