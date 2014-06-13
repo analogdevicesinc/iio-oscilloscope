@@ -124,3 +124,6 @@ install:
 
 clean:
 	rm -rf osc *.o plugins/*.so
+
+uninstall:
+	rm -rf $(PLIB) $(DESTDIR)/bin/osc
