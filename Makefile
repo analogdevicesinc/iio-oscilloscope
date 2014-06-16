@@ -91,4 +91,8 @@ install:
 	xdg-desktop-menu install adi-osc-legacy.desktop
 
 clean:
-	rm -rf multiosc osc *.o plugins/*.so
+	rm -rf osc_legacy *.o plugins/*.so
+
+uninstall:
+	rm -rf  $(PLIB) $(DESTDIR)/bin/osc_legacy
+	xdg-desktop-menu uninstall adi-osc-legacy.desktop
