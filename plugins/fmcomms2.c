@@ -326,14 +326,18 @@ static void rx_phase_rotation_update()
 {
 	struct iio_channel *out[4];
 	gdouble val[4];
-	int i;
+	int i, d = 0;
 
 	out[0] = iio_device_find_channel(cap, "voltage0", false);
 	out[1] = iio_device_find_channel(cap, "voltage1", false);
-	out[2] = iio_device_find_channel(cap, "voltage2", false);
-	out[3] = iio_device_find_channel(cap, "voltage3", false);
 
-	for (i = 0; i <= 2; i += 2) {
+	if (is_2rx_2tx) {
+		out[2] = iio_device_find_channel(cap, "voltage2", false);
+		out[3] = iio_device_find_channel(cap, "voltage3", false);
+		d = 2;
+	}
+
+	for (i = 0; i <= d; i += 2) {
 		iio_channel_attr_read_double(out[i], "calibscale", &val[0]);
 		iio_channel_attr_read_double(out[i], "calibphase", &val[1]);
 		iio_channel_attr_read_double(out[i + 1], "calibscale", &val[2]);
@@ -1517,8 +1521,9 @@ static int fmcomms2_init(GtkWidget *notebook)
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
 
 	if (!is_2rx_2tx) {
-		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame7")));
-		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame10")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_rx2")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_tx2")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_rx2")));
 	}
 
 	g_thread_new("Update_thread", (void *) &update_display, NULL);

@@ -921,7 +921,7 @@ configuration:</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">5</property>
                                 <child>
-                                  <object class="GtkFrame" id="frame6">
+                                  <object class="GtkFrame" id="frame_rx1">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label_xalign">0</property>
@@ -1075,7 +1075,7 @@ configuration:</property>
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkFrame" id="frame7">
+                                  <object class="GtkFrame" id="frame_rx2">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label_xalign">0</property>
@@ -1894,7 +1894,7 @@ configuration:</property>
                                     <property name="can_focus">False</property>
                                     <property name="spacing">20</property>
                                     <child>
-                                      <object class="GtkFrame" id="frame9">
+                                      <object class="GtkFrame" id="frame_fpga_tx1">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="label_xalign">0</property>
@@ -2568,7 +2568,7 @@ configuration:</property>
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkFrame" id="frame10">
+                                      <object class="GtkFrame" id="frame_fpga_tx2">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="label_xalign">0</property>
@@ -3266,7 +3266,7 @@ configuration:</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
-                                      <object class="GtkFrame" id="table_hw_gain_tx3">
+                                      <object class="GtkFrame" id="frame_fpga_rx1">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="label_xalign">0</property>
@@ -3332,7 +3332,7 @@ configuration:</property>
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkFrame" id="table_hw_gain_tx4">
+                                      <object class="GtkFrame" id="frame_fpga_rx2">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="label_xalign">0</property>
