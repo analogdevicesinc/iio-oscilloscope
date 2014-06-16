@@ -29,9 +29,9 @@ PLUGINS=\
 	plugins/dmm.so \
 	plugins/scpi.so
 
-all: osc $(PLUGINS)
+all: osc_legacy $(PLUGINS)
 
-osc: osc.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ./ini/ini.c libini.o
+osc_legacy: osc.o int_fft.o iio_utils.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ./ini/ini.c libini.o
 	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
 
 osc.o: osc.c iio_widget.h iio_utils.h int_fft.h osc_plugin.h osc.h
@@ -71,7 +71,7 @@ install:
 	install -d $(DESTDIR)/lib/osc/waveforms
 	install -d $(DESTDIR)/lib/osc/profiles
 	install -d $(DESTDIR)/lib/osc/block_diagrams
-	install ./osc $(DESTDIR)/bin/
+	install ./osc_legacy $(DESTDIR)/bin/
 	install ./*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
 	install ./icons/IIOlogo.png $(PSHARE)
@@ -88,8 +88,7 @@ install:
 	xdg-icon-resource install --noupdate --size 64 ./icons/osc64.png adi-osc
 	xdg-icon-resource install --noupdate --size 128 ./icons/osc128.png adi-osc
 	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc
-#	xdg-icon-resource install --size scalable ./osc.svg adi-osc
-	xdg-desktop-menu install adi-osc.desktop
+	xdg-desktop-menu install adi-osc-legacy.desktop
 
 clean:
 	rm -rf multiosc osc *.o plugins/*.so
