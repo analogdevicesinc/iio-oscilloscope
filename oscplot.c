@@ -2460,7 +2460,8 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				struct extra_info *info = iio_channel_get_data(chn);
 				if (save_channels_mask[i] == 1)
 					continue;
-				sprintf(tmp, "%s:%s", dev_name, ch_name);
+				sprintf(tmp, "%s_%s", dev_name, ch_name);
+				g_strdelimit(tmp, "-", '_');
 				if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->save_mat_scale))) {
 						matvar = Mat_VarCreate(tmp, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims,
 					info->data_ref, 0);
