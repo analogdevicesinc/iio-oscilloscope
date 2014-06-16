@@ -1,8 +1,8 @@
 [Desktop Entry]
-Exec=gksudo -u root /usr/local/bin/multiosc
+Exec=gksudo -u root /usr/local/bin/osc
 Icon=adi-osc
 Terminal=false
 Type=Application
 Categories=Science
-Name=ADI IIO Multi Plot Oscilloscope
-GenericName=ADI IIO Multi Plot Oscilloscope
+Name=ADI IIO Oscilloscope
+GenericName=ADI IIO Oscilloscope
