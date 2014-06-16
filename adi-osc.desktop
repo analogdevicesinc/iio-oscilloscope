@@ -1,8 +1,8 @@
 [Desktop Entry]
-Exec=gksudo -u root /usr/local/bin/osc
+Exec=gksudo -u root /usr/local/bin/osc_legacy
 Icon=adi-osc
 Terminal=false
 Type=Application
 Categories=Science
-Name=ADI IIO Oscilloscope
-GenericName=ADI IIO Oscilloscope
+Name=ADI IIO Oscilloscope Legacy
+GenericName=ADI IIO Oscilloscope Legacy
