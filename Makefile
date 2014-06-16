@@ -42,9 +42,9 @@ PLUGINS=\
 	plugins/dmm.so \
 	plugins/scpi.so
 
-all: multiosc $(PLUGINS)
+all: osc $(PLUGINS)
 
-multiosc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o
+osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o
 	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
 
 osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h ./ini/ini.h
@@ -88,7 +88,6 @@ install:
 	cp ./*.glade ./$(TMP)
 	cp ./*.desktop ./$(TMP)
 	mv $(TMP)/osc.glade $(TMP)/multi_plot_osc.glade
-	mv $(TMP)/adi-osc.desktop $(TMP)/adi-multi_plot_osc.desktop
 	install -d $(DESTDIR)/bin
 	install -d $(DESTDIR)/share/multiosc/
 	install -d $(DESTDIR)/lib/multiosc/
@@ -97,7 +96,7 @@ install:
 	install -d $(DESTDIR)/lib/multiosc/waveforms
 	install -d $(DESTDIR)/lib/multiosc/profiles
 	install -d $(DESTDIR)/lib/multiosc/block_diagrams
-	install ./multiosc $(DESTDIR)/bin/
+	install ./osc $(DESTDIR)/bin/
 	install ./$(TMP)/*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
 	install ./icons/IIOlogo.png $(PSHARE)
@@ -117,10 +116,9 @@ install:
 	xdg-icon-resource install --noupdate --size 64 ./icons/osc64.png adi-osc
 	xdg-icon-resource install --noupdate --size 128 ./icons/osc128.png adi-osc
 	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc
-#	xdg-icon-resource install --size scalable ./osc.svg adi-osc
-	xdg-desktop-menu install ./$(TMP)/adi-multi_plot_osc.desktop
+	xdg-desktop-menu install ./$(TMP)/adi-osc.desktop
 
 	rm -r $(TMP)
 
 clean:
-	rm -rf multiosc *.o plugins/*.so
+	rm -rf osc *.o plugins/*.so
