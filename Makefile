@@ -116,9 +116,13 @@ install:
 	xdg-icon-resource install --noupdate --size 64 ./icons/osc64.png adi-osc
 	xdg-icon-resource install --noupdate --size 128 ./icons/osc128.png adi-osc
 	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc
-	xdg-desktop-menu install ./$(TMP)/adi-osc.desktop
+	xdg-desktop-menu install adi-osc.desktop
 
 	rm -r $(TMP)
 
 clean:
 	rm -rf osc *.o plugins/*.so
+
+uninstall:
+	rm -rf $(PLIB) $(DESTDIR)/bin/osc
+	xdg-desktop-menu uninstall adi-osc.desktop
