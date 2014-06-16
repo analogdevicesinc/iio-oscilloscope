@@ -70,6 +70,7 @@ static gboolean check_valid_setup(OscPlot *plot);
 enum {
 	CAPTURE_EVENT_SIGNAL,
 	DESTROY_EVENT_SIGNAL,
+	NEWPLOT_EVENT_SIGNAL,
 	LAST_SIGNAL
 };
 
@@ -211,6 +212,7 @@ struct _OscPlotPrivate
 	GtkWidget *capture_options_box;
 	GtkWidget *saveas_settings_box;
 	GtkWidget *save_mat_scale;
+	GtkWidget *new_plot_button;
 
 	GtkTextBuffer* tbuf;
 
@@ -320,6 +322,15 @@ static void osc_plot_class_init(OscPlotClass *klass)
 			NULL,
 			g_cclosure_marshal_VOID__VOID,
 			G_TYPE_NONE, 0);
+
+	oscplot_signals[NEWPLOT_EVENT_SIGNAL] = g_signal_new("osc-newplot-event",
+			G_TYPE_FROM_CLASS (klass),
+			G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION,
+			G_STRUCT_OFFSET (OscPlotClass, newplot_event),
+			NULL,
+			NULL,
+			g_cclosure_marshal_VOID__VOID,
+			G_TYPE_NONE, 1, G_TYPE_POINTER);
 
 	g_type_class_add_private (gobject_class, sizeof (OscPlotPrivate));
 }
@@ -1419,6 +1430,14 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 
 		g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, button_state);
 	}
+}
+
+static void new_plot_button_clicked_cb(GtkToolButton *btn, OscPlot *plot)
+{
+	OscPlot *new_plot;
+
+	new_plot = OSC_PLOT(osc_plot_new());
+	g_signal_emit(plot, oscplot_signals[NEWPLOT_EVENT_SIGNAL], 0, new_plot);
 }
 
 static void iter_children_sensitivity_update(GtkTreeModel *model, GtkTreeIter *iter, void *data)
@@ -3781,6 +3800,7 @@ static void create_plot(OscPlot *plot)
 	priv->capture_options_box = GTK_WIDGET(gtk_builder_get_object(builder, "box_capture_options"));
 	priv->saveas_settings_box = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_saveas_settings"));
 	priv->save_mat_scale = GTK_WIDGET(gtk_builder_get_object(builder, "save_mat_scale"));
+	priv->new_plot_button = GTK_WIDGET(gtk_builder_get_object(builder, "toolbutton_new_plot"));
 
 	priv->tbuf = NULL;
 	priv->ch_settings_list = NULL;
@@ -3834,6 +3854,10 @@ static void create_plot(OscPlot *plot)
 	/* Create Channel Settings Menu */
 	priv->channel_settings_menu = gtk_menu_new();
 	priv->channel_color_menuitem = gtk_image_menu_item_new_with_label("Color Selection");
+
+
+	gtk_box_pack_start(GTK_BOX(gtk_builder_get_object(builder, "buttons_separator_box")),
+			gtk_vseparator_new(), FALSE, TRUE, 0);
 
 	image = gtk_image_new_from_stock(GTK_STOCK_SELECT_COLOR, GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_color_menuitem), image);
@@ -3890,6 +3914,8 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(fft_avg_value_changed_cb), plot);
 	g_signal_connect(priv->fft_pwr_offset_widget, "value-changed",
 		G_CALLBACK(fft_pwr_offset_value_changed_cb), plot);
+	g_signal_connect(priv->new_plot_button, "clicked",
+		G_CALLBACK(new_plot_button_clicked_cb), plot);
 
 	g_signal_connect(priv->channel_list_view, "button-press-event",
 		G_CALLBACK(right_click_on_ch_list_cb), plot);

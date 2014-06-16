@@ -35,6 +35,7 @@ struct _OscPlotClass
 
 	void (* capture_event) (OscPlot *plot, gboolean start_event);
 	void (* destroy_event) (OscPlot *plot);
+	void (* newplot_event) (OscPlot *plot, OscPlot *new_plot);
 };
 
 GType         osc_plot_get_type         (void);

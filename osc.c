@@ -55,7 +55,8 @@ unsigned int num_devices = 0;
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
 static void plugin_restore_ini_state(char *plugin_name, gboolean detached);
-static GtkWidget * plot_create_and_init(void);
+static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
+static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
 
 /* Couple helper functions from fru parsing */
@@ -1097,7 +1098,7 @@ capture_malloc_fail:
 
 OscPlot * plugin_get_new_plot(void)
 {
-	return OSC_PLOT(plot_create_and_init());
+	return OSC_PLOT(new_plot_cb(NULL, NULL));
 }
 
 static bool force_plugin(const char *name)
@@ -1460,22 +1461,28 @@ static void plot_destroyed_cb(OscPlot *plot)
 	restart_all_running_plots();
 }
 
-static GtkWidget * plot_create_and_init(void)
+static void new_plot_created_cb(OscPlot *plot, OscPlot *new_plot, gpointer data)
 {
-	GtkWidget *plot;
+	plot_init(GTK_WIDGET(new_plot));
+}
 
-	plot = osc_plot_new();
+static void plot_init(GtkWidget *plot)
+{
 	plot_list = g_list_append(plot_list, plot);
 	g_signal_connect(plot, "osc-capture-event", G_CALLBACK(start), NULL);
 	g_signal_connect(plot, "osc-destroy-event", G_CALLBACK(plot_destroyed_cb), NULL);
+	g_signal_connect(plot, "osc-newplot-event", G_CALLBACK(new_plot_created_cb), NULL);
 	gtk_widget_show(plot);
-
-	return plot;
 }
 
-static void new_plot_cb(GtkMenuItem *item, gpointer user_data)
+static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data)
 {
-	plot_create_and_init();
+	GtkWidget *new_plot;
+
+	new_plot = osc_plot_new();
+	plot_init(new_plot);
+
+	return new_plot;
 }
 
 struct plugin_check_fct {
@@ -1878,7 +1885,7 @@ int capture_profile_handler(const char *section, const char *name, const char *v
 		prev_section = g_strdup(section);
 		/* Create a capture window and parse the line from ini file*/
 		if (strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF)) == 0) {
-			plot = plot_create_and_init();
+			plot = new_plot_cb(NULL, NULL);
 			ret = osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
 		}
 	} else {
