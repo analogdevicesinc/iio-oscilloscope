@@ -1666,6 +1666,10 @@ static double read_sampling_frequency(const struct iio_device *dev)
 
 	if (ret > 0)
 		sscanf(buf, "%lf", &freq);
+
+	if (freq < 0)
+		freq += 4294967296.0;
+
 	return freq;
 }
 
