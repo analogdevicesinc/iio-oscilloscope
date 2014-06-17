@@ -409,10 +409,8 @@ static void reg_read_clicked(GtkButton *button, gpointer user_data)
 	if (address < 0)
 		return;
 
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(axicore_regmap)) &&
-			!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle_detailed_regmap))) {
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(axicore_regmap)))
 		address |= 0x80000000;
-	}
 	ret = iio_device_reg_read(dev, address, &i);
 	if (ret == 0) {
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), i);
@@ -1286,12 +1284,14 @@ static void device_xml_file_selection(const char *device_name, char *filename)
 		return;
 	}
 
+	/* Set SPI register as the default source */
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), false);
+
 	/* Check if device has a corresponding xml file */
 	find_device_xml_file(xmls_folder_path, (char *)device_name, filename);
 
 	/* Attempt to associate AXI Core ADC xml or AXI Core DAC xml to the device */
 	if (!strcmp(filename, "")) {
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), false);
 		if (is_input_device(iio_dev))
 			sprintf(filename, "adi_regmap_adc.xml");
 		else if (is_output_device(iio_dev))
