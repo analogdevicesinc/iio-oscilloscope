@@ -20,6 +20,7 @@ struct osc_plugin {
 	int (*handle_external_request) (const char *request);
 	const char **save_restore_attribs;
 	void (*update_active_page)(gint active_page, gboolean is_detached);
+	void (*get_preferred_size)(int *width, int *size);
 	void (*destroy)(void);
 };
 

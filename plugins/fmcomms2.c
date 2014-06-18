@@ -1724,6 +1724,14 @@ static void update_active_page(gint active_page, gboolean is_detached)
 	plugin_detached = is_detached;
 }
 
+static void fmcomms2_get_preferred_size(int *width, int *height)
+{
+	if (width)
+		*width = 1100;
+	if (height)
+		*height = 800;
+}
+
 static void context_destroy(void)
 {
 	iio_context_destroy(ctx);
@@ -1762,5 +1770,6 @@ struct osc_plugin plugin = {
 	.handle_item = handle_item,
 	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
+	.get_preferred_size = fmcomms2_get_preferred_size,
 	.destroy = context_destroy,
 };
