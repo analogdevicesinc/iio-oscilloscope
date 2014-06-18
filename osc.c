@@ -803,6 +803,13 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_deletable(GTK_WINDOW(window), FALSE);
+	if (plugin->get_preferred_size) {
+		int width = -1, height = -1;
+
+		plugin->get_preferred_size(&width, &height);
+		gtk_window_set_default_size(GTK_WINDOW(window), width, height);
+	}
+
 	hbox = gtk_hbox_new(FALSE, 0);
 	vbox = gtk_vbox_new(FALSE, 0);
 	vbox_empty = gtk_vbox_new(FALSE, 0);
@@ -1821,6 +1828,37 @@ static int load_default_profile (char *filename)
 	return ret;
 }
 
+static void plugins_get_preferred_size(GSList *plist, int *width, int *height)
+{
+	GSList *node;
+	struct osc_plugin *p;
+	int w, h, max_w = -1, max_h = -1;
+
+	for (node = plist; node; node = g_slist_next(node)) {
+		p = node->data;
+		if (p->get_preferred_size) {
+			p->get_preferred_size(&w, &h);
+			if (w > max_w)
+				max_w = w;
+			if (h > max_h)
+				max_h = h;
+		}
+	}
+	*width = max_w;
+	*height = max_h;
+}
+
+static void window_size_readjust(GtkWindow *window, int width, int height)
+{
+	int w = 640, h = 480;
+
+	if (width > w)
+		w = width;
+	if (height > h)
+		h = height;
+	gtk_window_set_default_size(window, w, h);
+}
+
 static void init_application (void)
 {
 	GtkBuilder *builder = NULL;
@@ -1867,6 +1905,10 @@ static void init_application (void)
 	if (ctx) {
 		load_plugins(notebook);
 		rx_update_labels();
+
+		int width = -1, height = -1;
+		plugins_get_preferred_size(plugin_list, &width, &height);
+		window_size_readjust(GTK_WINDOW(window), width, height);
 	}
 	gtk_widget_show(window);
 }
