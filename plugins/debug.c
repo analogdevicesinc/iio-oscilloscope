@@ -434,6 +434,10 @@ static void reg_write_clicked(GtkButton *button, gpointer user_data)
 	uint32_t val;
 
 	address = (uint32_t)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_addr));
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(axicore_regmap)))
+		address |= 0x80000000;
+
 	val = (uint32_t)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_value));
 	iio_device_reg_write(dev, address, val);
 }
