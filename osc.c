@@ -1859,6 +1859,12 @@ static void window_size_readjust(GtkWindow *window, int width, int height)
 	gtk_window_set_default_size(window, w, h);
 }
 
+static void create_default_plot(void)
+{
+	if (g_list_length(plot_list) == 0)
+		new_plot_cb(NULL, NULL);
+}
+
 static void init_application (void)
 {
 	GtkBuilder *builder = NULL;
@@ -2096,6 +2102,7 @@ gint main (int argc, char **argv)
 	gdk_threads_enter();
 	init_application();
 	c = load_default_profile(profile);
+	create_default_plot();
 	if (c == 0)
 		gtk_main();
 	else
