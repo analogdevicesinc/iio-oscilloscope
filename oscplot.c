@@ -1801,7 +1801,7 @@ static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 		const char *name = iio_channel_get_name(chn) ?:
 			iio_channel_get_id(chn);
 		ch_checkbtn = gtk_check_button_new_with_label(name);
-		gtk_box_pack_end(GTK_BOX(priv->saveas_channels_list), ch_checkbtn, FALSE, TRUE, 0);
+		gtk_box_pack_start(GTK_BOX(priv->saveas_channels_list), ch_checkbtn, FALSE, TRUE, 0);
 	}
 	gtk_widget_show_all(priv->saveas_channels_list);
 }
