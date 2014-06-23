@@ -2143,20 +2143,23 @@ static void copy_channel_state_to_selection_channel(GtkTreeModel *model,
 	GList *ch_checkbtns = NULL;
 	GList *node;
 	GtkToggleButton *btn;
-	int ch_index, index = 0;
+	const char *ch_name;
+	gchar *btn_label;
 
 	gtk_tree_model_get(model, iter, ELEMENT_REFERENCE, &chn, CHANNEL_ACTIVE, &active_state, -1);
-	ch_index = (int) iio_channel_get_index(chn);
+	ch_name = iio_channel_get_name(chn) ?: iio_channel_get_id(chn);
 
 	/* Get user channel selection from GUI widgets */
 	ch_checkbtns = gtk_container_get_children(GTK_CONTAINER(priv->saveas_channels_list));
 	for (node = ch_checkbtns; node; node = g_list_next(node)) {
 		btn = (GtkToggleButton *)node->data;
-		if (ch_index == index) {
+		g_object_get(btn, "label", &btn_label, NULL);
+		if (!strcmp(ch_name, btn_label)) {
 			gtk_toggle_button_set_active(btn, active_state);
+			g_free(btn_label);
 			break;
 		}
-		index++;
+		g_free(btn_label);
 	}
 	g_list_free(ch_checkbtns);
 
