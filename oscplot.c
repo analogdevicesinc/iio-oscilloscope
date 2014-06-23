@@ -3830,7 +3830,7 @@ static void create_plot(OscPlot *plot)
 	priv->object_id = object_count;
 
 	/* Set a different title for every plot */
-	snprintf(buf, sizeof(buf), "ADI IIO multi plot oscilloscope - Capture%d", priv->object_id);
+	snprintf(buf, sizeof(buf), "ADI IIO Oscilloscope - Capture%d", priv->object_id);
 	gtk_window_set_title(GTK_WINDOW(priv->window), buf);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_domain), TIME_PLOT);
