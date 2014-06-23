@@ -65,6 +65,8 @@ static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color);
 static int comboboxtext_set_active_by_string(GtkComboBox *combo_box, const char *name);
 static int comboboxtext_get_active_text_as_int(GtkComboBoxText* combobox);
 static gboolean check_valid_setup(OscPlot *plot);
+static int device_find_by_name(const char *name);
+static int channel_find_by_name(int device_index, const char *name);
 
 /* IDs of signals */
 enum {
@@ -2181,17 +2183,30 @@ static int * get_user_saveas_channel_selection(OscPlot *plot, unsigned int nb_ch
 	GList *node;
 	GtkToggleButton *btn;
 	int *mask;
-	int i = 0;
 
 	/* Create masks for all channels */
 	mask = malloc(sizeof(int) * nb_channels);
 
 	/* Get user channel selection from GUI widgets */
 	ch_checkbtns = gtk_container_get_children(GTK_CONTAINER(priv->saveas_channels_list));
-	ch_checkbtns = g_list_reverse(ch_checkbtns);
 	for (node = ch_checkbtns; node; node = g_list_next(node)) {
 		btn = (GtkToggleButton *)node->data;
-		mask[i++] = !gtk_toggle_button_get_active(btn);
+
+		int dev_index, ch_index;
+		gchar *dev_name, *ch_name;
+
+		dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->device_combobox));
+		dev_index = device_find_by_name(dev_name);
+		g_free(dev_name);
+		g_object_get(btn, "label", &ch_name, NULL);
+		ch_index = channel_find_by_name(dev_index, ch_name);
+		if (ch_index < 0) {
+			fprintf(stderr, "Cannot find channel %s\n", ch_name);
+			g_free(ch_name);
+			break;
+		}
+		g_free(ch_name);
+		mask[ch_index] = !gtk_toggle_button_get_active(btn);
 	}
 	g_list_free(ch_checkbtns);
 
