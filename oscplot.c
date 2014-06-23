@@ -2188,6 +2188,7 @@ static int * get_user_saveas_channel_selection(OscPlot *plot, unsigned int nb_ch
 
 	/* Get user channel selection from GUI widgets */
 	ch_checkbtns = gtk_container_get_children(GTK_CONTAINER(priv->saveas_channels_list));
+	ch_checkbtns = g_list_reverse(ch_checkbtns);
 	for (node = ch_checkbtns; node; node = g_list_next(node)) {
 		btn = (GtkToggleButton *)node->data;
 		mask[i++] = !gtk_toggle_button_get_active(btn);
