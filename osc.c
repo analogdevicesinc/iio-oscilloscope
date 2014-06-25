@@ -574,6 +574,13 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 
 		/* Compute FFT normalization and scaling offset */
 		settings->fft_alg_data.fft_corr = 20 * log10(2.0 / (1 << (bits_used - 1)));
+
+		/* Make sure that previous positions of markers are not out of bonds */
+		if (settings->markers)
+			for (i = 0; i <= MAX_MARKERS; i++)
+				if (settings->markers[i].bin >= axis_length)
+					settings->markers[i].bin = 0;
+
 		return;
 	}
 	do_fft(tr);
