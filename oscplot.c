@@ -977,6 +977,10 @@ static void markers_init(OscPlot *plot)
 	if (priv->tbuf)
 		gtk_text_buffer_set_text(priv->tbuf, empty_text, -1);
 
+	/* Ensure that Marker Image is applied only to Complex FFT Transforms */
+	if (priv->active_transform_type == FFT_TRANSFORM && priv->marker_type == MARKER_IMAGE)
+		priv->marker_type = MARKER_OFF;
+
 	priv->markers_copy = NULL;
 
 	for (i = 0; i <= MAX_MARKERS; i++) {
