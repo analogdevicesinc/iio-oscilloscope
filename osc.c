@@ -3084,7 +3084,7 @@ handled:
 	return ret;
 }
 
-#define DEFAULT_PROFILE_NAME ".osc_profile.ini"
+#define DEFAULT_PROFILE_NAME ".osc_legacy_profile.ini"
 void application_quit (void)
 {
 	const char *home_dir = getenv("HOME");
