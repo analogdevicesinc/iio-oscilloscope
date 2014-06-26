@@ -1539,7 +1539,7 @@ static void free_setup_check_fct_list(void)
 	g_free(setup_check_functions);
 }
 
-#define DEFAULT_PROFILE_NAME ".multiosc_profile.ini"
+#define DEFAULT_PROFILE_NAME ".osc_profile.ini"
 
 void application_quit (void)
 {
