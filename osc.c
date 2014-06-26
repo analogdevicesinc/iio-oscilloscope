@@ -1881,7 +1881,7 @@ static void init_application (void)
 	builder = gtk_builder_new();
 
 	if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL)) {
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "multi_plot_osc.glade", NULL);
+		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
 	} else {
 		GtkImage *logo;
 		GtkAboutDialog *about;
