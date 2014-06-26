@@ -1,7 +1,7 @@
 DESTDIR=/usr/local
 PREFIX=/usr/local
-PSHARE=$(PREFIX)/share/osc
-PLIB=$(PREFIX)/lib/osc
+PSHARE=$(PREFIX)/share/osc-legacy
+PLIB=$(PREFIX)/lib/osc-legacy
 
 # this is where the master fru files are (assuming they are installed at all)
 FRU_FILES=$(PREFIX)/lib/fmc-tools/
@@ -64,13 +64,13 @@ xml_utils.o: xml_utils.c xml_utils.h
 
 install:
 	install -d $(DESTDIR)/bin
-	install -d $(DESTDIR)/share/osc/
-	install -d $(DESTDIR)/lib/osc/
-	install -d $(DESTDIR)/lib/osc/xmls
-	install -d $(DESTDIR)/lib/osc/filters
-	install -d $(DESTDIR)/lib/osc/waveforms
-	install -d $(DESTDIR)/lib/osc/profiles
-	install -d $(DESTDIR)/lib/osc/block_diagrams
+	install -d $(DESTDIR)/share/osc-legacy/
+	install -d $(DESTDIR)/lib/osc-legacy/
+	install -d $(DESTDIR)/lib/osc-legacy/xmls
+	install -d $(DESTDIR)/lib/osc-legacy/filters
+	install -d $(DESTDIR)/lib/osc-legacy/waveforms
+	install -d $(DESTDIR)/lib/osc-legacy/profiles
+	install -d $(DESTDIR)/lib/osc-legacy/block_diagrams
 	install ./osc_legacy $(DESTDIR)/bin/
 	install ./*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
@@ -83,11 +83,11 @@ install:
 	install ./profiles/* $(PLIB)/profiles
 	install ./block_diagrams/* $(PLIB)/block_diagrams
 
-	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
-	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
-	xdg-icon-resource install --noupdate --size 64 ./icons/osc64.png adi-osc
-	xdg-icon-resource install --noupdate --size 128 ./icons/osc128.png adi-osc
-	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc
+	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc-legacy
+	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc-legacy
+	xdg-icon-resource install --noupdate --size 64 ./icons/osc64.png adi-osc-legacy
+	xdg-icon-resource install --noupdate --size 128 ./icons/osc128.png adi-osc-legacy
+	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc-legacy
 	xdg-desktop-menu install adi-osc-legacy.desktop
 
 clean:

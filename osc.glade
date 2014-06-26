@@ -303,7 +303,7 @@ Robin Getz
 The "inih" library is Copyright (c) 2009, Brush Technology
 All rights reserved.
 </property>
-    <property name="logo">/usr/local/share/osc/osc128.png</property>
+    <property name="logo">/usr/local/share/osc-legacy/osc128.png</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="aboutdialog-vbox1">
         <property name="can_focus">False</property>
@@ -372,7 +372,7 @@ All rights reserved.
                           <object class="GtkImage" id="about_IIO_logo">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="pixbuf">/usr/local/share/osc/IIOlogo.png</property>
+                            <property name="pixbuf">/usr/local/share/osc-legacy/IIOlogo.png</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -454,7 +454,7 @@ The IIO Oscilloscope is generously sponsored by Analog Devices.</property>
                           <object class="GtkImage" id="about_ADI_logo">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="pixbuf">/usr/local/share/osc/ADIlogo.png</property>
+                            <property name="pixbuf">/usr/local/share/osc-legacy/ADIlogo.png</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -1895,7 +1895,7 @@ Installed/Found IIO devices on this platform</property>
                         <property name="can_focus">False</property>
                         <property name="yalign">1</property>
                         <property name="ypad">50</property>
-                        <property name="pixbuf">/usr/local/share/osc/ADIlogo.png</property>
+                        <property name="pixbuf">/usr/local/share/osc-legacy/ADIlogo.png</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
