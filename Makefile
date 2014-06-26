@@ -119,6 +119,7 @@ clean:
 
 uninstall:
 	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/osc
+	rm -rf $(HOME)/.osc_profile.ini
 	xdg-icon-resource uninstall --noupdate --size 16 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 32 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 64 adi-osc
