@@ -95,6 +95,7 @@ clean:
 
 uninstall:
 	rm -rf  $(PLIB) $(PSHARE) $(DESTDIR)/bin/osc_legacy
+	rm -rf $(HOME)/.osc_legacy_profile.ini
 	xdg-icon-resource uninstall --noupdate --size 16 adi-osc-legacy
 	xdg-icon-resource uninstall --noupdate --size 32 adi-osc-legacy
 	xdg-icon-resource uninstall --noupdate --size 64 adi-osc-legacy
