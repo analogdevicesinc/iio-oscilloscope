@@ -118,5 +118,10 @@ clean:
 	rm -rf osc *.o plugins/*.so
 
 uninstall:
-	rm -rf $(PLIB) $(DESTDIR)/bin/osc
+	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/osc
+	xdg-icon-resource uninstall --noupdate --size 16 adi-osc
+	xdg-icon-resource uninstall --noupdate --size 32 adi-osc
+	xdg-icon-resource uninstall --noupdate --size 64 adi-osc
+	xdg-icon-resource uninstall --noupdate --size 128 adi-osc
+	xdg-icon-resource uninstall --size 256 adi-osc
 	xdg-desktop-menu uninstall adi-osc.desktop
