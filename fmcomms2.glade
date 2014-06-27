@@ -1529,7 +1529,6 @@ configuration:</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="invisible_char">•</property>
-                                            <property name="overwrite_mode">True</property>
                                             <property name="invisible_char_set">True</property>
                                             <property name="adjustment">adjustment_tx_lo_freq</property>
                                             <property name="digits">6</property>
