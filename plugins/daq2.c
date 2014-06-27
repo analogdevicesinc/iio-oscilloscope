@@ -520,7 +520,7 @@ static void enable_dds(bool on_off)
 		dds_buffer = NULL;
 	}
 
-	ret = iio_channel_attr_write_bool(iio_device_find_channel(dac, "altvoltage0", true), "1A_raw", on_off);
+	ret = iio_channel_attr_write_bool(iio_device_find_channel(dac, "altvoltage0", true), "raw", on_off);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to toggle DDS: %d\n", ret);
 		return;
@@ -1068,48 +1068,48 @@ static int daq2_init(GtkWidget *notebook)
 	ch2 = iio_device_find_channel(dac, "altvoltage2", true);
 	ch3 = iio_device_find_channel(dac, "altvoltage3", true);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch0, "1A_frequency", dds3_freq, &mhz_scale);
+			dac, ch0, "frequency", dds3_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch2, "2A_frequency", dds1_freq, &mhz_scale);
+			dac, ch2, "frequency", dds1_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	num_dds4_freq = num_tx;
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch1, "1B_frequency", dds4_freq, &mhz_scale);
+			dac, ch1, "frequency", dds4_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	num_dds2_freq = num_tx;
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch3, "2B_frequency", dds2_freq, &mhz_scale);
+			dac, ch3, "frequency", dds2_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch0, "1A_scale",
-			scale_available ?: "1A_scale_available",
+			dac, ch0, "scale",
+			scale_available ?: "scale_available",
 			dds3_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch2, "2A_scale",
-			scale_available ?: "2A_scale_available",
+			dac, ch2, "scale",
+			scale_available ?: "scale_available",
 			dds1_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch1, "1B_scale",
-			scale_available ?: "1B_scale_available",
+			dac, ch1, "scale",
+			scale_available ?: "scale_available",
 			dds4_scale, compare_gain);
 	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch3, "2B_scale",
-			scale_available ?: "2B_scale_available",
+			dac, ch3, "scale",
+			scale_available ?: "scale_available",
 			dds2_scale, compare_gain);
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch0, "1A_phase", dds3_phase, &khz_scale);
+			dac, ch0, "phase", dds3_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch2, "2A_phase", dds1_phase, &khz_scale);
+			dac, ch2, "phase", dds1_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch1, "1B_phase", dds4_phase, &khz_scale);
+			dac, ch1, "phase", dds4_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 	iio_spin_button_init(&tx_widgets[num_tx++],
-			dac, ch3, "2B_phase", dds2_phase, &khz_scale);
+			dac, ch3, "phase", dds2_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 
@@ -1236,11 +1236,12 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 		} else
 			return dac_buf_filename;
 	} else {
-		printf("Unhandled tokens in ini file,\n"
-				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-				"DAQ2", attrib, value);
-		if (value)
+		if (value) {
+			printf("Unhandled tokens in ini file,\n"
+					"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
+					"DAQ2", attrib, value);
 			return "FAIL";
+		}
 	}
 
 	return NULL;
@@ -1252,7 +1253,6 @@ static void context_destroy(void)
 }
 
 static const char *daq2_sr_attribs[] = {
-	"axi-ad9144-hpc.out_altvoltage_1A_sampling_frequency",
 	"axi-ad9144-hpc.out_altvoltage_sampling_frequency",
 	"axi-ad9144-hpc.out_altvoltage_interpolation_frequency",
 	"axi-ad9144-hpc.out_altvoltage_interpolation_center_shift_frequency",
