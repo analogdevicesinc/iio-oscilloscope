@@ -70,12 +70,7 @@ static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
 static struct iio_widget cal_widgets[100];
 static unsigned int num_tx, num_rx, num_cal,
-		num_adc_freq, num_dds2_freq, num_dds4_freq,
-		num_dac_shift;
-
-static struct iio_device *adc_freq_device;
-static struct iio_channel *adc_freq_channel;
-static const char *adc_freq_file;
+		num_adc_freq, num_dds2_freq, num_dds4_freq;
 
 typedef struct _Dialogs Dialogs;
 struct _Dialogs
@@ -105,10 +100,12 @@ static int oneover(const gchar *num)
 
 }
 
+#if 0
 static void dac_shift_update(void)
 {
 	tx_widgets[num_dac_shift].update(&tx_widgets[num_dac_shift]);
 }
+#endif
 
 static void rf_out_update(void)
 {
@@ -830,6 +827,7 @@ static void manage_dds_mode()
 
 }
 
+#if 0
 static void dac_cal_spin_helper(GtkRange *range,
 		struct iio_channel *chn, const char *attr)
 {
@@ -883,6 +881,7 @@ static void adc_cal_spin1(GtkRange *range, gpointer user_data)
 			iio_device_find_channel(adc, "voltage1", false),
 			(const char *) user_data);
 }
+#endif
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
@@ -1029,17 +1028,6 @@ static int daq2_init(GtkWidget *notebook)
 	dac_interpolation = GTK_WIDGET(gtk_builder_get_object(builder, "dac_interpolation_clock"));
 	dac_shift = GTK_WIDGET(gtk_builder_get_object(builder, "dac_fcenter_shift"));
 
-	ch1 = iio_device_find_channel(adc, "voltage0", false);
-	if (iio_channel_find_attr(ch1, "sampling_frequency")) {
-		adc_freq_device = adc;
-		adc_freq_channel = ch1;
-		adc_freq_file = "sampling_frequency";
-	} else {
-		adc_freq_device = iio_context_find_device(ctx, "ad9523-lpc");
-		adc_freq_channel = iio_device_find_channel(adc_freq_device, "altvoltage2", true);
-		adc_freq_file = "ADC_CLK_frequency";
-	}
-
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode), 1);
 	manage_dds_mode();
 	g_signal_connect( dds_mode, "changed", G_CALLBACK(manage_dds_mode), NULL);
@@ -1054,15 +1042,7 @@ static int daq2_init(GtkWidget *notebook)
 			dac, ch0, "sampling_frequency",
 			builder, "dac_data_clock", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-			dac, ch0, "interpolation_frequency",
-			"interpolation_frequency_available",
-			builder, "dac_interpolation_clock", NULL);
-	num_dac_shift = num_tx;
-	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-			dac, ch0, "interpolation_center_shift_frequency",
-			"interpolation_center_shift_frequency_available",
-			builder, "dac_fcenter_shift", NULL);
+
 	/* DDS */
 	ch1 = iio_device_find_channel(dac, "altvoltage1", true);
 	ch2 = iio_device_find_channel(dac, "altvoltage2", true);
@@ -1112,79 +1092,18 @@ static int daq2_init(GtkWidget *notebook)
 			dac, ch3, "phase", dds2_phase, &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
-
-	/* Calibration */
-	ch0 = iio_device_find_channel(dac, "voltage0", true);
-	ch1 = iio_device_find_channel(dac, "voltage1", true);
-	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			dac, ch0, "calibbias", I_dac_offs, NULL);
-	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			dac, ch0, "calibscale", I_dac_fs_adj, NULL);
-	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			dac, ch0, "phase", I_dac_pha_adj, NULL);
-	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			dac, ch1, "calibbias", Q_dac_offs, NULL);
-	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			dac, ch1, "calibscale", Q_dac_fs_adj, NULL);
-	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			dac, ch1, "phase", Q_dac_pha_adj, NULL);
-
-	g_signal_connect(I_dac_offs, "value-changed",
-			G_CALLBACK(dac_cal_spin0), "calibbias");
-	g_signal_connect(I_dac_fs_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin0), "calibscale");
-	g_signal_connect(I_dac_pha_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin0), "phase");
-	g_signal_connect(Q_dac_offs, "value-changed",
-			G_CALLBACK(dac_cal_spin1), "calibbias");
-	g_signal_connect(Q_dac_fs_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin1), "calibscale");
-	g_signal_connect(Q_dac_pha_adj, "value-changed",
-			G_CALLBACK(dac_cal_spin1), "phase");
-
-	ch0 = iio_device_find_channel(adc, "voltage0", false);
-	ch1 = iio_device_find_channel(adc, "voltage1", false);
-	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			adc, ch0, "calibbias", I_adc_offset_adj, NULL);
-	iio_spin_button_s64_init(&cal_widgets[num_cal++],
-			adc, ch1, "calibbias", Q_adc_offset_adj, NULL);
-	iio_spin_button_init(&cal_widgets[num_cal++],
-			adc, ch0, "calibscale", I_adc_gain_adj, NULL);
-	iio_spin_button_init(&cal_widgets[num_cal++],
-			adc, ch1, "calibscale", Q_adc_gain_adj, NULL);
-	iio_spin_button_init(&cal_widgets[num_cal++],
-			adc, ch0, "calibphase", I_adc_phase_adj, NULL);
-	iio_spin_button_init(&cal_widgets[num_cal++],
-			adc, ch1, "calibphase", Q_adc_phase_adj, NULL);
-
-	g_signal_connect(I_adc_gain_adj  , "value-changed",
-			G_CALLBACK(adc_cal_spin0), "calibscale");
-	g_signal_connect(I_adc_offset_adj, "value-changed",
-			G_CALLBACK(adc_cal_spin0), "calibbias");
-	g_signal_connect(I_adc_phase_adj , "value-changed",
-			G_CALLBACK(adc_cal_spin0), "calibphase");
-	g_signal_connect(Q_adc_gain_adj  , "value-changed",
-			G_CALLBACK(adc_cal_spin1), "calibscale");
-	g_signal_connect(Q_adc_offset_adj, "value-changed",
-			G_CALLBACK(adc_cal_spin1), "calibbias");
-	g_signal_connect(Q_adc_phase_adj , "value-changed",
-			G_CALLBACK(adc_cal_spin1), "calibphase");
-
 	/* Rx Widgets */
 
-	num_adc_freq = num_rx;
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-			adc_freq_device, adc_freq_channel, adc_freq_file,
-			builder, "adc_freq", &mhz_scale);
-	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+	ch0 = iio_device_find_channel(adc, "voltage0", false);
 
+	num_adc_freq = num_rx;
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++], adc, ch0,
+			"sampling_frequency", builder, "adc_freq", &mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
 	g_builder_connect_signal(builder, "dac_buffer", "file-set",
 		G_CALLBACK(dac_buffer_config_file_set_cb), NULL);
 
-
-	g_signal_connect_after(dac_interpolation, "changed", G_CALLBACK(dac_shift_update), NULL);
-	g_signal_connect_after(dac_shift, "changed", G_CALLBACK(rf_out_update), NULL);
 	g_signal_connect_after(dds1_scale, "changed", G_CALLBACK(rf_out_update), NULL);
 	g_signal_connect_after(dds2_scale, "changed", G_CALLBACK(rf_out_update), NULL);
 
@@ -1253,9 +1172,8 @@ static void context_destroy(void)
 }
 
 static const char *daq2_sr_attribs[] = {
+	"axi-ad9680-hpc.in_voltage_sampling_frequency",
 	"axi-ad9144-hpc.out_altvoltage_sampling_frequency",
-	"axi-ad9144-hpc.out_altvoltage_interpolation_frequency",
-	"axi-ad9144-hpc.out_altvoltage_interpolation_center_shift_frequency",
 	"dds_mode",
 	"dac_buf_filename",
 	"axi-ad9144-hpc.out_altvoltage0_1A_frequency",
@@ -1270,18 +1188,6 @@ static const char *daq2_sr_attribs[] = {
 	"axi-ad9144-hpc.out_altvoltage1_1B_phase",
 	"axi-ad9144-hpc.out_altvoltage2_2A_phase",
 	"axi-ad9144-hpc.out_altvoltage3_2B_phase",
-	"axi-ad9144-hpc.out_voltage0_calibbias",
-	"axi-ad9144-hpc.out_voltage0_calibscale",
-	"axi-ad9144-hpc.out_voltage0_phase",
-	"axi-ad9144-hpc.out_voltage1_calibbias",
-	"axi-ad9144-hpc.out_voltage1_calibscale",
-	"axi-ad9144-hpc.out_voltage1_phase",
-	"axi-ad9680-hpc.in_voltage0_calibbias",
-	"axi-ad9680-hpc.in_voltage1_calibbias",
-	"axi-ad9680-hpc.in_voltage0_calibscale",
-	"axi-ad9680-hpc.in_voltage1_calibscale",
-	"axi-ad9680-hpc.in_voltage0_calibphase",
-	"axi-ad9680-hpc.in_voltage1_calibphase",
 	SYNC_RELOAD,
 	NULL,
 };
