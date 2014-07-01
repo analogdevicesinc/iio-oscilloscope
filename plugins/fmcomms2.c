@@ -21,6 +21,7 @@
 #include <values.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <sys/utsname.h>
 
 #include "../datatypes.h"
 #include "../osc.h"
@@ -487,11 +488,26 @@ static void process_dac_buffer_file (const char *file_name)
 	char *buf = NULL, *tmp;
 	FILE *infile;
 	unsigned int i, nb_channels = iio_device_get_channels_count(dds);
+	unsigned int buffer_channels = 0;
+	struct iio_channel *channel;
+		unsigned int major, minor;
+		struct utsname uts;
 
-	if (nb_channels <= 8)
-		return;
+	uname(&uts);
+	if (major < 2 || (major == 3 && minor < 14)) {
+		if (is_2rx_2tx)
+			buffer_channels = 4;
+		else
+			buffer_channels = 2;
+	} else {
+		for (i = 0; i < nb_channels; i++) {
+			channel = iio_device_get_channel(dds, i);
+			if (iio_channel_is_scan_element(channel))
+				buffer_channels++;
+		}
+	}
 
-	ret = analyse_wavefile(file_name, &buf, &size, (nb_channels - 8) / 2);
+	ret = analyse_wavefile(file_name, &buf, &size, buffer_channels / 2);
 	if (ret == -3)
 		return;
 
