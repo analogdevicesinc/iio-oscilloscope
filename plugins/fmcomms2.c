@@ -490,10 +490,11 @@ static void process_dac_buffer_file (const char *file_name)
 	unsigned int i, nb_channels = iio_device_get_channels_count(dds);
 	unsigned int buffer_channels = 0;
 	struct iio_channel *channel;
-		unsigned int major, minor;
-		struct utsname uts;
+	unsigned int major, minor;
+	struct utsname uts;
 
 	uname(&uts);
+	sscanf(uts.release, "%u.%u", &major, &minor);
 	if (major < 2 || (major == 3 && minor < 14)) {
 		if (is_2rx_2tx)
 			buffer_channels = 4;
