@@ -1769,7 +1769,7 @@ static bool check_inifile(char *filepath)
 	if (i == 0 )
 		return FALSE;
 
-	if (!strstr(buf, "[MultiOsc]"))
+	if (!strstr(buf, "["OSC_INI_SECTION"]"))
 		return FALSE;
 
 	return TRUE;
@@ -1943,13 +1943,13 @@ int capture_profile_handler(const char *section, const char *name, const char *v
 		/* Remember the last section */
 		prev_section = g_strdup(section);
 		/* Create a capture window and parse the line from ini file*/
-		if (strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF)) == 0) {
+		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
 			plot = new_plot_cb(NULL, NULL);
 			ret = osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
 		}
 	} else {
 		/* Parse the line from ini file */
-		if (strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF)) == 0) {
+		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
 			ret = osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
 		}
 	}
@@ -1958,7 +1958,7 @@ int capture_profile_handler(const char *section, const char *name, const char *v
 }
 
 /*
- * Check for settings in [MultiOsc] section
+ * Check for settings in the section for the main application
  */
 int main_profile_handler(const char *section, const char *name, const char *value)
 {
@@ -2009,8 +2009,8 @@ void capture_profile_save(const char *filename)
 		fprintf(stderr, "Failed to open %s : %s\n", filename, strerror(errno));
 		return;
 	}
-	/* Create MultiOsc Section */
-	fprintf(fp, "[MultiOsc]\n");
+	/* Create the section for the main application*/
+	fprintf(fp, "[%s]\n", OSC_INI_SECTION);
 
 	/* Save plugin attached status */
 	g_slist_foreach(dplugin_list, plugin_state_ini_save, fp);

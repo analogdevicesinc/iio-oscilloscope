@@ -2653,7 +2653,7 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 		fprintf(stderr, "Failed to open %s : %s\n", filename, strerror(errno));
 		return;
 	}
-	fprintf(fp, "\n[%s%d]\n", CAPTURE_CONF, priv->object_id);
+	fprintf(fp, "\n[%s%d]\n", CAPTURE_INI_SECTION, priv->object_id);
 
 	int tmp_int;
 	float tmp_float;

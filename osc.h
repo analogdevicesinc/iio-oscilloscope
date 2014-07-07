@@ -14,8 +14,8 @@
 
 #include "oscplot.h"
 
-#define MULTI_OSC "MultiOsc"
-#define CAPTURE_CONF MULTI_OSC"_Capture_Configuration"
+#define OSC_INI_SECTION "IIO Oscilloscope"
+#define CAPTURE_INI_SECTION OSC_INI_SECTION " - Capture Window"
 
 #define SAVE_CSV 2
 #define SAVE_PNG 3

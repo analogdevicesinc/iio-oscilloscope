@@ -170,11 +170,11 @@ static int libini_restore_handler(void *user, const char* section,
 	}
 
 	/* See if the section is from the main window */
-	if (MATCH_SECT(MULTI_OSC))
+	if (MATCH_SECT(OSC_INI_SECTION))
 		return main_profile_handler(section, name, value);
 
 	/* See if the section is from a capture window */
-	if (!strncmp(section, CAPTURE_CONF, strlen(CAPTURE_CONF)))
+	if (!strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)))
 		return capture_profile_handler(section, name, value);
 
 	/* needs to be a plugin */
