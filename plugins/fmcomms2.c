@@ -127,9 +127,10 @@ static gulong dds_freq_hid[9], dds_scale_hid[9], dds_phase_hid[9];
 
 static gint this_page;
 static GtkNotebook *nbook;
+static GtkWidget *fmcomms2_panel;
 static gboolean plugin_detached;
 
-static char last_fir_filter[PATH_MAX];
+static char last_fir_filter[PATH_MAX] = "(None)";
 
 static void enable_dds(bool on_off);
 
@@ -448,7 +449,7 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 	}
 }
 
-static void load_fir_filter(const char *file_name)
+static int load_fir_filter(const char *file_name)
 {
 	int ret = -1;
 	FILE *f = fopen(file_name, "r");
@@ -468,17 +469,34 @@ static void load_fir_filter(const char *file_name)
 		free(buf);
 	}
 
-	if (ret < 0)
+	if (ret < 0) {
 		fprintf(stderr, "FIR filter config failed\n");
-	else
+		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms2_panel);
+		if (!gtk_widget_is_toplevel(toplevel))
+			toplevel = NULL;
+
+		GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(toplevel),
+						GTK_DIALOG_MODAL,
+						GTK_MESSAGE_ERROR,
+						GTK_BUTTONS_CLOSE,
+						"\nFailed to configure the FIR filter using the selected file.");
+		gtk_window_set_title(GTK_WINDOW(dialog), "FIR Filter Configuration Failed");
+		if (gtk_dialog_run(GTK_DIALOG(dialog)))
+			gtk_widget_destroy(dialog);
+
+	} else {
 		strcpy(last_fir_filter, file_name);
+	}
+
+	return ret;
 }
 
 void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 {
 	char *file_name = gtk_file_chooser_get_filename(chooser);
 
-	load_fir_filter(file_name);
+	if (load_fir_filter(file_name) < 0)
+		gtk_file_chooser_set_filename(chooser, last_fir_filter);
 }
 
 static void process_dac_buffer_file (const char *file_name)
@@ -1103,7 +1121,6 @@ int handle_external_request (const char *request)
 static int fmcomms2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
-	GtkWidget *fmcomms2_panel;
 	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", false),
 			   *ch1 = iio_device_find_channel(dev, "voltage1", false),
 			   *ch2, *ch3, *ch4, *ch5, *ch6, *ch7;
