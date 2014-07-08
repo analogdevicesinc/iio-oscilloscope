@@ -61,6 +61,7 @@ static gulong dds1_scale_hid = 0, dds2_scale_hid = 0;
 static gulong dds1_phase_hid = 0, dds2_phase_hid = 0;
 static int rx_lo_powerdown, tx_lo_powerdown;
 
+static GtkWidget *dac_data_clock;
 static GtkWidget *dac_interpolation;
 static GtkWidget *dac_shift;
 
@@ -80,7 +81,7 @@ static struct iio_widget rx_widgets[100];
 static struct iio_widget cal_widgets[100];
 static unsigned int num_tx, num_rx, num_cal,
 		num_adc_freq, num_dds2_freq, num_dds4_freq,
-		num_dac_shift;
+		num_dac_shift, num_dac_interpolation;
 
 static struct iio_device *adc_freq_device;
 static struct iio_channel *adc_freq_channel;
@@ -125,6 +126,11 @@ static int oneover(const gchar *num)
 	close = powf(2.0, roundf(log2f(1.0 / atof(num))));
 	return (int)close;
 
+}
+
+static void dac_interpolation_update(void)
+{
+	tx_widgets[num_dac_interpolation].update(&tx_widgets[num_dac_interpolation]);
 }
 
 static void dac_shift_update(void)
@@ -2093,6 +2099,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	ad9122_temp = GTK_WIDGET(gtk_builder_get_object(builder, "dac_temp"));
 
 	rf_out =  GTK_WIDGET(gtk_builder_get_object(builder, "RF_out"));
+	dac_data_clock = GTK_WIDGET(gtk_builder_get_object(builder, "dac_data_clock"));
 	dac_interpolation = GTK_WIDGET(gtk_builder_get_object(builder, "dac_interpolation_clock"));
 	dac_shift = GTK_WIDGET(gtk_builder_get_object(builder, "dac_fcenter_shift"));
 
@@ -2125,6 +2132,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 			dac, ch0, dac_sampling_freq_file,
 			builder, "dac_data_clock", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	num_dac_interpolation = num_tx;
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
 			dac, ch0, "interpolation_frequency",
 			"interpolation_frequency_available",
@@ -2291,6 +2299,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 		GTK_WIDGET(gtk_builder_get_object(builder, "gain_amp_together")),
 		"toggled", G_CALLBACK(gain_amp_locked_cb), NULL);
 
+	g_signal_connect_after(dac_data_clock, "changed", G_CALLBACK(dac_interpolation_update), NULL);
 	g_signal_connect_after(dac_interpolation, "changed", G_CALLBACK(dac_shift_update), NULL);
 	g_signal_connect_after(dac_shift, "changed", G_CALLBACK(rf_out_update), NULL);
 	g_signal_connect_after(dds1_scale, "changed", G_CALLBACK(rf_out_update), NULL);
