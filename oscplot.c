@@ -1083,6 +1083,8 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	struct marker_type *markers;
 	GtkTextIter iter;
 	char text[256];
+	int markers_scale;
+	int lo_markers_scale_ratio;
 	int m;
 
 	if (tr->type_id == CROSS_CORRELATION_TRANSFORM)
@@ -1100,11 +1102,19 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	}
 	ch_info = iio_channel_get_data(tr->channel_parent);
 	dev_info = iio_device_get_data(ch_info->dev);
+	if (dev_info->adc_scale == 'M')
+		markers_scale = 1000000;
+	else if(dev_info->adc_scale == 'k')
+		markers_scale = 1000;
+	else
+		markers_scale = 1;
+	lo_markers_scale_ratio = 1000000 / markers_scale; /* LO frequency - always in MHz */
+
 	if (MAX_MARKERS && priv->marker_type != MARKER_OFF) {
 		for (m = 0; m <= MAX_MARKERS && markers[m].active; m++) {
 			if (tr->type_id == FFT_TRANSFORM || tr->type_id == COMPLEX_FFT_TRANSFORM) {
 				sprintf(text, "M%i: %2.2f dBFS @ %2.3f %cHz%c",
-					m, markers[m].y, dev_info->lo_freq + markers[m].x,
+					m, markers[m].y, dev_info->lo_freq * lo_markers_scale_ratio + markers[m].x,
 					dev_info->adc_scale,
 					m != MAX_MARKERS ? '\n' : '\0');
 			} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
