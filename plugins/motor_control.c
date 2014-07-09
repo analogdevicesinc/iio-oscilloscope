@@ -205,6 +205,11 @@ void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder)
 	kp = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+		pid_dev, NULL, "mc_pid_ctrl_ki",
+		builder, "spinbutton_ki", NULL);
+	ki = tx_widgets[num_tx - 1].widget;
+
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		pid_dev, NULL, "mc_pid_ctrl_kd",
 		builder, "spinbutton_kd", NULL);
 	kd = tx_widgets[num_tx - 1].widget;
@@ -407,8 +412,11 @@ static int motor_control_init(GtkWidget *notebook)
 		G_CALLBACK(controllers_notebook_page_switched_cb), NULL);
 
 	tx_update_values();
-	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(controller_mode), 1);
-	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(controller_mode), 0);
+
+	if (adv_dev) {
+		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(controller_mode), 1);
+		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(controller_mode), 0);
+	}
 
 	gint p;
 	p = gtk_notebook_get_current_page(GTK_NOTEBOOK(controllers_notebook));
