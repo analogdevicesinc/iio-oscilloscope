@@ -1308,6 +1308,20 @@ static ssize_t demux_sample(const struct iio_channel *chn,
 	return size;
 }
 
+static unsigned device_get_enabled_scan_elements_count(struct iio_device *dev)
+{
+	struct iio_channel *ch;
+	unsigned i, count = 0;
+
+	for (i = 0; i < iio_device_get_channels_count(dev); i++) {
+		ch = iio_device_get_channel(dev, i);
+		if (iio_channel_is_scan_element(ch) && iio_channel_is_enabled(ch))
+			count++;
+	}
+
+	return count;
+}
+
 static gboolean capture_process(void)
 {
 	unsigned int i;
@@ -1417,7 +1431,9 @@ static int capture_setup(void)
 		if (dev_info->buffer)
 			iio_buffer_destroy(dev_info->buffer);
 
-		dev_info->buffer = iio_device_create_buffer(dev, sample_count, false);
+		dev_info->buffer = iio_device_create_buffer(dev,
+				sample_count * device_get_enabled_scan_elements_count(dev),
+				false);
 		if (!dev_info->buffer) {
 			fprintf(stderr, "Unable to create buffer\n");
 			return -1;
