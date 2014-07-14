@@ -1431,9 +1431,7 @@ static int capture_setup(void)
 		if (dev_info->buffer)
 			iio_buffer_destroy(dev_info->buffer);
 
-		dev_info->buffer = iio_device_create_buffer(dev,
-				sample_count * device_get_enabled_scan_elements_count(dev),
-				false);
+		dev_info->buffer = iio_device_create_buffer(dev, sample_count, false);
 		if (!dev_info->buffer) {
 			fprintf(stderr, "Unable to create buffer\n");
 			return -1;
