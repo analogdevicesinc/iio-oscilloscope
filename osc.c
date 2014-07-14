@@ -1348,8 +1348,9 @@ static gboolean capture_process(void)
 
 		do {
 			ssize_t ret, nb;
-			iio_buffer_refill(dev_info->buffer);
-			ret = iio_buffer_foreach_sample(
+			ret = iio_buffer_refill(dev_info->buffer);
+			if (ret >= 0)
+				ret = iio_buffer_foreach_sample(
 					dev_info->buffer, demux_sample, NULL);
 			if (ret < 0) {
 				fprintf(stderr, "Error while reading data: %s\n", strerror(-ret));
