@@ -1308,18 +1308,14 @@ static ssize_t demux_sample(const struct iio_channel *chn,
 	return size;
 }
 
-static unsigned device_get_enabled_scan_elements_count(struct iio_device *dev)
+static bool device_is_oneshot(struct iio_device *dev)
 {
-	struct iio_channel *ch;
-	unsigned i, count = 0;
+	const char *name = iio_device_get_name(dev);
 
-	for (i = 0; i < iio_device_get_channels_count(dev); i++) {
-		ch = iio_device_get_channel(dev, i);
-		if (iio_channel_is_scan_element(ch) && iio_channel_is_enabled(ch))
-			count++;
-	}
+	if (strncmp(name, "ad-mc-", 5) == 0)
+		return true;
 
-	return count;
+	return false;
 }
 
 static gboolean capture_process(void)
@@ -1338,6 +1334,15 @@ static gboolean capture_process(void)
 
 		if (sample_size == 0)
 			continue;
+
+		if (device_is_oneshot(dev)) {
+			dev_info->buffer = iio_device_create_buffer(dev,
+				sample_count, false);
+			if (!dev_info->buffer) {
+				fprintf(stderr, "Unable to create buffer\n");
+				return FALSE;
+			}
+		}
 
 		/* Reset the data offset for all channels */
 		for (i = 0; i < nb_channels; i++) {
@@ -1371,6 +1376,11 @@ static gboolean capture_process(void)
 			}
 			dev_info->channels_data_copy = NULL;
 			G_UNLOCK(buffer_full);
+		}
+
+		if (device_is_oneshot(dev)) {
+			iio_buffer_destroy(dev_info->buffer);
+			dev_info->buffer = NULL;
 		}
 	}
 
@@ -1432,10 +1442,12 @@ static int capture_setup(void)
 		if (dev_info->buffer)
 			iio_buffer_destroy(dev_info->buffer);
 
-		dev_info->buffer = iio_device_create_buffer(dev, sample_count, false);
-		if (!dev_info->buffer) {
-			fprintf(stderr, "Unable to create buffer\n");
-			return -1;
+		if (!device_is_oneshot(dev)) {
+			dev_info->buffer = iio_device_create_buffer(dev, sample_count, false);
+			if (!dev_info->buffer) {
+				fprintf(stderr, "Unable to create buffer\n");
+				return -1;
+			}
 		}
 		dev_info->sample_count = sample_count;
 
