@@ -1286,6 +1286,7 @@ static ssize_t demux_sample(const struct iio_channel *chn,
 {
 	struct extra_info *info = iio_channel_get_data(chn);
 	struct extra_dev_info *dev_info = iio_device_get_data(info->dev);
+	const struct iio_data_format *format = iio_channel_get_data_format(chn);
 
 	/* Prevent buffer overflow */
 	if (info->offset == dev_info->sample_count)
@@ -1294,15 +1295,24 @@ static ssize_t demux_sample(const struct iio_channel *chn,
 	if (size == 1) {
 		int8_t val;
 		iio_channel_convert(chn, &val, sample);
-		*(info->data_ref + info->offset++) = (gfloat) val;
+		if (format->is_signed)
+			*(info->data_ref + info->offset++) = (gfloat) val;
+		else
+			*(info->data_ref + info->offset++) = (gfloat) (uint8_t)val;
 	} else if (size == 2) {
 		int16_t val;
 		iio_channel_convert(chn, &val, sample);
-		*(info->data_ref + info->offset++) = (gfloat) val;
+		if (format->is_signed)
+			*(info->data_ref + info->offset++) = (gfloat) val;
+		else
+			*(info->data_ref + info->offset++) = (gfloat) (uint16_t)val;
 	} else {
 		int32_t val;
 		iio_channel_convert(chn, &val, sample);
-		*(info->data_ref + info->offset++) = (gfloat) val;
+		if (format->is_signed)
+			*(info->data_ref + info->offset++) = (gfloat) val;
+		else
+			*(info->data_ref + info->offset++) = (gfloat) (uint32_t)val;
 	}
 
 	return size;
