@@ -130,7 +130,7 @@ static GtkNotebook *nbook;
 static GtkWidget *fmcomms2_panel;
 static gboolean plugin_detached;
 
-static char last_fir_filter[PATH_MAX] = "(None)";
+static char last_fir_filter[PATH_MAX];
 
 static void enable_dds(bool on_off);
 
@@ -495,8 +495,12 @@ void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 {
 	char *file_name = gtk_file_chooser_get_filename(chooser);
 
-	if (load_fir_filter(file_name) < 0)
-		gtk_file_chooser_set_filename(chooser, last_fir_filter);
+	if (load_fir_filter(file_name) < 0) {
+		if (strlen(last_fir_filter) == 0)
+			gtk_file_chooser_set_filename(chooser, "(None)");
+		else
+			gtk_file_chooser_set_filename(chooser, last_fir_filter);
+	}
 }
 
 static void process_dac_buffer_file (const char *file_name)
