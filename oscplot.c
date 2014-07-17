@@ -977,11 +977,16 @@ static void markers_init(OscPlot *plot)
 	if (priv->tbuf)
 		gtk_text_buffer_set_text(priv->tbuf, empty_text, -1);
 
+	priv->markers_copy = NULL;
+
+	/* Don't go any further with the init when in TIME or XY domains*/
+	if (priv->active_transform_type == TIME_TRANSFORM ||
+			priv->active_transform_type == CONSTELLATION_TRANSFORM)
+		return;
+
 	/* Ensure that Marker Image is applied only to Complex FFT Transforms */
 	if (priv->active_transform_type == FFT_TRANSFORM && priv->marker_type == MARKER_IMAGE)
 		priv->marker_type = MARKER_OFF;
-
-	priv->markers_copy = NULL;
 
 	for (i = 0; i <= MAX_MARKERS; i++) {
 		markers[i].x = 0.0f;
@@ -991,6 +996,7 @@ static void markers_init(OscPlot *plot)
 		markers[i].graph = gtk_databox_markers_new(1, &markers[i].x, &markers[i].y, &color_marker,
 			10, GTK_DATABOX_MARKERS_TRIANGLE);
 		gtk_databox_graph_add(databox, markers[i].graph);
+		gtk_databox_graph_set_hide(markers[i].graph, true);
 		sprintf(buf, "?%i", i);
 		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(markers[i].graph),
 			0, GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
