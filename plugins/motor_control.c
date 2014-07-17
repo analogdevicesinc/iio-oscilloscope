@@ -36,6 +36,7 @@ static int gpo_id[11];
 
 /* PID Controller Widgets */
 static GtkWidget *controller_type_pid;
+static GtkWidget *delta;
 static GtkWidget *pwm_pid;
 static GtkWidget *direction_pid;
 static GtkWidget *ref_speed;
@@ -183,6 +184,7 @@ void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder)
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 		pid_dev, NULL, "mc_pid_ctrl_delta",
 		builder, "checkbutton_delta", 0);
+	delta = tx_widgets[num_tx - 1].widget;
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 		pid_dev, NULL, "mc_pid_ctrl_direction",
@@ -412,6 +414,11 @@ static int motor_control_init(GtkWidget *notebook)
 		G_CALLBACK(controllers_notebook_page_switched_cb), NULL);
 
 	tx_update_values();
+
+	if (pid_dev) {
+		/* Make sure  delta parameter is set to 1 */
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(delta), true);
+	}
 
 	if (adv_dev) {
 		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(controller_mode), 1);
