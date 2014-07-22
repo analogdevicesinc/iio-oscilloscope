@@ -190,7 +190,7 @@ static void do_fft(Transform *tr)
 		}
 
 		mag = 10 * log10((creal(fft->out[j]) * creal(fft->out[j]) +
-				cimag(fft->out[j]) * cimag(fft->out[j])) / (fft->m * fft->m)) +
+				cimag(fft->out[j]) * cimag(fft->out[j])) / ((unsigned long long)fft->m * fft->m)) +
 			fft->fft_corr + pwr_offset + plugin_fft_corr;
 		/* it's better for performance to have seperate loops,
 		 * rather than do these tests inside the loop, but it makes
