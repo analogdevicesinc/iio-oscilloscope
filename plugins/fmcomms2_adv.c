@@ -334,11 +334,13 @@ static int get_dds_channels(void)
 	return 0;
 }
 
-static void rx_phase_rotation(struct iio_device *dev, gdouble val)
+static void trx_phase_rotation(struct iio_device *dev, gdouble val)
 {
 	struct iio_channel *out0, *out1;
 	gdouble phase;
 	unsigned offset;
+
+	bool output = (dev == dev_dds_slave) || (dev == dev_dds_master);
 
 	DBG("%s %f\n", iio_device_get_name(dev), val);
 
@@ -347,11 +349,11 @@ static void rx_phase_rotation(struct iio_device *dev, gdouble val)
 	/* Set both RX1 and RX2 */
 	for (offset = 0; offset <= 2; offset += 2) {
 		if (offset == 2) {
-			out0 = iio_device_find_channel(dev, "voltage2", false);
-			out1 = iio_device_find_channel(dev, "voltage3", false);
+			out0 = iio_device_find_channel(dev, "voltage2", output);
+			out1 = iio_device_find_channel(dev, "voltage3", output);
 		} else {
-			out0 = iio_device_find_channel(dev, "voltage0", false);
-			out1 = iio_device_find_channel(dev, "voltage1", false);
+			out0 = iio_device_find_channel(dev, "voltage0", output);
+			out1 = iio_device_find_channel(dev, "voltage1", output);
 		}
 
 		if (out1 && out0) {
@@ -363,7 +365,7 @@ static void rx_phase_rotation(struct iio_device *dev, gdouble val)
 	}
 }
 
-static void tx_phase_rotation(struct iio_device *dev, gdouble val)
+static void dds_tx_phase_rotation(struct iio_device *dev, gdouble val)
 {
 	long long i, q;
 	int d, j;
@@ -405,7 +407,9 @@ static int default_dds(long long freq, double scale)
 			ret |= iio_channel_attr_write_double(dds_out[i][j], "scale", scale);
 		}
 
-		tx_phase_rotation(i ? dev_dds_slave : dev_dds_master, 0.0);
+		dds_tx_phase_rotation(i ? dev_dds_slave : dev_dds_master, 0.0);
+		trx_phase_rotation(i ? dev_dds_slave : dev_dds_master, 0.0);
+
 	}
 
 	return ret;
@@ -423,18 +427,19 @@ static void near_end_loopback_ctrl(unsigned channel, bool enable)
 	if (channel > 3)
 		channel -= 4;
 
-	if (iio_device_reg_read(dev, 0x80000400 + channel * 0x40, &tmp))
+	if (iio_device_reg_read(dev, 0x80000418 + channel * 0x40, &tmp))
 		return;
 
 	if (enable)
-		tmp |= 0x800;
+		tmp |= 0x1;
 	else
-		tmp &= ~0x800;
+		tmp &= ~0xF;
 
-	iio_device_reg_write(dev, 0x80000400 + channel * 0x40, tmp);
+	iio_device_reg_write(dev, 0x80000418 + channel * 0x40, tmp);
+
 }
 
-static void get_markers (int *offset, long long *mag, long long *mag1, long long *mag2, long long *x1)
+static void get_markers(int *offset, long long *mag, long long *mag1, long long *mag2, long long *x1)
 {
 	int ret, sum = MARKER_AVG;
 	struct marker_type *markers = NULL;
@@ -636,6 +641,22 @@ static double tune_trx_phase_offset(struct iio_device *ldev,
 	return phase * sign;
 }
 
+static unsigned get_cal_tone(void)
+{
+	unsigned freq;
+	const char *cal_tone = getenv("CAL_TONE");
+
+	if (!cal_tone)
+		return CAL_TONE;
+
+	freq = atoi(cal_tone);
+
+	if (freq > 0 && freq < 31000000)
+		return freq;
+
+	return CAL_TONE;
+}
+
 static void calibrate (gpointer button)
 {
 	double rx_phase_lpc, rx_phase_hpc, tx_phase_hpc;
@@ -660,7 +681,7 @@ static void calibrate (gpointer button)
 	 * set some logical defaults / assumptions
 	 */
 
-	ret = default_dds(CAL_TONE, CAL_SCALE);
+	ret = default_dds(get_cal_tone(), CAL_SCALE);
 	if (ret < 0) {
 		printf("could not set dds cores\n");
 		goto calibrate_fail;
@@ -684,8 +705,8 @@ static void calibrate (gpointer button)
 	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "0");
 	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "0");
 
-	rx_phase_rotation(cf_ad9361_lpc, 0.0);
- 	rx_phase_rotation(cf_ad9361_hpc, 0.0);
+	trx_phase_rotation(cf_ad9361_lpc, 0.0);
+	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 
 	/*
 	 * Calibrate RX:
@@ -693,8 +714,7 @@ static void calibrate (gpointer button)
 	 */
 	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
 	__cal_switch_ports_enable_cb(1);
-	sleep(0.3);
-	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, cal_freq, cal_tone, 1.0, 0.01, rx_phase_rotation);
+	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	DBG("rx_phase_hpc %f", rx_phase_hpc);
 
 	/*
@@ -703,10 +723,9 @@ static void calibrate (gpointer button)
 	 */
 
 	osc_plot_xcorr_revert(plot_xcorr_4ch, true);
-	rx_phase_rotation(cf_ad9361_hpc, 0.0);
+	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(3);
-	sleep(0.3);
-	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, cal_freq, cal_tone, 1.0, 0.01, rx_phase_rotation);
+	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	DBG("rx_phase_lpc %f", rx_phase_lpc);
 
 	/*
@@ -715,14 +734,13 @@ static void calibrate (gpointer button)
 	 */
 
 	osc_plot_xcorr_revert(plot_xcorr_4ch, true);
-	rx_phase_rotation(cf_ad9361_hpc, 0.0);
+	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(4);
-	sleep(0.4);
-	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, cal_freq, cal_tone, -1.0 , 0.001, tx_phase_rotation);
+	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, cal_freq, cal_tone, -1.0 , 0.001, trx_phase_rotation);
 
 	DBG("tx_phase_hpc %f", tx_phase_hpc);
 
-	rx_phase_rotation(cf_ad9361_hpc, rx_phase_hpc);
+	trx_phase_rotation(cf_ad9361_hpc, rx_phase_hpc);
 
 	gtk_range_set_value(GTK_RANGE(GTK_WIDGET(gtk_builder_get_object(builder,
 			"tx_phase"))), scale_phase_0_360(tx_phase_hpc));
@@ -781,10 +799,10 @@ void do_calibration (GtkWidget *widget, gpointer data)
 
 void undo_calibration (GtkWidget *widget, gpointer data)
 {
-	tx_phase_rotation(dev_dds_master, 0.0);
-	tx_phase_rotation(dev_dds_slave, 0.0);
-	rx_phase_rotation(cf_ad9361_lpc, 0.0);
-	rx_phase_rotation(cf_ad9361_hpc, 0.0);
+	trx_phase_rotation(dev_dds_master, 0.0);
+	trx_phase_rotation(dev_dds_slave, 0.0);
+	trx_phase_rotation(cf_ad9361_lpc, 0.0);
+	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 }
 
 void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
@@ -792,9 +810,9 @@ void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 	double value = gtk_range_get_value(hscale1);
 
 	if ((unsigned long)data)
-		tx_phase_rotation(dev_dds_master, value);
+		trx_phase_rotation(dev_dds_master, value);
 	else
-		tx_phase_rotation(dev_dds_slave, value);
+		trx_phase_rotation(dev_dds_slave, value);
 
 }
 

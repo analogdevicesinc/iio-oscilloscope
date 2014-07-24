@@ -767,25 +767,28 @@ static void enable_dds(bool on_off)
 static void slave_enable_dma_mux(bool enable)
 {
 #ifdef SLAVE
-#define ADI_REG_CNTRL_2	0x0048
-#define ADI_DATA_SEL(x)	(((x) & 0xF) << 0)
-#define 	DATA_SEL_DDS	0
-#define 	DATA_SEL_SED	1
-#define 	DATA_SEL_DMA	2
 
-unsigned tmp;
+enum dds_data_select {
+	DATA_SEL_DDS,
+	DATA_SEL_SED,
+	DATA_SEL_DMA,
+	DATA_SEL_ZERO,	/* OUTPUT 0 */
+	DATA_SEL_PN7,
+	DATA_SEL_PN15,
+	DATA_SEL_PN23,
+	DATA_SEL_PN31,
+	DATA_SEL_LB,	/* loopback data (ADC) */
+	DATA_SEL_PNXX,	/* (Device specific) */
+};
 
-	if (iio_device_reg_read(dds, 0x80000000 | ADI_REG_CNTRL_2, &tmp))
-		return;
+#define ADI_REG_CHAN_CNTRL_7(c)		(0x0418 + (c) * 0x40) /* v8.0 */
+#define ADI_DAC_DDS_SEL(x)		(((x) & 0xF) << 0)
 
-	tmp &= ~ADI_DATA_SEL(~0);
+	int i;
 
-	if (enable)
-		tmp |= DATA_SEL_DMA;
-	else
-		tmp |= DATA_SEL_DDS;
-
-	iio_device_reg_write(dds, 0x80000000 | ADI_REG_CNTRL_2, tmp);
+	for (i = 0; i < 4; i++)
+		iio_device_reg_write(dds, 0x80000000 | ADI_REG_CHAN_CNTRL_7(i),
+			ADI_DAC_DDS_SEL(enable ? DATA_SEL_DMA : DATA_SEL_DDS));
 #endif
 }
 
