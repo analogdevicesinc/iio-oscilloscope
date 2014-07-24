@@ -677,6 +677,7 @@ static void close_active_buffers(void)
 static void stop_sampling(void)
 {
 	stop_capture = TRUE;
+	capture_function = 0;
 	close_active_buffers();
 	G_TRYLOCK(buffer_full);
 	G_UNLOCK(buffer_full);
