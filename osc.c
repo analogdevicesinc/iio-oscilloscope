@@ -1370,7 +1370,7 @@ static gboolean capture_process(void)
 			if (ret < 0) {
 				fprintf(stderr, "Error while reading data: %s\n", strerror(-ret));
 				stop_capture = TRUE;
-				return FALSE;
+				goto capture_stop_check;
 			}
 
 			nb = ret / sample_size;
@@ -1395,6 +1395,8 @@ static gboolean capture_process(void)
 	}
 
 	update_all_plots();
+
+capture_stop_check:
 	if (stop_capture == TRUE)
 		capture_function = 0;
 
