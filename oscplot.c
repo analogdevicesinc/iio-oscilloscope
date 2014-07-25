@@ -361,6 +361,11 @@ void osc_plot_destroy (OscPlot *plot)
 	gtk_widget_destroy(GTK_WIDGET(plot));
 }
 
+void osc_plot_set_visible (OscPlot *plot, bool visible)
+{
+	gtk_widget_set_visible(plot->priv->window, visible);
+}
+
 void osc_plot_data_update (OscPlot *plot)
 {
 	call_all_transform_functions(plot->priv);
