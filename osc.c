@@ -1422,9 +1422,52 @@ static unsigned int max_sample_count_from_plots(struct extra_dev_info *info)
 	return max_count;
 }
 
+static double read_sampling_frequency(const struct iio_device *dev)
+{
+	double freq = 400.0;
+	int ret = -1;
+	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
+	char buf[1024];
+
+	for (i = 0; i < nb_channels; i++) {
+		struct iio_channel *ch = iio_device_get_channel(dev, i);
+
+		if (iio_channel_is_output(ch) || strncmp(iio_channel_get_id(ch),
+					"voltage", sizeof("voltage") - 1))
+			continue;
+
+		ret = iio_channel_attr_read(ch, "sampling_frequency",
+				buf, sizeof(buf));
+		if (ret > 0)
+			break;
+	}
+
+	if (ret < 0)
+		ret = iio_device_attr_read(dev, "sampling_frequency",
+				buf, sizeof(buf));
+	if (ret < 0) {
+		const struct iio_device *trigger;
+		ret = iio_device_get_trigger(dev, &trigger);
+		if (!ret)
+			ret = iio_device_attr_read(trigger, "frequency",
+					buf, sizeof(buf));
+	}
+
+	if (ret > 0)
+		sscanf(buf, "%lf", &freq);
+
+	if (freq < 0)
+		freq += 4294967296.0;
+
+	return freq;
+}
+
 static int capture_setup(void)
 {
 	unsigned int i, j;
+	unsigned int min_timeout = 1000;
+	unsigned int timeout;
+	double freq;
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
@@ -1467,7 +1510,18 @@ static int capture_setup(void)
 		dev_info->sample_count = sample_count;
 
 		iio_device_set_data(dev, dev_info);
+
+		freq = read_sampling_frequency(dev);
+		if (freq > 0) {
+			/* 2 x capture time + 1s */
+			timeout = 2 * sample_count * 1000 / freq;
+			timeout += 1000;
+			if (timeout > min_timeout)
+				min_timeout = timeout;
+		}
 	}
+
+	iio_context_set_timeout(ctx, min_timeout);
 
 	return 0;
 }
@@ -1688,46 +1742,6 @@ gboolean save_sample_count_cb(GtkWidget *widget, GdkEventKey *event, gpointer da
 	}
 
 	return FALSE;
-}
-
-static double read_sampling_frequency(const struct iio_device *dev)
-{
-	double freq = 400.0;
-	int ret = -1;
-	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
-	char buf[1024];
-
-	for (i = 0; i < nb_channels; i++) {
-		struct iio_channel *ch = iio_device_get_channel(dev, i);
-
-		if (iio_channel_is_output(ch) || strncmp(iio_channel_get_id(ch),
-					"voltage", sizeof("voltage") - 1))
-			continue;
-
-		ret = iio_channel_attr_read(ch, "sampling_frequency",
-				buf, sizeof(buf));
-		if (ret > 0)
-			break;
-	}
-
-	if (ret < 0)
-		ret = iio_device_attr_read(dev, "sampling_frequency",
-				buf, sizeof(buf));
-	if (ret < 0) {
-		const struct iio_device *trigger;
-		ret = iio_device_get_trigger(dev, &trigger);
-		if (!ret)
-			ret = iio_device_attr_read(trigger, "frequency",
-					buf, sizeof(buf));
-	}
-
-	if (ret > 0)
-		sscanf(buf, "%lf", &freq);
-
-	if (freq < 0)
-		freq += 4294967296.0;
-
-	return freq;
 }
 
 static float get_rx_lo_freq(const char *dev_name)
