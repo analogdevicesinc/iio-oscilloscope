@@ -1350,9 +1350,12 @@ static gboolean capture_process(void)
 				sample_count, false);
 			if (!dev_info->buffer) {
 				fprintf(stderr, "Unable to create buffer\n");
-				return FALSE;
+				goto capture_stop_check;
 			}
 		}
+
+		if (dev_info->buffer == NULL)
+			goto capture_stop_check;
 
 		/* Reset the data offset for all channels */
 		for (i = 0; i < nb_channels; i++) {
@@ -1439,7 +1442,7 @@ static int capture_setup(void)
 		}
 
 		sample_size = iio_device_get_sample_size(dev);
-		if (sample_size == 0)
+		if (sample_size == 0 || sample_count == 0)
 			continue;
 
 		for (j = 0; j < nb_channels; j++) {
