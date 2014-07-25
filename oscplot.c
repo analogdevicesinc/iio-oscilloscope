@@ -1464,6 +1464,7 @@ static void new_plot_button_clicked_cb(GtkToolButton *btn, OscPlot *plot)
 	OscPlot *new_plot;
 
 	new_plot = OSC_PLOT(osc_plot_new());
+	osc_plot_set_visible(new_plot, true);
 	g_signal_emit(plot, oscplot_signals[NEWPLOT_EVENT_SIGNAL], 0, new_plot);
 }
 
@@ -4086,6 +4087,5 @@ static void create_plot(OscPlot *plot)
 	priv->line_thickness = 1;
 
 	gtk_window_set_modal(GTK_WINDOW(priv->saveas_dialog), FALSE);
-	gtk_widget_show(priv->window);
 	gtk_widget_show_all(priv->capture_graph);
 }

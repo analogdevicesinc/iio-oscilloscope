@@ -1536,6 +1536,7 @@ static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data)
 	GtkWidget *new_plot;
 
 	new_plot = osc_plot_new();
+	osc_plot_set_visible(OSC_PLOT(new_plot), true);
 	plot_init(new_plot);
 
 	return new_plot;
