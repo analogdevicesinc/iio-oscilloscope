@@ -657,8 +657,22 @@ static unsigned get_cal_tone(void)
 	return CAL_TONE;
 }
 
+static void set_calibration_progress(GtkProgressBar *pbar, float fraction)
+{
+	if (gtk_widget_get_visible(GTK_WIDGET(pbar))) {
+		char ptext[64];
+
+		gdk_threads_enter();
+		snprintf(ptext, sizeof(ptext), "Calibration Progress (%.2f %%)", fraction * 100);
+		gtk_progress_bar_set_text(pbar, ptext);
+		gtk_progress_bar_set_fraction(pbar, fraction);
+		gdk_threads_leave();
+	}
+}
+
 static void calibrate (gpointer button)
 {
+	GtkProgressBar *calib_progress;
 	double rx_phase_lpc, rx_phase_hpc, tx_phase_hpc;
 	long long cal_tone, cal_freq;
 	int ret, samples;
@@ -674,6 +688,9 @@ static void calibrate (gpointer button)
 		ret = -ENODEV;
 		goto calibrate_fail;
 	}
+
+	calib_progress = GTK_PROGRESS_BAR(gtk_builder_get_object(builder, "progress_calibration"));
+	set_calibration_progress(calib_progress, 0.00);
 
 	mcs_cb(NULL, NULL);
 
@@ -707,6 +724,7 @@ static void calibrate (gpointer button)
 
 	trx_phase_rotation(cf_ad9361_lpc, 0.0);
 	trx_phase_rotation(cf_ad9361_hpc, 0.0);
+	set_calibration_progress(calib_progress, 0.16);
 
 	/*
 	 * Calibrate RX:
@@ -715,6 +733,7 @@ static void calibrate (gpointer button)
 	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
 	__cal_switch_ports_enable_cb(1);
 	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
+	set_calibration_progress(calib_progress, 0.40);
 	DBG("rx_phase_hpc %f", rx_phase_hpc);
 
 	/*
@@ -726,6 +745,7 @@ static void calibrate (gpointer button)
 	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(3);
 	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
+	set_calibration_progress(calib_progress, 0.64);
 	DBG("rx_phase_lpc %f", rx_phase_lpc);
 
 	/*
@@ -737,7 +757,7 @@ static void calibrate (gpointer button)
 	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(4);
 	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, cal_freq, cal_tone, -1.0 , 0.001, trx_phase_rotation);
-
+	set_calibration_progress(calib_progress, 0.88);
 	DBG("tx_phase_hpc %f", tx_phase_hpc);
 
 	trx_phase_rotation(cf_ad9361_hpc, rx_phase_hpc);
@@ -750,8 +770,8 @@ static void calibrate (gpointer button)
 
 	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "1");
 	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "1");
-
 	ret = 0;
+	set_calibration_progress(calib_progress, 1.0);
 
 calibrate_fail:
 
@@ -773,9 +793,16 @@ void do_calibration (GtkWidget *widget, gpointer data)
 {
 
 	int i;
+	GtkToggleButton *silent_calib;
 
 	plot_time_8ch = plugin_get_new_plot();
 	plot_xcorr_4ch = plugin_get_new_plot();
+
+	silent_calib = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder, "silent_calibration"));
+	if (gtk_toggle_button_get_active(silent_calib)) {
+		osc_plot_set_visible(plot_time_8ch, false);
+		osc_plot_set_visible(plot_xcorr_4ch, false);
+	}
 
 	if (plot_time_8ch && plot_xcorr_4ch) {
 
@@ -968,6 +995,9 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 
 		g_builder_connect_signal(builder, "undo_fmcomms5_cal", "clicked",
 				G_CALLBACK(undo_calibration), NULL);
+
+		g_object_bind_property(gtk_builder_get_object(builder, "silent_calibration"), "active",
+		gtk_builder_get_object(builder, "progress_calibration"), "visible", G_BINDING_DEFAULT);
 	} else {
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "mcs_sync")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fmcomms5")));
