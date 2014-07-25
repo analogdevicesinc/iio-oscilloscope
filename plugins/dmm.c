@@ -285,7 +285,7 @@ static void init_device_list(void)
 			struct iio_channel *chn =
 				iio_device_get_channel(dev, j);
 			input = !iio_channel_is_output(chn) &&
-				!iio_channel_is_scan_element(chn);
+				iio_channel_find_attr(chn, "raw");
 		}
 
 		if (!input)
