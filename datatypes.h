@@ -22,6 +22,8 @@ struct detachable_plugin {
 	const struct osc_plugin *plugin;
 	gboolean detached_state;
 	GtkWidget *detach_attach_button;
+	gint xpos;
+	gint ypos;
 };
 
 /* Types of transforms */

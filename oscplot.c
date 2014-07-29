@@ -280,6 +280,9 @@ struct _OscPlotPrivate
 
 	gulong fixed_marker_hid;
 
+	gint plot_x_pos;
+	gint plot_y_pos;
+
 	gfloat plot_left;
 	gfloat plot_right;
 	gfloat plot_top;
@@ -2739,6 +2742,11 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 	fprintf(fp, "plot_width = %d\n", priv->size.width);
 	fprintf(fp, "plot_height = %d\n", priv->size.height);
 
+	gint x_pos, y_pos;
+	gtk_window_get_position(GTK_WINDOW(priv->window), &x_pos, &y_pos);
+	fprintf(fp, "plot_x_pos=%d\n", x_pos);
+	fprintf(fp, "plot_y_pos=%d\n", y_pos);
+
 	next_dev_iter = gtk_tree_model_get_iter_first(model, &dev_iter);
 	while (next_dev_iter) {
 		struct iio_device *dev;
@@ -2926,6 +2934,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				priv->profile_loaded_scale = TRUE;
 				gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button), atoi(value));
 				priv->profile_loaded_scale = FALSE;
+				osc_plot_set_visible(plot, true);
 			} else if (MATCH_NAME("domain")) {
 				if (!strcmp(value, "time"))
 					gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_domain), TIME_PLOT);
@@ -2985,6 +2994,20 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 			} else if (MATCH_NAME("plot_height")) {
 				priv->size.height = atoi(value);
 				gtk_window_resize(GTK_WINDOW(priv->window), priv->size.width, priv->size.height);
+			} else if (MATCH_NAME("plot_x_pos")) {
+				if (value) {
+					if (atoi(value)) {
+						priv->plot_x_pos = atoi(value);
+						gtk_window_move(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
+					}
+				}
+			} else if (MATCH_NAME("plot_y_pos")) {
+				if (value) {
+					if (atoi(value)) {
+						priv->plot_y_pos = atoi(value);
+						gtk_window_move(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
+					}
+				}
 			} else if (MATCH_NAME("marker_type")) {
 				set_marker_labels(plot, (gchar *)value, MARKER_NULL);
 				for (i = 0; i <= MAX_MARKERS; i++)

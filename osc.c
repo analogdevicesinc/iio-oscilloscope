@@ -41,6 +41,8 @@ GSList *plugin_list = NULL;
 
 gint capture_function = 0;
 gfloat plugin_fft_corr = 0.0;
+static GtkWidget  *main_window;
+static gint window_x_pos, window_y_pos;
 static GList *plot_list = NULL;
 static int num_capturing_plots;
 G_LOCK_DEFINE_STATIC(buffer_full);
@@ -54,7 +56,7 @@ struct iio_context *ctx;
 unsigned int num_devices = 0;
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
-static void plugin_restore_ini_state(char *plugin_name, gboolean detached);
+static int plugin_restore_ini_state(char *plugin_name, char *attribute, const char *value);
 static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
 static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
@@ -1279,6 +1281,16 @@ static void plugin_state_ini_save(gpointer data, gpointer user_data)
 	FILE *fp = (FILE *)user_data;
 
 	fprintf(fp, "plugin.%s.detached=%d\n", p->plugin->name, p->detached_state);
+
+	if (p->detached_state) {
+		GtkWidget *plugin_window;
+		gint x_pos, y_pos;
+
+		plugin_window = gtk_widget_get_toplevel(p->detach_attach_button);
+		gtk_window_get_position(GTK_WINDOW(plugin_window), &x_pos, &y_pos);
+		fprintf(fp, "plugin.%s.x_pos=%d\n", p->plugin->name, x_pos);
+		fprintf(fp, "plugin.%s.y_pos=%d\n", p->plugin->name, y_pos);
+	}
 }
 
 static ssize_t demux_sample(const struct iio_channel *chn,
@@ -1965,6 +1977,7 @@ static void init_application (void)
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "main_menu"));
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "new_capture_plot"));
+	main_window = window;
 
 	/* Connect signals. */
 	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
@@ -2002,6 +2015,7 @@ int capture_profile_handler(const char *section, const char *name, const char *v
 		/* Create a capture window and parse the line from ini file*/
 		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
 			plot = new_plot_cb(NULL, NULL);
+			osc_plot_set_visible(OSC_PLOT(plot), false);
 			ret = osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
 		}
 	} else {
@@ -2024,12 +2038,28 @@ int main_profile_handler(const char *section, const char *name, const char *valu
 
 	elem_type = count_char_in_string('.', name);
 	switch(elem_type) {
+		case 0:
+			if (!strcmp(name, "window_x_pos")) {
+				if (value)
+					if (atoi(value)) {
+						window_x_pos = atoi(value);
+						gtk_window_move(GTK_WINDOW(main_window), window_x_pos, window_y_pos);
+					}
+			} else if (!strcmp(name, "window_y_pos")) {
+				if (value)
+					if (atoi(value)) {
+						window_y_pos = atoi(value);
+						gtk_window_move(GTK_WINDOW(main_window), window_x_pos, window_y_pos);
+					}
+			} else {
+				goto unhandled;
+			}
+			break;
 		case 2:
 			elems = g_strsplit(name, ".", 3);
 			if (!strcmp(elems[0], "plugin")) {
-				if (!strcmp(elems[2], "detached"))
-					plugin_restore_ini_state(elems[1], atoi(value));
-				else goto unhandled;
+				if (plugin_restore_ini_state(elems[1], elems[2], value) < 0)
+					goto unhandled;
 			} else {
 				goto unhandled;
 			}
@@ -2071,6 +2101,13 @@ void capture_profile_save(const char *filename)
 
 	/* Save plugin attached status */
 	g_slist_foreach(dplugin_list, plugin_state_ini_save, fp);
+
+	/* Save main window position */
+	gint x_pos, y_pos;
+	gtk_window_get_position(GTK_WINDOW(main_window), &x_pos, &y_pos);
+	fprintf(fp, "window_x_pos=%d\n", x_pos);
+	fprintf(fp, "window_y_pos=%d\n", y_pos);
+
 	fclose(fp);
 
 	/* All opened "Capture" windows save their own configurations */
@@ -2085,23 +2122,52 @@ static gint plugin_names_cmp(gconstpointer a, gconstpointer b)
 	return strcmp(p->plugin->name, key);
 }
 
-static void plugin_restore_ini_state(char *plugin_name, gboolean detached)
+static int plugin_restore_ini_state(char *plugin_name, char *attribute, const char *value)
 {
 	struct detachable_plugin *dplugin;
 	GSList *found_plugin;
+	GtkWindow *plugin_window;
 	GtkWidget *button;
+	int ret = 0;
 
 	found_plugin = g_slist_find_custom(dplugin_list,
 		(gconstpointer)plugin_name, plugin_names_cmp);
-	if (found_plugin == NULL) {
-		printf("Plugin: %s not currently loaded, skipping\n", plugin_name);
-		return;
-	}
+	if (found_plugin == NULL)
+		return 0;
 
 	dplugin = found_plugin->data;
 	button = dplugin->detach_attach_button;
-	if ((dplugin->detached_state) ^ (detached))
-		g_signal_emit_by_name(button, "clicked", dplugin);
+	if (!strcmp(attribute, "detached")) {
+		if (value) {
+			bool detached = atoi(value);
+			if ((dplugin->detached_state) ^ (detached))
+				g_signal_emit_by_name(button, "clicked", dplugin);
+		} else {
+			ret = -1;
+		}
+	} else if (!strcmp(attribute, "x_pos")) {
+		plugin_window = GTK_WINDOW(gtk_widget_get_toplevel(button));
+		if (value) {
+			if (dplugin->detached_state == true) {
+				dplugin->xpos = atoi(value);
+				gtk_window_move(plugin_window, dplugin->xpos, dplugin->ypos);
+			}
+		} else
+			ret = -1;
+	} else if (!strcmp(attribute, "y_pos")) {
+		plugin_window = GTK_WINDOW(gtk_widget_get_toplevel(button));
+		if (value) {
+			if (dplugin->detached_state == true) {
+				dplugin->ypos = atoi(value);
+				gtk_window_move(plugin_window, dplugin->xpos, dplugin->ypos);
+			}
+		} else
+			ret = -1;
+	} else {
+		ret = -1;
+	}
+
+	return ret;
 }
 
 void main_setup_before_ini_load(void)
