@@ -1712,9 +1712,9 @@ static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color)
 
 	for (i = border; i < ht - border; i++)
 		for (j = border * 4; j < rowstride - border * 4; j += 4) {
-			pixel[i * rowstride + j + 0] = color->red / 255;
-			pixel[i * rowstride + j + 1] = color->green / 255;
-			pixel[i * rowstride + j + 2] = color->blue / 255;
+			pixel[i * rowstride + j + 0] = color->red / 256;
+			pixel[i * rowstride + j + 1] = color->green / 256;
+			pixel[i * rowstride + j + 2] = color->blue / 256;
 			pixel[i * rowstride + j + 3] = 255;
 		}
 }
