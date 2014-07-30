@@ -96,40 +96,33 @@ enum {
 	NUM_COL
 };
 
-#define NUM_GRAPH_COLORS 6
+#define OSC_COLOR(r, g, b) { \
+	.red = (r) << 8, \
+	.green = (g) << 8, \
+	.blue = (b) << 8, \
+}
 
-static GdkColor color_graph[NUM_GRAPH_COLORS] = {
-	{
-		.red = 0,
-		.green = 60000,
-		.blue = 0,
-	},
-	{
-		.red = 60000,
-		.green = 0,
-		.blue = 0,
-	},
-	{
-		.red = 0,
-		.green = 0,
-		.blue = 60000,
-	},
-	{
-		.red = 0,
-		.green = 60000,
-		.blue = 60000,
-	},
-	{
-		.red = 60000,
-		.green = 60000,
-		.blue = 60000,
-	},
-	{
-		.red = 60000,
-		.green = 60000,
-		.blue = 0,
-	},
+static GdkColor color_graph[] = {
+	OSC_COLOR(138, 226, 52),
+	OSC_COLOR(239, 41, 41),
+	OSC_COLOR(114, 159, 207),
+	OSC_COLOR(252, 175, 62),
+	OSC_COLOR(211, 215, 208),
+	OSC_COLOR(252, 233, 79),
+	OSC_COLOR(173, 127, 168),
+	OSC_COLOR(233, 185, 110),
+
+	OSC_COLOR(115, 210, 22),
+	OSC_COLOR(204, 0, 0),
+	OSC_COLOR(52, 101, 164),
+	OSC_COLOR(245, 121, 0),
+	OSC_COLOR(186, 189, 182),
+	OSC_COLOR(237, 212, 0),
+	OSC_COLOR(117, 80, 123),
+	OSC_COLOR(193, 125, 17),
 };
+
+#define NUM_GRAPH_COLORS (sizeof(color_graph) / sizeof(color_graph[0]))
 
 static GdkColor color_grid = {
 	.red = 51000,
