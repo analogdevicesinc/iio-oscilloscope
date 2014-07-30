@@ -3625,12 +3625,6 @@ static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	gboolean selected;
 	gint response;
 
-	color_dialog = gtk_color_selection_dialog_new("Channel Graph Color Selection");
-	response = gtk_dialog_run(GTK_DIALOG(color_dialog));
-	gtk_widget_hide(color_dialog);
-	if (response != GTK_RESPONSE_OK)
-		return;
-
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(treeview);
 	selected = tree_get_selected_row_iter(treeview, &iter);
@@ -3640,7 +3634,14 @@ static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 			CHANNEL_COLOR_ICON, &color_icon, -1);
 	color = &settings->graph_color;
 
+	color_dialog = gtk_color_selection_dialog_new("Channel Graph Color Selection");
 	colorsel = gtk_color_selection_dialog_get_color_selection(GTK_COLOR_SELECTION_DIALOG(color_dialog));
+	gtk_color_selection_set_current_color(GTK_COLOR_SELECTION(colorsel), color);
+	response = gtk_dialog_run(GTK_DIALOG(color_dialog));
+	gtk_widget_hide(color_dialog);
+	if (response != GTK_RESPONSE_OK)
+		return;
+
 	gtk_color_selection_get_current_color(GTK_COLOR_SELECTION(colorsel), color);
 
 	/* Change icon color */
