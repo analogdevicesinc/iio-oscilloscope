@@ -3646,6 +3646,7 @@ static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	/* Change icon color */
 	channel_color_icon_set_color(color_icon, color);
 
+	gtk_widget_destroy(color_dialog);
 }
 static void channel_math_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
