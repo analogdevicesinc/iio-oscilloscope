@@ -72,6 +72,7 @@ bool dma_valid_selection(unsigned mask, unsigned channel_count)
 	};
 	static const unsigned long four_channel_masks[] = {
 		0x01, 0x02, 0x04, 0x08, 0x03, 0x0C,
+		0xFF,
 		0x00
 	};
 	bool ret = true;
