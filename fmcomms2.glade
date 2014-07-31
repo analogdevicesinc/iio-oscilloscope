@@ -1902,37 +1902,98 @@ configuration:</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
-                                      <object class="GtkFrame" id="frame99">
+                                      <object class="GtkHBox" id="box99">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="label_xalign">0</property>
-                                        <property name="shadow_type">in</property>
+                                        <property name="spacing">5</property>
                                         <child>
-                                          <object class="GtkAlignment" id="alignment8">
+                                          <object class="GtkFrame" id="frame_tx_channels">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="top_padding">5</property>
-                                            <property name="bottom_padding">5</property>
-                                            <property name="left_padding">5</property>
-                                            <property name="right_padding">5</property>
+                                            <property name="label_xalign">0</property>
+                                            <property name="shadow_type">in</property>
                                             <child>
-                                              <object class="GtkHBox" id="box_TXs">
+                                              <object class="GtkViewport" id="viewport_tx_channels">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="spacing">20</property>
                                                 <child>
-                                                  <object class="GtkFrame" id="frame_fpga_tx1">
+                                                  <object class="GtkTreeView" id="treeview_tx_channels">
+                                                    <property name="width_request">110</property>
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="model">treestore_tx_channels</property>
+                                                    <property name="headers_visible">False</property>
+                                                    <child internal-child="selection">
+                                                      <object class="GtkTreeSelection" id="treeview-selection1"/>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkTreeViewColumn" id="treeviewcolumn1">
+                                                        <property name="title" translatable="yes">column</property>
+                                                        <child>
+                                                          <object class="GtkCellRendererToggle" id="cellrenderertogglechannel"/>
+                                                          <attributes>
+                                                            <attribute name="active">1</attribute>
+                                                          </attributes>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCellRendererText" id="cellrenderertextchannel"/>
+                                                          <attributes>
+                                                            <attribute name="text">0</attribute>
+                                                          </attributes>
+                                                        </child>
+                                                      </object>
+                                                    </child>
+                                                  </object>
+                                                </child>
+                                              </object>
+                                            </child>
+                                            <child type="label">
+                                              <object class="GtkLabel" id="label51">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">&lt;b&gt;TX Channels&lt;/b&gt;</property>
+                                                <property name="use_markup">True</property>
+                                              </object>
+                                            </child>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">0</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkFrame" id="frame99">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="label_xalign">0</property>
+                                            <property name="shadow_type">in</property>
+                                            <child>
+                                              <object class="GtkAlignment" id="alignment8">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="top_padding">5</property>
+                                                <property name="bottom_padding">5</property>
+                                                <property name="left_padding">5</property>
+                                                <property name="right_padding">5</property>
+                                                <child>
+                                                  <object class="GtkHBox" id="box_TXs">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
-                                                    <property name="label_xalign">0</property>
-                                                    <property name="shadow_type">in</property>
+                                                    <property name="spacing">20</property>
                                                     <child>
-                                                      <object class="GtkAlignment" id="alignment9">
+                                                      <object class="GtkFrame" id="frame_fpga_tx1">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
-                                                        <property name="left_padding">12</property>
+                                                        <property name="label_xalign">0</property>
+                                                        <property name="shadow_type">in</property>
                                                         <child>
-                                                          <object class="GtkVBox" id="boxTX1">
+                                                          <object class="GtkAlignment" id="alignment9">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="left_padding">12</property>
+                                                            <child>
+                                                            <object class="GtkVBox" id="boxTX1">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <child>
@@ -2106,6 +2167,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
+                                                            <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_I1_tx1_scale_adj</property>
                                                             <property name="digits">6</property>
                                                             </object>
@@ -2235,6 +2297,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
+                                                            <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_I2_tx1_scale_adj</property>
                                                             <property name="digits">6</property>
                                                             </object>
@@ -2395,6 +2458,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
+                                                            <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_Q1_tx1_scale_adj</property>
                                                             <property name="digits">6</property>
                                                             </object>
@@ -2521,6 +2585,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
+                                                            <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_Q2_tx1_scale_adj</property>
                                                             <property name="digits">6</property>
                                                             </object>
@@ -2571,38 +2636,38 @@ configuration:</property>
                                                             <property name="position">3</property>
                                                             </packing>
                                                             </child>
+                                                            </object>
+                                                            </child>
+                                                          </object>
+                                                        </child>
+                                                        <child type="label">
+                                                          <object class="GtkLabel" id="label23">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="label" translatable="yes">&lt;b&gt;TX 1&lt;/b&gt;</property>
+                                                            <property name="use_markup">True</property>
                                                           </object>
                                                         </child>
                                                       </object>
+                                                      <packing>
+                                                        <property name="expand">False</property>
+                                                        <property name="fill">True</property>
+                                                        <property name="position">0</property>
+                                                      </packing>
                                                     </child>
-                                                    <child type="label">
-                                                      <object class="GtkLabel" id="label23">
-                                                        <property name="visible">True</property>
-                                                        <property name="can_focus">False</property>
-                                                        <property name="label" translatable="yes">&lt;b&gt;TX 1&lt;/b&gt;</property>
-                                                        <property name="use_markup">True</property>
-                                                      </object>
-                                                    </child>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">0</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkFrame" id="frame_fpga_tx2">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="label_xalign">0</property>
-                                                    <property name="shadow_type">in</property>
                                                     <child>
-                                                      <object class="GtkAlignment" id="alignment22">
+                                                      <object class="GtkFrame" id="frame_fpga_tx2">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
-                                                        <property name="left_padding">12</property>
+                                                        <property name="label_xalign">0</property>
+                                                        <property name="shadow_type">in</property>
                                                         <child>
-                                                          <object class="GtkVBox" id="boxTX2">
+                                                          <object class="GtkAlignment" id="alignment22">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="left_padding">12</property>
+                                                            <child>
+                                                            <object class="GtkVBox" id="boxTX2">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <child>
@@ -2766,6 +2831,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
+                                                            <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_I1_tx2_scale_adj</property>
                                                             <property name="digits">6</property>
                                                             </object>
@@ -2895,6 +2961,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
+                                                            <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_I2_tx2_scale_adj</property>
                                                             <property name="digits">6</property>
                                                             </object>
@@ -3055,6 +3122,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
+                                                            <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_Q1_tx2_scale_adj</property>
                                                             <property name="digits">6</property>
                                                             </object>
@@ -3181,6 +3249,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
+                                                            <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_Q2_tx2_scale_adj</property>
                                                             <property name="digits">6</property>
                                                             </object>
@@ -3231,40 +3300,47 @@ configuration:</property>
                                                             <property name="position">3</property>
                                                             </packing>
                                                             </child>
+                                                            </object>
+                                                            </child>
+                                                          </object>
+                                                        </child>
+                                                        <child type="label">
+                                                          <object class="GtkLabel" id="label39">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="label" translatable="yes">&lt;b&gt;TX 2&lt;/b&gt;</property>
+                                                            <property name="use_markup">True</property>
                                                           </object>
                                                         </child>
                                                       </object>
-                                                    </child>
-                                                    <child type="label">
-                                                      <object class="GtkLabel" id="label39">
-                                                        <property name="visible">True</property>
-                                                        <property name="can_focus">False</property>
-                                                        <property name="label" translatable="yes">&lt;b&gt;TX 2&lt;/b&gt;</property>
-                                                        <property name="use_markup">True</property>
-                                                      </object>
+                                                      <packing>
+                                                        <property name="expand">False</property>
+                                                        <property name="fill">True</property>
+                                                        <property name="position">1</property>
+                                                      </packing>
                                                     </child>
                                                   </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">1</property>
-                                                  </packing>
                                                 </child>
                                               </object>
                                             </child>
+                                            <child type="label">
+                                              <object class="GtkLabel" id="label11">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">&lt;b&gt;Transmit / DDS&lt;/b&gt;</property>
+                                                <property name="use_markup">True</property>
+                                              </object>
+                                            </child>
                                           </object>
-                                        </child>
-                                        <child type="label">
-                                          <object class="GtkLabel" id="label11">
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">False</property>
-                                            <property name="label" translatable="yes">&lt;b&gt;Transmit / DDS&lt;/b&gt;</property>
-                                            <property name="use_markup">True</property>
-                                          </object>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">1</property>
+                                          </packing>
                                         </child>
                                       </object>
                                       <packing>
-                                        <property name="expand">False</property>
+                                        <property name="expand">True</property>
                                         <property name="fill">True</property>
                                         <property name="position">0</property>
                                       </packing>
@@ -3702,5 +3778,15 @@ configuration:</property>
         <property name="position">0</property>
       </packing>
     </child>
+  </object>
+  <object class="GtkTreeStore" id="treestore_tx_channels">
+    <columns>
+      <!-- column-name Channel Name -->
+      <column type="gchararray"/>
+      <!-- column-name Channel Enabled -->
+      <column type="gboolean"/>
+      <!-- column-name Channel Reference Index -->
+      <column type="gint"/>
+    </columns>
   </object>
 </interface>

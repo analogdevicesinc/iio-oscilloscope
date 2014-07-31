@@ -45,6 +45,7 @@
 #endif
 
 extern gfloat plugin_fft_corr;
+extern bool dma_valid_selection(unsigned mask, unsigned channel_count);
 
 static bool is_2rx_2tx;
 static bool dds_activated, dds_disabled;
@@ -67,6 +68,7 @@ static unsigned int rx_sample_freq, tx_sample_freq;
 
 static struct iio_context *ctx;
 static struct iio_device *dev, *dds, *cap;
+static int dds_num_channels;
 
 /* Widgets for Global Settings */
 static GtkWidget *ensm_mode;
@@ -105,6 +107,7 @@ static GtkWidget *tx_fastlock_profile;
 static GtkWidget *rx_phase_rotation[2];
 
 /* Widgets for Transmitter Settings */
+static GtkWidget *tx_channel_list;
 static GtkWidget *dds_mode_tx[3];
 #define TX_OFF   0
 #define TX1_T1_I 1
@@ -133,6 +136,115 @@ static gboolean plugin_detached;
 static char last_fir_filter[PATH_MAX];
 
 static void enable_dds(bool on_off);
+
+
+#define TX_CHANNEL_NAME 0
+#define TX_CHANNEL_ACTIVE 1
+#define TX_CHANNEL_REF_INDEX 2
+
+static int tx_enabled_channels_count(GtkTreeView *treeview, unsigned *enabled_mask)
+{
+	GtkTreeIter iter;
+	gboolean enabled;
+	int num_enabled = 0;
+	int ch_pos = 0;
+
+	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
+	gboolean next_iter = gtk_tree_model_get_iter_first(model, &iter);
+
+
+	if (enabled_mask)
+		*enabled_mask = 0;
+
+	while (next_iter) {
+		gtk_tree_model_get(model, &iter, TX_CHANNEL_ACTIVE, &enabled, -1);
+		if (enabled) {
+			num_enabled++;
+			if (enabled_mask)
+				*enabled_mask |= 1 << ch_pos;
+		}
+		ch_pos++;
+		next_iter = gtk_tree_model_iter_next(model, &iter);
+	}
+
+	return num_enabled;
+}
+
+static void tx_channels_check_valid_setup(void)
+{
+	int enabled_channels;
+	unsigned mask;
+
+	enabled_channels = tx_enabled_channels_count(GTK_TREE_VIEW(tx_channel_list), &mask);
+	if (dma_valid_selection(mask, dds_num_channels) && enabled_channels > 0) {
+		gtk_widget_set_sensitive(dac_buffer, true);
+		if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])) == 4)
+			g_signal_emit_by_name(dac_buffer, "file-set", NULL);
+	} else {
+		gtk_widget_set_sensitive(dac_buffer, false);
+	}
+}
+
+static void tx_channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer plot)
+{
+	GtkTreePath* path = gtk_tree_path_new_from_string(pathStr);
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	gboolean active;
+	gint ch_index;
+
+	if (!gtk_cell_renderer_get_sensitive(GTK_CELL_RENDERER(renderer)))
+		return;
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(tx_channel_list));
+	gtk_tree_model_get_iter(model, &iter, path);
+	gtk_tree_model_get(model, &iter, TX_CHANNEL_ACTIVE, &active, TX_CHANNEL_REF_INDEX, &ch_index, -1);
+	active = !active;
+	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, TX_CHANNEL_ACTIVE, active, -1);
+	gtk_tree_path_free(path);
+
+	struct iio_channel *channel = iio_device_get_channel(dds, ch_index);
+	if (active)
+		iio_channel_enable(channel);
+	else
+		iio_channel_disable(channel);
+
+	tx_channels_check_valid_setup();
+}
+
+static void tx_channel_list_init(GtkBuilder *builder)
+{
+	GtkWidget *tx_ch_frame;
+	GtkTreeView *treeview = GTK_TREE_VIEW(tx_channel_list);
+	GtkTreeStore *treestore;
+	GtkTreeIter iter;
+	int i;
+
+	tx_ch_frame = GTK_WIDGET(gtk_builder_get_object(builder, "frame_tx_channels"));
+	if (strcmp(PHY_DEVICE, "ad9361-phy") != 0) {
+		gtk_widget_hide(tx_ch_frame);
+		return;
+	}
+	gtk_widget_show(tx_ch_frame);
+
+	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
+	for (i = 0; i < iio_device_get_channels_count(dds); i++) {
+		struct iio_channel *ch = iio_device_get_channel(dds, i);
+
+		if (!iio_channel_is_scan_element(ch))
+			continue;
+
+		gtk_tree_store_append(treestore, &iter, NULL);
+		gtk_tree_store_set(treestore, &iter,
+				TX_CHANNEL_NAME, iio_channel_get_id(ch),
+				TX_CHANNEL_ACTIVE, iio_channel_is_enabled(ch),
+				TX_CHANNEL_REF_INDEX, i, -1);
+	}
+
+	g_builder_connect_signal(builder, "cellrenderertogglechannel", "toggled",
+			G_CALLBACK(tx_channel_toggled), NULL);
+	tx_channels_check_valid_setup();
+}
 
 static void tx_update_values(void)
 {
@@ -509,9 +621,7 @@ static void process_dac_buffer_file (const char *file_name)
 	struct stat st;
 	char *buf = NULL, *tmp;
 	FILE *infile;
-	unsigned int i, nb_channels = iio_device_get_channels_count(dds);
 	unsigned int buffer_channels = 0;
-	struct iio_channel *channel;
 	unsigned int major, minor;
 	struct utsname uts;
 
@@ -523,11 +633,7 @@ static void process_dac_buffer_file (const char *file_name)
 		else
 			buffer_channels = 2;
 	} else {
-		for (i = 0; i < nb_channels; i++) {
-			channel = iio_device_get_channel(dds, i);
-			if (iio_channel_is_scan_element(channel))
-				buffer_channels++;
-		}
+		buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(tx_channel_list), NULL);
 	}
 
 	ret = analyse_wavefile(file_name, &buf, &size, buffer_channels / 2);
@@ -550,10 +656,6 @@ static void process_dac_buffer_file (const char *file_name)
 	}
 
 	enable_dds(false);
-
-	/* Enable all channels */
-	for (i = 0; i < nb_channels; i++)
-		iio_channel_enable(iio_device_get_channel(dds, i));
 
 	s_size = iio_device_get_sample_size(dds);
 	if (!s_size) {
@@ -1184,6 +1286,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	rf_port_select_tx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_tx"));
 	tx_fastlock_profile = GTK_WIDGET(gtk_builder_get_object(builder, "tx_fastlock_profile"));
+	tx_channel_list = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_tx_channels"));
 	dds_mode_tx[1] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode_tx1"));
 	dds_mode_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode_tx2"));
 
@@ -1457,6 +1560,8 @@ static int fmcomms2_init(GtkWidget *notebook)
 			dds_phase[TX2_T2_Q], &khz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
+	tx_channel_list_init(builder);
+
 	/* Signals connect */
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
@@ -1550,6 +1655,13 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	glb_settings_update_labels();
 	rssi_update_labels();
+
+	for (i = 0; i < iio_device_get_channels_count(dds); i++) {
+		struct iio_channel *ch = iio_device_get_channel(dds, i);
+
+		if (iio_channel_is_scan_element(ch))
+			dds_num_channels++;
+	}
 
 	manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[1]), 1);
 	manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[2]), 2);
