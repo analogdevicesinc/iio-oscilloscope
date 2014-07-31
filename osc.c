@@ -61,6 +61,37 @@ static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
 static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
 
+bool dma_valid_selection(unsigned mask, unsigned channel_count)
+{
+	static const unsigned long eight_channel_masks[] = {
+		0x01, 0x02, 0x04, 0x08, 0x03, 0x0C, /* 1 & 2 chan */
+		0x10, 0x20, 0x40, 0x80, 0x30, 0xC0, /* 1 & 2 chan */
+		0x33, 0xCC, 0xC3, 0x3C, 0x0F, 0xF0, /* 4 chan */
+		0xFF,                               /* 8chan */
+		0x00
+	};
+	static const unsigned long four_channel_masks[] = {
+		0x01, 0x02, 0x04, 0x08, 0x03, 0x0C,
+		0x00
+	};
+	bool ret = true;
+	int i;
+
+	if (channel_count == 8) {
+		ret = false;
+		for (i = 0;  i < sizeof(eight_channel_masks) / sizeof(eight_channel_masks[0]); i++)
+			if (mask == eight_channel_masks[i])
+				return true;
+	} else if (channel_count == 4) {
+		ret = false;
+		for (i = 0;  i < sizeof(four_channel_masks) / sizeof(four_channel_masks[0]); i++)
+			if (mask == four_channel_masks[i])
+				return true;
+	}
+
+	return ret;
+}
+
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
 {
