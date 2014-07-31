@@ -1562,6 +1562,11 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	tx_channel_list_init(builder);
 
+	if (!strcmp(PHY_DEVICE, "ad9361-phy-hpc")) {
+		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(dds_mode_tx[1]), DDS_BUFFER);
+		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(dds_mode_tx[2]), DDS_BUFFER);
+	}
+
 	/* Signals connect */
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
