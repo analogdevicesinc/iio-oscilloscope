@@ -30,7 +30,6 @@
 #include "../config.h"
 #include "../eeprom.h"
 #include "../ini/ini.h"
-#include "scpi.h"
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
@@ -123,18 +122,8 @@ static void rf_out_update(void)
 	sprintf(buf, "\n");
 	gtk_text_buffer_set_text(tbuf, buf, -1);
 	gtk_text_buffer_get_iter_at_line(tbuf, &iter, 1);
-
-	if(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds1_scale)))
-		sprintf(dds1_m, "1/%i", oneover(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds1_scale))));
-	else
-		sprintf(dds1_m, "?");
-
-	if(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds2_scale)))
-		sprintf(dds2_m, "1/%i", oneover(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds2_scale))));
-	else
-		sprintf(dds2_m, "?");
-
-
+	sprintf(dds1_m, "1/%i", oneover(gtk_entry_get_text(GTK_ENTRY(dds1_scale))));
+	sprintf(dds2_m, "1/%i", oneover(gtk_entry_get_text(GTK_ENTRY(dds2_scale))));
 }
 
 short convert(double scale, float val)
@@ -322,6 +311,7 @@ static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer dat
 		process_dac_buffer_file((const char *)file_name);
 }
 
+static int compare_gain(const char *a, const char *b) __attribute__((unused));
 static int compare_gain(const char *a, const char *b)
 {
 	double val_a, val_b;
@@ -389,21 +379,22 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer data)
 			break;
 	}
 }
-static void dds_locked_scale_cb(GtkComboBoxText *box, gpointer data)
+static void dds_locked_scale_cb(GtkSpinButton *btn, gpointer data)
 {
-	gint scale1 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds1_scale));
-	gint scale2 = gtk_combo_box_get_active(GTK_COMBO_BOX(dds2_scale));
+	gdouble scale1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_scale));
+	gdouble scale2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds2_scale));
+
 	size_t mode = gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode));
 
 	switch (mode) {
 		case 1:
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds2_scale), scale1);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds3_scale), scale1);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds4_scale), scale1);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds2_scale), scale1);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_scale), scale1);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_scale), scale1);
 			break;
 		case 2:
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds3_scale), scale1);
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds4_scale), scale2);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds3_scale), scale1);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds4_scale), scale2);
 			break;
 		case 0: /* Off */
 		case 3: /* Independent I/Q Control */
@@ -611,7 +602,7 @@ static void manage_dds_mode()
 #define IIO_COMBO_SIGNAL "changed"
 
 		if (!dds1_scale_hid)
-			dds1_scale_hid = g_signal_connect(dds1_scale , IIO_COMBO_SIGNAL,
+			dds1_scale_hid = g_signal_connect(dds1_scale , IIO_SPIN_SIGNAL,
 					G_CALLBACK(dds_locked_scale_cb), NULL);
 
 		if (!dds1_freq_hid)
@@ -688,10 +679,10 @@ static void manage_dds_mode()
 		gtk_widget_hide(dac_buffer);
 
 		if (!dds1_scale_hid)
-			dds1_scale_hid = g_signal_connect(dds1_scale , IIO_COMBO_SIGNAL,
+			dds1_scale_hid = g_signal_connect(dds1_scale , IIO_SPIN_SIGNAL,
 					G_CALLBACK(dds_locked_scale_cb), NULL);
 		if (!dds2_scale_hid)
-			dds2_scale_hid = g_signal_connect(dds2_scale , IIO_COMBO_SIGNAL,
+			dds2_scale_hid = g_signal_connect(dds2_scale , IIO_SPIN_SIGNAL,
 					G_CALLBACK(dds_locked_scale_cb), NULL);
 
 		if (!dds1_freq_hid)
@@ -920,7 +911,6 @@ static int daq2_init(GtkWidget *notebook)
 	GtkBuilder *builder;
 	GtkWidget *daq2_panel;
 	struct iio_channel *ch0, *ch1, *ch2, *ch3;
-	const char *scale_available;
 
 	builder = gtk_builder_new();
 
@@ -1036,7 +1026,6 @@ static int daq2_init(GtkWidget *notebook)
 
 	/* The next free frequency related widgets - keep in this order! */
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
-	scale_available = iio_channel_find_attr(ch0, "scale_available");
 
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			dac, ch0, "sampling_frequency",
@@ -1062,22 +1051,14 @@ static int daq2_init(GtkWidget *notebook)
 			dac, ch3, "frequency", dds2_freq, &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch0, "scale",
-			scale_available ?: "scale_available",
-			dds3_scale, compare_gain);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch2, "scale",
-			scale_available ?: "scale_available",
-			dds1_scale, compare_gain);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch1, "scale",
-			scale_available ?: "scale_available",
-			dds4_scale, compare_gain);
-	iio_combo_box_init(&tx_widgets[num_tx++],
-			dac, ch3, "scale",
-			scale_available ?: "scale_available",
-			dds2_scale, compare_gain);
+	iio_spin_button_init(&tx_widgets[num_tx++], dac, ch0, "scale", dds3_scale, NULL);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_init(&tx_widgets[num_tx++], dac, ch2, "scale", dds1_scale, NULL);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_init(&tx_widgets[num_tx++], dac, ch1, "scale", dds4_scale, NULL);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_init(&tx_widgets[num_tx++], dac, ch3, "scale", dds2_scale, NULL);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	iio_spin_button_init(&tx_widgets[num_tx++],
 			dac, ch0, "phase", dds3_phase, &khz_scale);
@@ -1104,8 +1085,8 @@ static int daq2_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "dac_buffer", "file-set",
 		G_CALLBACK(dac_buffer_config_file_set_cb), NULL);
 
-	g_signal_connect_after(dds1_scale, "changed", G_CALLBACK(rf_out_update), NULL);
-	g_signal_connect_after(dds2_scale, "changed", G_CALLBACK(rf_out_update), NULL);
+	g_signal_connect_after(dds1_scale, "change-value", G_CALLBACK(rf_out_update), NULL);
+	g_signal_connect_after(dds2_scale, "change-value", G_CALLBACK(rf_out_update), NULL);
 
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);

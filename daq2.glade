@@ -1,22 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
-  <object class="GtkAdjustment" id="adjustment_Q2_p">
-    <property name="upper">180</property>
-    <property name="value">1</property>
-    <property name="step_increment">0.10000000000000001</property>
-    <property name="page_increment">1</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment10">
-    <property name="lower">-1</property>
-    <property name="upper">1</property>
-    <property name="step_increment">0.001</property>
-  </object>
   <object class="GtkAdjustment" id="adjustment1">
     <property name="upper">625</property>
     <property name="value">1</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment10">
+    <property name="lower">-1</property>
+    <property name="upper">1</property>
+    <property name="step_increment">0.001</property>
   </object>
   <object class="GtkAdjustment" id="adjustment11">
     <property name="lower">35</property>
@@ -139,6 +133,12 @@
     <property name="page_increment">1</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_Q1_p">
+    <property name="upper">180</property>
+    <property name="value">1</property>
+    <property name="step_increment">0.10000000000000001</property>
+    <property name="page_increment">1</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment_Q2_p">
     <property name="upper">180</property>
     <property name="value">1</property>
     <property name="step_increment">0.10000000000000001</property>
@@ -1377,25 +1377,6 @@
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkComboBoxText" id="dds_tone_I1_scale">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="active">0</property>
-                                                    <property name="entry_text_column">0</property>
-                                                    <items>
-                                                      <item translatable="yes">0.5</item>
-                                                    </items>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="left_attach">1</property>
-                                                    <property name="right_attach">2</property>
-                                                    <property name="top_attach">1</property>
-                                                    <property name="bottom_attach">2</property>
-                                                    <property name="x_options">GTK_FILL</property>
-                                                    <property name="y_options">GTK_FILL</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
                                                   <object class="GtkLabel" id="dds_tone_I1_phase_l">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
@@ -1422,6 +1403,23 @@
                                                     <property name="right_attach">2</property>
                                                     <property name="top_attach">2</property>
                                                     <property name="bottom_attach">3</property>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options">GTK_FILL</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkSpinButton" id="dds_tone_I1_scale">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="invisible_char">•</property>
+                                                    <property name="adjustment">dds_tone_I1_scale_adj</property>
+                                                    <property name="digits">6</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left_attach">1</property>
+                                                    <property name="right_attach">2</property>
+                                                    <property name="top_attach">1</property>
+                                                    <property name="bottom_attach">2</property>
                                                     <property name="x_options">GTK_FILL</property>
                                                     <property name="y_options">GTK_FILL</property>
                                                   </packing>
@@ -1506,23 +1504,6 @@
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkComboBoxText" id="dds_tone_I2_scale">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="active">0</property>
-                                                    <property name="entry_text_column">0</property>
-                                                    <items>
-                                                      <item translatable="yes">0.5</item>
-                                                    </items>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="left_attach">1</property>
-                                                    <property name="top_attach">1</property>
-                                                    <property name="x_options">GTK_FILL</property>
-                                                    <property name="y_options">GTK_FILL</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
                                                   <object class="GtkLabel" id="dds_tone_I2_phase_l">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
@@ -1549,6 +1530,23 @@
                                                     <property name="right_attach">2</property>
                                                     <property name="top_attach">2</property>
                                                     <property name="bottom_attach">3</property>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options">GTK_FILL</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkSpinButton" id="dds_tone_I2_scale">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="invisible_char">•</property>
+                                                    <property name="adjustment">dds_tone_I2_scale_adj</property>
+                                                    <property name="digits">6</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left_attach">1</property>
+                                                    <property name="right_attach">2</property>
+                                                    <property name="top_attach">1</property>
+                                                    <property name="bottom_attach">2</property>
                                                     <property name="x_options">GTK_FILL</property>
                                                     <property name="y_options">GTK_FILL</property>
                                                   </packing>
@@ -1669,25 +1667,6 @@
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkComboBoxText" id="dds_tone_Q1_scale">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="active">0</property>
-                                                    <property name="entry_text_column">0</property>
-                                                    <items>
-                                                      <item translatable="yes">0.5</item>
-                                                    </items>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="left_attach">1</property>
-                                                    <property name="right_attach">2</property>
-                                                    <property name="top_attach">1</property>
-                                                    <property name="bottom_attach">2</property>
-                                                    <property name="x_options">GTK_FILL</property>
-                                                    <property name="y_options">GTK_FILL</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
                                                   <object class="GtkLabel" id="dds_tone_Q1_phase_l">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
@@ -1715,6 +1694,23 @@
                                                     <property name="right_attach">2</property>
                                                     <property name="top_attach">2</property>
                                                     <property name="bottom_attach">3</property>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options">GTK_FILL</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkSpinButton" id="dds_tone_Q1_scale">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="invisible_char">•</property>
+                                                    <property name="adjustment">dds_tone_Q1_scale_adj</property>
+                                                    <property name="digits">6</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left_attach">1</property>
+                                                    <property name="right_attach">2</property>
+                                                    <property name="top_attach">1</property>
+                                                    <property name="bottom_attach">2</property>
                                                     <property name="x_options">GTK_FILL</property>
                                                     <property name="y_options">GTK_FILL</property>
                                                   </packing>
@@ -1799,23 +1795,6 @@
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkComboBoxText" id="dds_tone_Q2_scale">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="active">0</property>
-                                                    <property name="entry_text_column">0</property>
-                                                    <items>
-                                                      <item translatable="yes">0.5</item>
-                                                    </items>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="left_attach">1</property>
-                                                    <property name="top_attach">1</property>
-                                                    <property name="x_options">GTK_FILL</property>
-                                                    <property name="y_options">GTK_FILL</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
                                                   <object class="GtkLabel" id="dds_tone_Q2_phase_l">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
@@ -1843,6 +1822,23 @@
                                                     <property name="right_attach">2</property>
                                                     <property name="top_attach">2</property>
                                                     <property name="bottom_attach">3</property>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options">GTK_FILL</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkSpinButton" id="dds_tone_Q2_scale">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="invisible_char">•</property>
+                                                    <property name="adjustment">dds_tone_Q2_scale_adj</property>
+                                                    <property name="digits">6</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left_attach">1</property>
+                                                    <property name="right_attach">2</property>
+                                                    <property name="top_attach">1</property>
+                                                    <property name="bottom_attach">2</property>
                                                     <property name="x_options">GTK_FILL</property>
                                                     <property name="y_options">GTK_FILL</property>
                                                   </packing>
@@ -2133,6 +2129,26 @@
         <property name="position">5</property>
       </packing>
     </child>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_I1_scale_adj">
+    <property name="upper">1</property>
+    <property name="step_increment">5.0000000000000004e-06</property>
+    <property name="page_increment">0.01</property>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_I2_scale_adj">
+    <property name="upper">1</property>
+    <property name="step_increment">5.0000000000000004e-06</property>
+    <property name="page_increment">0.01</property>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_Q1_scale_adj">
+    <property name="upper">1</property>
+    <property name="step_increment">5.0000000000000004e-06</property>
+    <property name="page_increment">0.01</property>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_Q2_scale_adj">
+    <property name="upper">1</property>
+    <property name="step_increment">5.0000000000000004e-06</property>
+    <property name="page_increment">0.01</property>
   </object>
   <object class="GtkTextBuffer" id="textbuffer1"/>
 </interface>
