@@ -47,7 +47,7 @@
 #define CAP_DEVICE_ALT "cf-ad9361-A"
 
 extern gfloat plugin_fft_corr;
-extern bool dma_valid_selection(unsigned mask, unsigned channel_count);
+extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
 static bool is_2rx_2tx;
 static bool dds_activated, dds_disabled;
@@ -179,7 +179,8 @@ static void tx_channels_check_valid_setup(void)
 	unsigned mask;
 
 	enabled_channels = tx_enabled_channels_count(GTK_TREE_VIEW(tx_channel_list), &mask);
-	if (dma_valid_selection(mask, dds_num_channels) && enabled_channels > 0) {
+	if (dma_valid_selection(iio_device_get_name(dds) ?: iio_device_get_id(dds),
+			mask, dds_num_channels) && enabled_channels > 0) {
 		gtk_widget_set_sensitive(dac_buffer, true);
 		if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])) == 4)
 			g_signal_emit_by_name(dac_buffer, "file-set", NULL);

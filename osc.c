@@ -61,7 +61,37 @@ static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
 static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
 
-bool dma_valid_selection(unsigned mask, unsigned channel_count)
+static char * dma_devices[] = {
+	"ad9122",
+	"ad9144",
+	"ad9250",
+	"ad9361",
+	"ad9643",
+	"ad9680"
+};
+
+#define DMA_DEVICES_COUNT (sizeof(dma_devices) / sizeof(dma_devices[0]))
+
+static const char * get_adi_part_code(const char *device_name)
+{
+	const char *ad = NULL;
+
+	if (!device_name)
+		return NULL;
+	ad = strstr(device_name, "ad");
+	if (!ad || strlen(ad) < strlen("adxxxx"))
+		return NULL;
+	if (g_ascii_isdigit(ad[2]) &&
+		g_ascii_isdigit(ad[3]) &&
+		g_ascii_isdigit(ad[4]) &&
+		g_ascii_isdigit(ad[5])) {
+	  return ad;
+	}
+
+	return NULL;
+}
+
+bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count)
 {
 	static const unsigned long eight_channel_masks[] = {
 		0x01, 0x02, 0x04, 0x08, 0x03, 0x0C, /* 1 & 2 chan */
@@ -76,6 +106,19 @@ bool dma_valid_selection(unsigned mask, unsigned channel_count)
 	};
 	bool ret = true;
 	int i;
+
+	device = get_adi_part_code(device);
+	if (!device)
+		return true;
+
+	for (i = 0; i < DMA_DEVICES_COUNT; i++) {
+		if (!strncmp(device, dma_devices[i], strlen(dma_devices[i])))
+			break;
+	}
+
+	/* Skip validation for devices that are not in the list */
+	if (i == DMA_DEVICES_COUNT)
+		return true;
 
 	if (channel_count == 8) {
 		ret = false;

@@ -34,7 +34,7 @@ extern void fft_transform_function(Transform *tr, gboolean init_transform);
 extern void constellation_transform_function(Transform *tr, gboolean init_transform);
 extern void cross_correlation_transform_function(Transform *tr, gboolean init_transform);
 extern void *find_setup_check_fct_by_devname(const char *dev_name);
-extern bool dma_valid_selection(unsigned mask, unsigned channel_count);
+extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
 extern struct iio_context *ctx;
 extern unsigned num_devices;
@@ -732,7 +732,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, struct iio_device *de
 			gtk_widget_set_tooltip_text(priv->capture_button,
 				"Time Domain needs at least one channel");
 			return false;
-		} else if (!dma_valid_selection(enabled_channels_mask, nb_channels)) {
+		} else if (!dma_valid_selection(name, enabled_channels_mask, nb_channels)) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
 				"Channel selection not supported");
 			return false;
