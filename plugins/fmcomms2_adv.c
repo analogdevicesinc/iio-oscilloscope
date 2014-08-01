@@ -29,6 +29,16 @@
 #include "../config.h"
 #include "../iio_widget.h"
 
+#define PHY_DEVICE	"ad9361-phy"
+#define PHY_SLAVE_DEVICE	"ad9361-phy-B"
+
+#define CAP_DEVICE	"cf-ad9361-lpc"
+#define CAP_DEVICE_ALT	"cf-ad9361-A"
+#define CAP_SLAVE_DEVICE	"cf-ad9361-B"
+
+#define DDS_DEVICE	"cf-ad9361-dds-core-lpc"
+#define DDS_SLAVE_DEVICE	"cf-ad9361-dds-core-B"
+
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 static struct iio_context *ctx;
@@ -39,7 +49,7 @@ static struct iio_device *dev_dds_slave;
 struct iio_device *cf_ad9361_lpc, *cf_ad9361_hpc;
 
 static struct iio_channel *dds_out[2][8];
-OscPlot *plot_time_8ch, *plot_xcorr_4ch;
+OscPlot *plot_xcorr_4ch;
 
 static gint this_page;
 static GtkNotebook *nbook;
@@ -445,7 +455,7 @@ static void get_markers(int *offset, long long *mag, long long *mag1, long long 
 	struct marker_type *markers = NULL;
 	const char *device_ref = NULL;
 
-	device_ref = plugin_get_device_by_reference("cf-ad9361-lpc");
+	device_ref = plugin_get_device_by_reference(CAP_DEVICE_ALT);
 
 	*offset = 0;
 	*mag = 0;
@@ -713,8 +723,6 @@ static void calibrate (gpointer button)
 
 	gdk_threads_enter();
 	osc_plot_set_sample_count(plot_xcorr_4ch, samples);
-	osc_plot_set_sample_count(plot_time_8ch, samples);
-	osc_plot_draw_start(plot_time_8ch);
 	osc_plot_draw_start(plot_xcorr_4ch);
 	gdk_threads_leave();
 
@@ -730,7 +738,7 @@ static void calibrate (gpointer button)
 	 * Calibrate RX:
 	 * 1 TX1B_B (HPC) -> RX1C_B (HPC) : BIST_LOOPBACK on A
 	 */
-	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
+	osc_plot_xcorr_revert(plot_xcorr_4ch, true);
 	__cal_switch_ports_enable_cb(1);
 	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	set_calibration_progress(calib_progress, 0.40);
@@ -741,7 +749,7 @@ static void calibrate (gpointer button)
 	 * 3 TX1B_B (HPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
 	 */
 
-	osc_plot_xcorr_revert(plot_xcorr_4ch, true);
+	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
 	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(3);
 	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
@@ -753,7 +761,7 @@ static void calibrate (gpointer button)
 	 * 4 TX1B_A (LPC) -> RX1C_A (LPC) : BIST_LOOPBACK on B
 	 */
 
-	osc_plot_xcorr_revert(plot_xcorr_4ch, true);
+	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
 	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(4);
 	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, cal_freq, cal_tone, -1.0 , 0.001, trx_phase_rotation);
@@ -781,7 +789,6 @@ calibrate_fail:
 			"FMCOMMS5", "Calibration finished %s",
 			ret ? "with Error" : "Successfully");
 
-	osc_plot_destroy(plot_time_8ch);
 	osc_plot_destroy(plot_xcorr_4ch);
 	gtk_widget_show(GTK_WIDGET(button));
 	gdk_threads_leave();
@@ -795,25 +802,22 @@ void do_calibration (GtkWidget *widget, gpointer data)
 	int i;
 	GtkToggleButton *silent_calib;
 
-	plot_time_8ch = plugin_get_new_plot();
 	plot_xcorr_4ch = plugin_get_new_plot();
 
 	silent_calib = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder, "silent_calibration"));
 	if (gtk_toggle_button_get_active(silent_calib)) {
-		osc_plot_set_visible(plot_time_8ch, false);
 		osc_plot_set_visible(plot_xcorr_4ch, false);
 	}
 
-	if (plot_time_8ch && plot_xcorr_4ch) {
+	if (plot_xcorr_4ch) {
 
 		for (i = 0; i < 8; i++)
-			osc_plot_set_channel_state(plot_time_8ch, "cf-ad9361-lpc", i, true);
-		osc_plot_set_domain(plot_time_8ch, TIME_PLOT);
 
-		osc_plot_set_channel_state(plot_xcorr_4ch, "cf-ad9361-lpc", 0, true);
-		osc_plot_set_channel_state(plot_xcorr_4ch, "cf-ad9361-lpc", 1, true);
-		osc_plot_set_channel_state(plot_xcorr_4ch, "cf-ad9361-lpc", 4, true);
-		osc_plot_set_channel_state(plot_xcorr_4ch, "cf-ad9361-lpc", 5, true);
+
+		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 0, true);
+		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 1, true);
+		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 4, true);
+		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 5, true);
 
 		osc_plot_set_domain(plot_xcorr_4ch, XCORR_PLOT);
 		osc_plot_set_marker_type(plot_xcorr_4ch,  MARKER_PEAK);
@@ -1189,20 +1193,20 @@ static bool fmcomms2adv_identify(void)
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
 	struct iio_device *osc_dev = iio_context_find_device(
-			osc_ctx, "ad9361-phy");
+			osc_ctx, PHY_DEVICE);
 	if (!osc_dev || !iio_device_get_debug_attrs_count(osc_dev))
 		return false;
 
 	ctx = osc_create_context();
-	dev = iio_context_find_device(ctx, "ad9361-phy");
-	dev_slave = iio_context_find_device(ctx, "ad9361-phy-hpc");
+	dev = iio_context_find_device(ctx, PHY_DEVICE);
+	dev_slave = iio_context_find_device(ctx, PHY_SLAVE_DEVICE);
 
 	if (dev_slave) {
-		cf_ad9361_lpc = iio_context_find_device(ctx, "cf-ad9361-lpc");
-		cf_ad9361_hpc = iio_context_find_device(ctx, "cf-ad9361-hpc");
+		cf_ad9361_lpc = iio_context_find_device(ctx, CAP_DEVICE_ALT);
+		cf_ad9361_hpc = iio_context_find_device(ctx, CAP_SLAVE_DEVICE);
 
-		dev_dds_master = iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
-		dev_dds_slave = iio_context_find_device(ctx, "cf-ad9361-dds-core-hpc");
+		dev_dds_master = iio_context_find_device(ctx, DDS_DEVICE);
+		dev_dds_slave = iio_context_find_device(ctx, DDS_SLAVE_DEVICE);
 		if (!(cf_ad9361_lpc && cf_ad9361_hpc && dev_dds_master && dev_dds_slave))
 			dev = NULL;
 		else
