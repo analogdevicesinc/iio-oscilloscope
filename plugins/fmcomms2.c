@@ -863,8 +863,6 @@ static void enable_dds(bool on_off)
 		dds_buffer = NULL;
 	}
 
-	printf("enable_dds %d\n", on_off);
-
 	ret = iio_channel_attr_write_bool(iio_device_find_channel(dds, "altvoltage0", true), "raw", on_off);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to toggle DDS: %d\n", ret);
