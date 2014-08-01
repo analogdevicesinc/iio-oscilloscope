@@ -36,13 +36,15 @@
 
 #ifndef SLAVE
 #define PHY_DEVICE "ad9361-phy"
-#define DDS_DEVICE "cf-ad9361-dds-core-lpc"
+#define DDS_DEVICE "cf-ad9361-dds-core-lpc" /* can be hpc as well */
 #define CAP_DEVICE "cf-ad9361-lpc"
 #else
-#define PHY_DEVICE "ad9361-phy-hpc"
-#define DDS_DEVICE "cf-ad9361-dds-core-hpc"
-#define CAP_DEVICE "cf-ad9361-hpc"
+#define PHY_DEVICE "ad9361-phy-B"
+#define DDS_DEVICE "cf-ad9361-dds-core-B"
+#define CAP_DEVICE "cf-ad9361-B"
 #endif
+
+#define CAP_DEVICE_ALT "cf-ad9361-A"
 
 extern gfloat plugin_fft_corr;
 extern bool dma_valid_selection(unsigned mask, unsigned channel_count);
@@ -861,44 +863,13 @@ static void enable_dds(bool on_off)
 		dds_buffer = NULL;
 	}
 
+	printf("enable_dds %d\n", on_off);
+
 	ret = iio_channel_attr_write_bool(iio_device_find_channel(dds, "altvoltage0", true), "raw", on_off);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to toggle DDS: %d\n", ret);
 		return;
 	}
-}
-
-/* The Slave device doesn't have a own DMA, therefore no buffer and enable
- * however the select mux still needs to be set.
- * This is a temp workaround
- */
-
-static void slave_enable_dma_mux(bool enable)
-{
-#ifdef SLAVE
-
-enum dds_data_select {
-	DATA_SEL_DDS,
-	DATA_SEL_SED,
-	DATA_SEL_DMA,
-	DATA_SEL_ZERO,	/* OUTPUT 0 */
-	DATA_SEL_PN7,
-	DATA_SEL_PN15,
-	DATA_SEL_PN23,
-	DATA_SEL_PN31,
-	DATA_SEL_LB,	/* loopback data (ADC) */
-	DATA_SEL_PNXX,	/* (Device specific) */
-};
-
-#define ADI_REG_CHAN_CNTRL_7(c)		(0x0418 + (c) * 0x40) /* v8.0 */
-#define ADI_DAC_DDS_SEL(x)		(((x) & 0xF) << 0)
-
-	int i;
-
-	for (i = 0; i < 4; i++)
-		iio_device_reg_write(dds, 0x80000000 | ADI_REG_CHAN_CNTRL_7(i),
-			ADI_DAC_DDS_SEL(enable ? DATA_SEL_DMA : DATA_SEL_DDS));
-#endif
 }
 
 #define IIO_SPIN_SIGNAL "value-changed"
@@ -937,7 +908,6 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 
 	switch (active) {
 	case DDS_DISABLED:
-		slave_enable_dma_mux(0);
 		if (channel == 1) {
 		 	start = TX1_T1_I;
 			end = TX1_T2_Q;
@@ -973,7 +943,6 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 
 		break;
 	case DDS_ONE_TONE:
-		slave_enable_dma_mux(0);
 		enable_dds(true);
 		gtk_widget_hide(dac_buffer);
 		gtk_label_set_markup(GTK_LABEL(dds_I_TX_l[channel]),"<b>Single Tone</b>");
@@ -1044,7 +1013,6 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		dds_locked_phase_cb(NULL, (gpointer *)channel);
 		break;
 	case DDS_TWO_TONE:
-		slave_enable_dma_mux(0);
 		enable_dds(true);
 		gtk_widget_hide(dac_buffer);
 		gtk_widget_show_all(channel_I_tx[channel]);
@@ -1091,7 +1059,6 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		break;
 	case DDS_INDEPDENT:
 		/* Independant/Individual control */
-		slave_enable_dma_mux(0);
 		enable_dds(true);
 		gtk_widget_show_all(channel_I_tx[channel]);
 		gtk_widget_show_all(channel_Q_tx[channel]);
@@ -1125,7 +1092,6 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		}
 		break;
 	case DDS_BUFFER:
-		slave_enable_dma_mux(1);
 		if ((dds_activated || dds_disabled) && dac_buf_filename) {
 			dds_disabled = false;
 			process_dac_buffer_file(dac_buf_filename);
@@ -1569,7 +1535,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	tx_channel_list_init(builder);
 
-	if (!strcmp(PHY_DEVICE, "ad9361-phy-hpc")) {
+	if (!strcmp(PHY_DEVICE, "ad9361-phy-B")) {
 		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(dds_mode_tx[1]), DDS_BUFFER);
 		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(dds_mode_tx[2]), DDS_BUFFER);
 	}
@@ -1905,6 +1871,8 @@ static void context_destroy(void)
 	iio_context_destroy(ctx);
 }
 
+struct osc_plugin plugin;
+
 static bool fmcomms2_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
@@ -1919,6 +1887,10 @@ static bool fmcomms2_identify(void)
 	dds = iio_context_find_device(ctx, DDS_DEVICE);
 	cap = iio_context_find_device(ctx, CAP_DEVICE);
 
+	if (!cap) {
+		cap = iio_context_find_device(ctx, CAP_DEVICE_ALT);
+		plugin.name = "FMComms5-A-MASTER";
+	}
 
 	if (!dev || !dds || !cap)
 		iio_context_destroy(ctx);
@@ -1927,7 +1899,7 @@ static bool fmcomms2_identify(void)
 
 struct osc_plugin plugin = {
 #ifdef SLAVE
-	.name = "FMComms2/3/4-HPC",
+	.name = "FMComms5-B",
 #else
 	.name = "FMComms2/3/4",
 #endif
