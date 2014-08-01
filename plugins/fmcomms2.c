@@ -137,6 +137,7 @@ static char last_fir_filter[PATH_MAX];
 
 static void enable_dds(bool on_off);
 
+static bool is_local;
 
 #define TX_CHANNEL_NAME 0
 #define TX_CHANNEL_ACTIVE 1
@@ -625,13 +626,17 @@ static void process_dac_buffer_file (const char *file_name)
 	unsigned int major, minor;
 	struct utsname uts;
 
-	uname(&uts);
-	sscanf(uts.release, "%u.%u", &major, &minor);
-	if (major < 2 || (major == 3 && minor < 14)) {
-		if (is_2rx_2tx)
-			buffer_channels = 4;
-		else
-			buffer_channels = 2;
+	if (is_local) {
+		uname(&uts);
+		sscanf(uts.release, "%u.%u", &major, &minor);
+		if (major < 2 || (major == 3 && minor < 14)) {
+			if (is_2rx_2tx)
+				buffer_channels = 4;
+			else
+				buffer_channels = 2;
+		} else {
+			buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(tx_channel_list), NULL);
+		}
 	} else {
 		buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(tx_channel_list), NULL);
 	}
@@ -681,7 +686,8 @@ static void process_dac_buffer_file (const char *file_name)
 	if (dac_buf_filename)
 		free(dac_buf_filename);
 	dac_buf_filename = tmp;
-	printf("Waveform loaded\n");
+	printf("Waveform loaded: buffer_channels %d size %d sample_size %d \n",
+	       buffer_channels, size, s_size);
 }
 
 static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
@@ -1236,6 +1242,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 		dds_phase_hid[i] = 0;
 	}
 
+	is_local = getenv("OSC_REMOTE") ? false : true;
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
