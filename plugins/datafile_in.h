@@ -109,7 +109,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 									(convert(scale, q1) << 16) +
 									(convert(scale, i1) << 0);
 
-							} else if (tx == 1) {
+							} else if (ret > 1 && tx == 1) {
 								sample_32[i++] = (convert(scale, q1) << 16) +
 									(convert(scale, i1) << 0);
 							}
