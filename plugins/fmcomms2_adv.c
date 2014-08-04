@@ -564,7 +564,30 @@ static void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
 static void mcs_cb (GtkWidget *widget, gpointer data)
 {
 	unsigned step;
+	struct iio_channel *tx_sample_master, *tx_sample_slave;
+	long long tx_sample_master_freq, tx_sample_slave_freq;
 	char temp[40], ensm_mode[40];
+	unsigned tmp;
+	static fix_slave_tune = 1;
+
+	tx_sample_master = iio_device_find_channel(dev, "voltage0", true);
+	tx_sample_slave = iio_device_find_channel(dev_slave, "voltage0", true);
+
+	iio_channel_attr_read_longlong(tx_sample_master, "sampling_frequency", &tx_sample_master_freq);
+	iio_channel_attr_read_longlong(tx_sample_slave, "sampling_frequency", &tx_sample_slave_freq);
+
+	if (tx_sample_master_freq != tx_sample_slave_freq) {
+		printf("tx_sample_master_freq != tx_sample_slave_freq\nUpdating...\n");
+		iio_channel_attr_write_longlong(tx_sample_slave, "sampling_frequency", tx_sample_master_freq);
+	}
+
+	if (fix_slave_tune) {
+		iio_device_reg_read(dev, 0x6, &tmp);
+		iio_device_reg_write(dev_slave, 0x6, tmp);
+		iio_device_reg_read(dev, 0x7, &tmp);
+		iio_device_reg_write(dev_slave, 0x7, tmp);
+		fix_slave_tune = 0;
+	}
 
 	iio_device_attr_read(dev, "ensm_mode", ensm_mode, sizeof(ensm_mode));
 
@@ -582,6 +605,11 @@ static void mcs_cb (GtkWidget *widget, gpointer data)
 
 	iio_device_attr_write(dev, "ensm_mode", ensm_mode);
 	iio_device_attr_write(dev_slave, "ensm_mode", ensm_mode);
+
+#if 0
+	iio_device_debug_attr_write(dev, "multichip_sync", "6");
+	iio_device_debug_attr_write(dev_slave, "multichip_sync", "6");
+#endif
 
 	/* The two DDSs are synced by toggling the ENABLE bit */
 	if (dev_dds_master)
@@ -667,6 +695,24 @@ static unsigned get_cal_tone(void)
 	return CAL_TONE;
 }
 
+static int get_cal_samples(long long cal_tone, long long cal_freq)
+{
+	int samples, env_samples;
+	const char *cal_samples = getenv("CAL_SAMPLES");
+
+	samples = exp2(ceil(log2(cal_freq/cal_tone)) + 1);
+
+	if (!cal_samples)
+		return samples;
+
+	env_samples = atoi(cal_samples);
+
+	if (env_samples < samples)
+		return samples;
+
+	return env_samples;
+}
+
 static void set_calibration_progress(GtkProgressBar *pbar, float fraction)
 {
 	if (gtk_widget_get_visible(GTK_WIDGET(pbar))) {
@@ -717,7 +763,7 @@ static void calibrate (gpointer button)
 	iio_channel_attr_read_longlong(dds_out[0][0], "frequency", &cal_tone);
 	iio_channel_attr_read_longlong(dds_out[0][0], "sampling_frequency", &cal_freq);
 
-	samples = exp2(ceil(log2(cal_freq/cal_tone)) + 1);
+	samples = get_cal_samples(cal_tone, cal_freq);
 
 	DBG("cal_tone %u cal_freq %u samples %d", cal_tone, cal_freq, samples);
 
