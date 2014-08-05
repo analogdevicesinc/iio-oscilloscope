@@ -946,21 +946,7 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 {
 	OscPlotPrivate *priv = plot->priv;
 	TrList *list = priv->transform_list;
-	struct extra_info *ch_info = iio_channel_get_data(tr->channel_parent);
 
-	ch_info->shadow_of_enabled--;
-	if (tr->type_id == CONSTELLATION_TRANSFORM ||
-		tr->type_id == COMPLEX_FFT_TRANSFORM) {
-		ch_info = iio_channel_get_data(tr->channel_parent2);
-		ch_info->shadow_of_enabled--;
-	} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
-		ch_info = iio_channel_get_data(tr->channel_parent2);
-		ch_info->shadow_of_enabled--;
-		ch_info = iio_channel_get_data(tr->channel_parent3);
-		ch_info->shadow_of_enabled--;
-		ch_info = iio_channel_get_data(tr->channel_parent4);
-		ch_info->shadow_of_enabled--;
-	}
 	if (tr->has_the_marker)
 		priv->tr_with_marker = NULL;
 	TrList_remove_transform(list, tr);
@@ -1318,6 +1304,32 @@ static void devices_transform_assignment(OscPlot *plot)
 	}
 }
 
+static void deassert_used_channels(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	Transform *tr;
+	struct extra_info *ch_info;
+	int i;
+
+	for (i = 0; i < priv->transform_list->size; i++) {
+		tr = priv->transform_list->transforms[i];
+		ch_info = iio_channel_get_data(tr->channel_parent);
+		ch_info->shadow_of_enabled--;
+		if (tr->type_id == CONSTELLATION_TRANSFORM ||
+			tr->type_id == COMPLEX_FFT_TRANSFORM) {
+			ch_info = iio_channel_get_data(tr->channel_parent2);
+			ch_info->shadow_of_enabled--;
+		} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
+			ch_info = iio_channel_get_data(tr->channel_parent2);
+			ch_info->shadow_of_enabled--;
+			ch_info = iio_channel_get_data(tr->channel_parent3);
+			ch_info->shadow_of_enabled--;
+			ch_info = iio_channel_get_data(tr->channel_parent4);
+			ch_info->shadow_of_enabled--;
+		}
+	}
+}
+
 static void remove_all_transforms(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -1459,6 +1471,7 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 	} else {
 		priv->stop_redraw = TRUE;
 		dispose_parameters_from_plot(plot);
+		deassert_used_channels(plot);
 
 		g_mutex_trylock(&priv->g_marker_copy_lock);
 		g_mutex_unlock(&priv->g_marker_copy_lock);
@@ -2156,6 +2169,7 @@ static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 {
 	plot->priv->stop_redraw = TRUE;
 	dispose_parameters_from_plot(plot);
+	deassert_used_channels(plot);
 	remove_all_transforms(plot);
 	g_slist_free_full(plot->priv->ch_settings_list, *free);
 	g_mutex_trylock(&plot->priv->g_marker_copy_lock);
