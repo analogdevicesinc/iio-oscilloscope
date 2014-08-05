@@ -688,6 +688,24 @@ static void set_may_be_enabled_bit(GtkTreeModel *model,
 	info->may_be_enabled = enabled;
 }
 
+static unsigned global_enabled_channels_mask(struct iio_device *dev)
+{
+	unsigned mask = 0;
+	int i = 0, scan_i = 0;
+
+	for (; i < iio_device_get_channels_count(dev); i++) {
+		struct iio_channel *chn = iio_device_get_channel(dev, i);
+
+		if (iio_channel_is_scan_element(chn)) {
+			if (iio_channel_is_enabled(chn))
+				mask |= 1 << scan_i;
+			scan_i++;
+		}
+	}
+
+	return mask;
+}
+
 static gboolean check_valid_setup_of_device(OscPlot *plot, struct iio_device *dev)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -732,7 +750,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, struct iio_device *de
 			gtk_widget_set_tooltip_text(priv->capture_button,
 				"Time Domain needs at least one channel");
 			return false;
-		} else if (!dma_valid_selection(name, enabled_channels_mask, nb_channels)) {
+		} else if (!dma_valid_selection(name, enabled_channels_mask | global_enabled_channels_mask(dev), nb_channels)) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
 				"Channel selection not supported");
 			return false;
@@ -779,11 +797,9 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, struct iio_device *de
 	return true;
 }
 
-static gboolean check_valid_setup(OscPlot *plot)
+static gboolean check_valid_setup_of_all_devices(OscPlot *plot)
 {
 	unsigned int i;
-	OscPlotPrivate *priv = plot->priv;
-	gboolean is_valid = false;
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
@@ -792,15 +808,24 @@ static gboolean check_valid_setup(OscPlot *plot)
 		if (dev_info->input_device == false)
 			continue;
 
-		is_valid = check_valid_setup_of_device(plot, dev);
-		if (!is_valid)
-			goto capture_button_err;
+		if (!check_valid_setup_of_device(plot, dev))
+			return false;
 	}
 
-	if (!is_valid)
+	return true;
+}
+
+static gboolean check_valid_setup(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+
+	if (!check_valid_setup_of_all_devices(plot))
 		goto capture_button_err;
 
-	g_object_set(priv->capture_button, "stock-id", "gtk-media-play", NULL);
+	if (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button)))
+		g_object_set(priv->capture_button, "stock-id", "gtk-stop", NULL);
+	else
+		g_object_set(priv->capture_button, "stock-id", "gtk-media-play", NULL);
 	gtk_widget_set_tooltip_text(priv->capture_button, "Capture / Stop");
 	if (!priv->capture_button_hid) {
 		priv->capture_button_hid = g_signal_connect(priv->capture_button, "toggled",
@@ -1449,6 +1474,9 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 	OscPlot *plot = data;
 	OscPlotPrivate *priv = plot->priv;
 	gboolean button_state;
+
+	if (!check_valid_setup(plot))
+		return;
 
 	button_state = gtk_toggle_tool_button_get_active(btn);
 
@@ -2169,7 +2197,8 @@ static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 {
 	plot->priv->stop_redraw = TRUE;
 	dispose_parameters_from_plot(plot);
-	deassert_used_channels(plot);
+	if (plot->priv->redraw_function)
+		deassert_used_channels(plot);
 	remove_all_transforms(plot);
 	g_slist_free_full(plot->priv->ch_settings_list, *free);
 	g_mutex_trylock(&plot->priv->g_marker_copy_lock);
