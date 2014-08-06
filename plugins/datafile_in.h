@@ -12,7 +12,7 @@ static short convert(double scale, float val)
 	return (short) (val * scale);
 }
 
-static int analyse_wavefile(const char *file_name, char **buf, int *count, int tx)
+static int analyse_wavefile(const char *file_name, char **buf, int *count, int tx_channels)
 {
 	int ret, j, i = 0, size, rep;
 	double max = 0.0, val[4], scale = 0.0;
@@ -51,7 +51,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 					if (fabs(val[i]) > max)
 						max = fabs(val[i]);
 
-				size += tx * 4;
+				size += tx_channels * 2;
 
 
 			}
@@ -63,7 +63,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 			if (max > 32767.0)
 				fprintf(stderr, "ERROR: DAC Waveform Samples > +/- 2047.0\n");
 
-			if ((size % 8) != 0)
+			while ((size % 8) != 0)
 				size *= 2;
 
 			*buf = malloc(size);
@@ -72,6 +72,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 
 			unsigned long long *sample = *((unsigned long long **) buf);
 			unsigned int *sample_32 = *((unsigned int **) buf);
+			unsigned short *sample_16 = *((unsigned short **) buf);
 
 			rewind(infile);
 
@@ -84,37 +85,39 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 						ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
 								&i1, &q1, &i2, &q2);
 						for (j = 0; j < rep; j++) {
-							if (ret == 4 && tx >= 2) {
+							if (ret == 4 && tx_channels >= 4) {
 								sample[i++] = ((unsigned long long) convert(scale, q2) << 48) +
 								    ((unsigned long long) convert(scale, i2) << 32) +
 								    (convert(scale, q1) << 16) +
 								    (convert(scale, i1) << 0);
 
-								if (tx == 4)
+								if (tx_channels == 8)
 									sample[i++] = ((unsigned long long) convert(scale, q2) << 48) +
 									((unsigned long long) convert(scale, i2) << 32) +
 									(convert(scale, q1) << 16) +
 									(convert(scale, i1) << 0);
 
-							} else if (ret == 2 && tx >= 2) {
+							} else if (ret == 2 && tx_channels >= 4) {
 
 								sample[i++] = ((unsigned long long) convert(scale, q1) << 48) +
 								    ((unsigned long long) convert(scale, i1) << 32) +
 								    (convert(scale, q1) << 16) +
 								    (convert(scale, i1) << 0);
 
-								if (tx == 4)
+								if (tx_channels == 8)
 									sample[i++] = ((unsigned long long) convert(scale, q1) << 48) +
 									((unsigned long long) convert(scale, i1) << 32) +
 									(convert(scale, q1) << 16) +
 									(convert(scale, i1) << 0);
 
-							} else if (ret > 1 && tx == 1) {
+							} else if (ret > 1 && tx_channels == 2) {
 								sample_32[i++] = (convert(scale, q1) << 16) +
 									(convert(scale, i1) << 0);
+							} else if (ret > 1 && tx_channels == 1) {
+								sample_16[i++] = convert(scale, i1);
 							}
 
-							size += tx * 4;
+							size += tx_channels * 2;
 						}
 					}
 				}
@@ -126,7 +129,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 			 * multiple of 8.
 			 */
 
-			if ((size % 8) != 0) {
+			while ((size % 8) != 0) {
 				memcpy(*buf + size, *buf, size);
 				size += size;
 			}
@@ -143,6 +146,10 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 			matfp = Mat_Open(file_name, MAT_ACC_RDONLY);
 			if (matfp == NULL)
 				return -3;
+
+			int tx = tx_channels / 2;
+			if (tx_channels == 1)
+				tx = 1;
 
 			rep = 0;
 			matvars = malloc(sizeof(matvar_t *) * tx);
@@ -208,17 +215,18 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 				}
 			}
 
-			*buf = malloc((size + 1) * tx * 4);
+			*buf = malloc((size + 1) * tx_channels * 2);
 
 			if (*buf == NULL) {
 				printf("error %s:%d\n", __func__, __LINE__);
 				return 0;
 			}
 
-			*count = size * tx * 4;
+			*count = size * tx_channels * 2;
 
 			unsigned long long *sample = *((unsigned long long **) buf);
 			unsigned int *sample_32 = *((unsigned int **) buf);
+			unsigned short *sample_16 = *((unsigned short **) buf);
 			double *re1, *im1, *re2, *im2;
 			struct ComplexSplit *complex_data1, *complex_data2;
 
@@ -263,19 +271,19 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 				goto matvar_free;
 			}
 
-			if (tx == 2) {
+			if (tx_channels == 4) {
 				 for (i = 0 ; i < size; i++) {
 					sample[i] = ((unsigned long long) convert(scale, im2[i]) << 48) +
 						    ((unsigned long long) convert(scale, re2[i]) << 32) +
 									 (convert(scale, im1[i]) << 16) +
 									 (convert(scale, re1[i]) << 0);
 				 }
-			} else if (tx == 1) {
+			} else if (tx_channels == 2) {
 				for (i = 0 ; i < size; i++) {
 					sample_32[i] = (convert(scale, im1[i]) << 16) +
 						       (convert(scale, re1[i]) << 0);
 				}
-			} else if (tx == 4) {
+			} else if (tx_channels == 8) {
 				for (i = 0, j = 0; i < size; i++) {
 					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) +
 						    ((unsigned long long) convert(scale, re2[i]) << 32) +
@@ -285,6 +293,10 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 						    ((unsigned long long) convert(scale, re2[i]) << 32) +
 									 (convert(scale, im1[i]) << 16) +
 									 (convert(scale, re1[i]) << 0);
+				}
+			} else if (tx_channels == 1) {
+				for (i = 0 ; i < size; i++) {
+					sample_16[i] = convert(scale, re1[i]);
 				}
 			}
 		matvar_free:
