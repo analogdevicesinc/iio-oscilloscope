@@ -644,7 +644,7 @@ static void process_dac_buffer_file (const char *file_name)
 		buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(tx_channel_list), NULL);
 	}
 
-	ret = analyse_wavefile(file_name, &buf, &size, buffer_channels / 2);
+	ret = analyse_wavefile(file_name, &buf, &size, buffer_channels);
 	if (ret == -3)
 		return;
 
