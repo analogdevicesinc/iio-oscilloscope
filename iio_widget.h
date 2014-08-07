@@ -18,6 +18,7 @@ struct iio_widget {
 	GtkWidget *widget;
 	void *priv;
 	void *priv_progress;
+	void *priv_convert_function;
 
 	void (*save)(struct iio_widget *);
 	void (*update)(struct iio_widget *);
@@ -75,4 +76,8 @@ void iio_spin_button_set_on_complete_function(struct iio_widget *iio_w,
 	void(*on_complete)(void));
 void iio_spin_button_progress_deactivate(struct iio_widget *iio_w);
 void iio_spin_button_remove_progress(struct iio_widget *iio_w);
+
+void iio_spin_button_set_convert_function(struct iio_widget *iio_w,
+		double (*convert)(double, bool inverse));
+
 #endif

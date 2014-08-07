@@ -89,6 +89,9 @@ static void iio_spin_button_update(struct iio_widget *widget)
 	if (ret < 0)
 		return;
 
+	if (widget->priv_convert_function)
+		freq = ((double (*)(double, bool))widget->priv_convert_function)(freq, true);
+
 	freq /= fabs(scale);
 
 	/* if scale is negative, we treat things a little differently */
@@ -114,6 +117,9 @@ static void spin_button_save(struct iio_widget *widget, bool is_double)
 		freq = fabs(freq * scale);
 	else
 		freq *= scale;
+
+	if (widget->priv_convert_function)
+		freq = ((double (*)(double, bool))widget->priv_convert_function)(freq, false);
 
 	if (widget->chn) {
 		if (is_double)
@@ -525,4 +531,10 @@ void iio_spin_button_remove_progress(struct iio_widget *iio_w)
 	iio_spin_button_progress_deactivate(iio_w);
 	if (iio_w->priv_progress)
 		free(iio_w->priv_progress);
+}
+
+void iio_spin_button_set_convert_function(struct iio_widget *iio_w,
+		double (*convert)(double, bool))
+{
+	iio_w->priv_convert_function = convert;
 }
