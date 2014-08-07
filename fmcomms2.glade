@@ -157,44 +157,44 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="dds_tone_I1_tx1_scale_adj">
-    <property name="upper">1</property>
-    <property name="step_increment">5.0000000000000004e-06</property>
-    <property name="page_increment">0.01</property>
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="dds_tone_I1_tx2_scale_adj">
-    <property name="upper">1</property>
-    <property name="step_increment">5.0000000000000004e-06</property>
-    <property name="page_increment">0.01</property>
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="dds_tone_I2_tx1_scale_adj">
-    <property name="upper">1</property>
-    <property name="step_increment">5.0000000000000004e-06</property>
-    <property name="page_increment">0.01</property>
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="dds_tone_I2_tx2_scale_adj">
-    <property name="upper">1</property>
-    <property name="step_increment">5.0000000000000004e-06</property>
-    <property name="page_increment">0.01</property>
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="dds_tone_Q1_tx1_scale_adj">
-    <property name="upper">1</property>
-    <property name="step_increment">5.0000000000000004e-06</property>
-    <property name="page_increment">0.01</property>
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="dds_tone_Q1_tx2_scale_adj">
-    <property name="upper">1</property>
-    <property name="step_increment">5.0000000000000004e-06</property>
-    <property name="page_increment">0.01</property>
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="dds_tone_Q2_tx1_scale_adj">
-    <property name="upper">1</property>
-    <property name="step_increment">5.0000000000000004e-06</property>
-    <property name="page_increment">0.01</property>
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="dds_tone_Q2_tx2_scale_adj">
-    <property name="upper">1</property>
-    <property name="step_increment">5.0000000000000004e-06</property>
-    <property name="page_increment">0.01</property>
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkVBox" id="fmcomms2_panel">
     <property name="visible">True</property>
@@ -2121,7 +2121,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
-                                                            <property name="label" translatable="yes">Scale:</property>
+                                                            <property name="label" translatable="yes">Scale(dBFS):</property>
                                                             </object>
                                                             <packing>
                                                             <property name="top_attach">1</property>
@@ -2169,7 +2169,6 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_I1_tx1_scale_adj</property>
-                                                            <property name="digits">6</property>
                                                             </object>
                                                             <packing>
                                                             <property name="left_attach">1</property>
@@ -2251,7 +2250,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
-                                                            <property name="label" translatable="yes">Scale:</property>
+                                                            <property name="label" translatable="yes">Scale(dBFS):</property>
                                                             </object>
                                                             <packing>
                                                             <property name="top_attach">1</property>
@@ -2299,7 +2298,6 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_I2_tx1_scale_adj</property>
-                                                            <property name="digits">6</property>
                                                             </object>
                                                             <packing>
                                                             <property name="left_attach">1</property>
@@ -2414,7 +2412,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
-                                                            <property name="label" translatable="yes">Scale:</property>
+                                                            <property name="label" translatable="yes">Scale(dBFS):</property>
                                                             </object>
                                                             <packing>
                                                             <property name="top_attach">1</property>
@@ -2460,7 +2458,6 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_Q1_tx1_scale_adj</property>
-                                                            <property name="digits">6</property>
                                                             </object>
                                                             <packing>
                                                             <property name="left_attach">1</property>
@@ -2541,7 +2538,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
-                                                            <property name="label" translatable="yes">Scale:</property>
+                                                            <property name="label" translatable="yes">Scale(dBFS):</property>
                                                             </object>
                                                             <packing>
                                                             <property name="top_attach">1</property>
@@ -2785,7 +2782,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
-                                                            <property name="label" translatable="yes">Scale:</property>
+                                                            <property name="label" translatable="yes">Scale(dBFS):</property>
                                                             </object>
                                                             <packing>
                                                             <property name="top_attach">1</property>
@@ -2833,7 +2830,6 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_I1_tx2_scale_adj</property>
-                                                            <property name="digits">6</property>
                                                             </object>
                                                             <packing>
                                                             <property name="left_attach">1</property>
@@ -2947,7 +2943,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
-                                                            <property name="label" translatable="yes">Scale:</property>
+                                                            <property name="label" translatable="yes">Scale(dBFS):</property>
                                                             </object>
                                                             <packing>
                                                             <property name="top_attach">1</property>
@@ -2963,7 +2959,6 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_I2_tx2_scale_adj</property>
-                                                            <property name="digits">6</property>
                                                             </object>
                                                             <packing>
                                                             <property name="left_attach">1</property>
@@ -3078,7 +3073,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
-                                                            <property name="label" translatable="yes">Scale:</property>
+                                                            <property name="label" translatable="yes">Scale(dBFS):</property>
                                                             </object>
                                                             <packing>
                                                             <property name="top_attach">1</property>
@@ -3205,7 +3200,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
-                                                            <property name="label" translatable="yes">Scale:</property>
+                                                            <property name="label" translatable="yes">Scale(dBFS):</property>
                                                             </object>
                                                             <packing>
                                                             <property name="top_attach">1</property>
@@ -3251,7 +3246,6 @@ configuration:</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
                                                             <property name="adjustment">dds_tone_Q2_tx2_scale_adj</property>
-                                                            <property name="digits">6</property>
                                                             </object>
                                                             <packing>
                                                             <property name="left_attach">1</property>
@@ -3781,11 +3775,11 @@ configuration:</property>
   </object>
   <object class="GtkTreeStore" id="treestore_tx_channels">
     <columns>
-      <!-- column-name Channel Name -->
+      <!-- column-name Channel -->
       <column type="gchararray"/>
-      <!-- column-name Channel Enabled -->
+      <!-- column-name Channel1 -->
       <column type="gboolean"/>
-      <!-- column-name Channel Reference Index -->
+      <!-- column-name Channel2 -->
       <column type="gint"/>
     </columns>
   </object>

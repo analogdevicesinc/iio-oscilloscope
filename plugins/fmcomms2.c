@@ -889,7 +889,7 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		mag[TX2_T2_I] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_I]));
 		mag[TX2_T1_Q] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T1_Q]));
 		mag[TX2_T2_Q] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_Q]));
-		mag[TX_OFF] = 0.000000;
+		mag[TX_OFF] = gtk_adjustment_get_lower(gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(dds_scale[TX1_T1_I])));
 	}
 
 	active = gtk_combo_box_get_active(box);
@@ -1193,6 +1193,32 @@ int handle_external_request (const char *request)
 	return ret;
 }
 
+static double db_full_scale_convert(double value, bool inverse)
+{
+	if (inverse)
+		return (20 * log10(value));
+	else
+		return pow(10, value / 20.0);
+}
+
+static gboolean scale_spin_button_output_cb(GtkSpinButton *spin, gpointer data)
+{
+	GtkAdjustment *adj;
+	gchar *text;
+	int value;
+
+	adj = gtk_spin_button_get_adjustment(spin);
+	value = (int)gtk_adjustment_get_value(adj);
+	if (value > gtk_adjustment_get_lower(adj))
+		text = g_strdup_printf("%d dB", value);
+	else
+		text = g_strdup_printf("-Inf dB");
+	gtk_entry_set_text(GTK_ENTRY(spin), text);
+	g_free(text);
+
+	return TRUE;
+}
+
 static int fmcomms2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
@@ -1485,28 +1511,28 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch0, "scale",
 			dds_scale[TX1_T1_I], NULL);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch1, "scale",
 			dds_scale[TX1_T2_I], NULL);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch2, "scale",
 			dds_scale[TX1_T1_Q], NULL);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch3, "scale",
 			dds_scale[TX1_T2_Q], NULL);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch4, "scale",
 			dds_scale[TX2_T1_I], NULL);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch5, "scale",
 			dds_scale[TX2_T2_I], NULL);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch6, "scale",
 			dds_scale[TX2_T1_Q], NULL);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch7, "scale",
 			dds_scale[TX2_T2_Q], NULL);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
 
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch0, "phase",
 			dds_phase[TX1_T1_I], &khz_scale);
@@ -1540,6 +1566,10 @@ static int fmcomms2_init(GtkWidget *notebook)
 	}
 
 	/* Signals connect */
+
+	for (i = TX1_T1_I; i <= TX2_T2_Q; i++)
+		g_signal_connect(dds_scale[i], "output",
+			G_CALLBACK(scale_spin_button_output_cb), NULL);
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
 			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
