@@ -283,7 +283,8 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 
 		for (node = plugin_list; node; node = g_slist_next(node)) {
 			plugin = node->data;
-			if (plugin && !strncmp(plugin->name, "FMComms2/3/4", 12)) {
+			if (plugin && (!strncmp(plugin->name, "FMComms2/3/4", 12) ||
+				!strncmp(plugin->name, "FMComms5-", 8))) {
 				if (plugin->handle_external_request) {
 					g_usleep(1 * G_USEC_PER_SEC);
 					plugin->handle_external_request("Reload Settings");
