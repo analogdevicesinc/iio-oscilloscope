@@ -315,12 +315,6 @@ static double calc_phase_offset(double fsample, double dds_freq, int offset, int
 	return scale_phase_0_360(val);
 }
 
-static int dds_sync(void)
-{
-	iio_channel_attr_write_bool(dds_out[0][0], "raw", 0);
-	return iio_channel_attr_write_bool(dds_out[0][0], "raw", 1);
-}
-
 static int get_dds_channels(void)
 {
 	struct iio_device *dev;
@@ -405,7 +399,6 @@ static void dds_tx_phase_rotation(struct iio_device *dev, gdouble val)
 		}
 	}
 
-	dds_sync();
 }
 
 static int default_dds(long long freq, double scale)
@@ -612,12 +605,9 @@ static void mcs_cb (GtkWidget *widget, gpointer data)
 	iio_device_debug_attr_write(dev_slave, "multichip_sync", "6");
 #endif
 
-	/* The two DDSs are synced by toggling the ENABLE bit */
-	if (dev_dds_master)
-		dds_sync();
 }
 
-static double tune_trx_phase_offset(struct iio_device *ldev,
+static double tune_trx_phase_offset(struct iio_device *ldev, int *ret,
 			long long cal_freq, long long cal_tone,
 			double sign, double abort,
 			void (*tune)(struct iio_device *, gdouble))
@@ -676,6 +666,11 @@ static double tune_trx_phase_offset(struct iio_device *ldev,
 
 		tune(ldev, phase * sign);
 	}
+
+	if (offset)
+		*ret = -EFAULT;
+	else
+		*ret = 0;
 
 	return phase * sign;
 }
@@ -787,7 +782,11 @@ static void calibrate (gpointer button)
 	 */
 	osc_plot_xcorr_revert(plot_xcorr_4ch, true);
 	__cal_switch_ports_enable_cb(1);
-	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
+	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
+	if (ret < 0) {
+		printf("Failed to tune phase\n");
+		goto calibrate_fail;
+	}
 	set_calibration_progress(calib_progress, 0.40);
 	DBG("rx_phase_hpc %f", rx_phase_hpc);
 
@@ -799,7 +798,11 @@ static void calibrate (gpointer button)
 	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
 	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(3);
-	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
+	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
+	if (ret < 0) {
+		printf("Failed to tune phase\n");
+		goto calibrate_fail;
+	}
 	set_calibration_progress(calib_progress, 0.64);
 	DBG("rx_phase_lpc %f", rx_phase_lpc);
 
@@ -811,7 +814,11 @@ static void calibrate (gpointer button)
 	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
 	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 	__cal_switch_ports_enable_cb(4);
-	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, cal_freq, cal_tone, -1.0 , 0.001, trx_phase_rotation);
+	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, &ret, cal_freq, cal_tone, -1.0 , 0.001, trx_phase_rotation);
+	if (ret < 0) {
+		printf("Failed to tune phase\n");
+		goto calibrate_fail;
+	}
 	set_calibration_progress(calib_progress, 0.88);
 	DBG("tx_phase_hpc %f", tx_phase_hpc);
 
