@@ -57,6 +57,7 @@ static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
 static char *dac_buf_filename = NULL;
+static gdouble scale_minus_infinite;
 
 static struct iio_buffer *dds_buffer;
 
@@ -67,6 +68,7 @@ static unsigned int rx1_gain, rx2_gain;
 static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_lo, tx_lo;
 static unsigned int rx_sample_freq, tx_sample_freq;
+static unsigned int dds_scales;
 
 static struct iio_context *ctx;
 static struct iio_device *dev, *dds, *cap;
@@ -889,7 +891,7 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		mag[TX2_T2_I] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_I]));
 		mag[TX2_T1_Q] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T1_Q]));
 		mag[TX2_T2_Q] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_Q]));
-		mag[TX_OFF] = gtk_adjustment_get_lower(gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(dds_scale[TX1_T1_I])));
+		mag[TX_OFF] = scale_minus_infinite;
 	}
 
 	active = gtk_combo_box_get_active(box);
@@ -1149,9 +1151,40 @@ int channel_combination_check(struct iio_device *dev, const char **ch_names)
 	return 1;
 }
 
+#define NUM_DDS_SCALES 8
+
+static double db_full_scale_convert(double value, bool inverse)
+{
+	if (inverse) {
+		if (value == 0)
+			return -DBL_MAX;
+		return (20 * log10(value));
+	} else {
+		if (value == scale_minus_infinite)
+			return 0;
+		return pow(10, value / 20.0);
+	}
+}
+
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
 	iio_w->save(iio_w);
+}
+
+static void save_scale_widget_value(GtkWidget *widget, unsigned int windex)
+{
+	struct iio_widget *scale_w = &tx_widgets[windex];
+	struct iio_widget *scale_pair_w = &tx_widgets[(windex % 2 == 0) ? windex + 1 : windex - 1];
+	double old_val, val1, val2;
+
+	val1 = db_full_scale_convert(gtk_spin_button_get_value(GTK_SPIN_BUTTON(scale_w->widget)), false);
+	iio_channel_attr_read_double(scale_w->chn, scale_w->attr_name, &old_val);
+	iio_channel_attr_read_double(scale_pair_w->chn, scale_pair_w->attr_name, &val2);
+
+	if (val1 + val2 > 1)
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(scale_w->widget), db_full_scale_convert(old_val, true));
+
+	scale_w->save(scale_w);
 }
 
 static void make_widget_update_signal_based(struct iio_widget *widgets,
@@ -1172,6 +1205,10 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 		else
 			printf("unhandled widget type, attribute: %s\n", widgets[i].attr_name);
 
+		/* Skip DDS Scale Widgets for now */
+		if (!strcmp("scale", widgets[i].attr_name) && !strcmp(DDS_DEVICE, iio_device_get_name(widgets[i].dev)))
+			continue;
+
 		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
 			widgets[i].priv_progress != NULL) {
 				iio_spin_button_progress_activate(&widgets[i]);
@@ -1191,14 +1228,6 @@ int handle_external_request (const char *request)
 	}
 
 	return ret;
-}
-
-static double db_full_scale_convert(double value, bool inverse)
-{
-	if (inverse)
-		return (20 * log10(value));
-	else
-		return pow(10, value / 20.0);
 }
 
 static gboolean scale_spin_button_output_cb(GtkSpinButton *spin, gpointer data)
@@ -1350,6 +1379,8 @@ static int fmcomms2_init(GtkWidget *notebook)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_tx), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_fastlock_profile), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(tx_fastlock_profile), 0);
+
+	scale_minus_infinite = gtk_adjustment_get_lower(gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(dds_scale[TX1_T1_I])));
 
 	/* Bind the IIO device files to the GUI widgets */
 
@@ -1509,6 +1540,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 			dds, ch7, "frequency", dds_freq[TX2_T2_Q], &abs_mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
+	dds_scales = num_tx;
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch0, "scale",
 			dds_scale[TX1_T1_I], NULL);
 	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
@@ -1644,6 +1676,11 @@ static int fmcomms2_init(GtkWidget *notebook)
 	make_widget_update_signal_based(glb_widgets, num_glb);
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
+
+	/* Make DDS scales signal based */
+	for (i = dds_scales; i < dds_scales + NUM_DDS_SCALES; i++)
+		g_signal_connect(tx_widgets[i].widget, "value-changed",
+			G_CALLBACK(save_scale_widget_value), (gpointer)i);
 
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
 		sample_frequency_changed_cb);
