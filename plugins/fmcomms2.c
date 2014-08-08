@@ -1687,6 +1687,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_rx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_tx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_rx2")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "table_hw_gain_tx2")));
 	}
 
 	g_thread_new("Update_thread", (void *) &update_display, NULL);
