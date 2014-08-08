@@ -1875,7 +1875,7 @@ static int fmcomms1_cal_eeprom(void)
 			}
 		}
 
-		cal_data = (struct fmcomms1_calib_data_v1 *)(cal_header + sizeof(*cal_header));
+		cal_data = (struct fmcomms1_calib_data_v1 *)((void *)cal_header + sizeof(*cal_header));
 
 		fprintf (stdout, "Found Calibration EEPROM @ %s\n", eprom_names);
 		pclose(fp);
@@ -2205,8 +2205,8 @@ static int fmcomms1_init(GtkWidget *notebook)
 			dev, ch0, "frequency_resolution", builder, "tx_lo_spacing", NULL);
 
 	/* Calibration */
-	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
-	ch1 = iio_device_find_channel(dac, "altvoltage1", true);
+	ch0 = iio_device_find_channel(dac, "voltage0", true);
+	ch1 = iio_device_find_channel(dac, "voltage1", true);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
 			dac, ch0, "calibbias", I_dac_offs, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
@@ -2233,8 +2233,8 @@ static int fmcomms1_init(GtkWidget *notebook)
 	g_signal_connect(Q_dac_pha_adj, "value-changed",
 			G_CALLBACK(dac_cal_spin1), "phase");
 
-	ch0 = iio_device_find_channel(dac, "voltage0", false);
-	ch1 = iio_device_find_channel(dac, "voltage1", false);
+	ch0 = iio_device_find_channel(adc, "voltage0", false);
+	ch1 = iio_device_find_channel(adc, "voltage1", false);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
 			adc, ch0, "calibbias", I_adc_offset_adj, NULL);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
