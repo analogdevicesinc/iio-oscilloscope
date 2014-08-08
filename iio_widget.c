@@ -86,8 +86,11 @@ static void iio_spin_button_update(struct iio_widget *widget)
 	else
 		ret = iio_device_attr_read_double(widget->dev,
 				widget->attr_name, &freq);
-	if (ret < 0)
+	if (ret < 0) {
+		if (ret == -ENODEV)
+			gtk_widget_hide(widget->widget);
 		return;
+	}
 
 	if (widget->priv_convert_function)
 		freq = ((double (*)(double, bool))widget->priv_convert_function)(freq, true);
@@ -188,13 +191,22 @@ static void iio_toggle_button_save(struct iio_widget *widget)
 static void iio_toggle_button_update(struct iio_widget *widget)
 {
 	bool active;
+	int ret;
 
 	if (widget->chn)
-		iio_channel_attr_read_bool(widget->chn,
+		ret = iio_channel_attr_read_bool(widget->chn,
 				widget->attr_name, &active);
 	else
-		iio_device_attr_read_bool(widget->dev,
+		ret = iio_device_attr_read_bool(widget->dev,
 				widget->attr_name, &active);
+
+	if (ret < 0) {
+		if (ret == -ENODEV)
+			gtk_widget_hide(widget->widget);
+
+		return;
+	}
+
 	active = widget->priv ? !active : active;
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (widget->widget), active);
 }
