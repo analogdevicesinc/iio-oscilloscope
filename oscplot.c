@@ -2294,18 +2294,9 @@ static int * get_user_saveas_channel_selection(OscPlot *plot, unsigned int nb_ch
 	return mask;
 }
 
-#define SAVE_AS_RAW_DATA  16
-#define SAVE_AS_PLOT_DATA 17
-#define SAVE_AS_PNG_IMAGE 18
+#define SAVE_AS_RAW_DATA 1
 
-static void cb_saveas_chooser(GtkToolButton *toolbutton, OscPlot *data)
-{
-	OscPlotPrivate *priv = data->priv;
-
-	gtk_widget_show(priv->saveas_type_dialog);
-}
-
-static void saveas_dialog_show(OscPlot *plot, gint saveas_type)
+static void saveas_dialog_show(GtkWidget *w, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 
@@ -2321,21 +2312,9 @@ static void saveas_dialog_show(OscPlot *plot, gint saveas_type)
 		priv->saveas_filename = NULL;
 	}
 
-	priv->active_saveas_type = saveas_type;
+	priv->active_saveas_type = SAVE_AS_RAW_DATA;
 	channel_selection_set_default(plot);
 	gtk_widget_show(priv->saveas_dialog);
-}
-
-void cb_saveas_chooser_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
-{
-	OscPlotPrivate *priv = plot->priv;
-
-	if (response_id == SAVE_AS_RAW_DATA ||
-		response_id == SAVE_AS_PLOT_DATA ||
-		response_id == SAVE_AS_PNG_IMAGE)
-		saveas_dialog_show(plot, response_id);
-
-	gtk_widget_hide(priv->saveas_type_dialog);
 }
 
 static void save_as(OscPlot *plot, const char *filename, int type)
@@ -3872,7 +3851,6 @@ static void create_plot(OscPlot *plot)
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
-	priv->saveas_type_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_type_dialog"));
 	priv->title_edit_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_plot_title_edit"));
 	priv->fullscreen_button = GTK_WIDGET(gtk_builder_get_object(builder, "fullscreen"));
 	priv->menu_fullscreen = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_fullscreen"));
@@ -3984,14 +3962,10 @@ static void create_plot(OscPlot *plot)
 	g_signal_connect(priv->plot_domain, "changed",
 		G_CALLBACK(plot_domain_changed_cb), plot);
 	g_signal_connect(priv->saveas_button, "clicked",
-		G_CALLBACK(cb_saveas_chooser), plot);
-	g_signal_connect(priv->saveas_type_dialog, "response",
-		G_CALLBACK(cb_saveas_chooser_response), plot);
+		G_CALLBACK(saveas_dialog_show), plot);
 	g_signal_connect(priv->saveas_dialog, "response",
 		G_CALLBACK(cb_saveas_response), plot);
 	g_signal_connect(priv->saveas_dialog, "delete-event",
-		G_CALLBACK(gtk_widget_hide_on_delete), plot);
-	g_signal_connect(priv->saveas_type_dialog, "delete-event",
 		G_CALLBACK(gtk_widget_hide_on_delete), plot);
 	g_signal_connect(priv->fullscreen_button, "clicked",
 		G_CALLBACK(fullscreen_changed_cb), plot);
@@ -4032,7 +4006,7 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(marker_button), plot);
 
 	g_builder_connect_signal(builder, "menuitem_save_as", "activate",
-		G_CALLBACK(cb_saveas_chooser), plot);
+		G_CALLBACK(saveas_dialog_show), plot);
 
 	g_builder_connect_signal(builder, "menuitem_quit", "activate",
 		G_CALLBACK(menu_quit_cb), plot);
