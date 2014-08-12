@@ -342,7 +342,7 @@ static int get_dds_channels(void)
 static void trx_phase_rotation(struct iio_device *dev, gdouble val)
 {
 	struct iio_channel *out0, *out1;
-	gdouble phase;
+	gdouble phase, corr, vcos, vsin;
 	unsigned offset;
 
 	bool output = (dev == dev_dds_slave) || (dev == dev_dds_master);
@@ -350,6 +350,17 @@ static void trx_phase_rotation(struct iio_device *dev, gdouble val)
 	DBG("%s %f\n", iio_device_get_name(dev), val);
 
 	phase = val * 2 * M_PI / 360.0;
+
+	vcos = cos(phase);
+	vsin = sin(phase);
+
+	if (output)  {
+		gdouble corr;
+		corr = 1.0 / fmax(fabs(sin(phase) + cos(phase)),
+				  fabs(cos(phase) - sin(phase)));
+		vcos *= corr;
+		vsin *= corr;
+	}
 
 	/* Set both RX1 and RX2 */
 	for (offset = 0; offset <= 2; offset += 2) {
@@ -362,10 +373,10 @@ static void trx_phase_rotation(struct iio_device *dev, gdouble val)
 		}
 
 		if (out1 && out0) {
-			iio_channel_attr_write_double(out0, "calibscale", (double) cos(phase));
-			iio_channel_attr_write_double(out0, "calibphase", (double) (-1 * sin(phase)));
-			iio_channel_attr_write_double(out1, "calibscale", (double) cos(phase));
-			iio_channel_attr_write_double(out1, "calibphase", (double) sin(phase));
+			iio_channel_attr_write_double(out0, "calibscale", (double) vcos);
+			iio_channel_attr_write_double(out0, "calibphase", (double) (-1.0 * vsin));
+			iio_channel_attr_write_double(out1, "calibscale", (double) vcos);
+			iio_channel_attr_write_double(out1, "calibphase", (double) vsin);
 		}
 	}
 }
