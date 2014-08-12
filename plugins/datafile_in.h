@@ -7,7 +7,7 @@
 
 #include <matio.h>
 
-static short convert(double scale, float val)
+static unsigned short convert(double scale, float val)
 {
 	return (short) (val * scale);
 }
@@ -58,9 +58,9 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 
 			size *= rep;
 			if (scale == 0.0)
-				scale = 32767.0 / max;
+				scale = 32752.0 / max;
 
-			if (max > 32767.0)
+			if (max > 32752.0)
 				fprintf(stderr, "ERROR: DAC Waveform Samples > +/- 2047.0\n");
 
 			while ((size % 8) != 0)
@@ -86,32 +86,31 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 								&i1, &q1, &i2, &q2);
 						for (j = 0; j < rep; j++) {
 							if (ret == 4 && tx_channels >= 4) {
-								sample[i++] = ((unsigned long long) convert(scale, q2) << 48) +
-								    ((unsigned long long) convert(scale, i2) << 32) +
-								    (convert(scale, q1) << 16) +
+								sample[i++] = ((unsigned long long) convert(scale, q2) << 48) |
+								    ((unsigned long long) convert(scale, i2) << 32) |
+								    (convert(scale, q1) << 16) |
 								    (convert(scale, i1) << 0);
 
 								if (tx_channels == 8)
-									sample[i++] = ((unsigned long long) convert(scale, q2) << 48) +
-									((unsigned long long) convert(scale, i2) << 32) +
-									(convert(scale, q1) << 16) +
+									sample[i++] = ((unsigned long long) convert(scale, q2) << 48) |
+									((unsigned long long) convert(scale, i2) << 32) |
+									(convert(scale, q1) << 16) |
 									(convert(scale, i1) << 0);
 
 							} else if (ret == 2 && tx_channels >= 4) {
-
-								sample[i++] = ((unsigned long long) convert(scale, q1) << 48) +
-								    ((unsigned long long) convert(scale, i1) << 32) +
-								    (convert(scale, q1) << 16) +
+								sample[i++] = ((unsigned long long) convert(scale, q1) << 48) |
+								    ((unsigned long long) convert(scale, i1) << 32) |
+								    (convert(scale, q1) << 16) |
 								    (convert(scale, i1) << 0);
 
 								if (tx_channels == 8)
-									sample[i++] = ((unsigned long long) convert(scale, q1) << 48) +
-									((unsigned long long) convert(scale, i1) << 32) +
-									(convert(scale, q1) << 16) +
+									sample[i++] = ((unsigned long long) convert(scale, q1) << 48) |
+									((unsigned long long) convert(scale, i1) << 32) |
+									(convert(scale, q1) << 16) |
 									(convert(scale, i1) << 0);
 
 							} else if (ret > 1 && tx_channels == 2) {
-								sample_32[i++] = (convert(scale, q1) << 16) +
+								sample_32[i++] = (convert(scale, q1) << 16) |
 									(convert(scale, i1) << 0);
 							} else if (ret > 1 && tx_channels == 1) {
 								sample_16[i++] = convert(scale, i1);
@@ -200,9 +199,9 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 
 			if (max <= 1.0)
 				max = 1.0;
-			scale = 32767.0 / max;
+			scale = 32752.0 / max;
 
-			if (max > 32767.0) {
+			if (max > 32752.0) {
 				fprintf(stderr, "ERROR: DAC Waveform Samples > +/- 2047.0\n");
 			}
 
@@ -273,25 +272,25 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 
 			if (tx_channels == 4) {
 				 for (i = 0 ; i < size; i++) {
-					sample[i] = ((unsigned long long) convert(scale, im2[i]) << 48) +
-						    ((unsigned long long) convert(scale, re2[i]) << 32) +
-									 (convert(scale, im1[i]) << 16) +
+					sample[i] = ((unsigned long long) convert(scale, im2[i]) << 48) |
+						    ((unsigned long long) convert(scale, re2[i]) << 32) |
+									 (convert(scale, im1[i]) << 16) |
 									 (convert(scale, re1[i]) << 0);
 				 }
 			} else if (tx_channels == 2) {
 				for (i = 0 ; i < size; i++) {
-					sample_32[i] = (convert(scale, im1[i]) << 16) +
+					sample_32[i] = (convert(scale, im1[i]) << 16) |
 						       (convert(scale, re1[i]) << 0);
 				}
 			} else if (tx_channels == 8) {
 				for (i = 0, j = 0; i < size; i++) {
-					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) +
-						    ((unsigned long long) convert(scale, re2[i]) << 32) +
-									 (convert(scale, im1[i]) << 16) +
+					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) |
+						    ((unsigned long long) convert(scale, re2[i]) << 32) |
+									 (convert(scale, im1[i]) << 16) |
 									 (convert(scale, re1[i]) << 0);
-					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) +
-						    ((unsigned long long) convert(scale, re2[i]) << 32) +
-									 (convert(scale, im1[i]) << 16) +
+					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) |
+						    ((unsigned long long) convert(scale, re2[i]) << 32) |
+									 (convert(scale, im1[i]) << 16) |
 									 (convert(scale, re1[i]) << 0);
 				}
 			} else if (tx_channels == 1) {
