@@ -209,6 +209,7 @@ struct _OscPlotPrivate
 	GtkWidget *saveas_settings_box;
 	GtkWidget *save_mat_scale;
 	GtkWidget *new_plot_button;
+	GtkWidget *cmb_saveas_type;
 
 	GtkTextBuffer* tbuf;
 
@@ -2293,18 +2294,9 @@ static int * get_user_saveas_channel_selection(OscPlot *plot, unsigned int nb_ch
 	return mask;
 }
 
-#define SAVE_AS_RAW_DATA  16
-#define SAVE_AS_PLOT_DATA 17
-#define SAVE_AS_PNG_IMAGE 18
+#define SAVE_AS_RAW_DATA 1
 
-static void cb_saveas_chooser(GtkToolButton *toolbutton, OscPlot *data)
-{
-	OscPlotPrivate *priv = data->priv;
-
-	gtk_widget_show(priv->saveas_type_dialog);
-}
-
-static void saveas_dialog_show(OscPlot *plot, gint saveas_type)
+static void saveas_dialog_show(GtkWidget *w, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 
@@ -2313,62 +2305,16 @@ static void saveas_dialog_show(OscPlot *plot, gint saveas_type)
 
 	if (!priv->saveas_filename) {
 		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->saveas_dialog), getenv("HOME"));
-		gtk_file_chooser_get_filename(GTK_FILE_CHOOSER (priv->saveas_dialog));
 	} else {
-		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (priv->saveas_dialog), priv->saveas_filename);
+		if (!gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (priv->saveas_dialog), priv->saveas_filename))
+			gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->saveas_dialog), getenv("HOME"));
 		g_free(priv->saveas_filename);
 		priv->saveas_filename = NULL;
 	}
 
-	GtkWidget *save_csv = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_csv"));
-	GtkWidget *save_vsa = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_vsa"));
-	GtkWidget *save_mat = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_mat"));
-	GtkWidget *save_png = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_png"));
-
-	gtk_widget_show(save_csv);
-	gtk_widget_show(save_vsa);
-	gtk_widget_show(save_mat);
-	gtk_widget_show(save_png);
-	gtk_widget_show(priv->saveas_settings_box);
-	gtk_widget_hide(priv->viewport_saveas_channels);
-	gtk_widget_hide(priv->saveas_select_channel_message);
-	switch(saveas_type) {
-		case SAVE_AS_RAW_DATA:
-			gtk_widget_hide(save_png);
-			gtk_widget_show(priv->viewport_saveas_channels);
-			gtk_widget_show(priv->saveas_select_channel_message);
-			break;
-		case SAVE_AS_PLOT_DATA:
-			gtk_widget_hide(save_vsa);
-			gtk_widget_hide(save_mat);
-			gtk_widget_hide(save_png);
-			gtk_widget_hide(priv->saveas_settings_box);
-			break;
-		case SAVE_AS_PNG_IMAGE:
-			gtk_widget_hide(save_csv);
-			gtk_widget_hide(save_vsa);
-			gtk_widget_hide(save_mat);
-			gtk_widget_hide(priv->saveas_settings_box);
-			break;
-		default:
-			break;
-	};
-
-	priv->active_saveas_type = saveas_type;
+	priv->active_saveas_type = SAVE_AS_RAW_DATA;
 	channel_selection_set_default(plot);
 	gtk_widget_show(priv->saveas_dialog);
-}
-
-void cb_saveas_chooser_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
-{
-	OscPlotPrivate *priv = plot->priv;
-
-	if (response_id == SAVE_AS_RAW_DATA ||
-		response_id == SAVE_AS_PLOT_DATA ||
-		response_id == SAVE_AS_PNG_IMAGE)
-		saveas_dialog_show(plot, response_id);
-
-	gtk_widget_hide(priv->saveas_type_dialog);
 }
 
 static void save_as(OscPlot *plot, const char *filename, int type)
@@ -2396,10 +2342,6 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 
 	name = malloc(strlen(filename) + 5);
 	switch(type) {
-		/* Response Codes encoded in glade file */
-		case GTK_RESPONSE_DELETE_EVENT:
-		case GTK_RESPONSE_CANCEL:
-			break;
 		case SAVE_VSA:
 			/* Save as Agilent VSA formatted file */
 			if (!strncasecmp(&filename[strlen(filename)-4], ".txt", 4))
@@ -2595,6 +2537,12 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 		default:
 			printf("SaveAs response: %i\n", type);
 	}
+
+	if (priv->saveas_filename)
+		g_free(priv->saveas_filename);
+
+	priv->saveas_filename = g_strdup(name);
+	free(name);
 }
 
 void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
@@ -2603,11 +2551,12 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
 	OscPlotPrivate *priv = plot->priv;
 
 	priv->saveas_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
-	if (priv->saveas_filename == NULL)
-		goto hide_dialog;
-	save_as(plot, priv->saveas_filename, response_id);
 
-hide_dialog:
+	if (response_id == GTK_RESPONSE_ACCEPT) {
+		gint type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->cmb_saveas_type));
+		save_as(plot, priv->saveas_filename, type);
+	}
+
 	gtk_widget_hide(priv->saveas_dialog);
 }
 
@@ -3902,7 +3851,6 @@ static void create_plot(OscPlot *plot)
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
-	priv->saveas_type_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_type_dialog"));
 	priv->title_edit_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_plot_title_edit"));
 	priv->fullscreen_button = GTK_WIDGET(gtk_builder_get_object(builder, "fullscreen"));
 	priv->menu_fullscreen = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_fullscreen"));
@@ -3920,6 +3868,7 @@ static void create_plot(OscPlot *plot)
 	priv->saveas_settings_box = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_saveas_settings"));
 	priv->save_mat_scale = GTK_WIDGET(gtk_builder_get_object(builder, "save_mat_scale"));
 	priv->new_plot_button = GTK_WIDGET(gtk_builder_get_object(builder, "toolbutton_new_plot"));
+	priv->cmb_saveas_type = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_formats"));
 
 	priv->tbuf = NULL;
 	priv->ch_settings_list = NULL;
@@ -3934,6 +3883,7 @@ static void create_plot(OscPlot *plot)
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_domain), TIME_PLOT);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_type), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->cmb_saveas_type), SAVE_CSV);
 
 	/* Create a GtkDatabox widget along with scrollbars and rulers */
 	gtk_databox_create_box_with_scrollbars_and_rulers(&priv->databox, &table,
@@ -4012,14 +3962,10 @@ static void create_plot(OscPlot *plot)
 	g_signal_connect(priv->plot_domain, "changed",
 		G_CALLBACK(plot_domain_changed_cb), plot);
 	g_signal_connect(priv->saveas_button, "clicked",
-		G_CALLBACK(cb_saveas_chooser), plot);
-	g_signal_connect(priv->saveas_type_dialog, "response",
-		G_CALLBACK(cb_saveas_chooser_response), plot);
+		G_CALLBACK(saveas_dialog_show), plot);
 	g_signal_connect(priv->saveas_dialog, "response",
 		G_CALLBACK(cb_saveas_response), plot);
 	g_signal_connect(priv->saveas_dialog, "delete-event",
-		G_CALLBACK(gtk_widget_hide_on_delete), plot);
-	g_signal_connect(priv->saveas_type_dialog, "delete-event",
 		G_CALLBACK(gtk_widget_hide_on_delete), plot);
 	g_signal_connect(priv->fullscreen_button, "clicked",
 		G_CALLBACK(fullscreen_changed_cb), plot);
@@ -4060,7 +4006,7 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(marker_button), plot);
 
 	g_builder_connect_signal(builder, "menuitem_save_as", "activate",
-		G_CALLBACK(cb_saveas_chooser), plot);
+		G_CALLBACK(saveas_dialog_show), plot);
 
 	g_builder_connect_signal(builder, "menuitem_quit", "activate",
 		G_CALLBACK(menu_quit_cb), plot);
