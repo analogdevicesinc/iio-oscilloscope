@@ -17,10 +17,10 @@
 #define OSC_INI_SECTION "IIO Oscilloscope"
 #define CAPTURE_INI_SECTION OSC_INI_SECTION " - Capture Window"
 
-#define SAVE_CSV 2
+#define SAVE_CSV 0
+#define SAVE_MAT 1
+#define SAVE_VSA 2
 #define SAVE_PNG 3
-#define SAVE_MAT 4
-#define SAVE_VSA 5
 
 extern GtkWidget *capture_graph;
 extern gint capture_function;
