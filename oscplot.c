@@ -2314,9 +2314,9 @@ static void saveas_dialog_show(OscPlot *plot, gint saveas_type)
 
 	if (!priv->saveas_filename) {
 		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->saveas_dialog), getenv("HOME"));
-		gtk_file_chooser_get_filename(GTK_FILE_CHOOSER (priv->saveas_dialog));
 	} else {
-		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (priv->saveas_dialog), priv->saveas_filename);
+		if (!gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (priv->saveas_dialog), priv->saveas_filename))
+			gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->saveas_dialog), getenv("HOME"));
 		g_free(priv->saveas_filename);
 		priv->saveas_filename = NULL;
 	}
@@ -2558,6 +2558,12 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 		default:
 			printf("SaveAs response: %i\n", type);
 	}
+
+	if (priv->saveas_filename)
+		g_free(priv->saveas_filename);
+
+	priv->saveas_filename = g_strdup(name);
+	free(name);
 }
 
 void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
@@ -2566,16 +2572,12 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
 	OscPlotPrivate *priv = plot->priv;
 
 	priv->saveas_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
-	if (priv->saveas_filename == NULL)
-		goto hide_dialog;
 
 	if (response_id == GTK_RESPONSE_ACCEPT) {
 		gint type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->cmb_saveas_type));
-
 		save_as(plot, priv->saveas_filename, type);
 	}
 
-hide_dialog:
 	gtk_widget_hide(priv->saveas_dialog);
 }
 
