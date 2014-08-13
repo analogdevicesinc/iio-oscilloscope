@@ -250,6 +250,23 @@ static void update_widget(GtkBuilder *builder, struct w_info *item)
 
 }
 
+static void reload_settings(void)
+{
+	struct osc_plugin *plugin;
+	GSList *node;
+
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		plugin = node->data;
+		if (plugin && (!strncmp(plugin->name, "FMComms2/3/4", 12) ||
+			!strncmp(plugin->name, "FMComms5-", 8))) {
+			if (plugin->handle_external_request) {
+				g_usleep(1 * G_USEC_PER_SEC);
+				plugin->handle_external_request("Reload Settings");
+			}
+		}
+	}
+}
+
 void signal_handler_cb (GtkWidget *widget, gpointer data)
 {
 	struct w_info *item = data;
@@ -278,19 +295,7 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 		iio_device_debug_attr_write_longlong(dev_slave, item->name, val);
 
 	if (!strcmp(item->name, "initialize")) {
-		struct osc_plugin *plugin;
-		GSList *node;
-
-		for (node = plugin_list; node; node = g_slist_next(node)) {
-			plugin = node->data;
-			if (plugin && (!strncmp(plugin->name, "FMComms2/3/4", 12) ||
-				!strncmp(plugin->name, "FMComms5-", 8))) {
-				if (plugin->handle_external_request) {
-					g_usleep(1 * G_USEC_PER_SEC);
-					plugin->handle_external_request("Reload Settings");
-				}
-			}
-		}
+		reload_settings();
 	}
 }
 
@@ -342,7 +347,7 @@ static int get_dds_channels(void)
 static void trx_phase_rotation(struct iio_device *dev, gdouble val)
 {
 	struct iio_channel *out0, *out1;
-	gdouble phase, corr, vcos, vsin;
+	gdouble phase, vcos, vsin;
 	unsigned offset;
 
 	bool output = (dev == dev_dds_slave) || (dev == dev_dds_master);
@@ -573,7 +578,7 @@ static void mcs_cb (GtkWidget *widget, gpointer data)
 	long long tx_sample_master_freq, tx_sample_slave_freq;
 	char temp[40], ensm_mode[40];
 	unsigned tmp;
-	static fix_slave_tune = 1;
+	static int fix_slave_tune = 1;
 
 	tx_sample_master = iio_device_find_channel(dev, "voltage0", true);
 	tx_sample_slave = iio_device_find_channel(dev_slave, "voltage0", true);
@@ -849,6 +854,7 @@ static void calibrate (gpointer button)
 calibrate_fail:
 
 	gdk_threads_enter();
+	reload_settings();
 
 	create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
 			"FMCOMMS5", "Calibration finished %s",
