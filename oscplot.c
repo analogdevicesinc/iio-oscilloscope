@@ -768,7 +768,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, struct iio_device *de
 
 	/* Check if devices that need a trigger have one and it's configured */
 	const struct iio_device *trigger;
-	if (iio_device_get_trigger(dev, &trigger) == -EIO) {
+	if (iio_device_get_trigger(dev, &trigger) == -EIO && num_enabled > 0) {
 		snprintf(warning_text, sizeof(warning_text),
 				"Device %s needs a trigger", name);
 		gtk_widget_set_tooltip_text(priv->capture_button, warning_text);
