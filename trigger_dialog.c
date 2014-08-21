@@ -71,7 +71,7 @@ static void trigger_load_settings(GtkBuilder *builder, const char *device)
 	unsigned nb_devices, i;
 	GtkComboBoxText *trigger_combobox;
 	GtkListStore *liststore;
-	int pos, t_cnt;
+	int pos, t_cnt, ret;
 
 	ctx = get_context_from_osc();
 	if (!ctx)
@@ -86,9 +86,12 @@ static void trigger_load_settings(GtkBuilder *builder, const char *device)
 	dev = iio_context_find_device(ctx, device);
 	if (!dev)
 		return;
-	iio_device_get_trigger(dev, &trigger);
-	if (!trigger)
+
+	ret = iio_device_get_trigger(dev, &trigger);
+	if (ret < 0) {
 		pos = 0;
+		trigger = NULL;
+	}
 
 	nb_devices = iio_context_get_devices_count(ctx);
 	for (i = 0, t_cnt = 0; i < nb_devices; i++) {
