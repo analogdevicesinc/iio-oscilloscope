@@ -1174,7 +1174,7 @@ static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 static void save_scale_widget_value(GtkWidget *widget, unsigned int windex)
 {
 	struct iio_widget *scale_w = &tx_widgets[windex];
-	struct iio_widget *scale_pair_w = &tx_widgets[(windex % 2 == 0) ? windex + 1 : windex - 1];
+	struct iio_widget *scale_pair_w = &tx_widgets[((windex - dds_scales) % 2 == 0) ? windex + 1 : windex - 1];
 	double old_val, val1, val2;
 
 	val1 = db_full_scale_convert(gtk_spin_button_get_value(GTK_SPIN_BUTTON(scale_w->widget)), false);
