@@ -1151,7 +1151,7 @@ int channel_combination_check(struct iio_device *dev, const char **ch_names)
 	return 1;
 }
 
-#define NUM_DDS_SCALES 8
+static int num_dds_scales = 8;
 
 static double db_full_scale_convert(double value, bool inverse)
 {
@@ -1677,8 +1677,10 @@ static int fmcomms2_init(GtkWidget *notebook)
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
+	if (!is_2rx_2tx)
+		num_dds_scales /= 2;
 	/* Make DDS scales signal based */
-	for (i = dds_scales; i < dds_scales + NUM_DDS_SCALES; i++)
+	for (i = dds_scales; i < dds_scales + num_dds_scales; i++)
 		g_signal_connect(tx_widgets[i].widget, "value-changed",
 			G_CALLBACK(save_scale_widget_value), (gpointer)i);
 
