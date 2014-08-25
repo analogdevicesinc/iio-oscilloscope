@@ -51,6 +51,7 @@ extern bool dma_valid_selection(const char *device, unsigned mask, unsigned chan
 
 static bool is_2rx_2tx;
 static bool dds_activated, dds_disabled;
+static bool dds_discrete_values;
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble abs_mhz_scale = -1000000.0;
@@ -702,7 +703,6 @@ static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer dat
 		process_dac_buffer_file((const char *)file_name);
 }
 
-static int compare_gain(const char *a, const char *b) __attribute__((unused));
 static int compare_gain(const char *a, const char *b)
 {
 	double val_a, val_b;
@@ -715,6 +715,24 @@ static int compare_gain(const char *a, const char *b)
 		return 1;
 	else
 		return 0;
+}
+
+static void dds_scale_set_value(GtkWidget *scale, gdouble value)
+{
+	if (dds_discrete_values) {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(scale), (gint)value);
+	} else {
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(scale), value);
+	}
+}
+
+static double dds_scale_get_value(GtkWidget *scale)
+{
+	if (dds_discrete_values) {
+		return (gint)gtk_combo_box_get_active(GTK_COMBO_BOX(scale));
+	} else {
+		return gtk_spin_button_get_value(GTK_SPIN_BUTTON(scale));
+	}
 }
 
 #define DDS_DISABLED  0
@@ -795,16 +813,16 @@ static void dds_locked_scale_cb(GtkSpinButton *btn, gpointer channel)
 	gint ch1 = TX1_T1_I + (((long)channel - 1) * 4);
 	gint ch2 = TX1_T2_I + (((long)channel - 1) * 4);
 
-	gdouble scale1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[ch1]));
-	gdouble scale2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[ch2]));
+	gdouble scale1 = dds_scale_get_value(dds_scale[ch1]);
+	gdouble scale2 = dds_scale_get_value(dds_scale[ch2]);
 
 	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel]))) {
 		case DDS_ONE_TONE:
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[ch1 + 2]), scale1);
+			dds_scale_set_value(dds_scale[ch1 + 2], scale1);
 			break;
 		case DDS_TWO_TONE:
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[ch1 + 2]), scale1);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[ch2 + 2]), scale2);
+			dds_scale_set_value(dds_scale[ch1 + 2], scale1);
+			dds_scale_set_value(dds_scale[ch2 + 2], scale2);
 			break;
 		default:
 			break;
@@ -883,15 +901,25 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 
 	if (!mag) {
 		mag = g_renew(gdouble, mag, 9);
-		mag[TX1_T1_I] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX1_T1_I]));
-		mag[TX1_T2_I] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX1_T2_I]));
-		mag[TX1_T1_Q] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX1_T1_Q]));
-		mag[TX1_T2_Q] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX1_T2_Q]));
-		mag[TX2_T1_I] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T1_I]));
-		mag[TX2_T2_I] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_I]));
-		mag[TX2_T1_Q] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T1_Q]));
-		mag[TX2_T2_Q] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_Q]));
-		mag[TX_OFF] = scale_minus_infinite;
+		mag[TX1_T1_I] = dds_scale_get_value(dds_scale[TX1_T1_I]);
+		mag[TX1_T2_I] = dds_scale_get_value(dds_scale[TX1_T2_I]);
+		mag[TX1_T1_Q] = dds_scale_get_value(dds_scale[TX1_T1_Q]);
+		mag[TX1_T2_Q] = dds_scale_get_value(dds_scale[TX1_T2_Q]);
+		mag[TX2_T1_I] = dds_scale_get_value(dds_scale[TX2_T1_I]);
+		mag[TX2_T2_I] = dds_scale_get_value(dds_scale[TX2_T2_I]);
+		mag[TX2_T1_Q] = dds_scale_get_value(dds_scale[TX2_T1_Q]);
+		mag[TX2_T2_Q] = dds_scale_get_value(dds_scale[TX2_T2_Q]);
+		if (dds_discrete_values) {
+			active = mag[1];
+			while (dds_scale_get_value(dds_scale[TX1_T1_I]) >= 0) {
+				active++;
+				dds_scale_set_value(dds_scale[TX1_T1_I], active);
+			}
+			mag[TX_OFF] = active - 1;
+			dds_scale_set_value(dds_scale[TX1_T1_I], mag[TX1_T1_I]);
+		} else {
+			mag[TX_OFF] = scale_minus_infinite;
+		}
 	}
 
 	active = gtk_combo_box_get_active(box);
@@ -917,15 +945,15 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 			end = TX2_T2_Q;
 		}
 		for (i = start; i <= end; i++) {
-			if (gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[i])) != mag[TX_OFF]) {
-				 mag[i] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[i]));
-				 gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[i]), mag[TX_OFF]);
+			if (dds_scale_get_value(dds_scale[i]) != mag[TX_OFF]) {
+				 mag[i] = dds_scale_get_value(dds_scale[i]);
+				 dds_scale_set_value(dds_scale[i], mag[TX_OFF]);
 			}
 
 		}
 		start = 0;
 		for (i = TX1_T1_I; i <= TX2_T2_Q; i++) {
-			if (gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[i])) !=  mag[TX_OFF])
+			if (dds_scale_get_value(dds_scale[i]) != mag[TX_OFF])
 				start++;
 		}
 		if (!dds_activated && dds_buffer) {
@@ -953,31 +981,31 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		gtk_widget_hide(channel_Q_tx[channel]);
 
 		if (channel == 1) {
-			if (gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX1_T1_I])) == mag[TX_OFF]) {
-				gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[TX1_T1_I]), mag[TX1_T1_I]);
-				gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[TX1_T1_Q]), mag[TX1_T1_Q]);
+			if (dds_scale_get_value(dds_scale[TX1_T1_I]) == mag[TX_OFF]) {
+				dds_scale_set_value(dds_scale[TX1_T1_I], mag[TX1_T1_I]);
+				dds_scale_set_value(dds_scale[TX1_T1_Q], mag[TX1_T1_Q]);
 			}
 
-			if (gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX1_T2_I])) != mag[TX_OFF]) {
-				mag[TX1_T2_I] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX1_T2_I]));
-				gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[TX1_T2_I]), mag[TX_OFF]);
-				mag[TX1_T2_Q] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX1_T2_Q]));
-				gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[TX1_T2_Q]), mag[TX_OFF]);
+			if (dds_scale_get_value(dds_scale[TX1_T2_I]) != mag[TX_OFF]) {
+				mag[TX1_T2_I] = dds_scale_get_value(dds_scale[TX1_T2_I]);
+				dds_scale_set_value(dds_scale[TX1_T2_I], mag[TX_OFF]);
+				mag[TX1_T2_Q] = dds_scale_get_value(dds_scale[TX1_T2_Q]);
+				dds_scale_set_value(dds_scale[TX1_T2_Q], mag[TX_OFF]);
 			}
 
 			start = TX1_T1_I;
 			end = TX1_T2_I;
 		} else {
-			if (gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T1_I])) == mag[TX_OFF]) {
-				gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[TX2_T1_I]), mag[TX2_T1_I]);
-				gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[TX2_T1_Q]), mag[TX2_T1_Q]);
+			if (dds_scale_get_value(dds_scale[TX2_T1_I]) == mag[TX_OFF]) {
+				dds_scale_set_value(dds_scale[TX2_T1_I], mag[TX2_T1_I]);
+				dds_scale_set_value(dds_scale[TX2_T1_Q], mag[TX2_T1_Q]);
 			}
 
-			if (gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_I])) != mag[TX_OFF]) {
-				mag[TX2_T2_I] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_I]));
-				gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_I]), mag[TX_OFF]);
-				mag[TX2_T2_Q] = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_Q]));
-				gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[TX2_T2_Q]), mag[TX_OFF]);
+			if (dds_scale_get_value(dds_scale[TX2_T2_I]) != mag[TX_OFF]) {
+				mag[TX2_T2_I] = dds_scale_get_value(dds_scale[TX2_T2_I]);
+				dds_scale_set_value(dds_scale[TX2_T2_I], mag[TX_OFF]);
+				mag[TX2_T2_Q] = dds_scale_get_value(dds_scale[TX2_T2_Q]);
+				dds_scale_set_value(dds_scale[TX2_T2_Q], mag[TX_OFF]);
 			}
 
 			start = TX2_T1_I;
@@ -985,9 +1013,16 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		}
 
 		/* Connect the widgets that are showing */
-		if (!dds_scale_hid[start])
-			dds_scale_hid[start] = g_signal_connect(dds_scale[start], IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
+		if (!dds_scale_hid[start]) {
+			if (dds_discrete_values) {
+				dds_scale_hid[start] = g_signal_connect(dds_scale[start], IIO_COMBO_SIGNAL,
+						G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
+			} else {
+				dds_scale_hid[start] = g_signal_connect(dds_scale[start], IIO_SPIN_SIGNAL,
+						G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
+			}
+		}
+
 		if (!dds_freq_hid[start])
 			dds_freq_hid[start] = g_signal_connect(dds_freq[start], IIO_SPIN_SIGNAL,
 					G_CALLBACK(dds_locked_freq_cb), (gpointer *)channel);
@@ -1030,8 +1065,8 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		}
 
 		for (i = start; i <= end; i++) {
-			if (gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[i])) == mag[TX_OFF]) {
-				gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[i]), mag[i]);
+			if (dds_scale_get_value(dds_scale[i]) == mag[TX_OFF]) {
+				dds_scale_set_value(dds_scale[i], mag[i]);
 			}
 		}
 
@@ -1041,9 +1076,15 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 			end = TX2_T2_I;
 
 		for (i = start; i <= end; i++) {
-			if (!dds_scale_hid[i])
-				dds_scale_hid[i] = g_signal_connect(dds_scale[i], IIO_SPIN_SIGNAL,
-						G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
+			if (!dds_scale_hid[i]) {
+				if (dds_discrete_values) {
+					dds_scale_hid[i] = g_signal_connect(dds_scale[i], IIO_COMBO_SIGNAL,
+							G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
+				} else {
+					dds_scale_hid[i] = g_signal_connect(dds_scale[i], IIO_SPIN_SIGNAL,
+							G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
+				}
+			}
 			if (!dds_freq_hid[i])
 				dds_freq_hid[i] = g_signal_connect(dds_freq[i] , IIO_SPIN_SIGNAL,
 						G_CALLBACK(dds_locked_freq_cb), (gpointer *)channel);
@@ -1075,8 +1116,8 @@ static void manage_dds_mode(GtkComboBox *box, glong channel)
 		}
 
 		for (i = start; i <= end; i++) {
-			if (gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_scale[i])) == mag[TX_OFF])
-				 gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_scale[i]), mag[i]);
+			if (dds_scale_get_value(dds_scale[i]) == mag[TX_OFF])
+				 dds_scale_set_value(dds_scale[i], mag[i]);
 
 			if (dds_scale_hid[i]) {
 				g_signal_handler_disconnect(dds_scale[i], dds_scale_hid[i]);
@@ -1205,9 +1246,11 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 		else
 			printf("unhandled widget type, attribute: %s\n", widgets[i].attr_name);
 
-		/* Skip DDS Scale Widgets for now */
-		if (!strcmp("scale", widgets[i].attr_name) && !strcmp(DDS_DEVICE, iio_device_get_name(widgets[i].dev)))
-			continue;
+		if (dds_discrete_values == false) {
+			/* Skip DDS Scale Widgets for now */
+			if (!strcmp("scale", widgets[i].attr_name) && !strcmp(DDS_DEVICE, iio_device_get_name(widgets[i].dev)))
+				continue;
+		}
 
 		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
 			widgets[i].priv_progress != NULL) {
@@ -1261,6 +1304,12 @@ static int fmcomms2_init(GtkWidget *notebook)
 		dds_scale_hid[i] = 0;
 		dds_phase_hid[i] = 0;
 	}
+
+	struct iio_channel *test_ch = iio_device_find_channel(dds, "TX1_I_F1", true);
+	if (iio_channel_find_attr(test_ch, "scale_available"))
+			dds_discrete_values = true;
+	else
+		dds_discrete_values = false;
 
 	is_local = getenv("OSC_REMOTE") ? false : true;
 	builder = gtk_builder_new();
@@ -1381,6 +1430,24 @@ static int fmcomms2_init(GtkWidget *notebook)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(tx_fastlock_profile), 0);
 
 	scale_minus_infinite = gtk_adjustment_get_lower(gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(dds_scale[TX1_T1_I])));
+
+	if (dds_discrete_values)
+		for (i = TX1_T1_I; i <= TX2_T2_Q; i++) {
+				GtkWidget *dds_parent;
+				guint left, right, top, bottom;
+
+				dds_parent = gtk_widget_get_parent(dds_scale[i]);
+				gtk_container_child_get(GTK_CONTAINER(dds_parent), dds_scale[i],
+						"left-attach", &left,
+						"right-attach", &right,
+						"top-attach", &top,
+						"bottom-attach", &bottom, NULL);
+				gtk_widget_destroy(dds_scale[i]);
+				dds_scale[i] = gtk_combo_box_text_new();
+				gtk_table_attach(GTK_TABLE(dds_parent), dds_scale[i],
+						left, right, top, bottom,
+						GTK_FILL, GTK_FILL, 0, 0);
+		}
 
 	/* Bind the IIO device files to the GUI widgets */
 
@@ -1541,30 +1608,49 @@ static int fmcomms2_init(GtkWidget *notebook)
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	dds_scales = num_tx;
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch0, "scale",
-			dds_scale[TX1_T1_I], NULL);
-	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch1, "scale",
-			dds_scale[TX1_T2_I], NULL);
-	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch2, "scale",
-			dds_scale[TX1_T1_Q], NULL);
-	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch3, "scale",
-			dds_scale[TX1_T2_Q], NULL);
-	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch4, "scale",
-			dds_scale[TX2_T1_I], NULL);
-	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch5, "scale",
-			dds_scale[TX2_T2_I], NULL);
-	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch6, "scale",
-			dds_scale[TX2_T1_Q], NULL);
-	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch7, "scale",
-			dds_scale[TX2_T2_Q], NULL);
-	iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
+	if (dds_discrete_values) {
+		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch0, "scale",
+				"scale_available", dds_scale[TX1_T1_I], compare_gain);
+		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch1, "scale",
+				"scale_available", dds_scale[TX1_T2_I], compare_gain);
+		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch2, "scale",
+				"scale_available", dds_scale[TX1_T1_Q], compare_gain);
+		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch3, "scale",
+			"scale_available", dds_scale[TX1_T2_Q], compare_gain);
+		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch4, "scale",
+				"scale_available", dds_scale[TX2_T1_I], compare_gain);
+		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch5, "scale",
+				"scale_available", dds_scale[TX2_T2_I], compare_gain);
+		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch6, "scale",
+				"scale_available", dds_scale[TX2_T1_Q], compare_gain);
+		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch7, "scale",
+				"scale_available", dds_scale[TX2_T2_Q], compare_gain);
+	} else {
+		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch0, "scale",
+				dds_scale[TX1_T1_I], NULL);
+		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
+		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch1, "scale",
+				dds_scale[TX1_T2_I], NULL);
+		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
+		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch2, "scale",
+				dds_scale[TX1_T1_Q], NULL);
+		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
+		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch3, "scale",
+				dds_scale[TX1_T2_Q], NULL);
+		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
+		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch4, "scale",
+				dds_scale[TX2_T1_I], NULL);
+		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
+		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch5, "scale",
+				dds_scale[TX2_T2_I], NULL);
+		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
+		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch6, "scale",
+				dds_scale[TX2_T1_Q], NULL);
+		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
+		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch7, "scale",
+				dds_scale[TX2_T2_Q], NULL);
+		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
+	}
 
 	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch0, "phase",
 			dds_phase[TX1_T1_I], &khz_scale);
@@ -1599,9 +1685,11 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	/* Signals connect */
 
-	for (i = TX1_T1_I; i <= TX2_T2_Q; i++)
-		g_signal_connect(dds_scale[i], "output",
-			G_CALLBACK(scale_spin_button_output_cb), NULL);
+	if (!dds_discrete_values) {
+		for (i = TX1_T1_I; i <= TX2_T2_Q; i++)
+			g_signal_connect(dds_scale[i], "output",
+				G_CALLBACK(scale_spin_button_output_cb), NULL);
+	}
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
 			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
@@ -1679,10 +1767,13 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	if (!is_2rx_2tx)
 		num_dds_scales /= 2;
-	/* Make DDS scales signal based */
-	for (i = dds_scales; i < dds_scales + num_dds_scales; i++)
-		g_signal_connect(tx_widgets[i].widget, "value-changed",
-			G_CALLBACK(save_scale_widget_value), (gpointer)i);
+
+	if (dds_discrete_values == false) {
+		/* Make DDS scales signal based */
+		for (i = dds_scales; i < dds_scales + num_dds_scales; i++)
+			g_signal_connect(tx_widgets[i].widget, "value-changed",
+				G_CALLBACK(save_scale_widget_value), (gpointer)i);
+	}
 
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
 		sample_frequency_changed_cb);
