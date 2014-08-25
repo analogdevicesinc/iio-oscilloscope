@@ -88,30 +88,30 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 							if (ret == 4 && tx_channels >= 4) {
 								sample[i++] = ((unsigned long long) convert(scale, q2) << 48) |
 								    ((unsigned long long) convert(scale, i2) << 32) |
-								    (convert(scale, q1) << 16) |
-								    (convert(scale, i1) << 0);
+								    ((unsigned long long) convert(scale, q1) << 16) |
+								    ((unsigned long long) convert(scale, i1) << 0);
 
 								if (tx_channels == 8)
 									sample[i++] = ((unsigned long long) convert(scale, q2) << 48) |
 									((unsigned long long) convert(scale, i2) << 32) |
-									(convert(scale, q1) << 16) |
-									(convert(scale, i1) << 0);
+									((unsigned long long) convert(scale, q1) << 16) |
+									((unsigned long long) convert(scale, i1) << 0);
 
 							} else if (ret == 2 && tx_channels >= 4) {
 								sample[i++] = ((unsigned long long) convert(scale, q1) << 48) |
 								    ((unsigned long long) convert(scale, i1) << 32) |
-								    (convert(scale, q1) << 16) |
-								    (convert(scale, i1) << 0);
+								    ((unsigned long long) convert(scale, q1) << 16) |
+								    ((unsigned long long) convert(scale, i1) << 0);
 
 								if (tx_channels == 8)
 									sample[i++] = ((unsigned long long) convert(scale, q1) << 48) |
 									((unsigned long long) convert(scale, i1) << 32) |
-									(convert(scale, q1) << 16) |
-									(convert(scale, i1) << 0);
+									((unsigned long long) convert(scale, q1) << 16) |
+									((unsigned long long) convert(scale, i1) << 0);
 
 							} else if (ret > 1 && tx_channels == 2) {
-								sample_32[i++] = (convert(scale, q1) << 16) |
-									(convert(scale, i1) << 0);
+								sample_32[i++] = ((unsigned int) convert(scale, q1) << 16) |
+										((unsigned int) convert(scale, i1) << 0);
 							} else if (ret > 1 && tx_channels == 1) {
 								sample_16[i++] = convert(scale, i1);
 							}
@@ -274,24 +274,24 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 				 for (i = 0 ; i < size; i++) {
 					sample[i] = ((unsigned long long) convert(scale, im2[i]) << 48) |
 						    ((unsigned long long) convert(scale, re2[i]) << 32) |
-									 (convert(scale, im1[i]) << 16) |
-									 (convert(scale, re1[i]) << 0);
+							((unsigned long long) convert(scale, im1[i]) << 16) |
+							((unsigned long long) convert(scale, re1[i]) << 0);
 				 }
 			} else if (tx_channels == 2) {
 				for (i = 0 ; i < size; i++) {
-					sample_32[i] = (convert(scale, im1[i]) << 16) |
-						       (convert(scale, re1[i]) << 0);
+					sample_32[i] = ((unsigned int) convert(scale, im1[i]) << 16) |
+						       ((unsigned int) convert(scale, re1[i]) << 0);
 				}
 			} else if (tx_channels == 8) {
 				for (i = 0, j = 0; i < size; i++) {
 					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) |
 						    ((unsigned long long) convert(scale, re2[i]) << 32) |
-									 (convert(scale, im1[i]) << 16) |
-									 (convert(scale, re1[i]) << 0);
+							((unsigned long long) convert(scale, im1[i]) << 16) |
+							((unsigned long long) convert(scale, re1[i]) << 0);
 					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) |
 						    ((unsigned long long) convert(scale, re2[i]) << 32) |
-									 (convert(scale, im1[i]) << 16) |
-									 (convert(scale, re1[i]) << 0);
+							((unsigned long long) convert(scale, im1[i]) << 16) |
+							((unsigned long long) convert(scale, re1[i]) << 0);
 				}
 			} else if (tx_channels == 1) {
 				for (i = 0 ; i < size; i++) {
