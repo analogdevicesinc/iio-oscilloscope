@@ -1297,6 +1297,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", false),
 			   *ch1 = iio_device_find_channel(dev, "voltage1", false),
 			   *ch2, *ch3, *ch4, *ch5, *ch6, *ch7;
+	const char *freq_name;
 	int i;
 
 	for (i = 0; i <= TX2_T2_Q; i++) {
@@ -1520,8 +1521,12 @@ static int fmcomms2_init(GtkWidget *notebook)
 	rx_lo = num_rx;
 
 	ch1 = iio_device_find_channel(dev, "altvoltage0", true);
+	if (iio_channel_find_attr(ch1, "frequency"))
+		freq_name = "frequency";
+	else
+		freq_name = "RX_LO_frequency";
 	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
-		dev, ch1, "frequency", builder,
+		dev, ch1, freq_name, builder,
 		"rx_lo_freq", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
@@ -1572,8 +1577,12 @@ static int fmcomms2_init(GtkWidget *notebook)
 	tx_lo = num_tx;
 	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
 
+	if (iio_channel_find_attr(ch1, "frequency"))
+		freq_name = "frequency";
+	else
+		freq_name = "TX_LO_frequency";
 	iio_spin_button_s64_init_from_builder(&tx_widgets[num_tx++],
-		dev, ch1, "frequency", builder, "tx_lo_freq", &mhz_scale);
+		dev, ch1, freq_name, builder, "tx_lo_freq", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
 	ch0 = iio_device_find_channel(dds, "TX1_I_F1", true);
