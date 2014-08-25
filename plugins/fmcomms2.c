@@ -1431,7 +1431,7 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	scale_minus_infinite = gtk_adjustment_get_lower(gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(dds_scale[TX1_T1_I])));
 
-	if (dds_discrete_values)
+	if (dds_discrete_values) {
 		for (i = TX1_T1_I; i <= TX2_T2_Q; i++) {
 				GtkWidget *dds_parent;
 				guint left, right, top, bottom;
@@ -1448,6 +1448,16 @@ static int fmcomms2_init(GtkWidget *notebook)
 						left, right, top, bottom,
 						GTK_FILL, GTK_FILL, 0, 0);
 		}
+
+		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_I1_tx1_scale_txt")), "Scale:");
+		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_I2_tx1_scale_txt")), "Scale:");
+		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_scale_txt")), "Scale:");
+		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_scale_txt")), "Scale:");
+		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_I1_tx2_scale_txt")), "Scale:");
+		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_I2_tx2_scale_txt")), "Scale:");
+		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_scale_txt")), "Scale:");
+		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_scale_txt")), "Scale:");
+	}
 
 	/* Bind the IIO device files to the GUI widgets */
 
