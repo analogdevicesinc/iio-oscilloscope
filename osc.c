@@ -1607,7 +1607,8 @@ static int capture_setup(void)
 		}
 	}
 
-	iio_context_set_timeout(ctx, min_timeout);
+	if (ctx)
+		iio_context_set_timeout(ctx, min_timeout);
 
 	return 0;
 }
