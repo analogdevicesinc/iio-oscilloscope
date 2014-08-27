@@ -16,31 +16,6 @@
     <property name="step_increment">1</property>
     <property name="page_increment">100</property>
   </object>
-  <object class="GtkAdjustment" id="adjustment_kd">
-    <property name="upper">4294967296</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">100</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_kd1">
-    <property name="upper">4294967296</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">100</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_ki">
-    <property name="upper">4294967296</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">100</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_ki1">
-    <property name="upper">4294967296</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">100</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_kp">
-    <property name="upper">4294967296</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">100</property>
-  </object>
   <object class="GtkAdjustment" id="adjustment_open_loop_bias">
     <property name="upper">262143</property>
     <property name="step_increment">1</property>
@@ -58,11 +33,6 @@
   </object>
   <object class="GtkAdjustment" id="adjustment_pwm_adv">
     <property name="upper">2047</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_ref_speed">
-    <property name="upper">10000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -238,60 +208,16 @@
                       <object class="GtkVBox" id="vbox_torque_ctrl_lbls">
                         <property name="can_focus">False</property>
                         <child>
-                          <object class="GtkLabel" id="label_ref_speed">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
-                            <property name="ypad">4</property>
-                            <property name="label" translatable="yes">Ref Speed:</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
-                          <object class="GtkLabel" id="label_kp">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
-                            <property name="ypad">4</property>
-                            <property name="label" translatable="yes">Kp:</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
-                          <object class="GtkLabel" id="label_ki">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
-                            <property name="ypad">4</property>
-                            <property name="label" translatable="yes">Ki:</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">3</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
-                          <object class="GtkLabel" id="label_kd">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
-                            <property name="ypad">4</property>
-                            <property name="label" translatable="yes">Kd:</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">4</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
                           <placeholder/>
@@ -341,72 +267,16 @@
                       <object class="GtkVBox" id="vbox_torque_ctrl_widgets">
                         <property name="can_focus">False</property>
                         <child>
-                          <object class="GtkSpinButton" id="spinbutton_ref_speed">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="invisible_char">•</property>
-                            <property name="invisible_char_set">True</property>
-                            <property name="primary_icon_activatable">False</property>
-                            <property name="secondary_icon_activatable">False</property>
-                            <property name="adjustment">adjustment_ref_speed</property>
-                            <property name="climb_rate">1</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
-                          <object class="GtkSpinButton" id="spinbutton_kp">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="invisible_char">•</property>
-                            <property name="invisible_char_set">True</property>
-                            <property name="primary_icon_activatable">False</property>
-                            <property name="secondary_icon_activatable">False</property>
-                            <property name="adjustment">adjustment_kp</property>
-                            <property name="climb_rate">100</property>
-                            <property name="digits">6</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
-                          <object class="GtkSpinButton" id="spinbutton_ki">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="invisible_char">•</property>
-                            <property name="invisible_char_set">True</property>
-                            <property name="primary_icon_activatable">False</property>
-                            <property name="secondary_icon_activatable">False</property>
-                            <property name="adjustment">adjustment_ki</property>
-                            <property name="climb_rate">100</property>
-                            <property name="digits">5</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">3</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
-                          <object class="GtkSpinButton" id="spinbutton_kd">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="invisible_char">•</property>
-                            <property name="invisible_char_set">True</property>
-                            <property name="adjustment">adjustment_kd</property>
-                            <property name="digits">5</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">4</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
                           <placeholder/>
@@ -611,7 +481,7 @@
               <object class="GtkLabel" id="label1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">PID</property>
+                <property name="label" translatable="yes">Controller</property>
               </object>
               <packing>
                 <property name="tab_fill">False</property>

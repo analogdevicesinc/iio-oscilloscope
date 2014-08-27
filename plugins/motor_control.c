@@ -39,10 +39,6 @@ static GtkWidget *controller_type_pid;
 static GtkWidget *delta;
 static GtkWidget *pwm_pid;
 static GtkWidget *direction_pid;
-static GtkWidget *ref_speed;
-static GtkWidget *kp;
-static GtkWidget *ki;
-static GtkWidget *kd;
 
 /* Advanced Controller Widgets */
 static GtkWidget *command;
@@ -57,7 +53,6 @@ static GtkWidget *zero_offset;
 
 #define USE_PWM_PERCENT_MODE -1
 #define PWM_FULL_SCALE	2047
-static int Kxy_NUM_FRAC_BITS = 14;
 static int PWM_PERCENT_FLAG = -1;
 
 static int COMMAND_NUM_FRAC_BITS = 8;
@@ -83,7 +78,7 @@ static gboolean change_controller_type_label(GBinding *binding,
 	const GValue *source_value, GValue *target_value, gpointer data)
 {
 	if (g_value_get_boolean(source_value))
-		g_value_set_static_string(target_value, "PID Controller");
+		g_value_set_static_string(target_value, "Matlab Controller");
 	else
 		g_value_set_static_string(target_value, "Manual PWM");
 
@@ -197,26 +192,6 @@ void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder)
 	controller_type_pid = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_pid_ctrl_ref_speed",
-		builder, "spinbutton_ref_speed", NULL);
-	ref_speed = tx_widgets[num_tx - 1].widget;
-
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_pid_ctrl_kp",
-		builder, "spinbutton_kp", NULL);
-	kp = tx_widgets[num_tx - 1].widget;
-
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_pid_ctrl_ki",
-		builder, "spinbutton_ki", NULL);
-	ki = tx_widgets[num_tx - 1].widget;
-
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_pid_ctrl_kd",
-		builder, "spinbutton_kd", NULL);
-	kd = tx_widgets[num_tx - 1].widget;
-
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		pid_dev, NULL, "mc_pid_ctrl_pwm",
 		builder, "spinbutton_pwm", NULL);
 	pwm_pid = tx_widgets[num_tx - 1].widget;
@@ -286,7 +261,7 @@ static void controllers_notebook_page_switched_cb (GtkNotebook *notebook,
 	const gchar *page_name;
 
 	page_name = gtk_notebook_get_tab_label_text(notebook, page);
-	if (!strcmp(page_name, "PID"))
+	if (!strcmp(page_name, "Controller"))
 		crt_device = pid_dev;
 	else if (!strcmp(page_name, "Advanced"))
 		crt_device = adv_dev;
@@ -312,12 +287,6 @@ static void pid_controller_init(GtkBuilder *builder)
 	/* Connect signals. */
 	g_signal_connect(G_OBJECT(pwm_pid), "input", G_CALLBACK(spin_input_cb), &PWM_PERCENT_FLAG);
 	g_signal_connect(G_OBJECT(pwm_pid), "output", G_CALLBACK(spin_output_cb), &PWM_PERCENT_FLAG);
-	g_signal_connect(G_OBJECT(kp), "input", G_CALLBACK(spin_input_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(kp), "output", G_CALLBACK(spin_output_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(ki), "input", G_CALLBACK(spin_input_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(ki), "output", G_CALLBACK(spin_output_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(kd), "input", G_CALLBACK(spin_input_cb), &Kxy_NUM_FRAC_BITS);
-	g_signal_connect(G_OBJECT(kd), "output", G_CALLBACK(spin_output_cb), &Kxy_NUM_FRAC_BITS);
 
 	/* Bind properties. */
 
