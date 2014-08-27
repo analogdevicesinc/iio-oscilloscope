@@ -150,13 +150,13 @@ static void gpo_toggled_cb(GtkToggleButton *btn, gpointer data)
 
 	if (pid_dev) {
 		iio_device_attr_read_longlong(pid_dev,
-				"mc_pid_ctrl_gpo", &value);
+				"mc_ctrl_gpo", &value);
 		if (gtk_toggle_button_get_active(btn))
 			value |= (1ul << id);
 		else
 			value &= ~(1ul << id);
 		iio_device_attr_write_longlong(pid_dev,
-				"mc_pid_ctrl_gpo", value);
+				"mc_ctrl_gpo", value);
 	}
 	if (adv_dev) {
 		iio_device_attr_read_longlong(adv_dev,
@@ -173,32 +173,32 @@ static void gpo_toggled_cb(GtkToggleButton *btn, gpointer data)
 void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder)
 {
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_pid_ctrl_run",
+		pid_dev, NULL, "mc_ctrl_run",
 		builder, "checkbutton_run", 0);
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_pid_ctrl_delta",
+		pid_dev, NULL, "mc_ctrl_delta",
 		builder, "checkbutton_delta", 0);
 	delta = tx_widgets[num_tx - 1].widget;
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_pid_ctrl_direction",
+		pid_dev, NULL, "mc_ctrl_direction",
 		builder, "togglebtn_direction", 0);
 	direction_pid = tx_widgets[num_tx - 1].widget;
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_pid_ctrl_matlab",
+		pid_dev, NULL, "mc_ctrl_matlab",
 		builder, "togglebtn_controller_type", 0);
 	controller_type_pid = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_pid_ctrl_pwm",
+		pid_dev, NULL, "mc_ctrl_pwm",
 		builder, "spinbutton_pwm", NULL);
 	pwm_pid = tx_widgets[num_tx - 1].widget;
 
 	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_pid_ctrl_sensors",
-		"mc_pid_ctrl_sensors_available", builder,
+		pid_dev, NULL, "mc_ctrl_sensors",
+		"mc_ctrl_sensors_available", builder,
 		"comboboxtext_sensors", NULL);
 }
 
