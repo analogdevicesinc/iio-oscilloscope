@@ -416,12 +416,12 @@ static bool motor_control_identify(void)
 
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	if (!iio_context_find_device(osc_ctx, "ad-mc-pid-ctrl")
+	if (!iio_context_find_device(osc_ctx, "ad-mc-ctrl")
 		&& !iio_context_find_device(osc_ctx, "ad-mc-adv-ctrl"))
 		return false;
 
 	ctx = osc_create_context();
-	pid_dev = iio_context_find_device(ctx, "ad-mc-pid-ctrl");
+	pid_dev = iio_context_find_device(ctx, "ad-mc-ctrl");
 	adv_dev = iio_context_find_device(ctx, "ad-mc-adv-ctrl");
 	found = !!pid_dev || !!adv_dev;
 	if (!found)
