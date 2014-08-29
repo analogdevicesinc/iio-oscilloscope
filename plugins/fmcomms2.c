@@ -339,7 +339,7 @@ static void glb_settings_update_labels(void)
 		iio_widget_update(&rx_widgets[rx2_gain]);
 }
 
-static void sample_frequency_changed_cb(void)
+static void sample_frequency_changed_cb(void *data)
 {
 	glb_settings_update_labels();
 	rx_update_labels();
@@ -1795,13 +1795,13 @@ static int fmcomms2_init(GtkWidget *notebook)
 	}
 
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
-		sample_frequency_changed_cb);
+		sample_frequency_changed_cb, NULL);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
-		sample_frequency_changed_cb);
+		sample_frequency_changed_cb, NULL);
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo],
-		sample_frequency_changed_cb);
+		sample_frequency_changed_cb, NULL);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
-		sample_frequency_changed_cb);
+		sample_frequency_changed_cb, NULL);
 
 	iio_update_widgets(glb_widgets, num_glb);
 	tx_update_values();
