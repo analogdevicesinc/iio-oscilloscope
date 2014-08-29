@@ -170,7 +170,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 				Mat_VarReadDataAll(matfp, matvars[rep]);
 
 				if (matvars[rep]->isComplex) {
-					struct ComplexSplit *complex_data = matvars[rep]->data;
+					mat_complex_split_t *complex_data = matvars[rep]->data;
 					double *re, *im;
 					re = complex_data->Re;
 					im = complex_data->Im;
@@ -227,7 +227,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 			unsigned int *sample_32 = *((unsigned int **) buf);
 			unsigned short *sample_16 = *((unsigned short **) buf);
 			double *re1, *im1, *re2, *im2;
-			struct ComplexSplit *complex_data1, *complex_data2;
+			mat_complex_split_t *complex_data1, *complex_data2;
 
 			complex_data1 = matvars[0]->data;
 
