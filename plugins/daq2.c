@@ -126,6 +126,16 @@ static void rf_out_update(void)
 	sprintf(dds2_m, "1/%i", oneover(gtk_entry_get_text(GTK_ENTRY(dds2_scale))));
 }
 
+static void rf_out_update_on_complete(void *data)
+{
+	rf_out_update();
+}
+
+static void rx_update_labels_on_complete(void *data)
+{
+	rx_update_labels();
+}
+
 short convert(double scale, float val)
 {
 	return (unsigned short) (val * scale + 32767.0);
@@ -1091,9 +1101,9 @@ static int daq2_init(GtkWidget *notebook)
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
-	iio_spin_button_set_on_complete_function(&rx_widgets[num_adc_freq], rx_update_labels);
-	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds2_freq], rf_out_update);
-	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds4_freq], rf_out_update);
+	iio_spin_button_set_on_complete_function(&rx_widgets[num_adc_freq], rx_update_labels_on_complete, NULL);
+	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds2_freq], rf_out_update_on_complete, NULL);
+	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds4_freq], rf_out_update_on_complete, NULL);
 
 	tx_update_values();
 	rx_update_values();
