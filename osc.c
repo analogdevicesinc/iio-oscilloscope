@@ -2296,8 +2296,8 @@ gint main (int argc, char **argv)
 				break;
 		}
 
-	gdk_threads_init ();
-	gtk_init (&argc, &argv);
+	gdk_threads_init();
+	gtk_init(&argc, &argv);
 
 	signal(SIGTERM, sigterm);
 	signal(SIGINT, sigterm);
