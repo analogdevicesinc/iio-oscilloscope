@@ -208,6 +208,16 @@ static void rf_out_update(void)
 
 }
 
+static void rf_out_update_on_complete(void *data)
+{
+	rf_out_update();
+}
+
+static void rx_update_labels_on_complete(void *data)
+{
+	rx_update_labels();
+}
+
 short convert(double scale, float val)
 {
 	return (unsigned short) (val * scale + 32767.0);
@@ -2308,11 +2318,11 @@ static int fmcomms1_init(GtkWidget *notebook)
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
-	iio_spin_button_set_on_complete_function(&tx_widgets[num_tx_pll], rf_out_update);
-	iio_spin_button_set_on_complete_function(&rx_widgets[num_rx_pll], rx_update_labels);
-	iio_spin_button_set_on_complete_function(&rx_widgets[num_adc_freq], rx_update_labels);
-	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds2_freq], rf_out_update);
-	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds4_freq], rf_out_update);
+	iio_spin_button_set_on_complete_function(&tx_widgets[num_tx_pll], rf_out_update_on_complete, NULL);
+	iio_spin_button_set_on_complete_function(&rx_widgets[num_rx_pll], rx_update_labels_on_complete, NULL);
+	iio_spin_button_set_on_complete_function(&rx_widgets[num_adc_freq], rx_update_labels_on_complete, NULL);
+	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds2_freq], rf_out_update_on_complete, NULL);
+	iio_spin_button_set_on_complete_function(&tx_widgets[num_dds4_freq], rf_out_update_on_complete, NULL);
 
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_I, "visible", 0);
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_Q, "visible", 0);
