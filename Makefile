@@ -44,7 +44,7 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o
+osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o ini.o libini.o dac_data_manager.o
 	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
 
 osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h ./ini/ini.h
@@ -76,6 +76,9 @@ xml_utils.o: xml_utils.c xml_utils.h
 
 ini.o: ./ini/ini.c ./ini/ini.h
 	$(CC) ./ini/ini.c -c $(CFLAGS)
+
+dac_data_manager.o: plugins/dac_data_manager.c plugins/dac_data_manager.h
+	$(CC) plugins/dac_data_manager.c -c $(CFLAGS)
 
 plugins/fmcomms2_hpc.so: plugins/fmcomms2.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -DSLAVE -shared -fPIC -o $@
