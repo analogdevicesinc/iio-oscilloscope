@@ -30,7 +30,7 @@
 #include "../config.h"
 #include "../eeprom.h"
 #include "./block_diagram.h"
-#include "./datafile_in.h"
+#include "dac_data_manager.h"
 
 #define HANNING_ENBW 1.50
 
@@ -49,18 +49,14 @@
 extern gfloat plugin_fft_corr;
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
+static struct dac_data_manager *dac_tx_manager;
+
 static bool is_2rx_2tx;
-static bool dds_activated, dds_disabled;
-static bool dds_discrete_values;
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
-static char *dac_buf_filename = NULL;
-static gdouble scale_minus_infinite;
-
-static struct iio_buffer *dds_buffer;
 
 static struct iio_widget glb_widgets[50];
 static struct iio_widget tx_widgets[50];
@@ -69,11 +65,17 @@ static unsigned int rx1_gain, rx2_gain;
 static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_lo, tx_lo;
 static unsigned int rx_sample_freq, tx_sample_freq;
-static unsigned int dds_scales;
+static char last_fir_filter[PATH_MAX];
 
 static struct iio_context *ctx;
 static struct iio_device *dev, *dds, *cap;
-static int dds_num_channels;
+
+#define SECTION_GLOBAL 0
+#define SECTION_TX 1
+#define SECTION_RX 2
+#define SECTION_FPGA 3
+static GtkToggleToolButton *section_toggle[4];
+static GtkWidget *section_setting[4];
 
 /* Widgets for Global Settings */
 static GtkWidget *ensm_mode;
@@ -83,13 +85,6 @@ static GtkWidget *calib_mode_available;
 static GtkWidget *trx_rate_governor;
 static GtkWidget *trx_rate_governor_available;
 static GtkWidget *filter_fir_config;
-static GtkWidget *dac_buffer;
-#define SECTION_GLOBAL 0
-#define SECTION_TX 1
-#define SECTION_RX 2
-#define SECTION_FPGA 3
-static GtkToggleToolButton *section_toggle[4];
-static GtkWidget *section_setting[4];
 
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control_rx1;
@@ -108,150 +103,12 @@ static GtkWidget *disable_all_fir_filters;
 static GtkWidget *rf_port_select_tx;
 static GtkWidget *rx_fastlock_profile;
 static GtkWidget *tx_fastlock_profile;
-
 static GtkWidget *rx_phase_rotation[2];
-
-/* Widgets for Transmitter Settings */
-static GtkWidget *tx_channel_list;
-static GtkWidget *dds_mode_tx[3];
-#define TX_OFF   0
-#define TX1_T1_I 1
-#define TX1_T2_I 2
-#define TX1_T1_Q 3
-#define TX1_T2_Q 4
-#define TX2_T1_I 5
-#define TX2_T2_I 6
-#define TX2_T1_Q 7
-#define TX2_T2_Q 8
-
-static GtkWidget *dds_freq[9], *dds_scale[9], *dds_phase[9], *dds_freq[9];
-static GtkAdjustment *adj_freq[9];
-
-static GtkWidget *channel_I_tx[3], *channel_Q_tx[3];
-static GtkWidget *channel_I_tone2_tx[3];
-static GtkWidget *dds_I_TX_l[3];
-
-static gulong dds_freq_hid[9], dds_scale_hid[9], dds_phase_hid[9];
 
 static gint this_page;
 static GtkNotebook *nbook;
 static GtkWidget *fmcomms2_panel;
 static gboolean plugin_detached;
-
-static char last_fir_filter[PATH_MAX];
-
-static void enable_dds(bool on_off);
-
-static bool is_local;
-
-#define TX_CHANNEL_NAME 0
-#define TX_CHANNEL_ACTIVE 1
-#define TX_CHANNEL_REF_INDEX 2
-
-static int tx_enabled_channels_count(GtkTreeView *treeview, unsigned *enabled_mask)
-{
-	GtkTreeIter iter;
-	gboolean enabled;
-	int num_enabled = 0;
-	int ch_pos = 0;
-
-	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
-	gboolean next_iter = gtk_tree_model_get_iter_first(model, &iter);
-
-
-	if (enabled_mask)
-		*enabled_mask = 0;
-
-	while (next_iter) {
-		gtk_tree_model_get(model, &iter, TX_CHANNEL_ACTIVE, &enabled, -1);
-		if (enabled) {
-			num_enabled++;
-			if (enabled_mask)
-				*enabled_mask |= 1 << ch_pos;
-		}
-		ch_pos++;
-		next_iter = gtk_tree_model_iter_next(model, &iter);
-	}
-
-	return num_enabled;
-}
-
-static void tx_channels_check_valid_setup(void)
-{
-	int enabled_channels;
-	unsigned mask;
-
-	enabled_channels = tx_enabled_channels_count(GTK_TREE_VIEW(tx_channel_list), &mask);
-	if (dma_valid_selection(iio_device_get_name(dds) ?: iio_device_get_id(dds),
-			mask, dds_num_channels) && enabled_channels > 0) {
-		gtk_widget_set_sensitive(dac_buffer, true);
-		if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])) == 4)
-			g_signal_emit_by_name(dac_buffer, "file-set", NULL);
-	} else {
-		gtk_widget_set_sensitive(dac_buffer, false);
-	}
-}
-
-static void tx_channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer plot)
-{
-	GtkTreePath* path = gtk_tree_path_new_from_string(pathStr);
-	GtkTreeModel *model;
-	GtkTreeIter iter;
-	gboolean active;
-	gint ch_index;
-
-	if (!gtk_cell_renderer_get_sensitive(GTK_CELL_RENDERER(renderer)))
-		return;
-
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(tx_channel_list));
-	gtk_tree_model_get_iter(model, &iter, path);
-	gtk_tree_model_get(model, &iter, TX_CHANNEL_ACTIVE, &active, TX_CHANNEL_REF_INDEX, &ch_index, -1);
-	active = !active;
-	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, TX_CHANNEL_ACTIVE, active, -1);
-	gtk_tree_path_free(path);
-
-	struct iio_channel *channel = iio_device_get_channel(dds, ch_index);
-	if (active)
-		iio_channel_enable(channel);
-	else
-		iio_channel_disable(channel);
-
-	tx_channels_check_valid_setup();
-}
-
-static void tx_channel_list_init(GtkBuilder *builder)
-{
-	GtkWidget *tx_ch_frame;
-	GtkTreeView *treeview = GTK_TREE_VIEW(tx_channel_list);
-	GtkTreeStore *treestore;
-	GtkTreeIter iter;
-	int i;
-
-	tx_ch_frame = GTK_WIDGET(gtk_builder_get_object(builder, "frame_tx_channels"));
-	if (strcmp(PHY_DEVICE, "ad9361-phy") != 0) {
-		gtk_widget_hide(tx_ch_frame);
-		return;
-	}
-	gtk_widget_show(tx_ch_frame);
-
-	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
-	for (i = 0; i < iio_device_get_channels_count(dds); i++) {
-		struct iio_channel *ch = iio_device_get_channel(dds, i);
-
-		if (!iio_channel_is_scan_element(ch))
-			continue;
-
-		gtk_tree_store_append(treestore, &iter, NULL);
-		gtk_tree_store_set(treestore, &iter,
-				TX_CHANNEL_NAME, iio_channel_get_id(ch),
-				TX_CHANNEL_ACTIVE, iio_channel_is_enabled(ch),
-				TX_CHANNEL_REF_INDEX, i, -1);
-	}
-
-	g_builder_connect_signal(builder, "cellrenderertogglechannel", "toggled",
-			G_CALLBACK(tx_channel_toggled), NULL);
-	tx_channels_check_valid_setup();
-}
 
 static void tx_update_values(void)
 {
@@ -508,6 +365,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	iio_update_widgets(glb_widgets, num_glb);
 	iio_update_widgets(tx_widgets, num_tx);
 	iio_update_widgets(rx_widgets, num_rx);
+	dac_data_manager_update_iio_widgets(dac_tx_manager);
 	filter_fir_update();
 	rx_update_labels();
 	glb_settings_update_labels();
@@ -622,87 +480,7 @@ void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 	}
 }
 
-static void process_dac_buffer_file (const char *file_name)
-{
-	int ret, size = 0, s_size;
-	struct stat st;
-	char *buf = NULL, *tmp;
-	FILE *infile;
-	unsigned int buffer_channels = 0;
-	unsigned int major, minor;
-	struct utsname uts;
-
-	if (is_local) {
-		uname(&uts);
-		sscanf(uts.release, "%u.%u", &major, &minor);
-		if (major < 2 || (major == 3 && minor < 14)) {
-			if (is_2rx_2tx)
-				buffer_channels = 4;
-			else
-				buffer_channels = 2;
-		} else {
-			buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(tx_channel_list), NULL);
-		}
-	} else {
-		buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(tx_channel_list), NULL);
-	}
-
-	ret = analyse_wavefile(file_name, &buf, &size, buffer_channels);
-	if (ret == -3)
-		return;
-
-	if (ret == -1 || buf == NULL) {
-		stat(file_name, &st);
-		buf = malloc(st.st_size);
-		if (buf == NULL)
-			return;
-		infile = fopen(file_name, "r");
-		size = fread(buf, 1, st.st_size, infile);
-		fclose(infile);
-	}
-
-	if (dds_buffer) {
-		iio_buffer_destroy(dds_buffer);
-		dds_buffer = NULL;
-	}
-
-	enable_dds(false);
-
-	s_size = iio_device_get_sample_size(dds);
-	if (!s_size) {
-		fprintf(stderr, "Unable to create buffer due to sample size: %s\n", strerror(errno));
-		free(buf);
-		return;
-	}
-
-	dds_buffer = iio_device_create_buffer(dds, size / s_size, true);
-	if (!dds_buffer) {
-		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
-		free(buf);
-		return;
-	}
-
-	memcpy(iio_buffer_start(dds_buffer), buf,
-			iio_buffer_end(dds_buffer) - iio_buffer_start(dds_buffer));
-
-	iio_buffer_push(dds_buffer);
-	free(buf);
-
-	tmp = strdup(file_name);
-	if (dac_buf_filename)
-		free(dac_buf_filename);
-	dac_buf_filename = tmp;
-	printf("Waveform loaded: buffer_channels %d size %d sample_size %d \n",
-	       buffer_channels, size, s_size);
-}
-
-static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
-{
-	char *file_name = gtk_file_chooser_get_filename(chooser);
-	if (file_name)
-		process_dac_buffer_file((const char *)file_name);
-}
-
+static int compare_gain(const char *a, const char *b) __attribute__((unused));
 static int compare_gain(const char *a, const char *b)
 {
 	double val_a, val_b;
@@ -717,132 +495,12 @@ static int compare_gain(const char *a, const char *b)
 		return 0;
 }
 
-static void dds_scale_set_value(GtkWidget *scale, gdouble value)
-{
-	if (dds_discrete_values) {
-		gtk_combo_box_set_active(GTK_COMBO_BOX(scale), (gint)value);
-	} else {
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(scale), value);
-	}
-}
-
-static double dds_scale_get_value(GtkWidget *scale)
-{
-	if (dds_discrete_values) {
-		return (gint)gtk_combo_box_get_active(GTK_COMBO_BOX(scale));
-	} else {
-		return gtk_spin_button_get_value(GTK_SPIN_BUTTON(scale));
-	}
-}
-
-#define DDS_DISABLED  0
-#define DDS_ONE_TONE  1
-#define DDS_TWO_TONE  2
-#define DDS_INDEPDENT 3
-#define DDS_BUFFER    4
-
-static void dds_locked_phase_cb(GtkToggleButton *btn, gpointer channel)
-{
-	gint ch1 = TX1_T1_I + (((long) channel - 1) * 4);
-	gint ch2 = TX1_T2_I + (((long) channel - 1) * 4);
-
-	gdouble phase1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_phase[ch1]));
-	gdouble phase2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_phase[ch2]));
-
-	gdouble freq1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch1]));
-	gdouble freq2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch2]));
-
-	gdouble inc1, inc2;
-
-	if (freq1 >= 0)
-		inc1 = 90.0;
-	else
-		inc1 = 270;
-
-	if ((phase1 - inc1) < 0)
-		phase1 += 360;
-
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel]))) {
-		case DDS_ONE_TONE:
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_phase[ch1 + 2]), phase1 - inc1);
-			break;
-		case DDS_TWO_TONE:
-			if (freq2 >= 0)
-				inc2 = 90;
-			else
-				inc2 = 270;
-			if ((phase2 - inc2) < 0)
-				phase2 += 360;
-
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_phase[ch1 + 2]), phase1 - inc1);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_phase[ch2 + 2]), phase2 - inc2);
-			break;
-		default:
-			printf("%s: error\n", __func__);
-			break;
-	}
-}
-
-static void dds_locked_freq_cb(GtkToggleButton *btn, gpointer channel)
-{
-	gint ch1 = TX1_T1_I + (((long)channel - 1) * 4);
-	gint ch2 = TX1_T2_I + (((long)channel - 1) * 4);
-
-	gdouble freq1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch1]));
-	gdouble freq2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds_freq[ch2]));
-
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel]))) {
-		case DDS_ONE_TONE:
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_freq[ch1 + 2]), freq1);
-			break;
-		case DDS_TWO_TONE:
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_freq[ch1 + 2]), freq1);
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dds_freq[ch2 + 2]), freq2);
-			break;
-		default:
-			printf("%s: error : %i\n", __func__,
-					gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel])));
-			break;
-	}
-
-	dds_locked_phase_cb(NULL, channel);
-}
-
-static void dds_locked_scale_cb(GtkSpinButton *btn, gpointer channel)
-{
-	gint ch1 = TX1_T1_I + (((long)channel - 1) * 4);
-	gint ch2 = TX1_T2_I + (((long)channel - 1) * 4);
-
-	gdouble scale1 = dds_scale_get_value(dds_scale[ch1]);
-	gdouble scale2 = dds_scale_get_value(dds_scale[ch2]);
-
-	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[(long)channel]))) {
-		case DDS_ONE_TONE:
-			dds_scale_set_value(dds_scale[ch1 + 2], scale1);
-			break;
-		case DDS_TWO_TONE:
-			dds_scale_set_value(dds_scale[ch1 + 2], scale1);
-			dds_scale_set_value(dds_scale[ch2 + 2], scale2);
-			break;
-		default:
-			break;
-	}
-
-}
-
 static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data)
 {
-	gdouble val, rate;
-	int i;
+	gdouble rate;
 
 	rate = gtk_spin_button_get_value(spinbutton) / 2.0;
-	for (i = TX1_T1_I; i <= TX2_T2_Q ; i++) {
-		val = gtk_adjustment_get_value(adj_freq[i]);
-		if (fabs(val) > rate)
-			gtk_adjustment_set_value(adj_freq[i], rate);
-		gtk_adjustment_set_lower(adj_freq[i], -1 * rate);
-		gtk_adjustment_set_upper(adj_freq[i], rate);
-	}
+	dac_data_manager_freq_widgets_range_update(dac_tx_manager, rate);
 }
 
 static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
@@ -868,287 +526,6 @@ static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
 		iio_channel_attr_write_double(out0, "calibphase", (double) (-1 * sin(phase)));
 		iio_channel_attr_write_double(out1, "calibscale", (double) cos(phase));
 		iio_channel_attr_write_double(out1, "calibphase", (double) sin(phase));
-	}
-}
-
-static void enable_dds(bool on_off)
-{
-	int ret;
-
-	if (on_off == dds_activated && !dds_disabled)
-		return;
-	dds_activated = on_off;
-
-	if (dds_buffer) {
-		iio_buffer_destroy(dds_buffer);
-		dds_buffer = NULL;
-	}
-
-	ret = iio_channel_attr_write_bool(iio_device_find_channel(dds, "altvoltage0", true), "raw", on_off);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to toggle DDS: %d\n", ret);
-		return;
-	}
-}
-
-#define IIO_SPIN_SIGNAL "value-changed"
-#define IIO_COMBO_SIGNAL "changed"
-
-static void manage_dds_mode(GtkComboBox *box, glong channel)
-{
-	gint active, i, start, end;
-	static gdouble *mag = NULL;
-
-	if (!mag) {
-		mag = g_renew(gdouble, mag, 9);
-		mag[TX1_T1_I] = dds_scale_get_value(dds_scale[TX1_T1_I]);
-		mag[TX1_T2_I] = dds_scale_get_value(dds_scale[TX1_T2_I]);
-		mag[TX1_T1_Q] = dds_scale_get_value(dds_scale[TX1_T1_Q]);
-		mag[TX1_T2_Q] = dds_scale_get_value(dds_scale[TX1_T2_Q]);
-		mag[TX2_T1_I] = dds_scale_get_value(dds_scale[TX2_T1_I]);
-		mag[TX2_T2_I] = dds_scale_get_value(dds_scale[TX2_T2_I]);
-		mag[TX2_T1_Q] = dds_scale_get_value(dds_scale[TX2_T1_Q]);
-		mag[TX2_T2_Q] = dds_scale_get_value(dds_scale[TX2_T2_Q]);
-		if (dds_discrete_values) {
-			active = mag[1];
-			while (dds_scale_get_value(dds_scale[TX1_T1_I]) >= 0) {
-				active++;
-				dds_scale_set_value(dds_scale[TX1_T1_I], active);
-			}
-			mag[TX_OFF] = active - 1;
-			dds_scale_set_value(dds_scale[TX1_T1_I], mag[TX1_T1_I]);
-		} else {
-			mag[TX_OFF] = scale_minus_infinite;
-		}
-	}
-
-	active = gtk_combo_box_get_active(box);
-
-	if (active != 4) {
-		if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])) == 4) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[1]), active);
-			manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[1]), 1);
-		}
-		if (gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[2])) == 4) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[2]), active);
-			manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[2]), 2);
-		}
-	}
-
-	switch (active) {
-	case DDS_DISABLED:
-		if (channel == 1) {
-		 	start = TX1_T1_I;
-			end = TX1_T2_Q;
-		} else {
-			start = TX2_T1_I;
-			end = TX2_T2_Q;
-		}
-		for (i = start; i <= end; i++) {
-			if (dds_scale_get_value(dds_scale[i]) != mag[TX_OFF]) {
-				 mag[i] = dds_scale_get_value(dds_scale[i]);
-				 dds_scale_set_value(dds_scale[i], mag[TX_OFF]);
-			}
-
-		}
-		start = 0;
-		for (i = TX1_T1_I; i <= TX2_T2_Q; i++) {
-			if (dds_scale_get_value(dds_scale[i]) != mag[TX_OFF])
-				start++;
-		}
-		if (!dds_activated && dds_buffer) {
-			iio_buffer_destroy(dds_buffer);
-			dds_buffer = NULL;
-		}
-		dds_disabled = true;
-		if (!start)
-			enable_dds(false);
-		else
-			enable_dds(true);
-
-		gtk_widget_hide(channel_I_tx[channel]);
-		gtk_widget_hide(channel_Q_tx[channel]);
-		gtk_widget_hide(dac_buffer);
-
-		break;
-	case DDS_ONE_TONE:
-		enable_dds(true);
-		gtk_widget_hide(dac_buffer);
-		gtk_label_set_markup(GTK_LABEL(dds_I_TX_l[channel]),"<b>Single Tone</b>");
-
-		gtk_widget_show_all(channel_I_tx[channel]);
-		gtk_widget_hide(channel_I_tone2_tx[channel]);
-		gtk_widget_hide(channel_Q_tx[channel]);
-
-		if (channel == 1) {
-			if (dds_scale_get_value(dds_scale[TX1_T1_I]) == mag[TX_OFF]) {
-				dds_scale_set_value(dds_scale[TX1_T1_I], mag[TX1_T1_I]);
-				dds_scale_set_value(dds_scale[TX1_T1_Q], mag[TX1_T1_Q]);
-			}
-
-			if (dds_scale_get_value(dds_scale[TX1_T2_I]) != mag[TX_OFF]) {
-				mag[TX1_T2_I] = dds_scale_get_value(dds_scale[TX1_T2_I]);
-				dds_scale_set_value(dds_scale[TX1_T2_I], mag[TX_OFF]);
-				mag[TX1_T2_Q] = dds_scale_get_value(dds_scale[TX1_T2_Q]);
-				dds_scale_set_value(dds_scale[TX1_T2_Q], mag[TX_OFF]);
-			}
-
-			start = TX1_T1_I;
-			end = TX1_T2_I;
-		} else {
-			if (dds_scale_get_value(dds_scale[TX2_T1_I]) == mag[TX_OFF]) {
-				dds_scale_set_value(dds_scale[TX2_T1_I], mag[TX2_T1_I]);
-				dds_scale_set_value(dds_scale[TX2_T1_Q], mag[TX2_T1_Q]);
-			}
-
-			if (dds_scale_get_value(dds_scale[TX2_T2_I]) != mag[TX_OFF]) {
-				mag[TX2_T2_I] = dds_scale_get_value(dds_scale[TX2_T2_I]);
-				dds_scale_set_value(dds_scale[TX2_T2_I], mag[TX_OFF]);
-				mag[TX2_T2_Q] = dds_scale_get_value(dds_scale[TX2_T2_Q]);
-				dds_scale_set_value(dds_scale[TX2_T2_Q], mag[TX_OFF]);
-			}
-
-			start = TX2_T1_I;
-			end = TX2_T2_I;
-		}
-
-		/* Connect the widgets that are showing */
-		if (!dds_scale_hid[start]) {
-			if (dds_discrete_values) {
-				dds_scale_hid[start] = g_signal_connect(dds_scale[start], IIO_COMBO_SIGNAL,
-						G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
-			} else {
-				dds_scale_hid[start] = g_signal_connect(dds_scale[start], IIO_SPIN_SIGNAL,
-						G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
-			}
-		}
-
-		if (!dds_freq_hid[start])
-			dds_freq_hid[start] = g_signal_connect(dds_freq[start], IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_freq_cb), (gpointer *)channel);
-		if (!dds_phase_hid[start])
-			dds_phase_hid[start] = g_signal_connect(dds_phase[start], IIO_SPIN_SIGNAL,
-					G_CALLBACK(dds_locked_phase_cb), (gpointer *)channel);
-
-		/* Disconnect the rest */
-		if (dds_scale_hid[end]) {
-			g_signal_handler_disconnect(dds_scale[end], dds_scale_hid[end]);
-			dds_scale_hid[end] = 0;
-		}
-		if (dds_freq_hid[end]) {
-			g_signal_handler_disconnect(dds_freq[end], dds_freq_hid[end]);
-			dds_freq_hid[end] = 0;
-		}
-		if (dds_phase_hid[end]) {
-			g_signal_handler_disconnect(dds_phase[end], dds_phase_hid[end]);
-			dds_phase_hid[end] = 0;
-		}
-
-		dds_locked_scale_cb(NULL, (gpointer *)channel);
-		dds_locked_freq_cb(NULL, (gpointer *)channel);
-		dds_locked_phase_cb(NULL, (gpointer *)channel);
-		break;
-	case DDS_TWO_TONE:
-		enable_dds(true);
-		gtk_widget_hide(dac_buffer);
-		gtk_widget_show_all(channel_I_tx[channel]);
-		gtk_widget_hide(channel_Q_tx[channel]);
-
-		gtk_label_set_markup(GTK_LABEL(dds_I_TX_l[channel]),"<b>Two Tones</b>");
-
-		if (channel == 1) {
-			start = TX1_T1_I;
-			end = TX1_T2_Q;
-		} else {
-			start = TX2_T1_I;
-			end = TX2_T2_Q;
-		}
-
-		for (i = start; i <= end; i++) {
-			if (dds_scale_get_value(dds_scale[i]) == mag[TX_OFF]) {
-				dds_scale_set_value(dds_scale[i], mag[i]);
-			}
-		}
-
-		if (channel == 1)
-			end = TX1_T2_I;
-		else
-			end = TX2_T2_I;
-
-		for (i = start; i <= end; i++) {
-			if (!dds_scale_hid[i]) {
-				if (dds_discrete_values) {
-					dds_scale_hid[i] = g_signal_connect(dds_scale[i], IIO_COMBO_SIGNAL,
-							G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
-				} else {
-					dds_scale_hid[i] = g_signal_connect(dds_scale[i], IIO_SPIN_SIGNAL,
-							G_CALLBACK(dds_locked_scale_cb), (gpointer *)channel);
-				}
-			}
-			if (!dds_freq_hid[i])
-				dds_freq_hid[i] = g_signal_connect(dds_freq[i] , IIO_SPIN_SIGNAL,
-						G_CALLBACK(dds_locked_freq_cb), (gpointer *)channel);
-			if (!dds_phase_hid[i])
-				dds_phase_hid[i] = g_signal_connect(dds_phase[i], IIO_SPIN_SIGNAL,
-						G_CALLBACK(dds_locked_phase_cb), (gpointer *)channel);
-		}
-
-		/* Force sync */
-		dds_locked_scale_cb(NULL, (gpointer *)channel);
-		dds_locked_freq_cb(NULL, (gpointer *)channel);
-		dds_locked_phase_cb(NULL, (gpointer *)channel);
-
-		break;
-	case DDS_INDEPDENT:
-		/* Independant/Individual control */
-		enable_dds(true);
-		gtk_widget_show_all(channel_I_tx[channel]);
-		gtk_widget_show_all(channel_Q_tx[channel]);
-		gtk_widget_hide(dac_buffer);
-		gtk_label_set_markup(GTK_LABEL(dds_I_TX_l[channel]),"<b>Channel I</b>");
-
-		if (channel == 1) {
-			start = TX1_T1_I;
-			end = TX1_T2_Q;
-		} else {
-			start = TX2_T1_I;
-			end = TX2_T2_Q;
-		}
-
-		for (i = start; i <= end; i++) {
-			if (dds_scale_get_value(dds_scale[i]) == mag[TX_OFF])
-				 dds_scale_set_value(dds_scale[i], mag[i]);
-
-			if (dds_scale_hid[i]) {
-				g_signal_handler_disconnect(dds_scale[i], dds_scale_hid[i]);
-				dds_scale_hid[i] = 0;
-			}
-			if (dds_freq_hid[i]) {
-				g_signal_handler_disconnect(dds_freq[i], dds_freq_hid[i]);
-				dds_freq_hid[i] = 0;
-			}
-			if (dds_phase_hid[i]) {
-				g_signal_handler_disconnect(dds_phase[i], dds_phase_hid[i]);
-				dds_phase_hid[i] = 0;
-			}
-		}
-		break;
-	case DDS_BUFFER:
-		if ((dds_activated || dds_disabled) && dac_buf_filename) {
-			dds_disabled = false;
-			process_dac_buffer_file(dac_buf_filename);
-		}
-		gtk_widget_show(dac_buffer);
-		gtk_widget_hide(channel_I_tx[1]);
-		gtk_widget_hide(channel_Q_tx[1]);
-		gtk_widget_hide(channel_I_tx[2]);
-		gtk_widget_hide(channel_Q_tx[2]);
-		gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[1]), 4);
-		gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[2]), 4);
-		break;
-	default:
-		printf("glade file out of sync with C file - please contact developers\n");
-		break;
 	}
 }
 
@@ -1192,40 +569,9 @@ int channel_combination_check(struct iio_device *dev, const char **ch_names)
 	return 1;
 }
 
-static int num_dds_scales = 8;
-
-static double db_full_scale_convert(double value, bool inverse)
-{
-	if (inverse) {
-		if (value == 0)
-			return -DBL_MAX;
-		return (20 * log10(value));
-	} else {
-		if (value == scale_minus_infinite)
-			return 0;
-		return pow(10, value / 20.0);
-	}
-}
-
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
 	iio_w->save(iio_w);
-}
-
-static void save_scale_widget_value(GtkWidget *widget, unsigned int windex)
-{
-	struct iio_widget *scale_w = &tx_widgets[windex];
-	struct iio_widget *scale_pair_w = &tx_widgets[((windex - dds_scales) % 2 == 0) ? windex + 1 : windex - 1];
-	double old_val, val1, val2;
-
-	val1 = db_full_scale_convert(gtk_spin_button_get_value(GTK_SPIN_BUTTON(scale_w->widget)), false);
-	iio_channel_attr_read_double(scale_w->chn, scale_w->attr_name, &old_val);
-	iio_channel_attr_read_double(scale_pair_w->chn, scale_pair_w->attr_name, &val2);
-
-	if (val1 + val2 > 1)
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(scale_w->widget), db_full_scale_convert(old_val, true));
-
-	scale_w->save(scale_w);
 }
 
 static void make_widget_update_signal_based(struct iio_widget *widgets,
@@ -1245,12 +591,6 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 			sprintf(signal_name, "%s", "changed");
 		else
 			printf("unhandled widget type, attribute: %s\n", widgets[i].attr_name);
-
-		if (dds_discrete_values == false) {
-			/* Skip DDS Scale Widgets for now */
-			if (!strcmp("scale", widgets[i].attr_name) && !strcmp(DDS_DEVICE, iio_device_get_name(widgets[i].dev)))
-				continue;
-		}
 
 		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
 			widgets[i].priv_progress != NULL) {
@@ -1273,46 +613,18 @@ int handle_external_request (const char *request)
 	return ret;
 }
 
-static gboolean scale_spin_button_output_cb(GtkSpinButton *spin, gpointer data)
-{
-	GtkAdjustment *adj;
-	gchar *text;
-	int value;
-
-	adj = gtk_spin_button_get_adjustment(spin);
-	value = (int)gtk_adjustment_get_value(adj);
-	if (value > gtk_adjustment_get_lower(adj))
-		text = g_strdup_printf("%d dB", value);
-	else
-		text = g_strdup_printf("-Inf dB");
-	gtk_entry_set_text(GTK_ENTRY(spin), text);
-	g_free(text);
-
-	return TRUE;
-}
-
 static int fmcomms2_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
+	GtkWidget *dds_container;
 	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", false),
-			   *ch1 = iio_device_find_channel(dev, "voltage1", false),
-			   *ch2, *ch3, *ch4, *ch5, *ch6, *ch7;
+			   *ch1 = iio_device_find_channel(dev, "voltage1", false);
 	const char *freq_name;
-	int i;
 
-	for (i = 0; i <= TX2_T2_Q; i++) {
-		dds_freq_hid[i] = 0;
-		dds_scale_hid[i] = 0;
-		dds_phase_hid[i] = 0;
-	}
+	dac_tx_manager = dac_data_manager_new(dds, NULL, ctx);
+	if (!dac_tx_manager)
+		return -1;
 
-	struct iio_channel *test_ch = iio_device_find_channel(dds, "TX1_I_F1", true);
-	if (iio_channel_find_attr(test_ch, "scale_available"))
-			dds_discrete_values = true;
-	else
-		dds_discrete_values = false;
-
-	is_local = getenv("OSC_REMOTE") ? false : true;
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
@@ -1363,58 +675,9 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	rf_port_select_tx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_tx"));
 	tx_fastlock_profile = GTK_WIDGET(gtk_builder_get_object(builder, "tx_fastlock_profile"));
-	tx_channel_list = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_tx_channels"));
-	dds_mode_tx[1] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode_tx1"));
-	dds_mode_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_mode_tx2"));
-
-	dds_freq[TX1_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_freq"));
-	dds_freq[TX1_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_freq"));
-	dds_freq[TX1_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_freq"));
-	dds_freq[TX1_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_freq"));
-
-	dds_freq[TX2_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_freq"));
-	dds_freq[TX2_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_freq"));
-	dds_freq[TX2_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_freq"));
-	dds_freq[TX2_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_freq"));
-
-	dds_scale[TX1_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_scale"));
-	dds_scale[TX1_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_scale"));
-	dds_scale[TX1_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_scale"));
-	dds_scale[TX1_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_scale"));
-
-	dds_scale[TX2_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_scale"));
-	dds_scale[TX2_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_scale"));
-	dds_scale[TX2_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_scale"));
-	dds_scale[TX2_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_scale"));
-
-	dds_phase[TX1_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx1_phase"));
-	dds_phase[TX1_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx1_phase"));
-	dds_phase[TX1_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_phase"));
-	dds_phase[TX1_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_phase"));
-
-	dds_phase[TX2_T1_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I1_tx2_phase"));
-	dds_phase[TX2_T2_I] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_I2_tx2_phase"));
-	dds_phase[TX2_T1_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_phase"));
-	dds_phase[TX2_T2_Q] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_phase"));
-
-	adj_freq[TX1_T1_I] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_I1_freq"));
-	adj_freq[TX1_T2_I] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_I2_freq"));
-	adj_freq[TX1_T1_Q] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_Q1_freq"));
-	adj_freq[TX1_T2_Q] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX1_Q2_freq"));
-	adj_freq[TX2_T1_I] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_I1_freq"));
-	adj_freq[TX2_T2_I] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_I2_freq"));
-	adj_freq[TX2_T1_Q] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_Q1_freq"));
-	adj_freq[TX2_T2_Q] = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjustment_TX2_Q2_freq"));
-
-	dds_I_TX_l[1] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_I_TX1_l"));
-	dds_I_TX_l[2] = GTK_WIDGET(gtk_builder_get_object(builder, "dds_I_TX2_l"));
-	channel_I_tx[1] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Channel_I_tx1"));
-	channel_Q_tx[1] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Channel_Q_tx1"));
-	channel_I_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Channel_I_tx2"));
-	channel_Q_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Channel_Q_tx2"));
-	channel_I_tone2_tx[1] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Tone2_ch_I_tx1"));
-	channel_I_tone2_tx[2] = GTK_WIDGET(gtk_builder_get_object(builder, "frame_Tone2_ch_I_tx2"));
-	dac_buffer = GTK_WIDGET(gtk_builder_get_object(builder, "dac_buffer"));
+	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));
+	gtk_container_add(GTK_CONTAINER(dds_container), dac_data_manager_get_gui_container(dac_tx_manager));
+	gtk_widget_show_all(dds_container);
 
 	rx_phase_rotation[0] = GTK_WIDGET(gtk_builder_get_object(builder, "rx1_phase_rotation"));
 	rx_phase_rotation[1] = GTK_WIDGET(gtk_builder_get_object(builder, "rx2_phase_rotation"));
@@ -1423,42 +686,10 @@ static int fmcomms2_init(GtkWidget *notebook)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(trx_rate_governor_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes_rx1), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes_rx2), 0);
-	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[1]), 1);
-	gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[2]), 1);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_rx), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_tx), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_fastlock_profile), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(tx_fastlock_profile), 0);
-
-	scale_minus_infinite = gtk_adjustment_get_lower(gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(dds_scale[TX1_T1_I])));
-
-	if (dds_discrete_values) {
-		for (i = TX1_T1_I; i <= TX2_T2_Q; i++) {
-				GtkWidget *dds_parent;
-				guint left, right, top, bottom;
-
-				dds_parent = gtk_widget_get_parent(dds_scale[i]);
-				gtk_container_child_get(GTK_CONTAINER(dds_parent), dds_scale[i],
-						"left-attach", &left,
-						"right-attach", &right,
-						"top-attach", &top,
-						"bottom-attach", &bottom, NULL);
-				gtk_widget_destroy(dds_scale[i]);
-				dds_scale[i] = gtk_combo_box_text_new();
-				gtk_table_attach(GTK_TABLE(dds_parent), dds_scale[i],
-						left, right, top, bottom,
-						GTK_FILL, GTK_FILL, 0, 0);
-		}
-
-		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_I1_tx1_scale_txt")), "Scale:");
-		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_I2_tx1_scale_txt")), "Scale:");
-		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_Q1_tx1_scale_txt")), "Scale:");
-		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_Q2_tx1_scale_txt")), "Scale:");
-		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_I1_tx2_scale_txt")), "Scale:");
-		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_I2_tx2_scale_txt")), "Scale:");
-		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_Q1_tx2_scale_txt")), "Scale:");
-		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(builder, "dds_tone_Q2_tx2_scale_txt")), "Scale:");
-	}
 
 	/* Bind the IIO device files to the GUI widgets */
 
@@ -1587,128 +818,6 @@ static int fmcomms2_init(GtkWidget *notebook)
 
 	ch0 = iio_device_find_channel(dds, "TX1_I_F1", true);
 
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			dds, ch0, "frequency", dds_freq[TX1_T1_I], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-
-	ch1 = iio_device_find_channel(dds, "TX1_I_F2", true);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			dds, ch1, "frequency", dds_freq[TX1_T2_I], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-
-	ch2 = iio_device_find_channel(dds, "TX1_Q_F1", true);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			dds, ch2, "frequency", dds_freq[TX1_T1_Q], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-
-	ch3 = iio_device_find_channel(dds, "TX1_Q_F2", true);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			dds, ch3, "frequency", dds_freq[TX1_T2_Q], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-
-	ch4 = iio_device_find_channel(dds, "TX2_I_F1", true);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			dds, ch4, "frequency", dds_freq[TX2_T1_I], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-
-	ch5 = iio_device_find_channel(dds, "TX2_I_F2", true);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			dds, ch5, "frequency", dds_freq[TX2_T2_I], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-
-	ch6 = iio_device_find_channel(dds, "TX2_Q_F1", true);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			dds, ch6, "frequency", dds_freq[TX2_T1_Q], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-
-	ch7 = iio_device_find_channel(dds, "TX2_Q_F2", true);
-	iio_spin_button_init(&tx_widgets[num_tx++],
-			dds, ch7, "frequency", dds_freq[TX2_T2_Q], &abs_mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-
-	dds_scales = num_tx;
-	if (dds_discrete_values) {
-		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch0, "scale",
-				"scale_available", dds_scale[TX1_T1_I], compare_gain);
-		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch1, "scale",
-				"scale_available", dds_scale[TX1_T2_I], compare_gain);
-		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch2, "scale",
-				"scale_available", dds_scale[TX1_T1_Q], compare_gain);
-		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch3, "scale",
-			"scale_available", dds_scale[TX1_T2_Q], compare_gain);
-		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch4, "scale",
-				"scale_available", dds_scale[TX2_T1_I], compare_gain);
-		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch5, "scale",
-				"scale_available", dds_scale[TX2_T2_I], compare_gain);
-		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch6, "scale",
-				"scale_available", dds_scale[TX2_T1_Q], compare_gain);
-		iio_combo_box_init(&tx_widgets[num_tx++], dds, ch7, "scale",
-				"scale_available", dds_scale[TX2_T2_Q], compare_gain);
-	} else {
-		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch0, "scale",
-				dds_scale[TX1_T1_I], NULL);
-		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch1, "scale",
-				dds_scale[TX1_T2_I], NULL);
-		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch2, "scale",
-				dds_scale[TX1_T1_Q], NULL);
-		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch3, "scale",
-				dds_scale[TX1_T2_Q], NULL);
-		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch4, "scale",
-				dds_scale[TX2_T1_I], NULL);
-		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch5, "scale",
-				dds_scale[TX2_T2_I], NULL);
-		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch6, "scale",
-				dds_scale[TX2_T1_Q], NULL);
-		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-		iio_spin_button_init(&tx_widgets[num_tx++], dds, ch7, "scale",
-				dds_scale[TX2_T2_Q], NULL);
-		iio_spin_button_set_convert_function(&tx_widgets[num_tx - 1], db_full_scale_convert);
-	}
-
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch0, "phase",
-			dds_phase[TX1_T1_I], &khz_scale);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch1, "phase",
-			dds_phase[TX1_T2_I], &khz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch2, "phase",
-			dds_phase[TX1_T1_Q], &khz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch3, "phase",
-			dds_phase[TX1_T2_Q], &khz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch4, "phase",
-			dds_phase[TX2_T1_I], &khz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch5, "phase",
-			dds_phase[TX2_T2_I], &khz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch6, "phase",
-			dds_phase[TX2_T1_Q], &khz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-	iio_spin_button_init(&tx_widgets[num_tx++], dds, ch7, "phase",
-			dds_phase[TX2_T2_Q], &khz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
-
-	tx_channel_list_init(builder);
-
-	if (!strcmp(PHY_DEVICE, "ad9361-phy-B")) {
-		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(dds_mode_tx[1]), DDS_BUFFER);
-		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(dds_mode_tx[2]), DDS_BUFFER);
-	}
-
-	/* Signals connect */
-
-	if (!dds_discrete_values) {
-		for (i = TX1_T1_I; i <= TX2_T2_Q; i++)
-			g_signal_connect(dds_scale[i], "output",
-				G_CALLBACK(scale_spin_button_output_cb), NULL);
-	}
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
 			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
@@ -1719,19 +828,11 @@ static int fmcomms2_init(GtkWidget *notebook)
 	g_builder_connect_signal(builder, "sampling_freq_tx", "value-changed",
 			G_CALLBACK(tx_sample_rate_changed), NULL);
 
-	g_signal_connect(dds_mode_tx[1], "changed", G_CALLBACK(manage_dds_mode),
-			(gpointer *)1);
-	g_signal_connect(dds_mode_tx[2], "changed", G_CALLBACK(manage_dds_mode),
-			(gpointer *)2);
-
 	g_builder_connect_signal(builder, "fmcomms2_settings_reload", "clicked",
 		G_CALLBACK(reload_button_clicked), NULL);
 
 	g_builder_connect_signal(builder, "filter_fir_config", "file-set",
 		G_CALLBACK(filter_fir_config_file_set_cb), NULL);
-
-	g_builder_connect_signal(builder, "dac_buffer", "file-set",
-		G_CALLBACK(dac_buffer_config_file_set_cb), NULL);
 
 	g_builder_connect_signal(builder, "rx_fastlock_store", "clicked",
 		G_CALLBACK(fastlock_clicked), (gpointer) 1);
@@ -1784,16 +885,6 @@ static int fmcomms2_init(GtkWidget *notebook)
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
-	if (!is_2rx_2tx)
-		num_dds_scales /= 2;
-
-	if (dds_discrete_values == false) {
-		/* Make DDS scales signal based */
-		for (i = dds_scales; i < dds_scales + num_dds_scales; i++)
-			g_signal_connect(tx_widgets[i].widget, "value-changed",
-				G_CALLBACK(save_scale_widget_value), (gpointer)i);
-	}
-
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
 		sample_frequency_changed_cb, NULL);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
@@ -1808,19 +899,9 @@ static int fmcomms2_init(GtkWidget *notebook)
 	rx_update_values();
 	filter_fir_update();
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
-
 	glb_settings_update_labels();
 	rssi_update_labels();
-
-	for (i = 0; i < iio_device_get_channels_count(dds); i++) {
-		struct iio_channel *ch = iio_device_get_channel(dds, i);
-
-		if (iio_channel_is_scan_element(ch))
-			dds_num_channels++;
-	}
-
-	manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[1]), 1);
-	manage_dds_mode(GTK_COMBO_BOX(dds_mode_tx[2]), 2);
+	dac_data_manager_update_iio_widgets(dac_tx_manager);
 
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
 	plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
@@ -1830,11 +911,10 @@ static int fmcomms2_init(GtkWidget *notebook)
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2_panel, "FMComms2");
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
-	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(dac_buffer), OSC_WAVEFORM_FILE_PATH);
+	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
 
 	if (!is_2rx_2tx) {
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_rx2")));
-		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_tx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_rx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "table_hw_gain_tx2")));
 	}
@@ -1850,6 +930,7 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			 const char *value)
 {
 	char *buf;
+	bool state;
 
 	if (MATCH_ATTRIB(SYNC_RELOAD)) {
 		if (value)
@@ -1867,27 +948,63 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 		}
 	} else if (MATCH_ATTRIB("dds_mode_tx1")) {
 		if (value) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[1]), atoi(value));
+			dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE, 1, atoi(value));
 		} else {
 			buf = malloc (10);
-			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])));
+			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 1));
 			return buf;
 		}
 	} else if (MATCH_ATTRIB("dds_mode_tx2")) {
 		if (value) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(dds_mode_tx[2]), atoi(value));
+			dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE, 2, atoi(value));
 		} else {
 			buf = malloc (10);
-			sprintf(buf, "%i", gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[2])));
+			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 2));
 			return buf;
 		}
 	} else if (MATCH_ATTRIB("dac_buf_filename") &&
-				gtk_combo_box_get_active(GTK_COMBO_BOX(dds_mode_tx[1])) == 4) {
+				dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 1) == DDS_BUFFER) {
 		if (value) {
-			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dac_buffer), value);
-			process_dac_buffer_file(value);
-		} else
-			return dac_buf_filename;
+			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
+		} else {
+			return dac_data_manager_get_buffer_chooser_filename(dac_tx_manager);
+		}
+	} else if (MATCH_ATTRIB("tx_channel_0")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 0, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 0));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_channel_1")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 1));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_channel_2")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 2, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 2));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_channel_3")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 3, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 3));
+			return buf;
+		}
 	} else if (MATCH_ATTRIB("global_settings_show")) {
 		if (value) {
 			if (atoi(value))
@@ -1995,6 +1112,10 @@ static const char *fmcomms2_sr_attribs[] = {
 	"dds_mode_tx1",
 	"dds_mode_tx2",
 	"dac_buf_filename",
+	"tx_channel_0",
+	"tx_channel_1",
+	"tx_channel_2",
+	"tx_channel_3",
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_frequency",
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_phase",
 	DDS_DEVICE".out_altvoltage0_TX1_I_F1_raw",
@@ -2047,6 +1168,10 @@ static void fmcomms2_get_preferred_size(int *width, int *height)
 
 static void context_destroy(void)
 {
+	if (dac_tx_manager) {
+		dac_data_manager_free(dac_tx_manager);
+		dac_tx_manager = NULL;
+	}
 	iio_context_destroy(ctx);
 }
 
