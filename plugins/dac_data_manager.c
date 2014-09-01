@@ -82,6 +82,7 @@ struct dds_tx {
 struct dds_dac {
 	struct dac_data_manager *parent;
 
+	unsigned index;
 	const char *name;
 	struct iio_device *iio_dac;
 	int tx_count;
@@ -1618,6 +1619,7 @@ static int dds_dac_init(struct dac_data_manager *manager,
 		return -1;
 	}
 	manager->dacs_count++;
+	ddac->index = manager->dacs_count;
 
 	return ret;
 }
@@ -1917,6 +1919,89 @@ bool dac_data_manager_get_tx_channel_state(struct dac_data_manager *manager, uns
 	}
 
 	return false;
+}
+
+static struct dds_tone *dds_tone_find(struct dac_data_manager *manager,
+		enum dds_tone_type tone)
+{
+	GSList *node;
+	struct dds_tone *tn = NULL;
+	int tone_type;
+
+	for (node = manager->dds_tones; node; node = g_slist_next(node)) {
+		tn = node->data;
+		tone_type = 0;
+
+		struct dds_channel *ch = tn->parent;
+		struct dds_tx *tx = ch->parent;
+		struct dds_dac *dac = tx->parent;
+
+		tone_type += tn->number;
+		tone_type += (ch->type == I_CHANNEL) ? 0 : 2;
+		tone_type += 4 * ((2 * (dac->index - 1)) + (tx->index - 1));
+
+		if (tone_type == tone)
+			break;
+	}
+
+	return tn;
+}
+
+GtkWidget *dac_data_manager_get_widget(struct dac_data_manager *manager,
+		enum dds_tone_type tone, enum dds_widget_type type)
+{
+	if (!manager)
+		return NULL;
+
+	GtkWidget *widget = NULL;
+	struct dds_tone *tn;
+
+	tn = dds_tone_find(manager, tone);
+	if (!tn)
+		return NULL;
+
+	switch(type) {
+	case WIDGET_FREQUENCY:
+		widget = tn->freq;
+		break;
+	case WIDGET_SCALE:
+		widget = tn->scale;
+		break;
+	case WIDGET_PHASE:
+		widget = tn->phase;
+		break;
+	}
+
+	return widget;
+}
+
+struct iio_widget *dac_data_manager_get_iio_widget(struct dac_data_manager *manager,
+		enum dds_tone_type tone, enum dds_widget_type type)
+{
+	if (!manager)
+		return NULL;
+
+	struct iio_widget *iio_w = NULL;
+	struct dds_tone *tn;
+
+	tn = dds_tone_find(manager, tone);
+	if (!tn)
+		return NULL;
+
+	switch(type) {
+	case WIDGET_FREQUENCY:
+		iio_w = &tn->iio_freq;
+		break;
+	case WIDGET_SCALE:
+		iio_w = &tn->iio_scale;
+		break;
+	case WIDGET_PHASE:
+		iio_w = &tn->iio_scale;
+		break;
+	}
+
+	return iio_w;
+
 }
 
 GtkWidget *dac_data_manager_get_gui_container(struct dac_data_manager *manager)

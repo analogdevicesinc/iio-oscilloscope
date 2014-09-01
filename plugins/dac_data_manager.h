@@ -12,6 +12,31 @@
 #include <stdarg.h>
 #include <iio.h>
 
+enum dds_tone_type {
+	TX1_T1_I,
+	TX1_T2_I,
+	TX1_T1_Q,
+	TX1_T2_Q,
+	TX2_T1_I,
+	TX2_T2_I,
+	TX2_T1_Q,
+	TX2_T2_Q,
+	TX3_T1_I,
+	TX3_T2_I,
+	TX3_T1_Q,
+	TX3_T2_Q,
+	TX4_T1_I,
+	TX4_T2_I,
+	TX4_T1_Q,
+	TX4_T2_Q
+};
+
+enum dds_widget_type {
+	WIDGET_FREQUENCY,
+	WIDGET_SCALE,
+	WIDGET_PHASE
+};
+
 #define DDS_DISABLED  0
 #define DDS_ONE_TONE  1
 #define DDS_TWO_TONE  2
@@ -39,6 +64,10 @@ void dac_data_manager_set_tx_channel_state(struct dac_data_manager *manager,
 		unsigned ch_index, bool state);
 bool dac_data_manager_get_tx_channel_state(struct dac_data_manager *manager,
 		unsigned ch_index);
+GtkWidget *dac_data_manager_get_widget(struct dac_data_manager *manager,
+		enum dds_tone_type tone, enum dds_widget_type type);
+struct iio_widget *dac_data_manager_get_iio_widget(struct dac_data_manager *manager,
+		enum dds_tone_type tone, enum dds_widget_type type);
 GtkWidget *dac_data_manager_get_gui_container(struct dac_data_manager *manager);
 
 #endif /* __DAC_DATA_MANAGER__ */
