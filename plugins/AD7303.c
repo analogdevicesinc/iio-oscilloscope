@@ -79,18 +79,17 @@ static gfloat *float_soft_buff;
 static gdouble wave_ampl;
 static gdouble wave_offset;
 
+#define IIO_BUFFER_SIZE 400
+
 static int buffer_open(unsigned int length)
 {
 	struct iio_device *trigger = iio_context_find_device(ctx, "hrtimer-1");
 	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", true);
-	unsigned int sample_size;
 
 	iio_device_set_trigger(dev, trigger);
 	iio_channel_enable(ch0);
 
-	sample_size = iio_device_get_sample_size(dev);
-
-	dac_buff = iio_device_create_buffer(dev, length / sample_size, false);
+	dac_buff = iio_device_create_buffer(dev, IIO_BUFFER_SIZE, false);
 
 	return (dac_buff) ? 0 : 1;
 }
@@ -192,7 +191,7 @@ static void generateWavePeriod(void)
 
 	/* Set the maximum frequency that user cand select to 10% of the input generator frequency. */
 	if (triggerFreq >= 10)
-		gtk_range_set_range(GTK_RANGE(scale_freq), 0.01, triggerFreq / 10);
+		gtk_range_set_range(GTK_RANGE(scale_freq), 0.1, triggerFreq / 10);
 
 	wave_ampl = gtk_range_get_value(GTK_RANGE(scale_ampl));
 	wave_offset = gtk_range_get_value(GTK_RANGE(scale_offset));
@@ -238,27 +237,31 @@ static void generateWavePeriod(void)
 
 static gboolean fillBuffer(void)
 {
-	int samplesToSend;
+	unsigned int i;
+	uint8_t *buf;
 	int ret;
 
-	samplesToSend = buffer_size - current_sample;
-	memcpy(iio_buffer_start(dac_buff), soft_buffer_ch0 + current_sample, samplesToSend);
-	ret = iio_buffer_push(dac_buff);
-	if (ret < 0)
-		printf("Error occured while writing to buffer: %d\n", ret);
-	else {
-		current_sample += ret;
-		if (current_sample >= buffer_size)
-			current_sample = 0;
+	while (true) {
+		buf = iio_buffer_start(dac_buff);
+		for (i = 0; i < IIO_BUFFER_SIZE; i++) {
+			buf[i] = soft_buffer_ch0[current_sample];
+			current_sample++;
+			if (current_sample >= buffer_size)
+				current_sample = 0;
+		}
+
+		ret = iio_buffer_push(dac_buff);
+		if (ret < 0)
+			printf("Error occured while writing to buffer: %d\n", ret);
+		printf("push: %d\n", ret);
 	}
-	usleep(10000);
 
 	return TRUE;
 }
 
 static void startWaveGeneration(void)
 {
-	fill_buffer_function = g_idle_add((GSourceFunc)fillBuffer, NULL);
+	g_thread_new("fill_buffer_thread", (void *) &fillBuffer, NULL);
 }
 
 static void tx_update_values(void)
@@ -292,7 +295,7 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 		rx_update_labels();
 	} else if (gtk_toggle_button_get_active((GtkToggleButton *)radio_waveform)){
 		generateWavePeriod();
-		dev_opened = !buffer_open(buffer_size * 10);
+		dev_opened = !buffer_open(buffer_size);
 		startWaveGeneration();
 	}
 }
