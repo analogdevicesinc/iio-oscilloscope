@@ -189,7 +189,7 @@ static void generateWavePeriod(void)
 	iio_device_attr_read_longlong(trigger, "frequency", &triggerFreqLL);
 	triggerFreq = triggerFreqLL;
 
-	/* Set the maximum frequency that user cand select to 10% of the input generator frequency. */
+	/* Set the maximum frequency that user can select to 10% of the input generator frequency. */
 	if (triggerFreq >= 10)
 		gtk_range_set_range(GTK_RANGE(scale_freq), 0.1, triggerFreq / 10);
 
