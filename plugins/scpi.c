@@ -161,7 +161,7 @@ static int scpi_network_read(struct scpi_instrument *scpi)
 	actual = recv(scpi->control_socket, scpi->response,
 			SOCKETS_BUFFER_SIZE, 0);
 	if (actual == -1) {
-		printf("Error: Unable to receice data (%i)...\n",errno);
+		printf("Error: Unable to receive data (%i)...\n",errno);
 		perror(__func__);
 		exit(1);
 	} else {
