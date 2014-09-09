@@ -127,6 +127,16 @@ struct dac_data_manager {
 
 static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
+static const char *default_channel_names[8] = {
+	"TX1_I_F1",
+	"TX1_Q_F1",
+	"TX1_I_F2",
+	"TX1_Q_F2",
+	"TX2_I_F1",
+	"TX2_Q_F1",
+	"TX2_I_F2",
+	"TX2_Q_F2"
+};
 
 static int compare_gain(const char *a, const char *b)
 {
@@ -1017,13 +1027,40 @@ static void gui_manager_create(struct dac_data_manager *manager)
 	gtk_widget_show(hbox);
 }
 
+#define TONE_ID "altvoltage"
+#define TONE_ID_SIZE (sizeof(TONE_ID) - 1)
+
+static const char * get_tone_name(struct iio_channel *ch)
+{
+	const char *name = NULL;
+	char tone_index;
+
+	name = iio_channel_get_name(ch);
+
+	/* If name convention "TX*_I|Q_F* is missing */
+	if (name && strncmp(name, "TX", 2) != 0) {
+		name = iio_channel_get_id(ch);
+		if (name && !strncmp(name, TONE_ID, TONE_ID_SIZE)) {
+			tone_index = name[TONE_ID_SIZE];
+			if (tone_index && g_ascii_isdigit(tone_index))
+				name = default_channel_names[tone_index - '0'];
+			else
+				name = NULL;
+		} else {
+			name = NULL;
+		}
+	}
+
+	return name;
+}
+
 static unsigned get_iio_tones_count(struct iio_device *dev)
 {
 	int i, count;
 
 	for (i = 0, count = 0; i < iio_device_get_channels_count(dev); i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
-		const char *name = iio_channel_get_name(chn);
+		const char *name = get_tone_name(chn);
 
 		if (name && strncmp(name, "TX", 2) == 0)
 			count++;
@@ -1046,7 +1083,7 @@ static int dac_channels_assign(struct dds_dac *ddac)
 
 	for (i = 0; i < iio_device_get_channels_count(dac); i++) {
 		struct iio_channel *chn = iio_device_get_channel(dac, i);
-		ch_name = iio_channel_get_name(chn);
+		ch_name = get_tone_name(chn);
 
 		if (!ch_name || strlen(ch_name) == 0)
 			continue;
@@ -1669,7 +1706,8 @@ static int dac_manager_init(struct dac_data_manager *manager,
 
 	dac_buffer_init(manager, &manager->dac_buffer_module);
 
-	struct iio_channel *ch = iio_device_find_channel(dac, "TX1_I_F1", true);
+	struct iio_channel *ch = iio_device_find_channel(dac, "altvoltage0", true);
+
 	if (iio_channel_find_attr(ch, "scale_available"))
 		manager->scale_available_mode = true;
 	else
