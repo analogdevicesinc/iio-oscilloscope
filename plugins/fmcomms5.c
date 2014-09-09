@@ -1,0 +1,1463 @@
+/**
+ * Copyright (C) 2012-2014 Analog Devices, Inc.
+ *
+ * Licensed under the GPL-2.
+ *
+ **/
+#include <stdio.h>
+
+#include <gtk/gtk.h>
+#include <gtkdatabox.h>
+#include <glib/gthread.h>
+#include <gtkdatabox_grid.h>
+#include <gtkdatabox_points.h>
+#include <gtkdatabox_lines.h>
+#include <math.h>
+#include <stdint.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdbool.h>
+#include <malloc.h>
+#include <values.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <sys/utsname.h>
+
+#include "../datatypes.h"
+#include "../osc.h"
+#include "../iio_widget.h"
+#include "../osc_plugin.h"
+#include "../config.h"
+#include "../eeprom.h"
+#include "dac_data_manager.h"
+
+#define HANNING_ENBW 1.50
+
+#define PHY_DEVICE1 "ad9361-phy"
+#define DDS_DEVICE1 "cf-ad9361-dds-core-lpc" /* can be hpc as well */
+#define CAP_DEVICE1 "cf-ad9361-lpc"
+#define PHY_DEVICE2 "ad9361-phy-B"
+#define DDS_DEVICE2 "cf-ad9361-dds-core-B"
+#define CAP_DEVICE2 "cf-ad9361-B"
+#define CAP_DEVICE1_ALT "cf-ad9361-A"
+
+#define BOLD_TEXT(txt) "<b>"txt"</b>"
+
+extern gfloat plugin_fft_corr;
+extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
+
+static struct dac_data_manager *dac_tx_manager;
+
+static const gdouble mhz_scale = 1000000.0;
+static const gdouble abs_mhz_scale = -1000000.0;
+static const gdouble khz_scale = 1000.0;
+static const gdouble inv_scale = -1.0;
+
+static struct iio_widget glb_widgets[50];
+static struct iio_widget tx_widgets[50];
+static struct iio_widget rx_widgets[50];
+
+static unsigned int num_glb, num_tx, num_rx;
+static unsigned int rx_gains[5];
+static unsigned int rx_lo, tx_lo;
+static unsigned int rx_sample_freq, tx_sample_freq;
+static char last_fir_filter[PATH_MAX];
+
+static struct iio_context *ctx;
+static struct iio_device *dev1, *dds1, *cap1;
+static struct iio_device *dev2, *dds2, *cap2;
+
+#define SECTION_GLOBAL 0
+#define SECTION_TX 1
+#define SECTION_RX 2
+#define SECTION_FPGA 3
+static GtkToggleToolButton *section_toggle[4];
+static GtkWidget *section_setting[4];
+
+/* Widgets for Global Settings */
+static GtkWidget *ensm_mode;
+static GtkWidget *ensm_mode_available;
+static GtkWidget *calib_mode;
+static GtkWidget *calib_mode_available;
+static GtkWidget *trx_rate_governor;
+static GtkWidget *trx_rate_governor_available;
+static GtkWidget *filter_fir_config;
+
+/* Widgets for Receive Settings */
+static GtkWidget *rx_gain_control[5];
+static GtkWidget *rx_gain_control_modes[5];
+static GtkWidget *rf_port_select_rx;
+static GtkWidget *rx_rssi[5];
+static GtkWidget *rx_path_rates;
+static GtkWidget *tx_path_rates;
+static GtkWidget *fir_filter_en_tx;
+static GtkWidget *enable_fir_filter_rx;
+static GtkWidget *enable_fir_filter_rx_tx;
+static GtkWidget *disable_all_fir_filters;
+static GtkWidget *rf_port_select_tx;
+static GtkWidget *rx_fastlock_profile[2];
+static GtkWidget *tx_fastlock_profile[2];
+static GtkWidget *rx_phase_rotation[5];
+
+static gint this_page;
+static GtkNotebook *nbook;
+static GtkWidget *fmcomms5_panel;
+static gboolean plugin_detached;
+
+static void tx_update_values(void)
+{
+	iio_update_widgets(tx_widgets, num_tx);
+}
+
+static void rx_update_values(void)
+{
+	iio_update_widgets(rx_widgets, num_rx);
+	rx_update_labels();
+}
+
+static void glb_settings_update_labels(void)
+{
+	float rates[6];
+	char tmp[160], buf[1024];
+	ssize_t ret;
+	int i;
+
+	ret = iio_device_attr_read(dev1, "ensm_mode", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(ensm_mode), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(ensm_mode), "<error>");
+
+	ret = iio_device_attr_read(dev1, "calib_mode", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(calib_mode), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(calib_mode), "<error>");
+
+	ret = iio_device_attr_read(dev1, "trx_rate_governor", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(trx_rate_governor), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(trx_rate_governor), "<error>");
+
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev1, "voltage0", false),
+			"gain_control_mode", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(rx_gain_control[1]), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx_gain_control[1]), "<error>");
+
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev1, "voltage1", false),
+			"gain_control_mode", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(rx_gain_control[2]), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx_gain_control[2]), "<error>");
+
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev2, "voltage0", false),
+			"gain_control_mode", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(rx_gain_control[3]), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx_gain_control[3]), "<error>");
+
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev2, "voltage1", false),
+			"gain_control_mode", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(rx_gain_control[4]), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx_gain_control[4]), "<error>");
+
+	ret = iio_device_attr_read(dev1, "rx_path_rates", buf, sizeof(buf));
+	if (ret > 0) {
+		sscanf(buf, "BBPLL:%f ADC:%f R2:%f R1:%f RF:%f RXSAMP:%f",
+		        &rates[0], &rates[1], &rates[2], &rates[3], &rates[4],
+			&rates[5]);
+		sprintf(tmp, "BBPLL: %4.3f   ADC: %4.3f   R2: %4.3f   R1: %4.3f   RF: %4.3f   RXSAMP: %4.3f",
+		        rates[0] / 1e6, rates[1] / 1e6, rates[2] / 1e6,
+			rates[3] / 1e6, rates[4] / 1e6, rates[5] / 1e6);
+
+		gtk_label_set_text(GTK_LABEL(rx_path_rates), tmp);
+	} else {
+		gtk_label_set_text(GTK_LABEL(rx_path_rates), "<error>");
+	}
+
+	ret = iio_device_attr_read(dev1, "tx_path_rates", buf, sizeof(buf));
+	if (ret > 0) {
+		sscanf(buf, "BBPLL:%f DAC:%f T2:%f T1:%f TF:%f TXSAMP:%f",
+		        &rates[0], &rates[1], &rates[2], &rates[3], &rates[4],
+			&rates[5]);
+		sprintf(tmp, "BBPLL: %4.3f   DAC: %4.3f   T2: %4.3f   T1: %4.3f   TF: %4.3f   TXSAMP: %4.3f",
+		        rates[0] / 1e6, rates[1] / 1e6, rates[2] / 1e6,
+			rates[3] / 1e6, rates[4] / 1e6, rates[5] / 1e6);
+
+		gtk_label_set_text(GTK_LABEL(tx_path_rates), tmp);
+	} else {
+		gtk_label_set_text(GTK_LABEL(tx_path_rates), "<error>");
+	}
+
+	for (i = 1; i <=4; i++)
+		iio_widget_update(&rx_widgets[rx_gains[i]]);
+}
+
+static void sample_frequency_changed_cb(void *data)
+{
+	glb_settings_update_labels();
+	rx_update_labels();
+}
+
+static void rssi_update_labels(void)
+{
+	char buf[1024];
+	int ret;
+
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev1, "voltage0", false),
+			"rssi", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(rx_rssi[1]), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx_rssi[1]), "<error>");
+
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev1, "voltage1", false),
+			"rssi", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(rx_rssi[2]), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx_rssi[2]), "<error>");
+
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev2, "voltage0", false),
+			"rssi", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(rx_rssi[3]), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx_rssi[3]), "<error>");
+
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev2, "voltage1", false),
+			"rssi", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(rx_rssi[4]), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(rx_rssi[4]), "<error>");
+}
+
+static void update_display (void *ptr)
+{
+	const char *gain_mode;
+	int i;
+
+	/* This thread never exists, and just updates the control frame */
+	while (1) {
+		if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
+			gdk_threads_enter();
+			rssi_update_labels();
+			for (i = 1; i <= 4; i++) {
+				gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes[i]));
+				if (gain_mode && strcmp(gain_mode, "manual"))
+					iio_widget_update(&rx_widgets[rx_gains[i]]);
+			}
+
+			gdk_threads_leave();
+		}
+		sleep(1);
+	}
+}
+
+void filter_fir_update(void)
+{
+	bool rx = false, tx = false, rxtx = false;
+	struct iio_channel *chn;
+
+	iio_device_attr_read_bool(dev1, "in_out_voltage_filter_fir_en", &rxtx);
+
+	chn = iio_device_find_channel(dev1, "voltage0", false);
+	if (chn)
+		iio_channel_attr_read_bool(chn, "filter_fir_en", &rx);
+	chn = iio_device_find_channel(dev1, "voltage0", true);
+	if (chn)
+		iio_channel_attr_read_bool(chn, "filter_fir_en", &tx);
+
+	if (rxtx) {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx), rxtx);
+	} else if (!rx && !tx) {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters), true);
+	} else {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx), rx);
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx), tx);
+	}
+	glb_settings_update_labels();
+}
+
+void filter_fir_enable(void)
+{
+	bool rx, tx, rxtx, disable;
+
+	rx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx));
+	tx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx));
+	rxtx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx));
+	disable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters));
+
+	if (rxtx || disable) {
+		iio_device_attr_write_bool(dev1,
+				"in_out_voltage_filter_fir_en", rxtx);
+		iio_device_attr_write_bool(dev2,
+				"in_out_voltage_filter_fir_en", rxtx);
+	} else {
+		struct iio_channel *chn;
+		chn = iio_device_find_channel(dev1, "voltage0", true);
+		if (chn)
+			iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
+		chn = iio_device_find_channel(dev1, "voltage0", true);
+		if (chn)
+			iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
+
+		chn = iio_device_find_channel(dev1, "voltage0", false);
+		if (chn)
+			iio_channel_attr_write_bool(chn, "filter_fir_en", rx);
+		chn = iio_device_find_channel(dev2, "voltage0", false);
+		if (chn)
+			iio_channel_attr_write_bool(chn, "filter_fir_en", rx);
+	}
+
+	filter_fir_update();
+}
+
+static void rx_phase_rotation_update()
+{
+	struct iio_channel *out[8];
+	gdouble val[4];
+	int i;
+
+	out[0] = iio_device_find_channel(cap1, "voltage0", false);
+	out[1] = iio_device_find_channel(cap1, "voltage1", false);
+	out[2] = iio_device_find_channel(cap1, "voltage2", false);
+	out[3] = iio_device_find_channel(cap1, "voltage3", false);
+	out[4] = iio_device_find_channel(cap2, "voltage0", false);
+	out[5] = iio_device_find_channel(cap2, "voltage1", false);
+	out[6] = iio_device_find_channel(cap2, "voltage2", false);
+	out[7] = iio_device_find_channel(cap2, "voltage3", false);
+
+	for (i = 0; i < 8; i += 2) {
+		iio_channel_attr_read_double(out[i], "calibscale", &val[0]);
+		iio_channel_attr_read_double(out[i], "calibphase", &val[1]);
+		iio_channel_attr_read_double(out[i + 1], "calibscale", &val[2]);
+		iio_channel_attr_read_double(out[i + 1], "calibphase", &val[3]);
+
+		val[0] = acos(val[0]) * 360.0 / (2.0 * M_PI);
+		val[1] = asin(-1.0 * val[1]) * 360.0 / (2.0 * M_PI);
+		val[2] = acos(val[2]) * 360.0 / (2.0 * M_PI);
+		val[3] = asin(val[3]) * 360.0 / (2.0 * M_PI);
+
+		if (val[1] < 0.0)
+			val[0] *= -1.0;
+		if (val[3] < 0.0)
+			val[2] *= -1.0;
+		if (val[1] < -90.0)
+			val[0] = (val[0] * -1.0) - 180.0;
+		if (val[3] < -90.0)
+			val[0] = (val[0] * -1.0) - 180.0;
+
+		if (fabs(val[0]) > 90.0) {
+			if (val[1] < 0.0)
+				val[1] = (val[1] * -1.0) - 180.0;
+			else
+				val[1] = 180 - val[1];
+		}
+		if (fabs(val[2]) > 90.0) {
+			if (val[3] < 0.0)
+				val[3] = (val[3] * -1.0) - 180.0;
+			else
+				val[3] = 180 - val[3];
+		}
+
+		if (round(val[0]) != round(val[1]) &&
+					round(val[0]) != round(val[2]) &&
+					round(val[0]) != round(val[3])) {
+			printf("error calculating phase rotations\n");
+			val[0] = 0.0;
+		} else
+			val[0] = (val[0] + val[1] + val[2] + val[3]) / 4.0;
+
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(rx_phase_rotation[1 + i/2]), val[0]);
+	}
+}
+
+static void reload_button_clicked(GtkButton *btn, gpointer data)
+{
+	iio_update_widgets(glb_widgets, num_glb);
+	iio_update_widgets(tx_widgets, num_tx);
+	iio_update_widgets(rx_widgets, num_rx);
+	dac_data_manager_update_iio_widgets(dac_tx_manager);
+	filter_fir_update();
+	rx_update_labels();
+	glb_settings_update_labels();
+	rssi_update_labels();
+	rx_phase_rotation_update();
+}
+
+static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
+{
+	GtkWidget *toplevel;
+
+	if (gtk_toggle_tool_button_get_active(btn)) {
+		gtk_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-down", NULL);
+		gtk_widget_show(section);
+	} else {
+		gtk_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-up", NULL);
+		gtk_widget_hide(section);
+		toplevel = gtk_widget_get_toplevel(GTK_WIDGET(btn));
+		if (GTK_WIDGET_TOPLEVEL(toplevel))
+			gtk_window_resize (GTK_WINDOW(toplevel), 1, 1);
+	}
+}
+
+static int write_int(struct iio_channel *chn, const char *attr, int val)
+{
+	return iio_channel_attr_write_longlong(chn, attr, (long long) val);
+}
+
+static void fastlock_clicked(GtkButton *btn, gpointer data)
+{
+	struct iio_device *dev;
+	unsigned command = (uintptr_t) data;
+	int d;
+	int profile;
+
+	if (command > 4) {
+		dev = dev2;
+		command -= 4;
+		d = 1;
+	} else {
+		dev = dev1;
+		d = 0;
+	}
+	switch (command) {
+		case 1: /* RX Store */
+			iio_widget_save(&rx_widgets[rx_lo]);
+			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile[d]));
+			write_int(iio_device_find_channel(dev, "altvoltage0", true),
+					"RX_LO_fastlock_store", profile);
+			break;
+		case 2: /* TX Store */
+			iio_widget_save(&tx_widgets[tx_lo]);
+			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile[d]));
+			write_int(iio_device_find_channel(dev, "altvoltage1", true),
+					"TX_LO_fastlock_store", profile);
+			break;
+		case 3: /* RX Recall */
+			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile[d]));
+			write_int(iio_device_find_channel(dev, "altvoltage0", true),
+					"RX_LO_fastlock_recall", profile);
+			iio_widget_update(&rx_widgets[rx_lo]);
+			break;
+		case 4: /* TX Recall */
+			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile[d]));
+			write_int(iio_device_find_channel(dev, "altvoltage1", true),
+					"TX_LO_fastlock_recall", profile);
+			iio_widget_update(&tx_widgets[tx_lo]);
+			break;
+	}
+}
+
+static int load_fir_filter(const char *file_name)
+{
+	int ret = -1;
+	FILE *f = fopen(file_name, "r");
+	if (f) {
+		char *buf;
+		ssize_t len;
+		int ret1, ret2;
+
+		fseek(f, 0, SEEK_END);
+		len = ftell(f);
+		buf = malloc(len);
+		fseek(f, 0, SEEK_SET);
+		len = fread(buf, 1, len, f);
+		fclose(f);
+
+		ret1 = iio_device_attr_write_raw(dev1,
+				"filter_fir_config", buf, len);
+		ret2 = iio_device_attr_write_raw(dev2,
+				"filter_fir_config", buf, len);
+		ret = (ret1 > ret2) ? ret2 : ret1;
+		free(buf);
+	}
+
+	if (ret < 0) {
+		fprintf(stderr, "FIR filter config failed\n");
+		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms5_panel);
+		if (!gtk_widget_is_toplevel(toplevel))
+			toplevel = NULL;
+
+		GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(toplevel),
+						GTK_DIALOG_MODAL,
+						GTK_MESSAGE_ERROR,
+						GTK_BUTTONS_CLOSE,
+						"\nFailed to configure the FIR filter using the selected file.");
+		gtk_window_set_title(GTK_WINDOW(dialog), "FIR Filter Configuration Failed");
+		if (gtk_dialog_run(GTK_DIALOG(dialog)))
+			gtk_widget_destroy(dialog);
+
+	} else {
+		strcpy(last_fir_filter, file_name);
+	}
+
+	return ret;
+}
+
+void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+{
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+
+	if (load_fir_filter(file_name) < 0) {
+		if (strlen(last_fir_filter) == 0)
+			gtk_file_chooser_set_filename(chooser, "(None)");
+		else
+			gtk_file_chooser_set_filename(chooser, last_fir_filter);
+	}
+}
+
+static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data)
+{
+	gdouble rate;
+
+	rate = gtk_spin_button_get_value(spinbutton) / 2.0;
+	dac_data_manager_freq_widgets_range_update(dac_tx_manager, rate);
+}
+
+static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
+{
+	glong offset = (glong) user_data;
+	struct iio_device *dev;
+	struct iio_channel *out0, *out1;
+	gdouble val, phase;
+
+	val = gtk_spin_button_get_value(spinbutton);
+
+	phase = val * 2 * M_PI / 360.0;
+
+	if (offset == 4 || offset == 6) {
+		dev = cap2;
+		offset -= 4;
+	} else {
+		dev = cap1;
+	}
+
+	if (offset == 2) {
+		out0 = iio_device_find_channel(dev, "voltage2", false);
+		out1 = iio_device_find_channel(dev, "voltage3", false);
+	} else {
+		out0 = iio_device_find_channel(dev, "voltage0", false);
+		out1 = iio_device_find_channel(dev, "voltage1", false);
+	}
+
+	if (out1 && out0) {
+		iio_channel_attr_write_double(out0, "calibscale", (double) cos(phase));
+		iio_channel_attr_write_double(out0, "calibphase", (double) (-1 * sin(phase)));
+		iio_channel_attr_write_double(out1, "calibscale", (double) cos(phase));
+		iio_channel_attr_write_double(out1, "calibphase", (double) sin(phase));
+	}
+}
+
+/* Check for a valid two channels combination (ch0->ch1, ch2->ch3, ...)
+ *
+ * struct iio_channel_info *chanels - list of channels of a device
+ * int ch_count - number of channel in the list
+ * char* ch_name - output parameter: stores references to the enabled
+ *                 channels.
+ * Return 1 if the channel combination is valid
+ * Return 0 if the combination is not valid
+ */
+int channel_combination_check(struct iio_device *dev, const char **ch_names)
+{
+	bool consecutive_ch = FALSE;
+	unsigned int i, k, nb_channels = iio_device_get_channels_count(dev);
+
+	for (i = 0, k = 0; i < nb_channels; i++) {
+		struct iio_channel *ch = iio_device_get_channel(dev, i);
+		struct extra_info *info = iio_channel_get_data(ch);
+
+		if (info->may_be_enabled) {
+			const char *name = iio_channel_get_name(ch) ?: iio_channel_get_id(ch);
+			ch_names[k++] = name;
+
+			if (i > 0) {
+				struct extra_info *prev = iio_channel_get_data(iio_device_get_channel(dev, i - 1));
+				if (prev->may_be_enabled) {
+					consecutive_ch = TRUE;
+					break;
+				}
+			}
+		}
+	}
+	if (!consecutive_ch)
+		return 0;
+
+	if (!(i & 0x1))
+		return 0;
+
+	return 1;
+}
+
+static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
+{
+	iio_w->save(iio_w);
+}
+
+static void make_widget_update_signal_based(struct iio_widget *widgets,
+	unsigned int num_widgets)
+{
+	char signal_name[25];
+	unsigned int i;
+
+	for (i = 0; i < num_widgets; i++) {
+		if (GTK_IS_CHECK_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "toggled");
+		else if (GTK_IS_TOGGLE_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "toggled");
+		else if (GTK_IS_SPIN_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "value-changed");
+		else if (GTK_IS_COMBO_BOX_TEXT(widgets[i].widget))
+			sprintf(signal_name, "%s", "changed");
+		else
+			printf("unhandled widget type, attribute: %s\n", widgets[i].attr_name);
+
+		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
+			widgets[i].priv_progress != NULL) {
+				iio_spin_button_progress_activate(&widgets[i]);
+		} else {
+			g_signal_connect(G_OBJECT(widgets[i].widget), signal_name, G_CALLBACK(save_widget_value), &widgets[i]);
+		}
+	}
+}
+
+int handle_external_request (const char *request)
+{
+	int ret = 0;
+
+	if (!strcmp(request, "Reload Settings")) {
+		reload_button_clicked(NULL, 0);
+		ret = 1;
+	}
+
+	return ret;
+}
+
+static int fmcomms5_init(GtkWidget *notebook)
+{
+	GtkBuilder *builder;
+	GtkWidget *dds_container;
+	GtkWidget *dev1_rx_frm, *dev2_rx_frm;
+	GtkWidget *dev1_tx_frm, *dev2_tx_frm;
+	const char *freq_name;
+	int i;
+
+	dac_tx_manager = dac_data_manager_new(dds1, dds2, ctx);
+	if (!dac_tx_manager)
+		return -1;
+
+	builder = gtk_builder_new();
+	nbook = GTK_NOTEBOOK(notebook);
+
+	if (!gtk_builder_add_from_file(builder, "fmcomms5.glade", NULL))
+		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms5.glade", NULL);
+
+	fmcomms5_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms5_panel"));
+
+	/* Global settings */
+
+	ensm_mode = GTK_WIDGET(gtk_builder_get_object(builder, "ensm_mode"));
+	ensm_mode_available = GTK_WIDGET(gtk_builder_get_object(builder, "ensm_mode_available"));
+	calib_mode = GTK_WIDGET(gtk_builder_get_object(builder, "calib_mode"));
+	calib_mode_available = GTK_WIDGET(gtk_builder_get_object(builder, "calib_mode_available"));
+	trx_rate_governor = GTK_WIDGET(gtk_builder_get_object(builder, "trx_rate_governor"));
+	trx_rate_governor_available = GTK_WIDGET(gtk_builder_get_object(builder, "trx_rate_governor_available"));
+	tx_path_rates = GTK_WIDGET(gtk_builder_get_object(builder, "label_tx_path"));
+	rx_path_rates = GTK_WIDGET(gtk_builder_get_object(builder, "label_rx_path"));
+	filter_fir_config = GTK_WIDGET(gtk_builder_get_object(builder, "filter_fir_config"));
+	enable_fir_filter_rx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_rx"));
+	fir_filter_en_tx = GTK_WIDGET(gtk_builder_get_object(builder, "fir_filter_en_tx"));
+	enable_fir_filter_rx_tx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_tx_rx"));
+	disable_all_fir_filters = GTK_WIDGET(gtk_builder_get_object(builder, "disable_all_fir_filters"));
+
+	section_toggle[SECTION_GLOBAL] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "global_settings_toggle"));
+	section_setting[SECTION_GLOBAL] = GTK_WIDGET(gtk_builder_get_object(builder, "global_settings"));
+	section_toggle[SECTION_TX] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "tx_toggle"));
+	section_setting[SECTION_TX] = GTK_WIDGET(gtk_builder_get_object(builder, "tx_settings"));
+	section_toggle[SECTION_RX] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "rx_toggle"));
+	section_setting[SECTION_RX] = GTK_WIDGET(gtk_builder_get_object(builder, "rx_settings"));
+	section_toggle[SECTION_FPGA] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "fpga_toggle"));
+	section_setting[SECTION_FPGA] = GTK_WIDGET(gtk_builder_get_object(builder, "fpga_settings"));
+
+	/* Receive Chain */
+
+	dev1_rx_frm = GTK_WIDGET(gtk_builder_get_object(builder, "device1_rx_frame"));
+	dev2_rx_frm = GTK_WIDGET(gtk_builder_get_object(builder, "device2_rx_frame"));
+	rf_port_select_rx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_rx"));
+	rx_gain_control[1] = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_rx1"));
+	rx_gain_control[2] = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_rx2"));
+	rx_gain_control[3] = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_rx3"));
+	rx_gain_control[4] = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_rx4"));
+	rx_gain_control_modes[1] = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_available_rx1"));
+	rx_gain_control_modes[2] = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_available_rx2"));
+	rx_gain_control_modes[3] = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_available_rx3"));
+	rx_gain_control_modes[4] = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_available_rx4"));
+	rx_rssi[1] = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx1"));
+	rx_rssi[2] = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx2"));
+	rx_rssi[3] = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx3"));
+	rx_rssi[4] = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx4"));
+	rx_fastlock_profile[0] = GTK_WIDGET(gtk_builder_get_object(builder, "rx_fastlock_profile1"));
+	rx_fastlock_profile[1] = GTK_WIDGET(gtk_builder_get_object(builder, "rx_fastlock_profile2"));
+
+	/* Transmit Chain */
+
+	dev1_tx_frm = GTK_WIDGET(gtk_builder_get_object(builder, "device1_tx_frame"));
+	dev2_tx_frm = GTK_WIDGET(gtk_builder_get_object(builder, "device2_tx_frame"));
+	rf_port_select_tx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_tx"));
+	tx_fastlock_profile[0] = GTK_WIDGET(gtk_builder_get_object(builder, "tx_fastlock_profile1"));
+	tx_fastlock_profile[1] = GTK_WIDGET(gtk_builder_get_object(builder, "tx_fastlock_profile2"));
+	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));
+	gtk_container_add(GTK_CONTAINER(dds_container), dac_data_manager_get_gui_container(dac_tx_manager));
+	gtk_widget_show_all(dds_container);
+
+	rx_phase_rotation[1] = GTK_WIDGET(gtk_builder_get_object(builder, "rx1_phase_rotation"));
+	rx_phase_rotation[2] = GTK_WIDGET(gtk_builder_get_object(builder, "rx2_phase_rotation"));
+	rx_phase_rotation[3] = GTK_WIDGET(gtk_builder_get_object(builder, "rx3_phase_rotation"));
+	rx_phase_rotation[4] = GTK_WIDGET(gtk_builder_get_object(builder, "rx4_phase_rotation"));
+
+	gtk_combo_box_set_active(GTK_COMBO_BOX(ensm_mode_available), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(trx_rate_governor_available), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes[1]), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes[2]), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes[3]), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_gain_control_modes[4]), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_rx), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_tx), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_fastlock_profile[0]), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_fastlock_profile[1]), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(tx_fastlock_profile[0]), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(tx_fastlock_profile[1]), 0);
+
+	gtk_label_set_markup(GTK_LABEL(gtk_frame_get_label_widget(GTK_FRAME(dev1_rx_frm))), BOLD_TEXT(PHY_DEVICE1));
+	gtk_label_set_markup(GTK_LABEL(gtk_frame_get_label_widget(GTK_FRAME(dev2_rx_frm))), BOLD_TEXT(PHY_DEVICE2));
+	gtk_label_set_markup(GTK_LABEL(gtk_frame_get_label_widget(GTK_FRAME(dev1_tx_frm))), BOLD_TEXT(PHY_DEVICE1));
+	gtk_label_set_markup(GTK_LABEL(gtk_frame_get_label_widget(GTK_FRAME(dev2_tx_frm))), BOLD_TEXT(PHY_DEVICE2));
+
+	/* Bind the IIO device files to the GUI widgets */
+
+	/* Global settings */
+	iio_combo_box_init(&glb_widgets[num_glb++],
+		dev1, NULL, "ensm_mode", "ensm_mode_available",
+		ensm_mode_available, NULL);
+	iio_combo_box_init(&glb_widgets[num_glb++],
+		dev1, NULL, "calib_mode", "calib_mode_available",
+		calib_mode_available, NULL);
+	iio_combo_box_init(&glb_widgets[num_glb++],
+		dev1, NULL, "trx_rate_governor", "trx_rate_governor_available",
+		trx_rate_governor_available, NULL);
+
+	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
+		dev1, NULL, "dcxo_tune_coarse", builder, "dcxo_coarse_tune",
+		0);
+	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
+		dev1, NULL, "dcxo_tune_fine", builder, "dcxo_fine_tune",
+		0);
+
+	iio_combo_box_init(&glb_widgets[num_glb++],
+		dev2, NULL, "ensm_mode", "ensm_mode_available",
+		ensm_mode_available, NULL);
+	iio_combo_box_init(&glb_widgets[num_glb++],
+		dev2, NULL, "calib_mode", "calib_mode_available",
+		calib_mode_available, NULL);
+	iio_combo_box_init(&glb_widgets[num_glb++],
+		dev2, NULL, "trx_rate_governor", "trx_rate_governor_available",
+		trx_rate_governor_available, NULL);
+
+	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
+		dev2, NULL, "dcxo_tune_coarse", builder, "dcxo_coarse_tune",
+		0);
+	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
+		dev2, NULL, "dcxo_tune_fine", builder, "dcxo_fine_tune",
+		0);
+
+	/* Receive Chain */
+	struct iio_channel *d1_ch0 = iio_device_find_channel(dev1, "voltage0", false),
+			   *d1_ch1 = iio_device_find_channel(dev1, "voltage1", false),
+			   *d2_ch0 = iio_device_find_channel(dev2, "voltage0", false),
+			   *d2_ch1 = iio_device_find_channel(dev2, "voltage1", false);
+
+	iio_combo_box_init(&rx_widgets[num_rx++],
+		dev1, d1_ch0, "gain_control_mode",
+		"gain_control_mode_available",
+		rx_gain_control_modes[1], NULL);
+	iio_combo_box_init(&rx_widgets[num_rx++],
+		dev1, d1_ch1, "gain_control_mode",
+		"gain_control_mode_available",
+		rx_gain_control_modes[2], NULL);
+	iio_combo_box_init(&rx_widgets[num_rx++],
+		dev2, d2_ch0, "gain_control_mode",
+		"gain_control_mode_available",
+		rx_gain_control_modes[3], NULL);
+	iio_combo_box_init(&rx_widgets[num_rx++],
+		dev2, d2_ch1, "gain_control_mode",
+		"gain_control_mode_available",
+		rx_gain_control_modes[4], NULL);
+
+	iio_combo_box_init(&rx_widgets[num_rx++],
+		dev1, d1_ch0, "rf_port_select",
+		"rf_port_select_available",
+		rf_port_select_rx, NULL);
+	iio_combo_box_init(&rx_widgets[num_rx++],
+		dev2, d2_ch0, "rf_port_select",
+		"rf_port_select_available",
+		rf_port_select_rx, NULL);
+
+	rx_gains[1] = num_rx;
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+		dev1, d1_ch0, "hardwaregain", builder,
+		"hardware_gain_rx1", NULL);
+	rx_gains[2] = num_rx;
+		iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+			dev1, d1_ch1, "hardwaregain", builder,
+			"hardware_gain_rx2", NULL);
+	rx_gains[3] = num_rx;
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+		dev2, d2_ch0, "hardwaregain", builder,
+		"hardware_gain_rx3", NULL);
+	rx_gains[4] = num_rx;
+		iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+			dev2, d2_ch1, "hardwaregain", builder,
+			"hardware_gain_rx4", NULL);
+
+	rx_sample_freq = num_rx;
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+		dev1, d1_ch0, "sampling_frequency", builder,
+		"sampling_freq_rx", &mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+		dev2, d2_ch0, "sampling_frequency", builder,
+		"sampling_freq_rx", &mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+		dev1, d1_ch0, "rf_bandwidth", builder, "rf_bandwidth_rx",
+		&mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+		dev2, d2_ch0, "rf_bandwidth", builder, "rf_bandwidth_rx",
+		&mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+
+
+	d1_ch1 = iio_device_find_channel(dev1, "altvoltage0", true);
+	d2_ch1 = iio_device_find_channel(dev2, "altvoltage0", true);
+
+	if (iio_channel_find_attr(d1_ch1, "frequency"))
+		freq_name = "frequency";
+	else
+		freq_name = "RX_LO_frequency";
+	rx_lo = num_rx;
+	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
+		dev1, d1_ch1, freq_name, builder,
+		"rx_lo_freq1", &mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
+		dev2, d2_ch1, freq_name, builder,
+		"rx_lo_freq2", &mhz_scale);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev1, d1_ch0, "quadrature_tracking_en", builder,
+		"quad", 0);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev2, d2_ch0, "quadrature_tracking_en", builder,
+		"quad", 0);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev1, d1_ch0, "rf_dc_offset_tracking_en", builder,
+		"rfdc", 0);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev2, d2_ch0, "rf_dc_offset_tracking_en", builder,
+		"rfdc", 0);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev1, d1_ch0, "bb_dc_offset_tracking_en", builder,
+		"bbdc", 0);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev2, d2_ch0, "bb_dc_offset_tracking_en", builder,
+		"bbdc", 0);
+
+	iio_spin_button_init_from_builder(&rx_widgets[num_rx],
+		dev1, d1_ch1, "calibphase",
+		builder, "rx1_phase_rotation", NULL);
+	iio_spin_button_add_progress(&rx_widgets[num_rx++]);
+	iio_spin_button_init_from_builder(&rx_widgets[num_rx],
+		dev2, d2_ch1, "calibphase",
+		builder, "rx3_phase_rotation", NULL);
+	iio_spin_button_add_progress(&rx_widgets[num_rx++]);
+
+	/* Transmit Chain */
+
+	d1_ch0 = iio_device_find_channel(dev1, "voltage0", true);
+	d1_ch1 = iio_device_find_channel(dev1, "voltage1", true);
+	d2_ch0 = iio_device_find_channel(dev2, "voltage0", true);
+	d2_ch1 = iio_device_find_channel(dev2, "voltage1", true);
+
+	iio_combo_box_init(&tx_widgets[num_tx++],
+		dev1, d1_ch0, "rf_port_select",
+		"rf_port_select_available",
+		rf_port_select_tx, NULL);
+	iio_combo_box_init(&tx_widgets[num_tx++],
+		dev2, d2_ch0, "rf_port_select",
+		"rf_port_select_available",
+		rf_port_select_tx, NULL);
+
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+		dev1, d1_ch0, "hardwaregain", builder,
+		"hardware_gain_tx1", &inv_scale);
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+		dev1, d1_ch1, "hardwaregain", builder,
+		"hardware_gain_tx2", &inv_scale);
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+		dev2, d2_ch0, "hardwaregain", builder,
+		"hardware_gain_tx3", &inv_scale);
+	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+		dev2, d2_ch1, "hardwaregain", builder,
+		"hardware_gain_tx4", &inv_scale);
+
+	tx_sample_freq = num_tx;
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+		dev1, d1_ch0, "sampling_frequency", builder,
+		"sampling_freq_tx", &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+		dev2, d2_ch0, "sampling_frequency", builder,
+		"sampling_freq_tx", &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+		dev1, d1_ch0, "rf_bandwidth", builder,
+		"rf_bandwidth_tx", &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+		dev2, d2_ch0, "rf_bandwidth", builder,
+		"rf_bandwidth_tx", &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
+	tx_lo = num_tx;
+	d1_ch1 = iio_device_find_channel(dev1, "altvoltage1", true);
+	d2_ch1 = iio_device_find_channel(dev2, "altvoltage1", true);
+
+	if (iio_channel_find_attr(d1_ch1, "frequency"))
+		freq_name = "frequency";
+	else
+		freq_name = "TX_LO_frequency";
+
+	iio_spin_button_s64_init_from_builder(&tx_widgets[num_tx++],
+		dev1, d1_ch1, freq_name, builder, "tx_lo_freq1", &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	iio_spin_button_s64_init_from_builder(&tx_widgets[num_tx++],
+		dev2, d2_ch1, freq_name, builder, "tx_lo_freq2", &mhz_scale);
+	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+
+
+	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
+			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
+	g_builder_connect_signal(builder, "rx2_phase_rotation", "value-changed",
+			G_CALLBACK(rx_phase_rotation_set), (gpointer *)2);
+	g_builder_connect_signal(builder, "rx3_phase_rotation", "value-changed",
+			G_CALLBACK(rx_phase_rotation_set), (gpointer *)4);
+	g_builder_connect_signal(builder, "rx4_phase_rotation", "value-changed",
+			G_CALLBACK(rx_phase_rotation_set), (gpointer *)6);
+
+	g_builder_connect_signal(builder, "sampling_freq_tx", "value-changed",
+			G_CALLBACK(tx_sample_rate_changed), NULL);
+
+	g_builder_connect_signal(builder, "fmcomms2_settings_reload", "clicked",
+		G_CALLBACK(reload_button_clicked), NULL);
+
+	g_builder_connect_signal(builder, "filter_fir_config", "file-set",
+		G_CALLBACK(filter_fir_config_file_set_cb), NULL);
+
+	g_builder_connect_signal(builder, "rx_fastlock_store1", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 1);
+	g_builder_connect_signal(builder, "tx_fastlock_store1", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 2);
+	g_builder_connect_signal(builder, "rx_fastlock_recall1", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 3);
+	g_builder_connect_signal(builder, "tx_fastlock_recall1", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 4);
+	g_builder_connect_signal(builder, "rx_fastlock_store2", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 5);
+	g_builder_connect_signal(builder, "tx_fastlock_store2", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 6);
+	g_builder_connect_signal(builder, "rx_fastlock_recall2", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 7);
+	g_builder_connect_signal(builder, "tx_fastlock_recall2", "clicked",
+		G_CALLBACK(fastlock_clicked), (gpointer) 8);
+
+	g_signal_connect_after(section_toggle[SECTION_GLOBAL], "clicked",
+		G_CALLBACK(hide_section_cb), section_setting[SECTION_GLOBAL]);
+
+	g_signal_connect_after(section_toggle[SECTION_TX], "clicked",
+		G_CALLBACK(hide_section_cb), section_setting[SECTION_TX]);
+
+	g_signal_connect_after(section_toggle[SECTION_RX], "clicked",
+		G_CALLBACK(hide_section_cb), section_setting[SECTION_RX]);
+
+	g_signal_connect_after(section_toggle[SECTION_FPGA], "clicked",
+		G_CALLBACK(hide_section_cb), section_setting[SECTION_FPGA]);
+
+	g_signal_connect_after(ensm_mode_available, "changed",
+		G_CALLBACK(glb_settings_update_labels), NULL);
+
+	g_signal_connect_after(calib_mode_available, "changed",
+		G_CALLBACK(glb_settings_update_labels), NULL);
+
+	g_signal_connect_after(trx_rate_governor_available, "changed",
+		G_CALLBACK(glb_settings_update_labels), NULL);
+
+	for (i = 1; i <= 4; i++)
+		g_signal_connect_after(rx_gain_control_modes[i], "changed",
+			G_CALLBACK(glb_settings_update_labels), NULL);
+
+	g_signal_connect_after(enable_fir_filter_rx, "toggled",
+		G_CALLBACK(filter_fir_enable), NULL);
+	g_signal_connect_after(fir_filter_en_tx, "toggled",
+		G_CALLBACK(filter_fir_enable), NULL);
+	g_signal_connect_after(enable_fir_filter_rx_tx, "toggled",
+		G_CALLBACK(filter_fir_enable), NULL);
+	g_signal_connect_after(disable_all_fir_filters, "toggled",
+		G_CALLBACK(filter_fir_enable), NULL);
+
+	make_widget_update_signal_based(glb_widgets, num_glb);
+	make_widget_update_signal_based(rx_widgets, num_rx);
+	make_widget_update_signal_based(tx_widgets, num_tx);
+
+	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
+		sample_frequency_changed_cb, NULL);
+	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
+		sample_frequency_changed_cb, NULL);
+	iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo],
+		sample_frequency_changed_cb, NULL);
+	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
+		sample_frequency_changed_cb, NULL);
+
+	iio_update_widgets(glb_widgets, num_glb);
+	tx_update_values();
+	rx_update_values();
+	filter_fir_update();
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
+	glb_settings_update_labels();
+	rssi_update_labels();
+	dac_data_manager_update_iio_widgets(dac_tx_manager);
+
+	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
+	plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
+
+	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms5_panel, NULL);
+	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms5_panel, "FMComms5");
+	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
+	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
+
+	g_thread_new("Update_thread", (void *) &update_display, NULL);
+
+	return 0;
+}
+
+#define SYNC_RELOAD "SYNC_RELOAD"
+
+static char *handle_item(struct osc_plugin *plugin, const char *attrib,
+			 const char *value)
+{
+	char *buf;
+	bool state;
+
+	if (MATCH_ATTRIB(SYNC_RELOAD)) {
+		if (value)
+			reload_button_clicked(NULL, 0);
+		else
+			return "1";
+	} else if (MATCH_ATTRIB("load_fir_filter_file")) {
+		if (value) {
+			if (value[0]) {
+				load_fir_filter(value);
+				gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filter_fir_config), value);
+			}
+		} else {
+			return last_fir_filter;
+		}
+	} else if (MATCH_ATTRIB("dds_mode_tx1")) {
+		if (value) {
+			dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE1, 1, atoi(value));
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 1));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("dds_mode_tx2")) {
+		if (value) {
+			dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE1, 2, atoi(value));
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 2));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("dds_mode_tx3")) {
+		if (value) {
+			dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE2, 1, atoi(value));
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 1));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("dds_mode_tx4")) {
+		if (value) {
+			dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE2, 2, atoi(value));
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 2));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("dac_buf_filename") &&
+				dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 1) == DDS_BUFFER) {
+		if (value) {
+			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
+		} else {
+			return dac_data_manager_get_buffer_chooser_filename(dac_tx_manager);
+		}
+	} else if (MATCH_ATTRIB("tx_channel_0")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 0, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 0));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_channel_1")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 1));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_channel_2")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 2, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 2));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_channel_3")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 3, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 3));
+			return buf;
+		}
+		} else if (MATCH_ATTRIB("tx_channel_4")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 4, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 4));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_channel_5")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 5, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 5));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_channel_6")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 6, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 6));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_channel_7")) {
+		if (value) {
+			state = (atoi(value)) ? true : false;
+			dac_data_manager_set_tx_channel_state(dac_tx_manager, 7, state);
+		} else {
+			buf = malloc (10);
+			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 7));
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("global_settings_show")) {
+		if (value) {
+			if (atoi(value))
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], true);
+			else
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], false);
+			hide_section_cb(section_toggle[SECTION_GLOBAL], section_setting[SECTION_GLOBAL]);
+		} else {
+			buf = malloc (10);
+			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]))
+				sprintf(buf, "1 # show");
+			else
+				sprintf(buf, "0 # hide");
+			return buf;
+		}
+	} else if (MATCH_ATTRIB("tx_show")) {
+		if (value) {
+			if (atoi(value))
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], true);
+			else
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], false);
+			hide_section_cb(section_toggle[SECTION_TX], section_setting[SECTION_TX]);
+		} else {
+			buf = malloc (10);
+			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]))
+				sprintf(buf, "1 # show");
+			else
+				sprintf(buf, "0 # hide");
+			return buf;
+		}
+
+	} else if (MATCH_ATTRIB("rx_show")) {
+		if (value) {
+			if (atoi(value))
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], true);
+			else
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], false);
+			hide_section_cb(section_toggle[SECTION_RX], section_setting[SECTION_RX]);
+		} else {
+			buf = malloc (10);
+			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_RX]))
+				sprintf(buf, "1 # show");
+			else
+				sprintf(buf, "0 # hide");
+			return buf;
+		}
+
+	} else if (MATCH_ATTRIB("fpga_show")) {
+		if (value) {
+			if (atoi(value))
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], true);
+			else
+				gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], false);
+			hide_section_cb(section_toggle[SECTION_FPGA], section_setting[SECTION_FPGA]);
+		} else {
+			buf = malloc (10);
+			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_FPGA]))
+				sprintf(buf, "1 # show");
+			else
+				sprintf(buf, "0 # hide");
+			return buf;
+		}
+
+	} else {
+		if (value) {
+			printf("Unhandled tokens in ini file,\n"
+				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
+				"FMComms2", attrib, value);
+			return "FAIL";
+		}
+	}
+
+	return NULL;
+}
+
+static const char *fmcomms5_sr_attribs[] = {
+	PHY_DEVICE1".trx_rate_governor",
+	PHY_DEVICE1".dcxo_tune_coarse",
+	PHY_DEVICE1".dcxo_tune_fine",
+	PHY_DEVICE1".ensm_mode",
+	PHY_DEVICE1".in_voltage0_rf_port_select",
+	PHY_DEVICE1".in_voltage0_gain_control_mode",
+	PHY_DEVICE1".in_voltage0_hardwaregain",
+	PHY_DEVICE1".in_voltage1_gain_control_mode",
+	PHY_DEVICE1".in_voltage1_hardwaregain",
+	PHY_DEVICE1".in_voltage_bb_dc_offset_tracking_en",
+	PHY_DEVICE1".in_voltage_quadrature_tracking_en",
+	PHY_DEVICE1".in_voltage_rf_dc_offset_tracking_en",
+	PHY_DEVICE1".out_voltage0_rf_port_select",
+	PHY_DEVICE1".out_altvoltage0_RX_LO_frequency",
+	PHY_DEVICE1".out_altvoltage1_TX_LO_frequency",
+	PHY_DEVICE1".out_voltage0_hardwaregain",
+	PHY_DEVICE1".out_voltage1_hardwaregain",
+	PHY_DEVICE1".out_voltage_sampling_frequency",
+	PHY_DEVICE1".in_voltage_rf_bandwidth",
+	PHY_DEVICE1".out_voltage_rf_bandwidth",
+	PHY_DEVICE2".in_voltage0_gain_control_mode",
+	PHY_DEVICE2".in_voltage0_hardwaregain",
+	PHY_DEVICE2".in_voltage1_gain_control_mode",
+	PHY_DEVICE2".in_voltage1_hardwaregain",
+	PHY_DEVICE2".out_altvoltage0_RX_LO_frequency",
+	PHY_DEVICE2".out_altvoltage1_TX_LO_frequency",
+	PHY_DEVICE2".out_voltage0_hardwaregain",
+	PHY_DEVICE2".out_voltage1_hardwaregain",
+	"load_fir_filter_file",
+	PHY_DEVICE1".in_voltage_filter_fir_en",
+	PHY_DEVICE1".out_voltage_filter_fir_en",
+	PHY_DEVICE1".in_out_voltage_filter_fir_en",
+	"global_settings_show",
+	"tx_show",
+	"rx_show",
+	"fpga_show",
+	"dds_mode_tx1",
+	"dds_mode_tx2",
+	"dds_mode_tx3",
+	"dds_mode_tx4",
+	"dac_buf_filename",
+	"tx_channel_0",
+	"tx_channel_1",
+	"tx_channel_2",
+	"tx_channel_3",
+	"tx_channel_4",
+	"tx_channel_5",
+	"tx_channel_6",
+	"tx_channel_7",
+	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_frequency",
+	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_phase",
+	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_raw",
+	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_scale",
+	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_frequency",
+	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_phase",
+	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_raw",
+	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_scale",
+	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_frequency",
+	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_phase",
+	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_raw",
+	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_scale",
+	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_frequency",
+	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_phase",
+	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_raw",
+	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_scale",
+	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_frequency",
+	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_phase",
+	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_raw",
+	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_scale",
+	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_frequency",
+	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_phase",
+	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_raw",
+	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_scale",
+	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_frequency",
+	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_phase",
+	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_raw",
+	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_scale",
+	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_frequency",
+	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_phase",
+	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_raw",
+	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_scale",
+	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_frequency",
+	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_phase",
+	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_raw",
+	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_scale",
+	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_frequency",
+	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_phase",
+	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_raw",
+	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_scale",
+	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_frequency",
+	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_phase",
+	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_raw",
+	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_scale",
+	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_frequency",
+	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_phase",
+	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_raw",
+	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_scale",
+	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_frequency",
+	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_phase",
+	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_raw",
+	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_scale",
+	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_frequency",
+	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_phase",
+	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_raw",
+	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_scale",
+	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_frequency",
+	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_phase",
+	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_raw",
+	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_scale",
+	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_frequency",
+	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_phase",
+	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_raw",
+	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_scale",
+	SYNC_RELOAD,
+	NULL,
+};
+
+static void update_active_page(gint active_page, gboolean is_detached)
+{
+	this_page = active_page;
+	plugin_detached = is_detached;
+}
+
+static void fmcomms5_get_preferred_size(int *width, int *height)
+{
+	if (width)
+		*width = 1100;
+	if (height)
+		*height = 800;
+}
+
+static void context_destroy(void)
+{
+	if (dac_tx_manager) {
+		dac_data_manager_free(dac_tx_manager);
+		dac_tx_manager = NULL;
+	}
+	iio_context_destroy(ctx);
+}
+
+struct osc_plugin plugin;
+
+static bool fmcomms5_identify(void)
+{
+	/* Use the OSC's IIO context just to detect the devices */
+	struct iio_context *osc_ctx = get_context_from_osc();
+
+	if (!iio_context_find_device(osc_ctx, PHY_DEVICE1)
+		|| !iio_context_find_device(osc_ctx, DDS_DEVICE1))
+		return false;
+	if (!iio_context_find_device(osc_ctx, PHY_DEVICE2)
+		|| !iio_context_find_device(osc_ctx, DDS_DEVICE2))
+		return false;
+
+	ctx = osc_create_context();
+	dev1 = iio_context_find_device(ctx, PHY_DEVICE1);
+	dds1 = iio_context_find_device(ctx, DDS_DEVICE1);
+	cap1 = iio_context_find_device(ctx, CAP_DEVICE1);
+	dev2 = iio_context_find_device(ctx, PHY_DEVICE2);
+	dds2 = iio_context_find_device(ctx, DDS_DEVICE2);
+	cap2 = iio_context_find_device(ctx, CAP_DEVICE2);
+
+	if (!cap1) {
+		cap1 = iio_context_find_device(ctx, CAP_DEVICE1_ALT);
+	}
+
+	if (!dev1 || !dds1 || !cap1 || !dev2 || !dds2 || !cap2)
+		iio_context_destroy(ctx);
+	return !!dev1 && !!dds1 && !!cap1 && !!dev2 && !!dds2 && !!cap2;
+}
+
+struct osc_plugin plugin = {
+	.name = "FMComms5",
+	.identify = fmcomms5_identify,
+	.init = fmcomms5_init,
+	.save_restore_attribs = fmcomms5_sr_attribs,
+	.handle_item = handle_item,
+	.handle_external_request = handle_external_request,
+	.update_active_page = update_active_page,
+	.get_preferred_size = fmcomms5_get_preferred_size,
+	.destroy = context_destroy,
+};
