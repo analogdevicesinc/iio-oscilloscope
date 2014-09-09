@@ -24,7 +24,7 @@ LDFLAGS := $(shell $(PKG_CONFIG) --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
 
 CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
 	$(shell $(SYSROOT)/usr/bin/xml2-config --cflags) \
-	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
+	-Wall -g -std=gnu90 -D_GNU_SOURCE  -DPREFIX='"$(PREFIX)"'
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
@@ -32,7 +32,7 @@ CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3) 
 PLUGINS=\
 	plugins/fmcomms1.so \
 	plugins/fmcomms2.so \
-	plugins/fmcomms2_hpc.so \
+	plugins/fmcomms5.so \
 	plugins/fmcomms2_adv.so \
 	plugins/debug.so \
 	plugins/daq2.so \
@@ -79,9 +79,6 @@ ini.o: ./ini/ini.c ./ini/ini.h
 
 dac_data_manager.o: plugins/dac_data_manager.c plugins/dac_data_manager.h
 	$(CC) plugins/dac_data_manager.c -c $(CFLAGS)
-
-plugins/fmcomms2_hpc.so: plugins/fmcomms2.c
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -DSLAVE -shared -fPIC -o $@
 
 %.so: %.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@

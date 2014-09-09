@@ -34,17 +34,9 @@
 
 #define HANNING_ENBW 1.50
 
-#ifndef SLAVE
 #define PHY_DEVICE "ad9361-phy"
-#define DDS_DEVICE "cf-ad9361-dds-core-lpc" /* can be hpc as well */
+#define DDS_DEVICE "cf-ad9361-dds-core-lpc"
 #define CAP_DEVICE "cf-ad9361-lpc"
-#else
-#define PHY_DEVICE "ad9361-phy-B"
-#define DDS_DEVICE "cf-ad9361-dds-core-B"
-#define CAP_DEVICE "cf-ad9361-B"
-#endif
-
-#define CAP_DEVICE_ALT "cf-ad9361-A"
 
 extern gfloat plugin_fft_corr;
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
@@ -1185,16 +1177,14 @@ static bool fmcomms2_identify(void)
 	if (!iio_context_find_device(osc_ctx, PHY_DEVICE)
 		|| !iio_context_find_device(osc_ctx, DDS_DEVICE))
 		return false;
+	/* Check if FMComms5 is used */
+	if (iio_context_find_device(osc_ctx, "ad9361-phy-B"))
+		return false;
 
 	ctx = osc_create_context();
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
 	dds = iio_context_find_device(ctx, DDS_DEVICE);
 	cap = iio_context_find_device(ctx, CAP_DEVICE);
-
-	if (!cap) {
-		cap = iio_context_find_device(ctx, CAP_DEVICE_ALT);
-		plugin.name = "FMComms5-A-MASTER";
-	}
 
 	if (!dev || !dds || !cap)
 		iio_context_destroy(ctx);
@@ -1202,12 +1192,7 @@ static bool fmcomms2_identify(void)
 }
 
 struct osc_plugin plugin = {
-#ifdef SLAVE
-	.name = "FMComms5-B",
-#else
 	.name = "FMComms2/3/4",
-#endif
-
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
 	.save_restore_attribs = fmcomms2_sr_attribs,
