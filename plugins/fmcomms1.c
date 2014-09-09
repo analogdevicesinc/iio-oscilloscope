@@ -1804,6 +1804,10 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 
 static void context_destroy(void)
 {
+	if (dac_tx_manager) {
+		dac_data_manager_free(dac_tx_manager);
+		dac_tx_manager = NULL;
+	}
 	iio_context_destroy(ctx);
 }
 
