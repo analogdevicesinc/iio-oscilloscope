@@ -24,7 +24,7 @@ LDFLAGS := $(shell $(PKG_CONFIG) --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
 
 CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
 	$(shell $(SYSROOT)/usr/bin/xml2-config --cflags) \
-	-Wall -g -std=gnu90 -D_GNU_SOURCE  -DPREFIX='"$(PREFIX)"'
+	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
