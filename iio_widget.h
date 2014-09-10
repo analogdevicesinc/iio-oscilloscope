@@ -8,6 +8,7 @@
 #ifndef __IIO_WIDGET_H__
 #define __IIO_WIDGET_H__
 
+#include <gtk/gtk.h>
 #include <iio.h>
 
 struct iio_widget {
@@ -73,7 +74,9 @@ void iio_spin_button_s64_init(struct iio_widget *widget, struct iio_device *dev,
 void iio_spin_button_add_progress(struct iio_widget *iio_w);
 void iio_spin_button_progress_activate(struct iio_widget *iio_w);
 void iio_spin_button_set_on_complete_function(struct iio_widget *iio_w,
-	void(*on_complete)(void));
+		void(*on_complete)(void *), void *data);
+void iio_spin_button_skip_save_on_complete(struct iio_widget *iio_w,
+		gboolean skip);
 void iio_spin_button_progress_deactivate(struct iio_widget *iio_w);
 void iio_spin_button_remove_progress(struct iio_widget *iio_w);
 
