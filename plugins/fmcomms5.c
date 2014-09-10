@@ -59,7 +59,7 @@ static struct iio_widget rx_widgets[50];
 
 static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_gains[5];
-static unsigned int rx_lo, tx_lo;
+static unsigned int rx_lo[2], tx_lo[2];
 static unsigned int rx_sample_freq, tx_sample_freq;
 static char last_fir_filter[PATH_MAX];
 
@@ -440,13 +440,13 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 	}
 	switch (command) {
 		case 1: /* RX Store */
-			iio_widget_save(&rx_widgets[rx_lo]);
+			iio_widget_save(&rx_widgets[rx_lo[d]]);
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage0", true),
 					"RX_LO_fastlock_store", profile);
 			break;
 		case 2: /* TX Store */
-			iio_widget_save(&tx_widgets[tx_lo]);
+			iio_widget_save(&tx_widgets[tx_lo[d]]);
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage1", true),
 					"TX_LO_fastlock_store", profile);
@@ -455,13 +455,13 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage0", true),
 					"RX_LO_fastlock_recall", profile);
-			iio_widget_update(&rx_widgets[rx_lo]);
+			iio_widget_update(&rx_widgets[rx_lo[d]]);
 			break;
 		case 4: /* TX Recall */
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage1", true),
 					"TX_LO_fastlock_recall", profile);
-			iio_widget_update(&tx_widgets[tx_lo]);
+			iio_widget_update(&tx_widgets[tx_lo[d]]);
 			break;
 	}
 }
@@ -863,11 +863,12 @@ static int fmcomms5_init(GtkWidget *notebook)
 		freq_name = "frequency";
 	else
 		freq_name = "RX_LO_frequency";
-	rx_lo = num_rx;
+	rx_lo[0] = num_rx;
 	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
 		dev1, d1_ch1, freq_name, builder,
 		"rx_lo_freq1", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+	rx_lo[1] = num_rx;
 	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
 		dev2, d2_ch1, freq_name, builder,
 		"rx_lo_freq2", &mhz_scale);
@@ -949,7 +950,6 @@ static int fmcomms5_init(GtkWidget *notebook)
 		"rf_bandwidth_tx", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
-	tx_lo = num_tx;
 	d1_ch1 = iio_device_find_channel(dev1, "altvoltage1", true);
 	d2_ch1 = iio_device_find_channel(dev2, "altvoltage1", true);
 
@@ -958,9 +958,11 @@ static int fmcomms5_init(GtkWidget *notebook)
 	else
 		freq_name = "TX_LO_frequency";
 
+	tx_lo[0] = num_tx;
 	iio_spin_button_s64_init_from_builder(&tx_widgets[num_tx++],
 		dev1, d1_ch1, freq_name, builder, "tx_lo_freq1", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	tx_lo[1] = num_tx;
 	iio_spin_button_s64_init_from_builder(&tx_widgets[num_tx++],
 		dev2, d2_ch1, freq_name, builder, "tx_lo_freq2", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
@@ -1043,10 +1045,12 @@ static int fmcomms5_init(GtkWidget *notebook)
 		sample_frequency_changed_cb, NULL);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
 		sample_frequency_changed_cb, NULL);
-	iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo],
-		sample_frequency_changed_cb, NULL);
-	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
-		sample_frequency_changed_cb, NULL);
+	for (i = 0; i < 2; i++) {
+		iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo[i]],
+			sample_frequency_changed_cb, NULL);
+		iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo[i]],
+			sample_frequency_changed_cb, NULL);
+		}
 
 	iio_update_widgets(glb_widgets, num_glb);
 	tx_update_values();
