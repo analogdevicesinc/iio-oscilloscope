@@ -12,7 +12,6 @@
 #include <string.h>
 #include <math.h>
 
-#include "osc.h"
 #include "iio_widget.h"
 
 void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
@@ -388,6 +387,9 @@ void iio_toggle_button_init_from_builder(struct iio_widget *widget,
  * @timeoutID: Handler ID of callback that increases progress step by step
  * @value_changed_hid: Handler ID of callback for a "value-changed" event of the
  *                     progress spinbutton
+ * @skip_widget_save: Allows widget to don't write its value to the
+ *                    driver attrbiute when the progress bar completes
+ * @on_complete_data: Data to be passed to the on_complete() function
  * @on_complete: Function to be called when progress reaches 1.0.
  */
 struct progress_data {
@@ -395,7 +397,9 @@ struct progress_data {
 	gfloat progress;
 	gint timeoutID;
 	gint value_changed_hid;
-	void (*on_complete)(void);
+	gboolean skip_widget_save;
+	void *on_complete_data;
+	void (*on_complete)(void *data);
 };
 
 /*
@@ -406,7 +410,7 @@ struct progress_data {
 static gboolean spin_button_progress_step(struct iio_widget *iio_w)
 {
 	struct progress_data *pdata = iio_w->priv_progress;
-	void (*on_complete_cb)(void) = pdata->on_complete;
+	void (*on_complete_cb)(void *) = pdata->on_complete;
 
 	if (pdata->progress < 1.0) {
 		pdata->progress += 0.095;
@@ -416,9 +420,10 @@ static gboolean spin_button_progress_step(struct iio_widget *iio_w)
 	} else {
 		pdata->progress = 0.0;
 		gtk_entry_set_progress_fraction(GTK_ENTRY(iio_w->widget), pdata->progress);
-		iio_widget_save(iio_w);
+		if (!pdata->skip_widget_save)
+			iio_widget_save(iio_w);
 		if (pdata->on_complete != NULL)
-			on_complete_cb();
+			on_complete_cb(pdata->on_complete_data);
 		pdata->timeoutID = -1;
 
 		return FALSE;
@@ -463,6 +468,8 @@ void iio_spin_button_add_progress(struct iio_widget *iio_w)
 	pdata->progress = 0.0;
 	pdata->timeoutID = -1;
 	pdata->value_changed_hid = -1;
+	pdata->skip_widget_save = FALSE;
+	pdata->on_complete_data = NULL;
 	pdata->on_complete = NULL;
 	iio_w->priv_progress = pdata;
 }
@@ -487,12 +494,12 @@ void iio_spin_button_progress_activate(struct iio_widget *iio_w)
 		"value-changed", G_CALLBACK(delayed_spin_button_update_cb), iio_w);
 }
 
-
 /*
- * Set the a user function to be called when the progress is completed.
+ * Set a user function to be called when the progress is completed. The function
+ * can take one generic pointer as parameter.
  */
 void iio_spin_button_set_on_complete_function(struct iio_widget *iio_w,
-	void(*on_complete)(void))
+	void(*on_complete)(void *), void *data)
 {
 	struct progress_data *pdata = iio_w->priv_progress;
 
@@ -505,6 +512,22 @@ void iio_spin_button_set_on_complete_function(struct iio_widget *iio_w,
 	}
 
 	pdata->on_complete = on_complete;
+	pdata->on_complete_data = data;
+}
+
+/*
+ * Allow user to disable the function that saves the value of the widget
+ * to the driver when progress bar reaches 100%. User may use
+ * iio_spin_button_set_on_complete_function() in order to provide a
+ * more complex logic before saving the value of the widget.
+ */
+
+void iio_spin_button_skip_save_on_complete(struct iio_widget *iio_w,
+		gboolean skip)
+{
+	struct progress_data *pdata = iio_w->priv_progress;
+
+	pdata->skip_widget_save = skip;
 }
 
 /*
