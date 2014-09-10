@@ -50,6 +50,7 @@ struct iio_device *cf_ad9361_lpc, *cf_ad9361_hpc;
 
 static struct iio_channel *dds_out[2][8];
 OscPlot *plot_xcorr_4ch;
+static int auto_calibrate = 0;
 
 static gint this_page;
 static GtkNotebook *nbook;
@@ -748,12 +749,14 @@ static void calibrate (gpointer button)
 	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
 		printf("could not find capture cores\n");
 		ret = -ENODEV;
+		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
 	if (!dev_dds_master || !dev_dds_slave) {
 		printf("could not find dds cores\n");
 		ret = -ENODEV;
+		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
@@ -769,6 +772,7 @@ static void calibrate (gpointer button)
 	ret = default_dds(get_cal_tone(), CAL_SCALE);
 	if (ret < 0) {
 		printf("could not set dds cores\n");
+		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
@@ -801,6 +805,7 @@ static void calibrate (gpointer button)
 	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase\n");
+		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.40);
@@ -817,6 +822,7 @@ static void calibrate (gpointer button)
 	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase\n");
+		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.64);
@@ -833,6 +839,7 @@ static void calibrate (gpointer button)
 	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, &ret, cal_freq, cal_tone, -1.0 , 0.001, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase\n");
+		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.88);
@@ -859,9 +866,11 @@ calibrate_fail:
 	create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
 			"FMCOMMS5", "Calibration finished %s",
 			ret ? "with Error" : "Successfully");
+	auto_calibrate = 1;
 
 	osc_plot_destroy(plot_xcorr_4ch);
-	gtk_widget_show(GTK_WIDGET(button));
+	if (button)
+		gtk_widget_show(GTK_WIDGET(button));
 	gdk_threads_leave();
 
 	g_thread_exit(NULL);
@@ -1104,6 +1113,21 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 		} else {
 			return "1";
 		}
+	} else if (MATCH_ATTRIB("calibrate") && dev_slave) {
+		bool fail = false;
+		i = 0;
+
+		do_calibration(NULL, NULL);
+		while (i <= 20) {
+			if (auto_calibrate >= 0)
+				i += auto_calibrate;
+			else
+				fail = true;
+
+			gtk_main_iteration();
+		}
+		if (fail)
+			return "FAIL";
 	} else {
 		if (value) {
 			printf("Unhandled tokens in ini file,\n"
