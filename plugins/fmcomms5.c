@@ -443,24 +443,24 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 			iio_widget_save(&rx_widgets[rx_lo[d]]);
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage0", true),
-					"RX_LO_fastlock_store", profile);
+					"fastlock_store", profile);
 			break;
 		case 2: /* TX Store */
 			iio_widget_save(&tx_widgets[tx_lo[d]]);
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage1", true),
-					"TX_LO_fastlock_store", profile);
+					"fastlock_store", profile);
 			break;
 		case 3: /* RX Recall */
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage0", true),
-					"RX_LO_fastlock_recall", profile);
+					"fastlock_recall", profile);
 			iio_widget_update(&rx_widgets[rx_lo[d]]);
 			break;
 		case 4: /* TX Recall */
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage1", true),
-					"TX_LO_fastlock_recall", profile);
+					"fastlock_recall", profile);
 			iio_widget_update(&tx_widgets[tx_lo[d]]);
 			break;
 	}
