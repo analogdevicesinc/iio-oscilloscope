@@ -129,12 +129,12 @@ static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
 static const char *default_channel_names[8] = {
 	"TX1_I_F1",
-	"TX1_Q_F1",
 	"TX1_I_F2",
+	"TX1_Q_F1",
 	"TX1_Q_F2",
 	"TX2_I_F1",
-	"TX2_Q_F1",
 	"TX2_I_F2",
+	"TX2_Q_F1",
 	"TX2_Q_F2"
 };
 
