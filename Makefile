@@ -106,7 +106,7 @@ install:
 	install ./waveforms/* $(PLIB)/waveforms
 	install ./profiles/* $(PLIB)/profiles
 	install ./block_diagrams/* $(PLIB)/block_diagrams
-	install adi-osc.desktop $(HOME)/.config/autostart/adi-osc.desktop
+	install adi-osc.desktop $(HOME)/.config/autostart/osc.desktop
 
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
 	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
@@ -127,4 +127,4 @@ uninstall:
 	xdg-icon-resource uninstall --noupdate --size 64 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 128 adi-osc
 	xdg-icon-resource uninstall --size 256 adi-osc
-	xdg-desktop-menu uninstall adi-osc.desktop
+	xdg-desktop-menu uninstall osc.desktop
