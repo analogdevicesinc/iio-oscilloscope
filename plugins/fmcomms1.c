@@ -1439,7 +1439,6 @@ static int fmcomms1_init(GtkWidget *notebook)
 	const char *dac_sampling_freq_file;
 	struct iio_device *dev = iio_context_find_device(ctx, "adf4351-tx-lpc");
 	struct iio_channel *ch0, *ch1;
-	struct iio_widget *scale2, *scale4;
 
 	dac_tx_manager = dac_data_manager_new(dac, NULL, ctx);
 	if (!dac_tx_manager)
@@ -1665,18 +1664,15 @@ static int fmcomms1_init(GtkWidget *notebook)
 	g_signal_connect_after(dac_shift, "changed", G_CALLBACK(rf_out_update), NULL);
 	g_signal_connect_after(dds1_scale, "changed", G_CALLBACK(rf_out_update), NULL);
 	g_signal_connect_after(dds2_scale, "changed", G_CALLBACK(rf_out_update), NULL);
+	g_signal_connect_after(dds3_scale, "changed", G_CALLBACK(rf_out_update), NULL);
+	g_signal_connect_after(dds4_scale, "changed", G_CALLBACK(rf_out_update), NULL);
 
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
-	scale2 = dac_data_manager_get_iio_widget(dac_tx_manager, TX1_T1_Q, WIDGET_SCALE);
-	scale4 = dac_data_manager_get_iio_widget(dac_tx_manager, TX1_T2_Q, WIDGET_SCALE);
-
 	iio_spin_button_set_on_complete_function(&tx_widgets[num_tx_pll], rf_out_update_on_complete, NULL);
 	iio_spin_button_set_on_complete_function(&rx_widgets[num_rx_pll], rx_update_labels_on_complete, NULL);
 	iio_spin_button_set_on_complete_function(&rx_widgets[num_adc_freq], rx_update_labels_on_complete, NULL);
-	iio_spin_button_set_on_complete_function(scale2, rf_out_update_on_complete, NULL);
-	iio_spin_button_set_on_complete_function(scale4, rf_out_update_on_complete, NULL);
 
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_I, "visible", 0);
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_Q, "visible", 0);
