@@ -314,7 +314,7 @@ void filter_fir_enable(void)
 		chn = iio_device_find_channel(dev1, "voltage0", true);
 		if (chn)
 			iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
-		chn = iio_device_find_channel(dev1, "voltage0", true);
+		chn = iio_device_find_channel(dev2, "voltage0", true);
 		if (chn)
 			iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
 
