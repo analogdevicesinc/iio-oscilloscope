@@ -68,7 +68,7 @@ static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
 static struct iio_widget cal_widgets[100];
 static unsigned int num_tx, num_rx, num_cal,
-		num_adc_freq, num_dac_shift,
+		num_adc_freq, num_dac_freq, num_dac_shift,
 		num_dac_interpolation;
 
 static struct iio_device *adc_freq_device;
@@ -246,6 +246,16 @@ static void cal_save_values(void)
 {
 	iio_save_widgets(cal_widgets, num_cal);
 	iio_update_widgets(cal_widgets, num_cal);
+}
+
+static void tx_sample_rate_changed(void *data)
+{
+	GtkSpinButton *dac_freq_spin;
+	gdouble rate;
+
+	dac_freq_spin = GTK_SPIN_BUTTON(tx_widgets[num_dac_freq].widget);
+	rate = gtk_spin_button_get_value(dac_freq_spin) / 2.0;
+	dac_data_manager_freq_widgets_range_update(dac_tx_manager, rate);
 }
 
 struct fmcomms1_calib_data_v1 *find_entry(struct fmcomms1_calib_data_v1 *data,
@@ -1537,6 +1547,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	/* Bind the IIO device files to the GUI widgets */
 
 	/* The next free frequency related widgets - keep in this order! */
+	num_dac_freq = num_tx;
 	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
 			dac, ch0, dac_sampling_freq_file,
 			builder, "dac_data_clock", &mhz_scale);
@@ -1673,6 +1684,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	iio_spin_button_set_on_complete_function(&tx_widgets[num_tx_pll], rf_out_update_on_complete, NULL);
 	iio_spin_button_set_on_complete_function(&rx_widgets[num_rx_pll], rx_update_labels_on_complete, NULL);
 	iio_spin_button_set_on_complete_function(&rx_widgets[num_adc_freq], rx_update_labels_on_complete, NULL);
+	iio_spin_button_set_on_complete_function(&tx_widgets[num_dac_freq], tx_sample_rate_changed, NULL);
 
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_I, "visible", 0);
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_Q, "visible", 0);
@@ -1685,6 +1697,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 	tx_update_values();
 	rx_update_values();
 	cal_update_values();
+	tx_sample_rate_changed(NULL);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms1_panel, NULL);
