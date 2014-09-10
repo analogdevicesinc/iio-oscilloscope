@@ -746,13 +746,13 @@ static void calibrate (gpointer button)
 	int ret, samples;
 
 	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
-		printf("could not fine capture cores\n");
+		printf("could not find capture cores\n");
 		ret = -ENODEV;
 		goto calibrate_fail;
 	}
 
 	if (!dev_dds_master || !dev_dds_slave) {
-		printf("could not fine dds cores\n");
+		printf("could not find dds cores\n");
 		ret = -ENODEV;
 		goto calibrate_fail;
 	}
