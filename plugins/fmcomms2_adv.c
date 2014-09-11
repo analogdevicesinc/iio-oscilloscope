@@ -878,8 +878,6 @@ calibrate_fail:
 
 void do_calibration (GtkWidget *widget, gpointer data)
 {
-
-	int i;
 	GtkToggleButton *silent_calib;
 
 	plot_xcorr_4ch = plugin_get_new_plot();
@@ -890,10 +888,6 @@ void do_calibration (GtkWidget *widget, gpointer data)
 	}
 
 	if (plot_xcorr_4ch) {
-
-		for (i = 0; i < 8; i++)
-
-
 		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 0, true);
 		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 1, true);
 		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 4, true);
