@@ -58,6 +58,8 @@ static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_lo, tx_lo;
 static unsigned int rx_sample_freq, tx_sample_freq;
 static char last_fir_filter[PATH_MAX];
+static char *rx_fastlock_store_name, *rx_fastlock_recall_name;
+static char *tx_fastlock_store_name, *tx_fastlock_recall_name;
 
 static struct iio_context *ctx;
 static struct iio_device *dev, *dds, *cap;
@@ -398,24 +400,24 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 			iio_widget_save(&rx_widgets[rx_lo]);
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile));
 			write_int(iio_device_find_channel(dev, "altvoltage0", true),
-					"fastlock_store", profile);
+					rx_fastlock_store_name, profile);
 			break;
 		case 2: /* TX Store */
 			iio_widget_save(&tx_widgets[tx_lo]);
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile));
 			write_int(iio_device_find_channel(dev, "altvoltage1", true),
-					"fastlock_store", profile);
+					tx_fastlock_store_name, profile);
 			break;
 		case 3: /* RX Recall */
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile));
 			write_int(iio_device_find_channel(dev, "altvoltage0", true),
-					"fastlock_recall", profile);
+					rx_fastlock_recall_name, profile);
 			iio_widget_update(&rx_widgets[rx_lo]);
 			break;
 		case 4: /* TX Recall */
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile));
 			write_int(iio_device_find_channel(dev, "altvoltage1", true),
-					"fastlock_recall", profile);
+					tx_fastlock_recall_name, profile);
 			iio_widget_update(&tx_widgets[tx_lo]);
 			break;
 	}
@@ -771,6 +773,17 @@ static int fmcomms2_init(GtkWidget *notebook)
 		builder, "rx1_phase_rotation", NULL);
 	iio_spin_button_add_progress(&rx_widgets[num_rx++]);
 
+	ch0 = iio_device_find_channel(dev, "altvoltage0", true);
+
+	if (iio_channel_find_attr(ch0, "fastlock_store"))
+		rx_fastlock_store_name = "fastlock_store";
+	else
+		rx_fastlock_store_name = "RX_LO_fastlock_store";
+	if (iio_channel_find_attr(ch0, "fastlock_recall"))
+		rx_fastlock_recall_name = "fastlock_recall";
+	else
+		rx_fastlock_recall_name = "RX_LO_fastlock_recall";
+
 	/* Transmit Chain */
 
 	ch0 = iio_device_find_channel(dev, "voltage0", true);
@@ -811,8 +824,16 @@ static int fmcomms2_init(GtkWidget *notebook)
 		dev, ch1, freq_name, builder, "tx_lo_freq", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
-	ch0 = iio_device_find_channel(dds, "TX1_I_F1", true);
+	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
 
+	if (iio_channel_find_attr(ch1, "fastlock_store"))
+		tx_fastlock_store_name = "fastlock_store";
+	else
+		tx_fastlock_store_name = "TX_LO_fastlock_store";
+	if (iio_channel_find_attr(ch1, "fastlock_recall"))
+		tx_fastlock_recall_name = "fastlock_recall";
+	else
+		tx_fastlock_recall_name = "TX_LO_fastlock_recall";
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
 			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
