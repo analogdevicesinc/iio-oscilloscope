@@ -104,7 +104,7 @@ static GtkNotebook *nbook;
 static GtkWidget *fmcomms5_panel;
 static gboolean plugin_detached;
 
-static void signal_sampling_freq_changed(void)
+static void trigger_mcs_button(void)
 {
 	struct osc_plugin *plugin;
 	GSList *node;
@@ -227,7 +227,7 @@ static void sample_frequency_changed_cb(void *data)
 
 static void rx_sample_frequency_changed_cb(void *data)
 {
-	signal_sampling_freq_changed();
+	trigger_mcs_button();
 	sample_frequency_changed_cb(data);
 }
 
@@ -356,6 +356,7 @@ void filter_fir_enable(GtkToggleButton *button, gpointer data)
 	}
 
 	filter_fir_update();
+	trigger_mcs_button();
 }
 
 static void rx_phase_rotation_update()
