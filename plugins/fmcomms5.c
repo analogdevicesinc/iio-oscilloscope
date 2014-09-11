@@ -321,9 +321,12 @@ void filter_fir_update(void)
 	glb_settings_update_labels();
 }
 
-void filter_fir_enable(void)
+void filter_fir_enable(GtkToggleButton *button, gpointer data)
 {
 	bool rx, tx, rxtx, disable;
+
+	if (!gtk_toggle_button_get_active(button))
+		return;
 
 	rx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx));
 	tx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx));
