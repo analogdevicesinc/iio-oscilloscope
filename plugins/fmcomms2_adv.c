@@ -1001,6 +1001,21 @@ void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
+int handle_external_request (const char *request)
+{
+	int ret = 0;
+
+	if (!strcmp(request, "Trigger MCS")) {
+		GtkWidget *mcs_btn;
+
+		mcs_btn = GTK_WIDGET(gtk_builder_get_object(builder, "mcs_sync"));
+		g_signal_emit_by_name(mcs_btn, "clicked", NULL);
+		ret = 1;
+	}
+
+	return ret;
+}
+
 static int fmcomms2adv_init(GtkWidget *notebook)
 {
 	GtkWidget *fmcomms2adv_panel;
@@ -1299,6 +1314,7 @@ struct osc_plugin plugin = {
 	.init = fmcomms2adv_init,
 	.save_restore_attribs = fmcomms2_adv_sr_attribs,
 	.handle_item = handle_item,
+	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.destroy = context_destroy,
 };

@@ -104,6 +104,21 @@ static GtkNotebook *nbook;
 static GtkWidget *fmcomms5_panel;
 static gboolean plugin_detached;
 
+static void signal_sampling_freq_changed(void)
+{
+	struct osc_plugin *plugin;
+	GSList *node;
+
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		plugin = node->data;
+		if (plugin && (!strncmp(plugin->name, "FMComms2 Advanced", 17))) {
+			if (plugin->handle_external_request) {
+				plugin->handle_external_request("Trigger MCS");
+			}
+		}
+	}
+}
+
 static void tx_update_values(void)
 {
 	iio_update_widgets(tx_widgets, num_tx);
@@ -208,6 +223,17 @@ static void sample_frequency_changed_cb(void *data)
 {
 	glb_settings_update_labels();
 	rx_update_labels();
+}
+
+static void rx_sample_frequency_changed_cb(void *data)
+{
+	signal_sampling_freq_changed();
+	sample_frequency_changed_cb(data);
+}
+
+static void tx_sample_frequency_changed_cb(void *data)
+{
+	sample_frequency_changed_cb(data);
 }
 
 static void rssi_update_labels(void)
@@ -657,6 +683,7 @@ static int fmcomms5_init(GtkWidget *notebook)
 	GtkWidget *dev1_rx_frm, *dev2_rx_frm;
 	GtkWidget *dev1_tx_frm, *dev2_tx_frm;
 	const char *freq_name;
+	int rx_sample_freq_pair, tx_sample_freq_pair;
 	int i;
 
 	dac_tx_manager = dac_data_manager_new(dds1, dds2, ctx);
@@ -841,6 +868,7 @@ static int fmcomms5_init(GtkWidget *notebook)
 		dev1, d1_ch0, "sampling_frequency", builder,
 		"sampling_freq_rx", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+	rx_sample_freq_pair = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		dev2, d2_ch0, "sampling_frequency", builder,
 		"sampling_freq_rx", &mhz_scale);
@@ -936,6 +964,7 @@ static int fmcomms5_init(GtkWidget *notebook)
 		dev1, d1_ch0, "sampling_frequency", builder,
 		"sampling_freq_tx", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	tx_sample_freq_pair = num_tx;
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		dev2, d2_ch0, "sampling_frequency", builder,
 		"sampling_freq_tx", &mhz_scale);
@@ -1041,10 +1070,10 @@ static int fmcomms5_init(GtkWidget *notebook)
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
-	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
-		sample_frequency_changed_cb, NULL);
-	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
-		sample_frequency_changed_cb, NULL);
+	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq_pair],
+		rx_sample_frequency_changed_cb, NULL);
+	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq_pair],
+		tx_sample_frequency_changed_cb, NULL);
 	for (i = 0; i < 2; i++) {
 		iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo[i]],
 			sample_frequency_changed_cb, NULL);
