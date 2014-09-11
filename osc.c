@@ -416,38 +416,38 @@ static void do_fft(Transform *tr)
 static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *result, int N)
 {
 	fftw_complex * signala_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
-    fftw_complex * signalb_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
-    fftw_complex * outa = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
-    fftw_complex * outb = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
-    fftw_complex * out = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
+	fftw_complex * signalb_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
+	fftw_complex * outa = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
+	fftw_complex * outb = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
+	fftw_complex * out = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
 	fftw_complex scale;
 	int i;
 
 	if (!signala_ext || !signalb_ext || !outa || !outb || !out)
 		return;
 
-    fftw_plan pa = fftw_plan_dft_1d(2 * N - 1, signala_ext, outa, FFTW_FORWARD, FFTW_ESTIMATE);
-    fftw_plan pb = fftw_plan_dft_1d(2 * N - 1, signalb_ext, outb, FFTW_FORWARD, FFTW_ESTIMATE);
-    fftw_plan px = fftw_plan_dft_1d(2 * N - 1, out, result, FFTW_BACKWARD, FFTW_ESTIMATE);
+	fftw_plan pa = fftw_plan_dft_1d(2 * N - 1, signala_ext, outa, FFTW_FORWARD, FFTW_ESTIMATE);
+	fftw_plan pb = fftw_plan_dft_1d(2 * N - 1, signalb_ext, outb, FFTW_FORWARD, FFTW_ESTIMATE);
+	fftw_plan px = fftw_plan_dft_1d(2 * N - 1, out, result, FFTW_BACKWARD, FFTW_ESTIMATE);
 
-    //zeropadding
-    memset (signala_ext, 0, sizeof(fftw_complex) * (N - 1));
-    memcpy (signala_ext + (N - 1), signala, sizeof(fftw_complex) * N);
-    memcpy (signalb_ext, signalb, sizeof(fftw_complex) * N);
-    memset (signalb_ext + N, 0, sizeof(fftw_complex) * (N - 1));
+	//zeropadding
+	memset(signala_ext, 0, sizeof(fftw_complex) * (N - 1));
+	memcpy(signala_ext + (N - 1), signala, sizeof(fftw_complex) * N);
+	memcpy(signalb_ext, signalb, sizeof(fftw_complex) * N);
+	memset(signalb_ext + N, 0, sizeof(fftw_complex) * (N - 1));
 
-    fftw_execute(pa);
-    fftw_execute(pb);
+	fftw_execute(pa);
+	fftw_execute(pb);
 
-    scale = 1.0/(2 * N -1);
-    for (i = 0; i < 2 * N - 1; i++)
-        out[i] = outa[i] * conj(outb[i]) * scale;
+	scale = 1.0/(2 * N -1);
+	for (i = 0; i < 2 * N - 1; i++)
+		out[i] = outa[i] * conj(outb[i]) * scale;
 
-    fftw_execute(px);
+	fftw_execute(px);
 
-    fftw_destroy_plan(pa);
-    fftw_destroy_plan(pb);
-    fftw_destroy_plan(px);
+	fftw_destroy_plan(pa);
+	fftw_destroy_plan(pb);
+	fftw_destroy_plan(px);
 
 	fftw_free(signala_ext);
 	fftw_free(signalb_ext);
@@ -455,9 +455,9 @@ static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *re
 	fftw_free(outa);
 	fftw_free(outb);
 
-    fftw_cleanup();
+	fftw_cleanup();
 
-    return;
+	return;
 }
 
 void time_transform_function(Transform *tr, gboolean init_transform)
