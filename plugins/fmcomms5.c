@@ -62,6 +62,8 @@ static unsigned int rx_gains[5];
 static unsigned int rx_lo[2], tx_lo[2];
 static unsigned int rx_sample_freq, tx_sample_freq;
 static char last_fir_filter[PATH_MAX];
+static char *rx_fastlock_store_name, *rx_fastlock_recall_name;
+static char *tx_fastlock_store_name, *tx_fastlock_recall_name;
 
 static struct iio_context *ctx;
 static struct iio_device *dev1, *dds1, *cap1;
@@ -103,6 +105,21 @@ static gint this_page;
 static GtkNotebook *nbook;
 static GtkWidget *fmcomms5_panel;
 static gboolean plugin_detached;
+
+static void trigger_mcs_button(void)
+{
+	struct osc_plugin *plugin;
+	GSList *node;
+
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		plugin = node->data;
+		if (plugin && (!strncmp(plugin->name, "FMComms2 Advanced", 17))) {
+			if (plugin->handle_external_request) {
+				plugin->handle_external_request("Trigger MCS");
+			}
+		}
+	}
+}
 
 static void tx_update_values(void)
 {
@@ -210,6 +227,17 @@ static void sample_frequency_changed_cb(void *data)
 	rx_update_labels();
 }
 
+static void rx_sample_frequency_changed_cb(void *data)
+{
+	trigger_mcs_button();
+	sample_frequency_changed_cb(data);
+}
+
+static void tx_sample_frequency_changed_cb(void *data)
+{
+	sample_frequency_changed_cb(data);
+}
+
 static void rssi_update_labels(void)
 {
 	char buf[1024];
@@ -295,9 +323,12 @@ void filter_fir_update(void)
 	glb_settings_update_labels();
 }
 
-void filter_fir_enable(void)
+void filter_fir_enable(GtkToggleButton *button, gpointer data)
 {
 	bool rx, tx, rxtx, disable;
+
+	if (!gtk_toggle_button_get_active(button))
+		return;
 
 	rx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx));
 	tx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx));
@@ -327,6 +358,7 @@ void filter_fir_enable(void)
 	}
 
 	filter_fir_update();
+	trigger_mcs_button();
 }
 
 static void rx_phase_rotation_update()
@@ -443,24 +475,24 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 			iio_widget_save(&rx_widgets[rx_lo[d]]);
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage0", true),
-					"fastlock_store", profile);
+					rx_fastlock_store_name, profile);
 			break;
 		case 2: /* TX Store */
 			iio_widget_save(&tx_widgets[tx_lo[d]]);
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage1", true),
-					"fastlock_store", profile);
+					tx_fastlock_store_name, profile);
 			break;
 		case 3: /* RX Recall */
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(rx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage0", true),
-					"fastlock_recall", profile);
+					rx_fastlock_recall_name, profile);
 			iio_widget_update(&rx_widgets[rx_lo[d]]);
 			break;
 		case 4: /* TX Recall */
 			profile = gtk_combo_box_get_active(GTK_COMBO_BOX(tx_fastlock_profile[d]));
 			write_int(iio_device_find_channel(dev, "altvoltage1", true),
-					"fastlock_recall", profile);
+					tx_fastlock_recall_name, profile);
 			iio_widget_update(&tx_widgets[tx_lo[d]]);
 			break;
 	}
@@ -657,6 +689,7 @@ static int fmcomms5_init(GtkWidget *notebook)
 	GtkWidget *dev1_rx_frm, *dev2_rx_frm;
 	GtkWidget *dev1_tx_frm, *dev2_tx_frm;
 	const char *freq_name;
+	int rx_sample_freq_pair, tx_sample_freq_pair;
 	int i;
 
 	dac_tx_manager = dac_data_manager_new(dds1, dds2, ctx);
@@ -841,6 +874,7 @@ static int fmcomms5_init(GtkWidget *notebook)
 		dev1, d1_ch0, "sampling_frequency", builder,
 		"sampling_freq_rx", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+	rx_sample_freq_pair = num_rx;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 		dev2, d2_ch0, "sampling_frequency", builder,
 		"sampling_freq_rx", &mhz_scale);
@@ -902,6 +936,17 @@ static int fmcomms5_init(GtkWidget *notebook)
 		builder, "rx3_phase_rotation", NULL);
 	iio_spin_button_add_progress(&rx_widgets[num_rx++]);
 
+	d1_ch0 = iio_device_find_channel(dev1, "altvoltage0", true);
+
+	if (iio_channel_find_attr(d1_ch0, "fastlock_store"))
+		rx_fastlock_store_name = "fastlock_store";
+	else
+		rx_fastlock_store_name = "RX_LO_fastlock_store";
+	if (iio_channel_find_attr(d1_ch0, "fastlock_recall"))
+		rx_fastlock_recall_name = "fastlock_recall";
+	else
+		rx_fastlock_recall_name = "RX_LO_fastlock_recall";
+
 	/* Transmit Chain */
 
 	d1_ch0 = iio_device_find_channel(dev1, "voltage0", true);
@@ -936,6 +981,7 @@ static int fmcomms5_init(GtkWidget *notebook)
 		dev1, d1_ch0, "sampling_frequency", builder,
 		"sampling_freq_tx", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	tx_sample_freq_pair = num_tx;
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		dev2, d2_ch0, "sampling_frequency", builder,
 		"sampling_freq_tx", &mhz_scale);
@@ -967,6 +1013,16 @@ static int fmcomms5_init(GtkWidget *notebook)
 		dev2, d2_ch1, freq_name, builder, "tx_lo_freq2", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
+	d1_ch1 = iio_device_find_channel(dev1, "altvoltage1", true);
+
+	if (iio_channel_find_attr(d1_ch1, "fastlock_store"))
+		tx_fastlock_store_name = "fastlock_store";
+	else
+		tx_fastlock_store_name = "TX_LO_fastlock_store";
+	if (iio_channel_find_attr(d1_ch1, "fastlock_recall"))
+		tx_fastlock_recall_name = "fastlock_recall";
+	else
+		tx_fastlock_recall_name = "TX_LO_fastlock_recall";
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
 			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
@@ -1041,10 +1097,10 @@ static int fmcomms5_init(GtkWidget *notebook)
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
-	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
-		sample_frequency_changed_cb, NULL);
-	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
-		sample_frequency_changed_cb, NULL);
+	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq_pair],
+		rx_sample_frequency_changed_cb, NULL);
+	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq_pair],
+		tx_sample_frequency_changed_cb, NULL);
 	for (i = 0; i < 2; i++) {
 		iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo[i]],
 			sample_frequency_changed_cb, NULL);

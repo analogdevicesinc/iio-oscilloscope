@@ -21,6 +21,7 @@
 #include <libxml/xpath.h>
 #include <string.h>
 #include <dirent.h>
+#include <unistd.h>
 
 #include <iio.h>
 
@@ -61,6 +62,11 @@ struct _option
 	int  value; /* option value */
 };
 
+enum register_map_source {
+	REG_MAP_SPI,
+	REG_MAP_AXI_CORE
+};
+
 /* GUI widgets */
 static GtkWidget *combobox_device_list;
 static GtkWidget *spin_btn_reg_addr;
@@ -75,9 +81,7 @@ static GtkWidget *label_reg_notes;
 static GtkWidget *label_notes_tag;
 static GtkWidget *warning_label;
 static GtkWidget *reg_autoread;
-static GtkWidget *frm_regmaptype;
-static GtkWidget *spi_regmap;
-static GtkWidget *axicore_regmap;
+static GtkWidget *reg_map_type;
 static GtkWidget *toggle_detailed_regmap;
 
 /* IIO Scan Elements widgets */
@@ -117,6 +121,7 @@ static int *reg_addr_list;     /* Pointer to the list of addresses of all regist
 static int reg_list_size;      /* Number of register addresses */
 static int reg_bit_width;      /* The size in bits that all registers have in common */
 static reg soft_reg;           /* Holds all information of a register and of the contained bits  */
+static gulong reg_map_hid;     /* The handler id of the register map type combobox */
 static gulong reg_addr_hid;    /* The handler id of the register address spin button */
 static gulong reg_val_hid;     /* The handler id of the register value spin button */
 static gulong *combo_hid_list; /* Handler ids of the bit options(comboboxes) */
@@ -166,6 +171,8 @@ static bool combo_box_text_set_active_text(GtkComboBoxText *comboboxtext,
 static void combo_box_text_add_default_text(GtkComboBoxText *box,
 		const char *text);
 static void debug_register_section_init(struct iio_device *iio_dev);
+static void reg_map_chooser_init(struct iio_device *dev);
+static bool xml_file_exists(const char *filename);
 
 /******************************************************************************/
 /******************************** Callbacks ***********************************/
@@ -347,6 +354,7 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 	current_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_device_list));
 	if (g_strcmp0("None\0", current_device)) {
 		dev = iio_context_find_device(ctx, current_device);
+		reg_map_chooser_init(dev);
 		debug_register_section_init(dev);
 
 		gtk_widget_show(scanel_read);
@@ -380,7 +388,6 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_attr_type), 0);
 	} else {
 		gtk_widget_set_sensitive(register_section, false);
-		gtk_widget_hide(frm_regmaptype);
 		gtk_widget_hide(scanel_read);
 		gtk_widget_hide(scanel_write);
 		gtk_widget_hide(warning_label);
@@ -409,7 +416,7 @@ static void reg_read_clicked(GtkButton *button, gpointer user_data)
 	if (address < 0)
 		return;
 
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(axicore_regmap)))
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(reg_map_type)) == REG_MAP_AXI_CORE)
 		address |= 0x80000000;
 	ret = iio_device_reg_read(dev, address, &i);
 	if (ret == 0) {
@@ -435,7 +442,7 @@ static void reg_write_clicked(GtkButton *button, gpointer user_data)
 
 	address = (uint32_t)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_addr));
 
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(axicore_regmap)))
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(reg_map_type)) == REG_MAP_AXI_CORE)
 		address |= 0x80000000;
 
 	val = (uint32_t)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_value));
@@ -587,6 +594,11 @@ void detailed_regmap_toggled_cb(GtkToggleButton *btn, gpointer data)
 		debug_register_section_init(dev);
 	}
 	g_free(current_device);
+}
+
+static void reg_map_type_changed_cb(GtkComboBox box, gpointer data)
+{
+	detailed_regmap_toggled_cb(GTK_TOGGLE_BUTTON(toggle_detailed_regmap), NULL);
 }
 
 void debug_panel_destroy_cb(GObject *object, gpointer user_data)
@@ -1283,25 +1295,17 @@ static void device_xml_file_selection(const char *device_name, char *filename)
 {
 	struct iio_device *iio_dev = iio_context_find_device(ctx, device_name);
 
-	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle_detailed_regmap))) {
-		sprintf(filename, "%s", "");
-		return;
-	}
-
-	/* Set SPI register as the default source */
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), false);
-
-	/* Check if device has a corresponding xml file */
-	find_device_xml_file(xmls_folder_path, (char *)device_name, filename);
-
-	/* Attempt to associate AXI Core ADC xml or AXI Core DAC xml to the device */
-	if (!strcmp(filename, "")) {
-		if (is_input_device(iio_dev))
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(reg_map_type)) == REG_MAP_SPI) {
+		/* Find the device corresponding xml file */
+		find_device_xml_file(xmls_folder_path, (char *)device_name, filename);
+	} else if (gtk_combo_box_get_active(GTK_COMBO_BOX(reg_map_type)) == REG_MAP_AXI_CORE) {
+		/* Attempt to associate AXI Core ADC xml or AXI Core DAC xml to the device */
+		if (is_input_device(iio_dev) && xml_file_exists("adi_regmap_adc.xml"))
 			sprintf(filename, "adi_regmap_adc.xml");
-		else if (is_output_device(iio_dev))
+		else if (is_output_device(iio_dev) && xml_file_exists("adi_regmap_dac.xml"))
 			sprintf(filename, "adi_regmap_dac.xml");
-		if (strcmp(filename, ""))
-			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(axicore_regmap), true);
+	} else {
+		sprintf(filename, "%s", "");
 	}
 }
 
@@ -1334,6 +1338,27 @@ static int device_xml_file_load(char *filename)
 }
 
 /*
+ * Check if the given file exists.
+ * The function also prefixes the file name with the xml directory path.
+ */
+static bool xml_file_exists(const char *filename)
+{
+	char *temp_path;
+
+	temp_path = malloc(strlen(xmls_folder_path) + strlen(filename) + 2);
+	if (!temp_path) {
+		printf("Failed to allocate memory with malloc\n");
+		return false;
+	}
+	sprintf(temp_path, "%s/%s", xmls_folder_path, filename);
+
+	if (access(temp_path, F_OK) == 0)
+		return true;
+	else
+		return false;
+}
+
+/*
  * Initialize GUI and all data for the register section of the debug plugin
  */
 static void debug_register_section_init(struct iio_device *iio_dev)
@@ -1344,12 +1369,10 @@ static void debug_register_section_init(struct iio_device *iio_dev)
 		return;
 
 	if (iio_device_get_debug_attrs_count(dev) > 0) {
-		device_xml_file_selection(iio_device_get_name(iio_dev), xml_filename);
-		if (!strcmp(xml_filename, "")) {
-			gtk_widget_show(frm_regmaptype);
-		} else {
-			device_xml_file_load(xml_filename);
-			gtk_widget_hide(frm_regmaptype);
+		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle_detailed_regmap))) {
+			device_xml_file_selection(iio_device_get_name(iio_dev), xml_filename);
+			if (strcmp(xml_filename, ""))
+				device_xml_file_load(xml_filename);
 		}
 		gtk_widget_set_sensitive(register_section, true);
 	} else {
@@ -1358,6 +1381,28 @@ static void debug_register_section_init(struct iio_device *iio_dev)
 			gtk_widget_show(warning_label);
 			gtk_widget_set_sensitive(register_section, false);
 	}
+}
+
+/*
+ * Initialize the combobox that is used for register map selection.
+ * Not all combobox options should be available for every device.
+ */
+static void reg_map_chooser_init(struct iio_device *dev)
+{
+	static const char *spi_option = "SPI";
+	static const char *axi_option = "AXI_CORE";
+
+	if (!dev)
+		return;
+
+	g_signal_handler_block(reg_map_type, reg_map_hid);
+
+	gtk_combo_box_text_remove_all(reg_map_type);
+	combo_box_text_add_default_text(GTK_COMBO_BOX_TEXT(reg_map_type), spi_option);
+	if (is_input_device(dev) || is_output_device(dev))
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(reg_map_type), axi_option);
+
+	g_signal_handler_unblock(reg_map_type, reg_map_hid);
 }
 
 /*
@@ -1450,10 +1495,8 @@ static int debug_init(GtkWidget *notebook)
 	reg_map_container = GTK_WIDGET(gtk_builder_get_object(builder, "regmap_container"));
 	warning_label = GTK_WIDGET(gtk_builder_get_object(builder, "label_warning"));
 	reg_autoread = GTK_WIDGET(gtk_builder_get_object(builder, "register_autoread"));
-	frm_regmaptype = GTK_WIDGET(gtk_builder_get_object(builder, "frame_regmap_type"));
-	spi_regmap = GTK_WIDGET(gtk_builder_get_object(builder, "radiobtn_spi_map"));
-	axicore_regmap = GTK_WIDGET(gtk_builder_get_object(builder, "radiobtn_axicore_map"));
 	toggle_detailed_regmap = GTK_WIDGET(gtk_builder_get_object(builder, "toggle_detailed_regmap"));
+	reg_map_type = GTK_WIDGET(gtk_builder_get_object(builder, "cmb_RegisterMapType"));
 
 	vbox_scanel =  GTK_WIDGET(gtk_builder_get_object(builder, "scanel_container"));
 	scanel_read = GTK_WIDGET(gtk_builder_get_object(builder, "debug_read_scan"));
@@ -1502,6 +1545,8 @@ static int debug_init(GtkWidget *notebook)
 				G_CALLBACK(attribute_type_changed_cb), NULL);
 	debug_scanel_hid = g_signal_connect(G_OBJECT(combobox_debug_scanel),
 			 "changed", G_CALLBACK(debug_scanel_changed_cb), NULL);
+	reg_map_hid = g_signal_connect(G_OBJECT(reg_map_type), "changed",
+			G_CALLBACK(reg_map_type_changed_cb), NULL);
 	g_signal_connect(G_OBJECT(scanel_read), "clicked",
 			G_CALLBACK(scanel_read_clicked), NULL);
 	g_signal_connect(G_OBJECT(scanel_write), "clicked",

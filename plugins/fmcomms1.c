@@ -1636,6 +1636,7 @@ static int fmcomms1_init(GtkWidget *notebook)
 			G_CALLBACK(adc_cal_spin1), "calibphase");
 
 	/* Rx Widgets */
+	dev = iio_context_find_device(ctx, "adf4351-rx-lpc");
 	ch0 = iio_device_find_channel(dev, "altvoltage0", true);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			dev, ch0, "frequency_resolution",

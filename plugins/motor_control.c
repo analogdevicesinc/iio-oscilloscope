@@ -96,6 +96,19 @@ static gboolean change_direction_label(GBinding *binding,
 	return TRUE;
 }
 
+static gboolean enable_widgets_of_manual_pwn_mode(GBinding *binding,
+	const GValue *source_value, GValue *target_value, gpointer data)
+{
+	const char *controller = g_value_get_string(source_value);
+
+	if (!strncmp("Matlab Controller", controller, 17))
+		g_value_set_boolean(target_value, FALSE);
+	else
+		g_value_set_boolean(target_value, TRUE);
+
+	return TRUE;
+}
+
 static gint spin_input_cb(GtkSpinButton *btn, gpointer new_value, gpointer data)
 {
 	gdouble value;
@@ -195,11 +208,6 @@ void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder)
 		pid_dev, NULL, "mc_ctrl_pwm",
 		builder, "spinbutton_pwm", NULL);
 	pwm_pid = tx_widgets[num_tx - 1].widget;
-
-	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-		pid_dev, NULL, "mc_ctrl_sensors",
-		"mc_ctrl_sensors_available", builder,
-		"comboboxtext_sensors", NULL);
 }
 
 void create_iio_bindings_for_advanced_ctrl(GtkBuilder *builder)
@@ -300,6 +308,25 @@ static void pid_controller_init(GtkBuilder *builder)
 	g_object_bind_property_full(controller_type_pid, "active", controller_type_pid, "label", 0, change_controller_type_label, NULL, NULL, NULL);
 	/* Change direction label between "CW" and "CCW" */
 	g_object_bind_property_full(direction_pid, "active", direction_pid, "label", 0, change_direction_label, NULL, NULL, NULL);
+	/* Hide widgets when Matlab Controller type is active */
+	g_object_bind_property_full(controller_type_pid, "label",
+		gtk_builder_get_object(builder, "vbox_delta_lbls"), "visible",
+		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
+	g_object_bind_property_full(controller_type_pid, "label",
+		gtk_builder_get_object(builder, "vbox_delta_widgets"), "visible",
+		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
+	g_object_bind_property_full(controller_type_pid, "label",
+		gtk_builder_get_object(builder, "vbox_direction_lbls"), "visible",
+		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
+	g_object_bind_property_full(controller_type_pid, "label",
+		gtk_builder_get_object(builder, "vbox_direction_widgets"), "visible",
+		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
+	g_object_bind_property_full(controller_type_pid, "label",
+		gtk_builder_get_object(builder, "vbox_manual_pwm_lbls"), "visible",
+		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
+	g_object_bind_property_full(controller_type_pid, "label",
+		gtk_builder_get_object(builder, "vbox_manual_pwm_widgets"), "visible",
+		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
 }
 
 static void advanced_controller_init(GtkBuilder *builder)

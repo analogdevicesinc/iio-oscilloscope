@@ -878,8 +878,6 @@ calibrate_fail:
 
 void do_calibration (GtkWidget *widget, gpointer data)
 {
-
-	int i;
 	GtkToggleButton *silent_calib;
 
 	plot_xcorr_4ch = plugin_get_new_plot();
@@ -890,10 +888,6 @@ void do_calibration (GtkWidget *widget, gpointer data)
 	}
 
 	if (plot_xcorr_4ch) {
-
-		for (i = 0; i < 8; i++)
-
-
 		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 0, true);
 		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 1, true);
 		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 4, true);
@@ -1008,6 +1002,21 @@ void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_hide(tohide); /* Hide Init button in BIST Tab */
 	else
 		gtk_widget_show(tohide);
+}
+
+int handle_external_request (const char *request)
+{
+	int ret = 0;
+
+	if (!strcmp(request, "Trigger MCS")) {
+		GtkWidget *mcs_btn;
+
+		mcs_btn = GTK_WIDGET(gtk_builder_get_object(builder, "mcs_sync"));
+		g_signal_emit_by_name(mcs_btn, "clicked", NULL);
+		ret = 1;
+	}
+
+	return ret;
 }
 
 static int fmcomms2adv_init(GtkWidget *notebook)
@@ -1323,6 +1332,7 @@ struct osc_plugin plugin = {
 	.init = fmcomms2adv_init,
 	.save_restore_attribs = fmcomms2_adv_sr_attribs,
 	.handle_item = handle_item,
+	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.destroy = context_destroy,
 };
