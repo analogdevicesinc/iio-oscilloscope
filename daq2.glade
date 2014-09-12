@@ -1,26 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
-  <object class="GtkAdjustment" id="adjustment7">
-    <property name="lower">-16384</property>
-    <property name="upper">16384</property>
-    <property name="step_increment">1</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment10">
-    <property name="lower">-1</property>
-    <property name="upper">1</property>
-    <property name="step_increment">0.001</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment8">
-    <property name="upper">2</property>
-    <property name="value">1</property>
-    <property name="step_increment">0.001</property>
-  </object>
   <object class="GtkAdjustment" id="adjustment1">
     <property name="upper">625</property>
     <property name="value">1</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment10">
+    <property name="lower">-1</property>
+    <property name="upper">1</property>
+    <property name="step_increment">0.001</property>
   </object>
   <object class="GtkAdjustment" id="adjustment11">
     <property name="lower">35</property>
@@ -111,6 +101,16 @@
     <property name="step_increment">1</property>
   </object>
   <object class="GtkAdjustment" id="adjustment6">
+    <property name="upper">2</property>
+    <property name="value">1</property>
+    <property name="step_increment">0.001</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment7">
+    <property name="lower">-16384</property>
+    <property name="upper">16384</property>
+    <property name="step_increment">1</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment8">
     <property name="upper">2</property>
     <property name="value">1</property>
     <property name="step_increment">0.001</property>
@@ -1158,13 +1158,39 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkSpinButton" id="adc_freq">
+                          <object class="GtkHBox" id="box7">
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="invisible_char">●</property>
-                            <property name="invisible_char_set">True</property>
-                            <property name="adjustment">adjustment4</property>
-                            <property name="digits">3</property>
+                            <property name="can_focus">False</property>
+                            <property name="border_width">5</property>
+                            <property name="spacing">12</property>
+                            <child>
+                              <object class="GtkSpinButton" id="adc_freq">
+                                <property name="can_focus">True</property>
+                                <property name="invisible_char">●</property>
+                                <property name="invisible_char_set">True</property>
+                                <property name="adjustment">adjustment20</property>
+                                <property name="digits">3</property>
+                              </object>
+                              <packing>
+                                <property name="expand">True</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkTextView" id="text_view_adc_freq">
+                                <property name="width_request">64</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="editable">False</property>
+                                <property name="cursor_visible">False</property>
+                              </object>
+                              <packing>
+                                <property name="expand">True</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
@@ -1292,7 +1318,6 @@
                                 </child>
                                 <child>
                                   <object class="GtkLabel" id="label3">
-                                    <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="xalign">0</property>
                                     <property name="label" translatable="yes">Interpolation (Hz):</property>
@@ -1305,7 +1330,6 @@
                                 </child>
                                 <child>
                                   <object class="GtkLabel" id="label4">
-                                    <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="xalign">0</property>
                                     <property name="label" translatable="yes">Center Shift (Hz):</property>
@@ -1318,7 +1342,6 @@
                                 </child>
                                 <child>
                                   <object class="GtkComboBoxText" id="dac_interpolation_clock">
-                                    <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="active">0</property>
                                     <property name="entry_text_column">0</property>
@@ -1332,7 +1355,6 @@
                                 </child>
                                 <child>
                                   <object class="GtkComboBoxText" id="dac_fcenter_shift">
-                                    <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="active">0</property>
                                     <property name="entry_text_column">0</property>
@@ -1345,16 +1367,43 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkSpinButton" id="dac_data_clock">
+                                  <object class="GtkHBox" id="box6">
                                     <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="invisible_char">●</property>
-                                    <property name="invisible_char_set">True</property>
-                                    <property name="adjustment">adjustment20</property>
-                                    <property name="digits">3</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="border_width">5</property>
+                                    <property name="spacing">12</property>
+                                    <child>
+                                      <object class="GtkSpinButton" id="dac_data_clock">
+                                        <property name="can_focus">True</property>
+                                        <property name="invisible_char">●</property>
+                                        <property name="invisible_char_set">True</property>
+                                        <property name="adjustment">adjustment20</property>
+                                        <property name="digits">3</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">False</property>
+                                        <property name="fill">True</property>
+                                        <property name="position">0</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkTextView" id="text_view_dac_freq">
+                                        <property name="width_request">64</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="editable">False</property>
+                                        <property name="cursor_visible">False</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">False</property>
+                                        <property name="fill">True</property>
+                                        <property name="position">1</property>
+                                      </packing>
+                                    </child>
                                   </object>
                                   <packing>
                                     <property name="left_attach">1</property>
+                                    <property name="right_attach">2</property>
                                     <property name="x_options">GTK_FILL</property>
                                     <property name="y_options">GTK_FILL</property>
                                   </packing>
@@ -1410,7 +1459,6 @@
                         <property name="left_padding">12</property>
                         <child>
                           <object class="GtkTextView" id="RF_out">
-                            <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="editable">False</property>
                           </object>

@@ -56,8 +56,7 @@ static GtkWidget *radius_IQ, *angle_IQ;
 static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
 static struct iio_widget cal_widgets[100];
-static unsigned int num_tx, num_rx, num_cal,
-		num_adc_freq;
+static unsigned int num_tx, num_rx, num_cal;
 
 typedef struct _Dialogs Dialogs;
 struct _Dialogs
@@ -144,11 +143,6 @@ static void rf_out_update(void)
 	gtk_text_buffer_get_iter_at_line(tbuf, &iter, 1);
 	sprintf(dds1_m, "1/%i", oneover(dds_scale_get_string_value(dds1_scale)));
 	sprintf(dds2_m, "1/%i", oneover(dds_scale_get_string_value(dds2_scale)));
-}
-
-static void rx_update_labels_on_complete(void *data)
-{
-	rx_update_labels();
 }
 
 static void tx_update_values(void)
@@ -340,6 +334,7 @@ static int daq2_init(GtkWidget *notebook)
 	GtkBuilder *builder;
 	GtkWidget *daq2_panel;
 	GtkWidget *dds_container;
+	GtkTextBuffer *adc_buff, *dac_buff;
 	struct iio_channel *ch0;
 
 	dac_tx_manager = dac_data_manager_new(dac, NULL, ctx);
@@ -413,22 +408,33 @@ static int daq2_init(GtkWidget *notebook)
 
 	/* Bind the IIO device files to the GUI widgets */
 
-	/* The next free frequency related widgets - keep in this order! */
-	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
-
-	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-			dac, ch0, "sampling_frequency",
-			builder, "dac_data_clock", &mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+	char attr_val[256];
+	long long val;
 
 	/* Rx Widgets */
 
 	ch0 = iio_device_find_channel(adc, "voltage0", false);
 
-	num_adc_freq = num_rx;
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++], adc, ch0,
-			"sampling_frequency", builder, "adc_freq", &mhz_scale);
-	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
+		snprintf(attr_val, sizeof(attr_val), "%.2f", (double)(val / 1000000ul));
+	else
+		snprintf(attr_val, sizeof(attr_val), "%s", "error");
+
+	adc_buff = gtk_text_buffer_new(NULL);
+	gtk_text_buffer_set_text(adc_buff, attr_val, -1);
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view_adc_freq")), adc_buff);
+
+	/* Tx Widgets */
+	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
+
+	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
+		snprintf(attr_val, sizeof(attr_val), "%.2f", (double)(val / 1000000ul));
+	else
+		snprintf(attr_val, sizeof(attr_val), "%s", "error");
+
+	dac_buff = gtk_text_buffer_new(NULL);
+	gtk_text_buffer_set_text(dac_buff, attr_val, -1);
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view_dac_freq")), dac_buff);
 
 	g_signal_connect_after(dds1_scale, "change-value", G_CALLBACK(rf_out_update), NULL);
 	g_signal_connect_after(dds2_scale, "change-value", G_CALLBACK(rf_out_update), NULL);
@@ -437,8 +443,6 @@ static int daq2_init(GtkWidget *notebook)
 
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
-
-	iio_spin_button_set_on_complete_function(&rx_widgets[num_adc_freq], rx_update_labels_on_complete, NULL);
 
 	double rate;
 
