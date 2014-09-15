@@ -1779,6 +1779,10 @@ init_error:
 void dac_data_manager_free(struct dac_data_manager *manager)
 {
 	if (manager) {
+		if (manager->dds_buffer) {
+			iio_buffer_destroy(manager->dds_buffer);
+			manager->dds_buffer = NULL;
+		}
 		g_slist_free(manager->dds_tones);
 		free(manager);
 	}
