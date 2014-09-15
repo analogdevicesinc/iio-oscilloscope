@@ -170,16 +170,34 @@ static double db_full_scale_convert(double value, bool inverse)
 #define mat_complex_split_t struct ComplexSplit
 #endif
 
-static unsigned short convert(double scale, float val)
+static double dac_offset_get_value(struct iio_device *dac)
 {
-	return (short) (val * scale);
+	double offset;
+	const char *dev_name;
+
+	if (!dac)
+		return 0.0;
+
+	offset = 0.0;
+	dev_name = iio_device_get_name(dac);
+	if (!strcmp(dev_name, "cf-ad9122-core-lpc"))
+		offset = 32767.0;
+
+	return offset;
 }
 
-static int analyse_wavefile(const char *file_name, char **buf, int *count, int tx_channels)
+static unsigned short convert(double scale, float val, double offset)
+{
+	return (short) (val * scale + offset);
+}
+
+static int analyse_wavefile(struct dac_data_manager *manager,
+		const char *file_name, char **buf, int *count, int tx_channels)
 {
 	int ret, j, i = 0, size, rep;
 	double max = 0.0, val[4], scale = 0.0;
 	double i1, q1, i2, q2;
+	double offset;
 	char line[80];
 	mat_t *matfp;
 	matvar_t **matvars;
@@ -190,6 +208,8 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 
 	if (infile == NULL)
 		return -3;
+
+	offset = dac_offset_get_value(manager->dac1.iio_dac);
 
 	if (fgets(line, 80, infile) != NULL) {
 		if (strncmp(line, "TEXT", 4) == 0) {
@@ -249,34 +269,34 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 								&i1, &q1, &i2, &q2);
 						for (j = 0; j < rep; j++) {
 							if (ret == 4 && tx_channels >= 4) {
-								sample[i++] = ((unsigned long long) convert(scale, q2) << 48) |
-								    ((unsigned long long) convert(scale, i2) << 32) |
-								    ((unsigned long long) convert(scale, q1) << 16) |
-								    ((unsigned long long) convert(scale, i1) << 0);
+								sample[i++] = ((unsigned long long) convert(scale, q2, offset) << 48) |
+								    ((unsigned long long) convert(scale, i2, offset) << 32) |
+								    ((unsigned long long) convert(scale, q1, offset) << 16) |
+								    ((unsigned long long) convert(scale, i1, offset) << 0);
 
 								if (tx_channels == 8)
-									sample[i++] = ((unsigned long long) convert(scale, q2) << 48) |
-									((unsigned long long) convert(scale, i2) << 32) |
-									((unsigned long long) convert(scale, q1) << 16) |
-									((unsigned long long) convert(scale, i1) << 0);
+									sample[i++] = ((unsigned long long) convert(scale, q2, offset) << 48) |
+									((unsigned long long) convert(scale, i2, offset) << 32) |
+									((unsigned long long) convert(scale, q1, offset) << 16) |
+									((unsigned long long) convert(scale, i1, offset) << 0);
 
 							} else if (ret == 2 && tx_channels >= 4) {
-								sample[i++] = ((unsigned long long) convert(scale, q1) << 48) |
-								    ((unsigned long long) convert(scale, i1) << 32) |
-								    ((unsigned long long) convert(scale, q1) << 16) |
-								    ((unsigned long long) convert(scale, i1) << 0);
+								sample[i++] = ((unsigned long long) convert(scale, q1, offset) << 48) |
+								    ((unsigned long long) convert(scale, i1, offset) << 32) |
+								    ((unsigned long long) convert(scale, q1, offset) << 16) |
+								    ((unsigned long long) convert(scale, i1, offset) << 0);
 
 								if (tx_channels == 8)
-									sample[i++] = ((unsigned long long) convert(scale, q1) << 48) |
-									((unsigned long long) convert(scale, i1) << 32) |
-									((unsigned long long) convert(scale, q1) << 16) |
-									((unsigned long long) convert(scale, i1) << 0);
+									sample[i++] = ((unsigned long long) convert(scale, q1, offset) << 48) |
+									((unsigned long long) convert(scale, i1, offset) << 32) |
+									((unsigned long long) convert(scale, q1, offset) << 16) |
+									((unsigned long long) convert(scale, i1, offset) << 0);
 
 							} else if (ret > 1 && tx_channels == 2) {
-								sample_32[i++] = ((unsigned int) convert(scale, q1) << 16) |
-										((unsigned int) convert(scale, i1) << 0);
+								sample_32[i++] = ((unsigned int) convert(scale, q1, offset) << 16) |
+										((unsigned int) convert(scale, i1, offset) << 0);
 							} else if (ret > 1 && tx_channels == 1) {
-								sample_16[i++] = convert(scale, i1);
+								sample_16[i++] = convert(scale, i1, offset);
 							}
 
 							size += tx_channels * 2;
@@ -435,30 +455,30 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 
 			if (tx_channels == 4) {
 				 for (i = 0 ; i < size; i++) {
-					sample[i] = ((unsigned long long) convert(scale, im2[i]) << 48) |
-						    ((unsigned long long) convert(scale, re2[i]) << 32) |
-							((unsigned long long) convert(scale, im1[i]) << 16) |
-							((unsigned long long) convert(scale, re1[i]) << 0);
+					sample[i] = ((unsigned long long) convert(scale, im2[i], offset) << 48) |
+						    ((unsigned long long) convert(scale, re2[i], offset) << 32) |
+							((unsigned long long) convert(scale, im1[i], offset) << 16) |
+							((unsigned long long) convert(scale, re1[i], offset) << 0);
 				 }
 			} else if (tx_channels == 2) {
 				for (i = 0 ; i < size; i++) {
-					sample_32[i] = ((unsigned int) convert(scale, im1[i]) << 16) |
-						       ((unsigned int) convert(scale, re1[i]) << 0);
+					sample_32[i] = ((unsigned int) convert(scale, im1[i], offset) << 16) |
+						       ((unsigned int) convert(scale, re1[i], offset) << 0);
 				}
 			} else if (tx_channels == 8) {
 				for (i = 0, j = 0; i < size; i++) {
-					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) |
-						    ((unsigned long long) convert(scale, re2[i]) << 32) |
-							((unsigned long long) convert(scale, im1[i]) << 16) |
-							((unsigned long long) convert(scale, re1[i]) << 0);
-					sample[j++] = ((unsigned long long) convert(scale, im2[i]) << 48) |
-						    ((unsigned long long) convert(scale, re2[i]) << 32) |
-							((unsigned long long) convert(scale, im1[i]) << 16) |
-							((unsigned long long) convert(scale, re1[i]) << 0);
+					sample[j++] = ((unsigned long long) convert(scale, im2[i], offset) << 48) |
+						    ((unsigned long long) convert(scale, re2[i], offset) << 32) |
+							((unsigned long long) convert(scale, im1[i], offset) << 16) |
+							((unsigned long long) convert(scale, re1[i], offset) << 0);
+					sample[j++] = ((unsigned long long) convert(scale, im2[i], offset) << 48) |
+						    ((unsigned long long) convert(scale, re2[i], offset) << 32) |
+							((unsigned long long) convert(scale, im1[i], offset) << 16) |
+							((unsigned long long) convert(scale, re1[i], offset) << 0);
 				}
 			} else if (tx_channels == 1) {
 				for (i = 0 ; i < size; i++) {
-					sample_16[i] = convert(scale, re1[i]);
+					sample_16[i] = convert(scale, re1[i], offset);
 				}
 			}
 		matvar_free:
@@ -582,7 +602,7 @@ static void process_dac_buffer_file (struct dac_data_manager *manager, const cha
 		buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(manager->dac_buffer_module.tx_channels_view), NULL);
 	}
 
-	ret = analyse_wavefile(file_name, &buf, &size, buffer_channels);
+	ret = analyse_wavefile(manager, file_name, &buf, &size, buffer_channels);
 	if (ret == -3)
 		return;
 
