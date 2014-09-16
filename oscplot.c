@@ -433,7 +433,6 @@ void osc_plot_draw_stop (OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 
-	priv->stop_redraw = TRUE;
 	gtk_toggle_tool_button_set_active((GtkToggleToolButton *)priv->capture_button, FALSE);
 }
 
@@ -2196,18 +2195,11 @@ static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
 
 static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 {
-	plot->priv->stop_redraw = TRUE;
-	dispose_parameters_from_plot(plot);
-	if (plot->priv->redraw_function)
-		deassert_used_channels(plot);
-	remove_all_transforms(plot);
+	osc_plot_draw_stop(plot);
 	g_slist_free_full(plot->priv->ch_settings_list, *free);
 	g_mutex_trylock(&plot->priv->g_marker_copy_lock);
 	g_mutex_unlock(&plot->priv->g_marker_copy_lock);
 
-	if (plot->priv->redraw_function) {
-		g_signal_emit(plot, oscplot_signals[CAPTURE_EVENT_SIGNAL], 0, FALSE);
-	}
 	g_signal_emit(plot, oscplot_signals[DESTROY_EVENT_SIGNAL], 0);
 }
 
