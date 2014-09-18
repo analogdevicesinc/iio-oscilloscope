@@ -170,6 +170,11 @@ static double db_full_scale_convert(double value, bool inverse)
 #define mat_complex_split_t struct ComplexSplit
 #endif
 
+struct _complex_ref {
+	double *re;
+	double *im;
+};
+
 static double dac_offset_get_value(struct iio_device *dac)
 {
 	double offset;
@@ -184,6 +189,31 @@ static double dac_offset_get_value(struct iio_device *dac)
 		offset = 32767.0;
 
 	return offset;
+}
+
+/*
+ * Fill empty channels with copies of other channels
+ * E.g. (data, NULL, NULL, NULL) becomes (data, data, data, data)
+ * E.g. (data1, data2, NULL, NULL) becomes (data1, data2, data1, data2)
+ * ...
+ */
+static void replicate_tx_data_channels(struct _complex_ref *data, int count)
+{
+	if (!data)
+		return;
+
+	if (count > 2)
+		replicate_tx_data_channels(data, count / 2);
+
+	int i, half = count / 2;
+
+	/* Check if the second half of the array needs to be filled */
+	if (data[half].re == NULL || data[half].im == NULL) {
+		for (i = 0; i < half; i++) {
+				data[half + i].re = data[i].re;
+				data[half + i].im = data[i].im;
+		}
+	}
 }
 
 static unsigned short convert(double scale, float val, double offset)
@@ -329,14 +359,13 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			if (matfp == NULL)
 				return -3;
 
-			int tx = tx_channels / 2;
-			if (tx_channels == 1)
-				tx = 1;
+			bool complex_format = false;
+			bool real_format = false;
 
 			rep = 0;
-			matvars = malloc(sizeof(matvar_t *) * tx);
+			matvars = malloc(sizeof(matvar_t *) * tx_channels);
 
-			while (rep < tx && (matvars[rep] = Mat_VarReadNextInfo(matfp)) != NULL) {
+			while (rep < tx_channels && (matvars[rep] = Mat_VarReadNextInfo(matfp)) != NULL) {
 				/* must be a vector */
 				if (matvars[rep]->rank !=2 || (matvars[rep]->dims[0] > 1 && matvars[rep]->dims[1] > 1))
 					return -1;
@@ -364,7 +393,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 						 if (fabs(im[j]) > max)
 							 max = fabs(im[j]);
 					}
-
+					complex_format = true;
 				} else {
 					double re;
 
@@ -373,12 +402,18 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 						if (fabs(re) > max)
 							max = fabs(re);
 					}
+					real_format = true;
 				}
 				rep++;
 			}
 			rep--;
 
 //	printf("read %i vars, length %i, max value %f\n", rep, matvars[rep]->dims[0], max);
+
+			if (rep < 0) {
+				fprintf(stderr, "Could not find any valid data in %s\n", file_name);
+				return -1;
+			}
 
 			if (max <= 1.0)
 				max = 1.0;
@@ -397,6 +432,11 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 				}
 			}
 
+			if (complex_format && real_format) {
+				fprintf(stderr, "Both complex and real data formats in the same file are not supported\n");
+				return -1;
+			}
+
 			*buf = malloc((size + 1) * tx_channels * 2);
 
 			if (*buf == NULL) {
@@ -409,79 +449,60 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			unsigned long long *sample = *((unsigned long long **) buf);
 			unsigned int *sample_32 = *((unsigned int **) buf);
 			unsigned short *sample_16 = *((unsigned short **) buf);
-			double *re1, *im1, *re2, *im2;
-			mat_complex_split_t *complex_data1, *complex_data2;
 
-			complex_data1 = matvars[0]->data;
+			struct _complex_ref tx_data[4] = {{NULL, NULL}, {NULL, NULL}, {NULL, NULL}, {NULL, NULL}};
+			mat_complex_split_t *complex_data[4];
 
-			if (rep == 0) {
-				complex_data2 = matvars[0]->data;
-			} else if (rep == 1) {
-				complex_data2 = matvars[1]->data;
+			if (complex_format) {
+				for (i = 0; i <= rep; i++) {
+					complex_data[i] = matvars[i]->data;
+					tx_data[i].re = complex_data[i]->Re;
+					tx_data[i].im = complex_data[i]->Im;
+				}
+			} else if (real_format) {
+				for (i = 0; i <= rep; i++) {
+					if (i % 2)
+						tx_data[i / 2].im = matvars[i]->data;
+					else
+						tx_data[i / 2].re = matvars[i]->data;
+				}
 			}
+			replicate_tx_data_channels(tx_data, tx_channels);
 
-			if (rep == 0 && matvars[0]->isComplex) {
-				/* One complex vector */
-				re1 = complex_data1->Re;
-				im1 = complex_data1->Im;
-				re2 = complex_data1->Re;
-				im2 = complex_data1->Im;
-			} else if (rep == 1 && matvars[0]->isComplex && matvars[1]->isComplex) {
-				/* Dual complex */
-				re1 = complex_data1->Re;
-				im1 = complex_data1->Im;
-				re2 = complex_data2->Re;
-				im2 = complex_data2->Im;
-			} else if (rep == 1 && !matvars[0]->isComplex && !matvars[1]->isComplex) {
-				/* One real, one imaginary */
-				re1 = ((double *)matvars[0]->data);
-				im1 = ((double *)matvars[1]->data);
-				re2 = ((double *)matvars[0]->data);
-				im2 = ((double *)matvars[1]->data);
-			} else if (rep == 3 && !matvars[0]->isComplex && !matvars[1]->isComplex &&
-					!matvars[2]->isComplex && !matvars[3]->isComplex) {
-				/* Dual real / imaginary */
-				re1 = ((double *)matvars[0]->data);
-				im1 = ((double *)matvars[1]->data);
-				re2 = ((double *)matvars[2]->data);
-				im2 = ((double *)matvars[3]->data);
-			} else {
-				printf("Don't understand file type\n");
-				free(*buf);
-				*buf = NULL;
-				ret = -1;
-				goto matvar_free;
-			}
-
-			if (tx_channels == 4) {
-				 for (i = 0 ; i < size; i++) {
-					sample[i] = ((unsigned long long) convert(scale, im2[i], offset) << 48) |
-						    ((unsigned long long) convert(scale, re2[i], offset) << 32) |
-							((unsigned long long) convert(scale, im1[i], offset) << 16) |
-							((unsigned long long) convert(scale, re1[i], offset) << 0);
+			switch (tx_channels) {
+			case 1:
+				for (i = 0 ; i < size; i++) {
+					sample_16[i] = convert(scale, tx_data[0].re[i], offset);
+				}
+				break;
+			case 2:
+				for (i = 0 ; i < size; i++) {
+					sample_32[i] = ((unsigned int) convert(scale, tx_data[0].im[i], offset) << 16) |
+						       ((unsigned int) convert(scale, tx_data[0].re[i], offset) << 0);
+				}
+				break;
+			case 4:
+				for (i = 0 ; i < size; i++) {
+					sample[i] = ((unsigned long long) convert(scale, tx_data[1].im[i], offset) << 48) |
+						    ((unsigned long long) convert(scale, tx_data[1].re[i], offset) << 32) |
+							((unsigned long long) convert(scale, tx_data[0].im[i], offset) << 16) |
+							((unsigned long long) convert(scale, tx_data[0].re[i], offset) << 0);
 				 }
-			} else if (tx_channels == 2) {
-				for (i = 0 ; i < size; i++) {
-					sample_32[i] = ((unsigned int) convert(scale, im1[i], offset) << 16) |
-						       ((unsigned int) convert(scale, re1[i], offset) << 0);
-				}
-			} else if (tx_channels == 8) {
+				break;
+			case 8:
 				for (i = 0, j = 0; i < size; i++) {
-					sample[j++] = ((unsigned long long) convert(scale, im2[i], offset) << 48) |
-						    ((unsigned long long) convert(scale, re2[i], offset) << 32) |
-							((unsigned long long) convert(scale, im1[i], offset) << 16) |
-							((unsigned long long) convert(scale, re1[i], offset) << 0);
-					sample[j++] = ((unsigned long long) convert(scale, im2[i], offset) << 48) |
-						    ((unsigned long long) convert(scale, re2[i], offset) << 32) |
-							((unsigned long long) convert(scale, im1[i], offset) << 16) |
-							((unsigned long long) convert(scale, re1[i], offset) << 0);
+					sample[j++] = ((unsigned long long) convert(scale, tx_data[3].im[i], offset) << 48) |
+						    ((unsigned long long) convert(scale, tx_data[3].re[i], offset) << 32) |
+							((unsigned long long) convert(scale, tx_data[2].im[i], offset) << 16) |
+							((unsigned long long) convert(scale, tx_data[2].re[i], offset) << 0);
+					sample[j++] = ((unsigned long long) convert(scale, tx_data[1].im[i], offset) << 48) |
+						    ((unsigned long long) convert(scale, tx_data[1].re[i], offset) << 32) |
+							((unsigned long long) convert(scale, tx_data[0].im[i], offset) << 16) |
+							((unsigned long long) convert(scale, tx_data[0].re[i], offset) << 0);
 				}
-			} else if (tx_channels == 1) {
-				for (i = 0 ; i < size; i++) {
-					sample_16[i] = convert(scale, re1[i], offset);
-				}
+				break;
 			}
-		matvar_free:
+
 			for (j = 0; j <= rep; j++) {
 				Mat_VarFree(matvars[j]);
 			}
