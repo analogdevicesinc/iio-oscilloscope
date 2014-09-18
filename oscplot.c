@@ -2309,6 +2309,8 @@ static void saveas_dialog_show(GtkWidget *w, OscPlot *plot)
 	gtk_widget_show(priv->saveas_dialog);
 }
 
+#define FILE_OVERWRITE 0
+
 static void save_as(OscPlot *plot, const char *filename, int type)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -2463,7 +2465,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 					strcpy(name, filename);
 				else
 					sprintf(name, "%s.mat", filename);
-			mat = Mat_Open(name, MAT_ACC_RDWR);
+			mat = Mat_Open(name, FILE_OVERWRITE);
 			if (!mat)
 				break;
 
