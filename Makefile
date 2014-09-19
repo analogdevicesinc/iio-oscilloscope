@@ -33,6 +33,7 @@ PLUGINS=\
 	plugins/fmcomms1.so \
 	plugins/fmcomms2.so \
 	plugins/fmcomms5.so \
+	plugins/fmcomms6.so \
 	plugins/fmcomms2_adv.so \
 	plugins/debug.so \
 	plugins/daq2.so \
