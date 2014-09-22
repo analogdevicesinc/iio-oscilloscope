@@ -53,6 +53,7 @@ static const gdouble inv_scale = -1.0;
 static struct iio_widget glb_widgets[50];
 static struct iio_widget tx_widgets[50];
 static struct iio_widget rx_widgets[50];
+static unsigned int dcxo_coarse_num, dcxo_fine_num;
 static unsigned int rx1_gain, rx2_gain;
 static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_lo, tx_lo;
@@ -357,6 +358,19 @@ static void rx_phase_rotation_update()
 	}
 }
 
+static void dxco_widgets_update(void)
+{
+	char val[64];
+	int ret;
+
+	ret = iio_device_attr_read(dev, "dcxo_tune_coarse", val, sizeof(val));
+	if (ret > 0)
+		gtk_widget_show(glb_widgets[dcxo_coarse_num].widget);
+	ret = iio_device_attr_read(dev, "dcxo_tune_fine", val, sizeof(val));
+	if (ret > 0)
+		gtk_widget_show(glb_widgets[dcxo_fine_num].widget);
+}
+
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
 	iio_update_widgets(glb_widgets, num_glb);
@@ -368,6 +382,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	glb_settings_update_labels();
 	rssi_update_labels();
 	rx_phase_rotation_update();
+	dxco_widgets_update();
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
@@ -701,9 +716,11 @@ static int fmcomms2_init(GtkWidget *notebook)
 		dev, NULL, "trx_rate_governor", "trx_rate_governor_available",
 		trx_rate_governor_available, NULL);
 
+	dcxo_coarse_num = num_glb;
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
 		dev, NULL, "dcxo_tune_coarse", builder, "dcxo_coarse_tune",
 		0);
+	dcxo_fine_num = num_glb;
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
 		dev, NULL, "dcxo_tune_fine", builder, "dcxo_fine_tune",
 		0);
