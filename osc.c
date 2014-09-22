@@ -1875,7 +1875,8 @@ void rx_update_labels(void)
 		if (!name)
 			continue;
 
-		if (!strcmp(name, "cf-ad9463-core-lpc"))
+		if (!strcmp(name, "cf-ad9463-core-lpc") ||
+			!strcmp(name, "axi-ad9652-lpc"))
 			info->lo_freq = get_rx_lo_freq("adf4351-rx-lpc");
 		else if (!strcmp(name, "cf-ad9361-lpc") ||
 				!strcmp(name, "cf-ad9361-A") ||
