@@ -39,7 +39,8 @@ static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
 
 static struct iio_widget rx_widgets[5];
-static unsigned int num_rx;
+static struct iio_widget cal_widgets[20];
+static unsigned int num_rx, num_cal;
 
 static struct iio_context *ctx;
 static struct iio_device *adc, *pll;
@@ -55,6 +56,11 @@ static void rx_update_values(void)
 {
 	iio_update_widgets(rx_widgets, num_rx);
 	rx_update_labels();
+}
+
+static void cal_update_values(void)
+{
+	iio_update_widgets(cal_widgets, num_cal);
 }
 
 static void rx_update_labels_on_complete(void *data)
@@ -96,14 +102,14 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
-	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels();
+	rx_update_values();
+	cal_update_values();
 }
 
 static int fmcomms6_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
-	struct iio_channel *ch0 = iio_device_find_channel(pll, "altvoltage0", true);
+	struct iio_channel *ch0, *ch1;
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
@@ -115,18 +121,45 @@ static int fmcomms6_init(GtkWidget *notebook)
 	/* Bind the IIO device files to the GUI widgets */
 
 	/* Receive Chain */
+	ch0 = iio_device_find_channel(pll, "altvoltage0", true);
 	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
 		pll, ch0, "frequency", builder,
 		"spin_rx_lo_freq", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
+	/* Calibration */
+	 ch0 = iio_device_find_channel(pll, "voltage0", false);
+	 ch1 = iio_device_find_channel(pll, "voltage1", false);
+	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch0, "calibbias", builder,
+		"adc_calibbias0", NULL);
+	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch0, "calibscale", builder,
+		"adc_calibscale0", NULL);
+		iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch0, "calibphase", builder,
+		"adc_calibphase0", NULL);
+	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch1, "calibbias", builder,
+		"adc_calibbias1", NULL);
+	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch1, "calibscale", builder,
+		"adc_calibscale1", NULL);
+		iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch1, "calibphase", builder,
+		"adc_calibphase1", NULL);
+
 	g_builder_connect_signal(builder, "fmcomms6_settings_reload", "clicked",
 		G_CALLBACK(reload_button_clicked), NULL);
 
 	make_widget_update_signal_based(rx_widgets, num_rx);
+	make_widget_update_signal_based(cal_widgets, num_cal);
+
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo],
 		rx_update_labels_on_complete, NULL);
+
 	rx_update_values();
+	cal_update_values();
 
 	this_page = gtk_notebook_append_page(nbook, fmcomms6_panel, NULL);
 	gtk_notebook_set_tab_label_text(nbook, fmcomms6_panel, "FMComms6");
