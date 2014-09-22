@@ -128,15 +128,15 @@ static int fmcomms6_init(GtkWidget *notebook)
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
 	/* Calibration */
-	 ch0 = iio_device_find_channel(pll, "voltage0", false);
-	 ch1 = iio_device_find_channel(pll, "voltage1", false);
+	 ch0 = iio_device_find_channel(adc, "voltage0", false);
+	 ch1 = iio_device_find_channel(adc, "voltage1", false);
 	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch0, "calibbias", builder,
 		"adc_calibbias0", NULL);
 	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch0, "calibscale", builder,
 		"adc_calibscale0", NULL);
-		iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch0, "calibphase", builder,
 		"adc_calibphase0", NULL);
 	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
@@ -145,7 +145,7 @@ static int fmcomms6_init(GtkWidget *notebook)
 	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch1, "calibscale", builder,
 		"adc_calibscale1", NULL);
-		iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch1, "calibphase", builder,
 		"adc_calibphase1", NULL);
 
@@ -190,7 +190,15 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 }
 
 static const char *fmcomms6_sr_attribs[] = {
-	PLL_DEVICE".RX_LO_frequency",
+	ADC_DEVICE".in_voltage0_calibbias",
+	ADC_DEVICE".in_voltage1_calibbias",
+	ADC_DEVICE".in_voltage0_calibscale",
+	ADC_DEVICE".in_voltage1_calibscale",
+	ADC_DEVICE".in_voltage0_calibphase",
+	ADC_DEVICE".in_voltage1_calibphase",
+	PLL_DEVICE".out_altvoltage0_frequency_resolution",
+	PLL_DEVICE".out_altvoltage0_frequency",
+	PLL_DEVICE".out_altvoltage0_powerdown",
 	SYNC_RELOAD,
 	NULL,
 };
