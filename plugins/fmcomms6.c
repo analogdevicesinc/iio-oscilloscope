@@ -30,7 +30,7 @@
 #include "../config.h"
 
 
-#define ADC_DEVICE "ad9652"
+#define ADC_DEVICE "axi-ad9652-lpc"
 #define PLL_DEVICE "adf4351-rx-lpc"
 
 static const gdouble mhz_scale = 1000000.0;
@@ -103,7 +103,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 static int fmcomms6_init(GtkWidget *notebook)
 {
 	GtkBuilder *builder;
-	//~ struct iio_channel *ch0 = iio_device_find_channel(pll, "voltage0", false);
+	struct iio_channel *ch0 = iio_device_find_channel(pll, "altvoltage0", true);
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
@@ -116,7 +116,7 @@ static int fmcomms6_init(GtkWidget *notebook)
 
 	/* Receive Chain */
 	iio_spin_button_s64_init_from_builder(&rx_widgets[num_rx++],
-		pll, ch0, "RX_LO_frequency", builder,
+		pll, ch0, "frequency", builder,
 		"spin_rx_lo_freq", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
@@ -184,7 +184,7 @@ static void context_destroy(void)
 struct osc_plugin plugin;
 
 static bool fmcomms6_identify(void)
-{return true;
+{
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
 
