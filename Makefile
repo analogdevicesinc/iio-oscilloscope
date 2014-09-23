@@ -93,6 +93,7 @@ install:
 	install -d $(DESTDIR)/lib/osc/waveforms
 	install -d $(DESTDIR)/lib/osc/profiles
 	install -d $(DESTDIR)/lib/osc/block_diagrams
+	install -d $(HOME)/.config/autostart/
 	install ./osc $(DESTDIR)/bin/
 	install ./*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
