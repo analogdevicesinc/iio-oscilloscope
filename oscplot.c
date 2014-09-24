@@ -29,6 +29,13 @@
 #include "iio_widget.h"
 #include "datatypes.h"
 
+/* add backwards compat for <matio-1.5.0 */
+#if MATIO_MAJOR_VERSION == 1 && MATIO_MINOR_VERSION < 5
+#define mat_dim int
+#else
+#define mat_dim size_t
+#endif
+
 extern void time_transform_function(Transform *tr, gboolean init_transform);
 extern void fft_transform_function(Transform *tr, gboolean init_transform);
 extern void constellation_transform_function(Transform *tr, gboolean init_transform);
@@ -2320,7 +2327,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 	struct iio_device *dev;
 	struct extra_dev_info *dev_info;
 	char tmp[100];
-	int dims[2] = {-1, 1};
+	mat_dim dims[2] = {-1, 1};
 	double freq;
 	GdkPixbuf *pixbuf;
 	GError *err=NULL;
