@@ -133,19 +133,19 @@ static int fmcomms6_init(GtkWidget *notebook)
 	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch0, "calibbias", builder,
 		"adc_calibbias0", NULL);
-	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+	iio_spin_button_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch0, "calibscale", builder,
 		"adc_calibscale0", NULL);
-	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+	iio_spin_button_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch0, "calibphase", builder,
 		"adc_calibphase0", NULL);
 	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch1, "calibbias", builder,
 		"adc_calibbias1", NULL);
-	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+	iio_spin_button_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch1, "calibscale", builder,
 		"adc_calibscale1", NULL);
-	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+	iio_spin_button_init_from_builder(&cal_widgets[num_cal++],
 		adc, ch1, "calibphase", builder,
 		"adc_calibphase1", NULL);
 
@@ -199,6 +199,7 @@ static const char *fmcomms6_sr_attribs[] = {
 	PLL_DEVICE".out_altvoltage0_frequency_resolution",
 	PLL_DEVICE".out_altvoltage0_frequency",
 	PLL_DEVICE".out_altvoltage0_powerdown",
+
 	SYNC_RELOAD,
 	NULL,
 };
