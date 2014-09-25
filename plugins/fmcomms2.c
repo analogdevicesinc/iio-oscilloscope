@@ -703,6 +703,15 @@ static int fmcomms2_init(GtkWidget *notebook)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_fastlock_profile), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(tx_fastlock_profile), 0);
 
+	/* Set FMCOMMS2/3 max sampling freq -> 61.44MHz and FMCOMMS4 -> 122.88 */
+	GtkWidget *sfreq = GTK_WIDGET(gtk_builder_get_object(builder, "sampling_freq_tx"));
+	GtkAdjustment *sfreq_adj = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(sfreq));
+
+	if (is_2rx_2tx)
+		gtk_adjustment_set_upper(sfreq_adj, 61.44);
+	else
+		gtk_adjustment_set_upper(sfreq_adj, 122.88);
+
 	/* Bind the IIO device files to the GUI widgets */
 
 	/* Global settings */
