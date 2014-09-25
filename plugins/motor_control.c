@@ -24,6 +24,10 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 
+#define AD_MC_CTRL "ad-mc-ctrl"
+
+extern int count_char_in_string(char c, const char *s);
+
 static struct iio_widget tx_widgets[50];
 static unsigned int num_tx;
 static struct iio_device *crt_device, *pid_dev, *adv_dev;
@@ -432,6 +436,72 @@ static int motor_control_init(GtkWidget *notebook)
 	return 0;
 }
 
+#define SYNC_RELOAD "SYNC_RELOAD"
+
+static char *handle_item(struct osc_plugin *plugin, const char *attrib,
+			 const char *value)
+{
+	unsigned item_type = count_char_in_string('.', attrib);
+	bool unhandled_item = false;
+	gchar **item_elems = NULL;
+	char *buf;
+	int i;
+	bool state;
+
+	item_elems = g_strsplit(attrib, ".", 0);
+
+	switch (item_type) {
+	case 0:
+		if (!strcmp(attrib, SYNC_RELOAD)) {
+			tx_update_values();
+		} else if (!strcmp(attrib, "pwm")) {
+			if (value) {
+				gtk_entry_set_text(GTK_ENTRY(pwm_pid), value);
+				gtk_spin_button_update(GTK_SPIN_BUTTON(pwm_pid));
+			} else {
+				return (char *)gtk_entry_get_text(GTK_ENTRY(pwm_pid));
+			}
+		} else {
+			unhandled_item = true;
+		}
+		break;
+	case 1:
+		if (!strcmp(item_elems[0], "gpo")) {
+			i = atoi(item_elems[1]);
+			if (i < 1 || i > (sizeof(gpo) / sizeof(gpo[0]))) {
+				unhandled_item = true;
+				break;
+			}
+			i--;
+			if (value) {
+				state = (atoi(value) == 0) ? false : true;
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gpo[i]), state);
+			} else {
+				buf = malloc (10);
+				sprintf(buf, "%i", gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[i])));
+				return buf;
+			}
+		} else {
+			if (value)
+				unhandled_item = true;
+		}
+		break;
+	default:
+		unhandled_item = true;
+		break;
+	}
+
+	g_strfreev(item_elems);
+	if (unhandled_item) {
+		printf("Unhandled tokens in ini file,\n"
+			"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
+			"Motor Control", attrib, value);
+		return "FAIL";
+	} else {
+		return NULL;
+	}
+}
+
 static void context_destroy(void)
 {
 	iio_context_destroy(ctx);
@@ -456,9 +526,31 @@ static bool motor_control_identify(void)
 	return found;
 }
 
+static const char *motor_control_sr_attribs[] = {
+	AD_MC_CTRL".mc_ctrl_run",
+	AD_MC_CTRL".mc_ctrl_delta",
+	AD_MC_CTRL".mc_ctrl_direction",
+	AD_MC_CTRL".mc_ctrl_matlab",
+	"pwm",
+	"gpo.1",
+	"gpo.2",
+	"gpo.3",
+	"gpo.4",
+	"gpo.5",
+	"gpo.6",
+	"gpo.7",
+	"gpo.8",
+	"gpo.9",
+	"gpo.10",
+	"gpo.11",
+	SYNC_RELOAD,
+};
+
 struct osc_plugin plugin = {
 	.name = "Motor Control",
 	.identify = motor_control_identify,
 	.init = motor_control_init,
+	.save_restore_attribs = motor_control_sr_attribs,
+	.handle_item = handle_item,
 	.destroy = context_destroy,
 };
