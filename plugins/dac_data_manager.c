@@ -1875,6 +1875,8 @@ int dac_data_manager_set_dds_mode(struct dac_data_manager *manager,
 	GtkWidget *dds_mode_combobox;
 
 	if (!strcmp(dac_name, iio_device_get_name(manager->dac1.iio_dac))) {
+		if (tx_index > manager->dac1.tx_count)
+			return -1;
 		if (tx_index == 1) {
 			dds_mode_combobox = manager->dac1.tx1.dds_mode_widget;
 		} else {
@@ -1882,6 +1884,8 @@ int dac_data_manager_set_dds_mode(struct dac_data_manager *manager,
 		}
 	} else if (manager->dacs_count == 2 &&
 			!strcmp(dac_name, iio_device_get_name(manager->dac1.iio_dac))) {
+		if (tx_index > manager->dac2.tx_count)
+			return -1;
 		if (tx_index == 1) {
 			dds_mode_combobox = manager->dac2.tx1.dds_mode_widget;
 		} else {
@@ -1909,6 +1913,8 @@ int  dac_data_manager_get_dds_mode(struct dac_data_manager *manager, const char 
 	GtkWidget *dds_mode_combobox;
 
 	if (!strcmp(dac_name, iio_device_get_name(manager->dac1.iio_dac))) {
+		if (tx_index > manager->dac1.tx_count)
+			return 0;
 		if (tx_index == 1) {
 			dds_mode_combobox = manager->dac1.tx1.dds_mode_widget;
 		} else {
@@ -1916,6 +1922,8 @@ int  dac_data_manager_get_dds_mode(struct dac_data_manager *manager, const char 
 		}
 	} else if (manager->dacs_count == 2 &&
 			!strcmp(dac_name, iio_device_get_name(manager->dac1.iio_dac))) {
+		if (tx_index > manager->dac2.tx_count)
+			return 0;
 		if (tx_index == 1) {
 			dds_mode_combobox = manager->dac2.tx1.dds_mode_widget;
 		} else {
