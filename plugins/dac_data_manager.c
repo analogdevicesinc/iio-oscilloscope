@@ -880,8 +880,9 @@ static GtkWidget *gui_tx_create(struct dds_tx *tx)
 	GtkWidget *txmodule_align;
 	GtkWidget *txmodule_table;
 	char txmodule_label[16];
+	int dac_index = (tx->parent->index - 1) * (tx->parent->tones_count / 4);
 
-	snprintf(txmodule_label, sizeof(txmodule_label), "<b>TX %d</b>", tx->index);
+	snprintf(txmodule_label, sizeof(txmodule_label), "<b>TX %d</b>", dac_index + tx->index);
 
 	txmodule_frm = frame_with_table_create(txmodule_label, 3, 1);
 	txmodule_align = gtk_bin_get_child(GTK_BIN(txmodule_frm));
