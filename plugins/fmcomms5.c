@@ -432,6 +432,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	glb_settings_update_labels();
 	rssi_update_labels();
 	rx_phase_rotation_update();
+	trigger_mcs_button();
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
