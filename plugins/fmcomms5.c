@@ -227,9 +227,17 @@ static void sample_frequency_changed_cb(void *data)
 	rx_update_labels();
 }
 
-static void rx_sample_frequency_changed_cb(void *data)
+static bool delayed_mcs_trigger(void)
 {
 	trigger_mcs_button();
+
+	return false;
+}
+
+
+static void rx_sample_frequency_changed_cb(void *data)
+{
+	g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 20, (GSourceFunc) delayed_mcs_trigger, NULL, NULL);
 	sample_frequency_changed_cb(data);
 }
 
