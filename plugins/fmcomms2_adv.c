@@ -1097,7 +1097,7 @@ static int fmcomms2adv_init(GtkWidget *notebook)
 	}
 
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, "FMComms2 Advanced");
+	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms2adv_panel, "FMComms2/3/4/5 Advanced");
 
 	g_builder_connect_signal(builder, "notebook1", "switch-page",
 		G_CALLBACK(change_page_cb),
@@ -1141,7 +1141,7 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 		if (value) {
 			printf("Unhandled tokens in ini file,\n"
 				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-				"FMComms2 Advanced", attrib, value);
+				"FMComms2/3/4/5 Advanced", attrib, value);
 			return "FAIL";
 		}
 	}
@@ -1327,7 +1327,7 @@ static bool fmcomms2adv_identify(void)
 }
 
 struct osc_plugin plugin = {
-	.name = "FMComms2 Advanced",
+	.name = "FMComms2/3/4/5 Advanced",
 	.identify = fmcomms2adv_identify,
 	.init = fmcomms2adv_init,
 	.save_restore_attribs = fmcomms2_adv_sr_attribs,
