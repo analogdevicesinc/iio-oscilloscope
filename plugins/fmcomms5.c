@@ -58,6 +58,7 @@ static struct iio_widget tx_widgets[50];
 static struct iio_widget rx_widgets[50];
 
 static unsigned int num_glb, num_tx, num_rx;
+static unsigned int dcxo_coarse_num, dcxo_fine_num;
 static unsigned int rx_gains[5];
 static unsigned int rx_lo[2], tx_lo[2];
 static unsigned int rx_sample_freq, tx_sample_freq;
@@ -429,6 +430,19 @@ static void rx_phase_rotation_update()
 	}
 }
 
+static void dcxo_widgets_update(void)
+{
+	char val[64];
+	int ret;
+
+	ret = iio_device_attr_read(dev1, "dcxo_tune_coarse", val, sizeof(val));
+	if (ret > 0)
+		gtk_widget_show(glb_widgets[dcxo_coarse_num].widget);
+	ret = iio_device_attr_read(dev1, "dcxo_tune_fine", val, sizeof(val));
+	if (ret > 0)
+		gtk_widget_show(glb_widgets[dcxo_fine_num].widget);
+}
+
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
 	iio_update_widgets(glb_widgets, num_glb);
@@ -440,6 +454,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	glb_settings_update_labels();
 	rssi_update_labels();
 	rx_phase_rotation_update();
+	dcxo_widgets_update();
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
@@ -804,9 +819,11 @@ static int fmcomms5_init(GtkWidget *notebook)
 		dev1, NULL, "trx_rate_governor", "trx_rate_governor_available",
 		trx_rate_governor_available, NULL);
 
+	dcxo_coarse_num = num_glb;
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
 		dev1, NULL, "dcxo_tune_coarse", builder, "dcxo_coarse_tune",
 		0);
+	dcxo_fine_num = num_glb;
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
 		dev1, NULL, "dcxo_tune_fine", builder, "dcxo_fine_tune",
 		0);
