@@ -114,7 +114,7 @@ static void trigger_mcs_button(void)
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		plugin = node->data;
-		if (plugin && (!strncmp(plugin->name, "FMComms2 Advanced", 17))) {
+		if (plugin && (!strncmp(plugin->name, "FMComms2/3/4/5 Advanced", 23))) {
 			if (plugin->handle_external_request) {
 				plugin->handle_external_request("Trigger MCS");
 			}
