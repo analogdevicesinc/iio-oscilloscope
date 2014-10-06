@@ -1414,7 +1414,8 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="xalign">1</property>
-                                    <property name="label" translatable="yes">Dec PWR mess. duration</property>
+                                    <property name="label" translatable="yes">Dec PWR mess. duration in
+MGC and Slow Attack AGC mode</property>
                                   </object>
                                   <packing>
                                     <property name="top_attach">2</property>
@@ -3439,7 +3440,7 @@ power for (sample periods)</property>
                                               <object class="GtkLabel" id="label130">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Dec PWR mess. duration</property>
+                                                <property name="label" translatable="yes">Dec PWR mess. duration in fast attack mode</property>
                                               </object>
                                             </child>
                                             <child>
