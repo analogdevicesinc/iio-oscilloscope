@@ -58,6 +58,7 @@ static struct iio_widget tx_widgets[50];
 static struct iio_widget rx_widgets[50];
 
 static unsigned int num_glb, num_tx, num_rx;
+static unsigned int dcxo_coarse_num, dcxo_fine_num;
 static unsigned int rx_gains[5];
 static unsigned int rx_lo[2], tx_lo[2];
 static unsigned int rx_sample_freq, tx_sample_freq;
@@ -113,7 +114,7 @@ static void trigger_mcs_button(void)
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		plugin = node->data;
-		if (plugin && (!strncmp(plugin->name, "FMComms2 Advanced", 17))) {
+		if (plugin && (!strncmp(plugin->name, "FMComms2/3/4/5 Advanced", 23))) {
 			if (plugin->handle_external_request) {
 				plugin->handle_external_request("Trigger MCS");
 			}
@@ -227,9 +228,17 @@ static void sample_frequency_changed_cb(void *data)
 	rx_update_labels();
 }
 
-static void rx_sample_frequency_changed_cb(void *data)
+static bool delayed_mcs_trigger(void)
 {
 	trigger_mcs_button();
+
+	return false;
+}
+
+
+static void rx_sample_frequency_changed_cb(void *data)
+{
+	g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 20, (GSourceFunc) delayed_mcs_trigger, NULL, NULL);
 	sample_frequency_changed_cb(data);
 }
 
@@ -421,6 +430,19 @@ static void rx_phase_rotation_update()
 	}
 }
 
+static void dcxo_widgets_update(void)
+{
+	char val[64];
+	int ret;
+
+	ret = iio_device_attr_read(dev1, "dcxo_tune_coarse", val, sizeof(val));
+	if (ret > 0)
+		gtk_widget_show(glb_widgets[dcxo_coarse_num].widget);
+	ret = iio_device_attr_read(dev1, "dcxo_tune_fine", val, sizeof(val));
+	if (ret > 0)
+		gtk_widget_show(glb_widgets[dcxo_fine_num].widget);
+}
+
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
 	iio_update_widgets(glb_widgets, num_glb);
@@ -432,6 +454,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	glb_settings_update_labels();
 	rssi_update_labels();
 	rx_phase_rotation_update();
+	dcxo_widgets_update();
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
@@ -796,9 +819,11 @@ static int fmcomms5_init(GtkWidget *notebook)
 		dev1, NULL, "trx_rate_governor", "trx_rate_governor_available",
 		trx_rate_governor_available, NULL);
 
+	dcxo_coarse_num = num_glb;
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
 		dev1, NULL, "dcxo_tune_coarse", builder, "dcxo_coarse_tune",
 		0);
+	dcxo_fine_num = num_glb;
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
 		dev1, NULL, "dcxo_tune_fine", builder, "dcxo_fine_tune",
 		0);
@@ -1359,18 +1384,33 @@ static const char *fmcomms5_sr_attribs[] = {
 	PHY_DEVICE1".out_voltage_sampling_frequency",
 	PHY_DEVICE1".in_voltage_rf_bandwidth",
 	PHY_DEVICE1".out_voltage_rf_bandwidth",
+	PHY_DEVICE2".trx_rate_governor",
+	PHY_DEVICE2".dcxo_tune_coarse",
+	PHY_DEVICE2".dcxo_tune_fine",
+	PHY_DEVICE2".ensm_mode",
+	PHY_DEVICE2".in_voltage0_rf_port_select",
 	PHY_DEVICE2".in_voltage0_gain_control_mode",
 	PHY_DEVICE2".in_voltage0_hardwaregain",
 	PHY_DEVICE2".in_voltage1_gain_control_mode",
 	PHY_DEVICE2".in_voltage1_hardwaregain",
+	PHY_DEVICE2".in_voltage_bb_dc_offset_tracking_en",
+	PHY_DEVICE2".in_voltage_quadrature_tracking_en",
+	PHY_DEVICE2".in_voltage_rf_dc_offset_tracking_en",
+	PHY_DEVICE2".out_voltage0_rf_port_select",
 	PHY_DEVICE2".out_altvoltage0_RX_LO_frequency",
 	PHY_DEVICE2".out_altvoltage1_TX_LO_frequency",
 	PHY_DEVICE2".out_voltage0_hardwaregain",
 	PHY_DEVICE2".out_voltage1_hardwaregain",
+	PHY_DEVICE2".out_voltage_sampling_frequency",
+	PHY_DEVICE2".in_voltage_rf_bandwidth",
+	PHY_DEVICE2".out_voltage_rf_bandwidth",
 	"load_fir_filter_file",
 	PHY_DEVICE1".in_voltage_filter_fir_en",
 	PHY_DEVICE1".out_voltage_filter_fir_en",
 	PHY_DEVICE1".in_out_voltage_filter_fir_en",
+	PHY_DEVICE2".in_voltage_filter_fir_en",
+	PHY_DEVICE2".out_voltage_filter_fir_en",
+	PHY_DEVICE2".in_out_voltage_filter_fir_en",
 	"global_settings_show",
 	"tx_show",
 	"rx_show",

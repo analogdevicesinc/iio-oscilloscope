@@ -10,6 +10,7 @@
   <object class="GtkAdjustment" id="adjustment10">
     <property name="lower">-1</property>
     <property name="upper">1</property>
+    <property name="value">0</property>
     <property name="step_increment">0.001</property>
   </object>
   <object class="GtkAdjustment" id="adjustment11">
@@ -120,6 +121,7 @@
   <object class="GtkAdjustment" id="adjustment9">
     <property name="lower">-1</property>
     <property name="upper">1</property>
+    <property name="value">0</property>
     <property name="step_increment">0.001</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_I1_p">
@@ -1111,6 +1113,16 @@
         </child>
       </object>
     </child>
+    <action-widgets>
+      <action-widget response="6">Cal_Rx</action-widget>
+      <action-widget response="5">Cal_Tx</action-widget>
+      <action-widget response="4">SaveCal2File</action-widget>
+      <action-widget response="3">LoadCal2File</action-widget>
+      <action-widget response="2">SaveCal2eeprom</action-widget>
+      <action-widget response="1">LoadCal2eeprom</action-widget>
+      <action-widget response="-10">ApplyCal</action-widget>
+      <action-widget response="-7">CalClose</action-widget>
+    </action-widgets>
   </object>
   <object class="GtkFileChooserDialog" id="filechooser">
     <property name="can_focus">False</property>

@@ -1883,7 +1883,7 @@ int dac_data_manager_set_dds_mode(struct dac_data_manager *manager,
 			dds_mode_combobox = manager->dac1.tx2.dds_mode_widget;
 		}
 	} else if (manager->dacs_count == 2 &&
-			!strcmp(dac_name, iio_device_get_name(manager->dac1.iio_dac))) {
+			!strcmp(dac_name, iio_device_get_name(manager->dac2.iio_dac))) {
 		if (tx_index > manager->dac2.tx_count)
 			return -1;
 		if (tx_index == 1) {
@@ -1921,7 +1921,7 @@ int  dac_data_manager_get_dds_mode(struct dac_data_manager *manager, const char 
 			dds_mode_combobox = manager->dac1.tx2.dds_mode_widget;
 		}
 	} else if (manager->dacs_count == 2 &&
-			!strcmp(dac_name, iio_device_get_name(manager->dac1.iio_dac))) {
+			!strcmp(dac_name, iio_device_get_name(manager->dac2.iio_dac))) {
 		if (tx_index > manager->dac2.tx_count)
 			return 0;
 		if (tx_index == 1) {

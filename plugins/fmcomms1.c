@@ -1154,6 +1154,14 @@ void save_cal(char * resfile)
 
 }
 
+static bool calib_plot_exists;
+
+static void calib_plot_destroyed_cb(OscPlot *plot)
+{
+	calib_plot_exists = false;
+	g_signal_emit_by_name(GTK_DIALOG(dialogs.calibrate), "response", -7);
+}
+
 G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 {
 	gint ret;
@@ -1161,6 +1169,23 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 	GThread *thid_rx = NULL, *thid_tmp = NULL;
 
 	kill_thread = 0;
+
+	/* Create a fft plot to run in background while calibrating */
+	OscPlot *plot_fft_2ch;
+
+	plot_fft_2ch = plugin_get_new_plot();
+	if (!plot_fft_2ch) {
+		printf("Could not open a new plot\n");
+		goto hide_calib;
+	}
+	calib_plot_exists = true;
+	g_signal_connect(plot_fft_2ch, "osc-destroy-event", G_CALLBACK(calib_plot_destroyed_cb), NULL);
+
+	osc_plot_set_channel_state(plot_fft_2ch, "cf-ad9643-core-lpc", 0, true);
+	osc_plot_set_channel_state(plot_fft_2ch, "cf-ad9643-core-lpc", 1, true);
+	osc_plot_set_domain(plot_fft_2ch, FFT_PLOT);
+	osc_plot_set_marker_type(plot_fft_2ch, MARKER_IMAGE);
+	osc_plot_draw_start(plot_fft_2ch);
 
 	/* Only start the thread if the LO is set */
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget)))
@@ -1231,7 +1256,12 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 
 	if (filename)
 		g_free(filename);
+	if (calib_plot_exists) {
+		osc_plot_draw_stop(plot_fft_2ch);
+		osc_plot_destroy(plot_fft_2ch);
+	}
 
+hide_calib:
 	gtk_widget_hide(dialogs.calibrate);
 }
 
