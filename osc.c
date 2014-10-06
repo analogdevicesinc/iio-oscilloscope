@@ -41,7 +41,8 @@ GSList *plugin_list = NULL;
 
 gint capture_function = 0;
 gfloat plugin_fft_corr = 0.0;
-static GtkWidget  *main_window;
+static GtkWidget *main_window;
+static GtkWidget *tooltips_en;
 static gint window_x_pos, window_y_pos;
 static GList *plot_list = NULL;
 static int num_capturing_plots;
@@ -2019,6 +2020,18 @@ static void create_default_plot(void)
 		new_plot_cb(NULL, NULL);
 }
 
+void tooltips_enable_cb (GtkCheckMenuItem *item, gpointer data)
+{
+	gboolean enable;
+	GdkScreen *screen;
+	GtkSettings *settings;
+
+	screen = gtk_window_get_screen(GTK_WINDOW(main_window));
+	settings = gtk_settings_get_for_screen(screen);
+	enable = gtk_check_menu_item_get_active(item);
+	g_object_set(settings, "gtk-enable-tooltips", enable, NULL);
+}
+
 static void init_application (void)
 {
 	GtkBuilder *builder = NULL;
@@ -2055,11 +2068,13 @@ static void init_application (void)
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "main_menu"));
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "new_capture_plot"));
+	tooltips_en = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_tooltips_en"));
 	main_window = window;
 
 	/* Connect signals. */
 	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
 	g_signal_connect(G_OBJECT(btn_capture), "activate", G_CALLBACK(new_plot_cb), NULL);
+	g_signal_connect(G_OBJECT(tooltips_en), "toggled", G_CALLBACK(tooltips_enable_cb), NULL);
 
 	dialogs_init(builder);
 	init_device_list();
