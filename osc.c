@@ -2144,6 +2144,9 @@ int main_profile_handler(const char *section, const char *name, const char *valu
 						window_y_pos = atoi(value);
 						gtk_window_move(GTK_WINDOW(main_window), window_x_pos, window_y_pos);
 					}
+			} else if (!strcmp(name, "tooltips_enable")) {
+				if (value)
+					gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tooltips_en), !!atoi(value));
 			} else {
 				goto unhandled;
 			}
@@ -2200,6 +2203,8 @@ void capture_profile_save(const char *filename)
 	gtk_window_get_position(GTK_WINDOW(main_window), &x_pos, &y_pos);
 	fprintf(fp, "window_x_pos=%d\n", x_pos);
 	fprintf(fp, "window_y_pos=%d\n", y_pos);
+
+	fprintf(fp, "tooltips_enable=%d\n", gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(tooltips_en)));
 
 	fclose(fp);
 
