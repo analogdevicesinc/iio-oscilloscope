@@ -924,7 +924,15 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 
 static const char * device_name_check(const char *name)
 {
-	struct iio_device *dev = iio_context_find_device(ctx, name);
+	struct iio_device *dev;
+
+	if (!name)
+		return NULL;
+
+	dev = iio_context_find_device(ctx, name);
+	if (!dev)
+		return NULL;
+
 	return iio_device_get_name(dev) ?: iio_device_get_id(dev);
 }
 
@@ -999,7 +1007,12 @@ gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device)
 int plugin_data_capture_size(const char *device)
 {
 	struct extra_dev_info *info;
-	struct iio_device *dev = iio_context_find_device(ctx, device);
+	struct iio_device *dev;
+
+	if (!device)
+		return 0;
+
+	dev = iio_context_find_device(ctx, device);
 	if (!dev)
 		return 0;
 
@@ -1011,7 +1024,12 @@ int plugin_data_capture_num_active_channels(const char *device)
 {
 	int nb_active = 0;
 	unsigned int i, nb_channels;
-	struct iio_device *dev = iio_context_find_device(ctx, device);
+	struct iio_device *dev;
+
+	if (!device)
+		return 0;
+
+	dev = iio_context_find_device(ctx, device);
 	if (!dev)
 		return 0;
 
@@ -1027,11 +1045,16 @@ int plugin_data_capture_num_active_channels(const char *device)
 
 int plugin_data_capture_bytes_per_sample(const char *device)
 {
-	struct iio_device *dev = iio_context_find_device(ctx, device);
+	struct iio_device *dev;
+
+	if (!device)
+		return 0;
+
+	dev = iio_context_find_device(ctx, device);
 	if (!dev)
 		return 0;
-	else
-		return iio_device_get_sample_size(dev);
+
+	return iio_device_get_sample_size(dev);
 }
 
 int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
