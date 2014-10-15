@@ -68,13 +68,13 @@ static size_t write_fru(char *eeprom)
 	time_t tmp;
 	struct tm *tmp2;
 	char buf[256];
-	struct dirent *ent;
-	DIR *d;
+	int j, n;
+	struct dirent **namelist;
 	GtkListStore *store;
 
-	d = opendir(FRU_FILES);
+	n = scandir(FRU_FILES, &namelist, 0, alphasort);
 	/* No fru files, don't bother */
-	if (!d) {
+	if (n < 0) {
 		printf("didn't find FRU_Files in %s at %s(%s)\n", FRU_FILES, __FILE__, __func__);
 		return 0;
 	}
@@ -95,13 +95,12 @@ static size_t write_fru(char *eeprom)
 	store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(fru_file_list)));
 	gtk_list_store_clear (store);
 
-	while ((ent = readdir(d))) {
-		if (ent->d_type != DT_REG)
-			continue;
-		if (!str_endswith(ent->d_name, ".bin"))
-			continue;
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(fru_file_list), ent->d_name);
+	for (j = 0; j < n; j++) {
+		if (namelist[j]->d_type == DT_REG && str_endswith(namelist[j]->d_name, ".bin"))
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(fru_file_list), namelist[j]->d_name);
+		free(namelist[j]);
 	}
+	free(namelist);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(fru_file_list), ser_num[0]);
 	free(ser_num);
