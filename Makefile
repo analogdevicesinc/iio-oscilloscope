@@ -35,6 +35,7 @@ PLUGINS=\
 	plugins/fmcomms5.so \
 	plugins/fmcomms6.so \
 	plugins/fmcomms2_adv.so \
+	plugins/pr_config.so \
 	plugins/debug.so \
 	plugins/daq2.so \
 	plugins/AD5628_1.so \
