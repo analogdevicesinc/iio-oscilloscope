@@ -266,6 +266,9 @@ static void do_fft(Transform *tr)
 				j = i;
 		}
 
+		if (creal(fft->out[j]) == 0 && cimag(fft->out[j]) == 0)
+			fft->out[j] = FLT_MIN + I * FLT_MIN;
+
 		mag = 10 * log10((creal(fft->out[j]) * creal(fft->out[j]) +
 				cimag(fft->out[j]) * cimag(fft->out[j])) / ((unsigned long long)fft->m * fft->m)) +
 			fft->fft_corr + pwr_offset + plugin_fft_corr;
