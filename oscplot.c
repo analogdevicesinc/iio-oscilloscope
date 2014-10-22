@@ -75,6 +75,7 @@ static int comboboxtext_get_active_text_as_int(GtkComboBoxText* combobox);
 static gboolean check_valid_setup(OscPlot *plot);
 static int device_find_by_name(const char *name);
 static int channel_find_by_name(int device_index, const char *name);
+static void device_rx_info_update(OscPlot *plot);
 
 /* IDs of signals */
 enum {
@@ -189,6 +190,7 @@ struct _OscPlotPrivate
 	GtkWidget *enable_auto_scale;
 	GtkWidget *hor_scale;
 	GtkWidget *marker_label;
+	GtkWidget *devices_label;
 	GtkWidget *saveas_button;
 	GtkWidget *saveas_dialog;
 	GtkWidget *saveas_type_dialog;
@@ -219,6 +221,7 @@ struct _OscPlotPrivate
 	GtkWidget *cmb_saveas_type;
 
 	GtkTextBuffer* tbuf;
+	GtkTextBuffer* devices_buf;
 
 	unsigned int nb_input_devices;
 
@@ -407,6 +410,8 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 	} else {
 		gtk_label_set_text(GTK_LABEL(priv->hor_scale), "Samples");
 	}
+
+	device_rx_info_update(plot);
 }
 
 void osc_plot_restart (OscPlot *plot)
@@ -1162,6 +1167,30 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 		}
 	} else {
 		gtk_text_buffer_set_text(priv->tbuf, "No markers active", 17);
+	}
+}
+
+static void device_rx_info_update(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTextIter iter;
+	char text[256];
+	int i;
+
+	gtk_text_buffer_set_text(priv->devices_buf, "", -1);
+	gtk_text_buffer_get_iter_at_line(priv->devices_buf, &iter, 1);
+
+	for (i = 0; i < num_devices; i++) {
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		const char *name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
+		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+
+		if (dev_info->input_device == false)
+			continue;
+
+		snprintf(text, sizeof(text), "%s:\n\tSampleRate: %f %cSPS\n",
+			name, dev_info->adc_freq, dev_info->adc_scale);
+		gtk_text_buffer_insert(priv->devices_buf, &iter, text, -1);
 	}
 }
 
@@ -3850,6 +3879,7 @@ static void create_plot(OscPlot *plot)
 	priv->enable_auto_scale = GTK_WIDGET(gtk_builder_get_object(builder, "auto_scale"));
 	priv->hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
+	priv->devices_label = GTK_WIDGET(gtk_builder_get_object(builder, "device_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	priv->title_edit_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_plot_title_edit"));
@@ -3945,6 +3975,10 @@ static void create_plot(OscPlot *plot)
 	/* Create application's treeviews */
 	device_list_treeview_init(plot);
 	saveas_channels_list_fill(plot);
+
+	/* Initialize text view for Devices Info */
+	priv->devices_buf = gtk_text_buffer_new(NULL);
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(priv->devices_label), priv->devices_buf);
 
 	/* Initialize Impulse Generators (triggers) dialog */
 	trigger_dialog_init(builder);
@@ -4079,6 +4113,7 @@ static void create_plot(OscPlot *plot)
 	add_grid(plot);
 	check_valid_setup(plot);
 	g_mutex_init(&priv->g_marker_copy_lock);
+	device_rx_info_update(plot);
 
 	if (MAX_MARKERS) {
 		priv->marker_type = MARKER_OFF;
