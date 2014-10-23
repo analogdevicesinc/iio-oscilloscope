@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <limits.h>
 
 #include <iio.h>
 
@@ -61,27 +62,28 @@ static size_t write_fru(char *eeprom)
 {
 	gint result;
 	const char *serial, *file;
-	char *ser_num;
+	char *ser_num, *filename;
 	time_t frutime;
 	FILE *fp = NULL;
 	size_t i;
 	time_t tmp;
 	struct tm *tmp2;
 	char buf[256];
-	struct dirent *ent;
-	DIR *d;
+	int j, n;
+	struct dirent **namelist;
 	GtkListStore *store;
 
-	d = opendir(FRU_FILES);
+	n = scandir(FRU_FILES, &namelist, 0, alphasort);
 	/* No fru files, don't bother */
-	if (!d) {
+	if (n < 0) {
 		printf("didn't find FRU_Files in %s at %s(%s)\n", FRU_FILES, __FILE__, __func__);
 		return 0;
 	}
 
 	g_object_set(dialogs.serial_num, "secondary_text", eeprom, NULL);
 
-	ser_num = malloc (128);
+	filename = g_malloc(PATH_MAX);
+	ser_num = malloc(128);
 	memset(ser_num, 0, 128);
 
 	fp = fopen(".serialnum", "r");
@@ -95,13 +97,14 @@ static size_t write_fru(char *eeprom)
 	store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(fru_file_list)));
 	gtk_list_store_clear (store);
 
-	while ((ent = readdir(d))) {
-		if (ent->d_type != DT_REG)
-			continue;
-		if (!str_endswith(ent->d_name, ".bin"))
-			continue;
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(fru_file_list), ent->d_name);
+	for (j = 0; j < n; j++) {
+		if (namelist[j]->d_type == DT_REG && str_endswith(namelist[j]->d_name, ".bin"))
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(fru_file_list), namelist[j]->d_name);
+		free(namelist[j]);
 	}
+	free(namelist);
+
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(fru_file_list), "Other...");
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(fru_file_list), ser_num[0]);
 	free(ser_num);
@@ -114,38 +117,67 @@ static size_t write_fru(char *eeprom)
 
 	gtk_entry_set_text(GTK_ENTRY(fru_date), buf);
 
+get_serial_and_file:
 	result = gtk_dialog_run(GTK_DIALOG(dialogs.serial_num));
 
 	i = 0;
 	switch (result) {
 		case GTK_RESPONSE_OK:
-			file = gtk_combo_box_get_active_text(GTK_COMBO_BOX(fru_file_list));
 			serial = gtk_entry_get_text(GTK_ENTRY(serial_num));
-			fflush(NULL);
-			sprintf(buf, "fru-dump -i " FRU_FILES "%s -o %s -s %s -d %d 2>&1",
-					file, eeprom, serial, (unsigned int)frutime);
-#if DEBUG
-			printf("%s\n", buf);
-#else
-			fp = popen(buf, "r");
-#endif
-			if (!fp) {
-				printf("can't execute \"%s\"\n", buf);
-			} else {
-				i = 0;
-				while(fgets(buf, sizeof(buf), fp) != NULL){
-					/* fru-dump not installed */
-					if (strstr(buf, "not found"))
-						printf("no fru-tools installed\n");
-					if (strstr(buf, "wrote") && strstr(buf, "bytes to") && strstr(buf, eeprom))
-						i = 1;
-				}
-				pclose(fp);
+			if (strlen(serial) == 0) {
+				create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_OK,
+					"", "Serial number required");
+				goto get_serial_and_file;
 			}
-			fp = fopen(".serialnum", "w");
-			if (fp) {
-				fprintf(fp, "%c%s", gtk_combo_box_get_active(GTK_COMBO_BOX(fru_file_list)), serial);
-				fclose(fp);
+
+			file = gtk_combo_box_get_active_text(GTK_COMBO_BOX(fru_file_list));
+
+			if (strncmp(file, "Other...", 8) != 0) {
+				snprintf(filename, PATH_MAX, FRU_FILES "%s", file);
+			} else {
+				/* manually choose fru file */
+				GtkWidget *dialog;
+
+				dialog = gtk_file_chooser_dialog_new("Select FRU file",
+							GTK_WINDOW(dialogs.serial_num),
+							GTK_FILE_CHOOSER_ACTION_OPEN,
+							GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+							GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+							NULL);
+
+				if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+					filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+				}
+				gtk_widget_destroy(dialog);
+			}
+
+			if (filename) {
+				fflush(NULL);
+				sprintf(buf, "fru-dump -i %s -o %s -s %s -d %d 2>&1",
+						filename, eeprom, serial, (unsigned int)frutime);
+#if DEBUG
+				printf("%s\n", buf);
+#else
+				fp = popen(buf, "r");
+#endif
+				if (!fp) {
+					printf("can't execute \"%s\"\n", buf);
+				} else {
+					i = 0;
+					while(fgets(buf, sizeof(buf), fp) != NULL){
+						/* fru-dump not installed */
+						if (strstr(buf, "not found"))
+							printf("no fru-tools installed\n");
+						if (strstr(buf, "wrote") && strstr(buf, "bytes to") && strstr(buf, eeprom))
+							i = 1;
+					}
+					pclose(fp);
+				}
+				fp = fopen(".serialnum", "w");
+				if (fp) {
+					fprintf(fp, "%c%s", gtk_combo_box_get_active(GTK_COMBO_BOX(fru_file_list)), serial);
+					fclose(fp);
+				}
 			}
 			break;
 		case GTK_RESPONSE_DELETE_EVENT:
@@ -156,6 +188,7 @@ static size_t write_fru(char *eeprom)
 	}
 	gtk_widget_hide(GTK_WIDGET(dialogs.serial_num));
 
+	g_free(filename);
 	return i;
 }
 #else

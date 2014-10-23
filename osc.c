@@ -41,7 +41,8 @@ GSList *plugin_list = NULL;
 
 gint capture_function = 0;
 gfloat plugin_fft_corr = 0.0;
-static GtkWidget  *main_window;
+static GtkWidget *main_window;
+static GtkWidget *tooltips_en;
 static gint window_x_pos, window_y_pos;
 static GList *plot_list = NULL;
 static int num_capturing_plots;
@@ -264,6 +265,9 @@ static void do_fft(Transform *tr)
 		} else {
 				j = i;
 		}
+
+		if (creal(fft->out[j]) == 0 && cimag(fft->out[j]) == 0)
+			fft->out[j] = FLT_MIN + I * FLT_MIN;
 
 		mag = 10 * log10((creal(fft->out[j]) * creal(fft->out[j]) +
 				cimag(fft->out[j]) * cimag(fft->out[j])) / ((unsigned long long)fft->m * fft->m)) +
@@ -923,7 +927,15 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 
 static const char * device_name_check(const char *name)
 {
-	struct iio_device *dev = iio_context_find_device(ctx, name);
+	struct iio_device *dev;
+
+	if (!name)
+		return NULL;
+
+	dev = iio_context_find_device(ctx, name);
+	if (!dev)
+		return NULL;
+
 	return iio_device_get_name(dev) ?: iio_device_get_id(dev);
 }
 
@@ -998,7 +1010,12 @@ gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device)
 int plugin_data_capture_size(const char *device)
 {
 	struct extra_dev_info *info;
-	struct iio_device *dev = iio_context_find_device(ctx, device);
+	struct iio_device *dev;
+
+	if (!device)
+		return 0;
+
+	dev = iio_context_find_device(ctx, device);
 	if (!dev)
 		return 0;
 
@@ -1010,7 +1027,12 @@ int plugin_data_capture_num_active_channels(const char *device)
 {
 	int nb_active = 0;
 	unsigned int i, nb_channels;
-	struct iio_device *dev = iio_context_find_device(ctx, device);
+	struct iio_device *dev;
+
+	if (!device)
+		return 0;
+
+	dev = iio_context_find_device(ctx, device);
 	if (!dev)
 		return 0;
 
@@ -1026,11 +1048,16 @@ int plugin_data_capture_num_active_channels(const char *device)
 
 int plugin_data_capture_bytes_per_sample(const char *device)
 {
-	struct iio_device *dev = iio_context_find_device(ctx, device);
+	struct iio_device *dev;
+
+	if (!device)
+		return 0;
+
+	dev = iio_context_find_device(ctx, device);
 	if (!dev)
 		return 0;
-	else
-		return iio_device_get_sample_size(dev);
+
+	return iio_device_get_sample_size(dev);
 }
 
 int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
@@ -2019,6 +2046,18 @@ static void create_default_plot(void)
 		new_plot_cb(NULL, NULL);
 }
 
+void tooltips_enable_cb (GtkCheckMenuItem *item, gpointer data)
+{
+	gboolean enable;
+	GdkScreen *screen;
+	GtkSettings *settings;
+
+	screen = gtk_window_get_screen(GTK_WINDOW(main_window));
+	settings = gtk_settings_get_for_screen(screen);
+	enable = gtk_check_menu_item_get_active(item);
+	g_object_set(settings, "gtk-enable-tooltips", enable, NULL);
+}
+
 static void init_application (void)
 {
 	GtkBuilder *builder = NULL;
@@ -2055,11 +2094,13 @@ static void init_application (void)
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "main_menu"));
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "new_capture_plot"));
+	tooltips_en = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_tooltips_en"));
 	main_window = window;
 
 	/* Connect signals. */
 	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
 	g_signal_connect(G_OBJECT(btn_capture), "activate", G_CALLBACK(new_plot_cb), NULL);
+	g_signal_connect(G_OBJECT(tooltips_en), "toggled", G_CALLBACK(tooltips_enable_cb), NULL);
 
 	dialogs_init(builder);
 	init_device_list();
@@ -2129,6 +2170,9 @@ int main_profile_handler(const char *section, const char *name, const char *valu
 						window_y_pos = atoi(value);
 						gtk_window_move(GTK_WINDOW(main_window), window_x_pos, window_y_pos);
 					}
+			} else if (!strcmp(name, "tooltips_enable")) {
+				if (value)
+					gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tooltips_en), !!atoi(value));
 			} else {
 				goto unhandled;
 			}
@@ -2185,6 +2229,8 @@ void capture_profile_save(const char *filename)
 	gtk_window_get_position(GTK_WINDOW(main_window), &x_pos, &y_pos);
 	fprintf(fp, "window_x_pos=%d\n", x_pos);
 	fprintf(fp, "window_y_pos=%d\n", y_pos);
+
+	fprintf(fp, "tooltips_enable=%d\n", gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(tooltips_en)));
 
 	fclose(fp);
 
