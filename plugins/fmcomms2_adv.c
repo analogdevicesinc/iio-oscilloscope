@@ -850,15 +850,16 @@ static void calibrate (gpointer button)
 	gtk_range_set_value(GTK_RANGE(GTK_WIDGET(gtk_builder_get_object(builder,
 			"tx_phase"))), scale_phase_0_360(tx_phase_hpc));
 
+	ret = 0;
+	set_calibration_progress(calib_progress, 1.0);
+
+calibrate_fail:
+
 	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
 	__cal_switch_ports_enable_cb(0);
 
 	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "1");
 	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "1");
-	ret = 0;
-	set_calibration_progress(calib_progress, 1.0);
-
-calibrate_fail:
 
 	gdk_threads_enter();
 	reload_settings();
