@@ -252,10 +252,18 @@ static void tx_sample_rate_changed(void *data)
 {
 	GtkSpinButton *dac_freq_spin;
 	gdouble rate;
+	GtkWidget *tone_freq;
+	int tone;
 
 	dac_freq_spin = GTK_SPIN_BUTTON(tx_widgets[num_dac_freq].widget);
 	rate = gtk_spin_button_get_value(dac_freq_spin) / 2.0;
 	dac_data_manager_freq_widgets_range_update(dac_tx_manager, rate);
+
+	for (tone = TX1_T1_I; tone <= TX1_T2_Q; tone++) {
+		tone_freq = dac_data_manager_get_widget(dac_tx_manager,
+				tone, WIDGET_FREQUENCY);
+		g_signal_emit_by_name(tone_freq, "value-changed", NULL);
+	}
 }
 
 struct fmcomms1_calib_data_v1 *find_entry(struct fmcomms1_calib_data_v1 *data,
