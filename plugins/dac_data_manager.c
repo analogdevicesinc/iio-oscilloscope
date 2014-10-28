@@ -2033,7 +2033,7 @@ static struct dds_tone *dds_tone_find(struct dac_data_manager *manager,
 		struct dds_tx *tx = ch->parent;
 		struct dds_dac *dac = tx->parent;
 
-		tone_type += tn->number;
+		tone_type += tn->number - 1;
 		tone_type += (ch->type == I_CHANNEL) ? 0 : 2;
 		tone_type += 4 * ((2 * (dac->index - 1)) + (tx->index - 1));
 
