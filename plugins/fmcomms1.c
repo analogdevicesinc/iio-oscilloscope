@@ -1760,6 +1760,7 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 		if (value) {
 			tx_update_values();
 			rx_update_values();
+			dac_data_manager_update_iio_widgets(dac_tx_manager);
 		} else {
 			return "1";
 		}
