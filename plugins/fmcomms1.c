@@ -43,6 +43,7 @@ static struct fmcomms1_calib_header_v1 *cal_header = NULL;
 static GtkWidget *vga_gain0, *vga_gain1;
 static GtkAdjustment *adj_gain0, *adj_gain1;
 static GtkWidget *rf_out;
+static GtkWidget *gain_locked;
 
 static GtkWidget *dds1_freq, *dds2_freq, *dds3_freq, *dds4_freq;
 static GtkWidget *dds1_scale, *dds2_scale, *dds3_scale, *dds4_scale;
@@ -1517,6 +1518,8 @@ static int fmcomms1_init(GtkWidget *notebook)
 	vga_gain1 = GTK_WIDGET(gtk_builder_get_object(builder, "adc_gain1"));
 	adj_gain1 = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(vga_gain1));
 
+	gain_locked = GTK_WIDGET(gtk_builder_get_object(builder, "gain_amp_together"));
+
 	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));
 	gtk_container_add(GTK_CONTAINER(dds_container), dac_data_manager_get_gui_container(dac_tx_manager));
 	gtk_widget_show_all(dds_container);
@@ -1839,6 +1842,16 @@ static char *handle_item(struct osc_plugin *plugin, const char *attrib,
 			g_thread_join(thr);
 			gtk_widget_hide(dialogs.calibrate);
 		}
+	} else if (MATCH_ATTRIB("gain_locked")) {
+		if (value) {
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gain_locked),
+					atoi(value));
+		} else {
+			if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gain_locked)))
+				return "1";
+			else
+				return "0";
+		}
 	} else {
 		if (value) {
 			printf("Unhandled tokens in ini file,\n"
@@ -1900,6 +1913,7 @@ static const char *fmcomms1_sr_attribs[] = {
 	"adf4351-rx-lpc.out_altvoltage0_frequency_resolution",
 	"adf4351-rx-lpc.out_altvoltage0_frequency",
 	"adf4351-rx-lpc.out_altvoltage0_powerdown",
+	"gain_locked",
 	"ad8366-lpc.out_voltage0_hardwaregain",
 	"ad8366-lpc.out_voltage1_hardwaregain",
 	SYNC_RELOAD,
