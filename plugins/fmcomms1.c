@@ -1702,8 +1702,10 @@ static int fmcomms1_init(GtkWidget *notebook)
 
 	iio_spin_button_init(&rx_widgets[num_rx++],
 			dev, ch0, "hardwaregain", vga_gain0, NULL);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 	iio_spin_button_init(&rx_widgets[num_rx++],
 			dev, ch1, "hardwaregain", vga_gain1, NULL);
+	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
 	g_builder_connect_signal(builder, "calibrate_dialog", "clicked",
 		G_CALLBACK(cal_dialog), NULL);
