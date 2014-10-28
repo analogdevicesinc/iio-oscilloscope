@@ -1889,6 +1889,7 @@ static const char *fmcomms1_sr_attribs[] = {
 	"cf-ad9122-core-lpc.out_voltage1_calibbias",
 	"cf-ad9122-core-lpc.out_voltage1_calibscale",
 	"cf-ad9122-core-lpc.out_voltage1_phase",
+	"cf-ad9643-core-lpc.in_voltage_sampling_frequency",
 	"cf-ad9643-core-lpc.in_voltage0_calibbias",
 	"cf-ad9643-core-lpc.in_voltage1_calibbias",
 	"cf-ad9643-core-lpc.in_voltage0_calibscale",
