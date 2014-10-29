@@ -29,7 +29,12 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
+#include "../libini2.h"
 #include "dac_data_manager.h"
+
+#define THIS_DRIVER "FMComms5"
+
+#define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 #define HANNING_ENBW 1.50
 
@@ -106,6 +111,137 @@ static gint this_page;
 static GtkNotebook *nbook;
 static GtkWidget *fmcomms5_panel;
 static gboolean plugin_detached;
+
+static const char *fmcomms5_sr_attribs[] = {
+	PHY_DEVICE1".trx_rate_governor",
+	PHY_DEVICE1".dcxo_tune_coarse",
+	PHY_DEVICE1".dcxo_tune_fine",
+	PHY_DEVICE1".ensm_mode",
+	PHY_DEVICE1".in_voltage0_rf_port_select",
+	PHY_DEVICE1".in_voltage0_gain_control_mode",
+	PHY_DEVICE1".in_voltage0_hardwaregain",
+	PHY_DEVICE1".in_voltage1_gain_control_mode",
+	PHY_DEVICE1".in_voltage1_hardwaregain",
+	PHY_DEVICE1".in_voltage_bb_dc_offset_tracking_en",
+	PHY_DEVICE1".in_voltage_quadrature_tracking_en",
+	PHY_DEVICE1".in_voltage_rf_dc_offset_tracking_en",
+	PHY_DEVICE1".out_voltage0_rf_port_select",
+	PHY_DEVICE1".out_altvoltage0_RX_LO_frequency",
+	PHY_DEVICE1".out_altvoltage1_TX_LO_frequency",
+	PHY_DEVICE1".out_voltage0_hardwaregain",
+	PHY_DEVICE1".out_voltage1_hardwaregain",
+	PHY_DEVICE1".out_voltage_sampling_frequency",
+	PHY_DEVICE1".in_voltage_rf_bandwidth",
+	PHY_DEVICE1".out_voltage_rf_bandwidth",
+	PHY_DEVICE2".trx_rate_governor",
+	PHY_DEVICE2".dcxo_tune_coarse",
+	PHY_DEVICE2".dcxo_tune_fine",
+	PHY_DEVICE2".ensm_mode",
+	PHY_DEVICE2".in_voltage0_rf_port_select",
+	PHY_DEVICE2".in_voltage0_gain_control_mode",
+	PHY_DEVICE2".in_voltage0_hardwaregain",
+	PHY_DEVICE2".in_voltage1_gain_control_mode",
+	PHY_DEVICE2".in_voltage1_hardwaregain",
+	PHY_DEVICE2".in_voltage_bb_dc_offset_tracking_en",
+	PHY_DEVICE2".in_voltage_quadrature_tracking_en",
+	PHY_DEVICE2".in_voltage_rf_dc_offset_tracking_en",
+	PHY_DEVICE2".out_voltage0_rf_port_select",
+	PHY_DEVICE2".out_altvoltage0_RX_LO_frequency",
+	PHY_DEVICE2".out_altvoltage1_TX_LO_frequency",
+	PHY_DEVICE2".out_voltage0_hardwaregain",
+	PHY_DEVICE2".out_voltage1_hardwaregain",
+	PHY_DEVICE2".out_voltage_sampling_frequency",
+	PHY_DEVICE2".in_voltage_rf_bandwidth",
+	PHY_DEVICE2".out_voltage_rf_bandwidth",
+	"load_fir_filter_file",
+	PHY_DEVICE1".in_voltage_filter_fir_en",
+	PHY_DEVICE1".out_voltage_filter_fir_en",
+	PHY_DEVICE1".in_out_voltage_filter_fir_en",
+	PHY_DEVICE2".in_voltage_filter_fir_en",
+	PHY_DEVICE2".out_voltage_filter_fir_en",
+	PHY_DEVICE2".in_out_voltage_filter_fir_en",
+	"global_settings_show",
+	"tx_show",
+	"rx_show",
+	"fpga_show",
+	"dds_mode_tx1",
+	"dds_mode_tx2",
+	"dds_mode_tx3",
+	"dds_mode_tx4",
+	"dac_buf_filename",
+	"tx_channel_0",
+	"tx_channel_1",
+	"tx_channel_2",
+	"tx_channel_3",
+	"tx_channel_4",
+	"tx_channel_5",
+	"tx_channel_6",
+	"tx_channel_7",
+	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_frequency",
+	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_phase",
+	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_raw",
+	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_scale",
+	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_frequency",
+	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_phase",
+	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_raw",
+	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_scale",
+	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_frequency",
+	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_phase",
+	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_raw",
+	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_scale",
+	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_frequency",
+	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_phase",
+	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_raw",
+	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_scale",
+	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_frequency",
+	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_phase",
+	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_raw",
+	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_scale",
+	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_frequency",
+	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_phase",
+	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_raw",
+	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_scale",
+	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_frequency",
+	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_phase",
+	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_raw",
+	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_scale",
+	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_frequency",
+	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_phase",
+	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_raw",
+	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_scale",
+	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_frequency",
+	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_phase",
+	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_raw",
+	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_scale",
+	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_frequency",
+	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_phase",
+	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_raw",
+	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_scale",
+	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_frequency",
+	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_phase",
+	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_raw",
+	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_scale",
+	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_frequency",
+	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_phase",
+	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_raw",
+	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_scale",
+	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_frequency",
+	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_phase",
+	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_raw",
+	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_scale",
+	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_frequency",
+	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_phase",
+	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_raw",
+	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_scale",
+	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_frequency",
+	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_phase",
+	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_raw",
+	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_scale",
+	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_frequency",
+	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_phase",
+	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_raw",
+	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_scale",
+};
 
 static void trigger_mcs_button(void)
 {
@@ -705,7 +841,103 @@ int handle_external_request (const char *request)
 	return ret;
 }
 
-static int fmcomms5_init(GtkWidget *notebook)
+static void set_dds_mode(const char *ini_fn, unsigned i)
+{
+	char buf[1024], *value;
+
+	snprintf(buf, sizeof(buf), "dds_mode_tx%i", i);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, buf);
+	if (value) {
+		dac_data_manager_set_dds_mode(dac_tx_manager,
+				i <= 2 ? DDS_DEVICE1 : DDS_DEVICE2,
+				i, atoi(value));
+		free(value);
+	}
+}
+
+static void set_tx_channel(const char *ini_fn, unsigned i)
+{
+	char buf[1024], *value;
+
+	snprintf(buf, sizeof(buf), "tx_channel_%i", i);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, buf);
+	if (value) {
+		dac_data_manager_set_tx_channel_state(dac_tx_manager,
+				i, !!atoi(value));
+		free(value);
+	}
+}
+
+static void load_profile(const char *ini_fn)
+{
+	unsigned i;
+	char *value;
+
+	update_from_ini(ini_fn, THIS_DRIVER, dev1, fmcomms5_sr_attribs,
+			ARRAY_SIZE(fmcomms5_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, dds1, fmcomms5_sr_attribs,
+			ARRAY_SIZE(fmcomms5_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, cap1, fmcomms5_sr_attribs,
+			ARRAY_SIZE(fmcomms5_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, dev2, fmcomms5_sr_attribs,
+			ARRAY_SIZE(fmcomms5_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, dds2, fmcomms5_sr_attribs,
+			ARRAY_SIZE(fmcomms5_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, cap2, fmcomms5_sr_attribs,
+			ARRAY_SIZE(fmcomms5_sr_attribs));
+
+	for (i = 1; i <= 4; i++)
+		set_dds_mode(ini_fn, i);
+	for (i = 0; i <= 7; i++)
+		set_tx_channel(ini_fn, i);
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "load_fir_filter_file");
+	if (value) {
+		if (value[0]) {
+			load_fir_filter(value);
+			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filter_fir_config), value);
+		}
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "global_settings_show");
+	if (value) {
+		gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_GLOBAL], section_setting[SECTION_GLOBAL]);
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_show");
+	if (value) {
+		gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_TX], section_setting[SECTION_TX]);
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "rx_show");
+	if (value) {
+		gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_RX], section_setting[SECTION_RX]);
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "fpga_show");
+	if (value) {
+		gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_FPGA], section_setting[SECTION_FPGA]);
+		free(value);
+	}
+
+	if (dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 1) == DDS_BUFFER) {
+		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
+		if (value) {
+			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
+			free(value);
+		}
+	}
+}
+
+static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *dds_container;
@@ -717,10 +949,20 @@ static int fmcomms5_init(GtkWidget *notebook)
 
 	dac_tx_manager = dac_data_manager_new(dds1, dds2, ctx);
 	if (!dac_tx_manager)
-		return -1;
+		return NULL;
 
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
+
+	ctx = osc_create_context();
+	dev1 = iio_context_find_device(ctx, PHY_DEVICE1);
+	dds1 = iio_context_find_device(ctx, DDS_DEVICE1);
+	cap1 = iio_context_find_device(ctx, CAP_DEVICE1);
+	dev2 = iio_context_find_device(ctx, PHY_DEVICE2);
+	dds2 = iio_context_find_device(ctx, DDS_DEVICE2);
+	cap2 = iio_context_find_device(ctx, CAP_DEVICE2);
+	if (!cap1)
+		cap1 = iio_context_find_device(ctx, CAP_DEVICE1_ALT);
 
 	if (!gtk_builder_add_from_file(builder, "fmcomms5.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms5.glade", NULL);
@@ -1049,6 +1291,9 @@ static int fmcomms5_init(GtkWidget *notebook)
 	else
 		tx_fastlock_recall_name = "TX_LO_fastlock_recall";
 
+	if (ini_fn)
+		load_profile(ini_fn);
+
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
 			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
 	g_builder_connect_signal(builder, "rx2_phase_rotation", "value-changed",
@@ -1155,347 +1400,6 @@ static int fmcomms5_init(GtkWidget *notebook)
 	return 0;
 }
 
-#define SYNC_RELOAD "SYNC_RELOAD"
-
-static char *handle_item(struct osc_plugin *plugin, const char *attrib,
-			 const char *value)
-{
-	char *buf;
-	bool state;
-
-	if (MATCH_ATTRIB(SYNC_RELOAD)) {
-		if (value)
-			reload_button_clicked(NULL, 0);
-		else
-			return "1";
-	} else if (MATCH_ATTRIB("load_fir_filter_file")) {
-		if (value) {
-			if (value[0]) {
-				load_fir_filter(value);
-				gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filter_fir_config), value);
-			}
-		} else {
-			return last_fir_filter;
-		}
-	} else if (MATCH_ATTRIB("dds_mode_tx1")) {
-		if (value) {
-			dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE1, 1, atoi(value));
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 1));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("dds_mode_tx2")) {
-		if (value) {
-			dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE1, 2, atoi(value));
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 2));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("dds_mode_tx3")) {
-		if (value) {
-			dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE2, 1, atoi(value));
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 1));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("dds_mode_tx4")) {
-		if (value) {
-			dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE2, 2, atoi(value));
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 2));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("dac_buf_filename") &&
-				dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 1) == DDS_BUFFER) {
-		if (value) {
-			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
-		} else {
-			return dac_data_manager_get_buffer_chooser_filename(dac_tx_manager);
-		}
-	} else if (MATCH_ATTRIB("tx_channel_0")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 0, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 0));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("tx_channel_1")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 1));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("tx_channel_2")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 2, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 2));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("tx_channel_3")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 3, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 3));
-			return buf;
-		}
-		} else if (MATCH_ATTRIB("tx_channel_4")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 4, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 4));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("tx_channel_5")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 5, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 5));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("tx_channel_6")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 6, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 6));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("tx_channel_7")) {
-		if (value) {
-			state = (atoi(value)) ? true : false;
-			dac_data_manager_set_tx_channel_state(dac_tx_manager, 7, state);
-		} else {
-			buf = malloc (10);
-			sprintf(buf, "%i", dac_data_manager_get_tx_channel_state(dac_tx_manager, 7));
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("global_settings_show")) {
-		if (value) {
-			if (atoi(value))
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], true);
-			else
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], false);
-			hide_section_cb(section_toggle[SECTION_GLOBAL], section_setting[SECTION_GLOBAL]);
-		} else {
-			buf = malloc (10);
-			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]))
-				sprintf(buf, "1 # show");
-			else
-				sprintf(buf, "0 # hide");
-			return buf;
-		}
-	} else if (MATCH_ATTRIB("tx_show")) {
-		if (value) {
-			if (atoi(value))
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], true);
-			else
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], false);
-			hide_section_cb(section_toggle[SECTION_TX], section_setting[SECTION_TX]);
-		} else {
-			buf = malloc (10);
-			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]))
-				sprintf(buf, "1 # show");
-			else
-				sprintf(buf, "0 # hide");
-			return buf;
-		}
-
-	} else if (MATCH_ATTRIB("rx_show")) {
-		if (value) {
-			if (atoi(value))
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], true);
-			else
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], false);
-			hide_section_cb(section_toggle[SECTION_RX], section_setting[SECTION_RX]);
-		} else {
-			buf = malloc (10);
-			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_RX]))
-				sprintf(buf, "1 # show");
-			else
-				sprintf(buf, "0 # hide");
-			return buf;
-		}
-
-	} else if (MATCH_ATTRIB("fpga_show")) {
-		if (value) {
-			if (atoi(value))
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], true);
-			else
-				gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], false);
-			hide_section_cb(section_toggle[SECTION_FPGA], section_setting[SECTION_FPGA]);
-		} else {
-			buf = malloc (10);
-			if (gtk_toggle_tool_button_get_active(section_toggle[SECTION_FPGA]))
-				sprintf(buf, "1 # show");
-			else
-				sprintf(buf, "0 # hide");
-			return buf;
-		}
-
-	} else {
-		if (value) {
-			printf("Unhandled tokens in ini file,\n"
-				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-				"FMComms2", attrib, value);
-			return "FAIL";
-		}
-	}
-
-	return NULL;
-}
-
-static const char *fmcomms5_sr_attribs[] = {
-	PHY_DEVICE1".trx_rate_governor",
-	PHY_DEVICE1".dcxo_tune_coarse",
-	PHY_DEVICE1".dcxo_tune_fine",
-	PHY_DEVICE1".ensm_mode",
-	PHY_DEVICE1".in_voltage0_rf_port_select",
-	PHY_DEVICE1".in_voltage0_gain_control_mode",
-	PHY_DEVICE1".in_voltage0_hardwaregain",
-	PHY_DEVICE1".in_voltage1_gain_control_mode",
-	PHY_DEVICE1".in_voltage1_hardwaregain",
-	PHY_DEVICE1".in_voltage_bb_dc_offset_tracking_en",
-	PHY_DEVICE1".in_voltage_quadrature_tracking_en",
-	PHY_DEVICE1".in_voltage_rf_dc_offset_tracking_en",
-	PHY_DEVICE1".out_voltage0_rf_port_select",
-	PHY_DEVICE1".out_altvoltage0_RX_LO_frequency",
-	PHY_DEVICE1".out_altvoltage1_TX_LO_frequency",
-	PHY_DEVICE1".out_voltage0_hardwaregain",
-	PHY_DEVICE1".out_voltage1_hardwaregain",
-	PHY_DEVICE1".out_voltage_sampling_frequency",
-	PHY_DEVICE1".in_voltage_rf_bandwidth",
-	PHY_DEVICE1".out_voltage_rf_bandwidth",
-	PHY_DEVICE2".trx_rate_governor",
-	PHY_DEVICE2".dcxo_tune_coarse",
-	PHY_DEVICE2".dcxo_tune_fine",
-	PHY_DEVICE2".ensm_mode",
-	PHY_DEVICE2".in_voltage0_rf_port_select",
-	PHY_DEVICE2".in_voltage0_gain_control_mode",
-	PHY_DEVICE2".in_voltage0_hardwaregain",
-	PHY_DEVICE2".in_voltage1_gain_control_mode",
-	PHY_DEVICE2".in_voltage1_hardwaregain",
-	PHY_DEVICE2".in_voltage_bb_dc_offset_tracking_en",
-	PHY_DEVICE2".in_voltage_quadrature_tracking_en",
-	PHY_DEVICE2".in_voltage_rf_dc_offset_tracking_en",
-	PHY_DEVICE2".out_voltage0_rf_port_select",
-	PHY_DEVICE2".out_altvoltage0_RX_LO_frequency",
-	PHY_DEVICE2".out_altvoltage1_TX_LO_frequency",
-	PHY_DEVICE2".out_voltage0_hardwaregain",
-	PHY_DEVICE2".out_voltage1_hardwaregain",
-	PHY_DEVICE2".out_voltage_sampling_frequency",
-	PHY_DEVICE2".in_voltage_rf_bandwidth",
-	PHY_DEVICE2".out_voltage_rf_bandwidth",
-	"load_fir_filter_file",
-	PHY_DEVICE1".in_voltage_filter_fir_en",
-	PHY_DEVICE1".out_voltage_filter_fir_en",
-	PHY_DEVICE1".in_out_voltage_filter_fir_en",
-	PHY_DEVICE2".in_voltage_filter_fir_en",
-	PHY_DEVICE2".out_voltage_filter_fir_en",
-	PHY_DEVICE2".in_out_voltage_filter_fir_en",
-	"global_settings_show",
-	"tx_show",
-	"rx_show",
-	"fpga_show",
-	"dds_mode_tx1",
-	"dds_mode_tx2",
-	"dds_mode_tx3",
-	"dds_mode_tx4",
-	"dac_buf_filename",
-	"tx_channel_0",
-	"tx_channel_1",
-	"tx_channel_2",
-	"tx_channel_3",
-	"tx_channel_4",
-	"tx_channel_5",
-	"tx_channel_6",
-	"tx_channel_7",
-	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_frequency",
-	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_phase",
-	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_raw",
-	DDS_DEVICE1".out_altvoltage0_TX1_I_F1_scale",
-	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_frequency",
-	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_phase",
-	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_raw",
-	DDS_DEVICE1".out_altvoltage1_TX1_I_F2_scale",
-	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_frequency",
-	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_phase",
-	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_raw",
-	DDS_DEVICE1".out_altvoltage2_TX1_Q_F1_scale",
-	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_frequency",
-	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_phase",
-	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_raw",
-	DDS_DEVICE1".out_altvoltage3_TX1_Q_F2_scale",
-	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_frequency",
-	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_phase",
-	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_raw",
-	DDS_DEVICE1".out_altvoltage4_TX2_I_F1_scale",
-	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_frequency",
-	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_phase",
-	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_raw",
-	DDS_DEVICE1".out_altvoltage5_TX2_I_F2_scale",
-	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_frequency",
-	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_phase",
-	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_raw",
-	DDS_DEVICE1".out_altvoltage6_TX2_Q_F1_scale",
-	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_frequency",
-	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_phase",
-	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_raw",
-	DDS_DEVICE1".out_altvoltage7_TX2_Q_F2_scale",
-	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_frequency",
-	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_phase",
-	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_raw",
-	DDS_DEVICE2".out_altvoltage0_TX1_I_F1_scale",
-	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_frequency",
-	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_phase",
-	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_raw",
-	DDS_DEVICE2".out_altvoltage1_TX1_I_F2_scale",
-	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_frequency",
-	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_phase",
-	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_raw",
-	DDS_DEVICE2".out_altvoltage2_TX1_Q_F1_scale",
-	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_frequency",
-	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_phase",
-	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_raw",
-	DDS_DEVICE2".out_altvoltage3_TX1_Q_F2_scale",
-	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_frequency",
-	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_phase",
-	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_raw",
-	DDS_DEVICE2".out_altvoltage4_TX2_I_F1_scale",
-	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_frequency",
-	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_phase",
-	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_raw",
-	DDS_DEVICE2".out_altvoltage5_TX2_I_F2_scale",
-	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_frequency",
-	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_phase",
-	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_raw",
-	DDS_DEVICE2".out_altvoltage6_TX2_Q_F1_scale",
-	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_frequency",
-	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_phase",
-	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_raw",
-	DDS_DEVICE2".out_altvoltage7_TX2_Q_F2_scale",
-	SYNC_RELOAD,
-	NULL,
-};
-
 static void update_active_page(gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
@@ -1510,8 +1414,75 @@ static void fmcomms5_get_preferred_size(int *width, int *height)
 		*height = 800;
 }
 
-static void context_destroy(void)
+static void save_widgets_to_ini(FILE *f)
 {
+	char buf[0x1000];
+
+	snprintf(buf, sizeof(buf), "load_fir_filter_file = %s\n"
+			"dds_mode_tx1 = %i\n"
+			"dds_mode_tx2 = %i\n"
+			"dds_mode_tx3 = %i\n"
+			"dds_mode_tx4 = %i\n"
+			"dac_buf_filename = %s\n"
+			"tx_channel_0 = %i\n"
+			"tx_channel_1 = %i\n"
+			"tx_channel_2 = %i\n"
+			"tx_channel_3 = %i\n"
+			"tx_channel_4 = %i\n"
+			"tx_channel_5 = %i\n"
+			"tx_channel_6 = %i\n"
+			"tx_channel_7 = %i\n"
+			"global_settings_show = %i\n"
+			"tx_show = %i\n"
+			"rx_show = %i\n"
+			"fpga_show = %i\n",
+			last_fir_filter,
+			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 1),
+			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 2),
+			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 3),
+			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 4),
+			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 0),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 1),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 2),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 3),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 4),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 5),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 6),
+			dac_data_manager_get_tx_channel_state(dac_tx_manager, 7),
+			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]),
+			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]),
+			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_RX]),
+			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_FPGA]));
+	fwrite(buf, 1, strlen(buf), f);
+}
+
+
+static void save_profile(const char *ini_fn)
+{
+	FILE *f = fopen(ini_fn, "a");
+	if (f) {
+		save_to_ini(f, THIS_DRIVER, dev1, fmcomms5_sr_attribs,
+				ARRAY_SIZE(fmcomms5_sr_attribs));
+		save_to_ini(f, NULL, dds1, fmcomms5_sr_attribs,
+				ARRAY_SIZE(fmcomms5_sr_attribs));
+		save_to_ini(f, NULL, cap1, fmcomms5_sr_attribs,
+				ARRAY_SIZE(fmcomms5_sr_attribs));
+		save_to_ini(f, NULL, dev2, fmcomms5_sr_attribs,
+				ARRAY_SIZE(fmcomms5_sr_attribs));
+		save_to_ini(f, NULL, dds2, fmcomms5_sr_attribs,
+				ARRAY_SIZE(fmcomms5_sr_attribs));
+		save_to_ini(f, NULL, cap2, fmcomms5_sr_attribs,
+				ARRAY_SIZE(fmcomms5_sr_attribs));
+		save_widgets_to_ini(f);
+		fclose(f);
+	}
+}
+
+static void context_destroy(const char *ini_fn)
+{
+	save_profile(ini_fn);
+
 	if (dac_tx_manager) {
 		dac_data_manager_free(dac_tx_manager);
 		dac_tx_manager = NULL;
@@ -1526,38 +1497,28 @@ static bool fmcomms5_identify(void)
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
 
-	if (!iio_context_find_device(osc_ctx, PHY_DEVICE1)
-		|| !iio_context_find_device(osc_ctx, DDS_DEVICE1))
-		return false;
-	if (!iio_context_find_device(osc_ctx, PHY_DEVICE2)
-		|| !iio_context_find_device(osc_ctx, DDS_DEVICE2))
-		return false;
-
-	ctx = osc_create_context();
-	dev1 = iio_context_find_device(ctx, PHY_DEVICE1);
-	dds1 = iio_context_find_device(ctx, DDS_DEVICE1);
-	cap1 = iio_context_find_device(ctx, CAP_DEVICE1);
-	dev2 = iio_context_find_device(ctx, PHY_DEVICE2);
-	dds2 = iio_context_find_device(ctx, DDS_DEVICE2);
-	cap2 = iio_context_find_device(ctx, CAP_DEVICE2);
+	dev1 = iio_context_find_device(osc_ctx, PHY_DEVICE1);
+	dds1 = iio_context_find_device(osc_ctx, DDS_DEVICE1);
+	cap1 = iio_context_find_device(osc_ctx, CAP_DEVICE1);
+	dev2 = iio_context_find_device(osc_ctx, PHY_DEVICE2);
+	dds2 = iio_context_find_device(osc_ctx, DDS_DEVICE2);
+	cap2 = iio_context_find_device(osc_ctx, CAP_DEVICE2);
 
 	if (!cap1) {
-		cap1 = iio_context_find_device(ctx, CAP_DEVICE1_ALT);
+		cap1 = iio_context_find_device(osc_ctx, CAP_DEVICE1_ALT);
 	}
 
-	if (!dev1 || !dds1 || !cap1 || !dev2 || !dds2 || !cap2)
-		iio_context_destroy(ctx);
 	return !!dev1 && !!dds1 && !!cap1 && !!dev2 && !!dds2 && !!cap2;
 }
 
 struct osc_plugin plugin = {
-	.name = "FMComms5",
+	.name = THIS_DRIVER,
 	.identify = fmcomms5_identify,
 	.init = fmcomms5_init,
-	.save_restore_attribs = fmcomms5_sr_attribs,
-	.handle_item = handle_item,
 	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.get_preferred_size = fmcomms5_get_preferred_size,
+	.save_profile = save_profile,
+	.load_profile = load_profile,
 	.destroy = context_destroy,
 };
