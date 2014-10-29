@@ -116,7 +116,7 @@ install:
 	xdg-desktop-menu install adi-osc.desktop
 
 clean:
-	rm -rf osc *.o plugins/*.so
+	rm -rf osc *.o libini/*.o plugins/*.so
 
 uninstall:
 	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/osc

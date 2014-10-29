@@ -22,7 +22,6 @@
 #include <sys/stat.h>
 #include <string.h>
 
-#include <ini.h>
 #include <iio.h>
 
 #include "../libini2.h"
