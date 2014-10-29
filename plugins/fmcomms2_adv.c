@@ -1133,6 +1133,28 @@ static void load_profile(const char *ini_fn)
 			ARRAY_SIZE(fmcomms2_adv_sr_attribs));
 }
 
+static int get_dds_channels(void)
+{
+	struct iio_device *dev;
+	int i, j;
+	char name[16];
+
+	for (i = 0; i < 2; i++) {
+		dev = i ? dev_dds_master : dev_dds_slave;
+
+		for (j = 0; j < 8; j++)
+		{
+			snprintf(name, sizeof(name), "altvoltage%d", j);
+
+			dds_out[i][j] = iio_device_find_channel(dev, name, true);
+			if (!dds_out[i][j])
+				return -errno;
+		}
+	}
+
+	return 0;
+}
+
 static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkWidget *fmcomms2adv_panel;
@@ -1143,10 +1165,16 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
 	dev_slave = iio_context_find_device(ctx, PHY_SLAVE_DEVICE);
-	cf_ad9361_lpc = iio_context_find_device(ctx, CAP_DEVICE_ALT);
-	cf_ad9361_hpc = iio_context_find_device(ctx, CAP_SLAVE_DEVICE);
-	dev_dds_master = iio_context_find_device(ctx, DDS_DEVICE);
-	dev_dds_slave = iio_context_find_device(ctx, DDS_SLAVE_DEVICE);
+
+	if (dev_slave) {
+		cf_ad9361_lpc = iio_context_find_device(ctx, CAP_DEVICE_ALT);
+		cf_ad9361_hpc = iio_context_find_device(ctx, CAP_SLAVE_DEVICE);
+
+		dev_dds_master = iio_context_find_device(ctx, DDS_DEVICE);
+		dev_dds_slave = iio_context_find_device(ctx, DDS_SLAVE_DEVICE);
+		if (get_dds_channels())
+			return NULL;
+	}
 
 	if (ini_fn) {
 		load_profile(ini_fn);
@@ -1259,10 +1287,12 @@ static bool fmcomms2adv_identify(void)
 
 	dev = iio_context_find_device(osc_ctx, PHY_DEVICE);
 	dev_slave = iio_context_find_device(osc_ctx, PHY_SLAVE_DEVICE);
-	cf_ad9361_lpc = iio_context_find_device(osc_ctx, CAP_DEVICE_ALT);
-	cf_ad9361_hpc = iio_context_find_device(osc_ctx, CAP_SLAVE_DEVICE);
-	dev_dds_master = iio_context_find_device(osc_ctx, DDS_DEVICE);
-	dev_dds_slave = iio_context_find_device(osc_ctx, DDS_SLAVE_DEVICE);
+	if (dev_slave) {
+		cf_ad9361_lpc = iio_context_find_device(osc_ctx, CAP_DEVICE_ALT);
+		cf_ad9361_hpc = iio_context_find_device(osc_ctx, CAP_SLAVE_DEVICE);
+		dev_dds_master = iio_context_find_device(osc_ctx, DDS_DEVICE);
+		dev_dds_slave = iio_context_find_device(osc_ctx, DDS_SLAVE_DEVICE);
+	}
 
 	return !!dev && iio_device_get_debug_attrs_count(dev)
 		&& (!dev_slave || (!!cf_ad9361_lpc && !!cf_ad9361_hpc &&
