@@ -1104,6 +1104,28 @@ int handle_external_request (const char *request)
 	return ret;
 }
 
+static bool calibrate_from_ini(const char *ini_fn)
+{
+	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "calibrate");
+	if (value) {
+		int i = 0;
+
+		do_calibration(NULL, NULL);
+		while (i <= 20) {
+			if (auto_calibrate >= 0)
+				i += auto_calibrate;
+			else
+				return false;
+
+			gtk_main_iteration();
+		}
+
+		free(value);
+	}
+
+	return true;
+}
+
 static void load_profile(const char *ini_fn)
 {
 	update_from_ini(ini_fn, THIS_DRIVER, dev,
@@ -1126,8 +1148,10 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 	dev_dds_master = iio_context_find_device(ctx, DDS_DEVICE);
 	dev_dds_slave = iio_context_find_device(ctx, DDS_SLAVE_DEVICE);
 
-	if (ini_fn)
+	if (ini_fn) {
 		load_profile(ini_fn);
+		calibrate_from_ini(ini_fn);
+	}
 
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
