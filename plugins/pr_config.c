@@ -28,6 +28,11 @@
 #include "../iio_widget.h"
 #include "../osc_plugin.h"
 #include "../config.h"
+#include "../libini2.h"
+
+#define THIS_DRIVER "Partial Reconfiguration"
+
+#define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 #define PHY_DEVICE	"ad9361-phy"
 #define DEVICE_NAME_ADC	"cf-ad9361-lpc"
@@ -64,7 +69,6 @@ static GtkWidget *reg_read;
 static GtkWidget *reg_write;
 
 static gint this_page;
-static GtkNotebook *nbook;
 static GtkWidget *pr_config_panel;
 static gboolean plugin_detached;
 
@@ -276,12 +280,29 @@ static void reg_write_clicked_cb(GtkButton *button, gpointer data)
 	writeReg(device, PR_CONTROL_ADDR, reg_data);
 }
 
-static int pr_config_init(GtkWidget *notebook)
+static void load_profile(const char *ini_fn)
+{
+	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "config_file");
+	if (value) {
+		if (value[0])
+			pr_config_file_apply(value);
+		free(value);
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "adc_active");
+	if (value) {
+		if (value[0])
+			gtk_combo_box_set_active(GTK_COMBO_BOX(regmap_select),
+					atoi(value) ? ADC_REGMAP : DAC_REGMAP);
+		free(value);
+	}
+}
+
+static GtkWidget * pr_config_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 
 	builder = gtk_builder_new();
-	nbook = GTK_NOTEBOOK(notebook);
 
 	if (!gtk_builder_add_from_file(builder, "pr_config.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "pr_config.glade", NULL);
@@ -295,6 +316,9 @@ static int pr_config_init(GtkWidget *notebook)
 	reg_read = GTK_WIDGET(gtk_builder_get_object(builder, "button_regs_read"));
 	reg_write = GTK_WIDGET(gtk_builder_get_object(builder, "button_regs_write"));
 
+	if (ini_fn)
+		load_profile(ini_fn);
+
 	g_signal_connect(reconf_chooser, "file-set",
 		G_CALLBACK(reconfig_file_set_cb), NULL);
 	g_signal_connect(regmap_select, "changed",
@@ -306,51 +330,8 @@ static int pr_config_init(GtkWidget *notebook)
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(regmap_select), ADC_REGMAP);
 
-	this_page = gtk_notebook_append_page(nbook, pr_config_panel, NULL);
-
-	return 0;
+	return pr_config_panel;
 }
-
-static char *handle_item(struct osc_plugin *plugin, const char *attrib,
-			 const char *value)
-{
-	if (MATCH_ATTRIB("config_file")) {
-		if (value) {
-			if (value[0])
-				pr_config_file_apply(value);
-		} else {
-			return config_file_path;
-		}
-	} else if (MATCH_ATTRIB("adc_active")) {
-		if (value) {
-			if (value[0]) {
-				if (atoi(value))
-					gtk_combo_box_set_active(GTK_COMBO_BOX(regmap_select), ADC_REGMAP);
-				else
-					gtk_combo_box_set_active(GTK_COMBO_BOX(regmap_select), DAC_REGMAP);
-			}
-		} else {
-			if (gtk_combo_box_get_active(GTK_COMBO_BOX(regmap_select)) == ADC_REGMAP)
-				return "1";
-			else
-				return "0";
-		}
-	} else {
-		if (value) {
-			printf("Unhandled tokens in ini file,\n"
-				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-				"Partial Reconfiguration", attrib, value);
-			return "FAIL";
-		}
-	}
-
-	return NULL;
-}
-
-static const char *pr_config_sr_attribs[] = {
-	"config_file",
-	"adc_active",
-};
 
 static void update_active_page(gint active_page, gboolean is_detached)
 {
@@ -366,8 +347,29 @@ static void pr_config_get_preferred_size(int *width, int *height)
 		*height = 480;
 }
 
-static void context_destroy(void)
+static void save_widgets_to_ini(FILE *f)
 {
+	char buf[0x1000];
+
+	snprintf(buf, sizeof(buf), "config_file = %s\n"
+			"adc_active = %i\n",
+			config_file_path,
+			gtk_combo_box_get_active(GTK_COMBO_BOX(regmap_select)) == ADC_REGMAP);
+	fwrite(buf, 1, strlen(buf), f);
+}
+
+static void save_profile(const char *ini_fn)
+{
+	FILE *f = fopen(ini_fn, "a");
+	if (f) {
+		save_widgets_to_ini(f);
+		fclose(f);
+	}
+}
+
+static void context_destroy(const char *ini_fn)
+{
+	save_profile(ini_fn);
 	iio_context_destroy(ctx);
 }
 
@@ -411,12 +413,12 @@ static bool pr_config_identify(void)
 }
 
 struct osc_plugin plugin = {
-	.name = "Partial Reconfiguration",
+	.name = THIS_DRIVER,
 	.identify = pr_config_identify,
 	.init = pr_config_init,
-	.save_restore_attribs = pr_config_sr_attribs,
-	.handle_item = handle_item,
 	.update_active_page = update_active_page,
 	.get_preferred_size = pr_config_get_preferred_size,
+	.save_profile = save_profile,
+	.load_profile = load_profile,
 	.destroy = context_destroy,
 };
