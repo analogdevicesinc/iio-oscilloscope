@@ -45,6 +45,9 @@
 #define PR_LOGIC_BIST_ID	0xA1
 #define PR_LOGIC_QPSK_ID	0xA2
 
+#define IS_PARTIAL_BITSTREAM_FILEPATH "/sys/bus/platform/devices/f8007000.devcfg/is_partial_bitstream"
+#define XDEVCFG_FILEPATH "/dev/xdevcfg"
+
 #define BUF_SIZE 0x00300000
 static char buf_pr[BUF_SIZE];
 static int fd_devcfg = 0;
@@ -105,27 +108,27 @@ static const char * updatePR(const char * pr_bin_path) {
 	}
 
 	/* set is_partial_bitfile device attribute */
-	fd_is_partial = open("/sys/devices/amba.1/f8007000.devcfg/is_partial_bitstream", O_RDWR);
+	fd_is_partial = open(IS_PARTIAL_BITSTREAM_FILEPATH, O_RDWR);
 	if (fd_is_partial < 0) {
-		return "Could not open /sys/devices/amba.1/f8007000.devcfg/is_partial_bitstream";
+		return "Could not open "IS_PARTIAL_BITSTREAM_FILEPATH;
 	} else {
 		ret = write(fd_is_partial, "1", 2);
 		close(fd_is_partial);
 	}
 	if (ret != 2)
-		return "Could not write to /sys/devices/amba.1/f8007000.devcfg/is_partial_bitstream";
+		return "Could not write to "IS_PARTIAL_BITSTREAM_FILEPATH;
 
 	/* write partial bitfile to devcfg device */
-	fd_devcfg = open("/dev/xdevcfg", O_RDWR);
+	fd_devcfg = open(XDEVCFG_FILEPATH, O_RDWR);
 	if(fd_devcfg < 0) {
-		return "Could not open /dev/xdevcfg";
+		return "Could not open "XDEVCFG_FILEPATH;
 	} else {
 		ret = write(fd_devcfg, buf_pr, BUF_SIZE);
 		sleep(1);
 		close(fd_devcfg);
 	}
 	if (ret != BUF_SIZE)
-		return "Could not write to /sys/devices/amba.1/f8007000.devcfg/is_partial_bitstream";
+		return "Could not write to "XDEVCFG_FILEPATH;
 
 	return NULL;
 }
