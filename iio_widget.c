@@ -637,7 +637,7 @@ void iio_spin_button_progress_deactivate(struct iio_widget *iio_w)
 		return;
 	}
 
-	g_signal_handler_disconnect(iio_w, pdata->value_changed_hid);
+	g_signal_handler_disconnect(iio_w->widget, pdata->value_changed_hid);
 }
 
 /*
