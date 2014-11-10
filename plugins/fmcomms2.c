@@ -565,6 +565,11 @@ static int compare_gain(const char *a, const char *b)
 		return 0;
 }
 
+static double get_gui_tx_sampling_freq(void)
+{
+	return gtk_spin_button_get_value(GTK_SPIN_BUTTON(tx_widgets[tx_sample_freq].widget));
+}
+
 static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data)
 {
 	gdouble rate;
@@ -1030,6 +1035,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
 	glb_settings_update_labels();
 	rssi_update_labels();
+	dac_data_manager_freq_widgets_range_update(dac_tx_manager,
+		get_gui_tx_sampling_freq() / 2.0);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 
 	/* Connect signals */
