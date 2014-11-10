@@ -631,6 +631,19 @@ static int tx_mag_set_dBm(struct scpi_instrument *scpi, double lvl)
 	return scpi_fprintf(scpi, ":POW %f DBM;*WAI\n", lvl);
 }
 
+static int tx_mag_get_dBm(struct scpi_instrument *scpi, double *lvl)
+{
+	int ret = 0;
+
+	scpi_fprintf(scpi, ":POW?\n");
+	ret = sscanf(scpi->response, "%lf", lvl);
+
+	if (ret == 1)
+		return 0;
+
+	return -1;
+}
+
 /*
  * Save/Restore stuff
  */
@@ -733,7 +746,17 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 	} else if (MATCH_ATTRIB("tx.mag")) {
 		if (value)
 			tx_mag_set_dBm(&signal_generator, atof(value));
-		/* Don't save the magintude */
+	} else if (MATCH_ATTRIB("tx.log.dBm")) {
+		if (value) {
+			tx_mag_get_dBm(&signal_generator, &lvl);
+
+			fd = fopen(value, "a");
+			if (!fd)
+				return NULL;
+
+			fprintf(fd, "%.2f\n", lvl);
+			fclose(fd);
+		}
 	} else if (MATCH_ATTRIB("tx.on")) {
 		if (value)
 			tx_output_set(&signal_generator, atoi(value));
