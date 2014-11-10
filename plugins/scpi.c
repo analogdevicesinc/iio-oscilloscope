@@ -85,6 +85,14 @@ struct scpi_instrument {
 
 };
 
+struct mag_seek {
+	struct scpi_instrument *scpi;
+	double target_lvl;
+	double min_lvl;
+	double max_lvl;
+	double dBm;
+};
+
 static struct scpi_instrument signal_generator;
 static struct scpi_instrument spectrum_analyzer;
 
@@ -644,6 +652,60 @@ static int tx_mag_get_dBm(struct scpi_instrument *scpi, double *lvl)
 	return -1;
 }
 
+static int scpi_query_errors(struct scpi_instrument *scpi)
+{
+	int ret = 0;
+	gchar **error_status = NULL;
+
+	scpi_fprintf(scpi, ":SYST:ERR:ALL?\n");
+	error_status = g_strsplit(scpi->response, ",", 0);
+	ret = atoi(error_status[0]);
+
+	if (ret != 0)
+		printf("SCPI error %i: %s\n", ret, error_status[1]);
+
+	g_strfreev(error_status);
+	return ret;
+}
+
+static int get_markers(const char *device_ref, struct marker_type *markers)
+{
+	int ret = 0;
+
+	do {
+		ret = plugin_data_capture_with_domain(device_ref, NULL, &markers, FFT_PLOT);
+	} while (ret == -EBUSY);
+	return ret;
+}
+
+static int tx_mag_seek_dBm(struct mag_seek *mag_seek)
+{
+	int ret = 0;
+	double dBm = 0;
+	double difference = 1;
+	struct marker_type *markers = NULL;
+	const char *device_ref = NULL;
+
+	device_ref = plugin_get_device_by_reference("axi-ad9625-hpc");
+	markers = g_malloc(sizeof(struct marker_type) * (MAX_MARKERS + 2));
+
+	while ((fabs(difference) > 0.01) && (dBm <= mag_seek->max_lvl)) {
+		tx_mag_set_dBm(mag_seek->scpi, dBm);
+		/* ret = scpi_query_errors(mag_seek->scpi); */
+		sleep(1);
+		get_markers(device_ref, markers);
+		difference = mag_seek->target_lvl - markers[0].y;
+		dBm += difference / 2;
+	}
+
+	if ((dBm < mag_seek->min_lvl) || (dBm > mag_seek->max_lvl))
+		ret = 1;
+
+	g_free(markers);
+	mag_seek->dBm = dBm;
+	return ret;
+}
+
 /*
  * Save/Restore stuff
  */
@@ -746,6 +808,33 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 	} else if (MATCH_ATTRIB("tx.mag")) {
 		if (value)
 			tx_mag_set_dBm(&signal_generator, atof(value));
+	} else if (MATCH_ATTRIB("tx.mag_input_seek")) {
+		if (value) {
+			char *ret = NULL;
+			GThread *thr = NULL;
+			struct mag_seek *mag_seek = NULL;
+			gchar **mag_min_max = g_strsplit(value, " ", 0);
+
+			mag_seek = g_malloc(sizeof(struct mag_seek));
+			mag_seek->scpi = &signal_generator;
+			mag_seek->target_lvl = atof(mag_min_max[0]);
+			mag_seek->min_lvl = atof(mag_min_max[1]);
+			mag_seek->max_lvl = atof(mag_min_max[2]);
+			mag_seek->dBm = 0;
+
+			thr = g_thread_new("Mag_seek_thread", (void *) &tx_mag_seek_dBm, mag_seek);
+
+			while (mag_seek->dBm == 0) {
+				gtk_main_iteration();
+			}
+
+			if (g_thread_join(thr) != 0)
+				ret = "FAIL";
+
+			g_free(mag_seek);
+			g_strfreev(mag_min_max);
+			return ret;
+		}
 	} else if (MATCH_ATTRIB("tx.log.dBm")) {
 		if (value) {
 			tx_mag_get_dBm(&signal_generator, &lvl);
