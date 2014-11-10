@@ -39,6 +39,8 @@
 #define PHY_DEVICE "ad9361-phy"
 #define DDS_DEVICE "cf-ad9361-dds-core-lpc"
 #define CAP_DEVICE "cf-ad9361-lpc"
+#define UDC_RX_DEVICE "adf4351-udc-rx-pmod"
+#define UDC_TX_DEVICE "adf4351-udc-tx-pmod"
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
@@ -50,11 +52,14 @@ extern bool dma_valid_selection(const char *device, unsigned mask, unsigned chan
 static struct dac_data_manager *dac_tx_manager;
 
 static bool is_2rx_2tx;
+static bool has_udc_driver;
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
+
+static const char *freq_name;
 
 static unsigned int dcxo_coarse_num, dcxo_fine_num;
 static struct iio_widget widgets[100];
@@ -63,12 +68,13 @@ static unsigned int rx1_gain, rx2_gain;
 static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_lo, tx_lo;
 static unsigned int rx_sample_freq, tx_sample_freq;
+static double updn_freq_span;
 static char last_fir_filter[PATH_MAX];
 static char *rx_fastlock_store_name, *rx_fastlock_recall_name;
 static char *tx_fastlock_store_name, *tx_fastlock_recall_name;
 
 static struct iio_context *ctx;
-static struct iio_device *dev, *dds, *cap;
+static struct iio_device *dev, *dds, *cap, *udc_rx, *udc_tx;
 
 #define SECTION_GLOBAL 0
 #define SECTION_TX 1
@@ -85,6 +91,7 @@ static GtkWidget *calib_mode_available;
 static GtkWidget *trx_rate_governor;
 static GtkWidget *trx_rate_governor_available;
 static GtkWidget *filter_fir_config;
+static GtkWidget *up_down_converter;
 
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control_rx1;
@@ -349,6 +356,98 @@ void filter_fir_enable(GtkToggleButton *button, gpointer data)
 
 	filter_fir_update();
 	glb_settings_update_labels();
+}
+
+const double RX_CENTER_FREQ = 340; /* MHz */
+const double TX_CENTER_FREQ = 370; /* MHz */
+
+static double get_span_multiple_from(double frequency, double span)
+{
+	double num = 0;
+
+	if (span <= 0)
+		return 0;
+
+	while (num <= frequency)
+		num += span;
+
+	return (num - span);
+}
+
+static int split_target_lo_freq(double target_freq, double *ext_pll, double *ad9361_lo,
+		double span, const double center_freq)
+{
+	double small_freq, large_freq;
+
+	large_freq = get_span_multiple_from(target_freq, span);
+	small_freq = target_freq - large_freq;
+
+	*ad9361_lo = center_freq + small_freq;
+	*ext_pll = center_freq - large_freq;
+
+	return 0;
+}
+
+#define UPDN_RX 1
+#define UPDN_TX 2
+
+static void updn_converter_lo_freq_changed_cb(GtkSpinButton *button, int data)
+{
+	struct iio_channel *ad9361_ch, *updn_ch;
+	double target_freq, ad9361_lo, updn_pll, center_freq;
+	int ret;
+
+	if (data == UPDN_RX) {
+		ad9361_ch = iio_device_find_channel(dev, "altvoltage0", true);
+		updn_ch = iio_device_find_channel(udc_rx, "altvoltage0", true);
+		center_freq = RX_CENTER_FREQ;
+	} else if (data == UPDN_TX) {
+		ad9361_ch = iio_device_find_channel(dev, "altvoltage1", true);
+		updn_ch = iio_device_find_channel(udc_tx, "altvoltage0", true);
+		center_freq = TX_CENTER_FREQ;
+	} else {
+		return;
+	}
+
+	target_freq = gtk_spin_button_get_value(button);
+	split_target_lo_freq(target_freq, &ad9361_lo, &updn_pll, updn_freq_span, center_freq);
+	ret = iio_channel_attr_write_double(ad9361_ch, freq_name, ad9361_lo);
+	if (ret < 0)
+		fprintf(stderr,"Write to %s attribute of %s device: %s\n",
+			freq_name, PHY_DEVICE, strerror(-ret));
+	ret = iio_channel_attr_write_double(updn_ch, "frequency", updn_pll);
+	if (ret < 0)
+		fprintf(stderr,"Write to %s attribute of %s device: %s\n",
+			"frequency", (UPDN_TX) ? UDC_TX_DEVICE : UDC_RX_DEVICE, strerror(-ret));
+}
+
+static void up_down_converter_toggled_cb(GtkToggleButton *button, gpointer data)
+{
+	static gint rx_updn_hid, tx_updn_hid;
+	static gdouble lo_min, lo_max;
+
+	if (gtk_toggle_button_get_active(button)) {
+		iio_spin_button_progress_deactivate(&rx_widgets[rx_lo]);
+		iio_spin_button_progress_deactivate(&tx_widgets[tx_lo]);
+		rx_updn_hid = g_signal_connect(rx_widgets[rx_lo].widget, "value-changed",
+			G_CALLBACK(updn_converter_lo_freq_changed_cb), (gpointer)UPDN_RX);
+		tx_updn_hid = g_signal_connect(tx_widgets[tx_lo].widget, "value-changed",
+			G_CALLBACK(updn_converter_lo_freq_changed_cb), (gpointer)UPDN_TX);
+		gtk_spin_button_get_range(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget), &lo_min, &lo_max);
+		gtk_spin_button_set_range(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget), 1, lo_max);
+		gtk_spin_button_set_range(GTK_SPIN_BUTTON(tx_widgets[tx_lo].widget), 1, lo_max);
+	} else {
+		g_signal_handler_disconnect(rx_widgets[rx_lo].widget, rx_updn_hid);
+		g_signal_handler_disconnect(tx_widgets[tx_lo].widget, tx_updn_hid);
+		iio_spin_button_progress_activate(&rx_widgets[rx_lo]);
+		iio_spin_button_progress_activate(&tx_widgets[tx_lo]);
+		g_signal_emit_by_name(rx_widgets[rx_lo].widget,
+			"value-changed", NULL);
+		g_signal_emit_by_name(tx_widgets[tx_lo].widget,
+			"value-changed", NULL);
+		gtk_spin_button_set_range(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget), lo_min, lo_max);
+		gtk_spin_button_set_range(GTK_SPIN_BUTTON(tx_widgets[tx_lo].widget), lo_min, lo_max);
+	}
 }
 
 static void rx_phase_rotation_update()
@@ -784,7 +883,6 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	GtkBuilder *builder;
 	GtkWidget *dds_container;
 	struct iio_channel *ch0, *ch1;
-	const char *freq_name;
 
 	ctx = osc_create_context();
 	if (!ctx)
@@ -793,6 +891,10 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
 	dds = iio_context_find_device(ctx, DDS_DEVICE);
 	cap = iio_context_find_device(ctx, CAP_DEVICE);
+	udc_rx = iio_context_find_device(ctx, UDC_RX_DEVICE);
+	udc_tx = iio_context_find_device(ctx, UDC_TX_DEVICE);
+	has_udc_driver = (udc_rx && udc_tx);
+
 	ch0 = iio_device_find_channel(dev, "voltage0", false);
 	ch1 = iio_device_find_channel(dev, "voltage1", false);
 
@@ -800,6 +902,17 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	if (!dac_tx_manager) {
 		iio_context_destroy(ctx);
 		return NULL;
+	}
+
+	const char *env_freq_span = getenv("OSC_UPDN_FREQ_SPAN");
+
+	if(!env_freq_span) {
+		updn_freq_span = 2;
+	} else {
+		errno = 0;
+		updn_freq_span = strtod(env_freq_span, NULL);
+		if (errno)
+			updn_freq_span = 2;
 	}
 
 	builder = gtk_builder_new();
@@ -827,6 +940,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	fir_filter_en_tx = GTK_WIDGET(gtk_builder_get_object(builder, "fir_filter_en_tx"));
 	enable_fir_filter_rx_tx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_tx_rx"));
 	disable_all_fir_filters = GTK_WIDGET(gtk_builder_get_object(builder, "disable_all_fir_filters"));
+	up_down_converter = GTK_WIDGET(gtk_builder_get_object(builder, "checkbox_up_down_converter"));
 
 	section_toggle[SECTION_GLOBAL] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "global_settings_toggle"));
 	section_setting[SECTION_GLOBAL] = GTK_WIDGET(gtk_builder_get_object(builder, "global_settings"));
@@ -1112,6 +1226,9 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	g_signal_connect_after(disable_all_fir_filters, "toggled",
 		G_CALLBACK(filter_fir_enable), NULL);
 
+	g_signal_connect(up_down_converter, "toggled",
+		G_CALLBACK(up_down_converter_toggled_cb), NULL);
+
 	make_widget_update_signal_based(glb_widgets, num_glb);
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
@@ -1138,6 +1255,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_rx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "table_hw_gain_tx2")));
 	}
+	gtk_widget_set_visible(up_down_converter, has_udc_driver);
 
 	g_thread_new("Update_thread", (void *) &update_display, NULL);
 
