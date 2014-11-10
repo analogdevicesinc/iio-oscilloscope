@@ -207,7 +207,7 @@ network_connect(struct scpi_instrument *scpi)
 		return -1;
 	}
 
-	/* set Recieve and Transmit Timeout, so connect doesn't take so long to fail */
+	/* set Receive and Transmit Timeout, so connect doesn't take so long to fail */
 	status = setsockopt(scpi->main_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 	if (status < 0)
 		perror("setsockopt failed\n");
@@ -501,7 +501,7 @@ static int scpi_connect(struct scpi_instrument *scpi)
 	if (!strstr(scpi->response, scpi->id_regex)) {
 		printf("instrument doesn't match regex\n");
 		printf("\twanted   : '%s'\n", scpi->id_regex);
-		printf("\trecieved : '%s'\n", scpi->response);
+		printf("\treceived : '%s'\n", scpi->response);
 		return -1;
 	}
 	printf("Instrument ID: %s\n", scpi->response);
