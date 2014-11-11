@@ -351,9 +351,7 @@ void connect_fillin(Dialogs *data)
 	struct iio_device *dev;
 
 	ctx = get_context_from_osc();
-	if (!ctx)
-		return;
-	num = iio_context_get_devices_count(ctx);
+	num = ctx ? iio_context_get_devices_count(ctx) : 0;
 	if (num > 0) {
 		for (i = 0; i < num; i++) {
 			dev = iio_context_get_device(ctx, i);
