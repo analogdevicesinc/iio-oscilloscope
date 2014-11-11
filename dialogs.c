@@ -31,7 +31,8 @@ struct _Dialogs
 	GtkWidget *connect_iio;
 	GtkWidget *serial_num;
 	GtkWidget *load_save_profile;
-
+	GtkWidget *connect_net;
+	GtkWidget *net_ip;
 };
 
 static Dialogs dialogs;
@@ -258,6 +259,19 @@ static int is_eeprom_fru(char *eeprom_file, GtkTextBuffer *buf, GtkTextIter *ite
 	return 0;
 }
 
+static struct iio_context * get_context(Dialogs *data)
+{
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_net))) {
+		const char *hostname = gtk_entry_get_text(GTK_ENTRY(dialogs.net_ip));
+		if (!hostname[0])
+			hostname = NULL;
+
+		return iio_create_network_context(hostname);
+	} else {
+		return iio_create_local_context();
+	}
+}
+
 void connect_fillin(Dialogs *data)
 {
 	char eprom_names[128];
@@ -347,14 +361,11 @@ void connect_fillin(Dialogs *data)
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
 
-	struct iio_context *ctx;
-	struct iio_device *dev;
-
-	ctx = get_context_from_osc();
+	struct iio_context *ctx = get_context(data);
 	num = ctx ? iio_context_get_devices_count(ctx) : 0;
 	if (num > 0) {
 		for (i = 0; i < num; i++) {
-			dev = iio_context_get_device(ctx, i);
+			struct iio_device *dev = iio_context_get_device(ctx, i);
 			sprintf(text, "%s\n", iio_device_get_name(dev));
 			gtk_text_buffer_insert(buf, &iter, text, -1);
 		}
@@ -366,6 +377,8 @@ void connect_fillin(Dialogs *data)
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_iio), buf);
 	g_object_unref(buf);
 
+	if (ctx)
+		iio_context_destroy(ctx);
 	return;
 }
 
@@ -526,7 +539,7 @@ void dialogs_init(GtkBuilder *builder)
 {
 	const char *name = NULL;
 	struct iio_context *ctx;
-	GtkWidget *tmp, *tmp2;
+	GtkWidget *tmp;
 
 	dialogs.about = GTK_WIDGET(gtk_builder_get_object(builder, "About_dialog"));
 	dialogs.connect = GTK_WIDGET(gtk_builder_get_object(builder, "connect_dialog"));
@@ -534,18 +547,18 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.serial_num = GTK_WIDGET(gtk_builder_get_object(builder, "serial_number_popup"));
 	dialogs.connect_iio = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_devices"));
 	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
+	dialogs.connect_net = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
+	dialogs.net_ip = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
 	gtk_builder_connect_signals(builder, &dialogs);
 
 	/* Bind some dialogs radio buttons to text/labels */
-	tmp2 = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_label"));
 	serial_num = GTK_WIDGET(gtk_builder_get_object(builder, "serial_number"));
 	fru_date = GTK_WIDGET(gtk_builder_get_object(builder, "fru_date"));
 	fru_file_list = GTK_WIDGET(gtk_builder_get_object(builder, "FRU_files"));
 
-	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
-	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
-	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
+	g_object_bind_property(dialogs.connect_net, "active", tmp, "sensitive", 0);
+	g_object_bind_property(dialogs.connect_net, "active", dialogs.net_ip, "sensitive", 0);
 
 	/* Grey out the "local context" option if it is not available */
 	ctx = get_context_from_osc();
@@ -560,7 +573,7 @@ void dialogs_init(GtkBuilder *builder)
 						builder, "connect_local"));
 			gtk_widget_set_sensitive(local, false);
 			gtk_toggle_button_set_active(
-					GTK_TOGGLE_BUTTON(tmp2), true);
+					GTK_TOGGLE_BUTTON(dialogs.connect_net), true);
 		}
 	}
 }
