@@ -699,7 +699,7 @@ A GUI for Linux IIO devices</property>
                                             <property name="sensitive">False</property>
                                             <property name="can_focus">True</property>
                                             <property name="invisible_char">•</property>
-                                            <property name="text" translatable="yes">192.168.1.1:1234</property>
+                                            <property name="text"></property>
                                             <property name="invisible_char_set">True</property>
                                           </object>
                                           <packing>
