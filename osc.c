@@ -2045,7 +2045,8 @@ static void window_size_readjust(GtkWindow *window, int width, int height)
 
 static void create_default_plot(void)
 {
-	if (g_list_length(plot_list) == 0)
+	if (ctx && !!iio_context_get_devices_count(ctx) &&
+			g_list_length(plot_list) == 0)
 		new_plot_cb(NULL, NULL);
 }
 
