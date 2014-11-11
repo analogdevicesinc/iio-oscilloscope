@@ -386,7 +386,16 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 {
 	/* Connect Dialog */
 	gint ret;
-	connect_fillin(data);
+	struct iio_context *ctx;
+	const char *name = NULL;
+
+	/* Preload the device list and FRU info only if we can use the local
+	 * backend */
+	ctx = get_context_from_osc();
+	if (ctx)
+		name = iio_context_get_name(ctx);
+	if (name && !strcmp(name, "local"))
+		connect_fillin(data);
 
 	do {
 		ret = gtk_dialog_run(GTK_DIALOG(data->connect));
