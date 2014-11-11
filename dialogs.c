@@ -408,6 +408,7 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 		case GTK_RESPONSE_DELETE_EVENT:
 			break;
 		case GTK_RESPONSE_OK:
+			application_reload(get_context(data));
 			break;
 		default:
 			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
