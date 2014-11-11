@@ -2366,9 +2366,8 @@ gint main (int argc, char **argv)
 
 struct iio_context * osc_create_context(void)
 {
-	char *host = getenv("OSC_REMOTE");
-	if (host)
-		return iio_create_network_context(host);
+	if (!ctx)
+		return iio_create_default_context();
 	else
-		return iio_create_local_context();
+		return iio_context_clone(ctx);
 }
