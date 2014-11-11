@@ -524,6 +524,8 @@ gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 
 void dialogs_init(GtkBuilder *builder)
 {
+	const char *name = NULL;
+	struct iio_context *ctx;
 	GtkWidget *tmp, *tmp2;
 
 	dialogs.about = GTK_WIDGET(gtk_builder_get_object(builder, "About_dialog"));
@@ -544,4 +546,21 @@ void dialogs_init(GtkBuilder *builder)
 	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
 	g_object_bind_property(tmp2, "active", tmp, "sensitive", 0);
+
+	/* Grey out the "local context" option if it is not available */
+	ctx = get_context_from_osc();
+	if (ctx)
+		name = iio_context_get_name(ctx);
+	if (!name || strcmp(name, "local")) {
+		ctx = iio_create_local_context();
+		if (ctx) {
+			iio_context_destroy(ctx);
+		} else {
+			GtkWidget *local = GTK_WIDGET(gtk_builder_get_object(
+						builder, "connect_local"));
+			gtk_widget_set_sensitive(local, false);
+			gtk_toggle_button_set_active(
+					GTK_TOGGLE_BUTTON(tmp2), true);
+		}
+	}
 }
