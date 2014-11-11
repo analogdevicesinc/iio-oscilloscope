@@ -60,6 +60,7 @@ static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
 static void capture_profile_save(const char *filename);
 static void load_profile(const char *filename, bool load_plugins);
+static void do_init(struct iio_context *new_ctx);
 
 static char * dma_devices[] = {
 	"ad9122",
@@ -1795,14 +1796,16 @@ static void free_setup_check_fct_list(void)
 
 #define DEFAULT_PROFILE_NAME ".osc_profile.ini"
 
-void application_quit (void)
+static void do_quit(bool reload)
 {
-	const char *home_dir = getenv("HOME");
 	char buf[1024];
 
 	/* Before we shut down, let's save the profile */
-	sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
-	capture_profile_save(buf);
+	if (!reload) {
+		const char *home_dir = getenv("HOME");
+		sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
+		capture_profile_save(buf);
+	}
 
 	stop_capture = TRUE;
 	G_TRYLOCK(buffer_full);
@@ -1812,7 +1815,7 @@ void application_quit (void)
 	g_list_free(plot_list);
 	free_setup_check_fct_list();
 
-	if (gtk_main_level())
+	if (!reload && gtk_main_level())
 		gtk_main_quit();
 
 	if (ctx)
@@ -1821,8 +1824,26 @@ void application_quit (void)
 	/* This can't be done until all the windows are detroyed with main_quit
 	 * otherwise, the widgets need to be updated, but they don't exist anymore
 	 */
-	close_plugins(buf);
+	close_plugins(!reload ? buf : NULL);
 	g_slist_free(dplugin_list);
+}
+
+void application_reload(struct iio_context *new_ctx)
+{
+	if (!new_ctx) {
+		fprintf(stderr, "Invalid new context!\n");
+		return;
+	}
+
+	do_quit(true);
+	ctx = new_ctx;
+	do_init(new_ctx);
+
+}
+
+void application_quit (void)
+{
+	do_quit(false);
 }
 
 void sigterm (int signum)
@@ -1863,13 +1884,9 @@ bool is_output_device(const struct iio_device *dev)
 	return device_type_get(dev, 0);
 }
 
-static void init_device_list(void)
+static void init_device_list(struct iio_context *ctx)
 {
 	unsigned int i, j;
-
-	ctx = osc_create_context();
-	if (!ctx)
-		return;
 
 	num_devices = iio_context_get_devices_count(ctx);
 
@@ -1991,7 +2008,7 @@ static bool check_inifile(const char *filepath)
 	return TRUE;
 }
 
-static int load_default_profile (char *filename)
+static int load_default_profile(char *filename, bool load_plugins)
 {
 	/* Don't load anything */
 	if (filename && !strcmp(filename, "-"))
@@ -2006,7 +2023,7 @@ static int load_default_profile (char *filename)
 		/* if this is bad, we don't load anything and
 		 * return success, so we still run */
 		if (check_inifile(buf))
-			load_profile(buf, false);
+			load_profile(buf, load_plugins);
 	}
 
 	return 0;
@@ -2062,6 +2079,18 @@ void tooltips_enable_cb (GtkCheckMenuItem *item, gpointer data)
 	g_object_set(settings, "gtk-enable-tooltips", enable, NULL);
 }
 
+static void do_init(struct iio_context *new_ctx)
+{
+	init_device_list(new_ctx);
+	load_plugins(notebook, NULL);
+	load_default_profile(NULL, true);
+	rx_update_labels();
+
+	int width = -1, height = -1;
+	plugins_get_preferred_size(plugin_list, &width, &height);
+	window_size_readjust(GTK_WINDOW(main_window), width, height);
+}
+
 static void init_application (const char *ini_fn)
 {
 	GtkBuilder *builder = NULL;
@@ -2107,15 +2136,10 @@ static void init_application (const char *ini_fn)
 	g_signal_connect(G_OBJECT(tooltips_en), "toggled", G_CALLBACK(tooltips_enable_cb), NULL);
 
 	dialogs_init(builder);
-	init_device_list();
-	if (ctx) {
-		load_plugins(notebook, ini_fn);
-		rx_update_labels();
 
-		int width = -1, height = -1;
-		plugins_get_preferred_size(plugin_list, &width, &height);
-		window_size_readjust(GTK_WINDOW(window), width, height);
-	}
+	ctx = osc_create_context();
+	if (ctx)
+		do_init(ctx);
 	gtk_widget_show(window);
 }
 
@@ -2346,7 +2370,7 @@ gint main (int argc, char **argv)
 
 	gdk_threads_enter();
 	init_application(profile);
-	c = load_default_profile(profile);
+	c = load_default_profile(profile, false);
 	create_default_plot();
 	if (c == 0)
 		gtk_main();

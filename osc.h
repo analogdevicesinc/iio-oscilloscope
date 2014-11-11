@@ -96,6 +96,8 @@ gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 			const char *title, const char *str, ...);
 gint fru_connect(void);
 
+void application_reload(struct iio_context *ctx);
+
 struct iio_context * osc_create_context(void);
 
 #endif
