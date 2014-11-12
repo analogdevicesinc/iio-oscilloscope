@@ -1257,6 +1257,15 @@ static void close_plugins(const char *ini_fn)
 			dlclose(plugin->handle);
 		}
 	}
+
+	for (node = dplugin_list; node; node = g_slist_next(node))
+		free(node->data);
+
+	g_slist_free(dplugin_list);
+	dplugin_list = NULL;
+
+	g_slist_free(plugin_list);
+	plugin_list = NULL;
 }
 
 bool plugin_installed(const char *name)
@@ -1792,12 +1801,15 @@ static void free_setup_check_fct_list(void)
 		g_free(setup_check_functions[i].dev_name);
 	}
 	g_free(setup_check_functions);
+	num_check_fcts = 0;
+	setup_check_functions = NULL;
 }
 
 #define DEFAULT_PROFILE_NAME ".osc_profile.ini"
 
 static void do_quit(bool reload)
 {
+	unsigned int i, nb = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
 	char buf[1024];
 
 	/* Before we shut down, let's save the profile */
@@ -1812,20 +1824,33 @@ static void do_quit(bool reload)
 	G_UNLOCK(buffer_full);
 	close_active_buffers();
 
+	close_all_plots();
+	destroy_all_plots();
+
 	g_list_free(plot_list);
 	free_setup_check_fct_list();
 
 	if (!reload && gtk_main_level())
 		gtk_main_quit();
 
-	if (ctx)
-		iio_context_destroy(ctx);
+	for (i = 0; i < nb; i++)
+	while (true) {
+		GtkNotebook *book = GTK_NOTEBOOK(notebook);
+		int page = gtk_notebook_get_current_page(book);
+
+		if (page >= 0)
+			gtk_notebook_remove_page(book, page);
+		else
+			break;
+	}
 
 	/* This can't be done until all the windows are detroyed with main_quit
 	 * otherwise, the widgets need to be updated, but they don't exist anymore
 	 */
 	close_plugins(!reload ? buf : NULL);
-	g_slist_free(dplugin_list);
+
+	if (ctx)
+		iio_context_destroy(ctx);
 }
 
 void application_reload(struct iio_context *new_ctx)
