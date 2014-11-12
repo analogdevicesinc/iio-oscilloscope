@@ -117,6 +117,9 @@ static GtkNotebook *nbook;
 static GtkWidget *fmcomms2_panel;
 static gboolean plugin_detached;
 
+static bool update_thd_stop;
+GThread *update_thd;
+
 static const char *fmcomms2_sr_attribs[] = {
 	PHY_DEVICE".trx_rate_governor",
 	PHY_DEVICE".dcxo_tune_coarse",
@@ -287,7 +290,7 @@ static void update_display (void *ptr)
 	const char *gain_mode;
 
 	/* This thread never exists, and just updates the control frame */
-	while (1) {
+	while (!update_thd_stop) {
 		if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
 			gdk_threads_enter();
 			rssi_update_labels();
@@ -1257,7 +1260,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	}
 	gtk_widget_set_visible(up_down_converter, has_udc_driver);
 
-	g_thread_new("Update_thread", (void *) &update_display, NULL);
+	update_thd_stop = false;
+	update_thd = g_thread_new("Update_thread", (void *) &update_display, NULL);
 
 	return fmcomms2_panel;
 }
@@ -1322,7 +1326,11 @@ static void save_profile(const char *ini_fn)
 
 static void context_destroy(const char *ini_fn)
 {
-	save_profile(ini_fn);
+	update_thd_stop = true;
+	g_thread_join(update_thd);
+
+	if (ini_fn)
+		save_profile(ini_fn);
 
 	if (dac_tx_manager) {
 		dac_data_manager_free(dac_tx_manager);
