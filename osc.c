@@ -40,6 +40,7 @@ gint capture_function = 0;
 gfloat plugin_fft_corr = 0.0;
 static GtkWidget *main_window;
 static GtkWidget *tooltips_en;
+static GtkWidget *infobar;
 static GList *plot_list = NULL;
 static int num_capturing_plots;
 G_LOCK_DEFINE_STATIC(buffer_full);
@@ -1805,6 +1806,25 @@ static void free_setup_check_fct_list(void)
 	setup_check_functions = NULL;
 }
 
+static gboolean idle_timeout_check(gpointer ptr)
+{
+	int ret;
+	struct iio_context *new_ctx = (struct iio_context *) ptr;
+
+	if (new_ctx != ctx)
+		return FALSE;
+
+	/* We use iio_context_get_version here just as a way to ping the
+	 * IIOD server. */
+	ret = iio_context_get_version(ctx, NULL, NULL, NULL);
+	if (ret == -EPIPE) {
+		gtk_widget_set_visible(infobar, true);
+		return FALSE;
+	} else {
+		return TRUE;
+	}
+}
+
 #define DEFAULT_PROFILE_NAME ".osc_profile.ini"
 
 static void do_quit(bool reload)
@@ -2104,6 +2124,20 @@ void tooltips_enable_cb (GtkCheckMenuItem *item, gpointer data)
 	g_object_set(settings, "gtk-enable-tooltips", enable, NULL);
 }
 
+static void infobar_hide_cb(GtkButton *btn, gpointer user_data)
+{
+	gtk_widget_set_visible(infobar, false);
+}
+
+static void infobar_reconnect_cb(GtkMenuItem *btn, gpointer user_data)
+{
+	struct iio_context *new_ctx = iio_context_clone(ctx);
+	if (new_ctx) {
+		application_reload(new_ctx);
+		gtk_widget_set_visible(infobar, false);
+	}
+}
+
 static void do_init(struct iio_context *new_ctx)
 {
 	init_device_list(new_ctx);
@@ -2114,6 +2148,12 @@ static void do_init(struct iio_context *new_ctx)
 	int width = -1, height = -1;
 	plugins_get_preferred_size(plugin_list, &width, &height);
 	window_size_readjust(GTK_WINDOW(main_window), width, height);
+
+	if (!strcmp(iio_context_get_name(new_ctx), "network")) {
+		gtk_widget_set_visible(infobar, false);
+		g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 1000,
+				idle_timeout_check, new_ctx, NULL);
+	}
 }
 
 static void init_application (const char *ini_fn)
@@ -2121,6 +2161,7 @@ static void init_application (const char *ini_fn)
 	GtkBuilder *builder = NULL;
 	GtkWidget  *window;
 	GtkWidget  *btn_capture;
+	GtkWidget  *infobar_close, *infobar_reconnect;
 
 	builder = gtk_builder_new();
 
@@ -2155,10 +2196,17 @@ static void init_application (const char *ini_fn)
 	tooltips_en = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_tooltips_en"));
 	main_window = window;
 
+	infobar = GTK_WIDGET(gtk_builder_get_object(builder, "infobar1"));
+	infobar_close = GTK_WIDGET(gtk_builder_get_object(builder, "infobar_close"));
+	infobar_reconnect = GTK_WIDGET(gtk_builder_get_object(builder, "infobar_reconnect"));
+
 	/* Connect signals. */
 	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
 	g_signal_connect(G_OBJECT(btn_capture), "activate", G_CALLBACK(new_plot_cb), NULL);
 	g_signal_connect(G_OBJECT(tooltips_en), "toggled", G_CALLBACK(tooltips_enable_cb), NULL);
+
+	g_signal_connect(G_OBJECT(infobar_close), "clicked", G_CALLBACK(infobar_hide_cb), NULL);
+	g_signal_connect(G_OBJECT(infobar_reconnect), "clicked", G_CALLBACK(infobar_reconnect_cb), NULL);
 
 	dialogs_init(builder);
 
