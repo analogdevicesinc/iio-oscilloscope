@@ -1246,20 +1246,20 @@ static bool force_plugin(const char *name)
 static void close_plugins(const char *ini_fn)
 {
 	GSList *node;
-	struct osc_plugin *plugin = NULL;
 
-	for (node = plugin_list; node; node = g_slist_next(node)) {
-		plugin = node->data;
+	for (node = dplugin_list; node; node = g_slist_next(node)) {
+		struct detachable_plugin *d_plugin = node->data;
+		const struct osc_plugin *plugin = d_plugin->plugin;
+
 		if (plugin) {
 			printf("Closing plugin: %s\n", plugin->name);
 			if (plugin->destroy)
 				plugin->destroy(ini_fn);
 			dlclose(plugin->handle);
 		}
-	}
 
-	for (node = dplugin_list; node; node = g_slist_next(node))
-		free(node->data);
+		g_free(d_plugin);
+	}
 
 	g_slist_free(dplugin_list);
 	dplugin_list = NULL;
