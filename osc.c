@@ -2304,8 +2304,10 @@ static void load_profile(const char *filename, bool load_plugins)
 	close_all_plots();
 	destroy_all_plots();
 	foreach_in_ini(filename, capture_profile_handler);
-	if (prev_section)
+	if (prev_section) {
 		g_free(prev_section);
+		prev_section = NULL;
+	}
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		struct osc_plugin *plugin = node->data;
