@@ -947,10 +947,6 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	int rx_sample_freq_pair, tx_sample_freq_pair;
 	int i;
 
-	dac_tx_manager = dac_data_manager_new(dds1, dds2, ctx);
-	if (!dac_tx_manager)
-		return NULL;
-
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
@@ -963,6 +959,12 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	cap2 = iio_context_find_device(ctx, CAP_DEVICE2);
 	if (!cap1)
 		cap1 = iio_context_find_device(ctx, CAP_DEVICE1_ALT);
+
+	dac_tx_manager = dac_data_manager_new(dds1, dds2, ctx);
+	if (!dac_tx_manager) {
+		printf("FMComms5: Failed to use DDS resources\n");
+		return 0;
+	}
 
 	if (!gtk_builder_add_from_file(builder, "fmcomms5.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms5.glade", NULL);
