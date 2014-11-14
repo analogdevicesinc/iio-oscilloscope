@@ -38,6 +38,9 @@
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
+#define ADC_DEVICE "axi-ad9680-hpc"
+#define DAC_DEVICE "axi-ad9144-hpc"
+
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
 
@@ -123,24 +126,30 @@ static const char *dds_scale_get_string_value(GtkWidget *scale)
 }
 
 static const char *daq2_sr_attribs[] = {
-	"axi-ad9680-hpc.in_voltage_sampling_frequency",
-	"axi-ad9144-hpc.out_altvoltage_sampling_frequency",
+	ADC_DEVICE".in_voltage_sampling_frequency",
+	ADC_DEVICE".out_altvoltage_sampling_frequency",
+	ADC_DEVICE".in_voltage0_calibbias",
+	ADC_DEVICE".in_voltage1_calibbias",
+	ADC_DEVICE".in_voltage0_calibscale",
+	ADC_DEVICE".in_voltage1_calibscale",
+	ADC_DEVICE".in_voltage0_calibphase",
+	ADC_DEVICE".in_voltage1_calibphase",
 	"dds_mode",
 	"dac_buf_filename",
 	"tx_channel_0",
 	"tx_channel_1",
-	"axi-ad9144-hpc.out_altvoltage0_1A_frequency",
-	"axi-ad9144-hpc.out_altvoltage2_2A_frequency",
-	"axi-ad9144-hpc.out_altvoltage1_1B_frequency",
-	"axi-ad9144-hpc.out_altvoltage3_2B_frequency",
-	"axi-ad9144-hpc.out_altvoltage0_1A_scale",
-	"axi-ad9144-hpc.out_altvoltage2_2A_scale",
-	"axi-ad9144-hpc.out_altvoltage1_1B_scale",
-	"axi-ad9144-hpc.out_altvoltage3_2B_scale",
-	"axi-ad9144-hpc.out_altvoltage0_1A_phase",
-	"axi-ad9144-hpc.out_altvoltage1_1B_phase",
-	"axi-ad9144-hpc.out_altvoltage2_2A_phase",
-	"axi-ad9144-hpc.out_altvoltage3_2B_phase",
+	DAC_DEVICE".out_altvoltage0_1A_frequency",
+	DAC_DEVICE".out_altvoltage2_2A_frequency",
+	DAC_DEVICE".out_altvoltage1_1B_frequency",
+	DAC_DEVICE".out_altvoltage3_2B_frequency",
+	DAC_DEVICE".out_altvoltage0_1A_scale",
+	DAC_DEVICE".out_altvoltage2_2A_scale",
+	DAC_DEVICE".out_altvoltage1_1B_scale",
+	DAC_DEVICE".out_altvoltage3_2B_scale",
+	DAC_DEVICE".out_altvoltage0_1A_phase",
+	DAC_DEVICE".out_altvoltage1_1B_phase",
+	DAC_DEVICE".out_altvoltage2_2A_phase",
+	DAC_DEVICE".out_altvoltage3_2B_phase",
 };
 
 static int oneover(const gchar *num)
@@ -212,7 +221,7 @@ static void display_temp(void *ptr)
 	char buf[25];
 
 	while (!kill_thread) {
-		if (set_dev_paths("axi-ad9144-hpc") < 0) {
+		if (set_dev_paths(DAC_DEVICE) < 0) {
 			kill_thread = 1;
 			break;
 		}
@@ -367,11 +376,11 @@ static void load_profile(const char *ini_fn)
 
 	value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode");
 	if (value) {
-		dac_data_manager_set_dds_mode(dac_tx_manager, "axi-ad9144-hpc", 1, atoi(value));
+		dac_data_manager_set_dds_mode(dac_tx_manager, DAC_DEVICE, 1, atoi(value));
 		free(value);
 	}
 
-	if (dac_data_manager_get_dds_mode(dac_tx_manager, "axi-ad9144-hpc", 1) == DDS_BUFFER) {
+	if (dac_data_manager_get_dds_mode(dac_tx_manager, DAC_DEVICE, 1) == DDS_BUFFER) {
 		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
 		if (value) {
 			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
@@ -398,14 +407,14 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	GtkWidget *daq2_panel;
 	GtkWidget *dds_container;
 	GtkTextBuffer *adc_buff, *dac_buff;
-	struct iio_channel *ch0;
+	struct iio_channel *ch0, *ch1;
 
 	ctx = osc_create_context();
 	if (!ctx)
 		return NULL;
 
-	dac = iio_context_find_device(ctx, "axi-ad9144-hpc");
-	adc = iio_context_find_device(ctx, "axi-ad9680-hpc");
+	dac = iio_context_find_device(ctx, DAC_DEVICE);
+	adc = iio_context_find_device(ctx, ADC_DEVICE);
 
 	dac_tx_manager = dac_data_manager_new(dac, NULL, ctx);
 	if (!dac_tx_manager) {
@@ -511,6 +520,28 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	gtk_text_buffer_set_text(dac_buff, attr_val, -1);
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view_dac_freq")), dac_buff);
 
+	/* Calibration */
+	 ch0 = iio_device_find_channel(adc, "voltage0", false);
+	 ch1 = iio_device_find_channel(adc, "voltage1", false);
+	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch0, "calibbias", builder,
+		"adc_calibbias0", NULL);
+	iio_spin_button_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch0, "calibscale", builder,
+		"adc_calibscale0", NULL);
+	iio_spin_button_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch0, "calibphase", builder,
+		"adc_calibphase0", NULL);
+	iio_spin_button_s64_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch1, "calibbias", builder,
+		"adc_calibbias1", NULL);
+	iio_spin_button_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch1, "calibscale", builder,
+		"adc_calibscale1", NULL);
+	iio_spin_button_init_from_builder(&cal_widgets[num_cal++],
+		adc, ch1, "calibphase", builder,
+		"adc_calibphase1", NULL);
+
 	g_signal_connect_after(dds1_scale, "change-value", G_CALLBACK(rf_out_update), NULL);
 	g_signal_connect_after(dds2_scale, "change-value", G_CALLBACK(rf_out_update), NULL);
 	g_signal_connect_after(dds3_scale, "change-value", G_CALLBACK(rf_out_update), NULL);
@@ -518,6 +549,7 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
+	make_widget_update_signal_based(cal_widgets, num_cal);
 
 	double rate;
 
@@ -542,7 +574,7 @@ static void save_widgets_to_ini(FILE *f)
 			"dac_buf_filename = %s\n"
 			"tx_channel_0 = %i\n"
 			"tx_channel_1 = %i\n",
-			dac_data_manager_get_dds_mode(dac_tx_manager, "axi-ad9144-hpc", 1),
+			dac_data_manager_get_dds_mode(dac_tx_manager, DAC_DEVICE, 1),
 			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 0),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 1));
@@ -579,8 +611,8 @@ static bool daq2_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	return !!iio_context_find_device(osc_ctx, "axi-ad9144-hpc") &&
-		!!iio_context_find_device(osc_ctx, "axi-ad9680-hpc");
+	return !!iio_context_find_device(osc_ctx, DAC_DEVICE) &&
+		!!iio_context_find_device(osc_ctx, ADC_DEVICE);
 }
 
 struct osc_plugin plugin = {
