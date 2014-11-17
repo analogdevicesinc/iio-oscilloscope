@@ -1148,8 +1148,9 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	if (MAX_MARKERS && priv->marker_type != MARKER_OFF) {
 		for (m = 0; m <= MAX_MARKERS && markers[m].active; m++) {
 			if (tr->type_id == FFT_TRANSFORM || tr->type_id == COMPLEX_FFT_TRANSFORM) {
-				sprintf(text, "M%i: %2.2f dBFS @ %2.3f %cHz%c",
-					m, markers[m].y, dev_info->lo_freq * lo_markers_scale_ratio + markers[m].x,
+				sprintf(text, "%s: %2.2f dBFS @ %2.3f %cHz%c",
+					markers[m].label, markers[m].y,
+					dev_info->lo_freq * lo_markers_scale_ratio + markers[m].x,
 					dev_info->adc_scale,
 					m != MAX_MARKERS ? '\n' : '\0');
 			} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
@@ -3248,6 +3249,7 @@ static inline void marker_set(OscPlot *plot, int i, char *buf, bool force)
 		priv->markers[i].active = TRUE;
 
 	if (priv->markers[i].graph) {
+		strncpy(priv->markers[i].label, buf, 6);
 		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(priv->markers[i].graph), 0,
 			GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
 		gtk_databox_graph_set_hide(priv->markers[i].graph, !priv->markers[i].active);

@@ -45,6 +45,7 @@ struct marker_type {
 	gfloat y;
 	int bin;
 	bool active;
+	char label[6];
 	GtkDataboxGraph *graph;
 };
 
