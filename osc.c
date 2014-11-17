@@ -254,7 +254,7 @@ static void do_fft(Transform *tr)
 
 	for (j = 0; j <= MAX_MARKERS; j++) {
 		maxX[j] = 0;
-		maxY[j] = -100.0f;
+		maxY[j] = -200.0f;
 	}
 
 	for (i = 0; i < fft->m; ++i) {
@@ -574,7 +574,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 
 	for (j = 0; j <= MAX_MARKERS; j++) {
 		maxX[j] = 0;
-		maxY[j] = -100.0f;
+		maxY[j] = -200.0f;
 	}
 
 	for (i = 0; i < 2 * axis_length - 1; i++) {
