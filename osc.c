@@ -186,7 +186,7 @@ static void do_fft(Transform *tr)
 	int cnt;
 	gfloat mag;
 	double avg, pwr_offset;
-	unsigned int maxx[MAX_MARKERS + 1];
+	unsigned int maxX[MAX_MARKERS + 1];
 	gfloat maxY[MAX_MARKERS + 1];
 
 	if (settings->marker_type)
@@ -253,7 +253,7 @@ static void do_fft(Transform *tr)
 	pwr_offset = settings->fft_pwr_off;
 
 	for (j = 0; j <= MAX_MARKERS; j++) {
-		maxx[j] = 0;
+		maxX[j] = 0;
 		maxY[j] = -100.0f;
 	}
 
@@ -298,7 +298,7 @@ static void do_fft(Transform *tr)
 				marker_type == MARKER_ONE_TONE ||
 				marker_type == MARKER_IMAGE)) {
 			if (i == 0) {
-				maxx[0] = 0;
+				maxX[0] = 0;
 				maxY[0] = out_data[0];
 			} else {
 				for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
@@ -310,11 +310,11 @@ static void do_fft(Transform *tr)
 						if (marker_type == MARKER_PEAK) {
 							for (k = MAX_MARKERS; k > j; k--) {
 								maxY[k] = maxY[k - 1];
-								maxx[k] = maxx[k - 1];
+								maxX[k] = maxX[k - 1];
 							}
 						}
 						maxY[j] = out_data[i - 1];
-						maxx[j] = i - 1;
+						maxX[j] = i - 1;
 						break;
 					}
 				}
@@ -328,28 +328,28 @@ static void do_fft(Transform *tr)
 	unsigned int m = fft->m;
 
 	if ((marker_type == MARKER_ONE_TONE || marker_type == MARKER_IMAGE) &&
-		((fft->num_active_channels == 1 && maxx[0] == 0) ||
-		(fft->num_active_channels == 2 && maxx[0] == m/2))) {
+		((fft->num_active_channels == 1 && maxX[0] == 0) ||
+		(fft->num_active_channels == 2 && maxX[0] == m/2))) {
 		unsigned int max_tmp;
 
-		max_tmp = maxx[1];
-		maxx[1] = maxx[0];
-		maxx[0] = max_tmp;
+		max_tmp = maxX[1];
+		maxX[1] = maxX[0];
+		maxX[0] = max_tmp;
 	}
 
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
 		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
 			if (marker_type == MARKER_PEAK) {
-				markers[j].x = (gfloat)X[maxx[j]];
-				markers[j].y = (gfloat)out_data[maxx[j]];
-				markers[j].bin = maxx[j];
+				markers[j].x = (gfloat)X[maxX[j]];
+				markers[j].y = (gfloat)out_data[maxX[j]];
+				markers[j].bin = maxX[j];
 			} else if (marker_type == MARKER_FIXED) {
 				markers[j].x = (gfloat)X[markers[j].bin];
 				markers[j].y = (gfloat)out_data[markers[j].bin];
 			} else if (marker_type == MARKER_ONE_TONE) {
 				/* assume peak is the tone */
 				if (j == 0) {
-					markers[j].bin = maxx[j];
+					markers[j].bin = maxX[j];
 					i = 1;
 				} else if (j == 1) {
 					/* keep DC */
@@ -395,7 +395,7 @@ static void do_fft(Transform *tr)
 				 * num_active_channels always needs to be 2 for images */
 				if (j == 0) {
 					/* Fundamental */
-					markers[j].bin = maxx[j];
+					markers[j].bin = maxX[j];
 				} else if (j == 1) {
 					/* DC */
 					markers[j].bin = m / 2;
@@ -565,7 +565,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	gfloat *X = tr->x_axis;
 	struct marker_type *markers = settings->markers;
 	enum marker_types marker_type = MARKER_OFF;
-	unsigned int maxx[MAX_MARKERS + 1];
+	unsigned int maxX[MAX_MARKERS + 1];
 	gfloat maxY[MAX_MARKERS + 1];
 	int j, k;
 
@@ -573,7 +573,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		marker_type = *((enum marker_types *)settings->marker_type);
 
 	for (j = 0; j <= MAX_MARKERS; j++) {
-		maxx[j] = 0;
+		maxX[j] = 0;
 		maxY[j] = -100.0f;
 	}
 
@@ -584,7 +584,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 
 		if (MAX_MARKERS && marker_type == MARKER_PEAK) {
 			if (i == 0) {
-				maxx[0] = 0;
+				maxX[0] = 0;
 				maxY[0] = out_data[0];
 			} else {
 				for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
@@ -596,11 +596,11 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 						if (marker_type == MARKER_PEAK) {
 							for (k = MAX_MARKERS; k > j; k--) {
 								maxY[k] = maxY[k - 1];
-								maxx[k] = maxx[k - 1];
+								maxX[k] = maxX[k - 1];
 							}
 						}
 						maxY[j] = fabs(out_data[i - 1]);
-						maxx[j] = i - 1;
+						maxX[j] = i - 1;
 						break;
 					}
 				}
@@ -614,9 +614,9 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
 		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++)
 			if (marker_type == MARKER_PEAK) {
-				markers[j].x = (gfloat)X[maxx[j]];
-				markers[j].y = (gfloat)out_data[maxx[j]];
-				markers[j].bin = maxx[j];
+				markers[j].x = (gfloat)X[maxX[j]];
+				markers[j].y = (gfloat)out_data[maxX[j]];
+				markers[j].bin = maxX[j];
 			}
 		if (*settings->markers_copy) {
 			memcpy(*settings->markers_copy, settings->markers,
