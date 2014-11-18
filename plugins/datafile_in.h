@@ -9,7 +9,7 @@
 
 /* add backwards compat for <matio-1.5.0 */
 #if MATIO_MAJOR_VERSION == 1 && MATIO_MINOR_VERSION < 5
-#define mat_complex_split_t struct ComplexSplit
+typedef struct ComplexSplit mat_complex_split_t;
 #endif
 
 static unsigned short convert(double scale, float val)
