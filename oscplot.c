@@ -3208,7 +3208,7 @@ unhandled:
 			printf("Unhandled tokens in ini file, \n"
 				"\tSection %s\n\tAttribute : %s\n\tValue: %s\n",
 				section, name, value);
-			ret = 0;
+			ret = 1;
 			break;
 	}
 handled:
