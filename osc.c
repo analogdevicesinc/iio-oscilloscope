@@ -2217,6 +2217,7 @@ static void init_application (const char *ini_fn)
 }
 
 static char *prev_section;
+static GtkWidget *plot_widget;
 
 /*
  * Check for settings in sections [MultiOsc_Capture_Configuration1,2,..]
@@ -2225,7 +2226,6 @@ static char *prev_section;
 static int capture_profile_handler(const char *section,
 		const char *name, const char *value)
 {
-	static GtkWidget *plot = NULL;
 
 	if (strncmp(section, CAPTURE_INI_SECTION, sizeof(CAPTURE_INI_SECTION) - 1))
 		return -1;
@@ -2238,14 +2238,16 @@ static int capture_profile_handler(const char *section,
 		prev_section = g_strdup(section);
 		/* Create a capture window and parse the line from ini file*/
 		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
-			plot = new_plot_cb(NULL, NULL);
-			osc_plot_set_visible(OSC_PLOT(plot), false);
-			return osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
+			if (ctx && !!iio_context_get_devices_count(ctx)) {
+				plot_widget = new_plot_cb(NULL, NULL);
+				osc_plot_set_visible(OSC_PLOT(plot_widget), false);
+				return osc_plot_ini_read_handler(OSC_PLOT(plot_widget), section, name, value);
+			}
 		}
-	} else {
+	} else if (plot_widget) {
 		/* Parse the line from ini file */
 		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
-			return osc_plot_ini_read_handler(OSC_PLOT(plot), section, name, value);
+			return osc_plot_ini_read_handler(OSC_PLOT(plot_widget), section, name, value);
 		}
 	}
 
@@ -2351,6 +2353,8 @@ static void load_profile(const char *filename, bool load_plugins)
 
 	close_all_plots();
 	destroy_all_plots();
+
+	plot_widget = NULL;
 	foreach_in_ini(filename, capture_profile_handler);
 	if (prev_section) {
 		g_free(prev_section);
