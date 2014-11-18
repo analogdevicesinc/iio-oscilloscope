@@ -488,6 +488,7 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 
 	char attr_val[256];
 	long long val;
+	double tx_sampling_freq;
 
 	/* Rx Widgets */
 
@@ -505,10 +506,13 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	/* Tx Widgets */
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
 
-	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
-		snprintf(attr_val, sizeof(attr_val), "%.2f", (double)(val / 1000000ul));
-	else
+	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0) {
+		tx_sampling_freq = (double)(val / 1000000ul);
+		snprintf(attr_val, sizeof(attr_val), "%.2f", tx_sampling_freq);
+	} else {
 		snprintf(attr_val, sizeof(attr_val), "%s", "error");
+		tx_sampling_freq = 0;
+	}
 
 	dac_buff = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_set_text(dac_buff, attr_val, -1);
@@ -522,10 +526,7 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
-	double rate;
-
-	rate = gtk_spin_button_get_value(GTK_SPIN_BUTTON(gtk_builder_get_object(builder, "dac_data_clock")));
-	dac_data_manager_freq_widgets_range_update(dac_tx_manager, rate);
+	dac_data_manager_freq_widgets_range_update(dac_tx_manager, tx_sampling_freq);
 
 	tx_update_values();
 	rx_update_values();
