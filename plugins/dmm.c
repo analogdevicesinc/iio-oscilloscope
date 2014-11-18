@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 #include <gtk/gtk.h>
-#include <glib/gthread.h>
+#include <glib.h>
 #include <gtkdatabox.h>
 #include <gtkdatabox_grid.h>
 #include <gtkdatabox_points.h>
