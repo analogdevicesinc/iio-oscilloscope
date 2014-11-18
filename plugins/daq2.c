@@ -526,7 +526,7 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
-	dac_data_manager_freq_widgets_range_update(dac_tx_manager, tx_sampling_freq);
+	dac_data_manager_freq_widgets_range_update(dac_tx_manager, tx_sampling_freq / 2);
 
 	tx_update_values();
 	rx_update_values();
