@@ -7,6 +7,11 @@
 
 #include <matio.h>
 
+/* add backwards compat for <matio-1.5.0 */
+#if MATIO_MAJOR_VERSION == 1 && MATIO_MINOR_VERSION < 5
+typedef struct ComplexSplit mat_complex_split_t;
+#endif
+
 static short convert(double scale, float val)
 {
 	return (short) (val * scale);
@@ -154,7 +159,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 				Mat_VarReadDataAll(matfp, matvars[rep]);
 
 				if (matvars[rep]->isComplex) {
-					struct ComplexSplit *complex_data = matvars[rep]->data;
+					mat_complex_split_t *complex_data = matvars[rep]->data;
 					double *re, *im;
 					re = complex_data->Re;
 					im = complex_data->Im;
@@ -210,7 +215,7 @@ static int analyse_wavefile(const char *file_name, char **buf, int *count, int t
 			unsigned long long *sample = *((unsigned long long **) buf);
 			unsigned int *sample_32 = *((unsigned int **) buf);
 			double *re1, *im1, *re2, *im2;
-			struct ComplexSplit *complex_data1, *complex_data2;
+			mat_complex_split_t *complex_data1, *complex_data2;
 
 			complex_data1 = matvars[0]->data;
 
