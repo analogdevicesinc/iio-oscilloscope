@@ -2430,7 +2430,7 @@ gint main (int argc, char **argv)
 	signal(SIGINT, sigterm);
 	signal(SIGHUP, sigterm);
 
-	if (profile && strcmp(profile, "-"))
+	if (profile && strncmp(profile, "-", 1) == 0)
 		profile = NULL;
 
 	if (profile) {
