@@ -307,60 +307,6 @@ static void update_display (void *ptr)
 	}
 }
 
-void filter_fir_update(void)
-{
-	bool rx = false, tx = false, rxtx = false;
-	struct iio_channel *chn;
-
-	iio_device_attr_read_bool(dev, "in_out_voltage_filter_fir_en", &rxtx);
-
-	chn = iio_device_find_channel(dev, "voltage0", false);
-	if (chn)
-		iio_channel_attr_read_bool(chn, "filter_fir_en", &rx);
-	chn = iio_device_find_channel(dev, "voltage0", true);
-	if (chn)
-		iio_channel_attr_read_bool(chn, "filter_fir_en", &tx);
-
-	if (rxtx) {
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx), rxtx);
-	} else if (!rx && !tx) {
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters), true);
-	} else {
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx), rx);
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx), tx);
-	}
-}
-
-void filter_fir_enable(GtkToggleButton *button, gpointer data)
-{
-	bool rx, tx, rxtx, disable;
-
-	if (gtk_toggle_button_get_active(button))
-		return;
-
-	rx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx));
-	tx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx));
-	rxtx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx));
-	disable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters));
-
-	if (rxtx || disable) {
-		iio_device_attr_write_bool(dev,
-				"in_out_voltage_filter_fir_en", rxtx);
-	} else {
-		struct iio_channel *chn;
-		chn = iio_device_find_channel(dev, "voltage0", true);
-		if (chn)
-			iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
-
-		chn = iio_device_find_channel(dev, "voltage0", false);
-		if (chn)
-			iio_channel_attr_write_bool(chn, "filter_fir_en", rx);
-	}
-
-	filter_fir_update();
-	glb_settings_update_labels();
-}
-
 const double RX_CENTER_FREQ = 340; /* MHz */
 const double TX_CENTER_FREQ = 370; /* MHz */
 
@@ -532,6 +478,76 @@ static void update_widgets(void)
 	iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dds);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 	dxco_widgets_update();
+}
+
+void filter_fir_update(void)
+{
+	bool rx = false, tx = false, rxtx = false;
+	struct iio_channel *chn;
+
+	iio_device_attr_read_bool(dev, "in_out_voltage_filter_fir_en", &rxtx);
+
+	chn = iio_device_find_channel(dev, "voltage0", false);
+	if (chn)
+		iio_channel_attr_read_bool(chn, "filter_fir_en", &rx);
+	chn = iio_device_find_channel(dev, "voltage0", true);
+	if (chn)
+		iio_channel_attr_read_bool(chn, "filter_fir_en", &tx);
+
+	if (rxtx) {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx), rxtx);
+	} else if (!rx && !tx) {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters), true);
+	} else {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx), rx);
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx), tx);
+	}
+}
+
+void filter_fir_enable(GtkToggleButton *button, gpointer data)
+{
+	bool rx, tx, rxtx, disable;
+
+	if (gtk_toggle_button_get_active(button))
+		return;
+
+	rx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx));
+	tx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx));
+	rxtx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx));
+	disable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters));
+
+	if (rxtx || disable) {
+		iio_device_attr_write_bool(dev,
+				"in_out_voltage_filter_fir_en", rxtx);
+	} else {
+		struct iio_channel *chn;
+		if (rx) {
+			chn = iio_device_find_channel(dev, "voltage0", true);
+			if (chn)
+				iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
+
+			chn = iio_device_find_channel(dev, "voltage0", false);
+			if (chn)
+				iio_channel_attr_write_bool(chn, "filter_fir_en", rx);
+
+		}
+
+		if (tx) {
+			chn = iio_device_find_channel(dev, "voltage0", false);
+			if (chn)
+				iio_channel_attr_write_bool(chn, "filter_fir_en", rx);
+
+			chn = iio_device_find_channel(dev, "voltage0", true);
+			if (chn)
+				iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
+
+		}
+	}
+
+	filter_fir_update();
+	glb_settings_update_labels();
+	update_widgets();
+	rx_update_labels();
 }
 
 static void reload_button_clicked(GtkButton *btn, gpointer data)
