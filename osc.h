@@ -64,7 +64,10 @@ enum marker_types {
 #define XY_PLOT 2
 #define XCORR_PLOT 3
 
-void rx_update_labels(void);
+#define USE_INTERN_SAMPLING_FREQ 0.0
+#define USE_INTERN_RX_LO_FREQ 0.0
+
+void rx_update_labels(double sampling_freq, double rx_lo_freq);
 void dialogs_init(GtkBuilder *builder);
 void trigger_dialog_init(GtkBuilder *builder);
 void trigger_settings_for_device(GtkBuilder *builder, const char *device);

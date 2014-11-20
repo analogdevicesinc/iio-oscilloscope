@@ -259,7 +259,8 @@ static void glb_settings_update_labels(void)
 static void sample_frequency_changed_cb(void *data)
 {
 	glb_settings_update_labels();
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
+		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
 }
 
 static void rssi_update_labels(void)
@@ -549,7 +550,8 @@ void filter_fir_enable(GtkToggleButton *button, gpointer data)
 	filter_fir_update();
 	glb_settings_update_labels();
 	update_widgets();
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
+		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
 }
 
 static void reload_button_clicked(GtkButton *btn, gpointer data)
@@ -557,7 +559,8 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	update_widgets();
 
 	filter_fir_update();
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
+		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
 	glb_settings_update_labels();
 	rssi_update_labels();
 	rx_phase_rotation_update();
@@ -1164,7 +1167,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	/* Update all widgets with current values */
 	printf("Updating widgets...\n");
 	update_widgets();
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
+		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
 	printf("Updating FIR filter...\n");
 	filter_fir_update();
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);

@@ -70,7 +70,7 @@ static const char *fmcomms6_sr_attribs[] = {
 static void rx_update_values(void)
 {
 	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 }
 
 static void cal_update_values(void)
@@ -80,7 +80,7 @@ static void cal_update_values(void)
 
 static void rx_update_labels_on_complete(void *data)
 {
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 }
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)

@@ -266,7 +266,7 @@ static void tx_update_values(void)
 static void rx_update_values(void)
 {
 	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 }
 
 static void glb_settings_update_labels(void)
@@ -361,7 +361,7 @@ static void glb_settings_update_labels(void)
 static void sample_frequency_changed_cb(void *data)
 {
 	glb_settings_update_labels();
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 }
 
 static bool delayed_mcs_trigger(void)
@@ -586,7 +586,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	iio_update_widgets(rx_widgets, num_rx);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 	filter_fir_update();
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 	glb_settings_update_labels();
 	rssi_update_labels();
 	rx_phase_rotation_update();

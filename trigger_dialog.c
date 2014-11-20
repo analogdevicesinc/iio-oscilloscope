@@ -138,7 +138,7 @@ static void trigger_save_settings(GtkBuilder *builder, const char *device)
 			iio_device_attr_write_longlong(trigger, "frequency",
 				(long long)gtk_spin_button_get_value(spinbtn_freq));
 			iio_device_set_trigger(dev, trigger);
-			rx_update_labels();
+			rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 		} else {
 			iio_device_set_trigger(dev, NULL);
 		}

@@ -1978,7 +1978,7 @@ static float get_rx_lo_freq(const char *dev_name)
 	return (float) lo_freq;
 }
 
-void rx_update_labels(void)
+void rx_update_labels(double sampling_freq, double rx_lo_freq)
 {
 	unsigned int i;
 
@@ -1988,7 +1988,26 @@ void rx_update_labels(void)
 		const char *name = iio_device_get_name(dev);
 
 		info->lo_freq = 0.0;
-		info->adc_freq = read_sampling_frequency(dev);
+
+		if (sampling_freq)
+			info->adc_freq = sampling_freq;
+		else
+			info->adc_freq = read_sampling_frequency(dev);
+
+		if (rx_lo_freq) {
+			info->lo_freq = rx_lo_freq;
+		} else if (!name) {
+			continue;
+
+		} else {
+			if (!strcmp(name, "cf-ad9463-core-lpc") ||
+				!strcmp(name, "axi-ad9652-lpc"))
+				info->lo_freq = get_rx_lo_freq("adf4351-rx-lpc");
+			else if (!strcmp(name, "cf-ad9361-lpc") ||
+					!strcmp(name, "cf-ad9361-A") ||
+					!strcmp(name, "cf-ad9361-B"))
+				info->lo_freq = get_rx_lo_freq("ad9361-phy");
+		}
 
 		if (info->adc_freq >= 1000000) {
 			info->adc_scale = 'M';
@@ -2002,17 +2021,6 @@ void rx_update_labels(void)
 			info->adc_scale = '?';
 			info->adc_freq = 0.0;
 		}
-
-		if (!name)
-			continue;
-
-		if (!strcmp(name, "cf-ad9463-core-lpc") ||
-			!strcmp(name, "axi-ad9652-lpc"))
-			info->lo_freq = get_rx_lo_freq("adf4351-rx-lpc");
-		else if (!strcmp(name, "cf-ad9361-lpc") ||
-				!strcmp(name, "cf-ad9361-A") ||
-				!strcmp(name, "cf-ad9361-B"))
-			info->lo_freq = get_rx_lo_freq("ad9361-phy");
 
 		info->lo_freq /= 1000000.0;
 	}
@@ -2143,7 +2151,7 @@ static void do_init(struct iio_context *new_ctx)
 	init_device_list(new_ctx);
 	load_plugins(notebook, NULL);
 	load_default_profile(NULL, true);
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 
 	int width = -1, height = -1;
 	plugins_get_preferred_size(plugin_list, &width, &height);

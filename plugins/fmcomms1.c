@@ -268,7 +268,8 @@ static void rf_out_update_on_complete(void *data)
 
 static void rx_update_labels_on_complete(void *data)
 {
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
+		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_lo_freq)));
 }
 
 static void tx_update_values(void)
@@ -280,7 +281,8 @@ static void tx_update_values(void)
 static void rx_update_values(void)
 {
 	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels();
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
+		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_lo_freq)));
 }
 
 static void cal_update_values(void)
