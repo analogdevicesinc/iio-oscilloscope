@@ -361,7 +361,7 @@ static void updn_converter_lo_freq_changed_cb(GtkSpinButton *button, int data)
 	}
 
 	target_freq = gtk_spin_button_get_value(button);
-	split_target_lo_freq(target_freq, &ad9361_lo, &updn_pll, updn_freq_span, center_freq);
+	split_target_lo_freq(target_freq, &updn_pll, &ad9361_lo, updn_freq_span, center_freq);
 	ret = iio_channel_attr_write_longlong(ad9361_ch, freq_name, (long long)MHZ_TO_HZ(ad9361_lo));
 	if (ret < 0)
 		fprintf(stderr,"Write to %s attribute of %s device: %s\n",
