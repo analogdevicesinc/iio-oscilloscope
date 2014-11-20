@@ -371,6 +371,8 @@ static void updn_converter_lo_freq_changed_cb(GtkSpinButton *button, int data)
 	if (ret < 0)
 		fprintf(stderr,"Write to %s attribute of %s device: %s\n",
 			"frequency", (UPDN_TX) ? UDC_TX_DEVICE : UDC_RX_DEVICE, strerror(-ret));
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
+		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
 }
 
 static void up_down_converter_toggled_cb(GtkToggleButton *button, gpointer data)
