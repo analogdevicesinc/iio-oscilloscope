@@ -46,6 +46,8 @@
 
 #define SYNC_RELOAD "SYNC_RELOAD"
 
+#define MHZ_TO_HZ(x) ((x) * 1000000ul)
+
 extern gfloat plugin_fft_corr;
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
@@ -360,11 +362,11 @@ static void updn_converter_lo_freq_changed_cb(GtkSpinButton *button, int data)
 
 	target_freq = gtk_spin_button_get_value(button);
 	split_target_lo_freq(target_freq, &ad9361_lo, &updn_pll, updn_freq_span, center_freq);
-	ret = iio_channel_attr_write_double(ad9361_ch, freq_name, ad9361_lo);
+	ret = iio_channel_attr_write_longlong(ad9361_ch, freq_name, (long long)MHZ_TO_HZ(ad9361_lo));
 	if (ret < 0)
 		fprintf(stderr,"Write to %s attribute of %s device: %s\n",
 			freq_name, PHY_DEVICE, strerror(-ret));
-	ret = iio_channel_attr_write_double(updn_ch, "frequency", updn_pll);
+	ret = iio_channel_attr_write_longlong(updn_ch, "frequency", (long long)MHZ_TO_HZ(updn_pll));
 	if (ret < 0)
 		fprintf(stderr,"Write to %s attribute of %s device: %s\n",
 			"frequency", (UPDN_TX) ? UDC_TX_DEVICE : UDC_RX_DEVICE, strerror(-ret));
