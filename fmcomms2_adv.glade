@@ -583,7 +583,7 @@
                                     </child>
                                     <child>
                                       <object class="GtkCheckButton" id="adi,update-tx-gain-in-alert-enable">
-                                        <property name="label" translatable="yes">Upate TX Gain in ALERT</property>
+                                        <property name="label" translatable="yes">Update TX Gain in ALERT</property>
                                         <property name="use_action_appearance">False</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
