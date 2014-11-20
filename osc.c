@@ -2221,7 +2221,7 @@ static GtkWidget *plot_widget;
 
 /*
  * Check for settings in sections [MultiOsc_Capture_Configuration1,2,..]
- * Handler should return zero on success, a nagative number on error.
+ * Handler should return zero on success, a negative number on error.
  */
 static int capture_profile_handler(const char *section,
 		const char *name, const char *value)
@@ -2392,7 +2392,7 @@ void usage(char *program)
 		" There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n"
 		" PARTICULAR PURPOSE.\n\n");
 
-	/* please keep this list sorted in alphabetal order */
+	/* please keep this list sorted in alphabetical order */
 	printf( "Command line options:\n"
 		"\t-p\tload specific profile\n");
 
