@@ -30,6 +30,7 @@
 #include "../config.h"
 #include "../eeprom.h"
 #include "../libini2.h"
+#include "./block_diagram.h"
 #include "dac_data_manager.h"
 
 #define THIS_DRIVER "FMComms5"
@@ -1391,6 +1392,8 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
 	plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
+
+	block_diagram_init(builder, 2, "fmcomms2.svg", "AD_FMCOMMS5_EBZ.jpg");
 
 	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms5_panel, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms5_panel, "FMComms5");
