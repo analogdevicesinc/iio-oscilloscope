@@ -1998,7 +1998,7 @@ bool dac_data_manager_get_tx_channel_state(struct dac_data_manager *manager, uns
 	GtkTreeModel *model;
 	gboolean next_iter;
 	int index;
-	bool state;
+	gboolean state;
 
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(manager->dac_buffer_module.tx_channels_view));
 	if (!gtk_tree_model_get_iter_first(model, &iter))
