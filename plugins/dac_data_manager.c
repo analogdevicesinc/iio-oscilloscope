@@ -254,7 +254,8 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			while (fgets(line, 80, infile)) {
 				ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
 						&val[0], &val[1], &val[2], &val[3]);
-
+				if ((ret == 0) && strlen(line) == 0)
+					continue;
 				if (!(ret == 4 || ret == 2)) {
 					fclose(infile);
 					return -2;
