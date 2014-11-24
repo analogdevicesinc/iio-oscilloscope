@@ -55,6 +55,7 @@ static struct dac_data_manager *dac_tx_manager;
 
 static bool is_2rx_2tx;
 static bool has_udc_driver;
+static bool can_update_widgets;
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble abs_mhz_scale = -1000000.0;
@@ -902,6 +903,9 @@ static void load_profile(const char *ini_fn)
 		dac_data_manager_set_tx_channel_state(dac_tx_manager, 3, !!atoi(value));
 		free(value);
 	}
+
+	if (can_update_widgets)
+		reload_button_clicked(NULL, NULL);
 }
 
 static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
@@ -1286,6 +1290,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	update_thd_stop = false;
 	update_thd = g_thread_new("Update_thread", (void *) &update_display, NULL);
+
+	can_update_widgets = true;
 
 	return fmcomms2_panel;
 }
