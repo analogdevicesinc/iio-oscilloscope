@@ -818,11 +818,6 @@ static void load_profile(const char *ini_fn)
 {
 	char *value;
 
-	update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
-			ARRAY_SIZE(fmcomms2_sr_attribs));
-	update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
-			ARRAY_SIZE(fmcomms2_sr_attribs));
-
 	value = read_token_from_ini(ini_fn, THIS_DRIVER, "load_fir_filter_file");
 	if (value) {
 		if (value[0]) {
@@ -831,6 +826,11 @@ static void load_profile(const char *ini_fn)
 		}
 		free(value);
 	}
+
+	update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
+			ARRAY_SIZE(fmcomms2_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
+			ARRAY_SIZE(fmcomms2_sr_attribs));
 
 	value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode_tx1");
 	if (value) {

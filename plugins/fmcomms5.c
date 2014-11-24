@@ -874,6 +874,15 @@ static void load_profile(const char *ini_fn)
 	unsigned i;
 	char *value;
 
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "load_fir_filter_file");
+	if (value) {
+		if (value[0]) {
+			load_fir_filter(value);
+			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filter_fir_config), value);
+		}
+		free(value);
+	}
+
 	update_from_ini(ini_fn, THIS_DRIVER, dev1, fmcomms5_sr_attribs,
 			ARRAY_SIZE(fmcomms5_sr_attribs));
 	update_from_ini(ini_fn, THIS_DRIVER, dds1, fmcomms5_sr_attribs,
@@ -891,15 +900,6 @@ static void load_profile(const char *ini_fn)
 		set_dds_mode(ini_fn, i);
 	for (i = 0; i <= 7; i++)
 		set_tx_channel(ini_fn, i);
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "load_fir_filter_file");
-	if (value) {
-		if (value[0]) {
-			load_fir_filter(value);
-			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filter_fir_config), value);
-		}
-		free(value);
-	}
 
 	value = read_token_from_ini(ini_fn, THIS_DRIVER, "global_settings_show");
 	if (value) {
