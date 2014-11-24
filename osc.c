@@ -634,7 +634,7 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 	struct extra_dev_info *dev_info = iio_device_get_data(ch_info->dev);
 	struct _fft_settings *settings = tr->settings;
 	unsigned axis_length;
-	unsigned num_samples = dev_info->sample_count;
+	unsigned num_samples = dev_info->sample_count / 2;
 	double corr;
 	int i;
 
@@ -1485,6 +1485,28 @@ static ssize_t demux_sample(const struct iio_channel *chn,
 	return size;
 }
 
+static off_t get_trigger_offset(const struct iio_channel *chn)
+{
+	struct extra_info *info = iio_channel_get_data(chn);
+	size_t i;
+
+	if (iio_channel_is_enabled(chn))
+		for (i = 1; i < info->offset / 2; i++)
+			if (info->data_ref[i - 1] < 0.0f &&
+					info->data_ref[i] >= 0.0f)
+				return i * sizeof(gfloat);
+	return 0;
+}
+
+static void apply_trigger_offset(const struct iio_channel *chn, off_t offset)
+{
+	if (offset) {
+		struct extra_info *info = iio_channel_get_data(chn);
+		memmove(info->data_ref, (void *) info->data_ref + offset,
+				info->offset * sizeof(gfloat));
+	}
+}
+
 static bool device_is_oneshot(struct iio_device *dev)
 {
 	const char *name = iio_device_get_name(dev);
@@ -1505,6 +1527,7 @@ static gboolean capture_process(void)
 		unsigned int i, sample_size = iio_device_get_sample_size(dev);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		unsigned int sample_count = dev_info->sample_count;
+		off_t offset;
 
 		if (dev_info->input_device == false)
 			continue;
@@ -1546,6 +1569,14 @@ static gboolean capture_process(void)
 			nb = ret / sample_size;
 			sample_count = (sample_count < nb) ? 0 : sample_count - nb;
 		} while (sample_count);
+
+		offset = get_trigger_offset(iio_device_get_channel(dev,
+					dev_info->channel_trigger));
+		for (i = 0; i < nb_channels; i++) {
+			struct iio_channel *ch = iio_device_get_channel(dev, i);
+			if (iio_channel_is_enabled(ch))
+				apply_trigger_offset(ch, offset);
+		}
 
 		if (dev_info->channels_data_copy) {
 			for (i = 0; i < nb_channels; i++) {
@@ -1640,7 +1671,7 @@ static int capture_setup(void)
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
-		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info);
+		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info) * 2;
 
 		for (j = 0; j < nb_channels; j++) {
 			struct iio_channel *ch = iio_device_get_channel(dev, j);
