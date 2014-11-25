@@ -3,6 +3,7 @@
 #include <malloc.h>
 #include <errno.h>
 #include <math.h>
+#include <ctype.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <matio.h>
@@ -216,6 +217,14 @@ static void replicate_tx_data_channels(struct _complex_ref *data, int count)
 	}
 }
 
+static bool line_is_empty(char *s)
+{
+	while (isspace((unsigned char)*s))
+		s++;
+
+	return *s == '\0' ? true : false;
+}
+
 static unsigned short convert(double scale, float val, double offset)
 {
 	return (short) (val * scale + offset);
@@ -254,9 +263,9 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			while (fgets(line, 80, infile)) {
 				ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
 						&val[0], &val[1], &val[2], &val[3]);
-				if ((ret == 0) && strlen(line) == 0)
-					continue;
 				if (!(ret == 4 || ret == 2)) {
+					if (line_is_empty(line))
+						continue;
 					fclose(infile);
 					return -2;
 				}
@@ -266,8 +275,6 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 						max = fabs(val[i]);
 
 				size += tx_channels * 2;
-
-
 			}
 
 			size *= rep;
@@ -295,9 +302,11 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 					size = 0;
 					i = 0;
 					while (fgets(line, 80, infile)) {
-
 						ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
 								&i1, &q1, &i2, &q2);
+						if ((ret != 2 && ret != 4) && line_is_empty(line))
+							continue;
+
 						for (j = 0; j < rep; j++) {
 							if (ret == 4 && tx_channels >= 4) {
 								sample[i++] = ((unsigned long long) convert(scale, q2, offset) << 48) |
