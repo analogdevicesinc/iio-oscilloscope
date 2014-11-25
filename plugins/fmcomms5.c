@@ -54,6 +54,8 @@ extern bool dma_valid_selection(const char *device, unsigned mask, unsigned chan
 
 static struct dac_data_manager *dac_tx_manager;
 
+static bool can_update_widgets;
+
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
@@ -936,6 +938,9 @@ static void load_profile(const char *ini_fn)
 			free(value);
 		}
 	}
+	
+	if (can_update_widgets)
+		reload_button_clicked(NULL, NULL);
 }
 
 static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
@@ -1401,6 +1406,8 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
 
 	g_thread_new("Update_thread", (void *) &update_display, NULL);
+
+	can_update_widgets = true;
 
 	return 0;
 }
