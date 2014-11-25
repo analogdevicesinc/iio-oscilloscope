@@ -3723,53 +3723,68 @@ static void channel_math_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	gtk_widget_hide(priv->math_dialog);
 }
 
-static void right_click_menu_show(OscPlot *plot, GdkEventButton *event)
+static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 {
 	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *treeview;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
+	GtkTreeSelection *selection;
+	GtkTreePath *path;
 	gboolean is_device = false;
 	gboolean is_channel = false;
-	gboolean selected;
 	gpointer ref;
 
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(treeview);
-	selected = tree_get_selected_row_iter(treeview, &iter);
-	if (!selected)
-		return;
+	selection = gtk_tree_view_get_selection(treeview);
+
+	/* Get tree path for row that was clicked */
+	if (!gtk_tree_view_get_path_at_pos(treeview,
+				(gint) event->x, (gint) event->y,
+				&path, NULL, NULL, NULL))
+		return false;
+
+	gtk_tree_selection_unselect_all(selection);
+	gtk_tree_selection_select_path(selection, path);
+
+	gtk_tree_model_get_iter(model, &iter, path);
 	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &ref,
 		IS_DEVICE, &is_device, IS_CHANNEL, &is_channel, -1);
 
 	if (is_channel) {
 		if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot->priv->plot_domain)) != TIME_PLOT)
-			return;
+			return false;
+
 		gtk_menu_popup(GTK_MENU(priv->channel_settings_menu), NULL, NULL,
 			NULL, NULL,
 			(event != NULL) ? event->button : 0,
 			gdk_event_get_time((GdkEvent*)event));
-	} else if (is_device) {
+		return true;
+	}
+
+	if (is_device) {
 		/* Check if device needs a trigger */
 		struct iio_device *dev = ref;
 		const struct iio_device *trigger;
-		int ret = iio_device_get_trigger(dev, &trigger);
-		if (ret == -ENOENT)
-			return;
-		gtk_menu_popup(GTK_MENU(priv->device_settings_menu), NULL, NULL,
-			NULL, NULL,
-			(event != NULL) ? event->button : 0,
-			gdk_event_get_time((GdkEvent*)event));
+
+		if (!iio_device_get_trigger(dev, &trigger)) {
+			gtk_menu_popup(GTK_MENU(priv->device_settings_menu),
+					NULL, NULL, NULL, NULL,
+					(event != NULL) ? event->button : 0,
+					gdk_event_get_time((GdkEvent*)event));
+			return true;
+		}
 	}
+
+	return false;
 }
 
 static gboolean right_click_on_ch_list_cb(GtkTreeView *treeview, GdkEventButton *event, OscPlot *plot)
 {
 	/* single click with the right mouse button */
-	if (event->type == GDK_BUTTON_PRESS && event->button == 3) {
-		right_click_menu_show(plot, event);
-		return true;
-	}
+	if (event->type == GDK_BUTTON_PRESS && event->button == 3)
+		return right_click_menu_show(plot, event);
 
 	return false;
 }
