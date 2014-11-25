@@ -209,6 +209,7 @@ struct _OscPlotPrivate
 	GtkWidget *fft_pwr_offset_widget;
 	GtkWidget *device_settings_menu;
 	GtkWidget *device_trigger_menuitem;
+	GtkWidget *plot_trigger_menuitem;
 	GtkWidget *channel_settings_menu;
 	GtkWidget *channel_color_menuitem;
 	GtkWidget *channel_math_menuitem;
@@ -3639,6 +3640,125 @@ static void device_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	check_valid_setup(plot);
 }
 
+static void plot_trigger_save_settings(OscPlotPrivate *priv,
+		const struct iio_device *dev)
+{
+	struct extra_dev_info *dev_info = iio_device_get_data(dev);
+	struct iio_channel *chn;
+	GtkComboBoxText *box;
+	GtkToggleButton *radio;
+	gchar *active_channel;
+
+	radio = GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, "radio_enable_trigger"));
+	dev_info->channel_trigger_enabled = gtk_toggle_button_get_active(radio);
+
+	if (!dev_info->channel_trigger_enabled)
+		return;
+
+	box = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, "comboboxtext_trigger_channel"));
+	active_channel = gtk_combo_box_text_get_active_text(box);
+
+	if (active_channel) {
+		chn = iio_device_find_channel(dev, active_channel, false);
+		dev_info->channel_trigger = iio_channel_get_index(chn);
+	}
+
+	radio = GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, "radio_trigger_falling"));
+	dev_info->trigger_falling_edge = gtk_toggle_button_get_active(radio);
+
+	if (active_channel)
+		g_free(active_channel);
+}
+
+static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct iio_device *dev;
+	struct extra_dev_info *dev_info;
+	GtkDialog *dialog;
+	GtkTreeView *treeview;
+	GtkTreeModel *model;
+	GtkComboBoxText *box;
+	GtkWidget *radio;
+	GtkTreeIter iter, child_iter;
+	GtkListStore *store;
+	gboolean selected;
+	bool box_has_channels = false;
+	gchar *active_channel;
+	unsigned cpt = 0, new_active = 0;
+
+	treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	model = gtk_tree_view_get_model(treeview);
+	selected = tree_get_selected_row_iter(treeview, &iter);
+	if (!selected)
+		return;
+	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &dev, -1);
+	if (!dev) {
+		fprintf(stderr, "Invalid reference of iio_device read from devicetree\n");
+		return;
+	}
+
+	dev_info = iio_device_get_data(dev);
+
+	box = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, "comboboxtext_trigger_channel"));
+	active_channel = gtk_combo_box_text_get_active_text(box);
+
+	/* This code empties the GtkComboBoxText (as it may contain channels
+	 * that have been de-selected); the do-while loop will re-insert only
+	 * the names of the enabled channels. */
+	store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(box)));
+	gtk_list_store_clear(store);
+
+	gtk_tree_model_iter_children(model, &child_iter, &iter);
+	do {
+		gboolean enabled;
+		struct iio_channel *ch;
+		const char *name;
+
+		gtk_tree_model_get(model, &child_iter,
+				CHANNEL_ACTIVE, &enabled, -1);
+		if (!enabled)
+			continue;
+
+		gtk_tree_model_get(model, &child_iter,
+				ELEMENT_REFERENCE, &ch, -1);
+		name = iio_channel_get_name(ch) ?: iio_channel_get_id(ch);
+		gtk_combo_box_text_append_text(box, name);
+		box_has_channels = true;
+
+		if (active_channel && !strcmp(name, active_channel))
+			new_active = cpt;
+		cpt++;
+	} while (gtk_tree_model_iter_next(model, &child_iter));
+
+	gtk_widget_set_sensitive(GTK_WIDGET(box), box_has_channels);
+
+	if (box_has_channels)
+		gtk_combo_box_set_active(GTK_COMBO_BOX(box), new_active);
+
+	if (!box_has_channels || !dev_info->channel_trigger_enabled) {
+		radio = GTK_WIDGET(gtk_builder_get_object(priv->builder, "radio_disable_trigger"));
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio), TRUE);
+	}
+
+	radio = GTK_WIDGET(gtk_builder_get_object(priv->builder, "radio_enable_trigger"));
+	gtk_widget_set_sensitive(radio, box_has_channels);
+
+	dialog = GTK_DIALOG(gtk_builder_get_object(priv->builder, "channel_trigger_dialog"));
+	switch (gtk_dialog_run(dialog)) {
+	case GTK_RESPONSE_CANCEL:
+		break;
+	case GTK_RESPONSE_OK:
+		plot_trigger_save_settings(priv, dev);
+	default:
+		break;
+	}
+
+	if (active_channel)
+		g_free(active_channel);
+	gtk_widget_hide(GTK_WIDGET(dialog));
+}
+
 static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -3767,14 +3887,16 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 		/* Check if device needs a trigger */
 		struct iio_device *dev = ref;
 		const struct iio_device *trigger;
+		bool has_trigger = !iio_device_get_trigger(dev, &trigger);
 
-		if (!iio_device_get_trigger(dev, &trigger)) {
-			gtk_menu_popup(GTK_MENU(priv->device_settings_menu),
-					NULL, NULL, NULL, NULL,
-					(event != NULL) ? event->button : 0,
-					gdk_event_get_time((GdkEvent*)event));
-			return true;
-		}
+		gtk_widget_set_sensitive(priv->device_trigger_menuitem,
+				has_trigger);
+
+		gtk_menu_popup(GTK_MENU(priv->device_settings_menu),
+				NULL, NULL, NULL, NULL,
+				(event != NULL) ? event->button : 0,
+				gdk_event_get_time((GdkEvent*)event));
+		return true;
 	}
 
 	return false;
@@ -3965,6 +4087,13 @@ static void create_plot(OscPlot *plot)
 	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->device_trigger_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->device_settings_menu),
 		priv->device_trigger_menuitem);
+
+	priv->plot_trigger_menuitem = gtk_image_menu_item_new_with_label("Trigger settings");
+	image = gtk_image_new_from_stock(GTK_STOCK_PREFERENCES, GTK_ICON_SIZE_MENU);
+	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->plot_trigger_menuitem), image);
+	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->plot_trigger_menuitem), true);
+	gtk_menu_shell_append(GTK_MENU_SHELL(priv->device_settings_menu),
+		priv->plot_trigger_menuitem);
 	gtk_widget_show_all(priv->device_settings_menu);
 
 	/* Create Channel Settings Menu */
@@ -4037,6 +4166,8 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(right_click_on_ch_list_cb), plot);
 	g_signal_connect(priv->device_trigger_menuitem, "activate",
 		G_CALLBACK(device_trigger_settings_cb), plot);
+	g_signal_connect(priv->plot_trigger_menuitem, "activate",
+		G_CALLBACK(plot_trigger_settings_cb), plot);
 	g_signal_connect(priv->channel_color_menuitem, "activate",
 		G_CALLBACK(channel_color_settings_cb), plot);
 	g_signal_connect(priv->channel_math_menuitem, "activate",
