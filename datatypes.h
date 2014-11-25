@@ -52,6 +52,9 @@ struct extra_dev_info {
 	bool input_device;
 	struct iio_buffer *buffer;
 	unsigned int sample_count;
+	unsigned int channel_trigger;
+	bool channel_trigger_enabled;
+	bool trigger_falling_edge;
 	double adc_freq, lo_freq;
 	char adc_scale;
 	gfloat **channels_data_copy;
