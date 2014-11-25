@@ -53,6 +53,8 @@ static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
 static unsigned int num_tx, num_rx;
 
+static bool can_update_widgets;
+
 static const char *daq2_sr_attribs[] = {
 	ADC_DEVICE".in_voltage_sampling_frequency",
 	DAC_DEVICE".out_altvoltage_sampling_frequency",
@@ -166,6 +168,12 @@ static void load_profile(const char *ini_fn)
 		dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, !!atoi(value));
 		free(value);
 	}
+
+	if (can_update_widgets) {
+		rx_update_values();
+		tx_update_values();
+		dac_data_manager_update_iio_widgets(dac_tx_manager);
+	}
 }
 
 static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
@@ -246,6 +254,8 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
+
+	can_update_widgets = true;
 
 	return daq2_panel;
 }
