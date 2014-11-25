@@ -57,6 +57,8 @@ static struct iio_channel *dds_out[2][8];
 OscPlot *plot_xcorr_4ch;
 static int auto_calibrate = 0;
 
+static bool can_update_widgets;
+
 static gint this_page;
 static GtkNotebook *nbook;
 static gboolean plugin_detached;
@@ -1028,33 +1030,41 @@ void bist_tone_cb (GtkWidget *widget, gpointer data)
 
 }
 
+static char * set_widget_value(GtkWidget *widget, struct w_info *item, int val)
+{
+	switch (item->type) {
+		case CHECKBOX:
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), !!val);
+			return "toggled";
+		case BUTTON:
+			return "clicked";
+		case SPINBUTTON:
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), val);
+			return "value-changed";
+		case COMBOBOX:
+			gtk_combo_box_set_active(GTK_COMBO_BOX(widget), val);
+			return "changed";
+	}
+
+	return NULL;
+}
 static void connect_widget(GtkBuilder *builder, struct w_info *item, int val)
 {
 	char *signal = NULL;
 	GtkWidget *widget;
 
 	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
-
-	switch (item->type) {
-		case CHECKBOX:
-			signal = "toggled";
-			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), !!val);
-			break;
-		case BUTTON:
-			signal = "clicked";
-			break;
-		case SPINBUTTON:
-			signal = "value-changed";
-			gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), val);
-			break;
-		case COMBOBOX:
-			signal = "changed";
-			gtk_combo_box_set_active(GTK_COMBO_BOX(widget), val);
-			break;
-	}
-
+	signal = set_widget_value(widget, item, val);
 	g_builder_connect_signal(builder, item->name, signal,
 		G_CALLBACK(signal_handler_cb), item);
+}
+
+static void update_widget(GtkBuilder *builder, struct w_info *item, int val)
+{
+	GtkWidget *widget;
+
+	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
+	set_widget_value(widget, item, val);
 }
 
 static int __connect_widget(struct iio_device *dev, const char *attr,
@@ -1073,9 +1083,30 @@ static int __connect_widget(struct iio_device *dev, const char *attr,
 	return 0;
 }
 
+static int __update_widget(struct iio_device *dev, const char *attr,
+		const char *value, size_t len, void *d)
+{
+	unsigned int i, nb_items = ARRAY_SIZE(attrs);
+	GtkBuilder *builder = (GtkBuilder *) d;
+
+	for (i = 0; i < nb_items; i++) {
+		if (!strcmp(attrs[i].name, attr)) {
+			update_widget(builder, &attrs[i], atoi(value));
+			return 0;
+		}
+	}
+
+	return 0;
+}
+
 static int connect_widgets(GtkBuilder *builder)
 {
 	return iio_device_debug_attr_read_all(dev, __connect_widget, builder);
+}
+
+static int update_widgets(GtkBuilder *builder)
+{
+	return iio_device_debug_attr_read_all(dev, __update_widget, builder);
 }
 
 void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
@@ -1131,6 +1162,8 @@ static void load_profile(const char *ini_fn)
 	update_from_ini(ini_fn, THIS_DRIVER, dev,
 			fmcomms2_adv_sr_attribs,
 			ARRAY_SIZE(fmcomms2_adv_sr_attribs));
+	if (can_update_widgets)
+		update_widgets(builder);
 }
 
 static int get_dds_channels(void)
@@ -1254,6 +1287,8 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 	g_builder_connect_signal(builder, "notebook1", "switch-page",
 		G_CALLBACK(change_page_cb),
 		GTK_WIDGET(gtk_builder_get_object(builder, "initialize")));
+
+	can_update_widgets = true;
 
 	return fmcomms2adv_panel;
 }
