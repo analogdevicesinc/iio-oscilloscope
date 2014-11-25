@@ -51,6 +51,8 @@ static struct iio_device *adc, *pll;
 
 static unsigned int rx_lo;
 
+static bool can_update_widgets;
+
 static gint this_page;
 static GtkWidget *fmcomms6_panel;
 static gboolean plugin_detached;
@@ -127,6 +129,9 @@ static void load_profile(const char *ini_fn)
 			ARRAY_SIZE(fmcomms6_sr_attribs));
 	update_from_ini(ini_fn, THIS_DRIVER, pll, fmcomms6_sr_attribs,
 			ARRAY_SIZE(fmcomms6_sr_attribs));
+
+	if (can_update_widgets)
+		reload_button_clicked(NULL, NULL);
 }
 
 static GtkWidget * fmcomms6_init(GtkWidget *notebook, const char *ini_fn)
@@ -189,6 +194,8 @@ static GtkWidget * fmcomms6_init(GtkWidget *notebook, const char *ini_fn)
 
 	rx_update_values();
 	cal_update_values();
+
+	can_update_widgets = true;
 
 	return fmcomms6_panel;
 }
