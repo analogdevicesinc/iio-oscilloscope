@@ -149,14 +149,6 @@ static void load_profile(const char *ini_fn)
 		free(value);
 	}
 
-	if (dac_data_manager_get_dds_mode(dac_tx_manager, DAC_DEVICE, 1) == DDS_BUFFER) {
-		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
-		if (value) {
-			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
-			free(value);
-		}
-	}
-
 	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_0");
 	if (value) {
 		dac_data_manager_set_tx_channel_state(dac_tx_manager, 0, !!atoi(value));
@@ -167,6 +159,14 @@ static void load_profile(const char *ini_fn)
 	if (value) {
 		dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, !!atoi(value));
 		free(value);
+	}
+
+	if (dac_data_manager_get_dds_mode(dac_tx_manager, DAC_DEVICE, 1) == DDS_BUFFER) {
+		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
+		if (value) {
+			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
+			free(value);
+		}
 	}
 
 	if (can_update_widgets) {

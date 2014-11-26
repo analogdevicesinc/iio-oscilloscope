@@ -844,14 +844,6 @@ static void load_profile(const char *ini_fn)
 		free(value);
 	}
 
-	if (dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 1) == DDS_BUFFER) {
-		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
-		if (value) {
-			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
-			free(value);
-		}
-	}
-
 	value = read_token_from_ini(ini_fn, THIS_DRIVER, "global_settings_show");
 	if (value) {
 		gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], !!atoi(value));
@@ -902,6 +894,14 @@ static void load_profile(const char *ini_fn)
 	if (value) {
 		dac_data_manager_set_tx_channel_state(dac_tx_manager, 3, !!atoi(value));
 		free(value);
+	}
+
+	if (dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 1) == DDS_BUFFER) {
+		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
+		if (value) {
+			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
+			free(value);
+		}
 	}
 
 	if (can_update_widgets)
