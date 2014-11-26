@@ -33,6 +33,9 @@
 #define TX_CHANNEL_ACTIVE 1
 #define TX_CHANNEL_REF_INDEX 2
 
+#define WAVEFORM_TXT_INVALID_FORMAT 1
+#define WAVEFORM_MAT_INVALID_FORMAT 2
+
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
 struct dds_tone {
@@ -249,7 +252,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 	*buf = NULL;
 
 	if (infile == NULL)
-		return -3;
+		return -errno;
 
 	offset = dac_offset_get_value(manager->dac1.iio_dac);
 
@@ -270,7 +273,8 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 					if (line_is_empty(line))
 						continue;
 					fclose(infile);
-					return -2;
+					fprintf(stderr, "ERROR: No 2 or 4 columns of data inside the text file\n");
+					return WAVEFORM_TXT_INVALID_FORMAT;
 				}
 
 				for (i = 0; i < ret; i++)
@@ -292,7 +296,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 
 			*buf = malloc(size);
 			if (*buf == NULL)
-				return 0;
+				return -errno;
 
 			unsigned long long *sample = *((unsigned long long **) buf);
 			unsigned int *sample_32 = *((unsigned int **) buf);
@@ -369,8 +373,10 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			 * http://na-wiki.csc.kth.se/mediawiki/index.php/MatIO
 			 */
 			matfp = Mat_Open(file_name, MAT_ACC_RDONLY);
-			if (matfp == NULL)
-				return -3;
+			if (matfp == NULL) {
+				fprintf(stderr, "ERROR: Could no open %s as a matlab file\n", file_name);
+				return WAVEFORM_MAT_INVALID_FORMAT;
+			}
 
 			bool complex_format = false;
 			bool real_format = false;
@@ -380,11 +386,15 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 
 			while (rep < tx_channels && (matvars[rep] = Mat_VarReadNextInfo(matfp)) != NULL) {
 				/* must be a vector */
-				if (matvars[rep]->rank !=2 || (matvars[rep]->dims[0] > 1 && matvars[rep]->dims[1] > 1))
-					return -1;
+				if (matvars[rep]->rank !=2 || (matvars[rep]->dims[0] > 1 && matvars[rep]->dims[1] > 1)) {
+					fprintf(stderr, "ERROR: Data inside the matlab file must be a vector\n");
+					return WAVEFORM_MAT_INVALID_FORMAT;
+				}
 				/* should be a double */
-				if (matvars[rep]->class_type != MAT_C_DOUBLE)
-					return -1;
+				if (matvars[rep]->class_type != MAT_C_DOUBLE) {
+					fprintf(stderr, "ERROR: Data inside the matlab file must be of type double\n");
+					return WAVEFORM_MAT_INVALID_FORMAT;
+				}
 /*
 	printf("%s : %s\n", __func__, matvars[rep]->name);
 	printf("  rank %d\n", matvars[rep]->rank);
@@ -424,8 +434,8 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 //	printf("read %i vars, length %i, max value %f\n", rep, matvars[rep]->dims[0], max);
 
 			if (rep < 0) {
-				fprintf(stderr, "Could not find any valid data in %s\n", file_name);
-				return -1;
+				fprintf(stderr, "ERROR: Could not find any valid data in %s\n", file_name);
+				return WAVEFORM_MAT_INVALID_FORMAT;
 			}
 
 			if (max <= 1.0)
@@ -440,22 +450,20 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 
 			for (i = 0; i <= rep; i++) {
 				if (size != matvars[i]->dims[0]) {
-					printf("dims don't match\n");
-					return -1;
+					fprintf(stderr, "ERROR: Vector dimensions in the matlab file don't match\n");
+					return WAVEFORM_MAT_INVALID_FORMAT;
 				}
 			}
 
 			if (complex_format && real_format) {
-				fprintf(stderr, "Both complex and real data formats in the same file are not supported\n");
-				return -1;
+				fprintf(stderr, "ERROR: Both complex and real data formats in the same matlab file are not supported\n");
+				return WAVEFORM_MAT_INVALID_FORMAT;
 			}
 
 			*buf = malloc((size + 1) * tx_channels * 2);
 
-			if (*buf == NULL) {
-				printf("error %s:%d\n", __func__, __LINE__);
-				return 0;
-			}
+			if (*buf == NULL)
+				return -errno;
 
 			*count = size * tx_channels * 2;
 
@@ -525,7 +533,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 		}
 	} else {
 		fclose(infile);
-		return -1;
+		return -EINVAL;
 	}
 	return 0;
 }
@@ -637,9 +645,13 @@ static void enable_dds(struct dac_data_manager *manager, bool on_off)
 static int process_dac_buffer_file (struct dac_data_manager *manager, const char *file_name, char **stat_msg)
 {
 	int ret, size = 0, s_size;
+	/*
 	struct stat st;
+	*/
 	char *buf = NULL, *tmp;
+	/*
 	FILE *infile;
+	*/
 	unsigned int buffer_channels = 0;
 	unsigned int major, minor;
 	struct utsname uts;
@@ -667,12 +679,17 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 	}
 
 	ret = analyse_wavefile(manager, file_name, &buf, &size, buffer_channels);
-	if (ret == -3) {
+	if (ret < 0) {
 		if (stat_msg)
-			*stat_msg = g_strdup_printf("No file selected.");
+			*stat_msg = g_strdup_printf("Error while parsing file: %s.", strerror(-ret));
+		return ret;
+	} else if (ret > 0) {
+		if (stat_msg)
+			*stat_msg = g_strdup_printf("Invalid data format");
 		return -EINVAL;
 	}
 
+/*
 	if (ret == -1 || buf == NULL) {
 		stat(file_name, &st);
 		buf = malloc(st.st_size);
@@ -685,7 +702,7 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		size = fread(buf, 1, st.st_size, infile);
 		fclose(infile);
 	}
-
+*/
 	enable_dds(manager, false);
 	enable_dds_channels(&manager->dac_buffer_module);
 
