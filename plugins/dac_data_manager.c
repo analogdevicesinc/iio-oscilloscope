@@ -126,6 +126,8 @@ struct dac_data_manager {
 	GtkWidget *container;
 };
 
+static bool tx_channels_check_valid_setup(struct dac_buffer *dbuf);
+
 static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
 static const char *default_channel_names[8] = {
@@ -614,7 +616,18 @@ static void process_dac_buffer_file (struct dac_data_manager *manager, const cha
 	FILE *infile;
 	unsigned int buffer_channels = 0;
 	unsigned int major, minor;
+	unsigned int i;
 	struct utsname uts;
+	bool tx_valid_setup;
+
+	if (manager->dds_buffer) {
+		iio_buffer_destroy(manager->dds_buffer);
+		manager->dds_buffer = NULL;
+	}
+
+	tx_valid_setup = tx_channels_check_valid_setup(&manager->dac_buffer_module);
+	if (!tx_valid_setup)
+		return;
 
 	if (manager->is_local) {
 		uname(&uts);
@@ -647,18 +660,21 @@ static void process_dac_buffer_file (struct dac_data_manager *manager, const cha
 		fclose(infile);
 	}
 
-	if (manager->dds_buffer) {
-		iio_buffer_destroy(manager->dds_buffer);
-		manager->dds_buffer = NULL;
-	}
-
 	enable_dds(manager, false);
 
 	struct iio_device *dac = manager->dac_buffer_module.dac_with_scanelems;
 
+	for (i = 0; i < iio_device_get_channels_count(dac); i++) {
+		struct iio_channel *chn = iio_device_get_channel(dac, i);
+		if (dac_data_manager_get_tx_channel_state(manager, i))
+			iio_channel_enable(chn);
+		else
+			iio_channel_disable(chn);
+	}
+
 	s_size = iio_device_get_sample_size(dac);
 	if (!s_size) {
-		fprintf(stderr, "Unable to create buffer due to sample size: %s\n", strerror(errno));
+		fprintf(stderr, "Unable to create buffer due to sample size\n");
 		free(buf);
 		return;
 	}
@@ -706,7 +722,6 @@ static bool tx_channels_check_valid_setup(struct dac_buffer *dbuf)
 
 static void tx_channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, struct dac_buffer *dbuf)
 {
-	struct iio_device *dac = dbuf->dac_with_scanelems;
 	GtkTreePath* path = gtk_tree_path_new_from_string(pathStr);
 	GtkTreeModel *model;
 	GtkTreeIter iter;
@@ -722,12 +737,6 @@ static void tx_channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, 
 	active = !active;
 	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, TX_CHANNEL_ACTIVE, active, -1);
 	gtk_tree_path_free(path);
-
-	struct iio_channel *channel = iio_device_get_channel(dac, ch_index);
-	if (active)
-		iio_channel_enable(channel);
-	else
-		iio_channel_disable(channel);
 
 	if (tx_channels_check_valid_setup(dbuf))
 			g_signal_emit_by_name(dbuf->buffer_fchooser_btn, "file-set", NULL);
@@ -1350,7 +1359,6 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 	guint active;
 	double min_scale;
 	bool scale_available_mode;
-	bool tx_valid_setup;
 	int i;
 
 	if (!box)
@@ -1554,11 +1562,9 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 		}
 		break;
 	case DDS_BUFFER:
-		tx_valid_setup = tx_channels_check_valid_setup(&manager->dac_buffer_module);
 		if ((manager->dds_activated || manager->dds_disabled) && manager->dac_buffer_module.dac_buf_filename) {
 			manager->dds_disabled = false;
-			if (tx_valid_setup)
-				process_dac_buffer_file(manager, manager->dac_buffer_module.dac_buf_filename);
+			process_dac_buffer_file(manager, manager->dac_buffer_module.dac_buf_filename);
 		}
 
 		gtk_widget_hide(tx->ch_i.frame);
