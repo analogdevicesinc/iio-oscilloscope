@@ -105,6 +105,7 @@ struct dac_buffer {
 	GtkWidget *frame;
 	GtkWidget *buffer_fchooser_btn;
 	GtkWidget *tx_channels_view;
+	GtkTextBuffer *load_status_buf;
 };
 
 struct dac_data_manager {
@@ -575,6 +576,31 @@ static int tx_enabled_channels_count(GtkTreeView *treeview, unsigned *enabled_ma
 	return num_enabled;
 }
 
+static void enable_dds_channels(struct dac_buffer *db)
+{
+	GtkTreeView *treeview = GTK_TREE_VIEW(db->tx_channels_view);
+	GtkTreeIter iter;
+	gboolean enabled;
+	gint ch_index = 0;
+
+	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
+	gboolean next_iter = gtk_tree_model_get_iter_first(model, &iter);
+
+	while (next_iter) {
+		gtk_tree_model_get(model, &iter, TX_CHANNEL_ACTIVE, &enabled,
+			TX_CHANNEL_REF_INDEX, &ch_index, -1);
+
+		struct iio_channel *channel = iio_device_get_channel(db->dac_with_scanelems, ch_index);
+
+		if (enabled)
+			iio_channel_enable(channel);
+		else
+			iio_channel_disable(channel);
+
+		next_iter = gtk_tree_model_iter_next(model, &iter);
+	}
+}
+
 static void enable_dds(struct dac_data_manager *manager, bool on_off)
 {
 	struct iio_device *dac1 = NULL;
@@ -608,7 +634,7 @@ static void enable_dds(struct dac_data_manager *manager, bool on_off)
 	}
 }
 
-static void process_dac_buffer_file (struct dac_data_manager *manager, const char *file_name)
+static int process_dac_buffer_file (struct dac_data_manager *manager, const char *file_name, char **stat_msg)
 {
 	int ret, size = 0, s_size;
 	struct stat st;
@@ -616,18 +642,12 @@ static void process_dac_buffer_file (struct dac_data_manager *manager, const cha
 	FILE *infile;
 	unsigned int buffer_channels = 0;
 	unsigned int major, minor;
-	unsigned int i;
 	struct utsname uts;
-	bool tx_valid_setup;
 
 	if (manager->dds_buffer) {
 		iio_buffer_destroy(manager->dds_buffer);
 		manager->dds_buffer = NULL;
 	}
-
-	tx_valid_setup = tx_channels_check_valid_setup(&manager->dac_buffer_module);
-	if (!tx_valid_setup)
-		return;
 
 	if (manager->is_local) {
 		uname(&uts);
@@ -647,43 +667,46 @@ static void process_dac_buffer_file (struct dac_data_manager *manager, const cha
 	}
 
 	ret = analyse_wavefile(manager, file_name, &buf, &size, buffer_channels);
-	if (ret == -3)
-		return;
+	if (ret == -3) {
+		if (stat_msg)
+			*stat_msg = g_strdup_printf("No file selected.");
+		return -EINVAL;
+	}
 
 	if (ret == -1 || buf == NULL) {
 		stat(file_name, &st);
 		buf = malloc(st.st_size);
-		if (buf == NULL)
-			return;
+		if (buf == NULL) {
+			if (stat_msg)
+				*stat_msg = g_strdup_printf("Internal memory allocation failed.");
+			return -errno;
+		}
 		infile = fopen(file_name, "r");
 		size = fread(buf, 1, st.st_size, infile);
 		fclose(infile);
 	}
 
 	enable_dds(manager, false);
+	enable_dds_channels(&manager->dac_buffer_module);
 
 	struct iio_device *dac = manager->dac_buffer_module.dac_with_scanelems;
 
-	for (i = 0; i < iio_device_get_channels_count(dac); i++) {
-		struct iio_channel *chn = iio_device_get_channel(dac, i);
-		if (dac_data_manager_get_tx_channel_state(manager, i))
-			iio_channel_enable(chn);
-		else
-			iio_channel_disable(chn);
-	}
-
 	s_size = iio_device_get_sample_size(dac);
 	if (!s_size) {
-		fprintf(stderr, "Unable to create buffer due to sample size\n");
+		fprintf(stderr, "Unable to create buffer due to sample size");
+		if (stat_msg)
+			*stat_msg = g_strdup_printf("Unable to create buffer due to sample size");
 		free(buf);
-		return;
+		return -EINVAL;
 	}
 
 	manager->dds_buffer = iio_device_create_buffer(dac, size / s_size, true);
 	if (!manager->dds_buffer) {
 		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
+		if (stat_msg)
+			*stat_msg = g_strdup_printf("Unable to create iio buffer: %s", strerror(errno));
 		free(buf);
-		return;
+		return -errno;
 	}
 
 	memcpy(iio_buffer_start(manager->dds_buffer), buf,
@@ -696,8 +719,11 @@ static void process_dac_buffer_file (struct dac_data_manager *manager, const cha
 	if (manager->dac_buffer_module.dac_buf_filename)
 		free(manager->dac_buffer_module.dac_buf_filename);
 	 manager->dac_buffer_module.dac_buf_filename = tmp;
-	printf("Waveform loaded: buffer_channels %d size %d sample_size %d \n",
-	       buffer_channels, size, s_size);
+
+	if (stat_msg)
+		*stat_msg = g_strdup_printf("Waveform loaded successfully.");
+
+	return 0;
 }
 
 static bool tx_channels_check_valid_setup(struct dac_buffer *dbuf)
@@ -705,19 +731,11 @@ static bool tx_channels_check_valid_setup(struct dac_buffer *dbuf)
 	struct iio_device *dac = dbuf->dac_with_scanelems;
 	int enabled_channels;
 	unsigned mask;
-	bool valid;
 
 	enabled_channels = tx_enabled_channels_count(GTK_TREE_VIEW(dbuf->tx_channels_view), &mask);
-	if (dma_valid_selection(iio_device_get_name(dac) ?: iio_device_get_id(dac),
-			mask, dbuf->scan_elements_count) && enabled_channels > 0) {
-		valid = true;
-		gtk_widget_set_sensitive(dbuf->buffer_fchooser_btn, true);
-	} else {
-		valid = false;
-		gtk_widget_set_sensitive(dbuf->buffer_fchooser_btn, false);
-	}
 
-	return valid;
+	return (dma_valid_selection(iio_device_get_name(dac) ?: iio_device_get_id(dac),
+			mask, dbuf->scan_elements_count) && enabled_channels > 0);
 }
 
 static void tx_channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, struct dac_buffer *dbuf)
@@ -737,18 +755,31 @@ static void tx_channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, 
 	active = !active;
 	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, TX_CHANNEL_ACTIVE, active, -1);
 	gtk_tree_path_free(path);
-
-	if (tx_channels_check_valid_setup(dbuf))
-			g_signal_emit_by_name(dbuf->buffer_fchooser_btn, "file-set", NULL);
-
 }
 
 static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, struct dac_buffer *dbuf)
 {
-	char *file_name = gtk_file_chooser_get_filename(chooser);
-	if (file_name)
-		process_dac_buffer_file(dbuf->parent, (const char *)file_name);
-	dbuf->dac_buf_filename = file_name;
+	dbuf->dac_buf_filename = gtk_file_chooser_get_filename(chooser);
+	gtk_text_buffer_set_text(dbuf->load_status_buf, "", -1);
+}
+
+static void waveform_load_button_clicked_cb (GtkButton *btn, struct dac_buffer *dbuf)
+{
+	gchar *filename = dbuf->dac_buf_filename;
+	gchar *status_msg;
+
+	if (!filename || g_str_has_suffix(filename, "(null)")) {
+		status_msg = g_strdup_printf("No file selected.");
+	} else if (!g_str_has_suffix(filename, ".txt") && !g_str_has_suffix(filename, ".mat")) {
+		status_msg = g_strdup_printf("Invalid file type. Please select a .txt or .mat file.");
+	} else if (!tx_channels_check_valid_setup(dbuf)) {
+		status_msg = g_strdup_printf("Invalid channel selection.");
+	} else {
+		process_dac_buffer_file(dbuf->parent, (const char *)filename, &status_msg);
+	}
+
+	gtk_text_buffer_set_text(dbuf->load_status_buf, status_msg, -1);
+		g_free(status_msg);
 }
 
 static GtkWidget *spin_button_create(double min, double max, double step, unsigned digits)
@@ -1019,18 +1050,26 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	GtkWidget *dacbuf_table;
 	GtkWidget *fchooser_frame;
 	GtkWidget *fchooser_btn;
+	GtkWidget *fileload_btn;
+	GtkWidget *load_status_txt;
 	GtkWidget *tx_channels_frame;
+	GtkTextBuffer *load_status_tb;
 
 	dacbuf_frame = frame_with_table_create("<b>DAC Buffer Settings</b>", 2, 1);
 	dacbuf_align = gtk_bin_get_child(GTK_BIN(dacbuf_frame));
 	dacbuf_table = gtk_bin_get_child(GTK_BIN(dacbuf_align));
 	fchooser_btn = gtk_file_chooser_button_new("Select a File",
 			GTK_FILE_CHOOSER_ACTION_OPEN);
+	fileload_btn = gtk_button_new_with_label("Load");
+	load_status_tb = gtk_text_buffer_new(NULL);
+	load_status_txt = gtk_text_view_new_with_buffer(load_status_tb);
 
 	gtk_alignment_set_padding(GTK_ALIGNMENT(dacbuf_align), 5, 5, 5, 5);
 
-	fchooser_frame = frame_with_table_create("<b>File Selection</b>", 1, 1);
+	fchooser_frame = frame_with_table_create("<b>File Selection</b>", 2, 2);
 	tx_channels_frame = frame_with_table_create("<b>DAC Channels</b>", 1, 1);
+
+	gtk_text_view_set_editable(GTK_TEXT_VIEW(load_status_txt), false);
 
 	GtkWidget *align, *table;
 
@@ -1041,6 +1080,10 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 0, 0, 0);
 	gtk_table_attach(GTK_TABLE(table), fchooser_btn,
 		0, 1, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
+	gtk_table_attach(GTK_TABLE(table), fileload_btn,
+		1, 2, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
+	gtk_table_attach(GTK_TABLE(table), load_status_txt,
+		0, 2, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
 
 	align = gtk_bin_get_child(GTK_BIN(tx_channels_frame));
 	table = gtk_bin_get_child(GTK_BIN(align));
@@ -1055,14 +1098,17 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	gtk_table_attach(GTK_TABLE(dacbuf_table), fchooser_frame,
 		0, 1, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(dacbuf_table), tx_channels_frame,
-		0, 1, 1, 2, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
+		0, 1, 2, 3, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
 
 	d_buffer->frame = dacbuf_frame;
+	d_buffer->load_status_buf = load_status_tb;
 	d_buffer->tx_channels_view = gtk_bin_get_child(GTK_BIN(channels_scrolled_view));
 	d_buffer->buffer_fchooser_btn = fchooser_btn;
 
 	g_signal_connect(fchooser_btn, "file-set",
 		G_CALLBACK(dac_buffer_config_file_set_cb), d_buffer);
+	g_signal_connect(fileload_btn, "clicked",
+		G_CALLBACK(waveform_load_button_clicked_cb), d_buffer);
 
 	gtk_widget_show(dacbuf_frame);
 
@@ -1086,7 +1132,7 @@ static void gui_manager_create(struct dac_data_manager *manager)
 			FALSE, TRUE, 0);
 
 	gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, TRUE, 0);
-	gtk_box_pack_start(GTK_BOX(hbox), gui_dac_buffer_create(&manager->dac_buffer_module),
+	gtk_box_pack_start(GTK_BOX(vbox), gui_dac_buffer_create(&manager->dac_buffer_module),
 			FALSE, TRUE, 0);
 
 	manager->container = hbox;
@@ -1564,7 +1610,6 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 	case DDS_BUFFER:
 		if ((manager->dds_activated || manager->dds_disabled) && manager->dac_buffer_module.dac_buf_filename) {
 			manager->dds_disabled = false;
-			process_dac_buffer_file(manager, manager->dac_buffer_module.dac_buf_filename);
 		}
 
 		gtk_widget_hide(tx->ch_i.frame);
@@ -1970,7 +2015,9 @@ void dac_data_manager_set_buffer_chooser_filename(struct dac_data_manager *manag
 
 	gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(fchooser), filename);
 	g_signal_emit_by_name(fchooser, "file-set", NULL);
+	waveform_load_button_clicked_cb(NULL, &manager->dac_buffer_module);
 }
+
 char *dac_data_manager_get_buffer_chooser_filename(struct dac_data_manager *manager)
 {
 	if (!manager)
