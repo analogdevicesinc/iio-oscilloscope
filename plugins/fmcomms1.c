@@ -82,6 +82,8 @@ static const char *adc_freq_file;
 
 static int num_tx_pll, num_rx_pll;
 
+static bool can_update_widgets;
+
 typedef struct _Dialogs Dialogs;
 struct _Dialogs
 {
@@ -1641,6 +1643,13 @@ static void load_profile(const char *ini_fn)
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gain_locked), atoi(value));
 		free(value);
 	}
+
+	if (can_update_widgets) {
+		tx_update_values();
+		rx_update_values();
+		cal_update_values();
+		dac_data_manager_update_iio_widgets(dac_tx_manager);
+	}
 }
 
 static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
@@ -1920,6 +1929,8 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
+
+	can_update_widgets = true;
 
 	return fmcomms1_panel;
 }
