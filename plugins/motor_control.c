@@ -23,8 +23,13 @@
 #include "../iio_widget.h"
 #include "../osc_plugin.h"
 #include "../config.h"
+#include "../libini2.c"
 
+#define THIS_DRIVER "Motor Control"
 #define AD_MC_CTRL "ad-mc-ctrl"
+#define AD_MC_ADV_CTRL "ad-mc-adv-ctrl"
+
+#define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 extern int count_char_in_string(char c, const char *s);
 
@@ -67,6 +72,27 @@ static int CURRENT_I_NUM_FRAC_BITS = 2;
 static int OPEN_LOOP_BIAS_NUM_FRAC_BITS = 14;
 static int OPEN_LOOP_SCALAR_NUM_FRAC_BITS = 16;
 static int OENCODER_NUM_FRAC_BITS = 14;
+
+static bool can_update_widgets;
+
+static const char *motor_control_sr_attribs[] = {
+	AD_MC_CTRL".mc_ctrl_run",
+	AD_MC_CTRL".mc_ctrl_delta",
+	AD_MC_CTRL".mc_ctrl_direction",
+	AD_MC_CTRL".mc_ctrl_matlab",
+	"pwm",
+	"gpo.1",
+	"gpo.2",
+	"gpo.3",
+	"gpo.4",
+	"gpo.5",
+	"gpo.6",
+	"gpo.7",
+	"gpo.8",
+	"gpo.9",
+	"gpo.10",
+	"gpo.11",
+};
 
 static void tx_update_values(void)
 {
@@ -357,6 +383,44 @@ static void advanced_controller_init(GtkBuilder *builder)
 	g_signal_connect(G_OBJECT(zero_offset), "output", G_CALLBACK(spin_output_cb), &OENCODER_NUM_FRAC_BITS);
 }
 
+static void set_gpo_state(const char *ini_fn, unsigned i)
+{
+	char buf[1024], *value;
+
+	snprintf(buf, sizeof(buf), "gpo.%i", i);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, buf);
+	if (value) {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gpo[i - 1]), !!atoi(value));
+		free(value);
+	}
+}
+
+static void load_profile(const char *ini_fn)
+{
+	char *value;
+	int i;
+
+	if (pid_dev) {
+		update_from_ini(ini_fn, THIS_DRIVER, pid_dev, motor_control_sr_attribs,
+			ARRAY_SIZE(motor_control_sr_attribs));
+	}
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "pwm");
+	if (value) {
+		if (value[0]) {
+			gtk_entry_set_text(GTK_ENTRY(pwm_pid), value);
+			gtk_spin_button_update(GTK_SPIN_BUTTON(pwm_pid));
+		}
+		free(value);
+	}
+
+	for (i = 1; i < 12; i++)
+		set_gpo_state(ini_fn, i);
+
+	if (can_update_widgets)
+		tx_update_values();
+}
+
 static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
@@ -369,8 +433,8 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	if (!ctx)
 		return NULL;
 
-	pid_dev = iio_context_find_device(ctx, "ad-mc-ctrl");
-	adv_dev = iio_context_find_device(ctx, "ad-mc-adv-ctrl");
+	pid_dev = iio_context_find_device(ctx, AD_MC_CTRL);
+	adv_dev = iio_context_find_device(ctx, AD_MC_ADV_CTRL);
 
 	builder = gtk_builder_new();
 	if (!gtk_builder_add_from_file(builder, "motor_control.glade", NULL))
@@ -390,6 +454,12 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 		advanced_controller_init(builder);
 	else
 		gtk_widget_hide(advanced_page);
+
+	if (ini_fn)
+		load_profile(ini_fn);
+
+	/* Update all widgets with current values */
+	tx_update_values();
 
 	/* Connect signals. */
 
@@ -437,77 +507,58 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	controllers_notebook_page_switched_cb(GTK_NOTEBOOK(controllers_notebook),
 		gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), p), p, NULL);
 
+	can_update_widgets = true;
+
 	return motor_control_panel;
 }
 
-#define SYNC_RELOAD "SYNC_RELOAD"
-
-static char *handle_item(struct osc_plugin *plugin, const char *attrib,
-			 const char *value)
+static void save_widgets_to_ini(FILE *f)
 {
-	unsigned item_type = count_char_in_string('.', attrib);
-	bool unhandled_item = false;
-	gchar **item_elems = NULL;
-	char *buf;
-	int i;
-	bool state;
+	char buf[0x1000];
 
-	item_elems = g_strsplit(attrib, ".", 0);
+	snprintf(buf, sizeof(buf), "pwm = %s\n"
+			"gpo.1 = %i\n"
+			"gpo.2 = %i\n"
+			"gpo.3 = %i\n"
+			"gpo.4 = %i\n"
+			"gpo.5 = %i\n"
+			"gpo.6= %i\n"
+			"gpo.7 = %i\n"
+			"gpo.8 = %i\n"
+			"gpo.9 = %i\n"
+			"gpo.10 = %i\n"
+			"gpo.11 = %i\n",
+			(char *)gtk_entry_get_text(GTK_ENTRY(pwm_pid)),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[0])),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[1])),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[2])),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[3])),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[4])),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[5])),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[6])),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[7])),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[8])),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[9])),
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[10])));
+	fwrite(buf, 1, strlen(buf), f);
+}
 
-	switch (item_type) {
-	case 0:
-		if (!strcmp(attrib, SYNC_RELOAD)) {
-			tx_update_values();
-		} else if (!strcmp(attrib, "pwm")) {
-			if (value) {
-				gtk_entry_set_text(GTK_ENTRY(pwm_pid), value);
-				gtk_spin_button_update(GTK_SPIN_BUTTON(pwm_pid));
-			} else {
-				return (char *)gtk_entry_get_text(GTK_ENTRY(pwm_pid));
-			}
-		} else {
-			unhandled_item = true;
+static void save_profile(const char *ini_fn)
+{
+	FILE *f = fopen(ini_fn, "a");
+	if (f) {
+		if (pid_dev) {
+			save_to_ini(f, THIS_DRIVER, pid_dev, motor_control_sr_attribs,
+				ARRAY_SIZE(motor_control_sr_attribs));
 		}
-		break;
-	case 1:
-		if (!strcmp(item_elems[0], "gpo")) {
-			i = atoi(item_elems[1]);
-			if (i < 1 || i > (sizeof(gpo) / sizeof(gpo[0]))) {
-				unhandled_item = true;
-				break;
-			}
-			i--;
-			if (value) {
-				state = (atoi(value) == 0) ? false : true;
-				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gpo[i]), state);
-			} else {
-				buf = malloc (10);
-				sprintf(buf, "%i", gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[i])));
-				return buf;
-			}
-		} else {
-			if (value)
-				unhandled_item = true;
-		}
-		break;
-	default:
-		unhandled_item = true;
-		break;
-	}
-
-	g_strfreev(item_elems);
-	if (unhandled_item) {
-		printf("Unhandled tokens in ini file,\n"
-			"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-			"Motor Control", attrib, value);
-		return "FAIL";
-	} else {
-		return NULL;
+		save_widgets_to_ini(f);
+		fclose(f);
 	}
 }
 
 static void context_destroy(const char *ini_fn)
 {
+	save_profile(ini_fn);
 	iio_context_destroy(ctx);
 }
 
@@ -515,35 +566,15 @@ static bool motor_control_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	return !!iio_context_find_device(osc_ctx, "ad-mc-ctrl") &&
-		!!iio_context_find_device(osc_ctx, "ad-mc-adv-ctrl");
+	return !!iio_context_find_device(osc_ctx, AD_MC_CTRL) ||
+		!!iio_context_find_device(osc_ctx, AD_MC_ADV_CTRL);
 }
 
-static const char *motor_control_sr_attribs[] = {
-	AD_MC_CTRL".mc_ctrl_run",
-	AD_MC_CTRL".mc_ctrl_delta",
-	AD_MC_CTRL".mc_ctrl_direction",
-	AD_MC_CTRL".mc_ctrl_matlab",
-	"pwm",
-	"gpo.1",
-	"gpo.2",
-	"gpo.3",
-	"gpo.4",
-	"gpo.5",
-	"gpo.6",
-	"gpo.7",
-	"gpo.8",
-	"gpo.9",
-	"gpo.10",
-	"gpo.11",
-	SYNC_RELOAD,
-};
-
 struct osc_plugin plugin = {
-	.name = "Motor Control",
+	.name = THIS_DRIVER,
 	.identify = motor_control_identify,
 	.init = motor_control_init,
-	.save_restore_attribs = motor_control_sr_attribs,
-	.handle_item = handle_item,
+	.save_profile = save_profile,
+	.load_profile = load_profile,
 	.destroy = context_destroy,
 };
