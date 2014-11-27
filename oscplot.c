@@ -27,6 +27,7 @@
 #include "config.h"
 #include "iio_widget.h"
 #include "datatypes.h"
+#include "osc_plugin.h"
 
 /* add backwards compat for <matio-1.5.0 */
 #if MATIO_MAJOR_VERSION == 1 && MATIO_MINOR_VERSION < 5
@@ -1303,8 +1304,12 @@ static void channels_transform_assignment(GtkTreeModel *model,
 			} else if (prm->enabled_channels == 2) {
 				if (!prm->ch_pair_ref)
 					prm->ch_pair_ref = ch_ref;
-				else
-					add_transform_to_list(prm->plot, prm->ch_pair_ref, ch_ref, NULL, NULL, COMPLEX_FFT_TRANSFORM, settings);
+				else {
+					if (plugin_installed("FMComms6"))
+						add_transform_to_list(prm->plot, ch_ref, prm->ch_pair_ref, NULL, NULL, COMPLEX_FFT_TRANSFORM, settings);
+					else
+						add_transform_to_list(prm->plot, prm->ch_pair_ref, ch_ref, NULL, NULL, COMPLEX_FFT_TRANSFORM, settings);
+				}
 			}
 			break;
 		case XY_PLOT:
