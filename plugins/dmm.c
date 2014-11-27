@@ -86,7 +86,7 @@ static double read_double_attr(const struct iio_channel *chn, const char *name)
 		ret = iio_channel_attr_read(chn, attr, buf, sizeof(buf));
 		if (ret < 0)
 			return -1.0;
-		return strtod(buf, NULL);
+		return g_strtod(buf, NULL);
 	}
 
 	return -1.0;

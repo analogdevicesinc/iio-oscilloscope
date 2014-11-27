@@ -89,7 +89,7 @@ static void iio_spin_button_update_value(struct iio_widget *widget,
 	mag = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget->widget));
 	gtk_spin_button_get_range(GTK_SPIN_BUTTON(widget->widget), &min, &max);
 
-	freq = strtod(src, &end);
+	freq = g_strtod(src, &end);
 	if (end == src)
 		return;
 

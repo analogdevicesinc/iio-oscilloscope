@@ -948,7 +948,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		updn_freq_span = 2;
 	} else {
 		errno = 0;
-		updn_freq_span = strtod(env_freq_span, NULL);
+		updn_freq_span = g_strtod(env_freq_span, NULL);
 		if (errno)
 			updn_freq_span = 2;
 	}
