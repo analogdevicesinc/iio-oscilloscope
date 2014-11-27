@@ -380,6 +380,8 @@ static void up_down_converter_toggled_cb(GtkToggleButton *button, gpointer data)
 {
 	static gint rx_updn_hid, tx_updn_hid;
 	static gdouble lo_min, lo_max;
+	static void (*rx_lo_update_value)(struct iio_widget *, const char *, size_t);
+	static void (*tx_lo_update_value)(struct iio_widget *, const char *, size_t);
 
 	if (gtk_toggle_button_get_active(button)) {
 		iio_spin_button_progress_deactivate(&rx_widgets[rx_lo]);
@@ -391,9 +393,15 @@ static void up_down_converter_toggled_cb(GtkToggleButton *button, gpointer data)
 		gtk_spin_button_get_range(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget), &lo_min, &lo_max);
 		gtk_spin_button_set_range(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget), 1, 100);
 		gtk_spin_button_set_range(GTK_SPIN_BUTTON(tx_widgets[tx_lo].widget), 1, 100);
+		rx_lo_update_value = rx_widgets[rx_lo].update_value;
+		tx_lo_update_value = tx_widgets[tx_lo].update_value;
+		rx_widgets[rx_lo].update_value = NULL;
+		tx_widgets[tx_lo].update_value = NULL;
 	} else {
 		g_signal_handler_disconnect(rx_widgets[rx_lo].widget, rx_updn_hid);
 		g_signal_handler_disconnect(tx_widgets[tx_lo].widget, tx_updn_hid);
+		rx_widgets[rx_lo].update_value = rx_lo_update_value;
+		tx_widgets[tx_lo].update_value = tx_lo_update_value;
 		iio_spin_button_progress_activate(&rx_widgets[rx_lo]);
 		iio_spin_button_progress_activate(&tx_widgets[tx_lo]);
 		g_signal_emit_by_name(rx_widgets[rx_lo].widget,
