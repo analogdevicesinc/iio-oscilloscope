@@ -374,7 +374,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			 */
 			matfp = Mat_Open(file_name, MAT_ACC_RDONLY);
 			if (matfp == NULL) {
-				fprintf(stderr, "ERROR: Could no open %s as a matlab file\n", file_name);
+				fprintf(stderr, "ERROR: Could not open %s as a matlab file\n", file_name);
 				return WAVEFORM_MAT_INVALID_FORMAT;
 			}
 
