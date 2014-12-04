@@ -102,6 +102,8 @@ static gboolean draw_block_diagram(GtkWidget *widget, cairo_t *cr, GtkImage *blo
 	redraw_block = 0;
 
 	sprintf(name, "./block_diagrams/%s", block_filename[block_num]);
+	if (access(name, F_OK) != 0)
+		sprintf(name, "%s/block_diagrams/%s", OSC_PLUGIN_PATH, block_filename[block_num]);
 
 	if (strstr(block_filename[block_num], ".svg"))
 		pixbuf = gdk_pixbuf_new_from_file_at_scale(name, x_big , y_big, false, &err);
