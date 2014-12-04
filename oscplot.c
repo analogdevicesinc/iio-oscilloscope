@@ -272,6 +272,8 @@ struct _OscPlotPrivate
 
 	bool profile_loaded_scale;
 
+	bool save_as_png;
+
 	char *saveas_filename;
 
 	struct int_and_plot fix_marker;
@@ -2245,6 +2247,49 @@ static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 	g_signal_emit(plot, oscplot_signals[DESTROY_EVENT_SIGNAL], 0);
 }
 
+static GdkPixbuf * window_get_screenshot_pixbuf(GtkWidget *window)
+{
+	GdkWindow *gdk_w;
+	gint width, height;
+
+	gdk_w = gtk_widget_get_window(window);
+	width = gdk_window_get_width(gdk_w);
+	height = gdk_window_get_height(gdk_w);
+
+	return gdk_pixbuf_get_from_drawable(NULL, GDK_DRAWABLE(gdk_w),
+			gdk_colormap_get_system(), 0, 0, 0, 0, width, height);
+}
+
+static void screenshot_saveas_png(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GdkPixbuf *pixbuf;
+	char *filename;
+	GError *err = NULL;
+	gboolean ret = true;
+
+	filename = priv->saveas_filename;
+	if (!filename) {
+		printf("error invalid filename");
+		return;
+	}
+
+	pixbuf = window_get_screenshot_pixbuf(priv->window);
+	if (pixbuf)
+		ret = gdk_pixbuf_save(pixbuf, filename, "png", &err, NULL);
+	else
+		printf("error getting the pixbug of the Capture Plot window\n");
+
+
+	if (!ret) {
+		printf("error creating %s\n", filename);
+		if (err)
+			printf("error(%d):%s\n", err->code, err->message);
+	}
+
+	return;
+}
+
 static void copy_channel_state_to_selection_channel(GtkTreeModel *model,
 		GtkTreeIter *iter, void *user_data)
 {
@@ -2364,11 +2409,6 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 	char tmp[100];
 	mat_dim dims[2] = {-1, 1};
 	double freq;
-	GdkPixbuf *pixbuf;
-	GError *err=NULL;
-	GdkColormap *cmap;
-	gint width, height;
-	gboolean ret = true;
 	char *name;
 	gchar *active_device;
 	int *save_channels_mask;
@@ -2486,17 +2526,8 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 					strcpy(name, filename);
 				else
 					sprintf(name, "%s.png", filename);
-			cmap = gdk_window_get_colormap(
-					GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)));
-			gdk_drawable_get_size(GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
-					&width, &height);
-			pixbuf = gdk_pixbuf_get_from_drawable(NULL,
-					GDK_DRAWABLE(gtk_widget_get_window(priv->capture_graph)),
-					cmap, 0, 0, 0, 0, width, height);
-			if (pixbuf)
-				ret = gdk_pixbuf_save(pixbuf, name, "png", &err, NULL);
-			if (!pixbuf || !ret)
-				printf("error creating %s\n", filename);
+			priv->save_as_png = true;
+
 			break;
 
 		case SAVE_MAT:
@@ -2594,6 +2625,16 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
 	}
 
 	gtk_widget_hide(priv->saveas_dialog);
+
+	if (priv->save_as_png) {
+		int i = 0, timeout = 1000;
+		while (gtk_events_pending() && i < timeout) {
+			i++;
+			gtk_main_iteration();
+		}
+		screenshot_saveas_png(plot);
+		priv->save_as_png = false;
+	}
 }
 
 static void enable_auto_scale_cb(GtkToggleButton *button, OscPlot *plot)
