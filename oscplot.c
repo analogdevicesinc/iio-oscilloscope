@@ -4297,6 +4297,7 @@ static void create_plot(OscPlot *plot)
 	 g_object_bind_property_full(priv->plot_domain, "active", priv->plot_type, "visible",
 		0, domain_is_time, NULL, NULL, NULL);
 
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), 400);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->fft_size_widget), 2);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_type), 0);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_max), 1000);
