@@ -806,16 +806,12 @@ static void plugin_make_detachable(struct detachable_plugin *d_plugin)
 	d_plugin->detach_attach_button = plugin_tab_add_detach_btn(page, d_plugin);
 }
 
-static void attach_plugin(GtkToolButton *btn, gpointer data)
+static void attach_plugin(GtkWidget *window, struct detachable_plugin *d_plugin)
 {
-	GtkWidget *window;
 	GtkWidget *plugin_page;
 	GtkWidget *detach_btn;
-	struct detachable_plugin *d_plugin = (struct detachable_plugin *)data;
 	const struct osc_plugin *plugin = d_plugin->plugin;
 	gint plugin_page_index;
-
-	window = (GtkWidget *)gtk_widget_get_toplevel(GTK_WIDGET(btn));
 
 	GtkWidget *hbox = NULL;
 	GList *hbox_elems = NULL;
@@ -836,6 +832,17 @@ static void attach_plugin(GtkToolButton *btn, gpointer data)
 		plugin->update_active_page(plugin_page_index, FALSE);
 	d_plugin->detached_state = FALSE;
 	d_plugin->detach_attach_button = detach_btn;
+}
+
+static void plugin_attach_button_cb(GtkToolButton *btn, gpointer data)
+{
+	attach_plugin(gtk_widget_get_toplevel(GTK_WIDGET(btn)),
+			(struct detachable_plugin *)data);
+}
+
+static void debug_window_delete_cb(GtkWidget *w, GdkEvent *e, gpointer data)
+{
+	attach_plugin(w, (struct detachable_plugin *)data);
 }
 
 static GtkWidget * extract_label_from_box(GtkWidget *box)
@@ -914,7 +921,9 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	gtk_container_add(GTK_CONTAINER(window), hbox);
 
 	g_signal_connect(attach_button, "clicked",
-			G_CALLBACK(attach_plugin), (gpointer)d_plugin);
+			G_CALLBACK(plugin_attach_button_cb), (gpointer)d_plugin);
+	g_signal_connect(window, "delete-event",
+			G_CALLBACK(debug_window_delete_cb), (gpointer)d_plugin);
 
 	if (plugin->update_active_page)
 		plugin->update_active_page(-1, TRUE);
