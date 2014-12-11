@@ -72,6 +72,7 @@ static unsigned int num_glb, num_tx, num_rx;
 static unsigned int rx_lo, tx_lo;
 static unsigned int rx_sample_freq, tx_sample_freq;
 static double updn_freq_span;
+static double updn_freq_mix_sign;
 static char last_fir_filter[PATH_MAX];
 static char *rx_fastlock_store_name, *rx_fastlock_recall_name;
 static char *tx_fastlock_store_name, *tx_fastlock_recall_name;
@@ -335,8 +336,8 @@ static int split_target_lo_freq(double target_freq, double *ext_pll, double *ad9
 	large_freq = get_span_multiple_from(target_freq, span);
 	small_freq = target_freq - large_freq;
 
-	*ad9361_lo = center_freq + small_freq;
-	*ext_pll = center_freq - large_freq;
+	*ad9361_lo = center_freq + small_freq * updn_freq_mix_sign;
+	*ext_pll = center_freq - large_freq * updn_freq_mix_sign;
 
 	return 0;
 }
@@ -943,6 +944,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	}
 
 	const char *env_freq_span = getenv("OSC_UPDN_FREQ_SPAN");
+	const char *env_freq_mix_sign = getenv("OSC_UPDN_FREQ_MIX_SIGN");
 
 	if(!env_freq_span) {
 		updn_freq_span = 2;
@@ -951,6 +953,15 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		updn_freq_span = g_strtod(env_freq_span, NULL);
 		if (errno)
 			updn_freq_span = 2;
+	}
+
+	if(!env_freq_mix_sign) {
+		updn_freq_mix_sign = 1;
+	} else {
+		if (!strncmp(env_freq_mix_sign, "-", 1))
+			updn_freq_mix_sign = -1;
+		else
+			updn_freq_mix_sign = 1;
 	}
 
 	builder = gtk_builder_new();
