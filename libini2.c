@@ -2,7 +2,6 @@
 
 #include "libini/ini.h"
 
-#include <arpa/inet.h>
 #include <iio.h>
 #include <stdio.h>
 #include <string.h>

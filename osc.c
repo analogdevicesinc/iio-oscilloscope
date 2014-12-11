@@ -1239,7 +1239,11 @@ static bool force_plugin(const char *name)
 	if (strcmp(force_plugin, "all") == 0)
 		return true;
 
+#ifdef __GLIBC__
 	pos = strcasestr(force_plugin, name);
+#else
+	pos = strstr(force_plugin, name);
+#endif
 	if (pos) {
 		switch (*(pos + strlen(name))) {
 		case ' ':
@@ -1370,8 +1374,10 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 			const char *ini_fn;
 		} *params;
 
+#ifdef _DIRENT_HAVE_D_TYPE
 		if (ent->d_type != DT_REG)
 			continue;
+#endif
 		if (!str_endswith(ent->d_name, ".so"))
 			continue;
 		snprintf(buf, sizeof(buf), "%s/%s", plugin_dir, ent->d_name);
