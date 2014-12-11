@@ -18,9 +18,9 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <malloc.h>
-#include <values.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "../libini2.h"
 #include "../osc.h"
@@ -30,6 +30,10 @@
 #include "../eeprom.h"
 #include "scpi.h"
 #include "dac_data_manager.h"
+
+#ifndef MAXFLOAT
+#define MAXFLOAT HUGE
+#endif
 
 #define THIS_DRIVER "FMComms1"
 
@@ -627,6 +631,7 @@ static void display_cal(void *ptr)
 	const char *device_ref;
 	int ret, attempt = 0;
 	OscPlot *fft_plot;
+	double ln10 = log(10.0);
 
 	device_ref = plugin_get_device_by_reference("cf-ad9643-core-lpc");
 	if (!device_ref)
@@ -770,7 +775,7 @@ static void display_cal(void *ptr)
 						plugin_get_plot_marker_type(fft_plot, device_ref) == MARKER_IMAGE) {
 					if (attempt == 0)
 						gain = (span_I_set + span_I_set) / 2;
-					gain *= 1.0 / exp10((markers[0].y - cal_rx_level) / 20);
+					gain *= 1.0 / exp(ln10 * (double) ((markers[0].y - cal_rx_level) / 20));
 				}
 
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_gain_adj),

@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <iio.h>
 

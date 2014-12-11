@@ -18,10 +18,8 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <malloc.h>
-#include <values.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <sys/utsname.h>
 
 #include "../datatypes.h"
 #include "../osc.h"
