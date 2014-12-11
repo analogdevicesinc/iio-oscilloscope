@@ -149,7 +149,9 @@ gint main (int argc, char **argv)
 
 	signal(SIGTERM, sigterm);
 	signal(SIGINT, sigterm);
+#ifndef __MINGW32__
 	signal(SIGHUP, sigterm);
+#endif
 
 	if (profile && strncmp(profile, "-", 1) == 0)
 		profile = NULL;

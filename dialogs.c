@@ -22,6 +22,10 @@
 #include "osc.h"
 #include "config.h"
 
+#if defined(FRU_FILES) && !defined(__linux__)
+#undef FRU_FILES
+#endif
+
 typedef struct _Dialogs Dialogs;
 struct _Dialogs
 {

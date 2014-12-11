@@ -12,6 +12,10 @@ CC := $(CROSS_COMPILE)gcc
 SYSROOT := $(shell $(CC) -print-sysroot)
 MULTIARCH := $(shell $(CC) -print-multiarch)
 
+WITH_MINGW := $(if $(shell echo | $(CC) -dM -E - |grep __MINGW32__),y)
+EXPORT_SYMBOLS := -Wl,--export-all-symbols
+EXPORT_SYMBOLS := $(if $(WITH_MINGW),$(EXPORT_SYMBOLS))
+
 PKG_CONFIG_PATH := $(SYSROOT)/usr/share/pkgconfig:$(SYSROOT)/usr/lib/pkgconfig:$(SYSROOT)/usr/lib/$(MULTIARCH)/pkgconfig
 PKG_CONFIG := env PKG_CONFIG_SYSROOT_DIR="$(SYSROOT)" \
 	PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" pkg-config
@@ -22,12 +26,13 @@ LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 	-L$(SYSROOT)/usr/lib -lmatio -lz -lm
 
 CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
-	-I$(SYSROOT)/usr/include -fPIC \
+	-I$(SYSROOT)/usr/include $(if $(WITH_MINGW),,-fPIC) \
 	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
 
+# TODO: Make the debug and scpi plugins available on MinGW
 PLUGINS=\
 	plugins/fmcomms1.so \
 	plugins/fmcomms2.so \
@@ -35,19 +40,19 @@ PLUGINS=\
 	plugins/fmcomms6.so \
 	plugins/fmcomms2_adv.so \
 	plugins/pr_config.so \
-	plugins/debug.so \
 	plugins/daq2.so \
 	plugins/AD5628_1.so \
 	plugins/AD7303.so \
 	plugins/cn0357.so \
 	plugins/motor_control.so \
 	plugins/dmm.so \
-	plugins/scpi.so
+	$(if $(WITH_MINGW),,plugins/debug.so) \
+	$(if $(WITH_MINGW),,plugins/scpi.so)
 
 all: osc $(PLUGINS)
 
 libosc.so: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o dac_data_manager.o
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@
+	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@ $(EXPORT_SYMBOLS)
 
 osc: libosc.so oscmain.o
 	$(CC) $+ $(LDFLAGS) -o $@

@@ -1300,7 +1300,9 @@ void * plugin_dlsym(const char *name, const char *symbol)
 	struct osc_plugin *plugin = NULL;
 	void *fcn;
 	char *buf;
+#ifndef __MINGW32__
 	Dl_info info;
+#endif
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		plugin = node->data;
@@ -1311,17 +1313,20 @@ void * plugin_dlsym(const char *name, const char *symbol)
 			if (buf) {
 				fprintf(stderr, "%s:%s(): found plugin %s, error looking up %s\n"
 						"\t%s\n", __FILE__, __func__, name, symbol, buf);
+#ifndef __MINGW32__
 				if (dladdr(__builtin_return_address(0), &info))
 					fprintf(stderr, "\tcalled from %s:%s()\n", info.dli_fname, info.dli_sname);
+#endif
 			}
 			return fcn;
 		}
 	}
 
 	fprintf(stderr, "%s:%s : No plugin with matching name %s\n", __FILE__, __func__, name);
+#ifndef __MINGW32__
 	if (dladdr(__builtin_return_address(0), &info))
 		fprintf(stderr, "\tcalled from %s:%s()\n", info.dli_fname, info.dli_sname);
-
+#endif
 	return NULL;
 }
 
