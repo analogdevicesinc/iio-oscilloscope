@@ -14,6 +14,7 @@
 
 #include "oscplot.h"
 
+#define DEFAULT_PROFILE_NAME ".osc_profile.ini"
 #define OSC_INI_SECTION "IIO Oscilloscope"
 #define CAPTURE_INI_SECTION OSC_INI_SECTION " - Capture Window"
 
@@ -103,5 +104,12 @@ gint fru_connect(void);
 void application_reload(struct iio_context *ctx);
 
 struct iio_context * osc_create_context(void);
+
+/* Private functions */
+extern int load_default_profile(char *filename, bool load_plugins);
+extern void do_init(struct iio_context *new_ctx);
+extern void create_default_plot(void);
+extern GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
+extern bool check_inifile(const char *filepath);
 
 #endif

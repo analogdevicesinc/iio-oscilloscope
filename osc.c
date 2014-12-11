@@ -38,9 +38,6 @@ GSList *plugin_list = NULL;
 
 gint capture_function = 0;
 gfloat plugin_fft_corr = 0.0;
-static GtkWidget *main_window;
-static GtkWidget *tooltips_en;
-static GtkWidget *infobar;
 static GList *plot_list = NULL;
 static int num_capturing_plots;
 G_LOCK_DEFINE_STATIC(buffer_full);
@@ -48,7 +45,10 @@ static gboolean stop_capture;
 static struct plugin_check_fct *setup_check_functions = NULL;
 static int num_check_fcts = 0;
 static GSList *dplugin_list = NULL;
-GtkWidget  *notebook;
+GtkWidget *notebook;
+GtkWidget *infobar;
+GtkWidget *tooltips_en;
+GtkWidget *main_window;
 
 struct iio_context *ctx;
 unsigned int num_devices = 0;
@@ -56,12 +56,10 @@ unsigned int num_devices = 0;
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
 static void plugin_restore_ini_state(const char *plugin_name,
 		const char *attribute, int value);
-static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
 static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
 static void capture_profile_save(const char *filename);
 static void load_profile(const char *filename, bool load_plugins);
-static void do_init(struct iio_context *new_ctx);
 
 static char * dma_devices[] = {
 	"ad9122",
@@ -1813,7 +1811,7 @@ static void plot_init(GtkWidget *plot)
 	gtk_widget_show(plot);
 }
 
-static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data)
+GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data)
 {
 	GtkWidget *new_plot;
 
@@ -1885,8 +1883,6 @@ static gboolean idle_timeout_check(gpointer ptr)
 	}
 }
 
-#define DEFAULT_PROFILE_NAME ".osc_profile.ini"
-
 static void do_quit(bool reload)
 {
 	unsigned int i, nb = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
@@ -1949,11 +1945,6 @@ void application_reload(struct iio_context *new_ctx)
 void application_quit (void)
 {
 	do_quit(false);
-}
-
-void sigterm (int signum)
-{
-	application_quit();
 }
 
 /*
@@ -2092,7 +2083,7 @@ void rx_update_labels(double sampling_freq, double rx_lo_freq)
 }
 
 /* Before we really start, let's load the last saved profile */
-static bool check_inifile(const char *filepath)
+bool check_inifile(const char *filepath)
 {
 	struct stat sts;
 	FILE *fd;
@@ -2121,7 +2112,7 @@ static bool check_inifile(const char *filepath)
 	return TRUE;
 }
 
-static int load_default_profile(char *filename, bool load_plugins)
+int load_default_profile(char *filename, bool load_plugins)
 {
 	/* Don't load anything */
 	if (filename && !strcmp(filename, "-"))
@@ -2173,40 +2164,14 @@ static void window_size_readjust(GtkWindow *window, int width, int height)
 	gtk_window_set_default_size(window, w, h);
 }
 
-static void create_default_plot(void)
+void create_default_plot(void)
 {
 	if (ctx && !!iio_context_get_devices_count(ctx) &&
 			g_list_length(plot_list) == 0)
 		new_plot_cb(NULL, NULL);
 }
 
-void tooltips_enable_cb (GtkCheckMenuItem *item, gpointer data)
-{
-	gboolean enable;
-	GdkScreen *screen;
-	GtkSettings *settings;
-
-	screen = gtk_window_get_screen(GTK_WINDOW(main_window));
-	settings = gtk_settings_get_for_screen(screen);
-	enable = gtk_check_menu_item_get_active(item);
-	g_object_set(settings, "gtk-enable-tooltips", enable, NULL);
-}
-
-static void infobar_hide_cb(GtkButton *btn, gpointer user_data)
-{
-	gtk_widget_set_visible(infobar, false);
-}
-
-static void infobar_reconnect_cb(GtkMenuItem *btn, gpointer user_data)
-{
-	struct iio_context *new_ctx = iio_context_clone(ctx);
-	if (new_ctx) {
-		application_reload(new_ctx);
-		gtk_widget_set_visible(infobar, false);
-	}
-}
-
-static void do_init(struct iio_context *new_ctx)
+void do_init(struct iio_context *new_ctx)
 {
 	init_device_list(new_ctx);
 	load_plugins(notebook, NULL);
@@ -2222,66 +2187,6 @@ static void do_init(struct iio_context *new_ctx)
 		g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 1000,
 				idle_timeout_check, new_ctx, NULL);
 	}
-}
-
-static void init_application (const char *ini_fn)
-{
-	GtkBuilder *builder = NULL;
-	GtkWidget  *window;
-	GtkWidget  *btn_capture;
-	GtkWidget  *infobar_close, *infobar_reconnect;
-
-	builder = gtk_builder_new();
-
-	if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL)) {
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
-	} else {
-		GtkImage *logo;
-		GtkAboutDialog *about;
-		GdkPixbuf *pixbuf;
-		GError *err = NULL;
-
-		/* We are running locally, so load the local files */
-		logo = GTK_IMAGE(gtk_builder_get_object(builder, "about_ADI_logo"));
-		g_object_set(logo, "file","./icons/ADIlogo.png", NULL);
-		logo = GTK_IMAGE(gtk_builder_get_object(builder, "about_IIO_logo"));
-		g_object_set(logo, "file","./icons/IIOlogo.png", NULL);
-		about = GTK_ABOUT_DIALOG(gtk_builder_get_object(builder, "About_dialog"));
-		logo = GTK_IMAGE(gtk_builder_get_object(builder, "image_capture"));
-		g_object_set(logo, "file","./icons/osc_capture.png", NULL);
-		logo = GTK_IMAGE(gtk_builder_get_object(builder, "image_generator"));
-		g_object_set(logo, "file","./icons/osc_generator.png", NULL);
-		pixbuf = gdk_pixbuf_new_from_file("./icons/osc128.png", &err);
-		if (pixbuf) {
-			g_object_set(about, "logo", pixbuf,  NULL);
-			g_object_unref(pixbuf);
-		}
-	}
-
-	window = GTK_WIDGET(gtk_builder_get_object(builder, "main_menu"));
-	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
-	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "new_capture_plot"));
-	tooltips_en = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_tooltips_en"));
-	main_window = window;
-
-	infobar = GTK_WIDGET(gtk_builder_get_object(builder, "infobar1"));
-	infobar_close = GTK_WIDGET(gtk_builder_get_object(builder, "infobar_close"));
-	infobar_reconnect = GTK_WIDGET(gtk_builder_get_object(builder, "infobar_reconnect"));
-
-	/* Connect signals. */
-	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
-	g_signal_connect(G_OBJECT(btn_capture), "activate", G_CALLBACK(new_plot_cb), NULL);
-	g_signal_connect(G_OBJECT(tooltips_en), "toggled", G_CALLBACK(tooltips_enable_cb), NULL);
-
-	g_signal_connect(G_OBJECT(infobar_close), "clicked", G_CALLBACK(infobar_hide_cb), NULL);
-	g_signal_connect(G_OBJECT(infobar_reconnect), "clicked", G_CALLBACK(infobar_reconnect_cb), NULL);
-
-	dialogs_init(builder);
-
-	ctx = osc_create_context();
-	if (ctx)
-		do_init(ctx);
-	gtk_widget_show(window);
 }
 
 static char *prev_section;
@@ -2450,89 +2355,6 @@ static void load_profile(const char *filename, bool load_plugins)
 void load_complete_profile(const char *filename)
 {
 	load_profile(filename, true);
-}
-
-void usage(char *program)
-{
-	printf("%s: the IIO visualization and control tool\n", program);
-	printf( " Copyright (C) Analog Devices, Inc. and others\n"
-		" This is free software; see the source for copying conditions.\n"
-		" There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n"
-		" PARTICULAR PURPOSE.\n\n");
-
-	/* please keep this list sorted in alphabetical order */
-	printf( "Command line options:\n"
-		"\t-p\tload specific profile\n");
-
-	printf("\nEnvironmental variables:\n"
-		"\tOSC_FORCE_PLUGIN\tforce loading of a specfic plugin\n");
-
-	exit(-1);
-}
-
-gint main (int argc, char **argv)
-{
-	int c;
-
-	char *profile = NULL;
-
-	opterr = 0;
-	while ((c = getopt (argc, argv, "p:")) != -1)
-		switch (c) {
-			case 'p':
-				profile = strdup(optarg);
-				break;
-			case '?':
-				usage(argv[0]);
-				break;
-			default:
-				printf("Unknown command line option\n");
-				usage(argv[0]);
-				break;
-		}
-
-	gdk_threads_init();
-	gtk_init(&argc, &argv);
-
-	signal(SIGTERM, sigterm);
-	signal(SIGINT, sigterm);
-	signal(SIGHUP, sigterm);
-
-	if (profile && strncmp(profile, "-", 1) == 0)
-		profile = NULL;
-
-	if (profile) {
-		char buf[1024];
-		strncpy(buf, profile, sizeof(buf));
-		profile = check_inifile(buf) ? strdup(buf) : NULL;
-	}
-
-	if (!profile) {
-		char buf[1024];
-		snprintf(buf, sizeof(buf), "%s/" DEFAULT_PROFILE_NAME,
-				getenv("HOME"));
-		if (check_inifile(buf))
-			profile = strdup(buf);
-	}
-
-	gdk_threads_enter();
-	init_application(profile);
-	c = load_default_profile(profile, false);
-	create_default_plot();
-	if (c == 0)
-		gtk_main();
-	else
-		application_quit();
-
-	gdk_threads_leave();
-
-	if (profile)
-	    free(profile);
-
-	if (c == 0 || c == -ENOTTY)
-		return 0;
-	else
-		return -1;
 }
 
 struct iio_context * osc_create_context(void)

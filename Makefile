@@ -22,6 +22,7 @@ LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 	-L$(SYSROOT)/usr/lib -lmatio -lz -lm
 
 CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
+	-I$(SYSROOT)/usr/include -fPIC \
 	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 
 #CFLAGS+=-DDEBUG
@@ -45,8 +46,11 @@ PLUGINS=\
 
 all: osc $(PLUGINS)
 
-osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o dac_data_manager.o
-	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
+libosc.so: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o dac_data_manager.o
+	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@
+
+osc: libosc.so oscmain.o
+	$(CC) $+ $(LDFLAGS) -o $@
 
 osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
 	$(CC) osc.c -c $(CFLAGS)
@@ -78,8 +82,8 @@ xml_utils.o: xml_utils.c xml_utils.h
 dac_data_manager.o: plugins/dac_data_manager.c plugins/dac_data_manager.h
 	$(CC) plugins/dac_data_manager.c -c $(CFLAGS)
 
-%.so: %.c
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@
+%.so: libosc.so %.c
+	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -o $@
 
 install:
 	install -d $(DESTDIR)/bin
@@ -92,6 +96,7 @@ install:
 	install -d $(DESTDIR)/lib/osc/block_diagrams
 	install -d $(HOME)/.config/autostart/
 	install ./osc $(DESTDIR)/bin/
+	install ./libosc.so $(DESTDIR)/lib/
 	install ./*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
 	install ./icons/IIOlogo.png $(PSHARE)
@@ -115,10 +120,10 @@ install:
 	xdg-desktop-menu install adi-osc.desktop
 
 clean:
-	rm -rf osc *.o libini/*.o plugins/*.so
+	rm -rf osc libosc.so *.o libini/*.o plugins/*.so
 
 uninstall:
-	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/osc
+	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/osc $(DESTDIR)/lib/libosc.so
 	rm -rf $(HOME)/.osc_profile.ini
 	rm -rf $(HOME)/.config/autostart/adi-osc.desktop
 	xdg-icon-resource uninstall --noupdate --size 16 adi-osc
