@@ -12,18 +12,16 @@ CC := $(CROSS_COMPILE)gcc
 SYSROOT := $(shell $(CC) -print-sysroot)
 MULTIARCH := $(shell $(CC) -print-multiarch)
 
-PKG_CONFIG_PATHS := $(SYSROOT)/usr/share/pkgconfig \
-	$(SYSROOT)/usr/lib/pkgconfig \
-	$(SYSROOT)/usr/lib/$(MULTIARCH)/pkgconfig
-PKG_CONFIG_PATH := $(subst " ",":",$(strip $(PKG_CONFIG_PATHS)))
+PKG_CONFIG_PATH := $(SYSROOT)/usr/share/pkgconfig:$(SYSROOT)/usr/lib/pkgconfig:$(SYSROOT)/usr/lib/$(MULTIARCH)/pkgconfig
 PKG_CONFIG := env PKG_CONFIG_SYSROOT_DIR="$(SYSROOT)" \
 	PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" pkg-config
 
-LDFLAGS := $(shell $(PKG_CONFIG) --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
-	$(shell $(SYSROOT)/usr/bin/xml2-config --libs) -lmatio -lz -lm -liio
+DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0
 
-CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
-	$(shell $(SYSROOT)/usr/bin/xml2-config --cflags) \
+LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
+	-L$(SYSROOT)/usr/lib -lmatio -lz -lm
+
+CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
 
 #CFLAGS+=-DDEBUG
