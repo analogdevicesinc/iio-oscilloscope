@@ -38,7 +38,6 @@ EXE := $(if $(WITH_MINGW),.exe)
 OSC := osc$(EXE)
 LIBOSC := libosc.$(SO)
 
-# TODO: Make the debug and scpi plugins available on MinGW
 PLUGINS=\
 	plugins/fmcomms1.$(SO) \
 	plugins/fmcomms2.$(SO) \
@@ -52,7 +51,7 @@ PLUGINS=\
 	plugins/cn0357.$(SO) \
 	plugins/motor_control.$(SO) \
 	plugins/dmm.$(SO) \
-	$(if $(WITH_MINGW),,plugins/debug.so) \
+	plugins/debug.$(SO) \
 	$(if $(WITH_MINGW),,plugins/scpi.so)
 
 all: $(OSC) $(PLUGINS)
