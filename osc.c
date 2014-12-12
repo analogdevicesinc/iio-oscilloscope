@@ -1381,8 +1381,13 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 		if (ent->d_type != DT_REG)
 			continue;
 #endif
+#ifdef __MINGW32__
+		if (!str_endswith(ent->d_name, ".dll"))
+			continue;
+#else
 		if (!str_endswith(ent->d_name, ".so"))
 			continue;
+#endif
 		snprintf(buf, sizeof(buf), "%s/%s", plugin_dir, ent->d_name);
 
 		lib = dlopen(buf, RTLD_LOCAL | RTLD_LAZY);

@@ -32,29 +32,35 @@ CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
 
+SO := $(if $(WITH_MINGW),dll,so)
+EXE := $(if $(WITH_MINGW),.exe)
+
+OSC := osc$(EXE)
+LIBOSC := libosc.$(SO)
+
 # TODO: Make the debug and scpi plugins available on MinGW
 PLUGINS=\
-	plugins/fmcomms1.so \
-	plugins/fmcomms2.so \
-	plugins/fmcomms5.so \
-	plugins/fmcomms6.so \
-	plugins/fmcomms2_adv.so \
-	plugins/pr_config.so \
-	plugins/daq2.so \
-	plugins/AD5628_1.so \
-	plugins/AD7303.so \
-	plugins/cn0357.so \
-	plugins/motor_control.so \
-	plugins/dmm.so \
+	plugins/fmcomms1.$(SO) \
+	plugins/fmcomms2.$(SO) \
+	plugins/fmcomms5.$(SO) \
+	plugins/fmcomms6.$(SO) \
+	plugins/fmcomms2_adv.$(SO) \
+	plugins/pr_config.$(SO) \
+	plugins/daq2.$(SO) \
+	plugins/AD5628_1.$(SO) \
+	plugins/AD7303.$(SO) \
+	plugins/cn0357.$(SO) \
+	plugins/motor_control.$(SO) \
+	plugins/dmm.$(SO) \
 	$(if $(WITH_MINGW),,plugins/debug.so) \
 	$(if $(WITH_MINGW),,plugins/scpi.so)
 
-all: osc $(PLUGINS)
+all: $(OSC) $(PLUGINS)
 
-libosc.so: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o dac_data_manager.o
+$(LIBOSC): osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o dac_data_manager.o
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@ $(EXPORT_SYMBOLS)
 
-osc: libosc.so oscmain.o
+$(OSC): $(LIBOSC) oscmain.o
 	$(CC) $+ $(LDFLAGS) -o $@
 
 osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
@@ -87,7 +93,7 @@ xml_utils.o: xml_utils.c xml_utils.h
 dac_data_manager.o: plugins/dac_data_manager.c plugins/dac_data_manager.h
 	$(CC) plugins/dac_data_manager.c -c $(CFLAGS)
 
-%.so: libosc.so %.c
+%.$(SO): $(LIBOSC) %.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -o $@
 
 install:
@@ -100,8 +106,8 @@ install:
 	install -d $(DESTDIR)/lib/osc/profiles
 	install -d $(DESTDIR)/lib/osc/block_diagrams
 	install -d $(HOME)/.config/autostart/
-	install ./osc $(DESTDIR)/bin/
-	install ./libosc.so $(DESTDIR)/lib/
+	install ./$(OSC) $(DESTDIR)/bin/
+	install ./$(LIBOSC) $(DESTDIR)/lib/
 	install ./*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
 	install ./icons/IIOlogo.png $(PSHARE)
@@ -125,10 +131,10 @@ install:
 	xdg-desktop-menu install adi-osc.desktop
 
 clean:
-	rm -rf osc libosc.so *.o libini/*.o plugins/*.so
+	rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o
 
 uninstall:
-	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/osc $(DESTDIR)/lib/libosc.so
+	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/$(OSC) $(DESTDIR)/lib/$(LIBOSC)
 	rm -rf $(HOME)/.osc_profile.ini
 	rm -rf $(HOME)/.config/autostart/adi-osc.desktop
 	xdg-icon-resource uninstall --noupdate --size 16 adi-osc
