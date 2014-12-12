@@ -535,7 +535,8 @@ static void delayed_spin_button_update_cb(GtkSpinButton *spinbutton,
 	if (pdata->timeoutID != - 1)
 		pdata->progress = 0.0;
 	else
-		pdata->timeoutID = g_timeout_add(90, (GSourceFunc)spin_button_progress_step, iio_w);
+		pdata->timeoutID = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 90,
+				(GSourceFunc)spin_button_progress_step, iio_w, NULL);
 }
 
 /*
