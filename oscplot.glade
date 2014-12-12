@@ -1433,7 +1433,7 @@
                     <property name="has_focus">True</property>
                     <property name="yalign">1</property>
                     <property name="ypad">50</property>
-                    <property name="pixbuf">/usr/local/share/osc/ADIlogo.png</property>
+                    <property name="pixbuf">ADIlogo.png</property>
                   </object>
                   <packing>
                     <property name="expand">True</property>
