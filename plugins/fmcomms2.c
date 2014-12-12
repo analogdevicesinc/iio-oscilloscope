@@ -336,8 +336,8 @@ static int split_target_lo_freq(double target_freq, double *ext_pll, double *ad9
 	large_freq = get_span_multiple_from(target_freq, span);
 	small_freq = target_freq - large_freq;
 
-	*ad9361_lo = center_freq + small_freq * updn_freq_mix_sign;
-	*ext_pll = center_freq - large_freq * updn_freq_mix_sign;
+	*ad9361_lo = center_freq - small_freq * updn_freq_mix_sign;
+	*ext_pll = center_freq + large_freq * updn_freq_mix_sign;
 
 	return 0;
 }
