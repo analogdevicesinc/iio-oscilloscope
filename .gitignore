@@ -1,5 +1,7 @@
 osc
+osc.exe
 core
 *.so
+*.dll
 *.o
 *~
