@@ -1955,26 +1955,87 @@ static bool show_channel(struct iio_channel *chn)
 	return false;
 }
 
-static void device_list_treeview_init(OscPlot *plot)
+static void plot_channels_add_device(OscPlot *plot, const char *dev_name)
 {
 	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
-	GtkTreeIter iter;
-	GtkTreeIter child;
 	GtkTreeStore *treestore;
+	GtkTreeIter iter;
+
+	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
+
+	struct iio_device *iio_dev = NULL;
+
+	if (ctx)
+		iio_dev = iio_context_find_device(ctx, dev_name);
+
+	gtk_tree_store_append(treestore, &iter, NULL);
+	gtk_tree_store_set(treestore, &iter,
+		ELEMENT_NAME, dev_name,
+		IS_DEVICE, !!iio_dev,
+		DEVICE_ACTIVE, !priv->nb_input_devices,
+		ELEMENT_REFERENCE, iio_dev,
+		SENSITIVE, TRUE,
+		EXPANDED, TRUE,
+		-1);
+}
+
+static void plot_channels_add_channel(OscPlot *plot, const char *chn_name, const char *parent_name)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	GtkTreeStore *treestore;
+	GtkTreeIter parent_iter, child_iter;
 	GdkPixbuf *new_icon;
 	GdkColor *icon_color;
 	struct channel_settings *new_settings;
-	unsigned int i, j;
+	gboolean ret;
 
 	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
+
+	new_settings = channel_settings_new(plot);
+	new_icon = channel_color_icon_new(plot);
+	icon_color = &new_settings->graph_color;
+	channel_color_icon_set_color(new_icon, icon_color);
+
+	ret = get_iter_by_name(treeview, &parent_iter, parent_name, NULL);
+	if (!ret) {
+		fprintf(stderr,
+			"Could not add %s channel to device %s. Device not found\n",
+			chn_name, parent_name);
+		return;
+	}
+
+	struct iio_device *iio_dev = NULL;
+	struct iio_channel *iio_chn = NULL;
+
+	if (ctx && (iio_dev = iio_context_find_device(ctx, parent_name)))
+		iio_chn = iio_device_find_channel(iio_dev, chn_name, false);
+
+	gtk_tree_store_append(treestore, &child_iter, &parent_iter);
+	gtk_tree_store_set(treestore, &child_iter,
+			ELEMENT_NAME, chn_name,
+			IS_CHANNEL, TRUE,
+			CHANNEL_ACTIVE, FALSE,
+			ELEMENT_REFERENCE, iio_chn,
+			CHANNEL_SETTINGS, new_settings,
+			CHANNEL_COLOR_ICON, new_icon,
+			SENSITIVE, TRUE,
+			PLOT_TYPE, TIME_PLOT,
+			-1);
+}
+
+static void device_list_treeview_init(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	unsigned int i, j;
 
 	priv->nb_input_devices = 0;
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
-		const char *name = iio_device_get_name(dev) ?:
+		const char *dev_name = iio_device_get_name(dev) ?:
 			iio_device_get_id(dev);
 
 		if (dev_info->input_device == false)
@@ -1983,15 +2044,7 @@ static void device_list_treeview_init(OscPlot *plot)
 		if (!priv->current_device)
 			priv->current_device = dev;
 
-		gtk_tree_store_append(treestore, &iter, NULL);
-		gtk_tree_store_set(treestore, &iter,
-				ELEMENT_NAME, name,
-				IS_DEVICE, TRUE,
-				DEVICE_ACTIVE, !priv->nb_input_devices,
-				ELEMENT_REFERENCE, dev,
-				SENSITIVE, true,
-				EXPANDED, true,
-				-1);
+		plot_channels_add_device(plot, dev_name);
 		priv->nb_input_devices++;
 
 		for (j = 0; j < nb_channels; j++) {
@@ -1999,23 +2052,9 @@ static void device_list_treeview_init(OscPlot *plot)
 			if (!show_channel(ch))
 				continue;
 
-			name = iio_channel_get_name(ch) ?:
+			const char *chn_name = iio_channel_get_name(ch) ?:
 				iio_channel_get_id(ch);
-			new_settings = channel_settings_new(plot);
-			new_icon = channel_color_icon_new(plot);
-			icon_color = &new_settings->graph_color;
-			channel_color_icon_set_color(new_icon, icon_color);
-			gtk_tree_store_append(treestore, &child, &iter);
-			gtk_tree_store_set(treestore, &child,
-					ELEMENT_NAME, name,
-					IS_CHANNEL, TRUE,
-					CHANNEL_ACTIVE, FALSE,
-					ELEMENT_REFERENCE, ch,
-					CHANNEL_SETTINGS, new_settings,
-					CHANNEL_COLOR_ICON, new_icon,
-					SENSITIVE, true,
-					PLOT_TYPE, TIME_PLOT,
-					-1);
+			plot_channels_add_channel(plot, chn_name, dev_name);
 		}
 	}
 
@@ -4111,6 +4150,8 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 	gboolean is_device = false;
 	gboolean is_channel = false;
 	gpointer ref;
+	gchar *element_name;
+	char name[1024];
 
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(treeview);
@@ -4126,8 +4167,14 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 	gtk_tree_selection_select_path(selection, path);
 
 	gtk_tree_model_get_iter(model, &iter, path);
-	gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &ref,
-		IS_DEVICE, &is_device, IS_CHANNEL, &is_channel, -1);
+	gtk_tree_model_get(model, &iter,
+		ELEMENT_NAME, &element_name,
+		ELEMENT_REFERENCE, &ref,
+		IS_DEVICE, &is_device,
+		IS_CHANNEL, &is_channel,
+		-1);
+	snprintf(name, sizeof(name), "%s", element_name);
+	g_free(element_name);
 
 	if (is_channel) {
 		if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot->priv->plot_domain)) != TIME_PLOT)
