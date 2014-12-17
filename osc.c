@@ -1353,6 +1353,24 @@ static void * init_plugin(void *data)
 	return widget;
 }
 
+static void load_plugin_finish(GtkNotebook *notebook,
+		GtkWidget *widget, struct osc_plugin *plugin)
+{
+	struct detachable_plugin *d_plugin;
+	gint page;
+
+	page = gtk_notebook_append_page(notebook, widget, NULL);
+	gtk_notebook_set_tab_label_text(notebook, widget, plugin->name);
+
+	if (plugin->update_active_page)
+		plugin->update_active_page(page, FALSE);
+
+	d_plugin = malloc(sizeof(*d_plugin));
+	d_plugin->plugin = plugin;
+	dplugin_list = g_slist_append(dplugin_list, (gpointer) d_plugin);
+	plugin_make_detachable(d_plugin);
+}
+
 static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 {
 	GSList *node;
@@ -1361,6 +1379,12 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 	char *plugin_dir = "plugins";
 	char buf[512];
 	DIR *d;
+
+#ifdef __MINGW32__
+	const bool load_in_parallel = false;
+#else
+	const bool load_in_parallel = true;
+#endif
 
 	/* Check the local plugins folder first */
 	d = opendir(plugin_dir);
@@ -1420,14 +1444,20 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 		params->ini_fn = ini_fn;
 
 		/* Call plugin->init() in a thread to speed up boot time */
-		plugin->thd = g_thread_new(plugin->name, init_plugin, params);
+		if (load_in_parallel) {
+			plugin->thd = g_thread_new(plugin->name, init_plugin, params);
+		} else {
+			GtkWidget *widget = init_plugin(params);
+			load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
+		}
 	}
+
+	if (!load_in_parallel)
+		return;
 
 	/* Wait for all init functions to finish */
 	for (node = plugin_list; node; node = g_slist_next(node)) {
-		struct detachable_plugin *d_plugin;
 		GtkWidget *widget;
-		gint page;
 
 		plugin = node->data;
 		if (!plugin || !plugin->thd)
@@ -1437,19 +1467,8 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 		if (!widget)
 			continue;
 
+		load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
 		printf("Loaded plugin: %s\n", plugin->name);
-		page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
-				widget, NULL);
-		gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),
-				widget, plugin->name);
-
-		if (plugin->update_active_page)
-			plugin->update_active_page(page, FALSE);
-
-		d_plugin = malloc(sizeof(*d_plugin));
-		d_plugin->plugin = plugin;
-		dplugin_list = g_slist_append(dplugin_list, (gpointer)d_plugin);
-		plugin_make_detachable(d_plugin);
 	}
 }
 
