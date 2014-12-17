@@ -92,8 +92,8 @@ xml_utils.o: xml_utils.c xml_utils.h
 dac_data_manager.o: plugins/dac_data_manager.c plugins/dac_data_manager.h
 	$(CC) plugins/dac_data_manager.c -c $(CFLAGS)
 
-%.$(SO): $(LIBOSC) %.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -L. -losc -shared -o $@
+%.$(SO): %.c $(LIBOSC)
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -L. -losc -shared -o $@
 
 install:
 	install -d $(DESTDIR)/bin
