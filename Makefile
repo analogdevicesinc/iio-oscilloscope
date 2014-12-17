@@ -12,6 +12,9 @@ CC := $(CROSS_COMPILE)gcc
 SYSROOT := $(shell $(CC) -print-sysroot)
 MULTIARCH := $(shell $(CC) -print-multiarch)
 
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+GIT_HASH := $(shell git describe --abbrev=7 --dirty --always)
+
 PKG_CONFIG_PATHS := $(SYSROOT)/usr/share/pkgconfig \
 	$(SYSROOT)/usr/lib/pkgconfig \
 	$(SYSROOT)/usr/lib/$(MULTIARCH)/pkgconfig
@@ -24,7 +27,8 @@ LDFLAGS := $(shell $(PKG_CONFIG) --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
 
 CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
 	$(shell $(SYSROOT)/usr/bin/xml2-config --cflags) \
-	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
+	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
+	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\"
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW

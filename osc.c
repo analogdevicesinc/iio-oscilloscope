@@ -2224,6 +2224,7 @@ static void init_application (const char *ini_fn)
 	GtkWidget  *window;
 	GtkWidget  *btn_capture;
 	GtkWidget  *infobar_close, *infobar_reconnect;
+	GtkAboutDialog *about = NULL;
 
 	builder = gtk_builder_new();
 
@@ -2231,7 +2232,6 @@ static void init_application (const char *ini_fn)
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
 	} else {
 		GtkImage *logo;
-		GtkAboutDialog *about;
 		GdkPixbuf *pixbuf;
 		GError *err = NULL;
 
@@ -2251,6 +2251,11 @@ static void init_application (const char *ini_fn)
 			g_object_unref(pixbuf);
 		}
 	}
+
+	/* Override version in About menu with git branch and commit hash. */
+	if (!about)
+		about = GTK_ABOUT_DIALOG(gtk_builder_get_object(builder, "About_dialog"));
+	gtk_about_dialog_set_version(about, OSC_VERSION);
 
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "main_menu"));
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
