@@ -12,7 +12,7 @@ CC := $(CROSS_COMPILE)gcc
 SYSROOT := $(shell $(CC) -print-sysroot)
 MULTIARCH := $(shell $(CC) -print-multiarch)
 
-GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+GIT_BRANCH := $(shell git name-rev --name-only HEAD | sed 's#.*/##')
 GIT_HASH := $(shell git describe --abbrev=7 --dirty --always)
 
 WITH_MINGW := $(if $(shell echo | $(CC) -dM -E - |grep __MINGW32__),y)
