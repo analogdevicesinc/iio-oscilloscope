@@ -59,8 +59,8 @@ all: $(OSC) $(PLUGINS)
 $(LIBOSC): osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o dac_data_manager.o
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@ $(EXPORT_SYMBOLS)
 
-$(OSC): $(LIBOSC) oscmain.o
-	$(CC) $+ $(LDFLAGS) -o $@
+$(OSC): oscmain.o $(LIBOSC)
+	$(CC) $< $(LDFLAGS) -L. -losc -o $@
 
 osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
 	$(CC) osc.c -c $(CFLAGS)
@@ -93,7 +93,7 @@ dac_data_manager.o: plugins/dac_data_manager.c plugins/dac_data_manager.h
 	$(CC) plugins/dac_data_manager.c -c $(CFLAGS)
 
 %.$(SO): $(LIBOSC) %.c
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) -L. -losc -shared -o $@
 
 install:
 	install -d $(DESTDIR)/bin
