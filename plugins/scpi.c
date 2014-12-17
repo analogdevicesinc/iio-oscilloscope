@@ -98,6 +98,7 @@ static struct scpi_instrument spectrum_analyzer;
 
 static char *supported_spectrum_analyzers[] = {
 	"Rohde&Schwarz,FSEA 20,839161/004,3.40.2",
+	"Rohde&Schwarz,FSEA 30,827765/004,3.30",
 	NULL
 	};
 
@@ -1108,7 +1109,7 @@ static void connect_clicked_cb(void)
 		scpi_fprintf(current_instrument, "*IDN?\n");
 		if (strlen(current_instrument->response)) {
 			gtk_label_set_text(GTK_LABEL(scpi_id), current_instrument->response);
-			for (i = 0; i <= sizeof(supported_spectrum_analyzers); i++) {
+			for (i = 0; supported_spectrum_analyzers[i] != NULL; i++) {
 printf("%i\n", i);
 printf("%s\n", current_instrument->response);
 printf("%s\n", supported_spectrum_analyzers[i]);
