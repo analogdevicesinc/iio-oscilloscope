@@ -1575,12 +1575,9 @@ static void plot_setup(OscPlot *plot)
 	OscPlotPrivate *priv = plot->priv;
 	TrList *tr_list = priv->transform_list;
 	Transform *transform;
-	struct extra_info *ch_info;
-	struct extra_dev_info *dev_info;
 	gfloat *transform_x_axis;
 	gfloat *transform_y_axis;
 	int max_x_axis = 0;
-	gfloat max_adc_freq = 0;
 	GtkDataboxGraph *graph;
 	int i;
 
@@ -1604,13 +1601,8 @@ static void plot_setup(OscPlot *plot)
 		}
 		g_free(plot_type_str);
 
-		ch_info = iio_channel_get_data(transform->channel_parent);
-		dev_info = iio_device_get_data(ch_info->dev);
-
 		if (transform->x_axis_size > max_x_axis)
 			max_x_axis = transform->x_axis_size;
-		if (dev_info->adc_freq > max_adc_freq)
-			max_adc_freq = dev_info->adc_freq;
 
 		if (priv->active_transform_type == FFT_TRANSFORM ||
 			priv->active_transform_type == COMPLEX_FFT_TRANSFORM ||
