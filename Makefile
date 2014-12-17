@@ -93,7 +93,7 @@ dac_data_manager.o: plugins/dac_data_manager.c plugins/dac_data_manager.h
 	$(CC) plugins/dac_data_manager.c -c $(CFLAGS)
 
 %.$(SO): %.c $(LIBOSC)
-	$(CC) $(CFLAGS) $(LDFLAGS) $< -L. -losc -shared -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) -L. -losc -shared -o $@
 
 install:
 	install -d $(DESTDIR)/bin
