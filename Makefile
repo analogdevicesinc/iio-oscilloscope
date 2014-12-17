@@ -12,6 +12,9 @@ CC := $(CROSS_COMPILE)gcc
 SYSROOT := $(shell $(CC) -print-sysroot)
 MULTIARCH := $(shell $(CC) -print-multiarch)
 
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+GIT_HASH := $(shell git describe --abbrev=7 --dirty --always)
+
 WITH_MINGW := $(if $(shell echo | $(CC) -dM -E - |grep __MINGW32__),y)
 EXPORT_SYMBOLS := -Wl,--export-all-symbols
 EXPORT_SYMBOLS := $(if $(WITH_MINGW),$(EXPORT_SYMBOLS))
@@ -27,7 +30,8 @@ LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 
 CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-I$(SYSROOT)/usr/include $(if $(WITH_MINGW),,-fPIC) \
-	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"'
+	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
+	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\"
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
