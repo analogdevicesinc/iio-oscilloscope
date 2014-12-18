@@ -75,34 +75,9 @@ static struct iio_channel * get_channel(const struct iio_device *dev,
 
 static double read_double_attr(const struct iio_channel *chn, const char *name)
 {
-	unsigned int i, nb = iio_channel_get_attrs_count(chn);
-
-	for (i = 0; i < nb; i++) {
-		char buf[1024];
-		size_t ret;
-		const char *attr = iio_channel_get_attr(chn, i);
-		if (strcmp(attr, name))
-			continue;
-
-		ret = iio_channel_attr_read(chn, attr, buf, sizeof(buf));
-		if (ret < 0)
-			return -1.0;
-		return g_strtod(buf, NULL);
-	}
-
-	return -1.0;
-}
-
-static bool has_attribute(const struct iio_channel *chn, const char *name)
-{
-	unsigned int i, nb = iio_channel_get_attrs_count(chn);
-
-	for (i = 0; i < nb; i++) {
-		const char *attr = iio_channel_get_attr(chn, i);
-		if (!strcmp(attr, name))
-			return true;
-	}
-	return false;
+	double val;
+	int ret = iio_channel_attr_read_double(chn, name, &val);
+	return ret < 0 ? -1.0 : val;
 }
 
 static void build_channel_list(void)
@@ -337,17 +312,17 @@ static void dmm_update_thread(void)
 					struct iio_channel *chn =
 						get_channel(dev, channel);
 
-					if (has_attribute(chn, "raw"))
+					if (iio_channel_find_attr(chn, "raw"))
 						value = read_double_attr(chn, "raw");
-					else if (has_attribute(chn, "processed"))
+					else if (iio_channel_find_attr(chn, "processed"))
 						value = read_double_attr(chn, "processed");
 					else
 						continue;
 
-					if (has_attribute(chn, "offset"))
+					if (iio_channel_find_attr(chn, "offset"))
 						value += read_double_attr(chn,
 								"offset");
-					if (has_attribute(chn, "scale"))
+					if (iio_channel_find_attr(chn, "scale"))
 						value *= read_double_attr(chn,
 								"scale");
 					value /= 1000.0;
