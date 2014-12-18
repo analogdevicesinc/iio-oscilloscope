@@ -133,6 +133,8 @@ install:
 	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc
 	xdg-desktop-menu install adi-osc.desktop
 
+	ldconfig
+
 clean:
 	rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o
 
