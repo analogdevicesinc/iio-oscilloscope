@@ -1238,9 +1238,6 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	g_builder_connect_signal(builder, "tx_fastlock_recall", "clicked",
 		G_CALLBACK(fastlock_clicked), (gpointer) 4);
 
-	g_builder_connect_signal(builder, "sampling_freq_tx", "value-changed",
-			G_CALLBACK(tx_sample_rate_changed), NULL);
-
 	g_signal_connect_after(section_toggle[SECTION_GLOBAL], "clicked",
 		G_CALLBACK(hide_section_cb), section_setting[SECTION_GLOBAL]);
 
