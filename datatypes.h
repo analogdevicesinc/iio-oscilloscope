@@ -34,6 +34,7 @@ enum {
 	CONSTELLATION_TRANSFORM,
 	COMPLEX_FFT_TRANSFORM,
 	CROSS_CORRELATION_TRANSFORM,
+	MATH_TRANSFORM,
 	TRANSFORMS_TYPES_COUNT
 };
 
@@ -94,6 +95,7 @@ struct _transform {
 			   *channel_parent2,
 			   *channel_parent3,
 			   *channel_parent4;
+	GSList *iio_channels;
 	gfloat **in_data;
 	gfloat *x_axis;
 	gfloat *y_axis;
@@ -148,6 +150,13 @@ struct _cross_correlation_settings {
 	struct marker_type **markers_copy;
 	GMutex *marker_lock;
 	enum marker_types *marker_type;
+};
+
+struct _math_settings {
+	unsigned int num_samples;
+	gfloat  ***iio_channels;
+	int num_channels;
+	void (*math_expression)(float ***channels_data, float *out_data, unsigned long long chn_sample_cnt);
 };
 
 Transform* Transform_new(int tr_type);
