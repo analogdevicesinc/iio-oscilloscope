@@ -63,8 +63,11 @@ all: $(OSC) $(PLUGINS)
 $(LIBOSC): osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o dac_data_manager.o
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@ $(EXPORT_SYMBOLS)
 
-$(OSC): oscmain.o $(LIBOSC)
-	$(CC) $< $(LDFLAGS) -L. -losc -o $@
+$(OSC): oscmain.o $(if $(WITH_MINGW),oscicon.o) $(LIBOSC)
+	$(CC) $^ $(LDFLAGS) -L. -losc -o $@
+
+oscicon.o: oscicon.rc
+	$(CROSS_COMPILE)windres $< $@
 
 osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
 	$(CC) osc.c -c $(CFLAGS)
