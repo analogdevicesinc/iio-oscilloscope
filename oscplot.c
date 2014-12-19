@@ -28,6 +28,7 @@
 #include "iio_widget.h"
 #include "datatypes.h"
 #include "osc_plugin.h"
+#include "math_expression_generator.h"
 
 /* add backwards compat for <matio-1.5.0 */
 #if MATIO_MAJOR_VERSION == 1 && MATIO_MINOR_VERSION < 5
@@ -40,6 +41,7 @@ extern void time_transform_function(Transform *tr, gboolean init_transform);
 extern void fft_transform_function(Transform *tr, gboolean init_transform);
 extern void constellation_transform_function(Transform *tr, gboolean init_transform);
 extern void cross_correlation_transform_function(Transform *tr, gboolean init_transform);
+extern void math_transform_function(Transform *tr, gboolean init_transform);
 extern void *find_setup_check_fct_by_devname(const char *dev_name);
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
@@ -78,6 +80,7 @@ static int channel_find_by_name(int device_index, const char *name);
 static void device_rx_info_update(OscPlot *plot);
 static gdouble prefix2scale (char adc_scale);
 static struct iio_device * transform_get_device_parent(Transform *transform);
+static gboolean tree_get_selected_row_iter(GtkTreeView *treeview, GtkTreeIter *iter);
 
 /* IDs of signals */
 enum {
@@ -95,6 +98,7 @@ enum {
 	ELEMENT_NAME,
 	IS_DEVICE,
 	IS_CHANNEL,
+	CHANNEL_TYPE,
 	DEVICE_SELECTABLE,
 	DEVICE_ACTIVE,
 	CHANNEL_ACTIVE,
@@ -113,6 +117,14 @@ enum {
 	HOR_SCALE_TIME,
 	HOR_SCALE_NUM_OPTIONS
 };
+
+enum {
+	PLOT_IIO_CHANNEL,
+	PLOT_MATH_CHANNEL,
+	NUM_PLOT_CHANNELS_TYPES
+};
+
+#define MATH_CHANNELS_DEVICE "Math"
 
 #define OSC_COLOR(r, g, b) { \
 	.red = (r) << 8, \
@@ -165,6 +177,7 @@ static GdkColor color_marker = {
 #define FFT_SETTINGS(obj) ((struct _fft_settings *)obj->settings)
 #define CONSTELLATION_SETTINGS(obj) ((struct _constellation_settings *)obj->settings)
 #define XCORR_SETTINGS(obj) ((struct _cross_correlation_settings *)obj->settings)
+#define MATH_SETTINGS(obj) ((struct _math_settings *)obj->settings)
 
 struct int_and_plot {
 	int int_obj;
@@ -221,22 +234,31 @@ struct _OscPlotPrivate
 	GtkWidget *fft_avg_widget;
 	GtkWidget *fft_pwr_offset_widget;
 	GtkWidget *device_settings_menu;
+	GtkWidget *math_settings_menu;
 	GtkWidget *device_trigger_menuitem;
+	GtkWidget *math_menuitem;
 	GtkWidget *plot_trigger_menuitem;
 	GtkWidget *channel_settings_menu;
+	GtkWidget *math_channel_settings_menu;
+	GtkWidget *channel_expression_edit_menuitem;
 	GtkWidget *channel_color_menuitem;
 	GtkWidget *channel_math_menuitem;
+	GtkWidget *channel_remove_menuitem;
 	GtkWidget *math_dialog;
 	GtkWidget *capture_options_box;
 	GtkWidget *saveas_settings_box;
 	GtkWidget *save_mat_scale;
 	GtkWidget *new_plot_button;
 	GtkWidget *cmb_saveas_type;
+	GtkWidget *math_expression_dialog;
+	GtkWidget *math_device_select;
 
 	GtkTextBuffer* tbuf;
 	GtkTextBuffer* devices_buf;
+	GtkTextBuffer* math_expression;
 
 	unsigned int nb_input_devices;
+	unsigned int nb_math_channels;
 
 	struct plot_geometry size;
 
@@ -324,6 +346,11 @@ struct channel_settings {
 	bool apply_add_funct;
 	double multiply_value;
 	double add_value;
+	char *iio_device_name;
+	GSList *iio_channels;
+	char *txt_math_expression;
+	void (*math_expression)(float ***channels_data, float *out_data, unsigned long long chn_sample_cnt);
+	void *math_lib_handler;
 };
 
 G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
@@ -882,8 +909,9 @@ static gboolean check_valid_setup(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 
-	if (!check_valid_setup_of_all_devices(plot))
-		goto capture_button_err;
+	if (enabled_channels_of_device(GTK_TREE_VIEW(priv->channel_list_view), MATH_CHANNELS_DEVICE, NULL) == 0)
+		if (!check_valid_setup_of_all_devices(plot))
+			goto capture_button_err;
 
 	if (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button)))
 		g_object_set(priv->capture_button, "stock-id", "gtk-stop", NULL);
@@ -960,6 +988,15 @@ static struct iio_device * transform_get_device_parent(Transform *transform)
 	return iio_dev;
 }
 
+void my_math_expression(gfloat ***channels_data, gfloat *out_data, unsigned long long chn_sample_cnt)
+{
+	unsigned long long i;
+
+	for (i = 0; i < chn_sample_cnt; i++) {
+		out_data[i] = (*channels_data[0])[i] + (*channels_data[1])[i];
+	}
+}
+
 static void update_transform_settings(OscPlot *plot, Transform *transform,
 	struct channel_settings *csettings)
 {
@@ -983,15 +1020,22 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 		FFT_SETTINGS(transform)->marker_type = NULL;
 	} else if (plot_type == TIME_PLOT) {
 		struct iio_device *iio_dev = transform_get_device_parent(transform);
-		if (!iio_dev)
+		int dev_samples = plot_get_sample_count_of_device(plot,
+					iio_device_get_name(iio_dev) ?:
+					iio_device_get_id(iio_dev));
+		if (dev_samples < 0)
 			return;
-		TIME_SETTINGS(transform)->num_samples = plot_get_sample_count_of_device(plot,
-				iio_device_get_name(iio_dev) ?: iio_device_get_id(iio_dev));
-		TIME_SETTINGS(transform)->apply_inverse_funct = csettings->apply_inverse_funct;
-		TIME_SETTINGS(transform)->apply_multiply_funct = csettings->apply_multiply_funct;
-		TIME_SETTINGS(transform)->apply_add_funct = csettings->apply_add_funct;
-		TIME_SETTINGS(transform)->multiply_value = csettings->multiply_value;
-		TIME_SETTINGS(transform)->add_value = csettings->add_value;
+
+		if (transform->type_id == TIME_TRANSFORM) {
+			TIME_SETTINGS(transform)->num_samples = dev_samples;
+			TIME_SETTINGS(transform)->apply_inverse_funct = csettings->apply_inverse_funct;
+			TIME_SETTINGS(transform)->apply_multiply_funct = csettings->apply_multiply_funct;
+			TIME_SETTINGS(transform)->apply_add_funct = csettings->apply_add_funct;
+			TIME_SETTINGS(transform)->multiply_value = csettings->multiply_value;
+			TIME_SETTINGS(transform)->add_value = csettings->add_value;
+		} else if (transform->type_id == MATH_TRANSFORM) {
+			MATH_SETTINGS(transform)->num_samples = dev_samples;
+		}
 		TIME_SETTINGS(transform)->max_x_axis = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	} else if (plot_type == XY_PLOT){
 		CONSTELLATION_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
@@ -1086,6 +1130,71 @@ static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel *ch0,
 	return transform;
 }
 
+static gfloat *** iio_channels_get_data(const char *device_name)
+{
+	gfloat ***data;
+	struct iio_device *iio_dev;
+	struct iio_channel *iio_chn;
+	int nb_channels;
+	struct extra_info *ch_info;
+	int i;
+
+	iio_dev = iio_context_find_device(ctx, device_name);
+	if (!iio_dev) {
+		printf("Could not find device %s in %s\n", device_name, __func__);
+		return NULL;
+	}
+	nb_channels = iio_device_get_channels_count(iio_dev);
+	data = malloc(sizeof(double**) * nb_channels);
+	for (i = 0; i < nb_channels; i++) {
+		iio_chn = iio_device_get_channel(iio_dev, i);
+		ch_info = iio_channel_get_data(iio_chn);
+		data[i] = &ch_info->data_ref;
+	}
+
+	return data;
+}
+
+static void set_channel_shadow_of_enabled(gpointer data, gpointer user_data)
+{
+	struct iio_channel *chn = data;
+	struct extra_info *ch_info;
+
+	if (!chn)
+		return;
+
+	ch_info = iio_channel_get_data(chn);
+	ch_info->shadow_of_enabled += ((bool)user_data) ? 1 : -1;
+}
+
+static Transform* add_math_transform_to_list(OscPlot *plot, struct channel_settings *csettings)
+{
+	OscPlotPrivate *priv = plot->priv;
+	TrList *list = priv->transform_list;
+	Transform *transform;
+	struct _math_settings *math_settings;
+
+	transform = Transform_new(MATH_TRANSFORM);
+
+	Transform_attach_function(transform, math_transform_function);
+
+	math_settings = (struct _math_settings *)malloc(sizeof(struct _math_settings));
+	math_settings->iio_channels = iio_channels_get_data(csettings->iio_device_name);
+	math_settings->num_channels = g_slist_length(csettings->iio_channels);
+	math_settings->math_expression = csettings->math_expression;
+	Transform_attach_settings(transform, math_settings);
+	transform->iio_channels = csettings->iio_channels;
+	transform->graph_color = &csettings->graph_color;
+	priv->active_transform_type = MATH_TRANSFORM;
+
+	g_slist_foreach(csettings->iio_channels, set_channel_shadow_of_enabled, (gpointer)true);
+
+	TrList_add_transform(list, transform);
+	update_transform_settings(plot, transform, csettings);
+
+	return transform;
+}
+
 static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -1093,6 +1202,10 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 
 	if (tr->has_the_marker)
 		priv->tr_with_marker = NULL;
+	if (tr->type_id == MATH_TRANSFORM)
+		if (MATH_SETTINGS(tr)->iio_channels)
+			free(MATH_SETTINGS(tr)->iio_channels);
+
 	TrList_remove_transform(list, tr);
 	Transform_destroy(tr);
 	if (list->size == 0) {
@@ -1450,6 +1563,21 @@ static void channels_transform_assignment(GtkTreeModel *model,
 	}
 }
 
+static void math_channels_transform_assignment(GtkTreeModel *model,
+	GtkTreeIter *iter, void *user_data)
+{
+	OscPlot *plot = user_data;
+	struct channel_settings *settings;
+	gboolean enabled;
+
+	gtk_tree_model_get(model, iter, CHANNEL_ACTIVE, &enabled,
+			CHANNEL_SETTINGS, &settings, -1);
+	if (!enabled)
+		return;
+
+	add_math_transform_to_list(plot, settings);
+}
+
 static void devices_transform_assignment(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -1483,6 +1611,9 @@ static void devices_transform_assignment(OscPlot *plot)
 		foreach_channel_iter_of_device(GTK_TREE_VIEW(priv->channel_list_view),
 			name, *channels_transform_assignment, &prm);
 	}
+
+	foreach_channel_iter_of_device(GTK_TREE_VIEW(priv->channel_list_view),
+			MATH_CHANNELS_DEVICE, *math_channels_transform_assignment, plot);
 }
 
 static void deassert_used_channels(OscPlot *plot)
@@ -1494,8 +1625,14 @@ static void deassert_used_channels(OscPlot *plot)
 
 	for (i = 0; i < priv->transform_list->size; i++) {
 		tr = priv->transform_list->transforms[i];
+		if (tr->type_id == MATH_TRANSFORM) {
+			g_slist_foreach(tr->iio_channels, set_channel_shadow_of_enabled, (gpointer)false);
+			continue;
+		}
+
 		ch_info = iio_channel_get_data(tr->channel_parent);
 		ch_info->shadow_of_enabled--;
+
 		if (tr->type_id == CONSTELLATION_TRANSFORM ||
 			tr->type_id == COMPLEX_FFT_TRANSFORM) {
 			ch_info = iio_channel_get_data(tr->channel_parent2);
@@ -1632,6 +1769,30 @@ static void single_shot_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 
 	priv->single_shot_mode = true;
 	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button), true);
+}
+
+static bool comboboxtext_input_devices_fill(struct iio_context *iio_ctx, GtkComboBoxText *box)
+{
+	int i;
+
+	if (!iio_ctx || !box) {
+		fprintf(stderr, "Error: invalid parameters in %s\n", __func__);
+		return false;
+	}
+
+	for (i = 0; i < iio_context_get_devices_count(iio_ctx); i++) {
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+		const char *name;
+
+		if (dev_info->input_device == false)
+			continue;
+
+		name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(box), name);
+	}
+
+	return true;
 }
 
 static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
@@ -1878,7 +2039,7 @@ static void * channel_settings_new(OscPlot *plot)
 	if (list == NULL)
 		index = 0;
 
-	settings = malloc(sizeof(struct channel_settings));
+	settings = calloc(sizeof(struct channel_settings), 1);
 	list = g_slist_prepend(list, settings);
 	plot->priv->ch_settings_list = list;
 
@@ -2008,6 +2169,7 @@ static void plot_channels_add_channel(OscPlot *plot, const char *chn_name, const
 	gtk_tree_store_set(treestore, &child_iter,
 			ELEMENT_NAME, chn_name,
 			IS_CHANNEL, TRUE,
+			CHANNEL_TYPE, (iio_chn) ? PLOT_IIO_CHANNEL : PLOT_MATH_CHANNEL,
 			CHANNEL_ACTIVE, FALSE,
 			ELEMENT_REFERENCE, iio_chn,
 			CHANNEL_SETTINGS, new_settings,
@@ -2015,6 +2177,40 @@ static void plot_channels_add_channel(OscPlot *plot, const char *chn_name, const
 			SENSITIVE, TRUE,
 			PLOT_TYPE, TIME_PLOT,
 			-1);
+}
+
+static void plot_channels_remove_channel(OscPlot *plot, GtkTreeIter *iter)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	GtkTreeModel *model;
+	struct channel_settings *settings;
+	GSList *node, *list;
+
+	model = gtk_tree_view_get_model(treeview);
+	gtk_tree_model_get(model, iter, CHANNEL_SETTINGS, &settings, -1);
+
+	if (settings->iio_channels) {
+		g_slist_free(settings->iio_channels);
+		settings->iio_channels = NULL;
+	}
+	if (settings->iio_device_name) {
+		g_free(settings->iio_device_name);
+		settings->iio_device_name = NULL;
+	}
+	if (settings->txt_math_expression) {
+		g_free(settings->txt_math_expression);
+		settings->txt_math_expression = NULL;
+	}
+	math_expression_close_lib_handler(settings->math_lib_handler);
+	settings->math_lib_handler = NULL;
+	settings->math_expression = NULL;
+
+	list = priv->ch_settings_list;
+	node = g_slist_find(list, settings);
+	priv->ch_settings_list = g_slist_delete_link(list, node);
+
+	gtk_tree_store_remove(GTK_TREE_STORE(model), iter);
 }
 
 static void device_list_treeview_init(OscPlot *plot)
@@ -2049,6 +2245,7 @@ static void device_list_treeview_init(OscPlot *plot)
 			plot_channels_add_channel(plot, chn_name, dev_name);
 		}
 	}
+	plot_channels_add_device(plot, MATH_CHANNELS_DEVICE);
 
 	create_channel_list_view(plot);
 	treeview_expand_update(plot);
@@ -3923,6 +4120,263 @@ static void device_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	check_valid_setup(plot);
 }
 
+static gint channel_compare(gconstpointer a, gconstpointer b)
+{
+	const char *a_name = iio_channel_get_name((struct iio_channel *)a) ?:
+			iio_channel_get_id((struct iio_channel *)a);
+	const char *b_name = iio_channel_get_name((struct iio_channel *)b) ?:
+			iio_channel_get_id((struct iio_channel *)b);
+
+	return strcmp(a_name, b_name);
+}
+
+static GSList * math_expression_get_iio_channel_list(const char *expression, const char *device, bool *has_invalid_ch)
+{
+	GSList *chn_list = NULL;
+	GRegex *regex;
+	GMatchInfo *info;
+	gchar *chn_name;
+	struct iio_device *iio_dev;
+	struct iio_channel *iio_chn;
+	gboolean invalid_list = false, is_match;
+
+	if (!device || !(iio_dev = iio_context_find_device(ctx, device)))
+		return NULL;
+
+	regex = g_regex_new("voltage[0-9]+", 0, 0, NULL);
+	is_match = g_regex_match(regex, expression, 0, &info);
+	if (!is_match) {
+		invalid_list = true;
+	} else {
+		*has_invalid_ch = false;
+		do {
+			chn_name = g_match_info_fetch(info, 0);
+			if (chn_name && (iio_chn = iio_device_find_channel(iio_dev, chn_name, false))) {
+				if (!g_slist_find_custom(chn_list, iio_chn, channel_compare))
+					chn_list = g_slist_prepend(chn_list, iio_chn);
+			} else {
+				invalid_list = true;
+				*has_invalid_ch = true;
+			}
+		} while (g_match_info_next(info, NULL) && !invalid_list);
+	}
+	g_match_info_free(info);
+	g_regex_unref(regex);
+
+	if (invalid_list) {
+		if (chn_list)
+			g_slist_free(chn_list);
+		chn_list = NULL;
+	}
+
+	return chn_list;
+}
+
+static void math_chooser_key_pressed_cb(GtkButton *btn, OscPlot *plot)
+{
+	GtkTextBuffer *tbuf = plot->priv->math_expression;
+
+	gtk_text_buffer_insert_at_cursor(tbuf, gtk_button_get_label(btn), -1);
+}
+
+static void buttons_table_remove_child(GtkWidget *child, gpointer data)
+{
+	GtkContainer *container = GTK_CONTAINER(data);
+
+	gtk_container_remove(container, child);
+}
+
+static void math_device_cmb_changed_cb(GtkComboBoxText *box, OscPlot *plot)
+{
+	char *device_name;
+	const char *channel_name;
+	struct iio_device *iio_dev;
+	struct iio_channel *iio_chn;
+	GtkWidget *button, *buttons_table;
+	int row, col, i, sc;
+
+	device_name = gtk_combo_box_text_get_active_text(box);
+	if (!device_name)
+		return;
+
+	iio_dev = iio_context_find_device(ctx, device_name);
+	if (!iio_dev)
+		goto end;
+
+	buttons_table = GTK_WIDGET(gtk_builder_get_object(plot->priv->builder,
+			"table_channel_buttons"));
+	gtk_container_foreach(GTK_CONTAINER(buttons_table),
+		buttons_table_remove_child, buttons_table);
+	for (i = 0, sc = 0; i < iio_device_get_channels_count(iio_dev); i++) {
+		iio_chn = iio_device_get_channel(iio_dev, i);
+
+		if (iio_channel_is_scan_element(iio_chn)) {
+			channel_name = iio_channel_get_name(iio_chn) ?:
+					iio_channel_get_id(iio_chn);
+			button = gtk_button_new_with_label(channel_name);
+			row = sc % 4;
+			col = sc / 4;
+			gtk_table_attach_defaults(GTK_TABLE(buttons_table),
+				button, col, col + 1, row, row + 1);
+			sc++;
+		}
+	}
+	GList *node;
+
+	for (node = gtk_container_get_children(GTK_CONTAINER(buttons_table)); node; node = g_list_next(node)) {
+		g_signal_connect(node->data, "clicked", G_CALLBACK(math_chooser_key_pressed_cb), plot);
+	}
+
+	gtk_widget_show_all(buttons_table);
+end:
+	g_free(device_name);
+}
+
+static int math_expression_get_settings(OscPlot *plot, struct channel_settings *settings)
+{
+	OscPlotPrivate *priv = plot->priv;
+	char *active_device;
+	int ret;
+	void *lhandler;
+	math_function fn;
+	GSList *channels = NULL;
+	gchar *txt_math_expr;
+	bool invalid_channels;
+
+	math_device_cmb_changed_cb(GTK_COMBO_BOX_TEXT(priv->math_device_select), plot);
+
+	active_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->math_device_select));
+	if (!active_device) {
+		fprintf(stderr, "Error: No device available in %s\n", __func__);
+		return -1;
+	}
+
+	if (settings->txt_math_expression)
+		gtk_text_buffer_set_text(priv->math_expression,
+			settings->txt_math_expression, -1);
+	else
+		gtk_text_buffer_set_text(priv->math_expression, "", -1);
+
+	/* Get the math expression from user */
+	do {
+		ret = gtk_dialog_run(GTK_DIALOG(priv->math_expression_dialog));
+		if (ret != GTK_RESPONSE_OK)
+			break;
+
+		/* Get the string of the math expression */
+		GtkTextIter start;
+		GtkTextIter end;
+
+		gtk_text_buffer_get_start_iter(priv->math_expression, &start);
+		gtk_text_buffer_get_end_iter(priv->math_expression, &end);
+		txt_math_expr = gtk_text_buffer_get_text(priv->math_expression, &start, &end, FALSE);
+
+		/* Find device channels used in the expression */
+		channels = math_expression_get_iio_channel_list(txt_math_expr, active_device, &invalid_channels);
+
+		if (!invalid_channels) {
+			/* Get the compiled math expression */
+			fn = math_expression_get_math_function(txt_math_expr, &lhandler);
+		} else {
+			fn = NULL;
+		}
+
+		gtk_widget_set_visible(GTK_WIDGET(gtk_builder_get_object(priv->builder, "label_math_expr_invalid_msg")), !fn);
+
+	} while (!fn);
+	gtk_widget_hide(priv->math_expression_dialog);
+	if (ret != GTK_RESPONSE_OK)
+		return - 1;
+
+	/* Store the settings of the new channel*/
+	if (settings->txt_math_expression)
+		g_free(settings->txt_math_expression);
+	if (settings->iio_device_name)
+		g_free(settings->iio_device_name);
+	if (settings->iio_channels)
+		g_slist_free(settings->iio_channels);
+
+	settings->txt_math_expression = txt_math_expr;
+	settings->iio_device_name = g_strdup(active_device);
+	settings->iio_channels = channels;
+	settings->math_expression = fn;
+	settings->math_lib_handler = lhandler;
+
+	g_free(active_device);
+
+	return 0;
+}
+
+static void new_math_channel_cb(GtkMenuItem *menuitem, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct channel_settings *expr_settings;
+	char channel_name[512];
+
+	snprintf(channel_name, sizeof(channel_name),
+			"ecuation%d", priv->nb_math_channels++);
+
+	expr_settings = calloc(sizeof(struct channel_settings), 1);
+	math_expression_get_settings(plot, expr_settings);
+
+	/* Build a new Math Channel */
+	plot_channels_add_channel(plot, channel_name, MATH_CHANNELS_DEVICE);
+
+	/* Get Channel settings structure */
+	struct channel_settings *chn_settings;
+	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
+	GtkTreeIter iter;
+
+	get_iter_by_name(treeview, &iter, MATH_CHANNELS_DEVICE, channel_name);
+	gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &chn_settings, -1);
+
+	chn_settings->txt_math_expression = expr_settings->txt_math_expression;
+	chn_settings->iio_device_name = expr_settings->iio_device_name;
+	chn_settings->iio_channels = expr_settings->iio_channels;
+	chn_settings->math_expression = expr_settings->math_expression;
+	chn_settings->math_lib_handler = expr_settings->math_lib_handler;
+	free(expr_settings);
+	treeview_expand_update(plot);
+}
+
+static void channel_edit_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeView *treeview;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	gboolean selected;
+
+	treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	model = gtk_tree_view_get_model(treeview);
+	selected = tree_get_selected_row_iter(treeview, &iter);
+	if (!selected)
+		return;
+
+	/* Get Channel settings structure */
+	struct channel_settings *settings;
+
+	gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &settings, -1);
+	math_expression_get_settings(plot, settings);
+}
+
+static void channel_remove_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTreeView *treeview;
+	GtkTreeIter iter;
+	gboolean selected;
+
+	treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	selected = tree_get_selected_row_iter(treeview, &iter);
+	if (!selected)
+		return;
+
+	plot_channels_remove_channel(plot, &iter);
+	check_valid_setup(plot);
+}
+
 static void plot_trigger_save_settings(OscPlotPrivate *priv,
 		const struct iio_device *dev)
 {
@@ -4085,6 +4539,7 @@ static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 
 	gtk_widget_destroy(color_dialog);
 }
+
 static void channel_math_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -4143,6 +4598,7 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 	gboolean is_channel = false;
 	gpointer ref;
 	gchar *element_name;
+	int channel_type;
 	char name[1024];
 
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
@@ -4164,6 +4620,7 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 		ELEMENT_REFERENCE, &ref,
 		IS_DEVICE, &is_device,
 		IS_CHANNEL, &is_channel,
+		CHANNEL_TYPE, &channel_type,
 		-1);
 	snprintf(name, sizeof(name), "%s", element_name);
 	g_free(element_name);
@@ -4172,11 +4629,20 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 		if (gtk_combo_box_get_active(GTK_COMBO_BOX(plot->priv->plot_domain)) != TIME_PLOT)
 			return false;
 
-		gtk_menu_popup(GTK_MENU(priv->channel_settings_menu), NULL, NULL,
-			NULL, NULL,
-			(event != NULL) ? event->button : 0,
-			gdk_event_get_time((GdkEvent*)event));
-		return true;
+		switch(channel_type) {
+		case PLOT_IIO_CHANNEL:
+			gtk_menu_popup(GTK_MENU(priv->channel_settings_menu), NULL, NULL,
+				NULL, NULL,
+				(event != NULL) ? event->button : 0,
+				gdk_event_get_time((GdkEvent*)event));
+			return true;
+		case PLOT_MATH_CHANNEL:
+			gtk_menu_popup(GTK_MENU(priv->math_channel_settings_menu), NULL, NULL,
+				NULL, NULL,
+				(event != NULL) ? event->button : 0,
+				gdk_event_get_time((GdkEvent*)event));
+			return true;
+		}
 	}
 
 	if (is_device) {
@@ -4189,6 +4655,14 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 				has_trigger);
 
 		gtk_menu_popup(GTK_MENU(priv->device_settings_menu),
+				NULL, NULL, NULL, NULL,
+				(event != NULL) ? event->button : 0,
+				gdk_event_get_time((GdkEvent*)event));
+		return true;
+	}
+
+	if (!strncmp(name, MATH_CHANNELS_DEVICE, sizeof(MATH_CHANNELS_DEVICE))) {
+		gtk_menu_popup(GTK_MENU(priv->math_settings_menu),
 				NULL, NULL, NULL, NULL,
 				(event != NULL) ? event->button : 0,
 				gdk_event_get_time((GdkEvent*)event));
@@ -4336,6 +4810,8 @@ static void create_plot(OscPlot *plot)
 	priv->save_mat_scale = GTK_WIDGET(gtk_builder_get_object(builder, "save_mat_scale"));
 	priv->new_plot_button = GTK_WIDGET(gtk_builder_get_object(builder, "toolbutton_new_plot"));
 	priv->cmb_saveas_type = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_formats"));
+	priv->math_expression_dialog = GTK_WIDGET(gtk_builder_get_object(priv->builder, "math_expression_chooser"));
+	priv->math_expression = GTK_TEXT_BUFFER(gtk_builder_get_object(priv->builder, "textbuffer_math_expression"));
 
 	priv->tbuf = NULL;
 	priv->ch_settings_list = NULL;
@@ -4362,18 +4838,19 @@ static void create_plot(OscPlot *plot)
 
 	/* Create a Tree Store that holds information about devices */
 	tree_store = gtk_tree_store_new(NUM_COL,
-									G_TYPE_STRING,    /* ELEMENT_NAME */
-									G_TYPE_BOOLEAN,   /* IS_DEVICE */
-									G_TYPE_BOOLEAN,   /* IS_CHANNEL */
-									G_TYPE_BOOLEAN,   /* DEVICE_SELECTABLE */
-									G_TYPE_BOOLEAN,   /* DEVICE_ACTIVE */
-									G_TYPE_BOOLEAN,   /* CHANNEL_ACTIVE */
-									G_TYPE_POINTER,   /* ELEMENT_REFERENCE */
-									G_TYPE_BOOLEAN,   /* EXPANDED */
-									G_TYPE_POINTER,   /* CHANNEL_SETTINGS */
-									GDK_TYPE_PIXBUF,  /* CHANNEL_COLOR_ICON */
-									G_TYPE_INT ,      /* PLOT_TYPE */
-									G_TYPE_BOOLEAN);  /* SENSITIVE */
+					G_TYPE_STRING,    /* ELEMENT_NAME */
+					G_TYPE_BOOLEAN,   /* IS_DEVICE */
+					G_TYPE_BOOLEAN,   /* IS_CHANNEL */
+					G_TYPE_INT,       /* CHANNEL_TYPE */
+					G_TYPE_BOOLEAN,   /* DEVICE_SELECTABLE */
+					G_TYPE_BOOLEAN,   /* DEVICE_ACTIVE */
+					G_TYPE_BOOLEAN,   /* CHANNEL_ACTIVE */
+					G_TYPE_POINTER,   /* ELEMENT_REFERENCE */
+					G_TYPE_BOOLEAN,   /* EXPANDED */
+					G_TYPE_POINTER,   /* CHANNEL_SETTINGS */
+					GDK_TYPE_PIXBUF,  /* CHANNEL_COLOR_ICON */
+					G_TYPE_INT ,      /* PLOT_TYPE */
+					G_TYPE_BOOLEAN);  /* SENSITIVE */
 	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 
 	/* Create Device Settings Menu */
@@ -4394,14 +4871,19 @@ static void create_plot(OscPlot *plot)
 		priv->plot_trigger_menuitem);
 	gtk_widget_show_all(priv->device_settings_menu);
 
+	priv->math_settings_menu = gtk_menu_new();
+	priv->math_menuitem = gtk_image_menu_item_new_with_label("New Channel");
+	image = gtk_image_new_from_stock(GTK_STOCK_ADD, GTK_ICON_SIZE_MENU);
+	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->math_menuitem), image);
+	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->math_menuitem), true);
+	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_settings_menu),
+		priv->math_menuitem);
+	gtk_widget_show_all(priv->math_settings_menu);
+
 	/* Create Channel Settings Menu */
 	priv->channel_settings_menu = gtk_menu_new();
+
 	priv->channel_color_menuitem = gtk_image_menu_item_new_with_label("Color Selection");
-
-
-	gtk_box_pack_start(GTK_BOX(gtk_builder_get_object(builder, "buttons_separator_box")),
-			gtk_vseparator_new(), FALSE, TRUE, 0);
-
 	image = gtk_image_new_from_stock(GTK_STOCK_SELECT_COLOR, GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_color_menuitem), image);
 	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_color_menuitem), true);
@@ -4415,6 +4897,33 @@ static void create_plot(OscPlot *plot)
 		priv->channel_math_menuitem);
 	gtk_widget_show_all(priv->channel_settings_menu);
 
+	/* Create Math Channel Settings Menu */
+	priv->math_channel_settings_menu = gtk_menu_new();
+
+	priv->channel_expression_edit_menuitem = gtk_image_menu_item_new_with_label("Edit Expression");
+	image = gtk_image_new_from_stock(GTK_STOCK_EDIT, GTK_ICON_SIZE_MENU);
+	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_expression_edit_menuitem), image);
+	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_expression_edit_menuitem), true);
+	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
+		priv->channel_expression_edit_menuitem);
+
+	priv->channel_color_menuitem = gtk_image_menu_item_new_with_label("Color Selection");
+	image = gtk_image_new_from_stock(GTK_STOCK_SELECT_COLOR, GTK_ICON_SIZE_MENU);
+	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_color_menuitem), image);
+	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_color_menuitem), true);
+	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
+		priv->channel_color_menuitem);
+	priv->channel_remove_menuitem = gtk_image_menu_item_new_with_label("Remove");
+	image = gtk_image_new_from_stock(GTK_STOCK_REMOVE, GTK_ICON_SIZE_MENU);
+	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_remove_menuitem), image);
+	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_remove_menuitem), true);
+	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
+		priv->channel_remove_menuitem);
+	gtk_widget_show_all(priv->math_channel_settings_menu);
+
+	gtk_box_pack_start(GTK_BOX(gtk_builder_get_object(builder, "buttons_separator_box")),
+			gtk_vseparator_new(), FALSE, TRUE, 0);
+
 	/* Create application's treeviews */
 	device_list_treeview_init(plot);
 	saveas_channels_list_fill(plot);
@@ -4425,6 +4934,11 @@ static void create_plot(OscPlot *plot)
 
 	/* Initialize Impulse Generators (triggers) dialog */
 	trigger_dialog_init(builder);
+
+	/* Add a device chooser to the Math Expression Chooser */
+	priv->math_device_select = GTK_WIDGET(gtk_builder_get_object(priv->builder, "cmb_math_device_chooser"));
+	comboboxtext_input_devices_fill(ctx, GTK_COMBO_BOX_TEXT(priv->math_device_select));
+	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->math_device_select), 0);
 
 	/* Connect Signals */
 	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);
@@ -4466,12 +4980,18 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(right_click_on_ch_list_cb), plot);
 	g_signal_connect(priv->device_trigger_menuitem, "activate",
 		G_CALLBACK(device_trigger_settings_cb), plot);
+	g_signal_connect(priv->math_menuitem, "activate",
+		G_CALLBACK(new_math_channel_cb), plot);
 	g_signal_connect(priv->plot_trigger_menuitem, "activate",
 		G_CALLBACK(plot_trigger_settings_cb), plot);
 	g_signal_connect(priv->channel_color_menuitem, "activate",
 		G_CALLBACK(channel_color_settings_cb), plot);
 	g_signal_connect(priv->channel_math_menuitem, "activate",
 		G_CALLBACK(channel_math_settings_cb), plot);
+	g_signal_connect(priv->channel_remove_menuitem, "activate",
+		G_CALLBACK(channel_remove_settings_cb), plot);
+	g_signal_connect(priv->channel_expression_edit_menuitem, "activate",
+		G_CALLBACK(channel_edit_settings_cb), plot);
 
 	g_builder_connect_signal(builder, "zoom_in", "clicked",
 		G_CALLBACK(zoom_in), plot);
@@ -4501,6 +5021,17 @@ static void create_plot(OscPlot *plot)
 
 	g_builder_connect_signal(builder, "menuitem_fullscreen", "activate",
 		G_CALLBACK(fullscreen_changed_cb), plot);
+
+	g_builder_connect_signal(builder, "cmb_math_device_chooser", "changed",
+		G_CALLBACK(math_device_cmb_changed_cb), plot);
+
+	GtkWidget *math_table = GTK_WIDGET(gtk_builder_get_object(priv->builder, "table_math_chooser"));
+	GList *node;
+
+	for (node = gtk_container_get_children(GTK_CONTAINER(math_table)); node; node = g_list_next(node)) {
+		g_signal_connect(node->data, "clicked", G_CALLBACK(math_chooser_key_pressed_cb), plot);
+	}
+
 
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,
