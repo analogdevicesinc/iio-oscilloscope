@@ -34,6 +34,8 @@
 #include "config.h"
 #include "osc_plugin.h"
 
+extern void math_expression_objects_clean(void);
+
 GSList *plugin_list = NULL;
 
 gint capture_function = 0;
@@ -684,6 +686,29 @@ void constellation_transform_function(Transform *tr, gboolean init_transform)
 
 		return;
 	}
+}
+
+void math_transform_function(Transform *tr, gboolean init_transform)
+{
+	struct _math_settings *settings = tr->settings;
+	unsigned axis_length = settings->num_samples;
+	int i;
+
+	if (init_transform) {
+		Transform_resize_x_axis(tr, axis_length);
+		for (i = 0; i < axis_length; i++)
+			tr->x_axis[i] = i;
+		tr->y_axis_size = axis_length;
+
+		Transform_resize_y_axis(tr, tr->y_axis_size);
+		tr->local_output_buf = true;
+
+		return;
+	}
+	if (!tr->local_output_buf)
+		return;
+
+	settings->math_expression(settings->iio_channels, tr->y_axis, axis_length);
 }
 
 static void gfunc_restart_plot(gpointer data, gpointer user_data)
@@ -1977,6 +2002,8 @@ static void do_quit(bool reload)
 
 	if (ctx)
 		iio_context_destroy(ctx);
+
+	math_expression_objects_clean();
 }
 
 void application_reload(struct iio_context *new_ctx)
