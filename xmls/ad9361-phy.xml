@@ -13786,6 +13786,30 @@
 			<RegOffset>0</RegOffset>
 			<SliceWidth>3</SliceWidth>
 		</BitField>
+		<BitField>
+			<Name>reg232_b6</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>SDM PD</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>6</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg232_b7</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>SDM Bypass</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>7</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
