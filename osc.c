@@ -1555,7 +1555,7 @@ static gboolean capture_process(void)
 			dev_info->buffer = iio_device_create_buffer(dev,
 				sample_count, false);
 			if (!dev_info->buffer) {
-				fprintf(stderr, "Unable to create buffer\n");
+				fprintf(stderr, "Error: Unable to create buffer: %s\n", strerror(errno));
 				goto capture_stop_check;
 			}
 		}
@@ -1724,7 +1724,7 @@ static int capture_setup(void)
 		if (!device_is_oneshot(dev)) {
 			dev_info->buffer = iio_device_create_buffer(dev, sample_count, false);
 			if (!dev_info->buffer) {
-				fprintf(stderr, "Unable to create buffer\n");
+				fprintf(stderr, "Error: Unable to create buffer: %s\n", strerror(errno));
 				return -1;
 			}
 		}
