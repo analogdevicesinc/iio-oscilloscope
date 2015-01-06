@@ -1569,6 +1569,9 @@ static gboolean capture_process(void)
 {
 	unsigned int i;
 
+	if (stop_capture == TRUE)
+		goto capture_stop_check;
+
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);

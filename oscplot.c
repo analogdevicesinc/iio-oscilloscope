@@ -52,6 +52,7 @@ static unsigned object_count = 0;
 static void create_plot (OscPlot *plot);
 static void plot_setup(OscPlot *plot);
 static void capture_button_clicked_cb (GtkToggleToolButton *btn, gpointer data);
+static void single_shot_clicked_cb (GtkToggleToolButton *btn, gpointer data);
 static void add_grid(OscPlot *plot);
 static void rescale_databox(OscPlotPrivate *priv, GtkDatabox *box, gfloat border);
 static void call_all_transform_functions(OscPlotPrivate *priv);
@@ -183,6 +184,7 @@ struct _OscPlotPrivate
 	GtkWidget *databox;
 	GtkWidget *capture_graph;
 	GtkWidget *capture_button;
+	GtkWidget *ss_button;
 	GtkWidget *channel_list_view;
 	GtkWidget *show_grid;
 	GtkWidget *plot_type;
@@ -235,6 +237,8 @@ struct _OscPlotPrivate
 
 	gulong capture_button_hid;
 	gint deactivate_capture_btn_flag;
+
+	bool single_shot_mode;
 
 	/* A reference to the device holding the most recent created transform */
 	struct extra_dev_info *current_device;
@@ -380,6 +384,10 @@ void osc_plot_set_visible (OscPlot *plot, bool visible)
 void osc_plot_data_update (OscPlot *plot)
 {
 	call_all_transform_functions(plot->priv);
+	if (plot->priv->single_shot_mode) {
+		plot->priv->single_shot_mode = false;
+		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(plot->priv->capture_button), false);
+	}
 }
 
 void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
@@ -751,13 +759,13 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, struct iio_device *de
 	if (plot_type == FFT_PLOT) {
 		if (num_enabled != 2 && num_enabled != 1) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
-				"FFT needs 2 channels or less");
+				"FFT needs 2 or less channels");
 			return false;
 		}
 	} else if (plot_type == XY_PLOT) {
 		if (num_enabled != 2) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
-				"Constellation needs 2 channels");
+				"Constellation requires only 2 channels");
 			return false;
 		}
 	} else if (plot_type == TIME_PLOT) {
@@ -773,7 +781,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, struct iio_device *de
 	} else if (plot_type == XCORR_PLOT) {
 		if (enabled_channels_count(plot) != 4) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
-				"Correlation needs 4 channels");
+				"Correlation requires 2 or 4 channels");
 			return false;
 		}
 	}
@@ -842,6 +850,10 @@ static gboolean check_valid_setup(OscPlot *plot)
 	else
 		g_object_set(priv->capture_button, "stock-id", "gtk-media-play", NULL);
 	gtk_widget_set_tooltip_text(priv->capture_button, "Capture / Stop");
+
+	g_object_set(priv->ss_button, "stock-id", "gtk-media-next", NULL);
+	gtk_widget_set_tooltip_text(priv->ss_button, "Single Shot Capture");
+
 	if (!priv->capture_button_hid) {
 		priv->capture_button_hid = g_signal_connect(priv->capture_button, "toggled",
 			G_CALLBACK(capture_button_clicked_cb), plot);
@@ -852,6 +864,7 @@ static gboolean check_valid_setup(OscPlot *plot)
 
 capture_button_err:
 	g_object_set(priv->capture_button, "stock-id", "gtk-dialog-warning", NULL);
+	g_object_set(priv->ss_button, "stock-id", "gtk-dialog-warning", NULL);
 	if (priv->capture_button_hid) {
 		g_signal_handler_disconnect(priv->capture_button, priv->capture_button_hid);
 		priv->deactivate_capture_btn_flag = 1;
@@ -1511,6 +1524,15 @@ static void plot_setup(OscPlot *plot)
 	}
 
 	osc_plot_update_rx_lbl(plot, FORCE_UPDATE);
+}
+
+static void single_shot_clicked_cb(GtkToggleToolButton *btn, gpointer data)
+{
+	OscPlot *plot = data;
+	OscPlotPrivate *priv = plot->priv;
+
+	priv->single_shot_mode = true;
+	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button), true);
 }
 
 static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
@@ -4056,6 +4078,7 @@ static void create_plot(OscPlot *plot)
 	priv->window = GTK_WIDGET(gtk_builder_get_object(builder, "toplevel"));
 	priv->capture_graph = GTK_WIDGET(gtk_builder_get_object(builder, "display_capture"));
 	priv->capture_button = GTK_WIDGET(gtk_builder_get_object(builder, "capture_button"));
+	priv->ss_button = GTK_WIDGET(gtk_builder_get_object(builder, "single_shot_button"));
 	priv->channel_list_view = GTK_WIDGET(gtk_builder_get_object(builder, "channel_list_view"));
 	priv->show_grid = GTK_WIDGET(gtk_builder_get_object(builder, "show_grid"));
 	priv->plot_domain = GTK_WIDGET(gtk_builder_get_object(builder, "capture_domain"));
@@ -4185,6 +4208,8 @@ static void create_plot(OscPlot *plot)
 	priv->capture_button_hid =
 	g_signal_connect(priv->capture_button, "toggled",
 		G_CALLBACK(capture_button_clicked_cb), plot);
+	g_signal_connect(priv->ss_button, "clicked",
+		G_CALLBACK(single_shot_clicked_cb), plot);
 	g_signal_connect(priv->plot_domain, "changed",
 		G_CALLBACK(plot_domain_changed_cb), plot);
 	g_signal_connect(priv->saveas_button, "clicked",
@@ -4251,6 +4276,8 @@ static void create_plot(OscPlot *plot)
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,
 		"stock-id", 0, capture_button_icon_transform, NULL, plot, NULL);
+	g_object_bind_property(priv->capture_button, "tooltip-text",
+		priv->ss_button, "tooltip-text", G_BINDING_DEFAULT);
 	g_object_bind_property(priv->y_axis_max, "value", ruler_y, "lower", G_BINDING_DEFAULT);
 	g_object_bind_property(priv->y_axis_min, "value", ruler_y, "upper", G_BINDING_DEFAULT);
 
