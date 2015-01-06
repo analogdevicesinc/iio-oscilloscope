@@ -263,6 +263,40 @@ static int is_eeprom_fru(char *eeprom_file, GtkTextBuffer *buf, GtkTextIter *ite
 	return 0;
 }
 
+bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
+{
+	GdkCursor *watchCursor;
+	GdkWindow *gdkWindow;
+
+	g_return_val_if_fail(widget, false);
+
+	gdkWindow = gtk_widget_get_window(widget);
+	g_return_val_if_fail(gdkWindow, false);
+
+	watchCursor = gdk_cursor_new(type);
+	gdk_window_set_cursor(gdkWindow, watchCursor);
+
+	while (gtk_events_pending())
+		gtk_main_iteration();
+
+
+	return true;
+}
+
+bool widget_use_parent_cursor(GtkWidget *widget)
+{
+	GdkWindow *gdkWindow;
+
+	g_return_val_if_fail(widget, false);
+
+	gdkWindow = gtk_widget_get_window(widget);
+	g_return_val_if_fail(gdkWindow, false);
+
+	gdk_window_set_cursor(gdkWindow, NULL);
+
+	return true;
+}
+
 static struct iio_context * get_context(Dialogs *data)
 {
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_net))) {
@@ -403,8 +437,11 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 
 	do {
 		ret = gtk_dialog_run(GTK_DIALOG(data->connect));
-		if (ret == GTK_RESPONSE_APPLY)
+		if (ret == GTK_RESPONSE_APPLY) {
+			widget_set_cursor(data->connect, GDK_WATCH);
 			connect_fillin(data);
+			widget_use_parent_cursor(data->connect);
+		}
 	} while (ret == GTK_RESPONSE_APPLY);
 
 	switch(ret) {
@@ -412,7 +449,9 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 		case GTK_RESPONSE_DELETE_EVENT:
 			break;
 		case GTK_RESPONSE_OK:
+			widget_set_cursor(data->connect, GDK_WATCH);
 			application_reload(get_context(data));
+			widget_use_parent_cursor(data->connect);
 			break;
 		default:
 			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
