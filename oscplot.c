@@ -2429,8 +2429,6 @@ static void saveas_dialog_show(GtkWidget *w, OscPlot *plot)
 	gtk_widget_show(priv->saveas_dialog);
 }
 
-#define FILE_OVERWRITE 0
-
 static void save_as(OscPlot *plot, const char *filename, int type)
 {
 	OscPlotPrivate *priv = plot->priv;
