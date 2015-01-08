@@ -2571,9 +2571,12 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 					strcpy(name, filename);
 				else
 					sprintf(name, "%s.mat", filename);
-			mat = Mat_Open(name, FILE_OVERWRITE);
-			if (!mat)
+			
+			mat = Mat_Create(name, NULL);
+			if (!mat) {
+				fprintf(stderr, "Error creating MAT file %s: %s\n", name, strerror(errno));
 				break;
+			}
 
 			active_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->device_combobox));
 			d = device_find_by_name(active_device);
