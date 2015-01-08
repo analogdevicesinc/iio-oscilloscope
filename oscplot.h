@@ -42,6 +42,7 @@ GType         osc_plot_get_type         (void);
 GtkWidget*    osc_plot_new              (void);
 void          osc_plot_destroy          (OscPlot *plot);
 void          osc_plot_set_visible      (OscPlot *plot, bool visible);
+struct iio_buffer * osc_plot_get_buffer (OscPlot *plot);
 void          osc_plot_data_update      (OscPlot *plot);
 void          osc_plot_update_rx_lbl    (OscPlot *plot, bool force_update);
 void          osc_plot_restart          (OscPlot *plot);

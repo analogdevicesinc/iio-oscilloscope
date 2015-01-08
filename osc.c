@@ -682,13 +682,6 @@ void constellation_transform_function(Transform *tr, gboolean init_transform)
 	}
 }
 
-static void gfunc_update_plot(gpointer data, gpointer user_data)
-{
-	GtkWidget *plot = data;
-
-	osc_plot_data_update(OSC_PLOT(plot));
-}
-
 static void gfunc_restart_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
@@ -710,9 +703,18 @@ static void gfunc_destroy_plot(gpointer data, gpointer user_data)
 	osc_plot_destroy(OSC_PLOT(plot));
 }
 
-static void update_all_plots(void)
+static void update_plot(struct iio_buffer *buf)
 {
-	g_list_foreach(plot_list, gfunc_update_plot, NULL);
+	GList *node;
+
+	for (node = plot_list; node; node = g_list_next(node)) {
+		OscPlot *plot = (OscPlot *) node->data;
+
+		if (osc_plot_get_buffer(plot) == buf) {
+			osc_plot_data_update(plot);
+			break;
+		}
+	}
 }
 
 static void restart_all_running_plots(void)
@@ -1579,7 +1581,7 @@ static gboolean capture_process(void)
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		unsigned int sample_count = dev_info->sample_count;
 		struct iio_channel *chn;
-		off_t offset;
+		off_t offset = 0;
 
 		if (dev_info->input_device == false)
 			continue;
@@ -1652,9 +1654,10 @@ static gboolean capture_process(void)
 			iio_buffer_destroy(dev_info->buffer);
 			dev_info->buffer = NULL;
 		}
-	}
 
-	update_all_plots();
+		if (!dev_info->channel_trigger_enabled || offset)
+			update_plot(dev_info->buffer);
+	}
 
 capture_stop_check:
 	if (stop_capture == TRUE)

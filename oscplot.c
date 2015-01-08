@@ -382,6 +382,11 @@ void osc_plot_set_visible (OscPlot *plot, bool visible)
 	gtk_widget_set_visible(plot->priv->window, visible);
 }
 
+struct iio_buffer * osc_plot_get_buffer(OscPlot *plot)
+{
+	return plot->priv->current_device->buffer;
+}
+
 void osc_plot_data_update (OscPlot *plot)
 {
 	call_all_transform_functions(plot->priv);
