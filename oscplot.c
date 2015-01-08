@@ -270,7 +270,8 @@ struct _OscPlotPrivate
 	gint line_thickness;
 
 	gint redraw_function;
-	gint stop_redraw;
+	gboolean stop_redraw;
+	gboolean redraw;
 
 	gboolean fullscreen_state;
 
@@ -384,6 +385,8 @@ void osc_plot_set_visible (OscPlot *plot, bool visible)
 void osc_plot_data_update (OscPlot *plot)
 {
 	call_all_transform_functions(plot->priv);
+	plot->priv->redraw = TRUE;
+
 	if (plot->priv->single_shot_mode) {
 		plot->priv->single_shot_mode = false;
 		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(plot->priv->capture_button), false);
@@ -1449,12 +1452,15 @@ static gboolean plot_redraw(OscPlotPrivate *priv)
 {
 	if (!GTK_IS_DATABOX(priv->databox))
 		return FALSE;
-	auto_scale_databox(priv, GTK_DATABOX(priv->databox));
-	gtk_widget_queue_draw(priv->databox);
-	fps_counter(priv);
+	if (priv->redraw) {
+		auto_scale_databox(priv, GTK_DATABOX(priv->databox));
+		gtk_widget_queue_draw(priv->databox);
+		fps_counter(priv);
+	}
 	if (priv->stop_redraw == TRUE)
 		priv->redraw_function = 0;
 
+	priv->redraw = FALSE;
 	return !priv->stop_redraw;
 }
 
