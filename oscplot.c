@@ -77,6 +77,8 @@ static gboolean check_valid_setup(OscPlot *plot);
 static int device_find_by_name(const char *name);
 static int channel_find_by_name(int device_index, const char *name);
 static void device_rx_info_update(OscPlot *plot);
+static gdouble prefix2scale (char adc_scale);
+static struct iio_device * transform_get_device_parent(Transform *transform);
 
 /* IDs of signals */
 enum {
@@ -104,6 +106,13 @@ enum {
 	SENSITIVE,
 	PLOT_TYPE,
 	NUM_COL
+};
+
+/* Horizontal Scale Types */
+enum {
+	HOR_SCALE_SAMPLES,
+	HOR_SCALE_TIME,
+	HOR_SCALE_NUM_OPTIONS
 };
 
 #define OSC_COLOR(r, g, b) { \
@@ -191,6 +200,7 @@ struct _OscPlotPrivate
 	GtkWidget *plot_domain;
 	GtkWidget *enable_auto_scale;
 	GtkWidget *hor_scale;
+	GtkWidget *hor_units;
 	GtkWidget *marker_label;
 	GtkWidget *devices_label;
 	GtkWidget *saveas_button;
@@ -207,6 +217,7 @@ struct _OscPlotPrivate
 	GtkWidget *saveas_select_channel_message;
 	GtkWidget *device_combobox;
 	GtkWidget *sample_count_widget;
+	unsigned int sample_count;
 	GtkWidget *fft_size_widget;
 	GtkWidget *fft_avg_widget;
 	GtkWidget *fft_pwr_offset_widget;
@@ -233,6 +244,8 @@ struct _OscPlotPrivate
 	int frame_counter;
 	time_t last_update;
 
+	int last_hor_unit;
+
 	int do_a_rescale_flag;
 
 	gulong capture_button_hid;
@@ -241,7 +254,7 @@ struct _OscPlotPrivate
 	bool single_shot_mode;
 
 	/* A reference to the device holding the most recent created transform */
-	struct extra_dev_info *current_device;
+	struct iio_device *first_adc_device;
 
 	/* List of transforms for this plot */
 	TrList *transform_list;
@@ -402,6 +415,7 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 {
 	OscPlotPrivate *priv = plot->priv;
 	TrList *tr_list = priv->transform_list;
+	struct extra_dev_info *dev_info = NULL;
 	char buf[20];
 	double corr;
 	int i;
@@ -411,23 +425,36 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 		return;
 
 	if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
-		sprintf(buf, "%cHz", priv->current_device->adc_scale);
-		gtk_label_set_text(GTK_LABEL(priv->hor_scale), buf);
+
 		/* In FFT mode we need to scale the x-axis according to the selected sampling frequency */
 		for (i = 0; i < tr_list->size; i++)
 			Transform_setup(tr_list->transforms[i]);
+
+		dev_info = iio_device_get_data(transform_get_device_parent(tr_list->transforms[i - 1]));
+		sprintf(buf, "%cHz", dev_info->adc_scale);
+		gtk_label_set_text(GTK_LABEL(priv->hor_scale), buf);
+
 		if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM)
-			corr = priv->current_device->adc_freq / 2.0;
+			corr = dev_info->adc_freq / 2.0;
 		else
 			corr = 0;
 		if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)) && !force_update)
 			return;
 		if (priv->profile_loaded_scale)
 			return;
-		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -5.0 - corr, priv->current_device->adc_freq / 2.0 + 5.0, 0.0, -100.0);
+		gtk_databox_set_total_limits(GTK_DATABOX(priv->databox),
+				-5.0 - corr, dev_info->adc_freq / 2.0 + 5.0,
+				0.0, -100.0);
 		priv->do_a_rescale_flag = 1;
 	} else {
-		gtk_label_set_text(GTK_LABEL(priv->hor_scale), "Samples");
+		switch (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->hor_units))) {
+		case 0:
+			gtk_label_set_text(GTK_LABEL(priv->hor_scale), "Samples");
+			break;
+		case 1:
+			gtk_label_set_text(GTK_LABEL(priv->hor_scale), "µs");
+			break;
+		}
 	}
 
 	device_rx_info_update(plot);
@@ -550,7 +577,7 @@ GMutex * osc_plot_get_marker_lock (OscPlot *plot)
 	return &plot->priv->g_marker_copy_lock;
 }
 
-bool osc_plot_set_sample_count (OscPlot *plot, int sample_count)
+bool osc_plot_set_sample_count (OscPlot *plot, gdouble count)
 {
 	OscPlotPrivate *priv = plot->priv;
 	int ret;
@@ -560,18 +587,26 @@ bool osc_plot_set_sample_count (OscPlot *plot, int sample_count)
 
 	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT) {
 		char s_count[32];
-		snprintf(s_count, sizeof(s_count), "%d", sample_count);
+		snprintf(s_count, sizeof(s_count), "%d", (int)count);
 		ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_size_widget), s_count);
+		priv->sample_count = (int)count;
 	} else {
-		gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget),
-			(gdouble)sample_count);
+		switch (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->hor_units))) {
+		case 0:
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), count);
+			priv->sample_count = (int)count;
+			break;
+		case 1:
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), count);
+			break;
+		}
 		ret = 1;
 	}
 
 	return (ret) ? true : false;
 }
 
-int osc_plot_get_sample_count (OscPlot *plot) {
+double osc_plot_get_sample_count (OscPlot *plot) {
 
 	OscPlotPrivate *priv = plot->priv;
 	int count;
@@ -579,7 +614,7 @@ int osc_plot_get_sample_count (OscPlot *plot) {
 	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT)
 		count = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 	else
-		count = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+		count = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 
 	return count;
 }
@@ -882,6 +917,52 @@ capture_button_err:
 	return false;
 }
 
+static int plot_get_sample_count_of_device(OscPlot *plot, const char *device)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct iio_device *iio_dev;
+	struct extra_dev_info *dev_info;
+	gdouble freq;
+	int count = -1;
+
+	if (!plot || !device)
+		return count;
+
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->hor_units))) {
+	case 0:
+		count = (int)osc_plot_get_sample_count(plot);
+		break;
+	case 1:
+		iio_dev = iio_context_find_device(ctx, device);
+		if (!iio_dev)
+			break;
+
+		dev_info = iio_device_get_data(iio_dev);
+		if (!dev_info)
+			break;
+
+		freq = dev_info->adc_freq * prefix2scale(dev_info->adc_scale);
+		count = (int)round((gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget)) *
+				freq) / pow(10.0, 6));
+		break;
+	}
+
+	return count;
+}
+
+static struct iio_device * transform_get_device_parent(Transform *transform)
+{
+	struct iio_device *iio_dev = NULL;
+	struct extra_info *ch_info = NULL;
+
+	if (transform && transform->channel_parent) {
+		ch_info = iio_channel_get_data(transform->channel_parent);
+		iio_dev = ch_info->dev;
+	}
+
+	return iio_dev;
+}
+
 static void update_transform_settings(OscPlot *plot, Transform *transform,
 	struct channel_settings *csettings)
 {
@@ -904,12 +985,17 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 		FFT_SETTINGS(transform)->marker_lock = NULL;
 		FFT_SETTINGS(transform)->marker_type = NULL;
 	} else if (plot_type == TIME_PLOT) {
-		TIME_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+		struct iio_device *iio_dev = transform_get_device_parent(transform);
+		if (!iio_dev)
+			return;
+		TIME_SETTINGS(transform)->num_samples = plot_get_sample_count_of_device(plot,
+				iio_device_get_name(iio_dev) ?: iio_device_get_id(iio_dev));
 		TIME_SETTINGS(transform)->apply_inverse_funct = csettings->apply_inverse_funct;
 		TIME_SETTINGS(transform)->apply_multiply_funct = csettings->apply_multiply_funct;
 		TIME_SETTINGS(transform)->apply_add_funct = csettings->apply_add_funct;
 		TIME_SETTINGS(transform)->multiply_value = csettings->multiply_value;
 		TIME_SETTINGS(transform)->add_value = csettings->add_value;
+		TIME_SETTINGS(transform)->max_x_axis = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	} else if (plot_type == XY_PLOT){
 		CONSTELLATION_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	} else if (plot_type == XCORR_PLOT){
@@ -937,7 +1023,6 @@ static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel *ch0,
 	struct _constellation_settings *constellation_settings;
 	struct _cross_correlation_settings *xcross_settings;
 	struct extra_info *ch_info = iio_channel_get_data(ch0);
-	struct extra_dev_info *dev_info = iio_device_get_data(ch_info->dev);
 
 	transform = Transform_new(tr_type);
 	transform->channel_parent = ch0;
@@ -999,7 +1084,6 @@ static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel *ch0,
 	TrList_add_transform(list, transform);
 	update_transform_settings(plot, transform, csettings);
 
-	priv->current_device = dev_info;
 	return transform;
 }
 
@@ -1014,7 +1098,6 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	Transform_destroy(tr);
 	if (list->size == 0) {
 		priv->active_transform_type = NO_TRANSFORM_TYPE;
-		priv->current_device = NULL;
 	}
 }
 
@@ -1093,13 +1176,14 @@ static void collect_parameters_from_plot(OscPlot *plot)
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *info = iio_device_get_data(dev);
+		const char *dev_name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
 
 		if (info->input_device == false)
 			continue;
 
 		prms = malloc(sizeof(struct plot_params));
 		prms->plot_id = priv->object_id;
-		prms->sample_count = osc_plot_get_sample_count(plot);
+		prms->sample_count = plot_get_sample_count_of_device(plot, dev_name);
 		list = info->plots_sample_counts;
 		list = g_slist_prepend(list, prms);
 		info->plots_sample_counts = list;
@@ -1136,6 +1220,19 @@ static void dispose_parameters_from_plot(OscPlot *plot)
 	}
 }
 
+static gdouble prefix2scale (char adc_scale)
+{
+	switch (adc_scale) {
+		case 'M':
+			return 1000000.0;
+		case 'k':
+			return 1000.0;
+		default:
+			return 1.0;
+			break;
+	}
+}
+
 static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 {
 	struct extra_info *ch_info;
@@ -1162,12 +1259,7 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	}
 	ch_info = iio_channel_get_data(tr->channel_parent);
 	dev_info = iio_device_get_data(ch_info->dev);
-	if (dev_info->adc_scale == 'M')
-		markers_scale = 1000000;
-	else if(dev_info->adc_scale == 'k')
-		markers_scale = 1000;
-	else
-		markers_scale = 1;
+	markers_scale = prefix2scale(dev_info->adc_scale);
 	lo_markers_scale_ratio = 1000000 / markers_scale; /* LO frequency - always in MHz */
 
 	if (MAX_MARKERS && priv->marker_type != MARKER_OFF) {
@@ -1502,10 +1594,15 @@ static void plot_setup(OscPlot *plot)
 		transform_y_axis = Transform_get_y_axis_ref(transform);
 
 		gchar *plot_type_str = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type));
-		if (strcmp(plot_type_str, "Lines"))
-			graph = gtk_databox_points_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, 3);
-		else
-			graph = gtk_databox_lines_new(transform->y_axis_size, transform_x_axis, transform_y_axis, transform->graph_color, priv->line_thickness);
+		if (strcmp(plot_type_str, "Lines")) {
+			graph = gtk_databox_points_new(transform->y_axis_size,
+					transform_x_axis, transform_y_axis,
+					transform->graph_color, 3);
+		} else {
+			graph = gtk_databox_lines_new(transform->y_axis_size,
+					transform_x_axis, transform_y_axis,
+					transform->graph_color, priv->line_thickness);
+		}
 		g_free(plot_type_str);
 
 		ch_info = iio_channel_get_data(transform->channel_parent);
@@ -1883,6 +1980,9 @@ static void device_list_treeview_init(OscPlot *plot)
 
 		if (dev_info->input_device == false)
 			continue;
+
+		if (!priv->first_adc_device)
+			priv->first_adc_device = dev;
 
 		gtk_tree_store_append(treestore, &iter, NULL);
 		gtk_tree_store_set(treestore, &iter,
@@ -2477,14 +2577,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			fprintf(fp, "InputRange\t1\n");
 			fprintf(fp, "InputRefImped\t50\n");
 			fprintf(fp, "XStart\t0\n");
-			if (dev_info->adc_scale == 'M')
-				freq = dev_info->adc_freq * 1000000;
-			else if (dev_info->adc_scale == 'k')
-				freq = dev_info->adc_freq * 1000;
-			else {
-				printf("error in writing\n");
-				break;
-			}
+			freq = dev_info->adc_freq * prefix2scale(dev_info->adc_scale);
 			fprintf(fp, "XDelta\t%-.17f\n", 1.0/freq);
 			fprintf(fp, "XDomain\t2\n");
 			fprintf(fp, "XUnit\tSec\n");
@@ -2720,6 +2813,71 @@ static void min_y_axis_cb(GtkSpinButton *btn, OscPlot *plot)
 	gtk_databox_set_total_limits(box, min_x, max_x, max_y, min_y);
 }
 
+static void count_changed_cb(GtkSpinButton *box, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct extra_dev_info *dev_info;
+	gdouble freq = 0;
+
+	if (priv->first_adc_device) {
+		dev_info = iio_device_get_data(priv->first_adc_device);
+		freq = dev_info->adc_freq * prefix2scale(dev_info->adc_scale);
+	}
+
+	switch(gtk_combo_box_get_active(GTK_COMBO_BOX(priv->hor_units))) {
+	case HOR_SCALE_SAMPLES:
+		priv->sample_count = (int)gtk_spin_button_get_value(box);
+		break;
+	case HOR_SCALE_TIME:
+		priv->sample_count = (int)round((gtk_spin_button_get_value(box) *
+				freq) / pow(10.0, 6));
+		break;
+	}
+}
+
+static void units_changed_cb(GtkComboBoxText *box, OscPlot *plot)
+{
+
+	OscPlotPrivate *priv = plot->priv;
+	struct extra_dev_info *dev_info;
+	int tmp_int;
+	gdouble freq = 0, tmp_d;
+	GtkAdjustment *limits;
+
+	if (priv->first_adc_device) {
+		dev_info = iio_device_get_data(priv->first_adc_device);
+		freq = dev_info->adc_freq * prefix2scale(dev_info->adc_scale);
+	}
+
+	g_signal_handlers_block_by_func(priv->sample_count_widget, G_CALLBACK(count_changed_cb), plot);
+
+	limits = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(priv->sample_count_widget));
+
+	tmp_int = gtk_combo_box_get_active(GTK_COMBO_BOX(box));
+	switch(tmp_int) {
+	case 0:
+		gtk_label_set_text(GTK_LABEL(priv->hor_scale), "Samples");
+		gtk_spin_button_set_digits(GTK_SPIN_BUTTON(priv->sample_count_widget), 0);
+		gtk_adjustment_set_lower(limits, 10.0);
+		gtk_adjustment_set_upper(limits, MAX_SAMPLES);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), priv->sample_count);
+		break;
+	case 1:
+		gtk_label_set_text(GTK_LABEL(priv->hor_scale), "µs");
+		gtk_spin_button_set_digits(GTK_SPIN_BUTTON(priv->sample_count_widget), 3);
+		if (freq) {
+			gtk_adjustment_set_lower(limits, 10.0 * pow(10.0, 6)/freq);
+			gtk_adjustment_set_upper(limits, MAX_SAMPLES * pow(10.0, 6)/freq);
+			tmp_d = (pow(10.0, 6)/freq) * priv->sample_count;
+			tmp_d = round(tmp_d * 1000.0) / 1000.0;
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), tmp_d);
+		}
+		break;
+	}
+
+	g_signal_handlers_unblock_by_func(priv->sample_count_widget, G_CALLBACK(count_changed_cb), plot);
+}
+
 static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter,
 		const char *dev_name, const char *ch_name)
 {
@@ -2805,7 +2963,7 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 	else
 		fprintf(fp, "unknown\n");
 
-	tmp_int = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+	tmp_int = priv->sample_count;
 	fprintf(fp, "sample_count=%d\n", tmp_int);
 
 	tmp_int = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
@@ -3055,7 +3213,7 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				else
 					goto unhandled;
 			} else if (MATCH_NAME("sample_count")) {
-				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), atoi(value));
+				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), atof(value));
 			} else if (MATCH_NAME("fft_size")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_size_widget), value);
 				if (ret == 0)
@@ -3624,27 +3782,41 @@ static void enable_tree_device_selection(OscPlot *plot, gboolean enable)
 
 static void plot_domain_changed_cb(GtkComboBox *box, OscPlot *plot)
 {
+	OscPlotPrivate *priv = plot->priv;
 	gboolean force_sensitive = true;
+	gint plot_type;
 
-	plot->priv->marker_type = MARKER_OFF;
+	priv->marker_type = MARKER_OFF;
 	check_valid_setup(plot);
 
-	foreach_device_iter(GTK_TREE_VIEW(plot->priv->channel_list_view),
+	plot_type = gtk_combo_box_get_active(box);
+	foreach_device_iter(GTK_TREE_VIEW(priv->channel_list_view),
 			*iter_children_plot_type_update, plot);
 
-	if (plot->priv->nb_input_devices < 2)
-		return;
+	/* Allow horizontal units selection only for TIME plots */
+	if (gtk_widget_is_sensitive(priv->hor_units))
+		priv->last_hor_unit = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->hor_units));
+	gtk_widget_set_sensitive(priv->hor_units, plot_type == TIME_PLOT);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->hor_units),
+		plot_type == TIME_PLOT ? priv->last_hor_unit : 0);
 
-	if (gtk_combo_box_get_active(box) != TIME_PLOT &&
-		gtk_combo_box_get_active(box) != XCORR_PLOT) {
+	/* Allow only 1 active device for a FFT or XY plot */
+	if (priv->nb_input_devices < 2)
+		return;
+	switch (plot_type) {
+	case FFT_PLOT:
+	case XY_PLOT:
 		enable_tree_device_selection(plot, true);
-		foreach_device_iter(GTK_TREE_VIEW(plot->priv->channel_list_view),
+		foreach_device_iter(GTK_TREE_VIEW(priv->channel_list_view),
 			*iter_children_sensitivity_update, NULL);
-	 } else {
+		break;
+	case TIME_PLOT:
+	case XCORR_PLOT:
 		enable_tree_device_selection(plot, false);
-		foreach_device_iter(GTK_TREE_VIEW(plot->priv->channel_list_view),
+		foreach_device_iter(GTK_TREE_VIEW(priv->channel_list_view),
 			*iter_children_sensitivity_update, &force_sensitive);
-	}
+		break;
+	};
 }
 
 static gboolean domain_is_fft(GBinding *binding,
@@ -4102,6 +4274,7 @@ static void create_plot(OscPlot *plot)
 	priv->plot_type = GTK_WIDGET(gtk_builder_get_object(builder, "plot_type"));
 	priv->enable_auto_scale = GTK_WIDGET(gtk_builder_get_object(builder, "auto_scale"));
 	priv->hor_scale = GTK_WIDGET(gtk_builder_get_object(builder, "hor_scale"));
+	priv->hor_units =  GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_units"));
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	priv->devices_label = GTK_WIDGET(gtk_builder_get_object(builder, "device_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
@@ -4308,6 +4481,8 @@ static void create_plot(OscPlot *plot)
 		"plot_type", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
 		"sample_count", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
+		"sample_count_units", "sensitive", G_BINDING_INVERT_BOOLEAN);
 
 	/* Bind the plot domain to the sensitivity of the sample count and
 	 * FFT size widgets */
@@ -4329,9 +4504,11 @@ static void create_plot(OscPlot *plot)
 	 g_object_bind_property_full(priv->plot_domain, "active", priv->fft_pwr_offset_widget, "visible",
 		0, domain_is_fft, NULL, NULL, NULL);
 
-	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_label"));
-	 g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
+	g_object_bind_property_full(priv->plot_domain, "active", priv->hor_units, "visible",
 		0, domain_is_time, NULL, NULL, NULL);
+	g_signal_connect(priv->hor_units, "changed", G_CALLBACK(units_changed_cb), plot);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->hor_units), 0);
+
 	 g_object_bind_property_full(priv->plot_domain, "active", priv->sample_count_widget, "visible",
 		0, domain_is_time, NULL, NULL, NULL);
 
@@ -4342,6 +4519,9 @@ static void create_plot(OscPlot *plot)
 		0, domain_is_time, NULL, NULL, NULL);
 
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), 400);
+	priv->sample_count = 400;
+	g_signal_connect(priv->sample_count_widget, "value-changed", G_CALLBACK(count_changed_cb), plot);
+
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->fft_size_widget), 2);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_type), 0);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_max), 1000);

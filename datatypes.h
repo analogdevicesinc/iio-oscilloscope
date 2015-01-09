@@ -114,6 +114,7 @@ struct _tr_list {
 
 struct _time_settings {
 	unsigned int num_samples;
+	gfloat max_x_axis;
 	gboolean apply_inverse_funct;
 	gboolean apply_multiply_funct;
 	gboolean apply_add_funct;

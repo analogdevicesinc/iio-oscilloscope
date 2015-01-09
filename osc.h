@@ -27,6 +27,8 @@ extern GtkWidget *capture_graph;
 extern gint capture_function;
 extern bool str_endswith(const char *str, const char *needle);
 
+/* Max 1 Meg (2^20) */
+#define MAX_SAMPLES 1048576
 #define TMP_INI_FILE "/tmp/.%s.tmp"
 #ifndef MAX_MARKERS
 #define MAX_MARKERS 10

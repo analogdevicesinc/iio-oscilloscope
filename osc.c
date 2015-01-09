@@ -471,8 +471,12 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 
 	if (init_transform) {
 		Transform_resize_x_axis(tr, axis_length);
-		for (i = 0; i < axis_length; i++)
-			tr->x_axis[i] = i;
+		for (i = 0; i < axis_length; i++) {
+			if (settings->max_x_axis && settings->max_x_axis != 0)
+				tr->x_axis[i] = (gfloat)(i * settings->max_x_axis)/axis_length;
+			else
+				tr->x_axis[i] = i;
+		}
 		tr->y_axis_size = axis_length;
 
 		if (settings->apply_inverse_funct || settings->apply_multiply_funct || settings->apply_add_funct) {

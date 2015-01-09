@@ -61,8 +61,8 @@ void          osc_plot_set_markers_copy (OscPlot *plot, void *value);
 void          osc_plot_set_domain       (OscPlot *plot, int domain);
 int           osc_plot_get_plot_domain  (OscPlot *plot);
 GMutex *      osc_plot_get_marker_lock  (OscPlot *plot);
-bool          osc_plot_set_sample_count (OscPlot *plot, int sample_count);
-int           osc_plot_get_sample_count (OscPlot *plot);
+bool          osc_plot_set_sample_count (OscPlot *plot, gdouble count);
+double        osc_plot_get_sample_count (OscPlot *plot);
 void          osc_plot_set_channel_state(OscPlot *plot, const char *dev, int channel, bool state);
 void          osc_plot_xcorr_revert     (OscPlot *plot, int revert);
 
