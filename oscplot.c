@@ -3727,6 +3727,7 @@ static void plot_trigger_save_settings(OscPlotPrivate *priv,
 	struct iio_channel *chn;
 	GtkComboBoxText *box;
 	GtkToggleButton *radio;
+	GtkSpinButton *btn;
 	gchar *active_channel;
 
 	radio = GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, "radio_enable_trigger"));
@@ -3745,6 +3746,10 @@ static void plot_trigger_save_settings(OscPlotPrivate *priv,
 
 	radio = GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, "radio_trigger_falling"));
 	dev_info->trigger_falling_edge = gtk_toggle_button_get_active(radio);
+
+	btn = GTK_SPIN_BUTTON(gtk_builder_get_object(
+				priv->builder, "spin_trigger_value"));
+	dev_info->trigger_value = gtk_spin_button_get_value(btn);
 
 	if (active_channel)
 		g_free(active_channel);

@@ -55,6 +55,7 @@ struct extra_dev_info {
 	unsigned int channel_trigger;
 	bool channel_trigger_enabled;
 	bool trigger_falling_edge;
+	float trigger_value;
 	double adc_freq, lo_freq;
 	char adc_scale;
 	gfloat **channels_data_copy;
