@@ -420,6 +420,8 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 	double corr;
 	int i;
 
+	device_rx_info_update(plot);
+
 	/* Skip rescaling graphs, updating labels and others if the redrawing is currently halted. */
 	if (priv->redraw_function <= 0 && !force_update)
 		return;
@@ -456,8 +458,6 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 			break;
 		}
 	}
-
-	device_rx_info_update(plot);
 }
 
 void osc_plot_restart (OscPlot *plot)
