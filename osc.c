@@ -1536,7 +1536,7 @@ static off_t get_trigger_offset(const struct iio_channel *chn,
 	size_t i;
 
 	if (iio_channel_is_enabled(chn)) {
-		for (i = 1; i < info->offset / 2; i++) {
+		for (i = info->offset / 2; i >= 1; i--) {
 			if (!falling_edge && info->data_ref[i - 1] < trigger_value &&
 					info->data_ref[i] >= trigger_value)
 				return i * sizeof(gfloat);
@@ -1631,12 +1631,17 @@ static gboolean capture_process(void)
 		}
 
 		if (dev_info->channel_trigger_enabled) {
+			struct extra_info *info = iio_channel_get_data(chn);
 			offset = get_trigger_offset(chn, dev_info->trigger_falling_edge,
 					dev_info->trigger_value);
-			for (i = 0; i < nb_channels; i++) {
-				chn = iio_device_get_channel(dev, i);
-				if (iio_channel_is_enabled(chn))
-					apply_trigger_offset(chn, offset);
+			if (offset / sizeof(gfloat) < info->offset / 4) {
+				offset = 0;
+			} else if (offset) {
+				for (i = 0; i < nb_channels; i++) {
+					chn = iio_device_get_channel(dev, i);
+					if (iio_channel_is_enabled(chn))
+						apply_trigger_offset(chn, offset - info->offset);
+				}
 			}
 		}
 
