@@ -769,21 +769,18 @@ static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detach
 {
 	GtkWidget *tab_box;
 	GtkWidget *tab_label;
-	GtkWidget *tab_toolbar;
 	GtkWidget *tab_detach_btn;
 	const struct osc_plugin *plugin = d_plugin->plugin;
 	const char *plugin_name = plugin->name;
 
 	tab_box = gtk_hbox_new(FALSE, 0);
 	tab_label = gtk_label_new(plugin_name);
-	tab_toolbar = gtk_toolbar_new();
 	tab_detach_btn = (GtkWidget *)gtk_tool_button_new_from_stock("gtk-disconnect");
 
-	gtk_widget_set_size_request(tab_detach_btn, 25, 5);
+	gtk_widget_set_size_request(tab_detach_btn, 25, 25);
 
-	gtk_toolbar_insert(GTK_TOOLBAR(tab_toolbar), GTK_TOOL_ITEM(tab_detach_btn), 0);
 	gtk_container_add(GTK_CONTAINER(tab_box), tab_label);
-	gtk_container_add(GTK_CONTAINER(tab_box), tab_toolbar);
+	gtk_container_add(GTK_CONTAINER(tab_box), tab_detach_btn);
 
 	gtk_widget_show_all(tab_box);
 
