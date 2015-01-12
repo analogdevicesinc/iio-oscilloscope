@@ -2364,11 +2364,36 @@ void save_complete_profile(const char *filename)
 static void load_profile(const char *filename, bool load_plugins)
 {
 	GSList *node;
+	gint x_pos = 0, y_pos = 0;
+	char *value;
 
 	close_all_plots();
 	destroy_all_plots();
 
 	plot_widget = NULL;
+
+	value = read_token_from_ini(filename,
+			OSC_INI_SECTION, "tooltips_enable");
+	if (value) {
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tooltips_en),
+				!!atoi(value));
+		free(value);
+	}
+
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "window_x_pos");
+	if (value) {
+		x_pos = atoi(value);
+		free(value);
+	}
+
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "window_y_pos");
+	if (value) {
+		y_pos = atoi(value);
+		free(value);
+	}
+
+	gtk_window_move(GTK_WINDOW(main_window), x_pos, y_pos);
+
 	foreach_in_ini(filename, capture_profile_handler);
 	if (prev_section) {
 		g_free(prev_section);
@@ -2377,7 +2402,6 @@ static void load_profile(const char *filename, bool load_plugins)
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		struct osc_plugin *plugin = node->data;
-		char *value;
 		char buf[1024];
 
 		if (load_plugins && plugin->load_profile)
