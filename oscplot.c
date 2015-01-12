@@ -2494,7 +2494,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			fprintf(fp, "Y\n");
 
 			/* Start writing the samples */
-			for (i = 0; i < dev_info->sample_count; i++) {
+			for (i = 0; i < dev_info->sample_count / 2; i++) {
 				for (j = 0; j < nb_channels; j++) {
 					struct extra_info *info = iio_channel_get_data(iio_device_get_channel(dev, j));
 					if (save_channels_mask[j] == 1)
@@ -2531,7 +2531,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				/* Find which channel need to be saved */
 				save_channels_mask = get_user_saveas_channel_selection(plot, nb_channels);
 
-				for (i = 0; i < dev_info->sample_count; i++) {
+				for (i = 0; i < dev_info->sample_count / 2; i++) {
 					for (j = 0; j < nb_channels; j++) {
 						struct extra_info *info = iio_channel_get_data(iio_device_get_channel(dev, j));
 						if (save_channels_mask[j] == 1)
@@ -2591,7 +2591,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			/* Find which channel need to be saved */
 			save_channels_mask = get_user_saveas_channel_selection(plot, nb_channels);
 
-			dims[0] = dev_info->sample_count;
+			dims[0] = dev_info->sample_count / 2;
 			for (i = 0; i < nb_channels; i++) {
 				struct iio_channel *chn = iio_device_get_channel(dev, i);
 				const char *ch_name = iio_channel_get_name(chn) ?:
@@ -2609,12 +2609,12 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 					gdouble *tmp_data;
 					double k;
 
-					tmp_data = g_new(gdouble, dev_info->sample_count);
+					tmp_data = g_new(gdouble, dev_info->sample_count / 2);
 					if (format->is_signed)
 						k = format->bits - 1;
 					else
 						k = format->bits;
-					for (j = 0; j < dev_info->sample_count; j++) {
+					for (j = 0; j < dev_info->sample_count / 2; j++) {
 						tmp_data[j] = (gdouble)info->data_ref[j] /
 									(pow(2.0, k));
 					}
