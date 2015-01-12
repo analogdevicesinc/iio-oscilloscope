@@ -736,34 +736,23 @@ configuration:</property>
                               <object class="GtkHBox" id="box7">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <child>
-                                  <object class="GtkToolbar" id="toolbar3">
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">False</property>
-                                    <property name="show_arrow">False</property>
-                                    <child>
-                                      <object class="GtkToggleToolButton" id="global_settings_toggle">
-                                        <property name="use_action_appearance">False</property>
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="use_action_appearance">False</property>
-                                        <property name="label" translatable="yes">Zoom In</property>
-                                        <property name="use_underline">True</property>
-                                        <property name="stock_id">gtk-go-down</property>
-                                        <property name="active">True</property>
-                                      </object>
-                                      <packing>
-                                        <property name="expand">False</property>
-                                        <property name="homogeneous">True</property>
-                                      </packing>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">True</property>
-                                    <property name="fill">True</property>
-                                    <property name="position">0</property>
-                                  </packing>
-                                </child>
+                                  <child>
+                                    <object class="GtkToggleToolButton" id="global_settings_toggle">
+                                      <property name="use_action_appearance">False</property>
+                                      <property name="visible">True</property>
+                                      <property name="can_focus">False</property>
+                                      <property name="use_action_appearance">False</property>
+                                      <property name="label" translatable="yes">Zoom In</property>
+                                      <property name="use_underline">True</property>
+                                      <property name="stock_id">gtk-go-down</property>
+                                      <property name="active">True</property>
+                                    </object>
+                                    <packing>
+                                      <property name="expand">True</property>
+                                      <property name="fill">True</property>
+                                      <property name="position">0</property>
+                                    </packing>
+                                  </child>
                                 <child>
                                   <object class="GtkLabel" id="label3">
                                     <property name="visible">True</property>
@@ -1429,26 +1418,15 @@ configuration:</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <child>
-                                  <object class="GtkToolbar" id="toolbar2">
+                                  <object class="GtkToggleToolButton" id="rx_toggle">
+                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="show_arrow">False</property>
-                                    <child>
-                                      <object class="GtkToggleToolButton" id="rx_toggle">
-                                        <property name="use_action_appearance">False</property>
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="use_action_appearance">False</property>
-                                        <property name="label" translatable="yes">Zoom In</property>
-                                        <property name="use_underline">True</property>
-                                        <property name="stock_id">gtk-go-down</property>
-                                        <property name="active">True</property>
-                                      </object>
-                                      <packing>
-                                        <property name="expand">False</property>
-                                        <property name="homogeneous">True</property>
-                                      </packing>
-                                    </child>
+                                    <property name="use_action_appearance">False</property>
+                                    <property name="label" translatable="yes">Zoom In</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="stock_id">gtk-go-down</property>
+                                    <property name="active">True</property>
                                   </object>
                                   <packing>
                                     <property name="expand">True</property>
@@ -1866,26 +1844,15 @@ configuration:</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <child>
-                                  <object class="GtkToolbar" id="toolbar4">
+                                  <object class="GtkToggleToolButton" id="tx_toggle">
+                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="show_arrow">False</property>
-                                    <child>
-                                      <object class="GtkToggleToolButton" id="tx_toggle">
-                                        <property name="use_action_appearance">False</property>
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="use_action_appearance">False</property>
-                                        <property name="label" translatable="yes">Zoom In</property>
-                                        <property name="use_underline">True</property>
-                                        <property name="stock_id">gtk-go-down</property>
-                                        <property name="active">True</property>
-                                      </object>
-                                      <packing>
-                                        <property name="expand">False</property>
-                                        <property name="homogeneous">True</property>
-                                      </packing>
-                                    </child>
+                                    <property name="use_action_appearance">False</property>
+                                    <property name="label" translatable="yes">Zoom In</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="stock_id">gtk-go-down</property>
+                                    <property name="active">True</property>
                                   </object>
                                   <packing>
                                     <property name="expand">True</property>
@@ -2150,26 +2117,15 @@ configuration:</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <child>
-                                  <object class="GtkToolbar" id="toolbar5">
+                                  <object class="GtkToggleToolButton" id="fpga_toggle">
+                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="show_arrow">False</property>
-                                    <child>
-                                      <object class="GtkToggleToolButton" id="fpga_toggle">
-                                        <property name="use_action_appearance">False</property>
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="use_action_appearance">False</property>
-                                        <property name="label" translatable="yes">Zoom In</property>
-                                        <property name="use_underline">True</property>
-                                        <property name="stock_id">gtk-go-down</property>
-                                        <property name="active">True</property>
-                                      </object>
-                                      <packing>
-                                        <property name="expand">False</property>
-                                        <property name="homogeneous">True</property>
-                                      </packing>
-                                    </child>
+                                    <property name="use_action_appearance">False</property>
+                                    <property name="label" translatable="yes">Zoom In</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="stock_id">gtk-go-down</property>
+                                    <property name="active">True</property>
                                   </object>
                                   <packing>
                                     <property name="expand">True</property>
