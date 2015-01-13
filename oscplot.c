@@ -254,7 +254,7 @@ struct _OscPlotPrivate
 	bool single_shot_mode;
 
 	/* A reference to the device holding the most recent created transform */
-	struct iio_device *first_adc_device;
+	struct iio_device *current_device;
 
 	/* List of transforms for this plot */
 	TrList *transform_list;
@@ -397,7 +397,10 @@ void osc_plot_set_visible (OscPlot *plot, bool visible)
 
 struct iio_buffer * osc_plot_get_buffer(OscPlot *plot)
 {
-	return plot->priv->current_device->buffer;
+	struct extra_dev_info *dev_info;
+
+	dev_info = iio_device_get_data(plot->priv->current_device);
+	return dev_info->buffer;
 }
 
 void osc_plot_data_update (OscPlot *plot)
@@ -1028,6 +1031,8 @@ static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel *ch0,
 	transform->channel_parent = ch0;
 	transform->graph_color = &color_graph[0];
 	ch_info->shadow_of_enabled++;
+
+	priv->current_device = ch_info->dev;
 
 	Transform_set_in_data_ref(transform, (gfloat **)&ch_info->data_ref);
 	switch (tr_type) {
@@ -1981,8 +1986,8 @@ static void device_list_treeview_init(OscPlot *plot)
 		if (dev_info->input_device == false)
 			continue;
 
-		if (!priv->first_adc_device)
-			priv->first_adc_device = dev;
+		if (!priv->current_device)
+			priv->current_device = dev;
 
 		gtk_tree_store_append(treestore, &iter, NULL);
 		gtk_tree_store_set(treestore, &iter,
@@ -2662,7 +2667,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 					strcpy(name, filename);
 				else
 					sprintf(name, "%s.mat", filename);
-			
+
 			mat = Mat_Create(name, NULL);
 			if (!mat) {
 				fprintf(stderr, "Error creating MAT file %s: %s\n", name, strerror(errno));
@@ -2819,8 +2824,8 @@ static void count_changed_cb(GtkSpinButton *box, OscPlot *plot)
 	struct extra_dev_info *dev_info;
 	gdouble freq = 0;
 
-	if (priv->first_adc_device) {
-		dev_info = iio_device_get_data(priv->first_adc_device);
+	if (priv->current_device) {
+		dev_info = iio_device_get_data(priv->current_device);
 		freq = dev_info->adc_freq * prefix2scale(dev_info->adc_scale);
 	}
 
@@ -2844,8 +2849,8 @@ static void units_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 	gdouble freq = 0, tmp_d;
 	GtkAdjustment *limits;
 
-	if (priv->first_adc_device) {
-		dev_info = iio_device_get_data(priv->first_adc_device);
+	if (priv->current_device) {
+		dev_info = iio_device_get_data(priv->current_device);
 		freq = dev_info->adc_freq * prefix2scale(dev_info->adc_scale);
 	}
 
