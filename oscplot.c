@@ -2968,8 +2968,16 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 	else
 		fprintf(fp, "unknown\n");
 
-	tmp_int = priv->sample_count;
-	fprintf(fp, "sample_count=%d\n", tmp_int);
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->hor_units))) {
+	case HOR_SCALE_SAMPLES:
+		fprintf(fp, "sample_count=%d\n",
+			(int) gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget)));
+		break;
+	case HOR_SCALE_TIME:
+		fprintf(fp, "micro_seconds=%f\n",
+			gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget)));
+		break;
+	}
 
 	tmp_int = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 	fprintf(fp, "fft_size=%d\n", tmp_int);
@@ -3218,6 +3226,10 @@ static int cfg_read_handler(void *user, const char* section, const char* name, c
 				else
 					goto unhandled;
 			} else if (MATCH_NAME("sample_count")) {
+				gtk_combo_box_set_active(GTK_COMBO_BOX(priv->hor_units), HOR_SCALE_SAMPLES);
+				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), atof(value));
+			} else if (MATCH_NAME("micro_seconds")) {
+				gtk_combo_box_set_active(GTK_COMBO_BOX(priv->hor_units), HOR_SCALE_TIME);
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), atof(value));
 			} else if (MATCH_NAME("fft_size")) {
 				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_size_widget), value);
