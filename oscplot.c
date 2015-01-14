@@ -4312,12 +4312,15 @@ static void new_math_channel_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	OscPlotPrivate *priv = plot->priv;
 	struct channel_settings *expr_settings;
 	char channel_name[512];
+	int ret;
 
 	snprintf(channel_name, sizeof(channel_name),
 			"ecuation%d", priv->nb_math_channels++);
 
 	expr_settings = calloc(sizeof(struct channel_settings), 1);
-	math_expression_get_settings(plot, expr_settings);
+	ret = math_expression_get_settings(plot, expr_settings);
+	if (ret < 0)
+		return;
 
 	/* Build a new Math Channel */
 	plot_channels_add_channel(plot, channel_name, MATH_CHANNELS_DEVICE);
