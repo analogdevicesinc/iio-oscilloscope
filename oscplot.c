@@ -979,11 +979,16 @@ static struct iio_device * transform_get_device_parent(Transform *transform)
 {
 	struct iio_device *iio_dev = NULL;
 	struct extra_info *ch_info = NULL;
+	GSList *node;
 
 	if (transform && transform->channel_parent) {
 		ch_info = iio_channel_get_data(transform->channel_parent);
-		iio_dev = ch_info->dev;
+	} else if (transform->iio_channels && g_slist_length(transform->iio_channels) > 0) {
+		node = transform->iio_channels->data;
+		ch_info = iio_channel_get_data((struct iio_channel *)node);
 	}
+	if (ch_info)
+		iio_dev = ch_info->dev;
 
 	return iio_dev;
 }
@@ -1033,10 +1038,10 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 			TIME_SETTINGS(transform)->apply_add_funct = csettings->apply_add_funct;
 			TIME_SETTINGS(transform)->multiply_value = csettings->multiply_value;
 			TIME_SETTINGS(transform)->add_value = csettings->add_value;
+			TIME_SETTINGS(transform)->max_x_axis = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 		} else if (transform->type_id == MATH_TRANSFORM) {
 			MATH_SETTINGS(transform)->num_samples = dev_samples;
 		}
-		TIME_SETTINGS(transform)->max_x_axis = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	} else if (plot_type == XY_PLOT){
 		CONSTELLATION_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	} else if (plot_type == XCORR_PLOT){
