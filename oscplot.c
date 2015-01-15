@@ -4268,6 +4268,9 @@ static int math_expression_get_settings(OscPlot *plot, struct channel_settings *
 	else
 		gtk_text_buffer_set_text(priv->math_expression, "", -1);
 
+	gtk_widget_set_visible(GTK_WIDGET(gtk_builder_get_object(priv->builder,
+			"label_math_expr_invalid_msg")), false);
+
 	/* Get the math expression from user */
 	do {
 		ret = gtk_dialog_run(GTK_DIALOG(priv->math_expression_dialog));
