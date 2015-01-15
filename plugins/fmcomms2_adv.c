@@ -217,6 +217,7 @@ static struct w_info attrs[] = {
 	{SPINBUTTON, "adi,txmon-low-high-thresh"},
 	{CHECKBOX, "adi,txmon-one-shot-mode-enable"},
 	{CHECKBOX, "adi,rx1-rx2-phase-inversion-enable"},
+	{CHECKBOX, "adi,qec-tracking-slow-mode-enable"},
 	{COMBOBOX, "bist_prbs"},
 	{COMBOBOX, "loopback"},
 	{BUTTON, "initialize"},
@@ -350,6 +351,7 @@ static const char *fmcomms2_adv_sr_attribs[] = {
 	"debug.ad9361-phy.adi,txmon-low-gain",
 	"debug.ad9361-phy.adi,txmon-low-high-thresh",
 	"debug.ad9361-phy.adi,txmon-one-shot-mode-enable",
+	"debug.ad9361-phy.adi,qec-tracking-slow-mode-enable",
 };
 
 static void reload_settings(void)
