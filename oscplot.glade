@@ -717,7 +717,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_sin">
-                    <property name="label" translatable="yes">sin()</property>
+                    <property name="label" translatable="yes">sinf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -731,7 +731,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_asin">
-                    <property name="label" translatable="yes">asin()</property>
+                    <property name="label" translatable="yes">asinf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -745,7 +745,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_cos">
-                    <property name="label" translatable="yes">cos()</property>
+                    <property name="label" translatable="yes">cosf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -761,7 +761,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_acos">
-                    <property name="label" translatable="yes">acos()</property>
+                    <property name="label" translatable="yes">acosf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -777,7 +777,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_sinh">
-                    <property name="label" translatable="yes">sinh()</property>
+                    <property name="label" translatable="yes">sinhf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -791,7 +791,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_cosh">
-                    <property name="label" translatable="yes">cosh()</property>
+                    <property name="label" translatable="yes">coshf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -807,7 +807,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_tan">
-                    <property name="label" translatable="yes">tan()</property>
+                    <property name="label" translatable="yes">tanf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -823,7 +823,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_atan">
-                    <property name="label" translatable="yes">atan()</property>
+                    <property name="label" translatable="yes">atanf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -839,7 +839,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_tanh">
-                    <property name="label" translatable="yes">tanh()</property>
+                    <property name="label" translatable="yes">tanhf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -948,7 +948,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_exp">
-                    <property name="label" translatable="yes">exp()</property>
+                    <property name="label" translatable="yes">expf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -964,7 +964,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_log">
-                    <property name="label" translatable="yes">log()</property>
+                    <property name="label" translatable="yes">logf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -980,7 +980,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_log10">
-                    <property name="label" translatable="yes">log10()</property>
+                    <property name="label" translatable="yes">log10f()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -996,7 +996,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_pow">
-                    <property name="label" translatable="yes">pow(,)</property>
+                    <property name="label" translatable="yes">powf(,)</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1012,7 +1012,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_sqrt">
-                    <property name="label" translatable="yes">sqrt()</property>
+                    <property name="label" translatable="yes">sqrtf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1028,7 +1028,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="math_key_abs">
-                    <property name="label" translatable="yes">fabs()</property>
+                    <property name="label" translatable="yes">fabsf()</property>
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
