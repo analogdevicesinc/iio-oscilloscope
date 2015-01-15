@@ -994,15 +994,6 @@ static struct iio_device * transform_get_device_parent(Transform *transform)
 	return iio_dev;
 }
 
-void my_math_expression(gfloat ***channels_data, gfloat *out_data, unsigned long long chn_sample_cnt)
-{
-	unsigned long long i;
-
-	for (i = 0; i < chn_sample_cnt; i++) {
-		out_data[i] = (*channels_data[0])[i] + (*channels_data[1])[i];
-	}
-}
-
 static void update_transform_settings(OscPlot *plot, Transform *transform,
 	struct channel_settings *csettings)
 {

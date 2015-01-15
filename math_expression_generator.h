@@ -183,7 +183,7 @@ void math_expression_objects_clean(void)
 	FILE *pstream;
 	char *pcommand;
 
-	pcommand = g_strdup_printf("rm -r %s", MATH_OBJECT_FILES_DIR);
+	pcommand = g_strdup_printf("rm -rf %s", MATH_OBJECT_FILES_DIR);
 	pstream = popen(pcommand, "w");
 	g_free(pcommand);
 	if (!pstream) {
