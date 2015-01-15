@@ -99,6 +99,7 @@ static GtkWidget *rx_gain_control[5];
 static GtkWidget *rx_gain_control_modes[5];
 static GtkWidget *rf_port_select_rx;
 static GtkWidget *rx_rssi[5];
+static GtkWidget *tx_rssi[5];
 static GtkWidget *rx_path_rates;
 static GtkWidget *tx_path_rates;
 static GtkWidget *fir_filter_en_tx;
@@ -361,6 +362,30 @@ static void glb_settings_update_labels(void)
 		iio_widget_update(&rx_widgets[rx_gains[i]]);
 }
 
+static void rf_port_select_rx_changed_cb(GtkComboBoxText *cmb, gpointer data)
+{
+	gchar *port_name;
+	bool tx_1st = false, tx_2nd = false;
+
+	port_name = gtk_combo_box_text_get_active_text(cmb);
+	if (!port_name)
+		return;
+
+	if (!strcmp(port_name, "TX_MONITOR1")) {
+		tx_1st = true;
+	} else if (!strcmp(port_name, "TX_MONITOR2")) {
+		tx_2nd = true;
+	} else if (!strcmp(port_name, "TX_MONITOR1_2")) {
+		tx_1st = tx_2nd = true;
+	}
+	gtk_widget_set_visible(tx_rssi[1], tx_1st);
+	gtk_widget_set_visible(tx_rssi[2], tx_2nd);
+	gtk_widget_set_visible(tx_rssi[3], tx_1st);
+	gtk_widget_set_visible(tx_rssi[4], tx_2nd);
+
+	g_free(port_name);
+}
+
 static void sample_frequency_changed_cb(void *data)
 {
 	glb_settings_update_labels();
@@ -386,42 +411,28 @@ static void tx_sample_frequency_changed_cb(void *data)
 	sample_frequency_changed_cb(data);
 }
 
-static void rssi_update_labels(void)
+static void rssi_update_label(GtkWidget *label,struct iio_device *dev, bool is_tx)
 {
 	char buf[1024];
 	int ret;
 
 	ret = iio_channel_attr_read(
-			iio_device_find_channel(dev1, "voltage0", false),
+			iio_device_find_channel(dev, "voltage0", is_tx),
 			"rssi", buf, sizeof(buf));
 	if (ret > 0)
-		gtk_label_set_text(GTK_LABEL(rx_rssi[1]), buf);
+		gtk_label_set_text(GTK_LABEL(label), buf);
 	else
-		gtk_label_set_text(GTK_LABEL(rx_rssi[1]), "<error>");
+		gtk_label_set_text(GTK_LABEL(label), "<error>");
+}
 
-	ret = iio_channel_attr_read(
-			iio_device_find_channel(dev1, "voltage1", false),
-			"rssi", buf, sizeof(buf));
-	if (ret > 0)
-		gtk_label_set_text(GTK_LABEL(rx_rssi[2]), buf);
-	else
-		gtk_label_set_text(GTK_LABEL(rx_rssi[2]), "<error>");
+static void rssi_update_labels(void)
+{
+	int i;
 
-	ret = iio_channel_attr_read(
-			iio_device_find_channel(dev2, "voltage0", false),
-			"rssi", buf, sizeof(buf));
-	if (ret > 0)
-		gtk_label_set_text(GTK_LABEL(rx_rssi[3]), buf);
-	else
-		gtk_label_set_text(GTK_LABEL(rx_rssi[3]), "<error>");
-
-	ret = iio_channel_attr_read(
-			iio_device_find_channel(dev2, "voltage1", false),
-			"rssi", buf, sizeof(buf));
-	if (ret > 0)
-		gtk_label_set_text(GTK_LABEL(rx_rssi[4]), buf);
-	else
-		gtk_label_set_text(GTK_LABEL(rx_rssi[4]), "<error>");
+	for (i = 1; i < 5; i++) {
+		rssi_update_label(rx_rssi[i], (i < 3) ? dev1 : dev2, false);
+		rssi_update_label(tx_rssi[i], (i < 3) ? dev1 : dev2, true);
+	}
 }
 
 static void update_display (void *ptr)
@@ -938,7 +949,7 @@ static void load_profile(const char *ini_fn)
 			free(value);
 		}
 	}
-	
+
 	if (can_update_widgets)
 		reload_button_clicked(NULL, NULL);
 }
@@ -1027,6 +1038,10 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	dev1_tx_frm = GTK_WIDGET(gtk_builder_get_object(builder, "device1_tx_frame"));
 	dev2_tx_frm = GTK_WIDGET(gtk_builder_get_object(builder, "device2_tx_frame"));
 	rf_port_select_tx = GTK_WIDGET(gtk_builder_get_object(builder, "rf_port_select_tx"));
+	tx_rssi[1] = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx1"));
+	tx_rssi[2] = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx2"));
+	tx_rssi[3] = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx3"));
+	tx_rssi[4] = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx4"));
 	tx_fastlock_profile[0] = GTK_WIDGET(gtk_builder_get_object(builder, "tx_fastlock_profile1"));
 	tx_fastlock_profile[1] = GTK_WIDGET(gtk_builder_get_object(builder, "tx_fastlock_profile2"));
 	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));
@@ -1299,8 +1314,21 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	else
 		tx_fastlock_recall_name = "TX_LO_fastlock_recall";
 
+	/* Widgets bindings */
+	g_builder_bind_property(builder, "rssi_tx1", "visible",
+		"label_rssi_tx1", "sensitive", G_BINDING_DEFAULT);
+	g_builder_bind_property(builder, "rssi_tx2", "visible",
+		"label_rssi_tx2", "sensitive", G_BINDING_DEFAULT);
+	g_builder_bind_property(builder, "rssi_tx3", "visible",
+		"label_rssi_tx3", "sensitive", G_BINDING_DEFAULT);
+	g_builder_bind_property(builder, "rssi_tx4", "visible",
+		"label_rssi_tx4", "sensitive", G_BINDING_DEFAULT);
+
 	if (ini_fn)
 		load_profile(ini_fn);
+
+	g_signal_connect(rf_port_select_rx, "changed",
+		G_CALLBACK(rf_port_select_rx_changed_cb), NULL);
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
 			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
