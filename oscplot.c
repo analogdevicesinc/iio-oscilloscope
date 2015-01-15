@@ -251,6 +251,7 @@ struct _OscPlotPrivate
 	GtkWidget *new_plot_button;
 	GtkWidget *cmb_saveas_type;
 	GtkWidget *math_expression_dialog;
+	GtkWidget *math_expression_textview;
 	GtkWidget *math_device_select;
 
 	GtkTextBuffer* tbuf;
@@ -4179,9 +4180,23 @@ static GSList * math_expression_get_iio_channel_list(const char *expression, con
 
 static void math_chooser_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 {
-	GtkTextBuffer *tbuf = plot->priv->math_expression;
+	OscPlotPrivate *priv = plot->priv;
+	GtkTextBuffer *tbuf = priv->math_expression;
+	GtkTextMark *insert_mark;
+	GtkTextIter insert_iter;
+	const gchar *key_label;
 
-	gtk_text_buffer_insert_at_cursor(tbuf, gtk_button_get_label(btn), -1);
+	key_label = gtk_button_get_label(btn);
+	gtk_text_buffer_insert_at_cursor(tbuf, key_label, -1);
+
+	if (g_str_has_suffix(key_label, ")") && g_strrstr(key_label, "(")) {
+		insert_mark = gtk_text_buffer_get_insert(tbuf);
+		gtk_text_buffer_get_iter_at_mark(tbuf, &insert_iter, insert_mark);
+		gtk_text_iter_backward_char(&insert_iter);
+		gtk_text_buffer_place_cursor(tbuf, &insert_iter);
+	}
+
+	gtk_widget_grab_focus(priv->math_expression_textview);
 }
 
 static void buttons_table_remove_child(GtkWidget *child, gpointer data)
@@ -4819,6 +4834,7 @@ static void create_plot(OscPlot *plot)
 	priv->new_plot_button = GTK_WIDGET(gtk_builder_get_object(builder, "toolbutton_new_plot"));
 	priv->cmb_saveas_type = GTK_WIDGET(gtk_builder_get_object(priv->builder, "save_formats"));
 	priv->math_expression_dialog = GTK_WIDGET(gtk_builder_get_object(priv->builder, "math_expression_chooser"));
+	priv->math_expression_textview = GTK_WIDGET(gtk_builder_get_object(priv->builder, "textview_math_expression"));
 	priv->math_expression = GTK_TEXT_BUFFER(gtk_builder_get_object(priv->builder, "textbuffer_math_expression"));
 
 	priv->tbuf = NULL;
