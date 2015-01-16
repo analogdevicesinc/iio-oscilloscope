@@ -653,6 +653,7 @@ static int tx_mag_get_dBm(struct scpi_instrument *scpi, double *lvl)
 	return -1;
 }
 
+#if 0
 static int scpi_query_errors(struct scpi_instrument *scpi)
 {
 	int ret = 0;
@@ -668,6 +669,7 @@ static int scpi_query_errors(struct scpi_instrument *scpi)
 	g_strfreev(error_status);
 	return ret;
 }
+#endif
 
 static int get_markers(const char *device_ref, struct marker_type *markers)
 {

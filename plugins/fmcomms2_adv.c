@@ -757,6 +757,7 @@ static double tune_trx_phase_offset(struct iio_device *ldev, int *ret,
 		if (step < abort)
 			break;
 
+		(void) min_phase; /* Avoid compiler warnings */
 		DBG("Step: %f Phase: %f, min_Phase: %f\ndelta %d, pdelta %d, min_delta %d\n",
 		    step, phase, min_phase, (int)delta, (int)min_delta);
 
@@ -905,6 +906,8 @@ static void calibrate (gpointer button)
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.64);
+
+	(void) rx_phase_lpc; /* Avoid compiler warnings */
 	DBG("rx_phase_lpc %f", rx_phase_lpc);
 
 	/*
