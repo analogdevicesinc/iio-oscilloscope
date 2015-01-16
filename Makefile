@@ -66,9 +66,15 @@ else
 	SUM:=@echo
 endif
 
+OSC_OBJS := osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o \
+	trigger_dialog.o xml_utils.o libini/libini.o libini2.o plugins/dac_data_manager.o
+
 all: $(OSC) $(PLUGINS)
 
-$(LIBOSC): osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o plugins/dac_data_manager.o
+analyze: $(OSC_OBJS:%.o=%.c) $(PLUGINS:%.so=%.c) oscmain.c
+	clang --analyze $(CFLAGS) $^
+
+$(LIBOSC): $(OSC_OBJS)
 	$(SUM) "  LD      $@"
 	$(CMD)$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@ $(EXPORT_SYMBOLS)
 
@@ -138,7 +144,7 @@ install:
 
 clean:
 	$(SUM) "  CLEAN    ."
-	$(CMD)rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o
+	$(CMD)rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o *.plist
 
 uninstall:
 	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/$(OSC) $(DESTDIR)/lib/$(LIBOSC)
