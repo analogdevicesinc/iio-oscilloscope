@@ -56,6 +56,7 @@ static struct dac_data_manager *dac_tx_manager;
 static bool is_2rx_2tx;
 static bool has_udc_driver;
 static bool can_update_widgets;
+static bool tx_rssi_available;
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble abs_mhz_scale = -1000000.0;
@@ -306,10 +307,12 @@ static void rssi_update_label(GtkWidget *label, bool is_tx)
 static void rssi_update_labels(void)
 {
 	rssi_update_label(rx1_rssi, false);
-	rssi_update_label(tx1_rssi, true);
+	if (tx_rssi_available)
+		rssi_update_label(tx1_rssi, true);
 	if (is_2rx_2tx) {
 		rssi_update_label(rx2_rssi, false);
-		rssi_update_label(tx2_rssi, true);
+		if (tx_rssi_available)
+			rssi_update_label(tx2_rssi, true);
 	}
 }
 
@@ -1175,6 +1178,11 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	if (is_2rx_2tx)
 		ch1 = iio_device_find_channel(dev, "voltage1", true);
 
+	tx_rssi_available = ch0 && iio_channel_find_attr(ch0, "rssi");
+	if (is_2rx_2tx)
+		tx_rssi_available = tx_rssi_available &&
+				(ch1 && iio_channel_find_attr(ch1, "rssi"));
+
 	iio_combo_box_init(&tx_widgets[num_tx++],
 		dev, ch0, "rf_port_select",
 		"rf_port_select_available",
@@ -1295,8 +1303,9 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	g_signal_connect_after(rx_gain_control_modes_rx2, "changed",
 		G_CALLBACK(glb_settings_update_labels), NULL);
 
-	g_signal_connect(rf_port_select_rx, "changed",
-		G_CALLBACK(rf_port_select_rx_changed_cb), NULL);
+	if (tx_rssi_available)
+		g_signal_connect(rf_port_select_rx, "changed",
+			G_CALLBACK(rf_port_select_rx_changed_cb), NULL);
 
 	g_signal_connect_after(enable_fir_filter_rx, "toggled",
 		G_CALLBACK(filter_fir_enable), NULL);
@@ -1335,6 +1344,12 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_rx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_rx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "table_hw_gain_tx2")));
+	}
+	if (!tx_rssi_available) {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx1")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx2")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "label_rssi_tx1")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "label_rssi_tx2")));
 	}
 	gtk_widget_set_visible(up_down_converter, has_udc_driver);
 
