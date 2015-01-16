@@ -54,6 +54,7 @@ extern bool dma_valid_selection(const char *device, unsigned mask, unsigned chan
 static struct dac_data_manager *dac_tx_manager;
 
 static bool can_update_widgets;
+static bool tx_rssi_available;
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble abs_mhz_scale = -1000000.0;
@@ -430,7 +431,8 @@ static void rssi_update_labels(void)
 
 	for (i = 1; i < 5; i++) {
 		rssi_update_label(rx_rssi[i], (i < 3) ? dev1 : dev2, false);
-		rssi_update_label(tx_rssi[i], (i < 3) ? dev1 : dev2, true);
+		if (tx_rssi_available)
+			rssi_update_label(tx_rssi[i], (i < 3) ? dev1 : dev2, true);
 	}
 }
 
@@ -1243,6 +1245,8 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	d2_ch0 = iio_device_find_channel(dev2, "voltage0", true);
 	d2_ch1 = iio_device_find_channel(dev2, "voltage1", true);
 
+	tx_rssi_available = d1_ch0 && iio_channel_find_attr(d1_ch0, "rssi");
+
 	iio_combo_box_init(&tx_widgets[num_tx++],
 		dev1, d1_ch0, "rf_port_select",
 		"rf_port_select_available",
@@ -1326,8 +1330,9 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	if (ini_fn)
 		load_profile(ini_fn);
 
-	g_signal_connect(rf_port_select_rx, "changed",
-		G_CALLBACK(rf_port_select_rx_changed_cb), NULL);
+	if (tx_rssi_available)
+		g_signal_connect(rf_port_select_rx, "changed",
+			G_CALLBACK(rf_port_select_rx_changed_cb), NULL);
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
 			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
@@ -1412,6 +1417,14 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 		iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo[i]],
 			sample_frequency_changed_cb, NULL);
 		}
+	if (!tx_rssi_available) {
+		for (i = 1; i < 5; i++)
+			gtk_widget_hide(tx_rssi[i]);
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "label_rssi_tx1")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "label_rssi_tx2")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "label_rssi_tx3")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "label_rssi_tx4")));
+	}
 
 	iio_update_widgets(glb_widgets, num_glb);
 	tx_update_values();
