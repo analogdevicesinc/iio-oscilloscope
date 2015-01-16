@@ -31,7 +31,7 @@ LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-I$(SYSROOT)/usr/include $(if $(WITH_MINGW),,-fPIC) \
 	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
-	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\"
+	-DFRU_FILES=\"$(FRU_FILES)\" -DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\"
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
@@ -58,49 +58,47 @@ PLUGINS=\
 	plugins/debug.$(SO) \
 	$(if $(WITH_MINGW),,plugins/scpi.so)
 
+ifdef V
+	CMD:=
+	SUM:=@\#
+else
+	CMD:=@
+	SUM:=@echo
+endif
+
 all: $(OSC) $(PLUGINS)
 
-$(LIBOSC): osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o dac_data_manager.o
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@ $(EXPORT_SYMBOLS)
+$(LIBOSC): osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o plugins/dac_data_manager.o
+	$(SUM) "  LD      $@"
+	$(CMD)$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@ $(EXPORT_SYMBOLS)
 
 $(OSC): oscmain.o $(if $(WITH_MINGW),oscicon.o) $(LIBOSC)
-	$(CC) $^ $(LDFLAGS) -L. -losc -o $@
+	$(SUM) "  LD      $@"
+	$(CMD)$(CC) $^ $(LDFLAGS) -L. -losc -o $@
 
 oscicon.o: oscicon.rc
-	$(CROSS_COMPILE)windres $< $@
+	$(SUM) "  GEN     $@"
+	$(CMD)$(CROSS_COMPILE)windres $< $@
 
-osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
-	$(CC) osc.c -c $(CFLAGS)
-
-oscplot.o: oscplot.c oscplot.h osc.h datatypes.h iio_widget.h libini2.h
-	$(CC) oscplot.c -c $(CFLAGS)
-
-datatypes.o: datatypes.c datatypes.h
-	$(CC) datatypes.c -c $(CFLAGS)
-
-int_fft.o: int_fft.c
-	$(CC) int_fft.c -c $(CFLAGS)
-
-iio_widget.o: iio_widget.c iio_widget.h
-	$(CC) iio_widget.c -c $(CFLAGS)
-
-fru.o: fru.c fru.h
-	$(CC) fru.c -c $(CFLAGS)
-
-dialogs.o: dialogs.c fru.h osc.h
-	$(CC) dialogs.c -c $(CFLAGS) -DFRU_FILES=\"$(FRU_FILES)\"
-
-trigger_dialog.o: trigger_dialog.c fru.h osc.h iio_widget.h
-	$(CC) trigger_dialog.c -c $(CFLAGS)
-
-xml_utils.o: xml_utils.c xml_utils.h
-	$(CC) xml_utils.c -c $(CFLAGS)
-
-dac_data_manager.o: plugins/dac_data_manager.c plugins/dac_data_manager.h
-	$(CC) plugins/dac_data_manager.c -c $(CFLAGS)
+%.o: %.c
+	$(SUM) "  CC      $@"
+	$(CMD)$(CC) $(CFLAGS) $< -c -o $@
 
 %.$(SO): %.c $(LIBOSC)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) -L. -losc -shared -o $@
+	$(SUM) "  LD      $@"
+	$(CMD)$(CC) $(CFLAGS) $< $(LDFLAGS) -L. -losc -shared -o $@
+
+# Dependencies
+osc.o: iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
+oscmain.o: config.h osc.h
+oscplot.o: oscplot.h osc.h datatypes.h iio_widget.h libini2.h
+datatypes.o: datatypes.h
+iio_widget.o: iio_widget.h
+fru.o: fru.h
+dialogs.o: fru.h osc.h
+trigger_dialog.o: fru.h osc.h iio_widget.h
+xml_utils.o: xml_utils.h
+plugins/dac_data_manager.o: plugins/dac_data_manager.h
 
 install:
 	install -d $(DESTDIR)/bin
@@ -139,7 +137,8 @@ install:
 	ldconfig
 
 clean:
-	rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o
+	$(SUM) "  CLEAN    ."
+	$(CMD)rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o
 
 uninstall:
 	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/$(OSC) $(DESTDIR)/lib/$(LIBOSC)
