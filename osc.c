@@ -2132,6 +2132,8 @@ bool check_inifile(const char *filepath)
 	char buf[1024];
 	size_t i;
 
+	buf[1023] = '\0';
+
 	if (stat(filepath, &sts) == -1)
 		return FALSE;
 
@@ -2142,7 +2144,7 @@ bool check_inifile(const char *filepath)
 	if (!fd)
 		return FALSE;
 
-	i = fread(buf, 1023, 1, fd);
+	i = fread(buf, 1, sizeof(buf) - 1, fd);
 	fclose(fd);
 
 	if (i == 0 )
