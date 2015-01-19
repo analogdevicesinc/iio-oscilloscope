@@ -43,8 +43,6 @@
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
-#define SYNC_RELOAD "SYNC_RELOAD"
-
 #define MHZ_TO_HZ(x) ((x) * 1000000ul)
 
 extern gfloat plugin_fft_corr;
@@ -183,6 +181,21 @@ static const char *fmcomms2_sr_attribs[] = {
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_phase",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
+};
+
+static const char * fmcomms2_driver_attribs[] = {
+	"load_fir_filter_file",
+	"dds_mode_tx1",
+	"dds_mode_tx2",
+	"global_settings_show",
+	"tx_show",
+	"rx_show",
+	"fpga_show",
+	"tx_channel_0",
+	"tx_channel_1",
+	"tx_channel_2",
+	"tx_channel_3",
+	"dac_buf_filename",
 };
 
 static void glb_settings_update_labels(void)
@@ -848,95 +861,109 @@ int handle_external_request (const char *request)
 	return ret;
 }
 
-static void load_profile(const char *ini_fn)
+static int fmcomms2_handle_driver(const char *attrib, const char *value)
 {
-	char *value;
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "load_fir_filter_file");
-	if (value) {
+	if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value[0]) {
 			load_fir_filter(value);
-			gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filter_fir_config), value);
+			gtk_file_chooser_set_filename(
+					GTK_FILE_CHOOSER(filter_fir_config),
+					value);
 		}
-		free(value);
+	} else if (MATCH_ATTRIB("dds_mode_tx1")) {
+		dac_data_manager_set_dds_mode(dac_tx_manager,
+				DDS_DEVICE, 1, atoi(value));
+	} else if (MATCH_ATTRIB("dds_mode_tx2")) {
+		dac_data_manager_set_dds_mode(dac_tx_manager,
+				DDS_DEVICE, 2, atoi(value));
+	} else if (MATCH_ATTRIB("global_settings_show")) {
+		gtk_toggle_tool_button_set_active(
+				section_toggle[SECTION_GLOBAL], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_GLOBAL],
+				section_setting[SECTION_GLOBAL]);
+	} else if (MATCH_ATTRIB("tx_show")) {
+		gtk_toggle_tool_button_set_active(
+				section_toggle[SECTION_TX], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_TX],
+				section_setting[SECTION_TX]);
+	} else if (MATCH_ATTRIB("rx_show")) {
+		gtk_toggle_tool_button_set_active(
+				section_toggle[SECTION_RX], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_RX],
+				section_setting[SECTION_RX]);
+	} else if (MATCH_ATTRIB("fpga_show")) {
+		gtk_toggle_tool_button_set_active(
+				section_toggle[SECTION_FPGA], !!atoi(value));
+		hide_section_cb(section_toggle[SECTION_FPGA],
+				section_setting[SECTION_FPGA]);
+	} else if (MATCH_ATTRIB("tx_channel_0")) {
+		dac_data_manager_set_tx_channel_state(dac_tx_manager,
+				0, !!atoi(value));
+	} else if (MATCH_ATTRIB("tx_channel_1")) {
+		dac_data_manager_set_tx_channel_state(dac_tx_manager,
+				1, !!atoi(value));
+	} else if (MATCH_ATTRIB("tx_channel_2")) {
+		dac_data_manager_set_tx_channel_state(dac_tx_manager,
+				2, !!atoi(value));
+	} else if (MATCH_ATTRIB("tx_channel_3")) {
+		dac_data_manager_set_tx_channel_state(dac_tx_manager,
+				3, !!atoi(value));
+	} else if (MATCH_ATTRIB("dac_buf_filename")) {
+		dac_data_manager_set_buffer_chooser_filename(
+				dac_tx_manager, value);
+	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
+		reload_button_clicked(NULL, NULL);
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int fmcomms2_handle(const char *attrib, const char *value)
+{
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	const char *attr;
+	int ret;
+
+	if (!strncmp(attrib, "test.", sizeof("test.") - 1)) {
+		ret = osc_test_value(ctx, attrib, value);
+		if (ret < 0)
+			fprintf(stderr, "Unable to test \"%s\": %s\n",
+					attrib, strerror(-ret));
+		return ret < 1 ? -1 : 0;
+	}
+
+	ret = osc_identify_attrib(ctx, attrib, &dev, &chn, &attr);
+	if (ret < 0)
+		return fmcomms2_handle_driver(attrib, value);
+
+	if (!chn)
+		ret = (int) iio_device_attr_write(dev, attr, value);
+	else
+		ret = (int) iio_channel_attr_write(chn, attr, value);
+	return ret < 0 ? ret : 0;
+}
+
+static void load_profile(const char *ini_fn)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(fmcomms2_driver_attribs); i++) {
+		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				fmcomms2_driver_attribs[i]);
+		if (value) {
+			fmcomms2_handle_driver(
+					fmcomms2_driver_attribs[i], value);
+			free(value);
+		}
 	}
 
 	update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
 			ARRAY_SIZE(fmcomms2_sr_attribs));
 	update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
 			ARRAY_SIZE(fmcomms2_sr_attribs));
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode_tx1");
-	if (value) {
-		dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE, 1, atoi(value));
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode_tx2");
-	if (value) {
-		dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE, 2, atoi(value));
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "global_settings_show");
-	if (value) {
-		gtk_toggle_tool_button_set_active(section_toggle[SECTION_GLOBAL], !!atoi(value));
-		hide_section_cb(section_toggle[SECTION_GLOBAL], section_setting[SECTION_GLOBAL]);
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_show");
-	if (value) {
-		gtk_toggle_tool_button_set_active(section_toggle[SECTION_TX], !!atoi(value));
-		hide_section_cb(section_toggle[SECTION_TX], section_setting[SECTION_TX]);
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "rx_show");
-	if (value) {
-		gtk_toggle_tool_button_set_active(section_toggle[SECTION_RX], !!atoi(value));
-		hide_section_cb(section_toggle[SECTION_RX], section_setting[SECTION_RX]);
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "fpga_show");
-	if (value) {
-		gtk_toggle_tool_button_set_active(section_toggle[SECTION_FPGA], !!atoi(value));
-		hide_section_cb(section_toggle[SECTION_FPGA], section_setting[SECTION_FPGA]);
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_0");
-	if (value) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager, 0, !!atoi(value));
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_1");
-	if (value) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, !!atoi(value));
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_2");
-	if (value) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager, 2, !!atoi(value));
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_3");
-	if (value) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager, 3, !!atoi(value));
-		free(value);
-	}
-
-	if (dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 1) == DDS_BUFFER) {
-		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
-		if (value) {
-			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
-			free(value);
-		}
-	}
 
 	if (can_update_widgets)
 		reload_button_clicked(NULL, NULL);
@@ -1453,6 +1480,7 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = fmcomms2_identify,
 	.init = fmcomms2_init,
+	.handle_item = fmcomms2_handle,
 	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.get_preferred_size = fmcomms2_get_preferred_size,
