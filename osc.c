@@ -2245,7 +2245,7 @@ static int capture_profile_handler(const char *section,
 {
 
 	if (strncmp(section, CAPTURE_INI_SECTION, sizeof(CAPTURE_INI_SECTION) - 1))
-		return -1;
+		return 1;
 
 	/* Check if a new section has been reached */
 	if (!prev_section || strcmp(section, prev_section) != 0) {

@@ -274,8 +274,15 @@ int foreach_in_ini(const char *ini_file,
 			free(k);
 			free(v);
 
-			if (ret < 0)
+			if (ret < 0) {
+				free(n);
+				goto err_ini_close;
+			}
+
+			if (ret > 0) {
+				ret = 0;
 				break;
+			}
 		}
 
 		free(n);
