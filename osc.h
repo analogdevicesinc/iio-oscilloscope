@@ -107,6 +107,9 @@ void application_reload(struct iio_context *ctx);
 
 struct iio_context * osc_create_context(void);
 
+int osc_test_value(struct iio_context *ctx,
+		const char *attribute, const char *value);
+
 /* Private functions */
 extern int load_default_profile(char *filename, bool load_plugins);
 extern void do_init(struct iio_context *new_ctx);

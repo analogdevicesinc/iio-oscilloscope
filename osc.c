@@ -2494,3 +2494,95 @@ struct iio_context * osc_create_context(void)
 	else
 		return iio_context_clone(ctx);
 }
+
+/* Test something, according to:
+ * test.device.attribute.type = min max
+ */
+int osc_test_value(struct iio_context *ctx,
+		const char *attribute, const char *value)
+{
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	char *dev_name = NULL, *attr_name = NULL, *type = NULL;
+	const char *attr;
+	long long min_i, max_i, val_i;
+	double min_d, max_d, val_d;
+	int ret;
+
+	ret = sscanf(attribute, "test.%m[^.].%m[^.].%m[^.]",
+			&dev_name, &attr_name, &type);
+	if (ret != 3) {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	dev = iio_context_find_device(ctx, dev_name);
+	if (!dev) {
+		ret = -ENODEV;
+		goto cleanup;
+	}
+
+	ret = iio_device_identify_filename(dev, attr_name, &chn, &attr);
+	if (ret < 0)
+		goto cleanup;
+
+	if (!strcmp(type, "int")) {
+		ret = sscanf(value, "%lli %lli", &min_i, &max_i);
+		if (ret != 2) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
+
+		if (chn)
+			ret = iio_channel_attr_read_longlong(chn, attr, &val_i);
+		else
+			ret = iio_device_attr_read_longlong(dev, attr, &val_i);
+		if (ret < 0)
+			goto cleanup;
+
+		printf("(%s = %s): value = %lli\n", attribute, value, val_i);
+		ret = val_i >= min_i && val_i <= max_i;
+
+	} else if (!strcmp(type, "double")) {
+		gchar *end1, *end2;
+		min_d = g_ascii_strtod(value, &end1);
+		if (end1 == value) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
+
+		max_d = g_ascii_strtod(end1, &end2);
+		if (end1 == end2) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
+
+		if (chn)
+			ret = iio_channel_attr_read_double(chn, attr, &val_d);
+		else
+			ret = iio_device_attr_read_double(dev, attr, &val_d);
+		if (ret < 0)
+			goto cleanup;
+
+		printf("(%s = %s): value = %lf\n", attribute, value, val_d);
+		ret = val_d >= min_d && val_d <= max_d;
+
+	} else {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	if (ret == 0)
+		fprintf(stderr, "*** Test failed! ***\n");
+	else
+		fprintf(stderr, "Test passed.\n");
+
+cleanup:
+	if (dev_name)
+		free(dev_name);
+	if (attr_name)
+		free(attr_name);
+	if (type)
+		free(type);
+	return ret;
+}
