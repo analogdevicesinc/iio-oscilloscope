@@ -1283,18 +1283,22 @@ static void close_plugins(const char *ini_fn)
 	plugin_list = NULL;
 }
 
-bool plugin_installed(const char *name)
+static struct osc_plugin * get_plugin_from_name(const char *name)
 {
 	GSList *node;
-	struct osc_plugin *plugin = NULL;
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
-		plugin = node->data;
+		struct osc_plugin *plugin = node->data;
 		if (plugin && !strcmp(plugin->name, name))
-			return true;
+			return plugin;
 	}
 
-	return false;
+	return NULL;
+}
+
+bool plugin_installed(const char *name)
+{
+	return !!get_plugin_from_name(name);
 }
 
 void * plugin_dlsym(const char *name, const char *symbol)
@@ -2364,6 +2368,58 @@ void save_complete_profile(const char *filename)
 	}
 }
 
+static int handle_osc_param(const char *name, const char *value)
+{
+	char *buf;
+
+	if (!strcmp(name, "tooltips_enable")) {
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tooltips_en),
+				!!atoi(value));
+		return 0;
+	}
+
+	if (sscanf(name, "plugin.%m[^.].detached", &buf) == 1) {
+		printf("Restoring detached state for plugin %s (%i)\n",
+				buf, !!atoi(value));
+		plugin_restore_ini_state(buf, "detached", !!atoi(value));
+		free(buf);
+		return 0;
+	}
+
+	return 0;
+}
+
+static int load_profile_sequential_handler(const char *section,
+		const char *name, const char *value)
+{
+	struct osc_plugin *plugin = get_plugin_from_name(section);
+	if (plugin) {
+		if (plugin->handle_item)
+			return plugin->handle_item(name, value);
+		else
+			return 1;
+	}
+
+	if (!strncmp(section, CAPTURE_INI_SECTION, sizeof(CAPTURE_INI_SECTION) - 1))
+		return capture_profile_handler(section, name, value);
+
+	if (!strcmp(section, OSC_INI_SECTION))
+		return handle_osc_param(name, value);
+
+	fprintf(stderr, "Unhandled INI section: [%s]\n", section);
+	return 1;
+}
+
+static void load_profile_sequential(const char *filename)
+{
+	int ret;
+
+	printf("Loading profile sequentially.\n");
+	ret = foreach_in_ini(filename, load_profile_sequential_handler);
+	if (ret < 0)
+		fprintf(stderr, "Sequential loading of profile aborted.\n");
+}
+
 static void load_profile(const char *filename, bool load_plugins)
 {
 	GSList *node;
@@ -2374,6 +2430,13 @@ static void load_profile(const char *filename, bool load_plugins)
 	destroy_all_plots();
 
 	plot_widget = NULL;
+
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "test");
+	if (value) {
+		free(value);
+		load_profile_sequential(filename);
+		return;
+	}
 
 	value = read_token_from_ini(filename,
 			OSC_INI_SECTION, "tooltips_enable");
