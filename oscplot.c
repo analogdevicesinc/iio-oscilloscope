@@ -3182,7 +3182,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 	gchar **elems = NULL, **min_max = NULL;
 	gfloat max_f, min_f;
 	struct channel_settings *csettings;
-	int ret = 1, i;
+	int ret = 0, i;
 	FILE *fd;
 
 	elem_type = count_char_in_string('.', name);
@@ -3225,21 +3225,15 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				gtk_combo_box_set_active(GTK_COMBO_BOX(priv->hor_units), HOR_SCALE_TIME);
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), atof(value));
 			} else if (MATCH_NAME("fft_size")) {
-				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_size_widget), value);
-				if (ret == 0)
+				if (!comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_size_widget), value))
 					goto unhandled;
-				else
-					ret = 1;
 			} else if (MATCH_NAME("fft_avg")) {
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->fft_avg_widget), atoi(value));
 			} else if (MATCH_NAME("fft_pwr_offset")) {
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->fft_pwr_offset_widget), atof(value));
 			} else if (MATCH_NAME("graph_type")) {
-				ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->plot_type), value);
-				if (ret == 0)
+				if (!comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->plot_type), value))
 					goto unhandled;
-				else
-					ret = 1;
 			} else if (MATCH_NAME("show_grid"))
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(priv->show_grid), atoi(value));
 			else if (MATCH_NAME("enable_auto_scale"))
@@ -3271,18 +3265,14 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				priv->size.height = atoi(value);
 				gtk_window_resize(GTK_WINDOW(priv->window), priv->size.width, priv->size.height);
 			} else if (MATCH_NAME("plot_x_pos")) {
-				if (value) {
-					if (atoi(value)) {
-						priv->plot_x_pos = atoi(value);
-						gtk_window_move(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
-					}
+				if (atoi(value)) {
+					priv->plot_x_pos = atoi(value);
+					gtk_window_move(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
 				}
 			} else if (MATCH_NAME("plot_y_pos")) {
-				if (value) {
-					if (atoi(value)) {
-						priv->plot_y_pos = atoi(value);
-						gtk_window_move(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
-					}
+				if (atoi(value)) {
+					priv->plot_y_pos = atoi(value);
+					gtk_window_move(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
 				}
 			} else if (MATCH_NAME("marker_type")) {
 				set_marker_labels(plot, (gchar *)value, MARKER_NULL);
@@ -3317,27 +3307,23 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				fprintf(fd, "\n");
 				fclose(fd);
 			} else if (MATCH_NAME("fru_connect")) {
-				if (value) {
-					if (atoi(value) == 1) {
-						i = fru_connect();
-						if (i == GTK_RESPONSE_OK)
-							ret = 1;
-						else
-							ret = 0;
-					} else
+				if (atoi(value) == 1) {
+					i = fru_connect();
+					if (i == GTK_RESPONSE_OK)
 						ret = 0;
+					else
+						ret = -1;
+				} else {
+					ret = -1;
 				}
 			} else if (MATCH_NAME("line_thickness")) {
-				if (value) {
-					if (atoi(value))
-						priv->line_thickness = atoi(value);
-				}
+				if (atoi(value))
+					priv->line_thickness = atoi(value);
 			} else if (MATCH_NAME("quit") || MATCH_NAME("stop")) {
 				return 0;
 			} else if (MATCH_NAME("echo")) {
-				if (value)
-					printf("echoing : '%s'\n", value);
-				ret = 1;
+				printf("echoing : '%s'\n", value);
+				ret = 0;
 			} else {
 				goto unhandled;
 			}
@@ -3394,9 +3380,9 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 					if (priv->markers[i].active &&
 						priv->markers[i].y >= min_f &&
 						priv->markers[i].y <= max_f) {
-						ret = 1;
-					} else {
 						ret = 0;
+					} else {
+						ret = -1;
 						printf("%smarker %i failed : level %f\n",
 							priv->markers[i].active ? "" : "In",
 							i, priv->markers[i].y);
