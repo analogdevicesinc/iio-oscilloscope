@@ -118,6 +118,7 @@ enum {
 	HOR_SCALE_NUM_OPTIONS
 };
 
+/* Types of channels that can be displayed on a plot */
 enum {
 	PLOT_IIO_CHANNEL,
 	PLOT_MATH_CHANNEL,
@@ -178,6 +179,10 @@ static GdkColor color_marker = {
 #define CONSTELLATION_SETTINGS(obj) ((struct _constellation_settings *)obj->settings)
 #define XCORR_SETTINGS(obj) ((struct _cross_correlation_settings *)obj->settings)
 #define MATH_SETTINGS(obj) ((struct _math_settings *)obj->settings)
+
+#define CHN_SETTING(obj) ((struct channel_settings *)obj)
+#define CHN_IIO_SETTING(obj) ((struct iio_channel_settings *)obj)
+#define CHN_MATH_SETTING(obj) ((struct math_channel_settings *)obj)
 
 struct int_and_plot {
 	int int_obj;
@@ -260,6 +265,7 @@ struct _OscPlotPrivate
 
 	unsigned int nb_input_devices;
 	unsigned int nb_math_channels;
+	unsigned int nb_plot_channels;
 
 	struct plot_geometry size;
 
@@ -341,14 +347,25 @@ struct _OscPlotPrivate
 };
 
 struct channel_settings {
+	unsigned type;
+	char *name;
+	char *parent_name;
 	GdkColor graph_color;
+};
+
+struct iio_channel_settings {
+	struct channel_settings base;
 	bool apply_inverse_funct;
 	bool apply_multiply_funct;
 	bool apply_add_funct;
 	double multiply_value;
 	double add_value;
-	char *iio_device_name;
+};
+
+struct math_channel_settings {
+	struct channel_settings base;
 	GSList *iio_channels;
+	char *iio_device_name;
 	char *txt_math_expression;
 	void (*math_expression)(float ***channels_data, float *out_data, unsigned long long chn_sample_cnt);
 	void *math_lib_handler;
@@ -1024,12 +1041,13 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 			return;
 
 		if (transform->type_id == TIME_TRANSFORM) {
+			struct iio_channel_settings *set = CHN_IIO_SETTING(csettings);
 			TIME_SETTINGS(transform)->num_samples = dev_samples;
-			TIME_SETTINGS(transform)->apply_inverse_funct = csettings->apply_inverse_funct;
-			TIME_SETTINGS(transform)->apply_multiply_funct = csettings->apply_multiply_funct;
-			TIME_SETTINGS(transform)->apply_add_funct = csettings->apply_add_funct;
-			TIME_SETTINGS(transform)->multiply_value = csettings->multiply_value;
-			TIME_SETTINGS(transform)->add_value = csettings->add_value;
+			TIME_SETTINGS(transform)->apply_inverse_funct = set->apply_inverse_funct;
+			TIME_SETTINGS(transform)->apply_multiply_funct = set->apply_multiply_funct;
+			TIME_SETTINGS(transform)->apply_add_funct = set->apply_add_funct;
+			TIME_SETTINGS(transform)->multiply_value = set->multiply_value;
+			TIME_SETTINGS(transform)->add_value = set->add_value;
 			TIME_SETTINGS(transform)->max_x_axis = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 		} else if (transform->type_id == MATH_TRANSFORM) {
 			MATH_SETTINGS(transform)->num_samples = dev_samples;
@@ -1164,7 +1182,7 @@ static void set_channel_shadow_of_enabled(gpointer data, gpointer user_data)
 	ch_info->shadow_of_enabled += ((bool)user_data) ? 1 : -1;
 }
 
-static Transform* add_math_transform_to_list(OscPlot *plot, struct channel_settings *csettings)
+static Transform* add_math_transform_to_list(OscPlot *plot, struct math_channel_settings *csettings)
 {
 	OscPlotPrivate *priv = plot->priv;
 	TrList *list = priv->transform_list;
@@ -1181,13 +1199,13 @@ static Transform* add_math_transform_to_list(OscPlot *plot, struct channel_setti
 	math_settings->math_expression = csettings->math_expression;
 	Transform_attach_settings(transform, math_settings);
 	transform->iio_channels = csettings->iio_channels;
-	transform->graph_color = &csettings->graph_color;
+	transform->graph_color = &csettings->base.graph_color;
 	priv->active_transform_type = MATH_TRANSFORM;
 
 	g_slist_foreach(csettings->iio_channels, set_channel_shadow_of_enabled, (gpointer)true);
 
 	TrList_add_transform(list, transform);
-	update_transform_settings(plot, transform, csettings);
+	update_transform_settings(plot, transform, (struct channel_settings *)csettings);
 
 	return transform;
 }
@@ -1564,7 +1582,7 @@ static void math_channels_transform_assignment(GtkTreeModel *model,
 	GtkTreeIter *iter, void *user_data)
 {
 	OscPlot *plot = user_data;
-	struct channel_settings *settings;
+	struct math_channel_settings *settings;
 	gboolean enabled;
 
 	gtk_tree_model_get(model, iter, CHANNEL_ACTIVE, &enabled,
@@ -2027,30 +2045,62 @@ static void create_channel_list_view(OscPlot *plot)
 	g_signal_connect(G_OBJECT(renderer_dev_toggle), "toggled", G_CALLBACK(device_toggled), plot);
 }
 
-static void * channel_settings_new(OscPlot *plot)
+static void channel_settings_default_init(OscPlot *plot, struct channel_settings *settings)
 {
-	struct channel_settings *settings;
-	GSList *list = plot->priv->ch_settings_list;
-	static int index;
+	OscPlotPrivate *priv = plot->priv;
+	GSList *list = priv->ch_settings_list;
+	int index = priv->nb_plot_channels;
 
-	if (list == NULL)
-		index = 0;
+	g_return_if_fail(settings);
 
-	settings = calloc(sizeof(struct channel_settings), 1);
-	list = g_slist_prepend(list, settings);
-	plot->priv->ch_settings_list = list;
-
+	/* Set a default color */
 	settings->graph_color.red = color_graph[index % NUM_GRAPH_COLORS].red;
 	settings->graph_color.green = color_graph[index % NUM_GRAPH_COLORS].green;
 	settings->graph_color.blue = color_graph[index % NUM_GRAPH_COLORS].blue;
-	settings->apply_inverse_funct = false;
-	settings->apply_multiply_funct = false;
-	settings->apply_add_funct = false;
-	settings->multiply_value = 0.0;
-	settings->add_value = 0.0;
-	index++;
 
-	return settings;
+	/* Add the settings to an internal list */
+	list = g_slist_prepend(list, settings);
+	priv->ch_settings_list = list;
+	priv->nb_plot_channels++;
+}
+
+static void channel_settings_free(struct channel_settings *settings)
+{
+	struct math_channel_settings *math_s;
+
+	g_return_if_fail(settings);
+
+	switch (settings->type) {
+	case PLOT_IIO_CHANNEL:
+		break;
+	case PLOT_MATH_CHANNEL:
+		math_s = CHN_MATH_SETTING(settings);
+		if (math_s->iio_channels) {
+			g_slist_free(math_s->iio_channels);
+			math_s->iio_channels = NULL;
+		}
+		if (math_s->iio_device_name) {
+			g_free(math_s->iio_device_name);
+			math_s->iio_device_name = NULL;
+		}
+		if (math_s->txt_math_expression) {
+			g_free(math_s->txt_math_expression);
+			math_s->txt_math_expression = NULL;
+		}
+		math_expression_close_lib_handler(math_s->math_lib_handler);
+		math_s->math_lib_handler = NULL;
+		math_s->math_expression = NULL;
+		break;
+	}
+	if (settings->name) {
+		g_free(settings->name);
+		settings->name = NULL;
+	}
+	if (settings->parent_name) {
+		g_free(settings->parent_name);
+		settings->parent_name = NULL;
+	}
+	free(settings);
 }
 
 static GdkPixbuf * channel_color_icon_new(OscPlot *plot)
@@ -2130,7 +2180,7 @@ static void plot_channels_add_device(OscPlot *plot, const char *dev_name)
 		-1);
 }
 
-static void plot_channels_add_channel(OscPlot *plot, const char *chn_name, const char *parent_name)
+static void plot_channels_add_channel(OscPlot *plot, struct channel_settings *set)
 {
 	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
@@ -2138,38 +2188,36 @@ static void plot_channels_add_channel(OscPlot *plot, const char *chn_name, const
 	GtkTreeIter parent_iter, child_iter;
 	GdkPixbuf *new_icon;
 	GdkColor *icon_color;
-	struct channel_settings *new_settings;
 	gboolean ret;
 
 	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
 
-	new_settings = channel_settings_new(plot);
 	new_icon = channel_color_icon_new(plot);
-	icon_color = &new_settings->graph_color;
+	icon_color = &set->graph_color;
 	channel_color_icon_set_color(new_icon, icon_color);
 
-	ret = get_iter_by_name(treeview, &parent_iter, parent_name, NULL);
+	ret = get_iter_by_name(treeview, &parent_iter, set->parent_name, NULL);
 	if (!ret) {
 		fprintf(stderr,
 			"Could not add %s channel to device %s. Device not found\n",
-			chn_name, parent_name);
+			set->name, set->parent_name);
 		return;
 	}
 
 	struct iio_device *iio_dev = NULL;
 	struct iio_channel *iio_chn = NULL;
 
-	if (ctx && (iio_dev = iio_context_find_device(ctx, parent_name)))
-		iio_chn = iio_device_find_channel(iio_dev, chn_name, false);
+	if (ctx && (iio_dev = iio_context_find_device(ctx, set->parent_name)))
+		iio_chn = iio_device_find_channel(iio_dev, set->name, false);
 
 	gtk_tree_store_append(treestore, &child_iter, &parent_iter);
 	gtk_tree_store_set(treestore, &child_iter,
-			ELEMENT_NAME, chn_name,
+			ELEMENT_NAME, set->name,
 			IS_CHANNEL, TRUE,
-			CHANNEL_TYPE, (iio_chn) ? PLOT_IIO_CHANNEL : PLOT_MATH_CHANNEL,
+			CHANNEL_TYPE, set->type,
 			CHANNEL_ACTIVE, FALSE,
 			ELEMENT_REFERENCE, iio_chn,
-			CHANNEL_SETTINGS, new_settings,
+			CHANNEL_SETTINGS, set,
 			CHANNEL_COLOR_ICON, new_icon,
 			SENSITIVE, TRUE,
 			PLOT_TYPE, TIME_PLOT,
@@ -2186,26 +2234,11 @@ static void plot_channels_remove_channel(OscPlot *plot, GtkTreeIter *iter)
 
 	model = gtk_tree_view_get_model(treeview);
 	gtk_tree_model_get(model, iter, CHANNEL_SETTINGS, &settings, -1);
-
-	if (settings->iio_channels) {
-		g_slist_free(settings->iio_channels);
-		settings->iio_channels = NULL;
-	}
-	if (settings->iio_device_name) {
-		g_free(settings->iio_device_name);
-		settings->iio_device_name = NULL;
-	}
-	if (settings->txt_math_expression) {
-		g_free(settings->txt_math_expression);
-		settings->txt_math_expression = NULL;
-	}
-	math_expression_close_lib_handler(settings->math_lib_handler);
-	settings->math_lib_handler = NULL;
-	settings->math_expression = NULL;
-
 	list = priv->ch_settings_list;
 	node = g_slist_find(list, settings);
-	priv->ch_settings_list = g_slist_delete_link(list, node);
+	channel_settings_free(settings);
+	priv->ch_settings_list = g_slist_remove_link(list, node);
+	priv->nb_plot_channels--;
 
 	gtk_tree_store_remove(GTK_TREE_STORE(model), iter);
 }
@@ -2239,7 +2272,18 @@ static void device_list_treeview_init(OscPlot *plot)
 
 			const char *chn_name = iio_channel_get_name(ch) ?:
 				iio_channel_get_id(ch);
-			plot_channels_add_channel(plot, chn_name, dev_name);
+			struct iio_channel_settings *settings;
+
+			settings = calloc(sizeof(struct iio_channel_settings), 1);
+			if (!settings) {
+				fprintf(stderr, "Error in %s: %s", __func__, strerror(errno));
+				return;
+			}
+			channel_settings_default_init(plot, CHN_SETTING(settings));
+			settings->base.type = PLOT_IIO_CHANNEL;
+			settings->base.name = g_strdup(chn_name);
+			settings->base.parent_name = g_strdup(dev_name);
+			plot_channels_add_channel(plot, CHN_SETTING(settings));
 		}
 	}
 	plot_channels_add_device(plot, MATH_CHANNELS_DEVICE);
@@ -3261,18 +3305,26 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 		while (next_ch_iter) {
 			struct iio_channel *ch;
 			const char *ch_name;
+
 			gtk_tree_model_get(model, &ch_iter, ELEMENT_REFERENCE, &ch,
 				CHANNEL_ACTIVE, &ch_enabled, CHANNEL_SETTINGS, &csettings, -1);
-			ch_name = iio_channel_get_name(ch) ?: iio_channel_get_id(ch);
+			ch_name = csettings->name;
+
 			fprintf(fp, "%s.%s.enabled=%d\n", name, ch_name, (ch_enabled) ? 1 : 0);
 			fprintf(fp, "%s.%s.color_red=%d\n", name, ch_name, csettings->graph_color.red);
 			fprintf(fp, "%s.%s.color_green=%d\n", name, ch_name, csettings->graph_color.green);
 			fprintf(fp, "%s.%s.color_blue=%d\n", name, ch_name, csettings->graph_color.blue);
-			fprintf(fp, "%s.%s.math_apply_inverse_funct=%d\n", name, ch_name, csettings->apply_inverse_funct);
-			fprintf(fp, "%s.%s.math_apply_multiply_funct=%d\n", name, ch_name, csettings->apply_multiply_funct);
-			fprintf(fp, "%s.%s.math_apply_add_funct=%d\n", name, ch_name, csettings->apply_add_funct);
-			fprintf(fp, "%s.%s.math_multiply_value=%f\n", name, ch_name, csettings->multiply_value);
-			fprintf(fp, "%s.%s.math_add_value=%f\n", name, ch_name, csettings->add_value);
+			switch (csettings->type) {
+			case PLOT_IIO_CHANNEL:
+				fprintf(fp, "%s.%s.math_apply_inverse_funct=%d\n", name, ch_name, CHN_IIO_SETTING(csettings)->apply_inverse_funct);
+				fprintf(fp, "%s.%s.math_apply_multiply_funct=%d\n", name, ch_name, CHN_IIO_SETTING(csettings)->apply_multiply_funct);
+				fprintf(fp, "%s.%s.math_apply_add_funct=%d\n", name, ch_name, CHN_IIO_SETTING(csettings)->apply_add_funct);
+				fprintf(fp, "%s.%s.math_multiply_value=%f\n", name, ch_name, CHN_IIO_SETTING(csettings)->multiply_value);
+				fprintf(fp, "%s.%s.math_add_value=%f\n", name, ch_name, CHN_IIO_SETTING(csettings)->add_value);
+				break;
+			case PLOT_MATH_CHANNEL:
+				break;
+			}
 			next_ch_iter = gtk_tree_model_iter_next(model, &ch_iter);
 		}
 		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
@@ -3648,23 +3700,23 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 			} else if (MATCH(ch_property, "math_apply_inverse_funct")) {
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
-				csettings->apply_inverse_funct = atoi(value);
+				CHN_IIO_SETTING(csettings)->apply_inverse_funct = atoi(value);
 			} else if (MATCH(ch_property, "math_apply_multiply_funct")) {
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
-				csettings->apply_multiply_funct = atoi(value);
+				CHN_IIO_SETTING(csettings)->apply_multiply_funct = atoi(value);
 			} else if (MATCH(ch_property, "math_apply_add_funct")) {
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
-				csettings->apply_add_funct = atoi(value);
+				CHN_IIO_SETTING(csettings)->apply_add_funct = atoi(value);
 			} else if (MATCH(ch_property, "math_multiply_value")) {
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
-				csettings->multiply_value = atof(value);
+				CHN_IIO_SETTING(csettings)->multiply_value = atof(value);
 			} else if (MATCH(ch_property, "math_add_value")) {
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
-				csettings->add_value = atof(value);
+				CHN_IIO_SETTING(csettings)->add_value = atof(value);
 			}
 			break;
 		default:
@@ -4243,7 +4295,7 @@ end:
 	g_free(device_name);
 }
 
-static int math_expression_get_settings(OscPlot *plot, struct channel_settings *settings)
+static int math_expression_get_settings(OscPlot *plot, struct math_channel_settings *settings)
 {
 	OscPlotPrivate *priv = plot->priv;
 	char *active_device;
@@ -4324,36 +4376,34 @@ static int math_expression_get_settings(OscPlot *plot, struct channel_settings *
 static void new_math_channel_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
-	struct channel_settings *expr_settings;
 	char channel_name[512];
 	int ret;
 
 	snprintf(channel_name, sizeof(channel_name),
 			"ecuation%d", priv->nb_math_channels++);
 
-	expr_settings = calloc(sizeof(struct channel_settings), 1);
-	ret = math_expression_get_settings(plot, expr_settings);
-	if (ret < 0)
-		return;
-
 	/* Build a new Math Channel */
-	plot_channels_add_channel(plot, channel_name, MATH_CHANNELS_DEVICE);
+	struct math_channel_settings *ch_msettings;
 
-	/* Get Channel settings structure */
-	struct channel_settings *chn_settings;
-	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
-	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
-	GtkTreeIter iter;
+	ch_msettings = calloc(sizeof(struct math_channel_settings), 1);
+	if (!ch_msettings) {
+		fprintf(stderr, "Error in %s: %s", __func__, strerror(errno));
+		return;
+	}
+	channel_settings_default_init(plot, CHN_SETTING(ch_msettings));
+	ch_msettings->base.type = PLOT_MATH_CHANNEL;
+	ch_msettings->base.name = strdup(channel_name);
+	ch_msettings->base.parent_name = g_strdup(MATH_CHANNELS_DEVICE);
 
-	get_iter_by_name(treeview, &iter, MATH_CHANNELS_DEVICE, channel_name);
-	gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &chn_settings, -1);
+	ret = math_expression_get_settings(plot, ch_msettings);
+	if (ret < 0) {
+		free(ch_msettings);
+		return;
+	}
 
-	chn_settings->txt_math_expression = expr_settings->txt_math_expression;
-	chn_settings->iio_device_name = expr_settings->iio_device_name;
-	chn_settings->iio_channels = expr_settings->iio_channels;
-	chn_settings->math_expression = expr_settings->math_expression;
-	chn_settings->math_lib_handler = expr_settings->math_lib_handler;
-	free(expr_settings);
+	/* Create GUI for the new channel */
+	plot_channels_add_channel(plot, CHN_SETTING(ch_msettings));
+
 	treeview_expand_update(plot);
 }
 
@@ -4372,7 +4422,7 @@ static void channel_edit_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 		return;
 
 	/* Get Channel settings structure */
-	struct channel_settings *settings;
+	struct math_channel_settings *settings;
 
 	gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &settings, -1);
 	math_expression_get_settings(plot, settings);
@@ -4567,7 +4617,7 @@ static void channel_math_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	GtkTreeIter iter;
 	gboolean selected;
 	int response;
-	struct channel_settings *csettings;
+	struct iio_channel_settings *csettings;
 
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(treeview);
