@@ -910,31 +910,6 @@ static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
 	return buf;
 }
 
-static const char *scpi_sr_attribs[] = {
-	"rx." SERIAL_TOK,
-	"rx." NET_TOK,
-	"rx." REGEX_TOK,
-	"rx." IP_TOK,
-	"rx." TTY_TOK,
-	"rx." GPIB_TOK,
-	"rx." CON_TOK,
-	"rx.setup",
-	"rx.center",
-	"rx.span",
-	"rx.marker",
-	"tx." SERIAL_TOK,
-	"tx." NET_TOK,
-	"tx." REGEX_TOK,
-	"tx." IP_TOK,
-	"tx." TTY_TOK,
-	"tx." GPIB_TOK,
-	"tx." CON_TOK,
-	"tx.freq",
-	"tx.mag",
-	"tx.on",
-	NULL,
-};
-
 /*
  * All the GUI/Glade stuff
  */
@@ -1286,6 +1261,4 @@ struct osc_plugin plugin = {
 	.name = "SCPI",
 	.identify = scpi_identify,
 	.init = scpi_init,
-	.handle_item = scpi_handle_profile,
-	.save_restore_attribs = scpi_sr_attribs,
 };
