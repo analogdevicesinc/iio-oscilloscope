@@ -2257,19 +2257,18 @@ static int capture_profile_handler(const char *section,
 			g_free(prev_section);
 		/* Remember the last section */
 		prev_section = g_strdup(section);
+
 		/* Create a capture window and parse the line from ini file*/
-		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
-			if (ctx && !!iio_context_get_devices_count(ctx)) {
-				plot_widget = new_plot_cb(NULL, NULL);
-				osc_plot_set_visible(OSC_PLOT(plot_widget), false);
-				return osc_plot_ini_read_handler(OSC_PLOT(plot_widget), section, name, value);
-			}
+		if (ctx && !!iio_context_get_devices_count(ctx)) {
+			plot_widget = new_plot_cb(NULL, NULL);
+			osc_plot_set_visible(OSC_PLOT(plot_widget), false);
+			return osc_plot_ini_read_handler(OSC_PLOT(plot_widget),
+					section, name, value);
 		}
 	} else if (plot_widget) {
 		/* Parse the line from ini file */
-		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
-			return osc_plot_ini_read_handler(OSC_PLOT(plot_widget), section, name, value);
-		}
+		return osc_plot_ini_read_handler(OSC_PLOT(plot_widget),
+				section, name, value);
 	}
 
 	return 0;
