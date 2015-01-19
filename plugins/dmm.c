@@ -433,112 +433,69 @@ static GtkWidget * dmm_init(GtkWidget *notebook, const char *ini_fn)
 	return dmm_panel;
 }
 
-#define DEVICE_LIST "device_list"
-#define CHANNEL_LIST "channel_list"
-#define RUNNING "running"
-
-static char *dmm_handle(struct osc_plugin *plugin, const char *attrib,
-		const char *value)
+static int dmm_handle(const char *attrib, const char *value)
 {
 	GtkTreeIter iter;
 	char *device, *channel, tmp[256];
-	char *buf = NULL;
 	gboolean loop;
 	unsigned int enabled;
 
-	if (MATCH_ATTRIB(DEVICE_LIST)) {
-		loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL (device_list_store), &iter);
+	if (MATCH_ATTRIB("device_list")) {
+		GtkTreeModel *model = GTK_TREE_MODEL(device_list_store);
+		loop = gtk_tree_model_get_iter_first(model, &iter);
 		while (loop) {
-			gtk_tree_model_get(GTK_TREE_MODEL(device_list_store),
-					&iter, 0, &device, 1, &enabled, -1);
-			if (value) {
-				/* load/restore */
-				if (strstr(value, device)) {
-					enabled = value[strlen(value) - 1] == '1';
-					gtk_list_store_set(GTK_LIST_STORE(device_list_store),
+			gtk_tree_model_get(model, &iter, 0,
+					&device, 1, &enabled, -1);
+			/* load/restore */
+			if (strstr(value, device)) {
+				enabled = value[strlen(value) - 1] == '1';
+				gtk_list_store_set(device_list_store,
 						&iter, 1, enabled, -1);
-				}
-			} else {
-				/* save */
-				if (buf) {
-					buf = realloc(buf, strlen(DEVICE_LIST) + strlen(buf) + strlen(device) + 8);
-					sprintf(&buf[strlen(buf)], "\n%s = %s %i", DEVICE_LIST, device, enabled);
-				} else {
-					buf = malloc(strlen(device) + 5);
-					sprintf(buf, "%s %i", device, enabled);
-				}
 			}
 			g_free(device);
-			loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(device_list_store), &iter);
+			loop = gtk_tree_model_iter_next(model, &iter);
 		}
-		if (value)
-			build_channel_list();
+		build_channel_list();
+		return 0;
 
-
-		return buf;
-
-	} else if (MATCH_ATTRIB(CHANNEL_LIST)) {
-		loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL (channel_list_store), &iter);
+	} else if (MATCH_ATTRIB("channel_list")) {
+		GtkTreeModel *model = GTK_TREE_MODEL(channel_list_store);
+		loop = gtk_tree_model_get_iter_first(model, &iter);
 		while (loop) {
-			gtk_tree_model_get(GTK_TREE_MODEL(channel_list_store),
-					&iter, 1, &enabled, 2, &device, 3, &channel, -1);
-			if (value) {
-				/* load/restore */
-				sprintf(tmp, "%s:%s", device, channel);
-				if (strstr(value, tmp)) {
-					enabled = 1;
-					gtk_list_store_set(GTK_LIST_STORE(channel_list_store),
-						&iter, 1, enabled, -1);
-				}
-			} else {
-				/* save */
-				if (enabled) {
-					if (buf) {
-						buf = realloc(buf, strlen(buf) +
-								strlen(CHANNEL_LIST) +
-								strlen(device) +
-								strlen(channel) + 8);
-						sprintf(&buf[strlen(buf)], "\n%s = %s:%s",
-								CHANNEL_LIST, device, channel);
-					} else {
-						buf = malloc(strlen(device) + strlen(channel) + 2);
-						sprintf(buf, "%s:%s", device, channel);
-					}
-				}
+			gtk_tree_model_get(model, &iter, 1,
+					&enabled, 2, &device, 3, &channel, -1);
+			/* load/restore */
+			sprintf(tmp, "%s:%s", device, channel);
+			if (strstr(value, tmp)) {
+				enabled = 1;
+				gtk_list_store_set(channel_list_store,
+					&iter, 1, enabled, -1);
 			}
 			g_free(channel);
 			g_free(device);
-			loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(channel_list_store), &iter);
+			loop = gtk_tree_model_iter_next(model, &iter);
 		}
-		return buf;
-	} else if (MATCH_ATTRIB(RUNNING)) {
-		if (value) {
-			/* load/restore */
-			if (!strcmp(value, "Yes"))
-				gtk_toggle_tool_button_set_active(
-						GTK_TOGGLE_TOOL_BUTTON(dmm_button), TRUE);
-			else
-				gtk_toggle_tool_button_set_active(
-						GTK_TOGGLE_TOOL_BUTTON(dmm_button), FALSE);
-		} else {
-			/* save */
-			if(gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(dmm_button)))
-				sprintf(tmp, "Yes");
-			else
-				sprintf(tmp, "No");
+		return 0;
 
-			buf = strdup(tmp);
-			return buf;
-		}
+	} else if (MATCH_ATTRIB("running")) {
+		/* load/restore */
+		gtk_toggle_tool_button_set_active(
+				GTK_TOGGLE_TOOL_BUTTON(dmm_button),
+				!strcmp(value, "Yes"));
+		return 0;
+
+	} else if (!strncmp(attrib, "test.", sizeof("test.") - 1)) {
+		int ret = osc_test_value(ctx, attrib, value);
+		if (ret < 0)
+			fprintf(stderr, "Unable to test \"%s\": %s\n",
+					attrib, strerror(-ret));
+		return ret < 1 ? -1 : 0;
+
 	} else {
-		printf("Unhandled tokens in ini file,\n"
-				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-				"DMM", attrib, value);
-		if (value)
-			return "FAIL";
+		printf("Unhandled tokens in ini file:\n\t[DMM] %s=%s\n",
+				attrib, value);
+		return -1;
 	}
-
-	return NULL;
 }
 
 static void update_active_page(gint active_page, gboolean is_detached)
@@ -579,6 +536,7 @@ struct osc_plugin plugin = {
 	.name = "DMM",
 	.identify = dmm_identify,
 	.init = dmm_init,
+	.handle_item = dmm_handle,
 	.update_active_page = update_active_page,
 	.destroy = context_destroy,
 };
