@@ -541,13 +541,6 @@ static char *dmm_handle(struct osc_plugin *plugin, const char *attrib,
 	return NULL;
 }
 
-static const char *dmm_sr_attribs[] = {
-	DEVICE_LIST,
-	CHANNEL_LIST,
-	RUNNING,
-	NULL,
-};
-
 static void update_active_page(gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
@@ -586,8 +579,6 @@ struct osc_plugin plugin = {
 	.name = "DMM",
 	.identify = dmm_identify,
 	.init = dmm_init,
-	.save_restore_attribs = dmm_sr_attribs,
-	.handle_item = dmm_handle,
 	.update_active_page = update_active_page,
 	.destroy = context_destroy,
 };
