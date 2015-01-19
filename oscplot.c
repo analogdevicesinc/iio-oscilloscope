@@ -64,7 +64,6 @@ static void osc_plot_dispose(GObject *object);
 static void save_as(OscPlot *plot, const char *filename, int type);
 static void treeview_expand_update(OscPlot *plot);
 static void treeview_icon_color_update(OscPlot *plot);
-static int  cfg_read_handler(void *user, const char* section, const char* name, const char* value);
 static int device_find_by_name(const char *name);
 static int enabled_channels_of_device(GtkTreeView *treeview, const char *name, unsigned *enabled_mask);
 static int enabled_channels_count(OscPlot *plot);
@@ -500,11 +499,6 @@ void osc_plot_draw_stop (OscPlot *plot)
 void osc_plot_save_to_ini (OscPlot *plot, char *filename)
 {
 	plot_profile_save(plot, filename);
-}
-
-int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *name, const char *value)
-{
-	return cfg_read_handler(plot, section, name, value);
 }
 
 void osc_plot_save_as (OscPlot *plot, char *filename, int type)
@@ -3172,9 +3166,8 @@ static int count_char_in_string(char c, const char *s)
 	return i;
 }
 
-static int cfg_read_handler(void *user, const char* section, const char* name, const char* value)
+int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *name, const char *value)
 {
-	OscPlot *plot = (OscPlot *)user;
 	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *tree = GTK_TREE_VIEW(priv->channel_list_view);
 	GtkTreeStore *store = GTK_TREE_STORE(gtk_tree_view_get_model(tree));
