@@ -2586,3 +2586,35 @@ cleanup:
 		free(type);
 	return ret;
 }
+
+int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
+		struct iio_device **dev, struct iio_channel **chn,
+		const char **attr)
+{
+	struct iio_device *device;
+	char *dev_name = NULL, *filename = NULL;
+	int ret;
+
+	ret = sscanf(attrib, "%m[^.].%m[^.]", &dev_name, &filename);
+	if (ret != 2) {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	device = iio_context_find_device(ctx, dev_name);
+	if (!device) {
+		ret = -ENODEV;
+		goto cleanup;
+	}
+
+	ret = iio_device_identify_filename(device, filename, chn, attr);
+	if (!ret)
+		*dev = device;
+
+cleanup:
+	if (dev_name)
+		free(dev_name);
+	if (filename)
+		free(filename);
+	return ret;
+}

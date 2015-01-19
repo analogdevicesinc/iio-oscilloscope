@@ -109,6 +109,9 @@ struct iio_context * osc_create_context(void);
 
 int osc_test_value(struct iio_context *ctx,
 		const char *attribute, const char *value);
+int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
+		struct iio_device **dev, struct iio_channel **chn,
+		const char **attr);
 
 /* Private functions */
 extern int load_default_profile(char *filename, bool load_plugins);
