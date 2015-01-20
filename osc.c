@@ -716,7 +716,6 @@ static void update_plot(struct iio_buffer *buf)
 
 		if (osc_plot_get_buffer(plot) == buf) {
 			osc_plot_data_update(plot);
-			break;
 		}
 	}
 }
