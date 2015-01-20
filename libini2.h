@@ -18,4 +18,6 @@ char * read_token_from_ini(const char *ini_file,
 int foreach_in_ini(const char *ini_file,
 		int (*cb)(const char *, const char *, const char *));
 
+int ini_unroll(const char *input, const char *output);
+
 #endif /* __LIBINI2_H__ */

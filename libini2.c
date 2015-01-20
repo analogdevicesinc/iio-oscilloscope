@@ -2,6 +2,7 @@
 
 #include "libini/ini.h"
 
+#include <errno.h>
 #include <iio.h>
 #include <stdio.h>
 #include <string.h>
@@ -290,5 +291,94 @@ int foreach_in_ini(const char *ini_file,
 
 err_ini_close:
 	ini_close(ini);
+	return ret;
+}
+
+int ini_unroll(const char *input, const char *output)
+{
+	FILE *in, *out;
+	char *replace;
+	char buf[1024];
+	char var[128], tmp[128], tmp2[128];
+	double i, first, inc, last;
+	fpos_t pos;
+	bool j = true, k = false;
+	int ret = 0;
+
+	in = fopen(input, "r");
+	out = fopen (output, "w");
+
+	if (!in) {
+		ret = -errno;
+		fprintf(stderr, "Failed to open %s : %s\n", input,
+			strerror(-ret));
+		goto err_close;
+	}
+
+	if (!out) {
+		ret = -errno;
+		fprintf(stderr, "Failed to open %s : %s\n", output,
+			strerror(-ret));
+		goto err_close;
+	}
+
+	while(fgets(buf, sizeof(buf), in) != NULL) {
+		if (buf[0]) {
+			j = true;
+			if (!strncmp(buf, "<SEQ>", 5)) {
+				k = true;
+				/* # seq [OPTION]... FIRST INCREMENT LAST */
+				ret = sscanf(buf, "<SEQ> %s %lf %lf %lf",
+						var, &first, &inc, &last);
+				if (ret != 4) {
+					ret = -EINVAL;
+					fprintf(stderr, "Unrecognized SEQ line\n");
+					goto err_close;
+				}
+
+				sprintf(tmp, "<%s>", var);
+				fgetpos(in, &pos);
+
+				for(i = first; i <= last; i = i + inc) {
+					fsetpos(in, &pos);
+					while(fgets(buf, 1024, in) != NULL) {
+						j = true;
+						if (!strncmp(buf, "</SEQ>", 6)) {
+							k = false;
+							j = false;
+							break;
+						}
+						if ((replace = strstr(buf, tmp)) != NULL) {
+							j = false;
+							sprintf(tmp2, "%lf", i);
+							while (tmp2[strlen(tmp2) - 1] == '0')
+								tmp2[strlen(tmp2) -1] = 0;
+							if (tmp2[strlen(tmp2) - 1] == '.')
+								tmp2[strlen(tmp2) -1] = 0;
+
+							fprintf(out, "%.*s%s%.*s",
+								(int) (long) (replace - buf), buf, tmp2,
+								(int) (long) (strlen(buf) - (int)(replace - buf) - strlen(tmp)),
+								replace + strlen(tmp));
+
+						}
+						if (j)
+							fprintf(out, "%s", buf);
+					}
+				}
+			}
+		}
+		if (j)
+			fprintf(out, "%s", buf);
+	}
+
+	if (k) {
+		printf("loop isn't closed in %s\n", input);
+		ret = -EINVAL;
+	}
+
+err_close:
+	fclose(in);
+	fclose(out);
 	return ret;
 }
