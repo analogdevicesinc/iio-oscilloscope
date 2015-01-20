@@ -3377,15 +3377,18 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 					min_f = atof(min_max[0]);
 					max_f = atof(min_max[1]);
 					i = atoi(elems[2]);
+
+					printf("(test.marker.%i = %f %f): %f\n",
+							i, min_f, max_f,
+							priv->markers[i].y);
 					if (priv->markers[i].active &&
 						priv->markers[i].y >= min_f &&
 						priv->markers[i].y <= max_f) {
 						ret = 0;
+						printf("Test passed.\n");
 					} else {
 						ret = -1;
-						printf("%smarker %i failed : level %f\n",
-							priv->markers[i].active ? "" : "In",
-							i, priv->markers[i].y);
+						printf("*** Test failed! ***\n");
 					}
 					g_strfreev(min_max);
 				} else {
