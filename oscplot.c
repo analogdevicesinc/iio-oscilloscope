@@ -4249,6 +4249,28 @@ static GSList * math_expression_get_iio_channel_list(const char *expression, con
 	return chn_list;
 }
 
+static void math_chooser_clear_key_pressed_cb(GtkButton *btn, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTextBuffer *tbuf = priv->math_expression;
+
+	gtk_text_buffer_set_text(tbuf, "", -1);
+	gtk_widget_grab_focus(priv->math_expression_textview);
+}
+
+static void math_chooser_backspace_key_pressed_cb(GtkButton *btn, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTextBuffer *tbuf = priv->math_expression;
+	GtkTextMark *insert_mark;
+	GtkTextIter insert_iter;
+
+	insert_mark = gtk_text_buffer_get_insert(tbuf);
+	gtk_text_buffer_get_iter_at_mark(tbuf, &insert_iter, insert_mark);
+	gtk_text_buffer_backspace(tbuf, &insert_iter, true, true);
+	gtk_widget_grab_focus(priv->math_expression_textview);
+}
+
 static void math_chooser_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -5138,6 +5160,11 @@ static void create_plot(OscPlot *plot)
 
 	g_builder_connect_signal(builder, "cmb_math_device_chooser", "changed",
 		G_CALLBACK(math_device_cmb_changed_cb), plot);
+
+	g_builder_connect_signal(builder, "math_key_clear", "clicked",
+		G_CALLBACK(math_chooser_clear_key_pressed_cb), plot);
+	g_builder_connect_signal(builder, "math_key_backspace", "clicked",
+		G_CALLBACK(math_chooser_backspace_key_pressed_cb), plot);
 
 	GtkWidget *math_table = GTK_WIDGET(gtk_builder_get_object(priv->builder, "table_math_chooser"));
 	GList *node;
