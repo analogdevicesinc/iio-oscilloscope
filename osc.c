@@ -2617,3 +2617,87 @@ cleanup:
 		free(filename);
 	return ret;
 }
+
+static int osc_read_nonenclosed_value(struct iio_context *ctx,
+		const char *value, long long *out)
+{
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	const char *attr;
+	int ret = osc_identify_attrib(ctx, value, &dev, &chn, &attr);
+	if (ret < 0)
+		return ret;
+
+	if (chn)
+		ret = iio_channel_attr_read_longlong(chn, attr, out);
+	else
+		ret = iio_device_attr_read_longlong(dev, attr, out);
+	return ret < 0 ? ret : 0;
+}
+
+static int osc_read_enclosed_value(struct iio_context *ctx,
+		const char *value, long long *out)
+{
+	const char *plus = strstr(value, " + "),
+	      *minus = strstr(value, " - ");
+	char *sub, *left = NULL, *right = NULL;
+	long long val_left, val_right;
+	int ret;
+
+	if (!plus && !minus) {
+		ret = sscanf(value, "{%m[^{}]}", &sub);
+		if (ret != 1)
+			return -EINVAL;
+
+		ret = osc_read_nonenclosed_value(ctx, sub, out);
+		free(sub);
+		return ret;
+	}
+
+	if (plus)
+		ret = sscanf(value, "{{%m[^{^}]} + {%m[^{^}]}}",
+				&left, &right);
+	else
+		ret = sscanf(value, "{{%m[^{}]} - {%m[^{}]}}",
+				&left, &right);
+	if (ret != 2) {
+		ret = -EINVAL;
+		goto err_free;
+	}
+
+	ret = osc_read_nonenclosed_value(ctx, left, &val_left);
+	if (ret < 0)
+		goto err_free;
+
+	ret = osc_read_nonenclosed_value(ctx, right, &val_right);
+	if (ret < 0)
+		goto err_free;
+
+	if (plus)
+		*out = val_left + val_right;
+	else
+		*out = val_left - val_right;
+
+err_free:
+	if (left)
+		free(left);
+	if (right)
+		free(right);
+	return ret;
+}
+
+int osc_read_value(struct iio_context *ctx,
+		const char *value, long long *out)
+{
+	if (value[0] == '{') {
+		return osc_read_enclosed_value(ctx, value, out);
+	} else {
+		char *end;
+		long long result = strtoll(value, &end, 10);
+		if (value == end)
+			return -EINVAL;
+
+		*out = result;
+		return 0;
+	}
+}
