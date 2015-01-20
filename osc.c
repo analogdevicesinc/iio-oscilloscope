@@ -2410,12 +2410,29 @@ static int load_profile_sequential_handler(const char *section,
 
 static void load_profile_sequential(const char *filename)
 {
+	char buf[L_tmpnam];
 	int ret;
 
-	printf("Loading profile sequentially.\n");
-	ret = foreach_in_ini(filename, load_profile_sequential_handler);
+	snprintf(buf, sizeof(buf), "%s/osc_XXXXXX.ini", P_tmpdir);
+	ret = mkstemps(buf, 4);
+	if (ret < 0) {
+		fprintf(stderr, "Unable to get temp file: %s\n",
+				strerror(errno));
+		return;
+	}
+
+	close(ret);
+	ret = ini_unroll(filename, buf);
+	if (ret < 0)
+		goto err_unlink;
+
+	printf("Loading profile sequentially from %s\n", buf);
+	ret = foreach_in_ini(buf, load_profile_sequential_handler);
 	if (ret < 0)
 		fprintf(stderr, "Sequential loading of profile aborted.\n");
+
+err_unlink:
+	unlink(buf);
 }
 
 static void load_profile(const char *filename, bool load_plugins)
