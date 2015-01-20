@@ -258,13 +258,14 @@ struct _OscPlotPrivate
 	GtkWidget *math_expression_dialog;
 	GtkWidget *math_expression_textview;
 	GtkWidget *math_device_select;
+	GtkWidget *math_channel_name_entry;
+	GtkWidget *math_expr_error;
 
 	GtkTextBuffer* tbuf;
 	GtkTextBuffer* devices_buf;
 	GtkTextBuffer* math_expression;
 
 	unsigned int nb_input_devices;
-	unsigned int nb_math_channels;
 	unsigned int nb_plot_channels;
 
 	struct plot_geometry size;
@@ -958,6 +959,32 @@ capture_button_err:
 	priv->capture_button_hid = 0;
 
 	return false;
+}
+
+static bool plot_channel_check_name_exists(OscPlot *plot, const char *name,
+		struct channel_settings *struct_to_skip)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GSList *node;
+	struct channel_settings *settings;
+	bool name_exists;
+
+	name_exists = false;
+	for (node = priv->ch_settings_list; node; node = g_slist_next(node)) {
+		settings = node->data;
+		if (settings == struct_to_skip)
+			continue;
+		if (!settings->name) {
+			fprintf(stderr, "Error in %s: Channel name is null", __func__);
+			continue;
+		}
+		if (!strcmp(name, settings->name)) {
+			name_exists = true;
+			break;
+		}
+	}
+
+	return name_exists;
 }
 
 static int plot_get_sample_count_of_device(OscPlot *plot, const char *device)
@@ -2234,6 +2261,7 @@ static void plot_channels_remove_channel(OscPlot *plot, GtkTreeIter *iter)
 
 	model = gtk_tree_view_get_model(treeview);
 	gtk_tree_model_get(model, iter, CHANNEL_SETTINGS, &settings, -1);
+
 	list = priv->ch_settings_list;
 	node = g_slist_find(list, settings);
 	channel_settings_free(settings);
@@ -4305,6 +4333,7 @@ static int math_expression_get_settings(OscPlot *plot, struct math_channel_setti
 	GSList *channels = NULL;
 	gchar *txt_math_expr;
 	bool invalid_channels;
+	const char *channel_name;
 
 	math_device_cmb_changed_cb(GTK_COMBO_BOX_TEXT(priv->math_device_select), plot);
 
@@ -4320,14 +4349,24 @@ static int math_expression_get_settings(OscPlot *plot, struct math_channel_setti
 	else
 		gtk_text_buffer_set_text(priv->math_expression, "", -1);
 
-	gtk_widget_set_visible(GTK_WIDGET(gtk_builder_get_object(priv->builder,
-			"label_math_expr_invalid_msg")), false);
+	if (settings->base.name)
+		gtk_entry_set_text(GTK_ENTRY(priv->math_channel_name_entry),
+			settings->base.name);
+	else
+		gtk_entry_set_text(GTK_ENTRY(priv->math_channel_name_entry),
+			"expression");
+
+	gtk_widget_set_visible(priv->math_expr_error, false);
 
 	/* Get the math expression from user */
 	do {
 		ret = gtk_dialog_run(GTK_DIALOG(priv->math_expression_dialog));
 		if (ret != GTK_RESPONSE_OK)
 			break;
+
+		channel_name = gtk_entry_get_text(GTK_ENTRY(priv->math_channel_name_entry));
+		if (plot_channel_check_name_exists(plot, channel_name, CHN_SETTING(settings)))
+			channel_name = NULL;
 
 		/* Get the string of the math expression */
 		GtkTextIter start;
@@ -4347,9 +4386,14 @@ static int math_expression_get_settings(OscPlot *plot, struct math_channel_setti
 			fn = NULL;
 		}
 
-		gtk_widget_set_visible(GTK_WIDGET(gtk_builder_get_object(priv->builder, "label_math_expr_invalid_msg")), !fn);
-
-	} while (!fn);
+		gtk_widget_set_visible(priv->math_expr_error, true);
+		if (!fn)
+			gtk_label_set_text(GTK_LABEL(priv->math_expr_error), "Invalid math expression.");
+		else if (!channel_name)
+			gtk_label_set_text(GTK_LABEL(priv->math_expr_error), "An expression with the same name already exists");
+		else
+			gtk_widget_set_visible(priv->math_expr_error, false);
+	} while (!fn || !channel_name);
 	gtk_widget_hide(priv->math_expression_dialog);
 	if (ret != GTK_RESPONSE_OK)
 		return - 1;
@@ -4357,12 +4401,15 @@ static int math_expression_get_settings(OscPlot *plot, struct math_channel_setti
 	/* Store the settings of the new channel*/
 	if (settings->txt_math_expression)
 		g_free(settings->txt_math_expression);
+	if (settings->base.name)
+		g_free(settings->base.name);
 	if (settings->iio_device_name)
 		g_free(settings->iio_device_name);
 	if (settings->iio_channels)
 		g_slist_free(settings->iio_channels);
 
 	settings->txt_math_expression = txt_math_expr;
+	settings->base.name = g_strdup(channel_name);
 	settings->iio_device_name = g_strdup(active_device);
 	settings->iio_channels = channels;
 	settings->math_expression = fn;
@@ -4375,12 +4422,7 @@ static int math_expression_get_settings(OscPlot *plot, struct math_channel_setti
 
 static void new_math_channel_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
-	OscPlotPrivate *priv = plot->priv;
-	char channel_name[512];
 	int ret;
-
-	snprintf(channel_name, sizeof(channel_name),
-			"ecuation%d", priv->nb_math_channels++);
 
 	/* Build a new Math Channel */
 	struct math_channel_settings *ch_msettings;
@@ -4392,12 +4434,12 @@ static void new_math_channel_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	}
 	channel_settings_default_init(plot, CHN_SETTING(ch_msettings));
 	ch_msettings->base.type = PLOT_MATH_CHANNEL;
-	ch_msettings->base.name = strdup(channel_name);
 	ch_msettings->base.parent_name = g_strdup(MATH_CHANNELS_DEVICE);
 
 	ret = math_expression_get_settings(plot, ch_msettings);
 	if (ret < 0) {
-		free(ch_msettings);
+		channel_settings_free(CHN_SETTING(ch_msettings));
+		ch_msettings = NULL;
 		return;
 	}
 
@@ -4426,6 +4468,8 @@ static void channel_edit_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 
 	gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &settings, -1);
 	math_expression_get_settings(plot, settings);
+	gtk_tree_store_set(GTK_TREE_STORE(model), &iter,
+			ELEMENT_NAME, settings->base.name, -1);
 }
 
 static void channel_remove_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
@@ -4880,6 +4924,8 @@ static void create_plot(OscPlot *plot)
 	priv->math_expression_dialog = GTK_WIDGET(gtk_builder_get_object(priv->builder, "math_expression_chooser"));
 	priv->math_expression_textview = GTK_WIDGET(gtk_builder_get_object(priv->builder, "textview_math_expression"));
 	priv->math_expression = GTK_TEXT_BUFFER(gtk_builder_get_object(priv->builder, "textbuffer_math_expression"));
+	priv->math_channel_name_entry = GTK_WIDGET(gtk_builder_get_object(priv->builder, "entry_math_ch_name"));
+	priv->math_expr_error = GTK_WIDGET(gtk_builder_get_object(priv->builder, "label_math_expr_invalid_msg"));
 
 	priv->tbuf = NULL;
 	priv->ch_settings_list = NULL;
