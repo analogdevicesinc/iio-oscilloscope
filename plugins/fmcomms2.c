@@ -939,10 +939,25 @@ static int fmcomms2_handle(const char *attrib, const char *value)
 	if (ret < 0)
 		return fmcomms2_handle_driver(attrib, value);
 
-	if (!chn)
-		ret = (int) iio_device_attr_write(dev, attr, value);
-	else
+	if (value[0] == '{') {
+		long long lval;
+		ret = osc_read_value(ctx, value, &lval);
+		if (ret < 0) {
+			printf("Unable to read value from attrib: %s (val: %s)\n",
+					attrib, value);
+			return ret;
+		}
+
+		if (chn)
+			ret = iio_channel_attr_write_longlong(chn, attr, lval);
+		else
+			ret = iio_device_attr_write_longlong(dev, attr, lval);
+	} else if (chn)
 		ret = (int) iio_channel_attr_write(chn, attr, value);
+	else
+		ret = (int) iio_device_attr_write(dev, attr, value);
+	if (ret < 0)
+		fprintf(stderr, "Unable to write value to attrib: %s (val = %s)\n", attrib, value);
 	return ret < 0 ? ret : 0;
 }
 
