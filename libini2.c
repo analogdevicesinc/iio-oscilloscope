@@ -297,13 +297,14 @@ err_ini_close:
 int ini_unroll(const char *input, const char *output)
 {
 	FILE *in, *out;
-	char *replace;
+	char *replace, *eol;
 	char buf[1024];
-	char var[128], tmp[128], tmp2[128];
-	double i, first, inc, last;
+	char var[128], tmp[128];
+	size_t tmplen;
 	fpos_t pos;
-	bool j = true, k = false;
+	bool in_seq = false;
 	int ret = 0;
+	long long i, first, inc, last;
 
 	in = fopen(input, "r");
 	out = fopen (output, "w");
@@ -323,56 +324,54 @@ int ini_unroll(const char *input, const char *output)
 	}
 
 	while(fgets(buf, sizeof(buf), in) != NULL) {
-		if (buf[0]) {
-			j = true;
-			if (!strncmp(buf, "<SEQ>", 5)) {
-				k = true;
-				/* # seq [OPTION]... FIRST INCREMENT LAST */
-				ret = sscanf(buf, "<SEQ> %s %lf %lf %lf",
-						var, &first, &inc, &last);
-				if (ret != 4) {
-					ret = -EINVAL;
-					fprintf(stderr, "Unrecognized SEQ line\n");
-					goto err_close;
+		if (!buf[0])
+			continue;
+
+		if (strncmp(buf, "<SEQ>", sizeof("<SEQ>") - 1)) {
+			fprintf(out, "%s", buf);
+			continue;
+		}
+
+		in_seq = true;
+
+		/* # seq [OPTION]... FIRST INCREMENT LAST */
+		ret = sscanf(buf, "<SEQ> %s %lli %lli %lli",
+				var, &first, &inc, &last);
+		if (ret != 4) {
+			ret = -EINVAL;
+			fprintf(stderr, "Unrecognized SEQ line\n");
+			goto err_close;
+		}
+
+		snprintf(tmp, sizeof(tmp), "<%s>", var);
+		fgetpos(in, &pos);
+		tmplen = strlen(tmp);
+
+		for(i = first; i <= last; i = i + inc) {
+			fsetpos(in, &pos);
+
+			while(fgets(buf, sizeof(buf), in) != NULL) {
+				if (!strncmp(buf, "</SEQ>", 6)) {
+					in_seq = false;
+					break;
 				}
 
-				sprintf(tmp, "<%s>", var);
-				fgetpos(in, &pos);
-
-				for(i = first; i <= last; i = i + inc) {
-					fsetpos(in, &pos);
-					while(fgets(buf, 1024, in) != NULL) {
-						j = true;
-						if (!strncmp(buf, "</SEQ>", 6)) {
-							k = false;
-							j = false;
-							break;
-						}
-						if ((replace = strstr(buf, tmp)) != NULL) {
-							j = false;
-							sprintf(tmp2, "%lf", i);
-							while (tmp2[strlen(tmp2) - 1] == '0')
-								tmp2[strlen(tmp2) -1] = 0;
-							if (tmp2[strlen(tmp2) - 1] == '.')
-								tmp2[strlen(tmp2) -1] = 0;
-
-							fprintf(out, "%.*s%s%.*s",
-								(int) (long) (replace - buf), buf, tmp2,
-								(int) (long) (strlen(buf) - (int)(replace - buf) - strlen(tmp)),
-								replace + strlen(tmp));
-
-						}
-						if (j)
-							fprintf(out, "%s", buf);
-					}
+				replace = strstr(buf, tmp);
+				if (!replace) {
+					fprintf(out, "%s", buf);
+					continue;
 				}
+
+				eol = strchr(buf, '\0');
+				fprintf(out, "%.*s%lli%.*s",
+					(int) (long) (replace - buf), buf, i,
+					(int) (eol - replace - tmplen),
+					(char *)((uintptr_t) replace + tmplen));
 			}
 		}
-		if (j)
-			fprintf(out, "%s", buf);
 	}
 
-	if (k) {
+	if (in_seq) {
 		printf("loop isn't closed in %s\n", input);
 		ret = -EINVAL;
 	}
