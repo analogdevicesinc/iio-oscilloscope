@@ -2430,6 +2430,8 @@ static void load_profile_sequential(const char *filename)
 	ret = foreach_in_ini(buf, load_profile_sequential_handler);
 	if (ret < 0)
 		fprintf(stderr, "Sequential loading of profile aborted.\n");
+	else
+		fprintf(stderr, "Sequential loading completed.\n");
 
 err_unlink:
 	unlink(buf);
@@ -2588,7 +2590,10 @@ int osc_test_value(struct iio_context *ctx,
 		goto cleanup;
 	}
 
-	if (ret == 0)
+	if (ret < 0)
+		fprintf(stderr, "Unable to test \"%s\": %s\n",
+				attribute, strerror(-ret));
+	else if (ret == 0)
 		fprintf(stderr, "*** Test failed! ***\n");
 	else
 		fprintf(stderr, "Test passed.\n");
