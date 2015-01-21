@@ -959,11 +959,11 @@ static int fmcomms2_handle(const char *attrib, const char *value)
 
 	if (!strncmp(attrib, "test.", sizeof("test.") - 1)) {
 		ret = osc_test_value(ctx, attrib, value);
-		if (ret < 0)
-			fprintf(stderr, "Unable to test \"%s\": %s\n",
-					attrib, strerror(-ret));
 		return ret < 1 ? -1 : 0;
 	}
+
+	if (!strncmp(attrib, "log.", sizeof("log.") - 1))
+		return osc_log_value(ctx, attrib, value);
 
 	ret = osc_identify_attrib(ctx, attrib, &dev, &chn, &attr);
 	if (ret < 0)
