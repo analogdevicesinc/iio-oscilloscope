@@ -1606,6 +1606,10 @@ static int fmcomms1_handle_driver(const char *attrib, const char *value)
 	} else if (MATCH_ATTRIB("gain_locked")) {
 		gtk_toggle_button_set_active(
 				GTK_TOGGLE_BUTTON(gain_locked), atoi(value));
+	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
+		tx_update_values();
+		rx_update_values();
+		dac_data_manager_update_iio_widgets(dac_tx_manager);
 	} else {
 		return -EINVAL;
 	}
@@ -1622,11 +1626,11 @@ static int fmcomms1_handle(const char *attrib, const char *value)
 
 	if (!strncmp(attrib, "test.", sizeof("test.") - 1)) {
 		ret = osc_test_value(ctx, attrib, value);
-		if (ret < 0)
-			fprintf(stderr, "Unable to test \"%s\": %s\n",
-					attrib, strerror(-ret));
 		return ret < 1 ? -1 : 0;
 	}
+
+	if (!strncmp(attrib, "log.", sizeof("log.") - 1))
+		return osc_log_value(ctx, attrib, value);
 
 	ret = osc_identify_attrib(ctx, attrib, &dev, &chn, &attr);
 	if (ret < 0)
@@ -1645,8 +1649,6 @@ static int fmcomms1_handle(const char *attrib, const char *value)
 			ret = iio_channel_attr_write_longlong(chn, attr, lval);
 		else
 			ret = iio_device_attr_write_longlong(dev, attr, lval);
-		if (ret < 0)
-			fprintf(stderr, "Unable to write value to attrib: %s (val = %lli)\n", attrib, lval);
 	} else if (chn)
 		ret = (int) iio_channel_attr_write(chn, attr, value);
 	else
