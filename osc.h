@@ -114,6 +114,8 @@ int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
 		const char **attr);
 int osc_read_value(struct iio_context *ctx,
 		const char *value, long long *out);
+int osc_log_value(struct iio_context *ctx,
+		const char *attribute, const char *value);
 
 /* Private functions */
 extern int load_default_profile(char *filename, bool load_plugins);

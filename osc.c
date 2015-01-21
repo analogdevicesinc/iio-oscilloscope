@@ -2723,3 +2723,50 @@ int osc_read_value(struct iio_context *ctx,
 		return 0;
 	}
 }
+
+/* Log the value of a parameter in a text file:
+ * log.device.filename = output_file
+ */
+int osc_log_value(struct iio_context *ctx,
+		const char *attribute, const char *value)
+{
+	int ret;
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	const char *attr;
+	char buf[1024];
+	FILE *f;
+
+	if (strncmp(attribute, "log.", sizeof("log.") - 1)) {
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	ret = osc_identify_attrib(ctx,
+			attribute + sizeof("log.") - 1,
+			&dev, &chn, &attr);
+	if (ret < 0)
+		goto err_ret;
+
+	if (chn)
+		ret = iio_channel_attr_read(chn, attr, buf, sizeof(buf));
+	else
+		ret = iio_device_attr_read(dev, attr, buf, sizeof(buf));
+	if (ret < 0)
+		goto err_ret;
+
+	f = fopen(value, "a");
+	if (!f) {
+		ret = -errno;
+		goto err_ret;
+	}
+
+	fprintf(f, "%s, ", buf);
+	fclose(f);
+	return 0;
+
+err_ret:
+	fprintf(stderr, "Unable to log \"%s\": %s\n",
+			attribute, strerror(-ret));
+	return ret;
+}
