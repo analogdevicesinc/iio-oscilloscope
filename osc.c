@@ -2770,3 +2770,49 @@ err_ret:
 			attribute, strerror(-ret));
 	return ret;
 }
+
+int osc_plugin_default_handle(struct iio_context *ctx,
+		const char *attrib, const char *value,
+		int (*driver_handle)(const char *, const char *))
+{
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	const char *attr;
+	int ret;
+
+	if (!strncmp(attrib, "test.", sizeof("test.") - 1)) {
+		ret = osc_test_value(ctx, attrib, value);
+		return ret < 1 ? -1 : 0;
+	}
+
+	if (!strncmp(attrib, "log.", sizeof("log.") - 1))
+		return osc_log_value(ctx, attrib, value);
+
+	ret = osc_identify_attrib(ctx, attrib, &dev, &chn, &attr);
+	if (ret < 0) {
+		if (driver_handle)
+			return driver_handle(attrib, value);
+		else
+			return ret;
+	}
+
+	if (value[0] == '{') {
+		long long lval;
+		ret = osc_read_value(ctx, value, &lval);
+		if (ret < 0) {
+			printf("Unable to read value: %s\n", value);
+			return ret;
+		}
+
+		if (chn)
+			ret = iio_channel_attr_write_longlong(chn, attr, lval);
+		else
+			ret = iio_device_attr_write_longlong(dev, attr, lval);
+	} else if (chn)
+		ret = iio_channel_attr_write(chn, attr, value);
+	else
+		ret = iio_device_attr_write(dev, attr, value);
+	if (ret < 0)
+		fprintf(stderr, "Unable to write value: %s\n", value);
+	return ret < 0 ? ret : 0;
+}

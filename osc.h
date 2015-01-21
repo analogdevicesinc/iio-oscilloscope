@@ -116,6 +116,9 @@ int osc_read_value(struct iio_context *ctx,
 		const char *value, long long *out);
 int osc_log_value(struct iio_context *ctx,
 		const char *attribute, const char *value);
+int osc_plugin_default_handle(struct iio_context *ctx,
+		const char *attrib, const char *value,
+		int (*driver_handle)(const char *, const char *));
 
 /* Private functions */
 extern int load_default_profile(char *filename, bool load_plugins);
