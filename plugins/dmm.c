@@ -433,7 +433,7 @@ static GtkWidget * dmm_init(GtkWidget *notebook, const char *ini_fn)
 	return dmm_panel;
 }
 
-static int dmm_handle(const char *attrib, const char *value)
+static int dmm_handle_driver(const char *attrib, const char *value)
 {
 	GtkTreeIter iter;
 	char *device, *channel, tmp[256];
@@ -456,7 +456,6 @@ static int dmm_handle(const char *attrib, const char *value)
 			loop = gtk_tree_model_iter_next(model, &iter);
 		}
 		build_channel_list();
-		return 0;
 
 	} else if (MATCH_ATTRIB("channel_list")) {
 		GtkTreeModel *model = GTK_TREE_MODEL(channel_list_store);
@@ -475,27 +474,22 @@ static int dmm_handle(const char *attrib, const char *value)
 			g_free(device);
 			loop = gtk_tree_model_iter_next(model, &iter);
 		}
-		return 0;
 
 	} else if (MATCH_ATTRIB("running")) {
 		/* load/restore */
 		gtk_toggle_tool_button_set_active(
 				GTK_TOGGLE_TOOL_BUTTON(dmm_button),
 				!strcmp(value, "Yes"));
-		return 0;
-
-	} else if (!strncmp(attrib, "test.", sizeof("test.") - 1)) {
-		int ret = osc_test_value(ctx, attrib, value);
-		if (ret < 0)
-			fprintf(stderr, "Unable to test \"%s\": %s\n",
-					attrib, strerror(-ret));
-		return ret < 1 ? -1 : 0;
-
 	} else {
-		printf("Unhandled tokens in ini file:\n\t[DMM] %s=%s\n",
-				attrib, value);
-		return -1;
+		return -EINVAL;
 	}
+
+	return 0;
+}
+
+static int dmm_handle(const char *attrib, const char *value)
+{
+	return osc_plugin_default_handle(ctx, attrib, value, dmm_handle_driver);
 }
 
 static void update_active_page(gint active_page, gboolean is_detached)
