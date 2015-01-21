@@ -671,11 +671,25 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 
 static int load_fir_filter(const char *file_name)
 {
+	bool rx = false, tx = false;
 	int ret = -1;
 	FILE *f = fopen(file_name, "r");
 	if (f) {
 		char *buf;
 		ssize_t len;
+		char line[80];
+
+		while (fgets(line, 80, f) != NULL && line[0] == '#');
+		if (!strncmp(line, "RX", strlen("RX")))
+			rx = true;
+		else if (!strncmp(line, "TX", strlen("TX")))
+			tx = true;
+		if (fgets(line, 80, f) != NULL) {
+			if (!strncmp(line, "TX", strlen("TX")))
+				tx = true;
+			else if (!strncmp(line, "RX", strlen("RX")))
+				rx = true;
+		}
 
 		fseek(f, 0, SEEK_END);
 		len = ftell(f);
@@ -706,6 +720,22 @@ static int load_fir_filter(const char *file_name)
 
 	} else {
 		strcpy(last_fir_filter, file_name);
+
+		gtk_widget_hide(fir_filter_en_tx);
+		gtk_widget_hide(enable_fir_filter_rx);
+		gtk_widget_hide(enable_fir_filter_rx_tx);
+		gtk_widget_show(disable_all_fir_filters);
+
+		if (rx && tx)
+			gtk_widget_show(enable_fir_filter_rx_tx);
+		else if (rx)
+			gtk_widget_show(enable_fir_filter_rx);
+		else if (tx)
+			gtk_widget_show(fir_filter_en_tx);
+		else
+			gtk_widget_hide(disable_all_fir_filters);
+		gtk_toggle_button_set_active(
+			GTK_TOGGLE_BUTTON (disable_all_fir_filters), true);
 	}
 
 	return ret;
