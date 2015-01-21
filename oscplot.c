@@ -3320,6 +3320,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				if (atoi(value))
 					priv->line_thickness = atoi(value);
 			} else if (MATCH_NAME("quit") || MATCH_NAME("stop")) {
+				application_quit();
 				return 0;
 			} else if (MATCH_NAME("echo")) {
 				printf("echoing : '%s'\n", value);
