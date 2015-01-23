@@ -1,0 +1,10 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: iio-osc
+Upstream-Contact: Paul Cercueil <paul.cercueil@analog.com>
+Source: https://github.com/analogdevicesinc/iio-oscilloscope/
+
+Files: *
+Copyright: 2015, Analog Devices Inc.
+License: GPL-2
+ On Debian systems, the complete text of the GNU General
+ Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
