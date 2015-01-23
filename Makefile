@@ -1,8 +1,8 @@
+PREFIX ?= /usr/local
+
 TMP = temp_resources
-DESTDIR=/usr/local
-PREFIX=/usr/local
-PSHARE=$(PREFIX)/share/osc
-PLIB=$(PREFIX)/lib/osc
+PSHARE=$(DESTDIR)$(PREFIX)/share/osc
+PLIB=$(DESTDIR)$(PREFIX)/lib/osc
 
 # this is where the master fru files are (assuming they are installed at all)
 FRU_FILES=$(PREFIX)/lib/fmc-tools/
@@ -108,17 +108,17 @@ xml_utils.o: xml_utils.h
 plugins/dac_data_manager.o: plugins/dac_data_manager.h
 
 install:
-	install -d $(DESTDIR)/bin
-	install -d $(DESTDIR)/share/osc/
-	install -d $(DESTDIR)/lib/osc/
-	install -d $(DESTDIR)/lib/osc/xmls
-	install -d $(DESTDIR)/lib/osc/filters
-	install -d $(DESTDIR)/lib/osc/waveforms
-	install -d $(DESTDIR)/lib/osc/profiles
-	install -d $(DESTDIR)/lib/osc/block_diagrams
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install -d $(DESTDIR)$(PREFIX)/share/osc/
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/xmls
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/filters
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/waveforms
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/profiles
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/block_diagrams
 	install -d $(HOME)/.config/autostart/
-	install ./$(OSC) $(DESTDIR)/bin/
-	install ./$(LIBOSC) $(DESTDIR)/lib/
+	install ./$(OSC) $(DESTDIR)$(PREFIX)/bin/
+	install ./$(LIBOSC) $(DESTDIR)$(PREFIX)/lib/
 	install ./*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
 	install ./icons/IIOlogo.png $(PSHARE)
@@ -148,7 +148,7 @@ clean:
 	$(CMD)rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o *.plist
 
 uninstall:
-	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/$(OSC) $(DESTDIR)/lib/$(LIBOSC)
+	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)$(PREFIX)/bin/$(OSC) $(DESTDIR)$(PREFIX)/lib/$(LIBOSC)
 	rm -rf $(HOME)/.osc_profile.ini
 	rm -rf $(HOME)/.config/autostart/adi-osc.desktop
 	xdg-icon-resource uninstall --noupdate --size 16 adi-osc
