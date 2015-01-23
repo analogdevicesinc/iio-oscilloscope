@@ -107,7 +107,7 @@ trigger_dialog.o: fru.h osc.h iio_widget.h
 xml_utils.o: xml_utils.h
 plugins/dac_data_manager.o: plugins/dac_data_manager.h
 
-install:
+install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install -d $(DESTDIR)$(PREFIX)/share/osc/
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/
@@ -132,24 +132,31 @@ install:
 	install ./profiles/* $(PLIB)/profiles
 	install ./block_diagrams/* $(PLIB)/block_diagrams
 
+install-all: install-common-files
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
 	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
 	xdg-icon-resource install --noupdate --size 64 ./icons/osc64.png adi-osc
 	xdg-icon-resource install --noupdate --size 128 ./icons/osc128.png adi-osc
 	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc
 	xdg-desktop-menu install adi-osc.desktop
-
 	ldconfig
 
-clean:
-	$(SUM) "  CLEAN    ."
-	$(CMD)rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o *.plist
-
-uninstall:
+uninstall-common-files:
 	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)$(PREFIX)/bin/$(OSC) $(DESTDIR)$(PREFIX)/lib/$(LIBOSC)
+
+uninstall-all: uninstall-common-files
 	xdg-icon-resource uninstall --noupdate --size 16 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 32 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 64 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 128 adi-osc
 	xdg-icon-resource uninstall --size 256 adi-osc
 	xdg-desktop-menu uninstall osc.desktop
+	ldconfig
+
+install: $(if $(DEBIAN_INSTALL),install-common-files,install-all)
+
+uninstall: $(if $(DEBIAN_INSTALL),uninstall-common-files,uninstall-all)
+
+clean:
+	$(SUM) "  CLEAN    ."
+	$(CMD)rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o *.plist
