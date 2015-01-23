@@ -116,7 +116,6 @@ install:
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/waveforms
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/profiles
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/block_diagrams
-	install -d $(HOME)/.config/autostart/
 	install ./$(OSC) $(DESTDIR)$(PREFIX)/bin/
 	install ./$(LIBOSC) $(DESTDIR)$(PREFIX)/lib/
 	install ./*.glade $(PSHARE)
@@ -132,7 +131,6 @@ install:
 	install ./waveforms/* $(PLIB)/waveforms
 	install ./profiles/* $(PLIB)/profiles
 	install ./block_diagrams/* $(PLIB)/block_diagrams
-	install adi-osc.desktop $(HOME)/.config/autostart/osc.desktop
 
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
 	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
@@ -149,8 +147,6 @@ clean:
 
 uninstall:
 	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)$(PREFIX)/bin/$(OSC) $(DESTDIR)$(PREFIX)/lib/$(LIBOSC)
-	rm -rf $(HOME)/.osc_profile.ini
-	rm -rf $(HOME)/.config/autostart/adi-osc.desktop
 	xdg-icon-resource uninstall --noupdate --size 16 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 32 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 64 adi-osc
