@@ -2003,6 +2003,7 @@ static void init_device_list(struct iio_context *ctx)
 			iio_channel_set_data(ch, info);
 		}
 	}
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 }
 
 #define ENTER_KEY_CODE 0xFF0D
@@ -2205,7 +2206,6 @@ static void do_init(struct iio_context *new_ctx)
 	init_device_list(new_ctx);
 	load_plugins(notebook, NULL);
 	load_default_profile(NULL, true);
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 
 	int width = -1, height = -1;
 	plugins_get_preferred_size(plugin_list, &width, &height);
