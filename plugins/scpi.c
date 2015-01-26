@@ -64,6 +64,8 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 
+#define THIS_DRIVER "SCPI"
+
 struct scpi_instrument {
 	/* selection */
 	bool         serial;
@@ -1244,6 +1246,43 @@ static GtkWidget * scpi_init(GtkWidget *notebook, const char *ini_fn)
 	return scpi_panel;
 }
 
+static void scpi_save_profile(const char *ini_fn)
+{
+	char buf[0x1000];
+	FILE *f = fopen(ini_fn, "a");
+	if (!f)
+		return;
+
+	snprintf(buf, sizeof(buf),
+			"\n[" THIS_DRIVER "]\n"
+			"tx.serial = %i\n"
+			"tx.network = %i\n"
+			"tx.id_regex = %s\n"
+			"tx.ip_addr = %s\n"
+			"tx.tty_path = %s\n"
+			"tx.gpib_addr = %i\n"
+			"rx.serial = %i\n"
+			"rx.network = %i\n"
+			"rx.id_regex = %s\n"
+			"rx.ip_addr = %s\n"
+			"rx.tty_path = %s\n"
+			"rx.gpib_addr = %i\n",
+			signal_generator.serial,
+			signal_generator.network,
+			signal_generator.id_regex,
+			signal_generator.ip_address,
+			signal_generator.tty_path,
+			signal_generator.gpib_addr,
+			spectrum_analyzer.serial,
+			spectrum_analyzer.network,
+			spectrum_analyzer.id_regex,
+			spectrum_analyzer.ip_address,
+			spectrum_analyzer.tty_path,
+			spectrum_analyzer.gpib_addr);
+	fwrite(buf, 1, strlen(buf), f);
+	fclose(f);
+}
+
 /* This is normally used for test, and the GUI is used for
  * setting up the test infrastructure
  */
@@ -1258,7 +1297,8 @@ static bool scpi_identify(void)
 }
 
 struct osc_plugin plugin = {
-	.name = "SCPI",
+	.name = THIS_DRIVER,
 	.identify = scpi_identify,
 	.init = scpi_init,
+	.save_profile = scpi_save_profile,
 };
