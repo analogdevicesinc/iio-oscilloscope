@@ -926,18 +926,10 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 				section_toggle[SECTION_FPGA], !!atoi(value));
 		hide_section_cb(section_toggle[SECTION_FPGA],
 				section_setting[SECTION_FPGA]);
-	} else if (MATCH_ATTRIB("tx_channel_0")) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager,
-				0, !!atoi(value));
-	} else if (MATCH_ATTRIB("tx_channel_1")) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager,
-				1, !!atoi(value));
-	} else if (MATCH_ATTRIB("tx_channel_2")) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager,
-				2, !!atoi(value));
-	} else if (MATCH_ATTRIB("tx_channel_3")) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager,
-				3, !!atoi(value));
+	} else if (!strncmp(attrib, "tx_channel_", sizeof("tx_channel_") - 1)) {
+		int tx = atoi(attrib + sizeof("tx_channel_") - 1);
+		dac_data_manager_set_tx_channel_state(
+				dac_tx_manager, tx, !!atoi(value));
 	} else if (MATCH_ATTRIB("dac_buf_filename")) {
 		dac_data_manager_set_buffer_chooser_filename(
 				dac_tx_manager, value);
