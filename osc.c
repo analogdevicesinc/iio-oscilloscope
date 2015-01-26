@@ -1706,6 +1706,8 @@ static gboolean capture_process(void)
 			update_plot(dev_info->buffer);
 	}
 
+	update_plot(NULL);
+
 capture_stop_check:
 	if (stop_capture == TRUE)
 		capture_function = 0;
