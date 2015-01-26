@@ -942,7 +942,8 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 		dac_data_manager_set_buffer_chooser_filename(
 				dac_tx_manager, value);
 	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
-		reload_button_clicked(NULL, NULL);
+		if (can_update_widgets)
+			reload_button_clicked(NULL, NULL);
 	} else {
 		return -EINVAL;
 	}
