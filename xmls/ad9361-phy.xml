@@ -2607,6 +2607,18 @@
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
+			<Name>reg03F_b1</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>BBPLL SDM Bypass</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>1</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
 			<Name>reg03F_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
@@ -2617,6 +2629,30 @@
 			<BitOffset>0</BitOffset>
 			<RegOffset>2</RegOffset>
 			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg03F_b3</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>BBPLL SDM CLK Enable Bar</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>3</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg03F_b7_b4</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>SDM SIF Data &lt;3:0&gt;</Description>
+			<Visibility>Public</Visibility>
+			<Width>4</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>4</RegOffset>
+			<SliceWidth>4</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
