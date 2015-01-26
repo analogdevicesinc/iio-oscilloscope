@@ -5,6 +5,7 @@
  *
  **/
 #include <malloc.h>
+#include <string.h>
 #include "datatypes.h"
 
 Transform* Transform_new(int type)
@@ -67,6 +68,7 @@ void Transform_resize_y_axis(Transform *tr, int new_size)
 	tr->destroy_y_axis = true;
 	tr->y_axis_size = (new_size >= 0) ? new_size : 0;
 	tr->y_axis = (gfloat *)realloc(tr->y_axis, sizeof(gfloat) * tr->y_axis_size);
+	tr->y_axis = (gfloat *)memset(tr->y_axis, 0, sizeof(gfloat) * tr->y_axis_size);
 }
 
 void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref)
