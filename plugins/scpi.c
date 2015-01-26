@@ -717,199 +717,148 @@ static int tx_mag_seek_dBm(struct mag_seek *mag_seek)
 
 static struct scpi_instrument *current_instrument;
 
-#define SERIAL_TOK "serial"
-#define NET_TOK    "network"
-#define REGEX_TOK  "id_regex"
-#define IP_TOK     "ip_addr"
-#define TTY_TOK    "tty_path"
-#define GPIB_TOK   "gpib_addr"
-#define CON_TOK    "connect"
-
-static char *scpi_handle_profile(struct osc_plugin *plugin, const char *attrib,
-		const char *value)
+static int mag_input_seek(const char *value)
 {
-	gchar **elems, **min_max;
-	char *buf;
-	int i;
-	double lvl;
-	long long j;
-	FILE *fd;
+	int ret;
+	GThread *thr;
+	struct mag_seek *mag_seek;
+	gchar **mag_min_max = g_strsplit(value, " ", 0);
 
-	if (value)
-		buf = NULL;
-	else {
-		buf = malloc(128);
-		memset(buf, 0, 128);
-	}
+	mag_seek = g_malloc(sizeof(struct mag_seek));
+	mag_seek->scpi = &signal_generator;
+	mag_seek->target_lvl = atof(mag_min_max[0]);
+	mag_seek->min_lvl = atof(mag_min_max[1]);
+	mag_seek->max_lvl = atof(mag_min_max[2]);
+	mag_seek->dBm = 0;
 
+	thr = g_thread_new("Mag_seek_thread",
+			(void *) &tx_mag_seek_dBm, mag_seek);
+
+	while (mag_seek->dBm == 0)
+		gtk_main_iteration();
+
+	ret = (int) (uintptr_t) g_thread_join(thr);
+	g_free(mag_seek);
+	g_strfreev(mag_min_max);
+	return ret;
+}
+
+static int scpi_handle(const char *attrib, const char *value)
+{
 	current_instrument = NULL;
 
-	elems = g_strsplit(attrib, ".", 0);
-	if (!strncmp(elems[0], "rx", 2))
+	if (!strncmp(attrib, "rx.", sizeof("rx.") - 1))
 		current_instrument = &spectrum_analyzer;
-	if (!strncmp(elems[0], "tx", 2))
+	else if (!strncmp(attrib, "tx.", sizeof("tx.") - 1))
 		current_instrument = &signal_generator;
+	else
+		return -EINVAL;
 
-	if (!current_instrument)
-		return NULL;
+	attrib += sizeof("rx.");
 
-	if (strcmp(elems[1], SERIAL_TOK) == 0) {
-		if (value) {
-			if (atoi(value) == 1)
-				current_instrument->serial = TRUE;
+	if (MATCH_ATTRIB("serial")) {
+		current_instrument->serial = !!atoi(value);
+	} else if (MATCH_ATTRIB("network")) {
+		current_instrument->network = !!atoi(value);
+	} else if (MATCH_ATTRIB("id_regex")) {
+		if (current_instrument->id_regex)
+			free(current_instrument->id_regex);
+		current_instrument->id_regex = strdup(value);
+	} else if (MATCH_ATTRIB("ip_addr")) {
+		if (current_instrument->ip_address)
+			free(current_instrument->ip_address);
+		current_instrument->ip_address = strdup(value);
+	} else if (MATCH_ATTRIB("tty_path")) {
+		if (current_instrument->tty_path)
+			free(current_instrument->tty_path);
+		current_instrument->tty_path = strdup(value);
+	} else if (MATCH_ATTRIB("gpib_addr")) {
+		current_instrument->gpib_addr = atoi(value);
+	} else if (MATCH_ATTRIB("connect")) {
+		if (atoi(value) == 1)
+			return scpi_connect(current_instrument);
+	} else if (current_instrument == &signal_generator) {
+		if (MATCH_ATTRIB("freq")) {
+			tx_freq_set_Hz(current_instrument, atoll(value));
+		} else if (MATCH_ATTRIB("mag")) {
+			tx_mag_set_dBm(current_instrument, atof(value));
+		} else if (MATCH_ATTRIB("mag_input_seek")) {
+			return mag_input_seek(value);
+		} else if (MATCH_ATTRIB("log.dBm")) {
+			double lvl;
+			FILE *f;
+
+			tx_mag_get_dBm(current_instrument, &lvl);
+
+			f = fopen(value, "a");
+			if (!f)
+				return -errno;
+
+			fprintf(f, "%.2lf\n", lvl);
+			fclose(f);
+		} else if (MATCH_ATTRIB("on")) {
+			tx_output_set(current_instrument, atoi(value));
 		} else {
-			if (current_instrument->serial)
-				sprintf(buf, "1");
+			return -EINVAL;
 		}
-	} else if (strcmp(elems[1], NET_TOK) == 0) {
-		if (value) {
-			if (atoi(value) == 1)
-				current_instrument->network = TRUE;
-		} else {
-			if (current_instrument->network)
-				sprintf(buf, "1");
-		}
-	} else if (strcmp(elems[1], REGEX_TOK) == 0) {
-		if (value) {
-			current_instrument->id_regex = strdup(value);
-		} else {
-			if (current_instrument->id_regex)
-				sprintf(buf, "%s", current_instrument->id_regex);
-		}
-	} else if (strcmp(elems[1], IP_TOK) == 0) {
-		if (value) {
-			current_instrument->ip_address = strdup(value);
-		} else {
-			if (current_instrument->ip_address && current_instrument->network)
-				sprintf(buf, "%s", current_instrument->ip_address);
-		}
-	} else if (strcmp(elems[1], TTY_TOK) == 0) {
-		if (value) {
-			current_instrument->tty_path = strdup(value);
-		} else {
-			if (current_instrument->tty_path && current_instrument->serial)
-				sprintf(buf, "%s", current_instrument->tty_path);
-		}
-	} else if (strcmp(elems[1], GPIB_TOK) == 0) {
-		if (value) {
-			current_instrument->gpib_addr = atoi(value);
-		} else {
-			if (current_instrument->gpib_addr && current_instrument->serial)
-				sprintf(buf, "%i", current_instrument->gpib_addr);
-		}
-	} else
-	/* There are some things testers need to add by hand to do things */
-	if (strcmp(elems[1], CON_TOK) == 0) {
-		if (value) {
-			if (atoi(value) == 1)
-				if (scpi_connect(current_instrument) != 0)
-					return "FAIL";
-		}
-		/* We don't save the connect state */
-	} else if (MATCH_ATTRIB("tx.freq")) {
-		if (value)
-			tx_freq_set_Hz(&signal_generator, atoll(value));
-		/* We don't save the frequency */
-	} else if (MATCH_ATTRIB("tx.mag")) {
-		if (value)
-			tx_mag_set_dBm(&signal_generator, atof(value));
-	} else if (MATCH_ATTRIB("tx.mag_input_seek")) {
-		if (value) {
-			char *ret = NULL;
-			GThread *thr = NULL;
-			struct mag_seek *mag_seek = NULL;
-			gchar **mag_min_max = g_strsplit(value, " ", 0);
-
-			mag_seek = g_malloc(sizeof(struct mag_seek));
-			mag_seek->scpi = &signal_generator;
-			mag_seek->target_lvl = atof(mag_min_max[0]);
-			mag_seek->min_lvl = atof(mag_min_max[1]);
-			mag_seek->max_lvl = atof(mag_min_max[2]);
-			mag_seek->dBm = 0;
-
-			thr = g_thread_new("Mag_seek_thread", (void *) &tx_mag_seek_dBm, mag_seek);
-
-			while (mag_seek->dBm == 0) {
-				gtk_main_iteration();
-			}
-
-			if (g_thread_join(thr) != 0)
-				ret = "FAIL";
-
-			g_free(mag_seek);
-			g_strfreev(mag_min_max);
-			return ret;
-		}
-	} else if (MATCH_ATTRIB("tx.log.dBm")) {
-		if (value) {
-			tx_mag_get_dBm(&signal_generator, &lvl);
-
-			fd = fopen(value, "a");
-			if (!fd)
-				return NULL;
-
-			fprintf(fd, "%.2f\n", lvl);
-			fclose(fd);
-		}
-	} else if (MATCH_ATTRIB("tx.on")) {
-		if (value)
-			tx_output_set(&signal_generator, atoi(value));
-		/* Don't save the on/off state */
-	} else if (MATCH_ATTRIB("rx.setup")) {
-		if (value)
-			scpi_rx_setup(&spectrum_analyzer);
-	} else if (MATCH_ATTRIB("rx.center")) {
-		if (value)
+	} else { /* current_instrument == &spectrum_analyzer */
+		if (MATCH_ATTRIB("setup")) {
+			scpi_rx_setup(current_instrument);
+		} else if (MATCH_ATTRIB("center")) {
 			scpi_rx_set_center_frequency(atoll(value));
-	} else if (MATCH_ATTRIB("rx.span")) {
-		if (value)
+		} else if (MATCH_ATTRIB("span")) {
 			scpi_rx_set_span_frequency(atoll(value));
-	} else if (!strncmp(attrib, "rx.marker", strlen("rx.marker"))) {
-		if (value) {
-			i = atoi(&attrib[strlen("rx.marker")]);
-			j = atoll(value);
+		} else if (!strncmp(attrib, "marker", sizeof("marker") - 1)) {
+			int i = atoi(&attrib[sizeof("marker") - 1]);
+			long long j = atoll(value);
+
 			if (i && j)
 				scpi_rx_set_marker_freq(i, j);
 			else
-				printf("problems with %s = %s\n", attrib, value);
-		}
-	} else if (!strncmp(attrib, "rx.log.marker", strlen("rx.log.marker"))) {
-		if (value) {
-			i = atoi(&attrib[strlen("rx.log.marker")]);
-			if (i) {
-				scpi_rx_get_marker_level(i, true, &lvl);
-				fd = fopen(value, "a");
-				if (!fd)
-					return NULL;
+				printf("problems with %s = %s\n",
+						attrib, value);
+		} else if (!strncmp(attrib, "log.marker",
+					sizeof("log.marker") - 1)) {
+			int i;
 
-				fprintf (fd, "%f, ", lvl);
-				fclose (fd);
-			}
-		}
-	} else if (!strncmp(attrib, "rx.test.marker", strlen("rx.test.marker"))) {
-		if (value) {
-			i = atoi(&attrib[strlen("rx.test.marker")]);
+			i = atoi(&attrib[sizeof("log.marker") - 1]);
 			if (i) {
+				double lvl;
+				FILE *f;
+
+				scpi_rx_get_marker_level(i, true, &lvl);
+				f = fopen(value, "a");
+				if (!f)
+					return -errno;
+
+				fprintf (f, "%f, ", lvl);
+				fclose (f);
+			}
+		} else if (!strncmp(attrib, "test.marker",
+					sizeof("test.marker") - 1)) {
+			int i;
+
+			i = atoi(&attrib[sizeof("test.marker") - 1]);
+			if (i) {
+				gchar **min_max;
+				double lvl;
+
 				scpi_rx_get_marker_level(i, true, &lvl);
 				min_max = g_strsplit(value, " ", 0);
-				if (lvl >= atof(min_max[1]) && lvl <= atof(min_max[0])) {
+				if (lvl >= atof(min_max[1]) &&
+						lvl <= atof(min_max[0])) {
 					printf("Marker%i (%f) didn't match requirements (%f - %f)\n",
-						i, lvl, atof(min_max[0]), atof(min_max[1]));
-					return "FAIL";
+						i, lvl, atof(min_max[0]),
+						atof(min_max[1]));
+					return -EINVAL;
 				}
-			} else {
-				return "FAIL";
 			}
+		} else {
+			return -EINVAL;
 		}
-	} else {
-		printf("Unhandled tokens in ini file,\n"
-				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-				"SCPI", attrib, value);
-		if (value)
-			return "FAIL";
 	}
 
-	return buf;
+	return 0;
 }
 
 /*
@@ -1300,5 +1249,6 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = scpi_identify,
 	.init = scpi_init,
+	.handle_item = scpi_handle,
 	.save_profile = scpi_save_profile,
 };
