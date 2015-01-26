@@ -1140,35 +1140,45 @@ int handle_external_request (const char *request)
 	return ret;
 }
 
-static bool calibrate_from_ini(const char *ini_fn)
+static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 {
-	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "calibrate");
-	if (value) {
-		int i = 0;
+	if (MATCH_ATTRIB("calibrate")) {
+		unsigned int i = 0;
 
 		do_calibration(NULL, NULL);
-		while (i <= 20) {
-			if (auto_calibrate >= 0)
-				i += auto_calibrate;
-			else
-				return false;
 
+		while (i <= 20 && auto_calibrate >= 0) {
+			i += auto_calibrate;
 			gtk_main_iteration();
 		}
-
-		free(value);
+	} else {
+		return -EINVAL;
 	}
 
-	return true;
+	return 0;
+}
+
+static int fmcomms2adv_handle(const char *attrib, const char *value)
+{
+	return osc_plugin_default_handle(ctx, attrib, value,
+			fmcomms2adv_handle_driver);
 }
 
 static void load_profile(const char *ini_fn)
 {
+	char *value;
+
 	update_from_ini(ini_fn, THIS_DRIVER, dev,
 			fmcomms2_adv_sr_attribs,
 			ARRAY_SIZE(fmcomms2_adv_sr_attribs));
 	if (can_update_widgets)
 		update_widgets(builder);
+
+	value = read_token_from_ini(ini_fn, THIS_DRIVER, "calibrate");
+	if (value) {
+		fmcomms2adv_handle_driver("calibrate", value);
+		free(value);
+	}
 }
 
 static int get_dds_channels(void)
@@ -1214,10 +1224,8 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 			return NULL;
 	}
 
-	if (ini_fn) {
+	if (ini_fn)
 		load_profile(ini_fn);
-		calibrate_from_ini(ini_fn);
-	}
 
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
@@ -1343,6 +1351,7 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = fmcomms2adv_identify,
 	.init = fmcomms2adv_init,
+	.handle_item = fmcomms2adv_handle,
 	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.save_profile = save_profile,
