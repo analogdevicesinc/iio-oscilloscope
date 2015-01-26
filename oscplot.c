@@ -1061,9 +1061,15 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 		FFT_SETTINGS(transform)->marker_type = NULL;
 	} else if (plot_type == TIME_PLOT) {
 		struct iio_device *iio_dev = transform_get_device_parent(transform);
-		int dev_samples = plot_get_sample_count_of_device(plot,
-					iio_device_get_name(iio_dev) ?:
-					iio_device_get_id(iio_dev));
+		int dev_samples;
+
+		if (!iio_dev)
+			iio_dev = priv->current_device;
+
+		dev_samples = plot_get_sample_count_of_device(plot,
+				iio_device_get_name(iio_dev) ?:
+				iio_device_get_id(iio_dev));
+
 		if (dev_samples < 0)
 			return;
 
@@ -1180,6 +1186,9 @@ static gfloat *** iio_channels_get_data(const char *device_name)
 	int nb_channels;
 	struct extra_info *ch_info;
 	int i;
+
+	if (!device_name)
+		return NULL;
 
 	iio_dev = iio_context_find_device(ctx, device_name);
 	if (!iio_dev) {
@@ -4401,12 +4410,8 @@ static int math_expression_get_settings(OscPlot *plot, struct math_channel_setti
 		/* Find device channels used in the expression */
 		channels = math_expression_get_iio_channel_list(txt_math_expr, active_device, &invalid_channels);
 
-		if (!invalid_channels) {
-			/* Get the compiled math expression */
-			fn = math_expression_get_math_function(txt_math_expr, &lhandler);
-		} else {
-			fn = NULL;
-		}
+		/* Get the compiled math expression */
+		fn = math_expression_get_math_function(txt_math_expr, &lhandler);
 
 		gtk_widget_set_visible(priv->math_expr_error, true);
 		if (!fn)
@@ -4420,6 +4425,11 @@ static int math_expression_get_settings(OscPlot *plot, struct math_channel_setti
 	if (ret != GTK_RESPONSE_OK)
 		return - 1;
 
+	char *device_of_channels = NULL;
+
+	if (channels)
+		device_of_channels = active_device;
+
 	/* Store the settings of the new channel*/
 	if (settings->txt_math_expression)
 		g_free(settings->txt_math_expression);
@@ -4432,7 +4442,7 @@ static int math_expression_get_settings(OscPlot *plot, struct math_channel_setti
 
 	settings->txt_math_expression = txt_math_expr;
 	settings->base.name = g_strdup(channel_name);
-	settings->iio_device_name = g_strdup(active_device);
+	settings->iio_device_name = g_strdup(device_of_channels);
 	settings->iio_channels = channels;
 	settings->math_expression = fn;
 	settings->math_lib_handler = lhandler;
