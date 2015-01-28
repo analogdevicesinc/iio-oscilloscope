@@ -16,7 +16,7 @@
 			<Name>reg000_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Soft reset</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -76,7 +76,7 @@
 			<Name>reg000_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Soft Reset</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -171,7 +171,7 @@
 	<Register>
 		<Name>reg002</Name>
 		<Address>0x002</Address>
-		<Description>Tx Enable &amp; Filter Control</Description>
+		<Description>Tx Enable and Filter Control</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -180,7 +180,7 @@
 			<Name>reg002_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>3</DefaultValue>
-			<Description>Tx FIR Enable &amp; Interpolation&lt;1:0&gt;</Description>
+			<Description>Tx FIR Enable and Interpolation&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -216,7 +216,7 @@
 			<Name>reg002_b5_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>THB3 Enable &amp; Interp&lt;1:0&gt;</Description>
+			<Description>THB3 Enable and Interp&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -228,7 +228,7 @@
 			<Name>reg002_b7_b6</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>Tx channel Enable&lt;1:0&gt;</Description>
+			<Description>Tx Channel Enable&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -241,7 +241,7 @@
 	<Register>
 		<Name>reg003</Name>
 		<Address>0x003</Address>
-		<Description>Rx Enable &amp; Filter  Control</Description>
+		<Description>Rx Enable and Filter  Control</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -250,7 +250,7 @@
 			<Name>reg003_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>3</DefaultValue>
-			<Description>Rx FIR Enable &amp; Decimation&lt;1:0&gt;</Description>
+			<Description>Rx FIR Enable and Decimation&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -286,7 +286,7 @@
 			<Name>reg003_b5_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>DEC3 Enable &amp; Decimation&lt;1:0&gt;</Description>
+			<Description>RHB3 Enable and Decimation&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -298,7 +298,7 @@
 			<Name>reg003_b7_b6</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>Rx channel Enable&lt;1:0&gt;</Description>
+			<Description>Rx Channel Enable&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -344,7 +344,7 @@
 			<Name>reg004_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>0</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -391,7 +391,7 @@
 	<Register>
 		<Name>reg006</Name>
 		<Address>0x006</Address>
-		<Description>Rx Clock &amp; Data  Delay</Description>
+		<Description>Rx Clock and Data  Delay</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -425,7 +425,7 @@
 	<Register>
 		<Name>reg007</Name>
 		<Address>0x007</Address>
-		<Description>Tx Clock &amp; Data Delay</Description>
+		<Description>Tx Clock and Data Delay</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -504,7 +504,7 @@
 			<Name>reg009_b3</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Set to 0</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -528,7 +528,7 @@
 			<Name>reg009_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Set to 0</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -801,7 +801,7 @@
 		<BitField>
 			<Name>reg010_b6</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>PP Rx Swap IQ</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -813,7 +813,7 @@
 		<BitField>
 			<Name>reg010_b7</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>PP Tx Swap IQ</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -881,28 +881,16 @@
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg011_b5</Name>
+			<Name>reg011_b6_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Invert Rx2</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>2</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg011_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Invert Rx1</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>2</SliceWidth>
 		</BitField>
 		<BitField>
 			<Name>reg011_b7</Name>
@@ -1318,7 +1306,7 @@
 			<Name>reg016_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Rx Quad Cal</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -1417,28 +1405,16 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg019_b1_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>AuxDAC 1 Word &lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg019_b7_b2</Name>
+			<Name>reg019_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
 			<Description>AuxDAC 2 Word&lt;9:2&gt;</Description>
 			<Visibility>Public</Visibility>
-			<Width>6</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>6</SliceWidth>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -1454,7 +1430,7 @@
 			<Name>reg01A_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>AuxDAC 2 Word &lt;1:0&gt;</Description>
+			<Description>AuxDAC 1 Word &lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -1490,7 +1466,7 @@
 			<Name>reg01A_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Comp Ctrl 1</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -1509,16 +1485,28 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg01B_b3_b0</Name>
+			<Name>reg01B_b1_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>AuxDAC 2 Word&lt;1:0&gt;</Description>
+			<Visibility>Public</Visibility>
+			<Width>2</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>2</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg01B_b3_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
 			<Description>AuxDAC 2 Vref&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
-			<Width>4</Width>
+			<Width>2</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
+			<RegOffset>2</RegOffset>
+			<SliceWidth>2</SliceWidth>
 		</BitField>
 		<BitField>
 			<Name>reg01B_b4</Name>
@@ -1536,7 +1524,7 @@
 			<Name>reg01B_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Comp Ctrl 2</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -1691,7 +1679,7 @@
 		<BitField>
 			<Name>reg021_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>10</DefaultValue>
 			<Description>Gain Lock Delay&lt;7:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
@@ -1713,7 +1701,7 @@
 		<BitField>
 			<Name>reg022_b5_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>10</DefaultValue>
 			<Description>AGC Attack Delay&lt;5:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>6</Width>
@@ -1806,7 +1794,7 @@
 			<Name>reg024_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>2</DefaultValue>
-			<Description>Rx Load Synthesizer Delay&lt;7:0&gt;</Description>
+			<Description>Must be x02</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -1828,7 +1816,7 @@
 			<Name>reg025_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>2</DefaultValue>
-			<Description>Tx Load Synthesizer Delay&lt;7:0&gt;</Description>
+			<Description>Must be x02</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -1846,18 +1834,6 @@
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
-		<BitField>
-			<Name>reg026_b3_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Open&lt;3:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>4</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
-		</BitField>
 		<BitField>
 			<Name>reg026_b4</Name>
 			<Access>R/W</Access>
@@ -2064,7 +2040,7 @@
 			<Name>reg02D_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>GPO0 Tx Delay&lt;7:0&gt;</Description>
+			<Description>GPO1 Tx Delay&lt;7:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -2086,7 +2062,7 @@
 			<Name>reg02E_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>GPO0 Tx Delay&lt;7:0&gt;</Description>
+			<Description>GPO2 Tx Delay&lt;7:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -2108,7 +2084,7 @@
 			<Name>reg02F_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>GPO0 Tx Delay&lt;7:0&gt;</Description>
+			<Description>GPO3 Tx Delay&lt;7:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -2143,7 +2119,7 @@
 	<Register>
 		<Name>reg031</Name>
 		<Address>0x031</Address>
-		<Description>AuxDAC2 Tx Delay</Description>
+		<Description>AuxDAC1 Tx Delay</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -2239,7 +2215,7 @@
 		<BitField>
 			<Name>reg036_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>En ctrl0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -2251,7 +2227,7 @@
 		<BitField>
 			<Name>reg036_b1</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>En ctrl1</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -2263,7 +2239,7 @@
 		<BitField>
 			<Name>reg036_b2</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>En ctrl2</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -2275,7 +2251,7 @@
 		<BitField>
 			<Name>reg036_b3</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>En ctrl3</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -2287,7 +2263,7 @@
 		<BitField>
 			<Name>reg036_b4</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>En ctrl4</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -2299,7 +2275,7 @@
 		<BitField>
 			<Name>reg036_b5</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>En ctrl5</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -2311,7 +2287,7 @@
 		<BitField>
 			<Name>reg036_b6</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>En ctrl6</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -2323,7 +2299,7 @@
 		<BitField>
 			<Name>reg036_b7</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>En ctrl7</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -2426,7 +2402,7 @@
 			<Name>reg03B_b3</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>0</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -2589,7 +2565,7 @@
 	<Register>
 		<Name>reg03F</Name>
 		<Address>0x03F</Address>
-		<Description>SDM Control 1</Description>
+		<Description>BBPLL Control 1</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -2622,7 +2598,7 @@
 			<Name>reg03F_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Init BB FO CAL</Description>
+			<Description>Start BB VCO CAL</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -2634,7 +2610,7 @@
 			<Name>reg03F_b3</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>BBPLL SDM CLK Enable Bar</Description>
+			<Description>BBPLL SDM CLK Enable B</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -2646,13 +2622,35 @@
 			<Name>reg03F_b7_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>SDM SIF Data &lt;3:0&gt;</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>4</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>4</RegOffset>
 			<SliceWidth>4</SliceWidth>
+		</BitField>
+		</BitFields>
+	</Register>
+	<Register>
+		<Name>reg040</Name>
+		<Address>0x040</Address>
+		<Description>Must be 0</Description>
+		<Exists>True</Exists>
+		<Width>8</Width>
+		<Notes></Notes>
+		<BitFields>
+		<BitField>
+			<Name>reg040_b7_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>8</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -2665,16 +2663,28 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg041_b7_b0</Name>
+			<Name>reg041_b4_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Fractional BB Frequency Word&lt;23:16&gt;</Description>
+			<Description>Fractional BB Frequency Word&lt;20:16&gt;</Description>
 			<Visibility>Public</Visibility>
-			<Width>8</Width>
+			<Width>5</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
+			<SliceWidth>5</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg041_b7_b5</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Set to 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>3</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>5</RegOffset>
+			<SliceWidth>3</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -2747,7 +2757,7 @@
 	<Register>
 		<Name>reg045</Name>
 		<Address>0x045</Address>
-		<Description>Clock Control</Description>
+		<Description>Ref Clock Scaler</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -2756,13 +2766,25 @@
 			<Name>reg045_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Ref Frequency Scaler</Description>
+			<Description>Ref Clock Scaler&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>2</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg045_b7_b2</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>6</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>2</RegOffset>
+			<SliceWidth>6</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -2786,16 +2808,40 @@
 			<RegOffset>0</RegOffset>
 			<SliceWidth>6</SliceWidth>
 		</BitField>
+		<BitField>
+			<Name>reg046_b7_b6</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>2</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>6</RegOffset>
+			<SliceWidth>2</SliceWidth>
+		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg047</Name>
 		<Address>0x047</Address>
-		<Description>CP Bleed Current</Description>
+		<Description>MCS Scale</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
+		<BitField>
+			<Name>reg047_b6_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>7</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>7</SliceWidth>
+		</BitField>
 		<BitField>
 			<Name>reg047_b7</Name>
 			<Access>R/W</Access>
@@ -2821,7 +2867,7 @@
 		<BitField>
 			<Name>reg048_b4_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>5</DefaultValue>
 			<Description>R1 Word&lt;4:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>5</Width>
@@ -2833,7 +2879,7 @@
 		<BitField>
 			<Name>reg048_b7_b5</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>6</DefaultValue>
 			<Description>C1 Word&lt;2:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>3</Width>
@@ -2867,7 +2913,7 @@
 		<BitField>
 			<Name>reg049_b6_b2</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>14</DefaultValue>
 			<Description>C2 Word&lt;4:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>5</Width>
@@ -2879,7 +2925,7 @@
 		<BitField>
 			<Name>reg049_b7</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>R2 Word&lt;0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -2957,10 +3003,34 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
+			<Name>reg04B_b2_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Forced VCO band word&lt;2:0&gt;</Description>
+			<Visibility>Public</Visibility>
+			<Width>3</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>3</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg04B_b3</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Force VCO band enable</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>3</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
 			<Name>reg04B_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Freq Cal Reset</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -2971,8 +3041,8 @@
 		<BitField>
 			<Name>reg04B_b6_b5</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Freq Cal Count Length&lt;1:0&gt;</Description>
+			<DefaultValue>2</DefaultValue>
+			<Description>Set to 2'b11</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -2983,7 +3053,7 @@
 		<BitField>
 			<Name>reg04B_b7</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>Freq Cal Enable</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -2995,24 +3065,104 @@
 		</BitFields>
 	</Register>
 	<Register>
-		<Name>reg04E</Name>
-		<Address>0x04E</Address>
-		<Description>SDM Control</Description>
+		<Name>reg04C</Name>
+		<Address>0x04C</Address>
+		<Description>Must be 0x86</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
+			<Name>reg04C_b7_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Set to 0x86</Description>
+			<Visibility>Public</Visibility>
+			<Width>8</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>8</SliceWidth>
+		</BitField>
+		</BitFields>
+	</Register>
+	<Register>
+		<Name>reg04D</Name>
+		<Address>0x04D</Address>
+		<Description>BBPLL Control 2</Description>
+		<Exists>True</Exists>
+		<Width>8</Width>
+		<Notes>These are internal BBPLL bits. After setting Register 0x04C to Register 0x086, set Register 0x04D to 0x01 and then to 0x05.</Notes>
+		<BitFields>
+		<BitField>
+			<Name>reg04D_b2_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>See descpription</Description>
+			<Visibility>Public</Visibility>
+			<Width>3</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>3</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg04D_b7_b3</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>5</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>3</RegOffset>
+			<SliceWidth>5</SliceWidth>
+		</BitField>
+		</BitFields>
+	</Register>
+	<Register>
+		<Name>reg04E</Name>
+		<Address>0x04E</Address>
+		<Description>BBPLL Control 3</Description>
+		<Exists>True</Exists>
+		<Width>8</Width>
+		<Notes></Notes>
+		<BitFields>
+		<BitField>
+			<Name>reg04E_b3_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>4</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>4</SliceWidth>
+		</BitField>
+		<BitField>
 			<Name>reg04E_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Cal Clock div 4</Description>
+			<Description>Set to 1</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>4</RegOffset>
 			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg04E_b7_b5</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>3</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>5</RegOffset>
+			<SliceWidth>3</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -3159,7 +3309,7 @@
 	<Register>
 		<Name>reg052</Name>
 		<Address>0x052</Address>
-		<Description>Rx Analog Power Down Override 1</Description>
+		<Description>Control 0</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -3168,7 +3318,7 @@
 			<Name>reg052_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>3</DefaultValue>
-			<Description>Rx CGB Power Down&lt;1:0&gt;</Description>
+			<Description>Must be 2'b11</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -3177,98 +3327,38 @@
 			<SliceWidth>2</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg052_b3_b2</Name>
+			<Name>reg052_b7_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Rx Mixer Gm Power Down&lt;1:0&gt;</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>6</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>2</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg052_b5_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx LMT Overload Power Down&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg052_b7_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx Offset DAC CGin Power Down&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>2</SliceWidth>
+			<SliceWidth>6</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg053</Name>
 		<Address>0x053</Address>
-		<Description>Rx Analog Power Down Override 2</Description>
+		<Description>Must be 0</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg053_b1_b0</Name>
+			<Name>reg053_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Rx Offset DAC CGOut Power Down&lt;1:0&gt;</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg053_b3_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx Mixer Power Down&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg053_b5_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx TIA Power Down&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg053_b7_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx BBF Power Down&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>2</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -3929,7 +4019,7 @@
 	<Register>
 		<Name>reg069</Name>
 		<Address>0x069</Address>
-		<Description>Tx Mon Delay</Description>
+		<Description>Tx Mon Delay Counter</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -4071,7 +4161,7 @@
 		<BitField>
 			<Name>reg06E_b3_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>8</DefaultValue>
+			<DefaultValue>9</DefaultValue>
 			<Description>Tx Mon Duration&lt;3:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>4</Width>
@@ -4083,8 +4173,8 @@
 		<BitField>
 			<Name>reg06E_b5</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Set to 0</Description>
+			<DefaultValue>1</DefaultValue>
+			<Description>Tx Mon 1 Enable</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -4096,7 +4186,7 @@
 			<Name>reg06E_b6</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>One Shot Mode</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -4107,8 +4197,8 @@
 		<BitField>
 			<Name>reg06E_b7</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Set to 0</Description>
+			<DefaultValue>1</DefaultValue>
+			<Description>Tx Mon 2 Enable</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -4151,8 +4241,8 @@
 		<BitField>
 			<Name>reg070_b1_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Tx Mon 1 Gain&lt;1:0&gt;</Description>
+			<DefaultValue>1</DefaultValue>
+			<Description>Tx Mon 1 TIA Gain&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -4163,8 +4253,8 @@
 		<BitField>
 			<Name>reg070_b7_b2</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Tx Mon 1 LO CM&lt;5:0&gt;</Description>
+			<DefaultValue>48</DefaultValue>
+			<Description>Must be 6'b110000</Description>
 			<Visibility>Public</Visibility>
 			<Width>6</Width>
 			<Notes></Notes>
@@ -4185,8 +4275,8 @@
 		<BitField>
 			<Name>reg071_b1_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Tx Mon 2 Gain&lt;1:0&gt;</Description>
+			<DefaultValue>1</DefaultValue>
+			<Description>Tx Mon 2 TIA Gain&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -4197,8 +4287,8 @@
 		<BitField>
 			<Name>reg071_b7_b2</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Tx Mon 2 LO CM&lt;5:0&gt;</Description>
+			<DefaultValue>48</DefaultValue>
+			<Description>Must be 6'b110000</Description>
 			<Visibility>Public</Visibility>
 			<Width>6</Width>
 			<Notes></Notes>
@@ -4355,16 +4445,28 @@
 	<Register>
 		<Name>reg079</Name>
 		<Address>0x079</Address>
-		<Description>Tx1 Dig Attenuation</Description>
+		<Description>Sel Tx1/Tx2</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
+			<Name>reg079_b5</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>5</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
 			<Name>reg079_b6</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Sel Tx1 &amp; Ttx2</Description>
+			<Description>Sel Tx1 and Tx2</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -4377,11 +4479,23 @@
 	<Register>
 		<Name>reg07C</Name>
 		<Address>0x07C</Address>
-		<Description>Tx2 Dig Attenuation</Description>
+		<Description>Immediate Update</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
+		<BitField>
+			<Name>reg07C_b5</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>5</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
 		<BitField>
 			<Name>reg07C_b6</Name>
 			<Access>R/W</Access>
@@ -4392,96 +4506,6 @@
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg07F</Name>
-		<Address>0x07F</Address>
-		<Description>TX1 Symbol Attenuation</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg07F_b6_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Tx 1 Symbol Attenuation&lt;6:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>7</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>7</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg080</Name>
-		<Address>0x080</Address>
-		<Description>TX2 Symbol Attenuation</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg080_b6_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Tx 2 Symbol Attenuation&lt;6:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>7</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>7</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg081</Name>
-		<Address>0x081</Address>
-		<Description>TX Symbol Atten Config</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg081_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Enable Symbol Atten</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg081_b1</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Use CTRL IN for symbol Atten</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>1</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg081_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Use Tx1 Pin &amp; Symbol Atten</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		</BitFields>
@@ -4850,7 +4874,7 @@
 			<Name>reg09F_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Force Out 1 Tx1 Phase &amp; Gain</Description>
+			<Description>Force Out 1 Tx1 Phase and Gain</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -4862,7 +4886,7 @@
 			<Name>reg09F_b1</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Force Out 1 Tx2 Phase &amp; Gain</Description>
+			<Description>Force Out 1 Tx2 Phase and Gain</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -4898,7 +4922,7 @@
 			<Name>reg09F_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Force Out 2 Tx1 Phase &amp; Gain</Description>
+			<Description>Force Out 2 Tx1 Phase and Gain</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -4910,7 +4934,7 @@
 			<Name>reg09F_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Force Out 2 Tx2 Phase &amp; Gain</Description>
+			<Description>Force Out 2 Tx2 Phase and Gain</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -4947,7 +4971,7 @@
 	<Register>
 		<Name>reg0A0</Name>
 		<Address>0x0A0</Address>
-		<Description>Quad Cal NCO Freq &amp; Phase Offset</Description>
+		<Description>Quad Cal NCO Freq and Phase Offset</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -4955,7 +4979,7 @@
 		<BitField>
 			<Name>reg0A0_b4_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>12</DefaultValue>
 			<Description>Rx NCO Phase Offset&lt;4:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>5</Width>
@@ -4990,7 +5014,7 @@
 			<Name>reg0A1_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>M&lt;1:0&gt;</Description>
+			<Description>Set to 2'b11</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -5002,7 +5026,7 @@
 			<Name>reg0A1_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Quad Cal Soft Reset</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -5050,7 +5074,7 @@
 			<Name>reg0A1_b6</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>Settle Main Enable</Description>
+			<Description>Set to 1</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -5075,116 +5099,44 @@
 	<Register>
 		<Name>reg0A2</Name>
 		<Address>0x0A2</Address>
-		<Description>Kexp 1</Description>
+		<Description>Set to 0x7F</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg0A2_b1_b0</Name>
+			<Name>reg0A2_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>Kexp DC Q &lt;1:0&gt;</Description>
+			<DefaultValue>31</DefaultValue>
+			<Description>Set to 0x7F</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0A2_b3_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>Kexp DC I &lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0A2_b5_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>Kexp Tx_comp &lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0A2_b7_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Kexp Tx&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>2</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg0A3</Name>
 		<Address>0x0A3</Address>
-		<Description>Kexp 2</Description>
+		<Description>Tx NCO Frequency</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg0A3_b1_b0</Name>
+			<Name>reg0A3_b5_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Kexp Amp &lt;1:0&gt;</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>6</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0A3_b3_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Kexp Phase &lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0A3_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Invert Q data</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0A3_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Invert I data</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>6</SliceWidth>
 		</BitField>
 		<BitField>
 			<Name>reg0A3_b7_b6</Name>
@@ -5203,7 +5155,7 @@
 	<Register>
 		<Name>reg0A4</Name>
 		<Address>0x0A4</Address>
-		<Description>Settle count</Description>
+		<Description>Set to 0xF0</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -5212,7 +5164,7 @@
 			<Name>reg0A4_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>16</DefaultValue>
-			<Description>Settle Count&lt;7:0&gt;</Description>
+			<Description>Set to 0xF0</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -5361,7 +5313,7 @@
 	<Register>
 		<Name>reg0A9</Name>
 		<Address>0x0A9</Address>
-		<Description>Quad cal Count</Description>
+		<Description>Set to 0xFF</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -5370,7 +5322,7 @@
 			<Name>reg0A9_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>32</DefaultValue>
-			<Description>Quad Cal Count&lt;7:0&gt;</Description>
+			<Description>Set to 0xFF</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -5391,7 +5343,7 @@
 		<BitField>
 			<Name>reg0AA_b6_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>10</DefaultValue>
 			<Description>RX Full table/LMT table gain&lt;6:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>7</Width>
@@ -5405,77 +5357,29 @@
 	<Register>
 		<Name>reg0AB</Name>
 		<Address>0x0AB</Address>
-		<Description>Squarer Config</Description>
+		<Description>Must be 0</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg0AB_b0</Name>
+			<Name>reg0AB_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Bypass Bias R</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0AB_b2_b1</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Vbias  Control&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>1</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0AB_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Gm Stage Lower CM</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0AB_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Gm Stage MV HP Pole</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0AB_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Gm Stage Time Con Override</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg0AC</Name>
 		<Address>0x0AC</Address>
-		<Description>TX Quad Cal Atten</Description>
+		<Description>Must be 0</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -5484,7 +5388,7 @@
 			<Name>reg0AC_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>TX quad Cal Atten Word&lt;7:0&gt;</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -5497,22 +5401,22 @@
 	<Register>
 		<Name>reg0AD</Name>
 		<Address>0x0AD</Address>
-		<Description>Thresh Accum</Description>
+		<Description>Must be 0</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg0AD_b3_b0</Name>
+			<Name>reg0AD_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Threshold Accumulator&lt;3:0&gt;</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
-			<Width>4</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -5535,186 +5439,6 @@
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>5</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg0B0</Name>
-		<Address>0x0B0</Address>
-		<Description>TxDAC Vds I</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg0B0_b5_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>TxDAC Vds I&lt;5:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>6</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>6</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg0B1</Name>
-		<Address>0x0B1</Address>
-		<Description>TxDAC Vds Q</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg0B1_b5_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>TxDAC Vds Q&lt;5:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>6</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>6</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg0B2</Name>
-		<Address>0x0B2</Address>
-		<Description>TxDAC gn I</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg0B2_b5_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>txDAC_gn_I&lt;5:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>6</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>6</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg0B3</Name>
-		<Address>0x0B3</Address>
-		<Description>TxDAC gn Q</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg0B3_b5_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>txDAC_gn_Q&lt;5:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>6</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>6</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg0C0</Name>
-		<Address>0x0C0</Address>
-		<Description>TxBBF OpAmp A</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg0C0_b2_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>7</DefaultValue>
-			<Description>OpAmp A CC&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0C0_b4_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>OpAmpA RZ&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0C0_b6_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>OpAmpA Output Bias&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg0C1</Name>
-		<Address>0x0C1</Address>
-		<Description>TxBBF OpAmp B</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg0C1_b2_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>OpAmp B CC&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0C1_b4_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>OpAmpB RZ&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0C1_b6_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>OpAmpB Output Bias&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>2</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -5830,7 +5554,7 @@
 			<Name>reg0C6_b4_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>31</DefaultValue>
-			<Description>Rp&lt;4:0&gt;</Description>
+			<Description>RP&lt;4:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>5</Width>
 			<Notes></Notes>
@@ -5887,7 +5611,7 @@
 	<Register>
 		<Name>reg0C9</Name>
 		<Address>0x0C9</Address>
-		<Description>Tx BBF Cp</Description>
+		<Description>Tx BBF CP</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -5896,7 +5620,7 @@
 			<Name>reg0C9_b5_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>42</DefaultValue>
-			<Description>Cp&lt;5:0&gt;</Description>
+			<Description>CP&lt;5:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>6</Width>
 			<Notes></Notes>
@@ -5909,40 +5633,28 @@
 	<Register>
 		<Name>reg0CA</Name>
 		<Address>0x0CA</Address>
-		<Description>Tx Tune Control</Description>
+		<Description>Tuner PD</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg0CA_b0</Name>
+			<Name>reg0CA_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Tuner Resample Phase</Description>
+			<Description>Set to 2'b10</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>2</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0CA_b1</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Tuner Resample</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>1</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>2</SliceWidth>
 		</BitField>
 		<BitField>
 			<Name>reg0CA_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>PD Tune</Description>
+			<Description>Tuner PD</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -5951,16 +5663,28 @@
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg0CA_b6_b5</Name>
+			<Name>reg0CA_b3</Name>
 			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>Tune Control&lt;1:0&gt;</Description>
+			<DefaultValue>0</DefaultValue>
+			<Description>Set to 0</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>1</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>2</SliceWidth>
+			<RegOffset>3</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg0CA_b7_b4</Name>
+			<Access>R/W</Access>
+			<DefaultValue>2</DefaultValue>
+			<Description>Must be 0x2</Description>
+			<Visibility>Public</Visibility>
+			<Width>4</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>4</RegOffset>
+			<SliceWidth>4</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -6000,70 +5724,12 @@
 			<Name>reg0CB_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Bypass Bias R</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg0CC</Name>
-		<Address>0x0CC</Address>
-		<Description>Tx BBF Tune</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg0CC_b0</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>BBF2 Comp Q</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0CC_b1</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>BBF2 Comp I</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>1</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0CC_b2</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>BBF1 Comp Q</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0CC_b3</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>BBF1 Comp I</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		</BitFields>
@@ -6101,28 +5767,16 @@
 			<SliceWidth>2</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg0D0_b5_b4</Name>
+			<Name>reg0D0_b7_b4</Name>
 			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>Rgm&lt;1:0&gt;</Description>
+			<DefaultValue>5</DefaultValue>
+			<Description>Must be 0x5</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>4</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>4</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0D0_b7_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>Bias&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>2</SliceWidth>
+			<SliceWidth>4</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -6137,7 +5791,7 @@
 		<BitField>
 			<Name>reg0D1_b3_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>15</DefaultValue>
 			<Description>Resistor&lt;3:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>4</Width>
@@ -6173,22 +5827,22 @@
 	<Register>
 		<Name>reg0D3</Name>
 		<Address>0x0D3</Address>
-		<Description>LO CM</Description>
+		<Description>Must be 0x60</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg0D3_b6_b5</Name>
+			<Name>reg0D3_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>LO Common Mode&lt;1:0&gt;</Description>
+			<DefaultValue>96</DefaultValue>
+			<Description>Must be 0x60</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>2</SliceWidth>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -6238,7 +5892,7 @@
 			<Name>reg0D7_b3_b1</Name>
 			<Access>R/W</Access>
 			<DefaultValue>7</DefaultValue>
-			<Description>Tuner Mode&lt;2:0&gt;</Description>
+			<Description>Must be 3'b111</Description>
 			<Visibility>Public</Visibility>
 			<Width>3</Width>
 			<Notes></Notes>
@@ -6250,7 +5904,7 @@
 			<Name>reg0D7_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>EvalTime</Description>
+			<Description>Must be 1</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -6262,7 +5916,7 @@
 			<Name>reg0D7_b6_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Tune Comp Mask&lt;1:0&gt;</Description>
+			<Description>Must be 2'b00</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -6275,7 +5929,7 @@
 	<Register>
 		<Name>reg0F0</Name>
 		<Address>0x0F0</Address>
-		<Description>Rx Filter CoeffAddr</Description>
+		<Description>Rx Filter Coeff Addr</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -6297,7 +5951,7 @@
 	<Register>
 		<Name>reg0F1</Name>
 		<Address>0x0F1</Address>
-		<Description>Rx Filter CoeffData 1</Description>
+		<Description>Rx Filter Coeff Data 1</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -6319,7 +5973,7 @@
 	<Register>
 		<Name>reg0F2</Name>
 		<Address>0x0F2</Address>
-		<Description>Rx Filter CoeffData 2</Description>
+		<Description>Rx Filter Coeff Data 2</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -6341,7 +5995,7 @@
 	<Register>
 		<Name>reg0F3</Name>
 		<Address>0x0F3</Address>
-		<Description>Rx Filter CoeffRead Data 1</Description>
+		<Description>Rx Filter Coeff Read Data 1</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -6507,40 +6161,16 @@
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg0FA_b5</Name>
+			<Name>reg0FA_b7_b5</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Dec Pwr for Gain Lock Exit</Description>
+			<DefaultValue>7</DefaultValue>
+			<Description>Set to 3'b111</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>3</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0FA_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Dec Pwr for Lock Level</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg0FA_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Dec Pwr for Low Pwr</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>3</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -6616,7 +6246,7 @@
 			<Name>reg0FB_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Soft Reset</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -6785,7 +6415,7 @@
 		<BitField>
 			<Name>reg101_b6_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>10</DefaultValue>
 			<Description>AGC Lock Level (Fast)/ AGC Inner High Threshold (Slow) &lt;6:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>7</Width>
@@ -6809,28 +6439,6 @@
 		</BitFields>
 	</Register>
 	<Register>
-		<Name>reg102</Name>
-		<Address>0x102</Address>
-		<Description>ADC noise Correction Factor</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg102_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>ADC Noise Correction Factor&lt;9:2&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
 		<Name>reg103</Name>
 		<Address>0x103</Address>
 		<Description>Gain Step Config1</Description>
@@ -6838,18 +6446,6 @@
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
-		<BitField>
-			<Name>reg103_b1_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>ADC Noise Correction Factor&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
 		<BitField>
 			<Name>reg103_b4_b2</Name>
 			<Access>R/W</Access>
@@ -6866,7 +6462,7 @@
 			<Name>reg103_b7_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>LMT Detector Settling Time&lt;2:0&gt;</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>3</Width>
 			<Notes></Notes>
@@ -7110,18 +6706,6 @@
 			<RegOffset>0</RegOffset>
 			<SliceWidth>5</SliceWidth>
 		</BitField>
-		<BitField>
-			<Name>reg10B_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Force Rx1 Digital Gain</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
@@ -7187,18 +6771,6 @@
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg10E_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Force Rx2 Digital Gain</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -7311,7 +6883,7 @@
 	<Register>
 		<Name>reg111</Name>
 		<Address>0x111</Address>
-		<Description>Config 2 &amp; Settling Delay</Description>
+		<Description>Config 2 and Settling Delay</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -7319,7 +6891,7 @@
 		<BitField>
 			<Name>reg111_b4_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>10</DefaultValue>
 			<Description>Settling Delay&lt;4:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>5</Width>
@@ -7343,7 +6915,7 @@
 		<BitField>
 			<Name>reg111_b6</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>Enable LMT Gain Inc for Lock Level</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -7355,7 +6927,7 @@
 		<BitField>
 			<Name>reg111_b7</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>Use Last Lock Level for Set Gain</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -7635,7 +7207,7 @@
 		<BitField>
 			<Name>reg11B_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>10</DefaultValue>
 			<Description>Increment Time&lt;7:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
@@ -7818,7 +7390,7 @@
 			<Name>reg124_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gain update counter&lt;7:0&gt;</Description>
+			<Description>Gain Update Counter&lt;7:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -7840,7 +7412,7 @@
 			<Name>reg125_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gain update counter&lt;15:8&gt;</Description>
+			<Description>Gain Update Counter&lt;15:8&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -7954,7 +7526,7 @@
 			<Name>reg12A_b7_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>AGC  uter High Threshold Exceeded Step Size&lt;3:0&gt;</Description>
+			<Description>AGC  Outer High Threshold Exceeded Step Size&lt;3:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>4</Width>
 			<Notes></Notes>
@@ -8039,16 +7611,28 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg131_b4_b0</Name>
+			<Name>reg131_b3_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Mixer Gm Gain &lt;4:0&gt;</Description>
+			<Description>Mixer Gm Gain &lt;3:0&gt;</Description>
 			<Visibility>Public</Visibility>
-			<Width>5</Width>
+			<Width>4</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
+			<SliceWidth>4</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg131_b4</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>4</RegOffset>
+			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
 			<Name>reg131_b6_b5</Name>
@@ -8153,16 +7737,28 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg134_b4_b0</Name>
+			<Name>reg134_b3_b0</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Mixer Gm Gain &lt;4:0&gt;</Description>
+			<Description>Mixer Gm Gain &lt;3:0&gt;</Description>
 			<Visibility>Public</Visibility>
-			<Width>5</Width>
+			<Width>4</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
+			<SliceWidth>4</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg134_b4</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>4</RegOffset>
+			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
 			<Name>reg134_b6_b5</Name>
@@ -8307,29 +7903,41 @@
 	<Register>
 		<Name>reg138</Name>
 		<Address>0x138</Address>
-		<Description>Gm Sub Table Address</Description>
+		<Description>Mixer Subtable Address</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg138_b7_b0</Name>
+			<Name>reg138_b3_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gm Sub Table Address&lt;7:0&gt;</Description>
+			<Description>Mixer Subtable Address&lt;7:0&gt;</Description>
 			<Visibility>Public</Visibility>
-			<Width>8</Width>
+			<Width>4</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
+			<SliceWidth>4</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg138_b7_b4</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>4</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>4</RegOffset>
+			<SliceWidth>4</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg139</Name>
 		<Address>0x139</Address>
-		<Description>Gm Sub Table Gain Word Write</Description>
+		<Description>Mixer Sub Table Gain Word Write</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -8338,7 +7946,7 @@
 			<Name>reg139_b6_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gm Sub Table Gain Word Write&lt;6:0&gt;</Description>
+			<Description>Mixer Subtable Gain Word Write&lt;6:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>7</Width>
 			<Notes></Notes>
@@ -8351,7 +7959,7 @@
 	<Register>
 		<Name>reg13A</Name>
 		<Address>0x13A</Address>
-		<Description>Gm Sub Table Bias Word Write</Description>
+		<Description>Mixer Sub Table Bias Word Write</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -8360,7 +7968,7 @@
 			<Name>reg13A_b4_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gm Sub Table Bias Word Write&lt;4:0&gt;</Description>
+			<Description>Mixer Subtable Bias Word Write&lt;4:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>5</Width>
 			<Notes></Notes>
@@ -8373,7 +7981,7 @@
 	<Register>
 		<Name>reg13B</Name>
 		<Address>0x13B</Address>
-		<Description>Gm Sub Table Control Word Write</Description>
+		<Description>Mixer Sub Table Control Word Write</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -8382,7 +7990,7 @@
 			<Name>reg13B_b5_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gm Sub Table Control Word Write&lt;5:0&gt;</Description>
+			<Description>Mixer Subtable Control Word Write&lt;5:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>6</Width>
 			<Notes></Notes>
@@ -8395,7 +8003,7 @@
 	<Register>
 		<Name>reg13C</Name>
 		<Address>0x13C</Address>
-		<Description>Gm Sub Table Gain Word Read</Description>
+		<Description>Mixer Sub Table Gain Word Read</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -8404,7 +8012,7 @@
 			<Name>reg13C_b6_b0</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gm Sub Table Gain Word Read&lt;6:0&gt;</Description>
+			<Description>Mixer Subtable Gain Word Read&lt;6:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>7</Width>
 			<Notes></Notes>
@@ -8417,7 +8025,7 @@
 	<Register>
 		<Name>reg13D</Name>
 		<Address>0x13D</Address>
-		<Description>Gm Sub Table Bias Word Read</Description>
+		<Description>Mixer Sub Table Bias Word Read</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -8426,7 +8034,7 @@
 			<Name>reg13D_b4_b0</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gm Sub Table Bias Word Read&lt;4:0&gt;</Description>
+			<Description>Mixer Subtable Bias Word Read&lt;4:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>5</Width>
 			<Notes></Notes>
@@ -8439,7 +8047,7 @@
 	<Register>
 		<Name>reg13E</Name>
 		<Address>0x13E</Address>
-		<Description>Gm Sub Table Control Word Read</Description>
+		<Description>Mixer Sub Table Control Word Read</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -8448,7 +8056,7 @@
 			<Name>reg13E_b5_b0</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gm Sub Table Control Word Read&lt;5:0&gt;</Description>
+			<Description>Mixer Subtable Control Word Read&lt;5:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>6</Width>
 			<Notes></Notes>
@@ -8461,7 +8069,7 @@
 	<Register>
 		<Name>reg13F</Name>
 		<Address>0x13F</Address>
-		<Description>Gm Sub Table Config</Description>
+		<Description>Mixer Sub Table Config</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -8470,7 +8078,7 @@
 			<Name>reg13F_b1</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Start Gm Sub Table Clock</Description>
+			<Description>Start Mixer Sub Table Clock</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -8482,7 +8090,7 @@
 			<Name>reg13F_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Write Gm Sub Table</Description>
+			<Description>Write Mixer Subtable</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -8673,7 +8281,7 @@
 		<BitField>
 			<Name>reg145_b4_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>11</DefaultValue>
 			<Description>Max Mixer Calibration Gain Index&lt;4:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>5</Width>
@@ -8799,7 +8407,7 @@
 	<Register>
 		<Name>reg150</Name>
 		<Address>0x150</Address>
-		<Description>Measure Duration 0&amp;1</Description>
+		<Description>Measure Duration 0, 1</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -8833,7 +8441,7 @@
 	<Register>
 		<Name>reg151</Name>
 		<Address>0x151</Address>
-		<Description>Measure Duration 2&amp;3</Description>
+		<Description>Measure Duration 2, 3</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -9020,7 +8628,7 @@
 			<Name>reg158_b1</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Enable ADC Power Meas.</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -9044,7 +8652,7 @@
 			<Name>reg158_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Start RSSI Meas (Mode 4)</Description>
+			<Description>Start RSSI Meas</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -9067,87 +8675,9 @@
 		</BitFields>
 	</Register>
 	<Register>
-		<Name>reg159</Name>
-		<Address>0x159</Address>
-		<Description>ADC Measure Duration 0&amp;1</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg159_b3_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>2</DefaultValue>
-			<Description>ADC Power Measurement Duration 0 &lt;3:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>4</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg159_b7_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>2</DefaultValue>
-			<Description>ADC Power Measurement Duration 1&lt;3:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>4</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>4</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg15A</Name>
-		<Address>0x15A</Address>
-		<Description>Weight 0</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg15A_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Weighted ADC Power Multiplier 0 &lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg15B</Name>
-		<Address>0x15B</Address>
-		<Description>Weight 1</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg15B_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Weighted ADC Power Multiplier 1 &lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
 		<Name>reg15C</Name>
 		<Address>0x15C</Address>
-		<Description>Dec Power Measure Duration 0</Description>
+		<Description>Dec Power Duration</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -9165,22 +8695,10 @@
 			<SliceWidth>4</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg15C_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>Default Mode ADC Power</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
 			<Name>reg15C_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Enable Dec Pwr Meas</Description>
+			<Description>Set to 1</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -9200,18 +8718,6 @@
 			<RegOffset>6</RegOffset>
 			<SliceWidth>1</SliceWidth>
 		</BitField>
-		<BitField>
-			<Name>reg15C_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Use HB3 Out for ADC Pwr Meas</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
@@ -9223,18 +8729,6 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg15D_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>dB Gain Read-back Channel</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
 			<Name>reg15D_b7_b1</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
@@ -9245,28 +8739,6 @@
 			<BitOffset>0</BitOffset>
 			<RegOffset>1</RegOffset>
 			<SliceWidth>7</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg160</Name>
-		<Address>0x160</Address>
-		<Description>CH1 ADC Power</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg160_b7_b0</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>CH1 ADC power &lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -9283,28 +8755,6 @@
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
 			<Description>CH1 Rx filter power &lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg162</Name>
-		<Address>0x162</Address>
-		<Description>CH2 ADC Power</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg162_b7_b0</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>CH2 ADC power &lt;7:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -9333,28 +8783,6 @@
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg168</Name>
-		<Address>0x168</Address>
-		<Description>Rx Quad Cal Level</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg168_b3_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx Quad Cal Level &lt;3 :0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>4</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -9415,33 +8843,21 @@
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg169_b4</Name>
+			<Name>reg169_b5_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Fixed DC Cal Wait Time</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>2</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>4</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg169_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Use Settle Count for DC Cal Wait</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>2</SliceWidth>
 		</BitField>
 		<BitField>
 			<Name>reg169_b6</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>Enable Gain Corr</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -9453,7 +8869,7 @@
 		<BitField>
 			<Name>reg169_b7</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>1</DefaultValue>
 			<Description>Enable Phase Corr</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
@@ -9467,180 +8883,44 @@
 	<Register>
 		<Name>reg16A</Name>
 		<Address>0x16A</Address>
-		<Description>Calibration config2</Description>
+		<Description>Must be 0x75</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg16A_b4_b0</Name>
+			<Name>reg16A_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>8</DefaultValue>
-			<Description>K exp Phase&lt;4:0&gt;</Description>
+			<Description>Must be 0x75</Description>
 			<Visibility>Public</Visibility>
-			<Width>5</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg16A_b6_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Must be 2'b11</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg16A_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Soft Reset</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg16B</Name>
 		<Address>0x16B</Address>
-		<Description>Calibration config3</Description>
+		<Description>Must be 0x95</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg16B_b4_b0</Name>
+			<Name>reg16B_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>8</DefaultValue>
-			<Description>K exp Amplitude&lt;4:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>5</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg16B_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Prevent Pos Loop Gain</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg16C</Name>
-		<Address>0x16C</Address>
-		<Description>Calib count</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg16C_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Calibration count&lt;7:0&gt;</Description>
+			<Description>Must be 0x95</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg16D</Name>
-		<Address>0x16D</Address>
-		<Description>Settle count</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg16D_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Settle count&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg16E</Name>
-		<Address>0x16E</Address>
-		<Description>Rx Quad gain1</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg16E_b6_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx Full table/LMT table gain&lt;6:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>7</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>7</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg16F</Name>
-		<Address>0x16F</Address>
-		<Description>Rx Quad gain2</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg16F_b4_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>24</DefaultValue>
-			<Description>Rx LPF gain&lt;4:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>5</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg16F_b7_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Correction Word Decimation M&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>3</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -9791,7 +9071,7 @@
 	<Register>
 		<Name>reg176</Name>
 		<Address>0x176</Address>
-		<Description>Input A Offsets 1</Description>
+		<Description>Input A Offsets</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -10025,7 +9305,7 @@
 	<Register>
 		<Name>reg17F</Name>
 		<Address>0x17F</Address>
-		<Description>Input B&amp;C Offsets 1</Description>
+		<Description>Input B&amp;C Offsets</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -10251,7 +9531,7 @@
 		<BitField>
 			<Name>reg186_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>180</DefaultValue>
 			<Description>RF DC Offset Count&lt;7:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
@@ -10274,7 +9554,7 @@
 			<Name>reg187_b3_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>12</DefaultValue>
-			<Description>RF DC Calibration Count&lt;3:0&gt;</Description>
+			<Description>Must be 0x4</Description>
 			<Visibility>Public</Visibility>
 			<Width>4</Width>
 			<Notes></Notes>
@@ -10333,58 +9613,22 @@
 	<Register>
 		<Name>reg189</Name>
 		<Address>0x189</Address>
-		<Description>Invert Bits</Description>
+		<Description>Must be 0x30</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg189_b4</Name>
+			<Name>reg189_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>Invert Rx1 RF DC  CGout Word</Description>
+			<DefaultValue>48</DefaultValue>
+			<Description>Must be 0x30</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg189_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>Invert Rx2 RF DC  CGout Word</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg189_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Invert Rx1 RF DC  CGin Word</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg189_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Invert Rx2 RF DC  CGin Word</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -10460,7 +9704,7 @@
 			<Name>reg18B_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>Use Wait Counter for RF DC Init Cal</Description>
+			<Description>Must be 1</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -10550,7 +9794,7 @@
 			<Name>reg190_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Increase Count Duration</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -10652,7 +9896,7 @@
 			<Name>reg193_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>63</DefaultValue>
-			<Description>BB DC Offset Count&lt;7:0&gt;</Description>
+			<Description>Must be x3F</Description>
 			<Visibility>Public</Visibility>
 			<Width>8</Width>
 			<Notes></Notes>
@@ -11105,748 +10349,6 @@
 		</BitFields>
 	</Register>
 	<Register>
-		<Name>reg1AD</Name>
-		<Address>0x1AD</Address>
-		<Description>Rx Path Gain</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1AD_b7_b0</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx Path Gain&lt;8:1&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1AE</Name>
-		<Address>0x1AE</Address>
-		<Description>Rx Path Gain</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1AE_b0</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx Path Gain&lt;0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1B0</Name>
-		<Address>0x1B0</Address>
-		<Description>Rx Diff LNA Force</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1B0_b1_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx1 LNA Gain&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1B0_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx1 LNA Bypass</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1B0_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Force Rx1 LNA Gain</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1B0_b5_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx2 LNA Gain&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1B0_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx2 LNA Bypass</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1B0_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Force Rx2 LNA Gain</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1B1</Name>
-		<Address>0x1B1</Address>
-		<Description>Rx LNA Bias Coarse</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1B1_b3_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>7</DefaultValue>
-			<Description>Rx LNA Bias Coarse&lt;3:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>4</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1B2</Name>
-		<Address>0x1B2</Address>
-		<Description>Rx LNA Bias Fine 0</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1B2_b4_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx LNA Bias&lt;4:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>5</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1B2_b7_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx LNA p-Cascode Bias&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1B3</Name>
-		<Address>0x1B3</Address>
-		<Description>Rx LNA Bias Fine 1</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1B3_b1_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>Rx LNA p- Cascode Bias Fine&lt;4:3&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1C0</Name>
-		<Address>0x1C0</Address>
-		<Description>Rx Mix Gm Config</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1C0_b1_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>Rx Mix Gm pload &lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1C0_b7_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>2</DefaultValue>
-			<Description>Rx Mix Gm CM Out&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1C1</Name>
-		<Address>0x1C1</Address>
-		<Description>Rx1 Mix Gm Force</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1C1_b5_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx1 Mix Gm Gain&lt;5:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>6</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>6</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1C1_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Force Rx1 Mix Gm</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1C2</Name>
-		<Address>0x1C2</Address>
-		<Description>Rx1 Mix Gm Bias (Force)</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1C2_b4_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx1 Mix Gm Bias&lt;4:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>5</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1C3</Name>
-		<Address>0x1C3</Address>
-		<Description>Rx2 Mix Gm Force</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1C3_b5_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx2 Mix Gm Gain&lt;5:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>6</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>6</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1C3_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Force Rx2 Mix Gm</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1C4</Name>
-		<Address>0x1C4</Address>
-		<Description>Rx2 Mix Gm Bias (Force)</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1C4_b4_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx2 Mix Gm Bias&lt;4:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>5</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1C8</Name>
-		<Address>0x1C8</Address>
-		<Description>Input A MSBs</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1C8_b1_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Input A RX2 Q&lt;9:8&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1C8_b3_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Input A RX2 I&lt;9:8&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1C8_b5_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Input A RX1 I&lt;9:8&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1C8_b7_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Input A RX1 Q&lt;9:8&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1C9</Name>
-		<Address>0x1C9</Address>
-		<Description>Input A RX1 I</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1C9_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Input A RX1 I&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1CA</Name>
-		<Address>0x1CA</Address>
-		<Description>Input A RX1 Q</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1CA_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Input A RX1 Q&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1CB</Name>
-		<Address>0x1CB</Address>
-		<Description>Input A RX2 I</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1CB_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Input A RX2 I&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1CC</Name>
-		<Address>0x1CC</Address>
-		<Description>Input A RX2 Q</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1CC_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Input A RX2 Q&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1CD</Name>
-		<Address>0x1CD</Address>
-		<Description>Inputs B&amp;C RX1 I</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1CD_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Inputs B&amp;C RX1 I&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1CE</Name>
-		<Address>0x1CE</Address>
-		<Description>Band1 RX1 Q</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1CE_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Inputs B&amp;C RX1 Q&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1CF</Name>
-		<Address>0x1CF</Address>
-		<Description>Inputs B&amp;C RX2 I</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1CF_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Inputs B&amp;C RX2 I&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1D0</Name>
-		<Address>0x1D0</Address>
-		<Description>Inputs B&amp;C RX2 Q</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1D0_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Inputs B&amp;C RX2 Q&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1D1</Name>
-		<Address>0x1D1</Address>
-		<Description>Inputs B&amp;C MSBs</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1D1_b1_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Inputs B&amp;C RX2 Q&lt;9:8&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1D1_b3_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Inputs B&amp;C RX2 I&lt;9:8&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1D1_b5_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Inputs B&amp;C RX1 I&lt;9:8&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1D1_b7_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Inputs B&amp;C RX1 Q&lt;9:8&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1D2</Name>
-		<Address>0x1D2</Address>
-		<Description>Force OS DAC</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1D2_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Force CGin DAC</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1D5</Name>
-		<Address>0x1D5</Address>
-		<Description>Rx Mix LO CM</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1D5_b5_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>40</DefaultValue>
-			<Description>Rx Mix LO CM&lt;5:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>6</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>6</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1D6</Name>
-		<Address>0x1D6</Address>
-		<Description>Rx CGB Seg Enable</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1D6_b5_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>15</DefaultValue>
-			<Description>Rx CGB Seg Enable&lt;5:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>6</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>6</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg1D7</Name>
-		<Address>0x1D7</Address>
-		<Description>Rx Mix Input/Bias</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg1D7_b3_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>Rx CGB Bias&lt;3:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>4</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1D7_b5_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>Rx CGB Input CM Sel&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
 		<Name>reg1DB</Name>
 		<Address>0x1DB</Address>
 		<Description>Rx TIA Config</Description>
@@ -11961,7 +10463,7 @@
 		<BitField>
 			<Name>reg1DD_b6_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>11</DefaultValue>
 			<Description>TIA1 C MSB&lt;6:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>7</Width>
@@ -12017,7 +10519,7 @@
 		<BitField>
 			<Name>reg1DF_b6_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>11</DefaultValue>
 			<Description>TIA2 C MSB&lt;6:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>7</Width>
@@ -12120,7 +10622,7 @@
 			<Name>reg1E2_b1</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Rx1 Tune Resampl e</Description>
+			<Description>Must be 1</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -12132,7 +10634,7 @@
 			<Name>reg1E2_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Rx1 Tune Resam ple Phase</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -12166,7 +10668,7 @@
 			<Name>reg1E3_b1</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Rx2 Tune Resampl e</Description>
+			<Description>Must be 1</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -12178,7 +10680,7 @@
 			<Name>reg1E3_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Rx2 Tune Resam ple Phase</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -12423,46 +10925,22 @@
 	<Register>
 		<Name>reg1EE</Name>
 		<Address>0x1EE</Address>
-		<Description>Rx BBF Pow Rz Byte0</Description>
+		<Description>Must be 0x60</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg1EE_b4_b3</Name>
+			<Name>reg1EE_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx BBF Rz1 Ctr&lt;1:0&gt;</Description>
+			<DefaultValue>96</DefaultValue>
+			<Description>Must be 0x60</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1EE_b6_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>Rx1 BBF Pow Ctr&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1EE_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Must be zero</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -12511,7 +10989,7 @@
 		<BitField>
 			<Name>reg1F0_b3_b2</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>3</DefaultValue>
 			<Description>Rx BBF Pow2 Ctr&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
@@ -12535,7 +11013,7 @@
 		<BitField>
 			<Name>reg1F0_b7_b6</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>3</DefaultValue>
 			<Description>Rx BBF Pow3 Ctr&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
@@ -12599,54 +11077,6 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg1F3_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx2 BBF Tune Comp Q</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1F3_b1</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx2 BBF Tune Comp I</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>1</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1F3_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx1 BBF Tune Comp Q</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg1F3_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx1 BBF Tune Comp I</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
 			<Name>reg1F3_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
@@ -12662,7 +11092,7 @@
 			<Name>reg1F3_b6_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>Rx BBF Tune Ctr&lt;1:0&gt;</Description>
+			<Description>Must be 2'b01</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -12674,7 +11104,7 @@
 			<Name>reg1F3_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>RxBBF Bypass Bias R</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -12822,7 +11252,7 @@
 			<Name>reg1F9_b3_b1</Name>
 			<Access>R/W</Access>
 			<DefaultValue>7</DefaultValue>
-			<Description>Rx Tune Mode&lt;2:0&gt;</Description>
+			<Description>Must be 3'b111</Description>
 			<Visibility>Public</Visibility>
 			<Width>3</Width>
 			<Notes></Notes>
@@ -12846,7 +11276,7 @@
 			<Name>reg1F9_b6_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Tune Comp Mask &lt;1:0&gt;</Description>
+			<Description>Must be 2'b00</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -12859,22 +11289,22 @@
 	<Register>
 		<Name>reg1FA</Name>
 		<Address>0x1FA</Address>
-		<Description>Pole gain</Description>
+		<Description>Must be 0x01</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg1FA_b1_b0</Name>
+			<Name>reg1FA_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>Pole Gain Tune&lt;1:0&gt;</Description>
+			<Description>Must be 0x01</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -12923,845 +11353,9 @@
 		</BitFields>
 	</Register>
 	<Register>
-		<Name>reg201</Name>
-		<Address>0x201</Address>
-		<Description>FB DAC Clk Delay1</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg201_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>FB DAC Clk Delay1&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg202</Name>
-		<Address>0x202</Address>
-		<Description>FB DAC Clk Delay2</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg202_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>FB DAC Clk Delay2&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg203</Name>
-		<Address>0x203</Address>
-		<Description>Flash Sample Clk Delay 3p</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg203_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>36</DefaultValue>
-			<Description>Flash Sample Clk Delay 3p&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg204</Name>
-		<Address>0x204</Address>
-		<Description>Flash Sample Clk Delay 3p</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg204_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>36</DefaultValue>
-			<Description>Flash Sample Clk Delay 3n&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg205</Name>
-		<Address>0x205</Address>
-		<Description>Test MUX 2i</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg205_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Test MUX 2i&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg206</Name>
-		<Address>0x206</Address>
-		<Description>Test MUX 2q</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg206_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Test MUX 2q&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg207</Name>
-		<Address>0x207</Address>
-		<Description>Integrator 1 Resistance</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg207_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>40</DefaultValue>
-			<Description>Integrator 1 Resistance&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg208</Name>
-		<Address>0x208</Address>
-		<Description>Integrator 1 Capacitance</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg208_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>20</DefaultValue>
-			<Description>Integrator 1 Capacitance&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg209</Name>
-		<Address>0x209</Address>
-		<Description>Integrator 23 Resistance</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg209_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>32</DefaultValue>
-			<Description>Integrator 23 Resistance&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg20A</Name>
-		<Address>0x20A</Address>
-		<Description>Integrator 2 Resistance</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg20A_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>40</DefaultValue>
-			<Description>Integrator 2 Resistance&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg20B</Name>
-		<Address>0x20B</Address>
-		<Description>Integrator 2 Capacitance</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg20B_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>20</DefaultValue>
-			<Description>Integrator 2 Capacitance&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg20C</Name>
-		<Address>0x20C</Address>
-		<Description>Integrator 3 Resistance</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg20C_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>40</DefaultValue>
-			<Description>Integrator 3 Resistance&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg20D</Name>
-		<Address>0x20D</Address>
-		<Description>Integrator 3 Capacitance</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg20D_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>20</DefaultValue>
-			<Description>Integrator 3 Capacitance&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg20E</Name>
-		<Address>0x20E</Address>
-		<Description>Integrator Amp Cc</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg20E_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Integrator Amplifier Compensation Capacitor&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg20F</Name>
-		<Address>0x20F</Address>
-		<Description>Int 1 FB DAC NMOS Current Source</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg20F_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>41</DefaultValue>
-			<Description>Integrator 1 FB DAC Current Source&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg210</Name>
-		<Address>0x210</Address>
-		<Description>Int 1 FB DAC NMOS Casoade Bias Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg210_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>41</DefaultValue>
-			<Description>Integrator 1 FB DAC Cascade Bias Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg211</Name>
-		<Address>0x211</Address>
-		<Description>Int 1 FB DAC PMOS Current Source</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg211_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>41</DefaultValue>
-			<Description>Integrator 1 FB DAC Current Source&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg212</Name>
-		<Address>0x212</Address>
-		<Description>Int 2 FB DAC NMOS Current Source</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg212_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>39</DefaultValue>
-			<Description>Integrator 2 FB DAC Current Source&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg213</Name>
-		<Address>0x213</Address>
-		<Description>Int 2 FB DAC NMOS Cascode Bias Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg213_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>39</DefaultValue>
-			<Description>Integrator 2 FB DAC Cascade Bias Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg214</Name>
-		<Address>0x214</Address>
-		<Description>Int 2 FB DAC PMOS Current Source</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg214_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>39</DefaultValue>
-			<Description>Integrator 2 FB DAC Current Source&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg215</Name>
-		<Address>0x215</Address>
-		<Description>Int 3 FB DAC NMOS Current Source</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg215_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>39</DefaultValue>
-			<Description>Integrator 3 FB DAC Current Source&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg216</Name>
-		<Address>0x216</Address>
-		<Description>Int 3 FB DAC NMOS Cascode Bias Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg216_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>39</DefaultValue>
-			<Description>Integrator 3 FB DAC Cascade Bias Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg217</Name>
-		<Address>0x217</Address>
-		<Description>Int 3 FB DAC PMOS Current Source</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg217_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>39</DefaultValue>
-			<Description>Integrator 3 FB DAC Current Source&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg218</Name>
-		<Address>0x218</Address>
-		<Description>FB DAC Bias Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg218_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>46</DefaultValue>
-			<Description>FB DAC Bias Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg219</Name>
-		<Address>0x219</Address>
-		<Description>Int 1 1st Stage Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg219_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>144</DefaultValue>
-			<Description>Integrator 1 1st Stage Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg21A</Name>
-		<Address>0x21A</Address>
-		<Description>Int 1 1st Stage Cascode Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg21A_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>21</DefaultValue>
-			<Description>Integrator 1 1st Stage Cascode Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg21B</Name>
-		<Address>0x21B</Address>
-		<Description>Int 1 2nd Stage Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg21B_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>16</DefaultValue>
-			<Description>Integrator 1 2nd Stage Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg21C</Name>
-		<Address>0x21C</Address>
-		<Description>Integrator 2 1st Stage Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg21C_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>144</DefaultValue>
-			<Description>Integrator 2 1st Stage Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg21D</Name>
-		<Address>0x21D</Address>
-		<Description>Int 2 1st Stage Cascode Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg21D_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>21</DefaultValue>
-			<Description>Integrator 2 1st Stage Cascode Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg21E</Name>
-		<Address>0x21E</Address>
-		<Description>Int 2 2nd Stage Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg21E_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>16</DefaultValue>
-			<Description>Integrator 2 2nd Stage Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg21F</Name>
-		<Address>0x21F</Address>
-		<Description>Int 3 1st Stage Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg21F_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>144</DefaultValue>
-			<Description>Integrator 3 1st Stage Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg220</Name>
-		<Address>0x220</Address>
-		<Description>Int 3 1st Stage Cascode Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg220_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>21</DefaultValue>
-			<Description>Integrator 3 1st Stage Cascode Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg221</Name>
-		<Address>0x221</Address>
-		<Description>Int 3 2nd Stage Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg221_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>32</DefaultValue>
-			<Description>Integrator 3 2nd Stage Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg222</Name>
-		<Address>0x222</Address>
-		<Description>Flash Bias Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg222_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>32</DefaultValue>
-			<Description>Flash Bias Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg223</Name>
-		<Address>0x223</Address>
-		<Description>Flash Ladder Bias</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg223_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>64</DefaultValue>
-			<Description>Flash Ladder Bias&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg224</Name>
-		<Address>0x224</Address>
-		<Description>Flash Ladder Cascode Current</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg224_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>64</DefaultValue>
-			<Description>Flash Ladder Cascode Current&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg225</Name>
-		<Address>0x225</Address>
-		<Description>Flash Ladder Bias2</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg225_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>44</DefaultValue>
-			<Description>Flash Ladder Bias&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg226</Name>
-		<Address>0x226</Address>
-		<Description>Reset</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg226_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Reset&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
 		<Name>reg230</Name>
 		<Address>0x230</Address>
-		<Description>PFD Config</Description>
+		<Description>Disable VCO Cal</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -13770,13 +11364,37 @@
 			<Name>reg230_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Bypass Ld Synth</Description>
+			<Description>Disable VCO Cal</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
 			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg230_b3_b1</Name>
+			<Access>R/W</Access>
+			<DefaultValue>2</DefaultValue>
+			<Description>Must be 3'b010</Description>
+			<Visibility>Public</Visibility>
+			<Width>3</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>1</RegOffset>
+			<SliceWidth>3</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg230_b7_b4</Name>
+			<Access>R/W</Access>
+			<DefaultValue>5</DefaultValue>
+			<Description>Must be 0x5</Description>
+			<Visibility>Public</Visibility>
+			<Width>4</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>4</RegOffset>
+			<SliceWidth>4</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -13915,6 +11533,62 @@
 		</BitFields>
 	</Register>
 	<Register>
+		<Name>reg236</Name>
+		<Address>0x236</Address>
+		<Description>Force ALC</Description>
+		<Exists>True</Exists>
+		<Width>8</Width>
+		<Notes></Notes>
+		<BitFields>
+		<BitField>
+			<Name>reg236_b6_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Force ALC Word&lt;6:0&gt;</Description>
+			<Visibility>Public</Visibility>
+			<Width>7</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>7</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg236_b7</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Force ALC Enable</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>7</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		</BitFields>
+	</Register>
+	<Register>
+		<Name>reg237</Name>
+		<Address>0x237</Address>
+		<Description>Force VCO Tune 0</Description>
+		<Exists>True</Exists>
+		<Width>8</Width>
+		<Notes></Notes>
+		<BitFields>
+		<BitField>
+			<Name>reg237_b7_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Force VCO Tune&lt;7:0&gt;</Description>
+			<Visibility>Public</Visibility>
+			<Width>8</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>8</SliceWidth>
+		</BitField>
+		</BitFields>
+	</Register>
+	<Register>
 		<Name>reg238</Name>
 		<Address>0x238</Address>
 		<Description>Force VCO Tune 1</Description>
@@ -13923,16 +11597,40 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg238_b6_b3</Name>
+			<Name>reg238_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO Cal Offset&lt;3:0&gt;</Description>
+			<Description>Force VCO Tune&lt;8&gt;</Description>
 			<Visibility>Public</Visibility>
-			<Width>4</Width>
+			<Width>1</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>4</SliceWidth>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg238_b1</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Force VCO Tune Enable</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>1</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg238_b7_b2</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 0</Description>
+			<Visibility>Public</Visibility>
+			<Width>6</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>2</RegOffset>
+			<SliceWidth>6</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -13981,7 +11679,7 @@
 		<BitField>
 			<Name>reg23A_b3_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>10</DefaultValue>
 			<Description>VCO Output Level&lt;3:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>4</Width>
@@ -14024,6 +11722,30 @@
 			<RegOffset>0</RegOffset>
 			<SliceWidth>6</SliceWidth>
 		</BitField>
+		<BitField>
+			<Name>reg23B_b6</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>VTune Out</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>6</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg23B_b7</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Set to 1</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>7</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
@@ -14034,6 +11756,18 @@
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
+		<BitField>
+			<Name>reg23C_b5_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Charge Pump Offset&lt;5:0&gt;</Description>
+			<Visibility>Public</Visibility>
+			<Width>6</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>6</SliceWidth>
+		</BitField>
 		<BitField>
 			<Name>reg23C_b7</Name>
 			<Access>R/W</Access>
@@ -14057,6 +11791,18 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
+			<Name>reg23D_b1_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Must be 2'b00</Description>
+			<Visibility>Public</Visibility>
+			<Width>2</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>2</SliceWidth>
+		</BitField>
+		<BitField>
 			<Name>reg23D_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
@@ -14072,7 +11818,7 @@
 			<Name>reg23D_b3</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>F Cpcal</Description>
+			<Description>Force Cp Cal</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -14081,10 +11827,34 @@
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
+			<Name>reg23D_b4</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Cp Offset Off</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>4</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
+			<Name>reg23D_b6</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Dither Mode</Description>
+			<Visibility>Public</Visibility>
+			<Width>1</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>6</RegOffset>
+			<SliceWidth>1</SliceWidth>
+		</BitField>
+		<BitField>
 			<Name>reg23D_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>Half Vco Cal Clk</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -14252,6 +12022,18 @@
 			<RegOffset>0</RegOffset>
 			<SliceWidth>4</SliceWidth>
 		</BitField>
+		<BitField>
+			<Name>reg241_b7_b4</Name>
+			<Access>R/W</Access>
+			<DefaultValue>0</DefaultValue>
+			<Description>Number SDM Dither Bits&lt;3:0&gt;</Description>
+			<Visibility>Public</Visibility>
+			<Width>4</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>4</RegOffset>
+			<SliceWidth>4</SliceWidth>
+		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
@@ -14290,13 +12072,35 @@
 			<Name>reg242_b6_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Must be zeros</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>5</RegOffset>
 			<SliceWidth>2</SliceWidth>
+		</BitField>
+		</BitFields>
+	</Register>
+	<Register>
+		<Name>reg243</Name>
+		<Address>0x243</Address>
+		<Description>Must be 0x0D</Description>
+		<Exists>True</Exists>
+		<Width>8</Width>
+		<Notes></Notes>
+		<BitFields>
+		<BitField>
+			<Name>reg243_b7_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>13</DefaultValue>
+			<Description>Must be 0x0D</Description>
+			<Visibility>Public</Visibility>
+			<Width>8</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -14361,80 +12165,44 @@
 	<Register>
 		<Name>reg245</Name>
 		<Address>0x245</Address>
-		<Description>VCO Cal Ref</Description>
+		<Description>Must be 0x00</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg245_b2_b0</Name>
+			<Name>reg245_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO Cal Ref Tcf&lt;2:0&gt;</Description>
+			<Description>Must be 0x00</Description>
 			<Visibility>Public</Visibility>
-			<Width>3</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>3</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg246</Name>
 		<Address>0x246</Address>
-		<Description>VCO Pd Overrides</Description>
+		<Description>Set to 0x02</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg246_b0</Name>
+			<Name>reg246_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Power Down VCO Bufffer</Description>
+			<Description>Set to 0x02</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg246_b1</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Power Down Cal Tcf</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>1</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg246_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Pwr Down Varact Ref Tcf</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg246_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Power Down Varactor Ref</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -14450,7 +12218,7 @@
 			<Name>reg247_b1</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Lock</Description>
+			<Description>Rx PLL Lock</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -14487,58 +12255,22 @@
 	<Register>
 		<Name>reg248</Name>
 		<Address>0x248</Address>
-		<Description>VCO LDO</Description>
+		<Description>Set to 0x0B</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg248_b1_b0</Name>
+			<Name>reg248_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>VCO LDO Vdrop Sel&lt;1:0&gt;</Description>
+			<DefaultValue>7</DefaultValue>
+			<Description>Set to 0x0B</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg248_b4_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>VCO LDO Sel&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg248_b6_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>VCO LDO Inrush&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg248_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>VCO LDO Bypass</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -14551,10 +12283,22 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
+			<Name>reg249_b1_b0</Name>
+			<Access>R/W</Access>
+			<DefaultValue>2</DefaultValue>
+			<Description>Must be 2'b10</Description>
+			<Visibility>Public</Visibility>
+			<Width>2</Width>
+			<Notes></Notes>
+			<BitOffset>0</BitOffset>
+			<RegOffset>0</RegOffset>
+			<SliceWidth>2</SliceWidth>
+		</BitField>
+		<BitField>
 			<Name>reg249_b3_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO Cal Count &lt;1:0&gt;</Description>
+			<Description>VCO Cal Count&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -14566,7 +12310,7 @@
 			<Name>reg249_b6_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO Cal ALC Wait &lt;2:0&gt;</Description>
+			<Description>Must be 3'b000</Description>
 			<Visibility>Public</Visibility>
 			<Width>3</Width>
 			<Notes></Notes>
@@ -14578,7 +12322,7 @@
 			<Name>reg249_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO Cal En</Description>
+			<Description>Set to 1</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -14625,228 +12369,88 @@
 	<Register>
 		<Name>reg24B</Name>
 		<Address>0x24B</Address>
-		<Description>CP Level Detect</Description>
+		<Description>Must be 0x17</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg24B_b2_b0</Name>
+			<Name>reg24B_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>7</DefaultValue>
-			<Description>CP Level Threshold High&lt;2:0&gt;</Description>
+			<DefaultValue>23</DefaultValue>
+			<Description>Must be 0x17</Description>
 			<Visibility>Public</Visibility>
-			<Width>3</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg24B_b5_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>2</DefaultValue>
-			<Description>CP Level Threshold Low&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg24B_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>CP Level Detect Power Down</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg24C</Name>
 		<Address>0x24C</Address>
-		<Description>DSM Setup 0</Description>
+		<Description>Must be 0x00</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg24C_b3_b0</Name>
+			<Name>reg24C_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>DSM Prog&lt;3:0&gt;</Description>
+			<Description>Must be 0x00</Description>
 			<Visibility>Public</Visibility>
-			<Width>4</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg24D</Name>
 		<Address>0x24D</Address>
-		<Description>DSM Setup 1</Description>
+		<Description>Must be 0x00</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg24D_b4_b0</Name>
+			<Name>reg24D_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>SIF Addr&lt;4:0&gt;</Description>
+			<Description>Must be 0x00</Description>
 			<Visibility>Public</Visibility>
-			<Width>5</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg24D_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>SIF Reset Bar</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg24D_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>SIF clock</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg24E</Name>
-		<Address>0x24E</Address>
-		<Description>Correction Word0</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg24E_b4_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Frequency Correction Word&lt;11:7&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>5</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg24E_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Read Effective Tuning Word</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg24E_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Update Freq Word</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg24F</Name>
-		<Address>0x24F</Address>
-		<Description>Correction Word1</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg24F_b6_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Frequency Correction Word&lt;6:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>7</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>7</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg24F_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Update Freq Word</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg250</Name>
 		<Address>0x250</Address>
-		<Description>VCO Varactor Control 0</Description>
+		<Description>Set to 0x70</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg250_b3_b0</Name>
+			<Name>reg250_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>VCO Varactor Offset&lt;3:0&gt;</Description>
+			<DefaultValue>99</DefaultValue>
+			<Description>Set to 0x70</Description>
 			<Visibility>Public</Visibility>
-			<Width>4</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg250_b6_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>6</DefaultValue>
-			<Description>VCO Varactor Reference Tcf&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>3</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -15076,7 +12680,7 @@
 			<Name>reg261_b5_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Power Mode&lt;3:0&gt;</Description>
+			<Description>Power Mode&lt;1:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -15089,7 +12693,7 @@
 	<Register>
 		<Name>reg270</Name>
 		<Address>0x270</Address>
-		<Description>PFD Config</Description>
+		<Description>Disable VCO Cal</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -15098,7 +12702,7 @@
 			<Name>reg270_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Bypass Ld Synth</Description>
+			<Description>Disable VCO Cal</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -15107,40 +12711,28 @@
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg270_b1</Name>
+			<Name>reg270_b3_b1</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>PFD Clk Edge</Description>
+			<DefaultValue>2</DefaultValue>
+			<Description>Must be 3'b010</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>3</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>1</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>3</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg270_b3_b2</Name>
+			<Name>reg270_b7_b4</Name>
 			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>PFD Width &lt;1:0&gt;</Description>
+			<DefaultValue>5</DefaultValue>
+			<Description>Must be 0x05</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>4</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg270_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Div Test En</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<RegOffset>4</RegOffset>
+			<SliceWidth>4</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -15367,28 +12959,16 @@
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg278_b6_b3</Name>
+			<Name>reg278_b7_b2</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO Cal Offset&lt;3:0&gt;</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
-			<Width>4</Width>
+			<Width>6</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>4</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg278_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Bypass Load Delay</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<RegOffset>2</RegOffset>
+			<SliceWidth>6</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -15437,7 +13017,7 @@
 		<BitField>
 			<Name>reg27A_b3_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
+			<DefaultValue>10</DefaultValue>
 			<Description>VCO Output Level&lt;3:0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>4</Width>
@@ -15484,7 +13064,7 @@
 			<Name>reg27B_b6</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Vtune Force</Description>
+			<Description>Vtune Out</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -15552,7 +13132,7 @@
 			<Name>reg27D_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Cp Test &lt;1:0&gt;</Description>
+			<Description>Must be 2'b00</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -15576,7 +13156,7 @@
 			<Name>reg27D_b3</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>F Cpcal</Description>
+			<Description>F Cp Cal</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -15612,7 +13192,7 @@
 			<Name>reg27D_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>1</DefaultValue>
-			<Description>Half Vco Cal Clk</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -15830,7 +13410,7 @@
 			<Name>reg282_b6_b5</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Must be zeros</Description>
+			<Description>Must be 0</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -15843,70 +13423,22 @@
 	<Register>
 		<Name>reg283</Name>
 		<Address>0x283</Address>
-		<Description>VCO Bias 2</Description>
+		<Description>Must be 0x0D</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg283_b1_b0</Name>
+			<Name>reg283_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Prescale Bias &lt;1:0&gt;</Description>
+			<DefaultValue>13</DefaultValue>
+			<Description>Must be 0x0D</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg283_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Last ALC Enable</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg283_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Bypass Prescale R</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg283_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>VCO Comp Bypass Bias R</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg283_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>VCO Bypass Bias DAC R</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -15955,18 +13487,6 @@
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg284_b6</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Comp Out</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
 			<Name>reg284_b7</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
@@ -15983,92 +13503,44 @@
 	<Register>
 		<Name>reg285</Name>
 		<Address>0x285</Address>
-		<Description>VCO Cal Ref</Description>
+		<Description>Must be 0x00</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg285_b2_b0</Name>
+			<Name>reg285_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO Cal Ref Tcf&lt;2:0&gt;</Description>
+			<Description>Must be 0x00</Description>
 			<Visibility>Public</Visibility>
-			<Width>3</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg285_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>VCO Cal Ref Monitor</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg286</Name>
 		<Address>0x286</Address>
-		<Description>VCO Pd Overrides</Description>
+		<Description>Set to 0x02</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg286_b0</Name>
+			<Name>reg286_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Power Down VCO Bufffer</Description>
+			<Description>Set to 0x02</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg286_b1</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Power Down Cal Tcf</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>1</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg286_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Power Down Varact Ref Tcf</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg286_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Power Down Varactor Ref</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -16084,7 +13556,7 @@
 			<Name>reg287_b1</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Lock</Description>
+			<Description>Tx PLL Lock</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -16121,58 +13593,22 @@
 	<Register>
 		<Name>reg288</Name>
 		<Address>0x288</Address>
-		<Description>VCO LDO</Description>
+		<Description>Set to 0x0B</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg288_b1_b0</Name>
+			<Name>reg288_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>VCO LDO Vdrop Sel&lt;1:0&gt;</Description>
+			<DefaultValue>7</DefaultValue>
+			<Description>Set to 0x0B</Description>
 			<Visibility>Public</Visibility>
-			<Width>2</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg288_b4_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>VCO LDO Vout Sel&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg288_b6_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>VCO LDO Inrush&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg288_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>VCO LDO Bypass</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -16188,7 +13624,7 @@
 			<Name>reg289_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>2</DefaultValue>
-			<Description>FB Clock Adv&lt;1:0&gt;</Description>
+			<Description>Must be 2'b10</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -16212,7 +13648,7 @@
 			<Name>reg289_b6_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO Cal ALC Wait&lt;2:0)</Description>
+			<Description>Must be 3'b000</Description>
 			<Visibility>Public</Visibility>
 			<Width>3</Width>
 			<Notes></Notes>
@@ -16224,7 +13660,7 @@
 			<Name>reg289_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>VCO Cal En</Description>
+			<Description>Set to 1</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -16271,228 +13707,88 @@
 	<Register>
 		<Name>reg28B</Name>
 		<Address>0x28B</Address>
-		<Description>CP Level Detect</Description>
+		<Description>Must be 0x17</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg28B_b2_b0</Name>
+			<Name>reg28B_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>CP Level Detect Threshold High&lt;2:0&gt;</Description>
+			<DefaultValue>64</DefaultValue>
+			<Description>Must be 0x17</Description>
 			<Visibility>Public</Visibility>
-			<Width>3</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg28B_b5_b3</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>CP Level Detect Threshold Low&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>3</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg28B_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>CP Level Detect Power Down</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg28C</Name>
 		<Address>0x28C</Address>
-		<Description>DSM Setup 0</Description>
+		<Description>Must be 0x00</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg28C_b3_b0</Name>
+			<Name>reg28C_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>DSM Prog&lt;3:0&gt;</Description>
+			<Description>Must be 0x00</Description>
 			<Visibility>Public</Visibility>
-			<Width>4</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg28D</Name>
 		<Address>0x28D</Address>
-		<Description>DSM Setup 1</Description>
+		<Description>Must be 0x00</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg28D_b4_b0</Name>
+			<Name>reg28D_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>SIF Addr&lt;4:0&gt;</Description>
+			<DefaultValue>128</DefaultValue>
+			<Description>Must be 0x00</Description>
 			<Visibility>Public</Visibility>
-			<Width>5</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg28D_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>SIF Reset Bar</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg28D_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>SIF clock</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg28E</Name>
-		<Address>0x28E</Address>
-		<Description>Correction Word0</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg28E_b4_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Frequency Correction Word&lt;11:7&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>5</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg28E_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Read Effective Tuning Word</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg28E_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Update Freq Word</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg28F</Name>
-		<Address>0x28F</Address>
-		<Description>Correction Word1</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg28F_b6_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Frequency Correction Word&lt;6:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>7</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>7</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg28F_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Update Freq Word</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg290</Name>
 		<Address>0x290</Address>
-		<Description>VCO Varactor Control 0</Description>
+		<Description>Set to 0x70</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg290_b3_b0</Name>
+			<Name>reg290_b7_b0</Name>
 			<Access>R/W</Access>
-			<DefaultValue>3</DefaultValue>
-			<Description>VCO Varactor Offset&lt;3:0&gt;</Description>
+			<DefaultValue>99</DefaultValue>
+			<Description>Set to 0x70</Description>
 			<Visibility>Public</Visibility>
-			<Width>4</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>4</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg290_b6_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>6</DefaultValue>
-			<Description>VCO Varactor Reference Tcf&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>3</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -16581,164 +13877,6 @@
 			<BitOffset>0</BitOffset>
 			<RegOffset>3</RegOffset>
 			<SliceWidth>5</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg295</Name>
-		<Address>0x295</Address>
-		<Description>DCXO Config</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg295_b3_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>DCXO Rd&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>2</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg295_b6_b4</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>DCXO Rtail&lt;2:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>3</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>4</RegOffset>
-			<SliceWidth>3</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg295_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Must be zero</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg296</Name>
-		<Address>0x296</Address>
-		<Description>DCXO Tempco Write</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg296_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>DCXO Temperature Coefficient Write &lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg297</Name>
-		<Address>0x297</Address>
-		<Description>DCXO Tempco Read</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg297_b7_b0</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>DCXO Temperature Coefficient Read &lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg298</Name>
-		<Address>0x298</Address>
-		<Description>DCXO Tempco Addr</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg298_b5_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>DCXO Temperature Coefficient Address&lt;5:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>6</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>6</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg298_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>DCXO Tempco Clk</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg298_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>DCXO Tempco En</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg299</Name>
-		<Address>0x299</Address>
-		<Description>Delta T Read</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg299_b7_b0</Name>
-			<Access>R</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Delta T Read Back&lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -16959,116 +14097,44 @@
 	<Register>
 		<Name>reg2A6</Name>
 		<Address>0x2A6</Address>
-		<Description>Bandgap Config0</Description>
+		<Description>Set to 0x0E</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg2A6_b4_b0</Name>
+			<Name>reg2A6_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>4</DefaultValue>
-			<Description>Master Bias Trim&lt;4:0&gt;</Description>
+			<Description>set to 0x0E</Description>
 			<Visibility>Public</Visibility>
-			<Width>5</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg2A6_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Master Bias Ref Sel</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg2A6_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Master Bias Filter Bypass</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg2A6_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Power Down Bandgap Ref</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
 	<Register>
 		<Name>reg2A8</Name>
 		<Address>0x2A8</Address>
-		<Description>Bandgap Config1</Description>
+		<Description>Set to 0x0E</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg2A8_b4_b0</Name>
+			<Name>reg2A8_b7_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Bandgap Temp Trim&lt;4:0&gt;</Description>
+			<Description>Set to 0x0E</Description>
 			<Visibility>Public</Visibility>
-			<Width>5</Width>
+			<Width>8</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>5</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg2A8_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Bandgap Ref Reset</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg2A8_b6</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>VCO LDO Ref Sel</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>6</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg2A8_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>VCO LDO Filter Bypass</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>8</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -17093,28 +14159,16 @@
 			<SliceWidth>1</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg2AB_b1</Name>
+			<Name>reg2AB_b2_b1</Name>
 			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx Ref Reset Bar</Description>
+			<DefaultValue>2</DefaultValue>
+			<Description>Set to 2'b11</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>2</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>1</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg2AB_b2</Name>
-			<Access>R/W</Access>
-			<DefaultValue>1</DefaultValue>
-			<Description>Set to 1</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>2</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>2</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
@@ -17130,7 +14184,7 @@
 			<Name>reg2AC_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Tx Ref Doubler FB Delay&lt;1:0&gt;</Description>
+			<Description>Set to 2'b11</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
@@ -17151,34 +14205,22 @@
 			<SliceWidth>2</SliceWidth>
 		</BitField>
 		<BitField>
-			<Name>reg2AC_b4</Name>
+			<Name>reg2AC_b6_b4</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Tx Ref Reset Bar</Description>
+			<Description>Set to 3'b111</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>3</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>4</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg2AC_b6_b5</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Rx Ref Doubler FB Delay&lt;1:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>2</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>5</RegOffset>
-			<SliceWidth>2</SliceWidth>
+			<SliceWidth>3</SliceWidth>
 		</BitField>
 		<BitField>
 			<Name>reg2AC_b7</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Rx Ref Divider&lt; 0&gt;</Description>
+			<Description>Rx Ref Divider&lt;0&gt;</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -17460,7 +14502,7 @@
 			<Name>reg2B8_b5</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Low Power 1</Description>
+			<Description>Low Power</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -17472,7 +14514,7 @@
 			<Name>reg2B8_b6</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gain Lock 1</Description>
+			<Description>Gain Lock</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -17554,7 +14596,7 @@
 			<Name>reg2B9_b5</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Low Power 2</Description>
+			<Description>Low Power</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -17566,7 +14608,7 @@
 			<Name>reg2B9_b6</Name>
 			<Access>R</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Gain Lock 1</Description>
+			<Description>Gain Lock</Description>
 			<Visibility>Public</Visibility>
 			<Width>1</Width>
 			<Notes></Notes>
@@ -17671,7 +14713,7 @@
 	<Register>
 		<Name>reg3F5</Name>
 		<Address>0x3F5</Address>
-		<Description>Observe Config</Description>
+		<Description>BIST Config2</Description>
 		<Exists>True</Exists>
 		<Width>8</Width>
 		<Notes></Notes>
@@ -17692,7 +14734,7 @@
 			<Name>reg3F5_b4_b1</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Observation Point&lt;2:0&gt;</Description>
+			<Description>Must be 4'b000</Description>
 			<Visibility>Public</Visibility>
 			<Width>4</Width>
 			<Notes></Notes>
@@ -17747,28 +14789,16 @@
 		<Notes></Notes>
 		<BitFields>
 		<BitField>
-			<Name>reg3F6_b0</Name>
+			<Name>reg3F6_b1_b0</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Use Data Port</Description>
+			<Description>Must be 2'b00</Description>
 			<Visibility>Public</Visibility>
-			<Width>1</Width>
+			<Width>2</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>0</RegOffset>
-			<SliceWidth>1</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg3F6_b1</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>Data Port Hi/Low</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>1</RegOffset>
-			<SliceWidth>1</SliceWidth>
+			<SliceWidth>2</SliceWidth>
 		</BitField>
 		<BitField>
 			<Name>reg3F6_b2</Name>
@@ -17822,91 +14852,13 @@
 			<Name>reg3F6_b7_b6</Name>
 			<Access>R/W</Access>
 			<DefaultValue>0</DefaultValue>
-			<Description>Temp Sense Vbe Test&lt;1:0&gt;</Description>
+			<Description>Must be 2'b00</Description>
 			<Visibility>Public</Visibility>
 			<Width>2</Width>
 			<Notes></Notes>
 			<BitOffset>0</BitOffset>
 			<RegOffset>6</RegOffset>
 			<SliceWidth>2</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg3FC</Name>
-		<Address>0x3FC</Address>
-		<Description>DAC Test 0</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg3FC_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>DAC test Word &lt;7:0&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg3FD</Name>
-		<Address>0x3FD</Address>
-		<Description>DAC Test 1</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg3FD_b7_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>DAC test Word &lt;15:8&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>8</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>8</SliceWidth>
-		</BitField>
-		</BitFields>
-	</Register>
-	<Register>
-		<Name>reg3FE</Name>
-		<Address>0x3FE</Address>
-		<Description>DAC Test 2</Description>
-		<Exists>True</Exists>
-		<Width>8</Width>
-		<Notes></Notes>
-		<BitFields>
-		<BitField>
-			<Name>reg3FE_b6_b0</Name>
-			<Access>R/W</Access>
-			<DefaultValue>63</DefaultValue>
-			<Description>DAC test Word &lt;22:16&gt;</Description>
-			<Visibility>Public</Visibility>
-			<Width>7</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>0</RegOffset>
-			<SliceWidth>7</SliceWidth>
-		</BitField>
-		<BitField>
-			<Name>reg3FE_b7</Name>
-			<Access>R/W</Access>
-			<DefaultValue>0</DefaultValue>
-			<Description>DAC Test Enable</Description>
-			<Visibility>Public</Visibility>
-			<Width>1</Width>
-			<Notes></Notes>
-			<BitOffset>0</BitOffset>
-			<RegOffset>7</RegOffset>
-			<SliceWidth>1</SliceWidth>
 		</BitField>
 		</BitFields>
 	</Register>
