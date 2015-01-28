@@ -4280,6 +4280,41 @@ static void math_chooser_backspace_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 	gtk_widget_grab_focus(priv->math_expression_textview);
 }
 
+static void math_chooser_fullscale_key_pressed_cb(GtkButton *btn, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTextBuffer *tbuf = priv->math_expression;
+	struct iio_device *iio_dev;
+	char key_val[128] = "0";
+	const char *device_name;
+
+	device_name = gtk_combo_box_text_get_active_text(
+			GTK_COMBO_BOX_TEXT(priv->math_device_select));
+	if (device_name) {
+		iio_dev = iio_context_find_device(ctx, device_name);
+		if (iio_dev) {
+			int i;
+			struct iio_channel *iio_chn;
+			const struct iio_data_format *format;
+			int full_scale;
+			for (i = 0; i < iio_device_get_channels_count(iio_dev); i++) {
+				iio_chn = iio_device_get_channel(iio_dev, i);
+				if (!iio_channel_is_scan_element(iio_chn))
+					continue;
+				format = iio_channel_get_data_format(iio_chn);
+				full_scale = 2 << (format->bits - 1);
+				if (format->is_signed)
+					full_scale /= 2;
+				snprintf(key_val, sizeof(key_val), "%d", full_scale);
+				break;
+			}
+		}
+	}
+
+	gtk_text_buffer_insert_at_cursor(tbuf, key_val, -1);
+	gtk_widget_grab_focus(priv->math_expression_textview);
+}
+
 static void math_chooser_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -5177,12 +5212,17 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(math_chooser_backspace_key_pressed_cb), plot);
 
 	GtkWidget *math_table = GTK_WIDGET(gtk_builder_get_object(priv->builder, "table_math_chooser"));
+	GtkWidget *key_fullscale = GTK_WIDGET(gtk_builder_get_object(priv->builder, "math_key_full_scale"));
 	GList *node;
 
-	for (node = gtk_container_get_children(GTK_CONTAINER(math_table)); node; node = g_list_next(node)) {
-		g_signal_connect(node->data, "clicked", G_CALLBACK(math_chooser_key_pressed_cb), plot);
+	for (node = gtk_container_get_children(GTK_CONTAINER(math_table));
+		node; node = g_list_next(node)) {
+		g_signal_connect(node->data, "clicked",
+			G_CALLBACK(math_chooser_key_pressed_cb), plot);
 	}
-
+	g_signal_handlers_disconnect_by_func(key_fullscale, math_chooser_key_pressed_cb, plot);
+	g_signal_connect(key_fullscale, "clicked",
+			G_CALLBACK(math_chooser_fullscale_key_pressed_cb), plot);
 
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,

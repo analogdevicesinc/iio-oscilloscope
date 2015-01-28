@@ -43,6 +43,22 @@ static gboolean eval(const GMatchInfo *info, GString *res, gpointer data)
 	return FALSE;
 }
 
+static char * string_replace(const char * string, const char *pattern,
+			const char *replacement, GRegexEvalCallback eval)
+{
+	GRegex *rex;
+	gchar *result;
+
+	rex = g_regex_new(pattern, 0, 0, NULL);
+	if (eval)
+		result = g_regex_replace_eval(rex, string, -1, 0, 0, eval, NULL, NULL);
+	else
+	result = g_regex_replace_literal(rex, string, -1, 0, replacement, 0, NULL);
+	g_regex_unref(rex);
+
+	return result;
+}
+
 static char * c_file_create(const char *user_expression)
 {
 	char *base_filename, *open_path;
@@ -70,25 +86,35 @@ static char * c_file_create(const char *user_expression)
 		return NULL;
 	}
 
-	GRegex *rex;
-	gchar *result;
+	char *s1, *s2;
 
-	rex = g_regex_new("voltage[0-9]+", 0, 0, NULL);
-	result = g_regex_replace_eval(rex, user_expression, -1, 0, 0, eval, NULL, NULL);
-	g_regex_unref(rex);
+	s1 = string_replace(user_expression, "voltage[0-9]+", NULL, eval);
+	s2 = string_replace(s1, "Index", "i", NULL);
+	g_free(s1);
+	s1 = string_replace(s2, "PreviousValue", "(i > 0 ? out_data[i  -1] : 0)", NULL);
+	s2 = string_replace(s1, "SampleCount", "chn_sample_cnt", NULL);
+	g_free(s1);
 
 	fprintf(fp, "#include <math.h>\n");
+	fprintf(fp, "#define max(a,b) \
+		({ __typeof__ (a) _a = (a); \
+		__typeof__ (b) _b = (b); \
+		_a > _b ? _a : _b; })\n \
+		 #define min(a,b) \
+		({ __typeof__ (a) _a = (a); \
+		 __typeof__ (b) _b = (b); \
+		 _a < _b ? _a : _b; })\n");
 	fprintf(fp, "\n");
 	fprintf(fp, "void %s(float ***channels_data, float *out_data, unsigned long long chn_sample_cnt)\n", MATH_FUNCTION_NAME);
 	fprintf(fp, "{\n");
 	fprintf(fp, "\tunsigned long long i;\n\n");
 	fprintf(fp, "\tfor (i = 0; i < chn_sample_cnt; i++) {\n");
-	fprintf(fp, "\tout_data[i] = %s;\n", result);
+	fprintf(fp, "\tout_data[i] = %s;\n", s2);
 	fprintf(fp, "\t}\n");
 	fprintf(fp, "}\n");
 
 	fclose(fp);
-	g_free(result);
+	g_free(s2);
 
 	return base_filename;
 }
