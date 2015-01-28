@@ -1593,7 +1593,8 @@ static gboolean capture_process(void)
 		if (sample_size == 0)
 			continue;
 
-		if (device_is_oneshot(dev)) {
+		if (dev_info->buffer == NULL || device_is_oneshot(dev)) {
+			dev_info->buffer_size = sample_count;
 			dev_info->buffer = iio_device_create_buffer(dev,
 				sample_count, false);
 			if (!dev_info->buffer) {
@@ -1602,9 +1603,6 @@ static gboolean capture_process(void)
 			}
 		}
 
-		if (dev_info->buffer == NULL)
-			goto capture_stop_check;
-
 		/* Reset the data offset for all channels */
 		for (i = 0; i < nb_channels; i++) {
 			struct iio_channel *ch = iio_device_get_channel(dev, i);
@@ -1612,21 +1610,27 @@ static gboolean capture_process(void)
 			info->offset = 0;
 		}
 
-		do {
-			ssize_t ret, nb;
-			ret = iio_buffer_refill(dev_info->buffer);
-			if (ret >= 0)
-				ret = iio_buffer_foreach_sample(
-					dev_info->buffer, demux_sample, NULL);
+		while (true) {
+			ssize_t ret = iio_buffer_refill(dev_info->buffer);
 			if (ret < 0) {
 				fprintf(stderr, "Error while reading data: %s\n", strerror(-ret));
 				stop_capture = TRUE;
 				goto capture_stop_check;
 			}
 
-			nb = ret / sample_size;
-			sample_count = (sample_count < nb) ? 0 : sample_count - nb;
-		} while (sample_count);
+			ret /= iio_buffer_step(dev_info->buffer);
+			if (ret >= sample_count) {
+				ret = iio_buffer_foreach_sample(
+						dev_info->buffer, demux_sample, NULL);
+				break;
+			}
+
+			printf("Increasing buffer size\n");
+			iio_buffer_destroy(dev_info->buffer);
+			dev_info->buffer_size *= 2;
+			dev_info->buffer = iio_device_create_buffer(dev,
+					dev_info->buffer_size, false);
+		}
 
 		if (dev_info->channel_trigger_enabled) {
 			chn = iio_device_get_channel(dev, dev_info->channel_trigger);
@@ -1654,7 +1658,7 @@ static gboolean capture_process(void)
 				struct iio_channel *ch = iio_device_get_channel(dev, i);
 				struct extra_info *info = iio_channel_get_data(ch);
 				memcpy(dev_info->channels_data_copy[i], info->data_ref,
-					dev_info->sample_count * sizeof(gfloat));
+					sample_count * sizeof(gfloat));
 			}
 			dev_info->channels_data_copy = NULL;
 			G_UNLOCK(buffer_full);
@@ -1769,14 +1773,7 @@ static int capture_setup(void)
 
 		if (dev_info->buffer)
 			iio_buffer_destroy(dev_info->buffer);
-
-		if (!device_is_oneshot(dev)) {
-			dev_info->buffer = iio_device_create_buffer(dev, sample_count, false);
-			if (!dev_info->buffer) {
-				fprintf(stderr, "Error: Unable to create buffer: %s\n", strerror(errno));
-				return -1;
-			}
-		}
+		dev_info->buffer = NULL;
 		dev_info->sample_count = sample_count;
 
 		iio_device_set_data(dev, dev_info);

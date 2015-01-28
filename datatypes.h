@@ -52,6 +52,7 @@ struct extra_dev_info {
 	bool input_device;
 	struct iio_buffer *buffer;
 	unsigned int sample_count;
+	unsigned int buffer_size;
 	unsigned int channel_trigger;
 	bool channel_trigger_enabled;
 	bool trigger_falling_edge;
