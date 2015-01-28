@@ -1620,8 +1620,16 @@ static gboolean capture_process(void)
 
 			ret /= iio_buffer_step(dev_info->buffer);
 			if (ret >= sample_count) {
-				ret = iio_buffer_foreach_sample(
+				iio_buffer_foreach_sample(
 						dev_info->buffer, demux_sample, NULL);
+
+				if (ret >= sample_count * 2) {
+					printf("Decreasing buffer size\n");
+					iio_buffer_destroy(dev_info->buffer);
+					dev_info->buffer_size /= 2;
+					dev_info->buffer = iio_device_create_buffer(dev,
+							dev_info->buffer_size, false);
+				}
 				break;
 			}
 
