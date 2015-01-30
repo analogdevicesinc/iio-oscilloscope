@@ -120,7 +120,7 @@ enum {
 
 /* Types of channels that can be displayed on a plot */
 enum {
-	PLOT_IIO_CHANNEL,
+	PLOT_IIO_CHANNEL = 0,
 	PLOT_MATH_CHANNEL,
 	NUM_PLOT_CHANNELS_TYPES
 };
@@ -2139,6 +2139,20 @@ static void channel_settings_free(struct channel_settings *settings)
 	free(settings);
 }
 
+static void channel_settings_discard(OscPlot *plot,
+				struct channel_settings *settings)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GSList *node, *list;
+
+	/* Remove the settings from the internal list */
+	list = priv->ch_settings_list;
+	node = g_slist_find(list, settings);
+	channel_settings_free(settings);
+	priv->ch_settings_list = g_slist_remove_link(list, node);
+	priv->nb_plot_channels--;
+}
+
 static GdkPixbuf * channel_color_icon_new(OscPlot *plot)
 {
 	DIR *d;
@@ -2266,17 +2280,10 @@ static void plot_channels_remove_channel(OscPlot *plot, GtkTreeIter *iter)
 	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	GtkTreeModel *model;
 	struct channel_settings *settings;
-	GSList *node, *list;
 
 	model = gtk_tree_view_get_model(treeview);
 	gtk_tree_model_get(model, iter, CHANNEL_SETTINGS, &settings, -1);
-
-	list = priv->ch_settings_list;
-	node = g_slist_find(list, settings);
-	channel_settings_free(settings);
-	priv->ch_settings_list = g_slist_remove_link(list, node);
-	priv->nb_plot_channels--;
-
+	channel_settings_discard(plot, settings);
 	gtk_tree_store_remove(GTK_TREE_STORE(model), iter);
 }
 
@@ -4505,7 +4512,7 @@ static void new_math_channel_cb(GtkMenuItem *menuitem, OscPlot *plot)
 
 	ret = math_expression_get_settings(plot, ch_msettings);
 	if (ret < 0) {
-		channel_settings_free(CHN_SETTING(ch_msettings));
+		channel_settings_discard(plot, CHN_SETTING(ch_msettings));
 		ch_msettings = NULL;
 		return;
 	}
