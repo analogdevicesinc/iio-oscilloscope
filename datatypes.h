@@ -92,12 +92,8 @@ struct _fft_alg_data{
 
 struct _transform {
 	int type_id;
-	struct iio_channel *channel_parent,
-			   *channel_parent2,
-			   *channel_parent3,
-			   *channel_parent4;
 	GSList *iio_channels;
-	gfloat **in_data;
+	GSList *plot_channels;
 	gfloat *x_axis;
 	gfloat *y_axis;
 	unsigned x_axis_size;
@@ -164,7 +160,6 @@ Transform* Transform_new(int tr_type);
 void Transform_destroy(Transform *tr);
 void Transform_resize_x_axis(Transform *tr, int new_size);
 void Transform_resize_y_axis(Transform *tr, int new_size);
-void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref);
 gfloat* Transform_get_x_axis_ref(Transform *tr);
 gfloat* Transform_get_y_axis_ref(Transform *tr);
 void Transform_attach_settings(Transform *tr, void *settings);

@@ -78,6 +78,8 @@ static void device_rx_info_update(OscPlot *plot);
 static gdouble prefix2scale (char adc_scale);
 static struct iio_device * transform_get_device_parent(Transform *transform);
 static gboolean tree_get_selected_row_iter(GtkTreeView *treeview, GtkTreeIter *iter);
+static void set_channel_shadow_of_enabled(gpointer data, gpointer user_data);
+static gfloat * plot_channels_get_nth_data_ref(GSList *list, guint n);
 
 /* IDs of signals */
 enum {
@@ -353,6 +355,7 @@ struct channel_settings {
 
 struct iio_channel_settings {
 	struct channel_settings base;
+	struct iio_channel *iio_chn;
 	bool apply_inverse_funct;
 	bool apply_multiply_funct;
 	bool apply_add_funct;
@@ -728,12 +731,11 @@ static double win_hanning(int j, int n)
 
 static void do_fft(Transform *tr)
 {
-	struct extra_info *ch_info;
 	struct _fft_settings *settings = tr->settings;
 	struct _fft_alg_data *fft = &settings->fft_alg_data;
 	struct marker_type *markers = settings->markers;
 	enum marker_types marker_type = MARKER_OFF;
-	gfloat *in_data = *tr->in_data;
+	gfloat *in_data = plot_channels_get_nth_data_ref(tr->plot_channels, 0);
 	gfloat *in_data_c;
 	gfloat *out_data = tr->y_axis;
 	gfloat *X = tr->x_axis;
@@ -787,8 +789,7 @@ static void do_fft(Transform *tr)
 	}
 
 	if (fft->num_active_channels == 2) {
-		ch_info = iio_channel_get_data(tr->channel_parent2);
-		in_data_c = ch_info->data_ref;
+		in_data_c = plot_channels_get_nth_data_ref(tr->plot_channels, 1);
 		for (cnt = 0, i = 0; cnt < fft_size; cnt++) {
 			/* normalization and scaling see fft_corr */
 			fft->in_c[cnt] = in_data[i] * fft->win[cnt] + I * in_data_c[i] * fft->win[cnt];
@@ -1030,6 +1031,7 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 {
 	struct _time_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
+	gfloat *in_data;
 	int i;
 
 	if (init_transform) {
@@ -1046,7 +1048,10 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 			Transform_resize_y_axis(tr, tr->y_axis_size);
 			tr->local_output_buf = true;
 		} else {
-			tr->y_axis = *tr->in_data;
+			struct extra_info *ch_info;
+
+			ch_info = iio_channel_get_data(CHN_IIO_SETTING(tr->plot_channels->data)->iio_chn);
+			tr->y_axis = ch_info->data_ref;
 			tr->local_output_buf = false;
 		}
 
@@ -1055,14 +1060,18 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 	if (!tr->local_output_buf)
 		return;
 
+	in_data = plot_channels_get_nth_data_ref(tr->plot_channels, 0);
+	if (!in_data)
+		return;
+
 	for (i = 0; i < tr->y_axis_size; i++) {
 		if (settings->apply_inverse_funct) {
-			if ((*tr->in_data)[i] != 0)
-				tr->y_axis[i] = 1 / (*tr->in_data)[i];
+			if (in_data[i] != 0)
+				tr->y_axis[i] = 1 / in_data[i];
 			else
 				tr->y_axis[i] = 65535;
 		} else {
-			tr->y_axis[i] = (*tr->in_data)[i];
+			tr->y_axis[i] = in_data[i];
 		}
 		if (settings->apply_multiply_funct)
 			tr->y_axis[i] *= settings->multiply_value;
@@ -1075,19 +1084,14 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 {
 	struct _cross_correlation_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
-	struct extra_info *ch_info;
 	gfloat *i_0, *q_0;
 	gfloat *i_1, *q_1;
 	int i;
 
-	ch_info = iio_channel_get_data(tr->channel_parent);
-	i_0 = ch_info->data_ref;
-	ch_info = iio_channel_get_data(tr->channel_parent2);
-	q_0 = ch_info->data_ref;
-	ch_info = iio_channel_get_data(tr->channel_parent3);
-	i_1 = ch_info->data_ref;
-	ch_info = iio_channel_get_data(tr->channel_parent4);
-	q_1 = ch_info->data_ref;
+	i_0 = plot_channels_get_nth_data_ref(tr->plot_channels, 0);
+	q_0 = plot_channels_get_nth_data_ref(tr->plot_channels, 1);
+	i_1 = plot_channels_get_nth_data_ref(tr->plot_channels, 2);
+	q_1 = plot_channels_get_nth_data_ref(tr->plot_channels, 3);
 
 	if (init_transform) {
 		if (settings->signal_a) {
@@ -1194,17 +1198,33 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 
 void fft_transform_function(Transform *tr, gboolean init_transform)
 {
-	struct iio_channel *chn = tr->channel_parent;
-	struct extra_info *ch_info = iio_channel_get_data(chn);
-	struct extra_dev_info *dev_info = iio_device_get_data(ch_info->dev);
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	struct extra_dev_info *dev_info;
 	struct _fft_settings *settings = tr->settings;
+	unsigned num_samples;
 	unsigned axis_length;
-	unsigned num_samples = dev_info->sample_count / 2;
+	unsigned int bits_used;
 	double corr;
 	int i;
 
 	if (init_transform) {
-		unsigned int bits_used = iio_channel_get_data_format(chn)->bits;
+		dev = transform_get_device_parent(tr);
+		if (!dev)
+			return;
+		dev_info = iio_device_get_data(dev);
+		num_samples = dev_info->sample_count / 2;
+
+		bits_used = 0;
+		for (i = 0; i < iio_device_get_channels_count(dev); i++) {
+			chn = iio_device_get_channel(dev, i);
+			if (!iio_channel_is_scan_element(chn))
+					continue;
+			bits_used = iio_channel_get_data_format(chn)->bits;
+			break;
+		}
+		if (!bits_used)
+			return;
 		axis_length = settings->fft_size * settings->fft_alg_data.num_active_channels / 2;
 		Transform_resize_x_axis(tr, axis_length);
 		Transform_resize_y_axis(tr, axis_length);
@@ -1234,16 +1254,14 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 
 void constellation_transform_function(Transform *tr, gboolean init_transform)
 {
-	struct extra_info *ch_info = iio_channel_get_data(tr->channel_parent2);
-	gfloat *y_axis = ch_info->data_ref;
 	struct _constellation_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
 
 	if (init_transform) {
 		tr->x_axis_size = axis_length;
 		tr->y_axis_size = axis_length;
-		tr->x_axis = *tr->in_data;
-		tr->y_axis = y_axis;
+		tr->x_axis = plot_channels_get_nth_data_ref(tr->plot_channels, 0);
+		tr->y_axis = plot_channels_get_nth_data_ref(tr->plot_channels, 1);
 
 		return;
 	}
@@ -1575,23 +1593,45 @@ static int plot_get_sample_count_of_device(OscPlot *plot, const char *device)
 static struct iio_device * transform_get_device_parent(Transform *transform)
 {
 	struct iio_device *iio_dev = NULL;
+	struct iio_channel *iio_chn = NULL;
 	struct extra_info *ch_info = NULL;
-	GSList *node;
+	struct channel_settings *plot_ch;
+	GSList *list;
 
-	if (transform && transform->channel_parent) {
-		ch_info = iio_channel_get_data(transform->channel_parent);
-	} else if (transform->iio_channels && g_slist_length(transform->iio_channels) > 0) {
-		node = transform->iio_channels->data;
-		ch_info = iio_channel_get_data((struct iio_channel *)node);
+	if (!transform)
+		return NULL;
+	if (!transform->plot_channels)
+		return NULL;
+
+	plot_ch = transform->plot_channels->data;
+	switch (plot_ch->type) {
+	case PLOT_IIO_CHANNEL:
+		iio_chn = CHN_IIO_SETTING(plot_ch)->iio_chn;
+		if (iio_chn)
+			ch_info = iio_channel_get_data(iio_chn);
+		break;
+	case PLOT_MATH_CHANNEL:
+		list = CHN_MATH_SETTING(plot_ch)->iio_channels;
+		if (list && g_slist_length(list) > 0) {
+			iio_chn = CHN_MATH_SETTING(plot_ch)->iio_channels->data;
+			if (iio_chn)
+				ch_info = iio_channel_get_data(iio_chn);
+
+		}
+		break;
+	default:
+		printf("Error: Invalid plot channel type %d in %s\n",
+				plot_ch->type, __func__);
+		return NULL;
 	}
+
 	if (ch_info)
 		iio_dev = ch_info->dev;
 
 	return iio_dev;
 }
 
-static void update_transform_settings(OscPlot *plot, Transform *transform,
-	struct channel_settings *csettings)
+static void update_transform_settings(OscPlot *plot, Transform *transform)
 {
 	OscPlotPrivate *priv = plot->priv;
 	int plot_type;
@@ -1603,10 +1643,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 		FFT_SETTINGS(transform)->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_pwr_offset_widget));
 		FFT_SETTINGS(transform)->fft_alg_data.cached_fft_size = -1;
 		FFT_SETTINGS(transform)->fft_alg_data.cached_num_active_channels = -1;
-		if (transform->channel_parent2 != NULL)
-			FFT_SETTINGS(transform)->fft_alg_data.num_active_channels = 2;
-		else
-			FFT_SETTINGS(transform)->fft_alg_data.num_active_channels = 1;
+		FFT_SETTINGS(transform)->fft_alg_data.num_active_channels = g_slist_length(transform->plot_channels);
 		FFT_SETTINGS(transform)->markers = NULL;
 		FFT_SETTINGS(transform)->markers_copy = NULL;
 		FFT_SETTINGS(transform)->marker_lock = NULL;
@@ -1626,7 +1663,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 			return;
 
 		if (transform->type_id == TIME_TRANSFORM) {
-			struct iio_channel_settings *set = CHN_IIO_SETTING(csettings);
+			struct iio_channel_settings *set = CHN_IIO_SETTING(transform->plot_channels->data);
 			TIME_SETTINGS(transform)->num_samples = dev_samples;
 			TIME_SETTINGS(transform)->apply_inverse_funct = set->apply_inverse_funct;
 			TIME_SETTINGS(transform)->apply_multiply_funct = set->apply_multiply_funct;
@@ -1652,80 +1689,59 @@ static void update_transform_settings(OscPlot *plot, Transform *transform,
 	}
 }
 
-static Transform* add_transform_to_list(OscPlot *plot, struct iio_channel *ch0,
-	struct iio_channel *ch1, struct iio_channel *ch2, struct iio_channel *ch3,
-	int tr_type, struct channel_settings *csettings)
+static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *channels)
 {
 	OscPlotPrivate *priv = plot->priv;
-	TrList *list = priv->transform_list;
 	Transform *transform;
 	struct _time_settings *time_settings;
 	struct _fft_settings *fft_settings;
 	struct _constellation_settings *constellation_settings;
 	struct _cross_correlation_settings *xcross_settings;
-	struct extra_info *ch_info = iio_channel_get_data(ch0);
 
 	transform = Transform_new(tr_type);
-	transform->channel_parent = ch0;
 	transform->graph_color = &color_graph[0];
-	ch_info->shadow_of_enabled++;
+	transform->plot_channels = g_slist_copy(channels);
 
-	priv->current_device = ch_info->dev;
+	GSList *node;
+	for (node = channels; node; node = g_slist_next(node))
+		set_channel_shadow_of_enabled(CHN_IIO_SETTING(node->data)->iio_chn, (gpointer)true);
 
-	Transform_set_in_data_ref(transform, (gfloat **)&ch_info->data_ref);
 	switch (tr_type) {
 	case TIME_TRANSFORM:
 		Transform_attach_function(transform, time_transform_function);
 		time_settings = (struct _time_settings *)malloc(sizeof(struct _time_settings));
 		Transform_attach_settings(transform, time_settings);
-		transform->graph_color = &csettings->graph_color;
-		priv->active_transform_type = TIME_TRANSFORM;
+		transform->graph_color = &CHN_SETTING(channels->data)->graph_color;
 		break;
 	case FFT_TRANSFORM:
 		Transform_attach_function(transform, fft_transform_function);
 		fft_settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
 		Transform_attach_settings(transform, fft_settings);
-		priv->active_transform_type = FFT_TRANSFORM;
 		break;
 	case CONSTELLATION_TRANSFORM:
-		transform->channel_parent2 = ch1;
 		Transform_attach_function(transform, constellation_transform_function);
 		constellation_settings = (struct _constellation_settings *)malloc(sizeof(struct _constellation_settings));
 		Transform_attach_settings(transform, constellation_settings);
-		ch_info = iio_channel_get_data(ch1);
-		ch_info->shadow_of_enabled++;
-		priv->active_transform_type = CONSTELLATION_TRANSFORM;
 		break;
 	case COMPLEX_FFT_TRANSFORM:
-		transform->channel_parent2 = ch1;
 		Transform_attach_function(transform, fft_transform_function);
 		fft_settings = (struct _fft_settings *)malloc(sizeof(struct _fft_settings));
 		Transform_attach_settings(transform, fft_settings);
-		ch_info = iio_channel_get_data(ch1);
-		ch_info->shadow_of_enabled++;
-		priv->active_transform_type = COMPLEX_FFT_TRANSFORM;
 		break;
 	case CROSS_CORRELATION_TRANSFORM:
-		transform->channel_parent2 = ch1;
-		transform->channel_parent3 = ch2;
-		transform->channel_parent4 = ch3;
 		Transform_attach_function(transform, cross_correlation_transform_function);
 		xcross_settings = (struct _cross_correlation_settings *)malloc(sizeof(struct _cross_correlation_settings));
 		Transform_attach_settings(transform, xcross_settings);
-		ch_info = iio_channel_get_data(ch1);
-		ch_info->shadow_of_enabled++;
-		ch_info = iio_channel_get_data(ch2);
-		ch_info->shadow_of_enabled++;
-		ch_info = iio_channel_get_data(ch3);
-		ch_info->shadow_of_enabled++;
-		priv->active_transform_type = CROSS_CORRELATION_TRANSFORM;
 		break;
 	default:
 		printf("Invalid transform\n");
 		return NULL;
 	}
-	TrList_add_transform(list, transform);
-	update_transform_settings(plot, transform, csettings);
+	TrList_add_transform(priv->transform_list, transform);
+	update_transform_settings(plot, transform);
+
+	priv->active_transform_type = tr_type;
+	priv->current_device = transform_get_device_parent(transform);
 
 	return transform;
 }
@@ -1793,7 +1809,7 @@ static Transform* add_math_transform_to_list(OscPlot *plot, struct math_channel_
 	g_slist_foreach(csettings->iio_channels, set_channel_shadow_of_enabled, (gpointer)true);
 
 	TrList_add_transform(list, transform);
-	update_transform_settings(plot, transform, (struct channel_settings *)csettings);
+	update_transform_settings(plot, transform);
 
 	return transform;
 }
@@ -1950,7 +1966,7 @@ static gdouble prefix2scale (char adc_scale)
 
 static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 {
-	struct extra_info *ch_info;
+	struct iio_device *iio_dev;
 	struct extra_dev_info *dev_info;
 	struct marker_type *markers;
 	GtkTextIter iter;
@@ -1972,8 +1988,12 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 			priv->tbuf = gtk_text_buffer_new(NULL);
 			gtk_text_view_set_buffer(GTK_TEXT_VIEW(priv->marker_label), priv->tbuf);
 	}
-	ch_info = iio_channel_get_data(tr->channel_parent);
-	dev_info = iio_device_get_data(ch_info->dev);
+	iio_dev = transform_get_device_parent(tr);
+	if (!iio_dev) {
+		printf("Error: Could not find iio device parent for the given transform.%s\n", __func__);
+		return;
+	}
+	dev_info = iio_device_get_data(iio_dev);
 	markers_scale = prefix2scale(dev_info->adc_scale);
 	lo_markers_scale_ratio = 1000000 / markers_scale; /* LO frequency - always in MHz */
 
@@ -2102,67 +2122,99 @@ static int enabled_channels_count(OscPlot *plot)
 	return count;
 }
 
-struct params {
+static gfloat * plot_channels_get_nth_data_ref(GSList *list, guint n)
+{
+	struct iio_channel *iio_chn;
+	struct extra_info *ch_info;
+	GSList *nth_node;
+	gfloat *data = NULL;
+
+	if (!list) {
+		printf("Invalid list argument.");
+		goto end;
+	}
+
+	nth_node = g_slist_nth(list, n);
+	if (!nth_node) {
+		printf("Element at index %d does not exist.", n);
+		goto end;
+	}
+
+	iio_chn = CHN_IIO_SETTING(nth_node->data)->iio_chn;
+	if (!iio_chn) {
+		printf("IIO channel at index %d is null.", n);
+		goto end;
+	}
+
+	ch_info = iio_channel_get_data(iio_chn);
+	if (!ch_info) {
+		printf("IIO channel data ref at index %d is null.", n);
+		goto end;
+	}
+	data = ch_info->data_ref;
+
+end:
+	if (!data)
+		printf("%s\n", __func__);
+
+	return data;
+}
+
+struct ch_tr_params {
 	OscPlot *plot;
-	int plot_type;
 	int enabled_channels;
-	void *ch_pair_ref;
-	void *ch_3rd_ref;
-	void *ch_4th_ref;
+	GSList *ch_settings;
 };
 
 static void channels_transform_assignment(GtkTreeModel *model,
 	GtkTreeIter *iter, void *user_data)
 {
-	struct params *prm = user_data;
+	struct ch_tr_params *prm = user_data;
+	OscPlot *plot = prm->plot;
+	OscPlotPrivate *priv = plot->priv;
 	struct channel_settings *settings;
 	gboolean enabled;
-	void *ch_ref;
+	int num_added_chs;
 
-	gtk_tree_model_get(model, iter, ELEMENT_REFERENCE, &ch_ref, CHANNEL_ACTIVE,
-		&enabled, CHANNEL_SETTINGS, &settings, -1);
+	gtk_tree_model_get(model, iter,
+			CHANNEL_ACTIVE, &enabled,
+			CHANNEL_SETTINGS, &settings,
+			-1);
 	if (!enabled)
 		return;
 
-	switch (prm->plot_type) {
-		case TIME_PLOT:
-			add_transform_to_list(prm->plot, ch_ref, NULL, NULL, NULL, TIME_TRANSFORM, settings);
-			break;
-		case FFT_PLOT:
-			if (prm->enabled_channels == 1) {
-				add_transform_to_list(prm->plot, ch_ref, NULL, NULL, NULL, FFT_TRANSFORM, settings);
-			} else if (prm->enabled_channels == 2) {
-				if (!prm->ch_pair_ref)
-					prm->ch_pair_ref = ch_ref;
-				else {
-					if (plugin_installed("FMComms6"))
-						add_transform_to_list(prm->plot, ch_ref, prm->ch_pair_ref, NULL, NULL, COMPLEX_FFT_TRANSFORM, settings);
-					else
-						add_transform_to_list(prm->plot, prm->ch_pair_ref, ch_ref, NULL, NULL, COMPLEX_FFT_TRANSFORM, settings);
-				}
+	prm->ch_settings = g_slist_prepend(prm->ch_settings, settings);
+	num_added_chs = g_slist_length(prm->ch_settings);
+
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain))) {
+	case TIME_PLOT:
+		add_transform_to_list(plot, TIME_TRANSFORM, prm->ch_settings);
+		break;
+	case FFT_PLOT:
+		if (prm->enabled_channels == 1) {
+			add_transform_to_list(plot, FFT_TRANSFORM, prm->ch_settings);
+		} else if (prm->enabled_channels == 2 && num_added_chs == 2) {
+			if (plugin_installed("FMComms6")) {
+				add_transform_to_list(plot, COMPLEX_FFT_TRANSFORM, prm->ch_settings);
+			} else {
+				prm->ch_settings = g_slist_reverse(prm->ch_settings);
+				add_transform_to_list(plot, COMPLEX_FFT_TRANSFORM, prm->ch_settings);
 			}
-			break;
-		case XY_PLOT:
-			if (prm->enabled_channels == 2) {
-				if (!prm->ch_pair_ref)
-					prm->ch_pair_ref = ch_ref;
-				else
-					add_transform_to_list(prm->plot, prm->ch_pair_ref, ch_ref, NULL, NULL, CONSTELLATION_TRANSFORM, settings);
-			}
-			break;
-		case XCORR_PLOT:
-			if (prm->enabled_channels == 4 && enabled) {
-				if (!prm->ch_pair_ref)
-					prm->ch_pair_ref = ch_ref;
-				else if (!prm->ch_3rd_ref)
-					prm->ch_3rd_ref = ch_ref;
-				else if (!prm->ch_4th_ref)
-					prm->ch_4th_ref = ch_ref;
-				else
-					add_transform_to_list(prm->plot, prm->ch_pair_ref, prm->ch_3rd_ref, prm->ch_4th_ref, ch_ref, CROSS_CORRELATION_TRANSFORM, settings);
-			}
-		default:
-			break;
+		}
+		break;
+	case XY_PLOT:
+		if (prm->enabled_channels == 2 && num_added_chs == 2) {
+			prm->ch_settings = g_slist_reverse(prm->ch_settings);
+			add_transform_to_list(plot, CONSTELLATION_TRANSFORM, prm->ch_settings);
+		}
+		break;
+	case XCORR_PLOT:
+		if (prm->enabled_channels == 4 && num_added_chs == 4) {
+			prm->ch_settings = g_slist_reverse(prm->ch_settings);
+			add_transform_to_list(plot, CROSS_CORRELATION_TRANSFORM, prm->ch_settings);
+		}
+	default:
+		break;
 	}
 }
 
@@ -2188,7 +2240,7 @@ static void devices_transform_assignment(OscPlot *plot)
 	GtkTreeIter iter;
 	GtkTreeModel *model;
 
-	struct params prm;
+	struct ch_tr_params prm;
 	unsigned int i;
 
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
@@ -2197,11 +2249,8 @@ static void devices_transform_assignment(OscPlot *plot)
 		return;
 
 	prm.plot = plot;
-	prm.plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
 	prm.enabled_channels = enabled_channels_count(plot);
-	prm.ch_pair_ref = NULL;
-	prm.ch_3rd_ref = NULL;
-	prm.ch_4th_ref = NULL;
+	prm.ch_settings = NULL;
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
@@ -2217,13 +2266,15 @@ static void devices_transform_assignment(OscPlot *plot)
 
 	foreach_channel_iter_of_device(GTK_TREE_VIEW(priv->channel_list_view),
 			MATH_CHANNELS_DEVICE, *math_channels_transform_assignment, plot);
+
+	if (prm.ch_settings)
+		g_slist_free(prm.ch_settings);
 }
 
 static void deassert_used_channels(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 	Transform *tr;
-	struct extra_info *ch_info;
 	int i;
 
 	for (i = 0; i < priv->transform_list->size; i++) {
@@ -2231,22 +2282,12 @@ static void deassert_used_channels(OscPlot *plot)
 		if (tr->type_id == MATH_TRANSFORM) {
 			g_slist_foreach(tr->iio_channels, set_channel_shadow_of_enabled, (gpointer)false);
 			continue;
-		}
+		} else {
 
-		ch_info = iio_channel_get_data(tr->channel_parent);
-		ch_info->shadow_of_enabled--;
+			GSList *node;
 
-		if (tr->type_id == CONSTELLATION_TRANSFORM ||
-			tr->type_id == COMPLEX_FFT_TRANSFORM) {
-			ch_info = iio_channel_get_data(tr->channel_parent2);
-			ch_info->shadow_of_enabled--;
-		} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
-			ch_info = iio_channel_get_data(tr->channel_parent2);
-			ch_info->shadow_of_enabled--;
-			ch_info = iio_channel_get_data(tr->channel_parent3);
-			ch_info->shadow_of_enabled--;
-			ch_info = iio_channel_get_data(tr->channel_parent4);
-			ch_info->shadow_of_enabled--;
+			for (node = tr->plot_channels; node; node = g_slist_next(node))
+				set_channel_shadow_of_enabled(CHN_IIO_SETTING(node->data)->iio_chn, (gpointer)false);
 		}
 	}
 }
@@ -2876,6 +2917,7 @@ static void device_list_treeview_init(OscPlot *plot)
 				return;
 			}
 			channel_settings_default_init(plot, CHN_SETTING(settings));
+			settings->iio_chn = ch;
 			settings->base.type = PLOT_IIO_CHANNEL;
 			settings->base.name = g_strdup(chn_name);
 			settings->base.parent_name = g_strdup(dev_name);
@@ -3203,13 +3245,20 @@ static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
 	gfloat *tr_data;
 	gfloat *tr_x_axis;
 	int i;
-	struct iio_channel *ch1 = tr->channel_parent, *ch2 = tr->channel_parent2;
+	GSList *node;
 	const char *id1 = NULL, *id2 = NULL;
 
-	if (ch1)
-		id1 = iio_channel_get_name(ch1) ?: iio_channel_get_id(ch1);
-	if (ch2)
-		id2 = iio_channel_get_name(ch2) ?: iio_channel_get_id(ch2);
+	switch (g_slist_length(tr->plot_channels)) {
+	case 2:
+		node = g_slist_nth(tr->plot_channels, 1);
+		id2 = CHN_SETTING(node->data)->name;
+	case 1:
+		node = g_slist_nth(tr->plot_channels, 0);
+		id1 = CHN_SETTING(node->data)->name;
+		break;
+	default:
+		break;
+	}
 
 	if (tr->type_id == TIME_TRANSFORM)
 		fprintf(fp, "X Axis(Sample Index)    Y Axis(%s)\n", id1);
