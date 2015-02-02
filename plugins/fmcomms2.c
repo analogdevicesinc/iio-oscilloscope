@@ -45,7 +45,6 @@
 
 #define MHZ_TO_HZ(x) ((x) * 1000000ul)
 
-extern gfloat plugin_fft_corr;
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
 static struct dac_data_manager *dac_tx_manager;
@@ -1362,7 +1361,16 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		sample_frequency_changed_cb, NULL);
 
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
-	plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
+
+	struct iio_device *adc_dev;
+	struct extra_dev_info *adc_info;
+
+	adc_dev = iio_context_find_device(get_context_from_osc(), CAP_DEVICE);
+	if (adc_dev) {
+		adc_info = iio_device_get_data(adc_dev);
+		if (adc_info)
+			adc_info->plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
+	}
 
 	block_diagram_init(builder, 2, "fmcomms2.svg", "AD_FMCOMM2S2_RevC.jpg");
 
