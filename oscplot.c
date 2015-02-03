@@ -31,9 +31,9 @@
 
 /* add backwards compat for <matio-1.5.0 */
 #if MATIO_MAJOR_VERSION == 1 && MATIO_MINOR_VERSION < 5
-#define mat_dim int
+typedef int mat_dim;
 #else
-#define mat_dim size_t
+typedef size_t mat_dim;
 #endif
 
 extern void time_transform_function(Transform *tr, gboolean init_transform);
