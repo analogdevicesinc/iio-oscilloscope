@@ -34,7 +34,6 @@ enum {
 	CONSTELLATION_TRANSFORM,
 	COMPLEX_FFT_TRANSFORM,
 	CROSS_CORRELATION_TRANSFORM,
-	MATH_TRANSFORM,
 	TRANSFORMS_TYPES_COUNT
 };
 
@@ -92,15 +91,14 @@ struct _fft_alg_data{
 
 struct _transform {
 	int type_id;
-	GSList *iio_channels;
 	GSList *plot_channels;
+	int plot_channels_type;
 	gfloat *x_axis;
 	gfloat *y_axis;
 	unsigned x_axis_size;
 	unsigned y_axis_size;
 	bool destroy_x_axis;
 	bool destroy_y_axis;
-	bool local_output_buf;
 	GdkColor *graph_color;
 	bool has_the_marker;
 	void *settings;
@@ -113,6 +111,7 @@ struct _tr_list {
 };
 
 struct _time_settings {
+	gfloat *data_source;
 	unsigned int num_samples;
 	gfloat max_x_axis;
 	gboolean apply_inverse_funct;
@@ -123,6 +122,8 @@ struct _time_settings {
 };
 
 struct _fft_settings {
+	gfloat *real_source;
+	gfloat *imag_source;
 	unsigned int fft_size;
 	unsigned int fft_avg;
 	gfloat fft_pwr_off;
@@ -134,10 +135,16 @@ struct _fft_settings {
 };
 
 struct _constellation_settings {
+	gfloat *x_source;
+	gfloat *y_source;
 	unsigned int num_samples;
 };
 
 struct _cross_correlation_settings {
+	gfloat *i0_source;
+	gfloat *q0_source;
+	gfloat *i1_source;
+	gfloat *q1_source;
 	unsigned int num_samples;
 	int revert_xcorr;
 	fftw_complex *signal_a;
@@ -147,13 +154,6 @@ struct _cross_correlation_settings {
 	struct marker_type **markers_copy;
 	GMutex *marker_lock;
 	enum marker_types *marker_type;
-};
-
-struct _math_settings {
-	unsigned int num_samples;
-	gfloat  ***iio_channels;
-	int num_channels;
-	void (*math_expression)(float ***channels_data, float *out_data, unsigned long long chn_sample_cnt);
 };
 
 Transform* Transform_new(int tr_type);
