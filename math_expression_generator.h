@@ -8,6 +8,7 @@
 #ifndef __MATH_EXPRESSION_GENERATOR_H__
 #define __MATH_EXPRESSION_GENERATOR_H__
 
+#ifdef linux
 #include <glib.h>
 
 #include <sys/types.h>
@@ -18,6 +19,7 @@
 #include <dlfcn.h>
 #include <string.h>
 #include <unistd.h>
+#endif
 
 #define MATH_OBJECT_FILES_DIR "math_expressions"
 #define MATH_EXPRESSION_BASE_FILE "math_expression"
@@ -25,6 +27,7 @@
 
 typedef void (*math_function)(float ***channels_data, float *out_data, unsigned long long chn_sample_cnt);
 
+#ifdef linux
 static gboolean eval(const GMatchInfo *info, GString *res, gpointer data)
 {
 	gchar *match;
@@ -161,9 +164,11 @@ static int shared_object_compile(char *base_filename)
 
 	return EXIT_SUCCESS;
 }
+#endif
 
 math_function math_expression_get_math_function(const char *expression_txt, void **lib_handler)
 {
+#ifdef linux
 	math_function math_fn;
 	char *base_filename, *dlopen_path;
 	int ret;
@@ -195,17 +200,21 @@ math_function math_expression_get_math_function(const char *expression_txt, void
 
 FAILED_SO:
 	g_free(base_filename);
+#endif
 	return NULL;
 }
 
 void math_expression_close_lib_handler(void *lib_handler)
 {
+#ifdef linux
 	if (lib_handler)
 		dlclose(lib_handler);
+#endif
 }
 
 void math_expression_objects_clean(void)
 {
+#ifdef linux
 	FILE *pstream;
 	char *pcommand;
 
@@ -217,6 +226,7 @@ void math_expression_objects_clean(void)
 		return;
 	}
 	pclose(pstream);
+#endif
 }
 
 #endif /* __MATH_EXPRESSION_GENERATOR_H__ */

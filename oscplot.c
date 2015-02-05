@@ -3074,9 +3074,10 @@ static void device_list_treeview_init(OscPlot *plot)
 			plot_channels_add_channel(plot, PLOT_CHN(pic));
 		}
 	}
+#ifdef linux
 	plot_channels_add_device(plot, MATH_CHANNELS_DEVICE);
 	priv->nb_input_devices++;
-
+#endif
 	create_channel_list_view(plot);
 	treeview_expand_update(plot);
 }
