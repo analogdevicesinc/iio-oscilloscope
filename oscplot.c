@@ -4089,11 +4089,14 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 	next_dev_iter = gtk_tree_model_get_iter_first(model, &dev_iter);
 	while (next_dev_iter) {
 		struct iio_device *dev;
-		const char *name;
+		char *name;
 
-		gtk_tree_model_get(model, &dev_iter, ELEMENT_REFERENCE, &dev,
-			DEVICE_ACTIVE, &device_active, -1);
-		name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
+		gtk_tree_model_get(model, &dev_iter,
+				ELEMENT_REFERENCE, &dev,
+				ELEMENT_NAME, &name,
+				DEVICE_ACTIVE, &device_active,
+				-1);
+
 		expanded = gtk_tree_view_row_expanded(tree, gtk_tree_model_get_path(model, &dev_iter));
 		fprintf(fp, "%s.expanded=%d\n", name, (expanded) ? 1 : 0);
 		fprintf(fp, "%s.active=%d\n", name, (device_active) ? 1 : 0);
@@ -4101,10 +4104,13 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 
 		while (next_ch_iter) {
 			struct iio_channel *ch;
-			const char *ch_name;
+			char *ch_name;
 
-			gtk_tree_model_get(model, &ch_iter, ELEMENT_REFERENCE, &ch,
-				CHANNEL_ACTIVE, &ch_enabled, CHANNEL_SETTINGS, &csettings, -1);
+			gtk_tree_model_get(model, &ch_iter,
+					ELEMENT_REFERENCE, &ch,
+					CHANNEL_ACTIVE, &ch_enabled,
+					CHANNEL_SETTINGS, &csettings,
+					-1);
 			ch_name = csettings->name;
 
 			fprintf(fp, "%s.%s.enabled=%d\n", name, ch_name, (ch_enabled) ? 1 : 0);
@@ -4124,6 +4130,7 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 			}
 			next_ch_iter = gtk_tree_model_iter_next(model, &ch_iter);
 		}
+		g_free(name);
 		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
 	}
 
