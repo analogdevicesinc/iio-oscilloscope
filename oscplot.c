@@ -5159,6 +5159,7 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 	gchar *txt_math_expr;
 	bool invalid_channels;
 	const char *channel_name;
+	char *expression_name;
 
 	math_device_cmb_changed_cb(GTK_COMBO_BOX_TEXT(priv->math_device_select), plot);
 
@@ -5174,12 +5175,17 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 	else
 		gtk_text_buffer_set_text(priv->math_expression, "", -1);
 
-	if (pmc->base.name)
+	if (pmc->base.name) {
 		gtk_entry_set_text(GTK_ENTRY(priv->math_channel_name_entry),
 			pmc->base.name);
-	else
+	} else {
+		expression_name = g_strdup_printf("expression %d",
+			num_of_channels_of_device(GTK_TREE_VIEW(priv->channel_list_view),
+				MATH_CHANNELS_DEVICE));
 		gtk_entry_set_text(GTK_ENTRY(priv->math_channel_name_entry),
-			"expression");
+			expression_name);
+		g_free(expression_name);
+	}
 
 	gtk_widget_set_visible(priv->math_expr_error, false);
 
