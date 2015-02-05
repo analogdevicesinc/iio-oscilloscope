@@ -390,11 +390,13 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 				/* must be a vector */
 				if (matvars[rep]->rank !=2 || (matvars[rep]->dims[0] > 1 && matvars[rep]->dims[1] > 1)) {
 					fprintf(stderr, "ERROR: Data inside the matlab file must be a vector\n");
+					free(matvars);
 					return WAVEFORM_MAT_INVALID_FORMAT;
 				}
 				/* should be a double */
 				if (matvars[rep]->class_type != MAT_C_DOUBLE) {
 					fprintf(stderr, "ERROR: Data inside the matlab file must be of type double\n");
+					free(matvars);
 					return WAVEFORM_MAT_INVALID_FORMAT;
 				}
 /*
@@ -437,6 +439,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 
 			if (rep < 0) {
 				fprintf(stderr, "ERROR: Could not find any valid data in %s\n", file_name);
+				free(matvars);
 				return WAVEFORM_MAT_INVALID_FORMAT;
 			}
 
@@ -453,19 +456,23 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			for (i = 0; i <= rep; i++) {
 				if (size != matvars[i]->dims[0]) {
 					fprintf(stderr, "ERROR: Vector dimensions in the matlab file don't match\n");
+					free(matvars);
 					return WAVEFORM_MAT_INVALID_FORMAT;
 				}
 			}
 
 			if (complex_format && real_format) {
 				fprintf(stderr, "ERROR: Both complex and real data formats in the same matlab file are not supported\n");
+				free(matvars);
 				return WAVEFORM_MAT_INVALID_FORMAT;
 			}
 
 			*buf = malloc((size + 1) * tx_channels * 2);
 
-			if (*buf == NULL)
+			if (*buf == NULL) {
+				free(matvars);
 				return -errno;
+			}
 
 			*count = size * tx_channels * 2;
 

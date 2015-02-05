@@ -59,6 +59,7 @@ xmlDocPtr open_xml_file(char *file_name, xmlNodePtr *root)
 	if (*root == NULL){
 		printf("%s is empty (%d)\n", temp, __LINE__);
 		xmlFreeDoc(doc);
+		free(temp);
 		return NULL;
 	}
 	free(temp);
@@ -104,6 +105,9 @@ char **get_xml_list(char * buf_dir_name, int *list_size)
 				list[cnt - 1] = (char *)malloc(sizeof(char) * n);
 				if (list[cnt - 1] == NULL) {
 					printf("Memory allocation failed\n");
+					for (; cnt >= 2; cnt--)
+						free(list[cnt - 2]);
+					free(list);
 					return NULL;
 				}
 				snprintf(list[cnt - 1], n,  "%s", ent->d_name);
@@ -195,8 +199,10 @@ int read_integer_element(xmlDocPtr doc, xmlNodePtr node, char *element)
 	int ret;
 
 	text = read_string_element(doc, node, element);
-	if (*text == 0) /* Check if the string is empty */
+	if (*text == 0) { /* Check if the string is empty */
+		xmlFree(text);
 		return 0;
+	}
 	ret = sscanf(text, "%d", &result);
 	xmlFree(text);
 	if (ret != 1){
