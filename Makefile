@@ -117,7 +117,7 @@ install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/profiles
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/block_diagrams
 	install ./$(OSC) $(DESTDIR)$(PREFIX)/bin/
-	install ./$(LIBOSC) $(DESTDIR)$(PREFIX)/lib/
+	install ./$(LIBOSC) $(DESTDIR)$(PREFIX)/$(if $(WITH_MINGW),bin,lib)/
 	install ./*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
 	install ./icons/IIOlogo.png $(PSHARE)
@@ -159,4 +159,4 @@ uninstall: $(if $(DEBIAN_INSTALL),uninstall-common-files,uninstall-all)
 
 clean:
 	$(SUM) "  CLEAN    ."
-	$(CMD)rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o *.plist
+	$(CMD)rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o plugins/*.o *.plist
