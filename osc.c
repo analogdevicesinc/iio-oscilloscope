@@ -2418,15 +2418,9 @@ static void load_profile_sequential(const char *filename)
 	char buf[L_tmpnam];
 	int ret;
 
-	snprintf(buf, sizeof(buf), "%s/osc_XXXXXX.ini", P_tmpdir);
-	ret = mkstemps(buf, 4);
-	if (ret < 0) {
-		fprintf(stderr, "Unable to get temp file: %s\n",
-				strerror(errno));
-		return;
-	}
+	snprintf(buf, sizeof(buf), "%s/osc_%u.ini", P_tmpdir, getpid());
+	unlink(buf);
 
-	close(ret);
 	ret = ini_unroll(filename, buf);
 	if (ret < 0)
 		goto err_unlink;
