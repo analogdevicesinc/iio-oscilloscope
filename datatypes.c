@@ -46,8 +46,16 @@ void Transform_destroy(Transform *tr)
 void Transform_resize_x_axis(Transform *tr, int new_size)
 {
 	tr->destroy_x_axis = true;
-	tr->x_axis_size = (new_size >= 0) ? new_size : 0;
-	tr->x_axis = (gfloat *)realloc(tr->x_axis, sizeof(gfloat) * tr->x_axis_size);
+
+	if (new_size > 0) {
+		tr->x_axis_size = new_size;
+		tr->x_axis = (gfloat *) realloc(tr->x_axis, sizeof(gfloat) * new_size);
+	} else {
+		if (tr->x_axis)
+			free(tr->x_axis);
+		tr->x_axis_size = 0;
+		tr->x_axis = NULL;
+	}
 }
 
 void Transform_resize_y_axis(Transform *tr, int new_size)
@@ -55,9 +63,17 @@ void Transform_resize_y_axis(Transform *tr, int new_size)
 	if (tr->destroy_y_axis == false)
 		tr->y_axis = NULL;
 	tr->destroy_y_axis = true;
-	tr->y_axis_size = (new_size >= 0) ? new_size : 0;
-	tr->y_axis = (gfloat *)realloc(tr->y_axis, sizeof(gfloat) * tr->y_axis_size);
-	tr->y_axis = (gfloat *)memset(tr->y_axis, 0, sizeof(gfloat) * tr->y_axis_size);
+
+	if (new_size > 0) {
+		tr->y_axis_size = new_size;
+		tr->y_axis = (gfloat *) realloc(tr->y_axis, sizeof(gfloat) * new_size);
+		memset(tr->y_axis, 0, sizeof(gfloat) * new_size);
+	} else {
+		if (tr->y_axis)
+			free(tr->y_axis);
+		tr->y_axis_size = 0;
+		tr->y_axis = NULL;
+	}
 }
 
 gfloat* Transform_get_x_axis_ref(Transform *tr)
@@ -127,5 +143,11 @@ void TrList_remove_transform(TrList *list, Transform *tr)
 		list->transforms[i] = list->transforms[i + 1];
 	}
 	list->size--;
-	list->transforms = (Transform **)realloc(list->transforms, sizeof(Transform *) * list->size);
+	if (list->size) {
+		list->transforms = (Transform **) realloc(list->transforms,
+				sizeof(Transform *) * list->size);
+	} else {
+		free(list->transforms);
+		list->transforms = NULL;
+	}
 }

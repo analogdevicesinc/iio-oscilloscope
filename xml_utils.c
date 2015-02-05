@@ -76,7 +76,7 @@ char **get_xml_list(char * buf_dir_name, int *list_size)
 {
 	const struct dirent *ent;
 	DIR *d;
-	char **list;
+	char **list = NULL;
 	char *extension_ptr;
 	int cnt = 0;
 	int n = 0;
@@ -87,11 +87,6 @@ char **get_xml_list(char * buf_dir_name, int *list_size)
 		return NULL;
 	}
 
-	list = (char **)malloc(sizeof(char *) * 0);
-	if (list == NULL) {
-		printf("Memory allocation failed\n");
-		return NULL;
-	}
 	while (ent = readdir(d), ent != NULL) {
 		bool is_regular_file;
 #ifdef _DIRENT_HAVE_D_TYPE
@@ -270,13 +265,11 @@ xmlNodePtr get_child_by_name(xmlNodePtr parent_node, char* tag_name)
  */
 xmlNodePtr* get_children_by_name(xmlNodePtr parent_node, char* tag_name, int *children_cnt)
 {
-	xmlNodePtr *children_list;
+	xmlNodePtr *children_list = NULL;
 	xmlNodePtr child_node;
-	int n;
+	int n = 0;
 
 	child_node = parent_node->xmlChildrenNode;
-	n = 0;
-	children_list = (xmlNodePtr *)malloc(sizeof(xmlNodePtr) * n);
 
 	/* Search through the list of the available children */
 	while (child_node != NULL){
