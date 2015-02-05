@@ -1449,20 +1449,10 @@ static struct iio_device *plot_math_channel_get_iio_parent(PlotChn *obj)
 {
 	PlotMathChn *this = (PlotMathChn *)obj;
 	struct iio_device *iio_dev = NULL;
-	struct iio_channel *iio_chn;
-	struct extra_info *ch_info;
 
-	if (!this)
-		return NULL;
-
-	if (this->iio_channels && g_slist_length(this->iio_channels) > 0) {
-		iio_chn = this->iio_channels->data;
-		if (iio_chn) {
-			ch_info = iio_channel_get_data(iio_chn);
-			if (ch_info)
-				iio_dev = ch_info->dev;
-		}
-
+	if (this && this->iio_device_name) {
+		iio_dev = iio_context_find_device(ctx,
+				this->iio_device_name);
 	}
 
 	return iio_dev;
@@ -5205,11 +5195,6 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 	if (ret != GTK_RESPONSE_OK)
 		return - 1;
 
-	char *device_of_channels = NULL;
-
-	if (channels)
-		device_of_channels = active_device;
-
 	/* Store the settings of the new channel*/
 	if (pmc->txt_math_expression)
 		g_free(pmc->txt_math_expression);
@@ -5222,7 +5207,7 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 
 	pmc->txt_math_expression = txt_math_expr;
 	pmc->base.name = g_strdup(channel_name);
-	pmc->iio_device_name = g_strdup(device_of_channels);
+	pmc->iio_device_name = g_strdup(active_device);
 	pmc->iio_channels = channels;
 	pmc->math_expression = fn;
 	pmc->math_lib_handler = lhandler;
