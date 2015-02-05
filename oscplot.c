@@ -284,7 +284,8 @@ struct _OscPlotPrivate
 	GtkWidget *channel_settings_menu;
 	GtkWidget *math_channel_settings_menu;
 	GtkWidget *channel_expression_edit_menuitem;
-	GtkWidget *channel_color_menuitem;
+	GtkWidget *channel_iio_color_menuitem;
+	GtkWidget *channel_math_color_menuitem;
 	GtkWidget *channel_math_menuitem;
 	GtkWidget *channel_remove_menuitem;
 	GtkWidget *math_dialog;
@@ -5833,12 +5834,12 @@ static void create_plot(OscPlot *plot)
 	/* Create Channel Settings Menu */
 	priv->channel_settings_menu = gtk_menu_new();
 
-	priv->channel_color_menuitem = gtk_image_menu_item_new_with_label("Color Selection");
+	priv->channel_iio_color_menuitem = gtk_image_menu_item_new_with_label("Color Selection");
 	image = gtk_image_new_from_stock(GTK_STOCK_SELECT_COLOR, GTK_ICON_SIZE_MENU);
-	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_color_menuitem), image);
-	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_color_menuitem), true);
+	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_iio_color_menuitem), image);
+	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_iio_color_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->channel_settings_menu),
-		priv->channel_color_menuitem);
+		priv->channel_iio_color_menuitem);
 	priv->channel_math_menuitem = gtk_image_menu_item_new_with_label("Math Settings");
 	image = gtk_image_new_from_stock(GTK_STOCK_PREFERENCES, GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_menuitem), image);
@@ -5857,12 +5858,12 @@ static void create_plot(OscPlot *plot)
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
 		priv->channel_expression_edit_menuitem);
 
-	priv->channel_color_menuitem = gtk_image_menu_item_new_with_label("Color Selection");
+	priv->channel_math_color_menuitem = gtk_image_menu_item_new_with_label("Color Selection");
 	image = gtk_image_new_from_stock(GTK_STOCK_SELECT_COLOR, GTK_ICON_SIZE_MENU);
-	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_color_menuitem), image);
-	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_color_menuitem), true);
+	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_color_menuitem), image);
+	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_color_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
-		priv->channel_color_menuitem);
+		priv->channel_math_color_menuitem);
 	priv->channel_remove_menuitem = gtk_image_menu_item_new_with_label("Remove");
 	image = gtk_image_new_from_stock(GTK_STOCK_REMOVE, GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_remove_menuitem), image);
@@ -5934,7 +5935,9 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(new_math_channel_cb), plot);
 	g_signal_connect(priv->plot_trigger_menuitem, "activate",
 		G_CALLBACK(plot_trigger_settings_cb), plot);
-	g_signal_connect(priv->channel_color_menuitem, "activate",
+	g_signal_connect(priv->channel_iio_color_menuitem, "activate",
+		G_CALLBACK(channel_color_settings_cb), plot);
+	g_signal_connect(priv->channel_math_color_menuitem, "activate",
 		G_CALLBACK(channel_color_settings_cb), plot);
 	g_signal_connect(priv->channel_math_menuitem, "activate",
 		G_CALLBACK(channel_math_settings_cb), plot);
