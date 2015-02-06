@@ -2506,128 +2506,123 @@
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkToolbar" id="toolbar1">
+                      <object class="GtkToolButton" id="single_shot_button">
+                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="show_arrow">False</property>
-                        <child>
-                          <object class="GtkToolButton" id="single_shot_button">
-                            <property name="use_action_appearance">False</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="tooltip_text" translatable="yes">Single Shot Capture</property>
-                            <property name="use_action_appearance">False</property>
-                            <property name="label" translatable="yes">Single Shot</property>
-                            <property name="use_underline">True</property>
-                            <property name="stock_id">gtk-media-next</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="homogeneous">True</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkToggleToolButton" id="capture_button">
-                            <property name="use_action_appearance">False</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="tooltip_text" translatable="yes">Capture/Stop</property>
-                            <property name="use_action_appearance">False</property>
-                            <property name="label" translatable="yes">Capture</property>
-                            <property name="use_underline">True</property>
-                            <property name="stock_id">gtk-media-play</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="homogeneous">True</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkToolButton" id="zoom_in">
-                            <property name="use_action_appearance">False</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="tooltip_text" translatable="yes">Zoom In</property>
-                            <property name="use_action_appearance">False</property>
-                            <property name="label" translatable="yes">Zoom in</property>
-                            <property name="use_underline">True</property>
-                            <property name="stock_id">gtk-zoom-in</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="homogeneous">True</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkToolButton" id="zoom_out">
-                            <property name="use_action_appearance">False</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="tooltip_text" translatable="yes">Zoom Out</property>
-                            <property name="use_action_appearance">False</property>
-                            <property name="label" translatable="yes">Zoom out</property>
-                            <property name="use_underline">True</property>
-                            <property name="stock_id">gtk-zoom-out</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="homogeneous">True</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkToolButton" id="zoom_fit">
-                            <property name="use_action_appearance">False</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="tooltip_text" translatable="yes">AutoZoom</property>
-                            <property name="use_action_appearance">False</property>
-                            <property name="label" translatable="yes">Zoom fit</property>
-                            <property name="use_underline">True</property>
-                            <property name="stock_id">gtk-zoom-fit</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="homogeneous">True</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkToolButton" id="save_as">
-                            <property name="use_action_appearance">False</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="tooltip_text" translatable="yes">Save As</property>
-                            <property name="use_action_appearance">False</property>
-                            <property name="label" translatable="yes">Save As</property>
-                            <property name="use_underline">True</property>
-                            <property name="stock_id">gtk-save-as</property>
-                            <accelerator key="s" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="homogeneous">True</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkToolButton" id="fullscreen">
-                            <property name="use_action_appearance">False</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="tooltip_text" translatable="yes">FullScreen</property>
-                            <property name="use_action_appearance">False</property>
-                            <property name="label" translatable="yes">FullScreen</property>
-                            <property name="use_underline">True</property>
-                            <property name="stock_id">gtk-fullscreen</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="homogeneous">True</property>
-                          </packing>
-                        </child>
+                        <property name="tooltip_text" translatable="yes">Single Shot Capture</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="label" translatable="yes">Single Shot</property>
+                        <property name="use_underline">True</property>
+                        <property name="stock_id">gtk-media-next</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
-                        <property name="fill">True</property>
+                        <property name="homogeneous">True</property>
                         <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkToggleToolButton" id="capture_button">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="tooltip_text" translatable="yes">Capture/Stop</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="label" translatable="yes">Capture</property>
+                        <property name="use_underline">True</property>
+                        <property name="stock_id">gtk-media-play</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="homogeneous">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkToolButton" id="zoom_in">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="tooltip_text" translatable="yes">Zoom In</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="label" translatable="yes">Zoom in</property>
+                        <property name="use_underline">True</property>
+                        <property name="stock_id">gtk-zoom-in</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="homogeneous">True</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkToolButton" id="zoom_out">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="tooltip_text" translatable="yes">Zoom Out</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="label" translatable="yes">Zoom out</property>
+                        <property name="use_underline">True</property>
+                        <property name="stock_id">gtk-zoom-out</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="homogeneous">True</property>
+                        <property name="position">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkToolButton" id="zoom_fit">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="tooltip_text" translatable="yes">AutoZoom</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="label" translatable="yes">Zoom fit</property>
+                        <property name="use_underline">True</property>
+                        <property name="stock_id">gtk-zoom-fit</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="homogeneous">True</property>
+                        <property name="position">4</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkToolButton" id="save_as">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="tooltip_text" translatable="yes">Save As</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="label" translatable="yes">Save As</property>
+                        <property name="use_underline">True</property>
+                        <property name="stock_id">gtk-save-as</property>
+                        <accelerator key="s" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="homogeneous">True</property>
+                        <property name="position">5</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkToolButton" id="fullscreen">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="tooltip_text" translatable="yes">FullScreen</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="label" translatable="yes">FullScreen</property>
+                        <property name="use_underline">True</property>
+                        <property name="stock_id">gtk-fullscreen</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="homogeneous">True</property>
+                        <property name="position">6</property>
                       </packing>
                     </child>
                     <child>
@@ -2645,7 +2640,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">1</property>
+                        <property name="position">7</property>
                       </packing>
                     </child>
                     <child>
@@ -2663,7 +2658,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">2</property>
+                        <property name="position">8</property>
                       </packing>
                     </child>
                     <child>
@@ -2678,7 +2673,7 @@
                         <property name="expand">True</property>
                         <property name="fill">True</property>
                         <property name="pack_type">end</property>
-                        <property name="position">3</property>
+                        <property name="position">9</property>
                       </packing>
                     </child>
                     <child>
@@ -2697,7 +2692,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">4</property>
+                        <property name="position">10</property>
                       </packing>
                     </child>
                     <child>
@@ -2715,7 +2710,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">5</property>
+                        <property name="position">11</property>
                       </packing>
                     </child>
                     <child>
@@ -2727,7 +2722,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">6</property>
+                        <property name="position">12</property>
                       </packing>
                     </child>
                     <child>
@@ -2743,7 +2738,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">7</property>
+                        <property name="position">13</property>
                       </packing>
                     </child>
                     <child>
@@ -2757,35 +2752,24 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">8</property>
+                        <property name="position">14</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkToolbar" id="toolbar2">
+                      <object class="GtkToolButton" id="toolbutton_new_plot">
+                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="show_arrow">False</property>
-                        <child>
-                          <object class="GtkToolButton" id="toolbutton_new_plot">
-                            <property name="use_action_appearance">False</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="tooltip_text" translatable="yes">New Plot</property>
-                            <property name="use_action_appearance">False</property>
-                            <property name="label" translatable="yes">New Plot</property>
-                            <property name="use_underline">True</property>
-                            <property name="icon_name">window-new</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="homogeneous">True</property>
-                          </packing>
-                        </child>
+                        <property name="tooltip_text" translatable="yes">New Plot</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="label" translatable="yes">New Plot</property>
+                        <property name="use_underline">True</property>
+                        <property name="icon_name">window-new</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">9</property>
+                        <property name="homogeneous">True</property>
+                        <property name="position">15</property>
                       </packing>
                     </child>
                   </object>
