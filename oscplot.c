@@ -3386,8 +3386,6 @@ static void zoom_out(GtkButton *btn, gpointer data)
 				right = t_right;
 			}
 		}
-		width = right - left;
-		height = top - bottom;
 	}
 
 	gtk_databox_set_visible_limits(GTK_DATABOX(priv->databox), left, right, top, bottom);

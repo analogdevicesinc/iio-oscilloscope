@@ -710,7 +710,6 @@ unsigned char * build_FRU_blob (struct FRU_DATA *fru, size_t *length, bool packe
 	unsigned int st, len, tmp, last = 0, i = 0, j;
 
 	buf = x_calloc(1, 1024);
-	len = 256;
 
 	buf[0] = 0x01;
 	i = 8;
@@ -721,7 +720,7 @@ unsigned char * build_FRU_blob (struct FRU_DATA *fru, size_t *length, bool packe
 		printf_err("Chassis Info not yet implemented - sorry\n");
 
 	if (fru->Board_Area) {
-		len = st = i;
+		st = i;
 		buf[3] = i / 8;
 		buf[i] = 0x1;   /* Magic number */
 		/* buf[i+1] = length, which needs to be determined later */
@@ -770,7 +769,7 @@ unsigned char * build_FRU_blob (struct FRU_DATA *fru, size_t *length, bool packe
 		}
 		p = fru->MultiRecord_Area->i2c_devices;
 		if (p) {
-			unsigned int len, oui = VITA_OUI;
+			unsigned int oui = VITA_OUI;
 			unsigned char *six = NULL;
 			len = ascii2six(&six, p, strlen((char *)p));
 

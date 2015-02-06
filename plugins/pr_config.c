@@ -95,20 +95,19 @@ static void entry_set_hex_int(GtkWidget *entry, unsigned data)
  */
 static const char * updatePR(const char * pr_bin_path) {
 
-	uint32_t pr_logic_fp = -1;
 	uint32_t status = 0;
-	int ret;
+	int ret, fd;
 
-	pr_logic_fp = open(pr_bin_path, O_RDONLY);
-	if(pr_logic_fp < 0) {
+	fd = open(pr_bin_path, O_RDONLY);
+	if(fd < 0) {
 		return "Could not open file!";
 	} else {
-		status = read(pr_logic_fp, buf_pr, BUF_SIZE);
+		status = read(fd, buf_pr, BUF_SIZE);
 		if(status < 0) {
-			close(pr_logic_fp);
+			close(fd);
 			return "Could not read file!";
 		}
-		close(pr_logic_fp);
+		close(fd);
 	}
 
 	/* set is_partial_bitfile device attribute */

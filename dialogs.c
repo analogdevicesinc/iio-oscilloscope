@@ -319,7 +319,8 @@ void connect_fillin(Dialogs *data)
 	GtkTextBuffer *buf;
 	GtkTextIter iter;
 	char text[256];
-	int num, i;
+	int num;
+	size_t i;
 	struct stat st;
 	struct iio_context *ctx;
 	const char *desc;
@@ -364,7 +365,7 @@ void connect_fillin(Dialogs *data)
 				i = fread(text, 1, 256, efp);
 				if (i == 256) {
 					for (i = 0; i < 256; i++){
-						if (!(text[i] == 0x00 || text[i] == 0xFF)) {
+						if (!(text[i] == 0x00 || ((unsigned char) text[i]) == 0xFF)) {
 							i = 0;
 							break;
 						}

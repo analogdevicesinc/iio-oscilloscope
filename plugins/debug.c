@@ -1305,7 +1305,7 @@ static void device_xml_file_selection(const char *device_name, char *filename)
 		else if (is_output_device(iio_dev) && xml_file_exists("adi_regmap_dac.xml"))
 			sprintf(filename, "adi_regmap_dac.xml");
 	} else {
-		sprintf(filename, "%s", "");
+		filename[0] = '\0';
 	}
 }
 
@@ -1344,6 +1344,7 @@ static int device_xml_file_load(char *filename)
 static bool xml_file_exists(const char *filename)
 {
 	char *temp_path;
+	bool exists;
 
 	temp_path = malloc(strlen(xmls_folder_path) + strlen(filename) + 2);
 	if (!temp_path) {
@@ -1352,10 +1353,9 @@ static bool xml_file_exists(const char *filename)
 	}
 	sprintf(temp_path, "%s/%s", xmls_folder_path, filename);
 
-	if (access(temp_path, F_OK) == 0)
-		return true;
-	else
-		return false;
+	exists = !access(temp_path, F_OK);
+	free(temp_path);
+	return exists;
 }
 
 /*
@@ -1363,7 +1363,7 @@ static bool xml_file_exists(const char *filename)
  */
 static void debug_register_section_init(struct iio_device *iio_dev)
 {
-	char xml_filename[128];
+	char xml_filename[128] = { 0 };
 
 	if (!iio_dev)
 		return;
@@ -1371,7 +1371,7 @@ static void debug_register_section_init(struct iio_device *iio_dev)
 	if (iio_device_get_debug_attrs_count(dev) > 0) {
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle_detailed_regmap))) {
 			device_xml_file_selection(iio_device_get_name(iio_dev), xml_filename);
-			if (strcmp(xml_filename, ""))
+			if (xml_filename[0])
 				device_xml_file_load(xml_filename);
 		}
 		gtk_widget_set_sensitive(register_section, true);
@@ -1422,9 +1422,11 @@ static void create_device_context(void)
 		reg_addr_list = get_reg_addr_list();
 		/* Init data */
 		reg_bit_width = get_default_reg_width();
-		alloc_widget_arrays(reg_bit_width);
-		create_reg_map();
-		context_created = 1;
+		if (reg_bit_width) {
+			alloc_widget_arrays(reg_bit_width);
+			create_reg_map();
+			context_created = 1;
+		}
 	}
 }
 
