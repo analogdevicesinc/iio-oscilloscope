@@ -849,12 +849,12 @@ static void do_fft(Transform *tr)
 		mag = 10 * log10((creal(fft->out[j]) * creal(fft->out[j]) +
 				cimag(fft->out[j]) * cimag(fft->out[j])) / ((unsigned long long)fft->m * fft->m)) +
 			fft->fft_corr + pwr_offset + plugin_fft_corr;
-		/* it's better for performance to have seperate loops,
+		/* it's better for performance to have separate loops,
 		 * rather than do these tests inside the loop, but it makes
 		 * the code harder to understand... Oh well...
 		 ***/
 		if (out_data[i] == FLT_MAX) {
-			/* Don't average the first iterration */
+			/* Don't average the first iteration */
 			 out_data[i] = mag;
 		} else if (!avg) {
 			/* keep peaks */
