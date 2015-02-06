@@ -22,6 +22,10 @@
 #include "osc.h"
 #include "config.h"
 
+#if defined(FRU_FILES) && !defined(__linux__)
+#undef FRU_FILES
+#endif
+
 typedef struct _Dialogs Dialogs;
 struct _Dialogs
 {
@@ -29,6 +33,7 @@ struct _Dialogs
 	GtkWidget *connect;
 	GtkWidget *connect_fru;
 	GtkWidget *connect_iio;
+	GtkWidget *ctx_info;
 	GtkWidget *serial_num;
 	GtkWidget *load_save_profile;
 	GtkWidget *connect_net;
@@ -259,6 +264,40 @@ static int is_eeprom_fru(char *eeprom_file, GtkTextBuffer *buf, GtkTextIter *ite
 	return 0;
 }
 
+bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
+{
+	GdkCursor *watchCursor;
+	GdkWindow *gdkWindow;
+
+	g_return_val_if_fail(widget, false);
+
+	gdkWindow = gtk_widget_get_window(widget);
+	g_return_val_if_fail(gdkWindow, false);
+
+	watchCursor = gdk_cursor_new(type);
+	gdk_window_set_cursor(gdkWindow, watchCursor);
+
+	while (gtk_events_pending())
+		gtk_main_iteration();
+
+
+	return true;
+}
+
+bool widget_use_parent_cursor(GtkWidget *widget)
+{
+	GdkWindow *gdkWindow;
+
+	g_return_val_if_fail(widget, false);
+
+	gdkWindow = gtk_widget_get_window(widget);
+	g_return_val_if_fail(gdkWindow, false);
+
+	gdk_window_set_cursor(gdkWindow, NULL);
+
+	return true;
+}
+
 static struct iio_context * get_context(Dialogs *data)
 {
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_net))) {
@@ -282,6 +321,8 @@ void connect_fillin(Dialogs *data)
 	char text[256];
 	int num, i;
 	struct stat st;
+	struct iio_context *ctx;
+	const char *desc;
 
 	/* flushes all open output streams */
 	fflush(NULL);
@@ -358,10 +399,18 @@ void connect_fillin(Dialogs *data)
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_fru), buf);
 	g_object_unref(buf);
 
+	ctx = get_context(data);
+	desc = ctx ? iio_context_get_description(ctx) : "";
+
+	buf = gtk_text_buffer_new(NULL);
+	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
+	gtk_text_buffer_insert(buf, &iter, desc, -1);
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->ctx_info), buf);
+	g_object_unref(buf);
+
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
 
-	struct iio_context *ctx = get_context(data);
 	num = ctx ? iio_context_get_devices_count(ctx) : 0;
 	if (num > 0) {
 		for (i = 0; i < num; i++) {
@@ -399,8 +448,11 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 
 	do {
 		ret = gtk_dialog_run(GTK_DIALOG(data->connect));
-		if (ret == GTK_RESPONSE_APPLY)
+		if (ret == GTK_RESPONSE_APPLY) {
+			widget_set_cursor(data->connect, GDK_WATCH);
 			connect_fillin(data);
+			widget_use_parent_cursor(data->connect);
+		}
 	} while (ret == GTK_RESPONSE_APPLY);
 
 	switch(ret) {
@@ -408,7 +460,9 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 		case GTK_RESPONSE_DELETE_EVENT:
 			break;
 		case GTK_RESPONSE_OK:
+			widget_set_cursor(data->connect, GDK_WATCH);
 			application_reload(get_context(data));
+			widget_use_parent_cursor(data->connect);
 			break;
 		default:
 			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
@@ -556,6 +610,7 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.connect_fru = GTK_WIDGET(gtk_builder_get_object(builder, "fru_info"));
 	dialogs.serial_num = GTK_WIDGET(gtk_builder_get_object(builder, "serial_number_popup"));
 	dialogs.connect_iio = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_devices"));
+	dialogs.ctx_info = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_ctx_info"));
 	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
 	dialogs.connect_net = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
 	dialogs.net_ip = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));

@@ -18,10 +18,9 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <malloc.h>
-#include <values.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <sys/utsname.h>
+#include <unistd.h>
 
 #include "../datatypes.h"
 #include "../osc.h"
@@ -74,6 +73,11 @@ static GtkWidget *reg_write;
 static gint this_page;
 static GtkWidget *pr_config_panel;
 static gboolean plugin_detached;
+
+static const char * pr_config_driver_attribs[] = {
+	"config_file",
+	"adc_active",
+};
 
 static void entry_set_hex_int(GtkWidget *entry, unsigned data)
 {
@@ -283,21 +287,38 @@ static void reg_write_clicked_cb(GtkButton *button, gpointer data)
 	writeReg(device, PR_CONTROL_ADDR, reg_data);
 }
 
-static void load_profile(const char *ini_fn)
+static int pr_config_handle_driver(const char *attrib, const char *value)
 {
-	char *value = read_token_from_ini(ini_fn, THIS_DRIVER, "config_file");
-	if (value) {
-		if (value[0])
-			pr_config_file_apply(value);
-		free(value);
+	if (MATCH_ATTRIB("config_file")) {
+		pr_config_file_apply(value);
+	} else if (MATCH_ATTRIB("adc_active")) {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(regmap_select),
+				atoi(value) ? ADC_REGMAP : DAC_REGMAP);
+	} else {
+		return -EINVAL;
 	}
 
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "adc_active");
-	if (value) {
-		if (value[0])
-			gtk_combo_box_set_active(GTK_COMBO_BOX(regmap_select),
-					atoi(value) ? ADC_REGMAP : DAC_REGMAP);
-		free(value);
+	return 0;
+}
+
+static int pr_config_handle(const char *attrib, const char *value)
+{
+	return osc_plugin_default_handle(ctx, attrib, value,
+			pr_config_handle_driver);
+}
+
+static void load_profile(const char *ini_fn)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(pr_config_driver_attribs); i++) {
+		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				pr_config_driver_attribs[i]);
+		if (value) {
+			pr_config_handle_driver(
+					pr_config_driver_attribs[i], value);
+			free(value);
+		}
 	}
 }
 
@@ -421,6 +442,7 @@ struct osc_plugin plugin = {
 	.init = pr_config_init,
 	.update_active_page = update_active_page,
 	.get_preferred_size = pr_config_get_preferred_size,
+	.handle_item = pr_config_handle,
 	.save_profile = save_profile,
 	.load_profile = load_profile,
 	.destroy = context_destroy,

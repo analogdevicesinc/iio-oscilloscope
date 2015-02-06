@@ -52,13 +52,16 @@ struct extra_dev_info {
 	bool input_device;
 	struct iio_buffer *buffer;
 	unsigned int sample_count;
+	unsigned int buffer_size;
 	unsigned int channel_trigger;
 	bool channel_trigger_enabled;
 	bool trigger_falling_edge;
+	float trigger_value;
 	double adc_freq, lo_freq;
 	char adc_scale;
 	gfloat **channels_data_copy;
 	GSList *plots_sample_counts;
+	gfloat plugin_fft_corr;
 };
 
 struct buffer {
@@ -88,18 +91,14 @@ struct _fft_alg_data{
 
 struct _transform {
 	int type_id;
-	struct iio_channel *channel_parent,
-			   *channel_parent2,
-			   *channel_parent3,
-			   *channel_parent4;
-	gfloat **in_data;
+	GSList *plot_channels;
+	int plot_channels_type;
 	gfloat *x_axis;
 	gfloat *y_axis;
 	unsigned x_axis_size;
 	unsigned y_axis_size;
 	bool destroy_x_axis;
 	bool destroy_y_axis;
-	bool local_output_buf;
 	GdkColor *graph_color;
 	bool has_the_marker;
 	void *settings;
@@ -112,7 +111,9 @@ struct _tr_list {
 };
 
 struct _time_settings {
+	gfloat *data_source;
 	unsigned int num_samples;
+	gfloat max_x_axis;
 	gboolean apply_inverse_funct;
 	gboolean apply_multiply_funct;
 	gboolean apply_add_funct;
@@ -121,6 +122,8 @@ struct _time_settings {
 };
 
 struct _fft_settings {
+	gfloat *real_source;
+	gfloat *imag_source;
 	unsigned int fft_size;
 	unsigned int fft_avg;
 	gfloat fft_pwr_off;
@@ -132,10 +135,16 @@ struct _fft_settings {
 };
 
 struct _constellation_settings {
+	gfloat *x_source;
+	gfloat *y_source;
 	unsigned int num_samples;
 };
 
 struct _cross_correlation_settings {
+	gfloat *i0_source;
+	gfloat *q0_source;
+	gfloat *i1_source;
+	gfloat *q1_source;
 	unsigned int num_samples;
 	int revert_xcorr;
 	fftw_complex *signal_a;
@@ -151,7 +160,6 @@ Transform* Transform_new(int tr_type);
 void Transform_destroy(Transform *tr);
 void Transform_resize_x_axis(Transform *tr, int new_size);
 void Transform_resize_y_axis(Transform *tr, int new_size);
-void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref);
 gfloat* Transform_get_x_axis_ref(Transform *tr);
 gfloat* Transform_get_y_axis_ref(Transform *tr);
 void Transform_attach_settings(Transform *tr, void *settings);

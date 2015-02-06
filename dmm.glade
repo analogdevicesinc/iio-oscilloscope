@@ -30,6 +30,7 @@
     <property name="spacing">5</property>
     <child>
       <object class="GtkVBox" id="box5">
+        <property name="width_request">250</property>
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -150,7 +151,6 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="use_action_appearance">False</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -230,7 +230,7 @@
         </child>
       </object>
       <packing>
-        <property name="expand">True</property>
+        <property name="expand">False</property>
         <property name="fill">True</property>
         <property name="padding">4</property>
         <property name="position">0</property>
@@ -241,36 +241,25 @@
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
-          <object class="GtkHBox" id="box2">
+          <object class="GtkHButtonBox" id="buttonbox1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="layout_style">start</property>
             <child>
-              <object class="GtkToolbar" id="toolbar1">
+              <object class="GtkToggleToolButton" id="dmm_button">
+                <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="show_arrow">False</property>
-                <child>
-                  <object class="GtkToggleToolButton" id="dmm_button">
-                    <property name="use_action_appearance">False</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup" translatable="yes">Play/Stop</property>
-                    <property name="tooltip_text" translatable="yes">Play/Stop</property>
-                    <property name="use_action_appearance">False</property>
-                    <property name="label" translatable="yes">DMM</property>
-                    <property name="use_underline">True</property>
-                    <property name="stock_id">gtk-media-play</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="homogeneous">True</property>
-                  </packing>
-                </child>
+                <property name="has_tooltip">True</property>
+                <property name="tooltip_markup" translatable="yes">Play/Stop</property>
+                <property name="tooltip_text" translatable="yes">Play/Stop</property>
+                <property name="label" translatable="yes">DMM</property>
+                <property name="use_underline">True</property>
+                <property name="stock_id">gtk-media-play</property>
               </object>
               <packing>
                 <property name="expand">False</property>
-                <property name="fill">True</property>
+                <property name="fill">False</property>
                 <property name="position">0</property>
               </packing>
             </child>

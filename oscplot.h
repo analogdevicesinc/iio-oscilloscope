@@ -42,6 +42,7 @@ GType         osc_plot_get_type         (void);
 GtkWidget*    osc_plot_new              (void);
 void          osc_plot_destroy          (OscPlot *plot);
 void          osc_plot_set_visible      (OscPlot *plot, bool visible);
+struct iio_buffer * osc_plot_get_buffer (OscPlot *plot);
 void          osc_plot_data_update      (OscPlot *plot);
 void          osc_plot_update_rx_lbl    (OscPlot *plot, bool force_update);
 void          osc_plot_restart          (OscPlot *plot);
@@ -60,8 +61,8 @@ void          osc_plot_set_markers_copy (OscPlot *plot, void *value);
 void          osc_plot_set_domain       (OscPlot *plot, int domain);
 int           osc_plot_get_plot_domain  (OscPlot *plot);
 GMutex *      osc_plot_get_marker_lock  (OscPlot *plot);
-bool          osc_plot_set_sample_count (OscPlot *plot, int sample_count);
-int           osc_plot_get_sample_count (OscPlot *plot);
+bool          osc_plot_set_sample_count (OscPlot *plot, gdouble count);
+double        osc_plot_get_sample_count (OscPlot *plot);
 void          osc_plot_set_channel_state(OscPlot *plot, const char *dev, int channel, bool state);
 void          osc_plot_xcorr_revert     (OscPlot *plot, int revert);
 

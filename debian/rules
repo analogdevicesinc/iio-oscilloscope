@@ -1,0 +1,4 @@
+#!/usr/bin/make -f
+
+%:
+	PREFIX=/usr DEBIAN_INSTALL=y dh $@ --parallel

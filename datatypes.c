@@ -5,30 +5,16 @@
  *
  **/
 #include <malloc.h>
+#include <string.h>
 #include "datatypes.h"
 
 Transform* Transform_new(int type)
 {
-	Transform *tr = (Transform *)malloc(sizeof(Transform));
+	Transform *tr = (Transform *)calloc(1, sizeof(Transform));
 
 	tr->type_id = (type > NO_TRANSFORM_TYPE &&
-			type < TRANSFORMS_TYPES_COUNT) ? type : NO_TRANSFORM_TYPE;
-	tr->channel_parent = NULL;
-	tr->channel_parent2 = NULL;
-	tr->channel_parent3 = NULL;
-	tr->channel_parent4 = NULL;
-	tr->in_data = NULL;
-	tr->x_axis = NULL;
-	tr->y_axis = NULL;
-	tr->x_axis_size = 0;
-	tr->y_axis_size = 0;
-	tr->destroy_x_axis = false;
-	tr->destroy_y_axis = false;
-	tr->local_output_buf = false;
-	tr->graph_color = NULL;
-	tr->has_the_marker = false;
-	tr->settings = NULL;
-	tr->transform_function = NULL;
+			type < TRANSFORMS_TYPES_COUNT) ? type
+			: NO_TRANSFORM_TYPE;
 
 	return tr;
 }
@@ -47,6 +33,10 @@ void Transform_destroy(Transform *tr)
 		if (tr->settings) {
 			free(tr->settings);
 			tr->settings = NULL;
+		}
+		if (tr->plot_channels) {
+			g_slist_free(tr->plot_channels);
+			tr->plot_channels = NULL;
 		}
 		free(tr);
 		tr = NULL;
@@ -67,11 +57,7 @@ void Transform_resize_y_axis(Transform *tr, int new_size)
 	tr->destroy_y_axis = true;
 	tr->y_axis_size = (new_size >= 0) ? new_size : 0;
 	tr->y_axis = (gfloat *)realloc(tr->y_axis, sizeof(gfloat) * tr->y_axis_size);
-}
-
-void Transform_set_in_data_ref(Transform *tr, gfloat **data_ref)
-{
-	tr->in_data = data_ref;
+	tr->y_axis = (gfloat *)memset(tr->y_axis, 0, sizeof(gfloat) * tr->y_axis_size);
 }
 
 gfloat* Transform_get_x_axis_ref(Transform *tr)

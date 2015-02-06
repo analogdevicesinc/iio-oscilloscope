@@ -18,9 +18,9 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <malloc.h>
-#include <values.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "../libini2.h"
 #include "../osc.h"
@@ -30,6 +30,10 @@
 #include "../eeprom.h"
 #include "scpi.h"
 #include "dac_data_manager.h"
+
+#ifndef MAXFLOAT
+#define MAXFLOAT HUGE
+#endif
 
 #define THIS_DRIVER "FMComms1"
 
@@ -137,9 +141,22 @@ static const char *fmcomms1_sr_attribs[] = {
 	"adf4351-rx-lpc.out_altvoltage0_frequency_resolution",
 	"adf4351-rx-lpc.out_altvoltage0_frequency",
 	"adf4351-rx-lpc.out_altvoltage0_powerdown",
-	"gain_locked",
 	"ad8366-lpc.out_voltage0_hardwaregain",
 	"ad8366-lpc.out_voltage1_hardwaregain",
+};
+
+static const char *fmcomms1_driver_attribs[] = {
+	"dds_mode",
+	"tx_channel_0",
+	"tx_channel_1",
+	"dac_buf_filename",
+	"calibrate_rx_level",
+	"cal_clear",
+	"cal_add",
+	"cal_save",
+	"calibrate_rx",
+	"calibrate_tx",
+	"gain_locked",
 };
 
 static int kill_thread;
@@ -627,6 +644,7 @@ static void display_cal(void *ptr)
 	const char *device_ref;
 	int ret, attempt = 0;
 	OscPlot *fft_plot;
+	double ln10 = log(10.0);
 
 	device_ref = plugin_get_device_by_reference("cf-ad9643-core-lpc");
 	if (!device_ref)
@@ -770,7 +788,7 @@ static void display_cal(void *ptr)
 						plugin_get_plot_marker_type(fft_plot, device_ref) == MARKER_IMAGE) {
 					if (attempt == 0)
 						gain = (span_I_set + span_I_set) / 2;
-					gain *= 1.0 / exp10((markers[0].y - cal_rx_level) / 20);
+					gain *= 1.0 / exp(ln10 * (double) ((markers[0].y - cal_rx_level) / 20));
 				}
 
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(I_adc_gain_adj),
@@ -1524,9 +1542,90 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
+static int fmcomms1_handle_driver(const char *attrib, const char *value)
+{
+	if (MATCH_ATTRIB("dds_mode")) {
+		dac_data_manager_set_dds_mode(dac_tx_manager,
+				"cf-ad9122-core-lpc", 1, atoi(value));
+	} else if (MATCH_ATTRIB("tx_channel_0")) {
+		dac_data_manager_set_tx_channel_state(dac_tx_manager,
+				0, !!atoi(value));
+	} else if (MATCH_ATTRIB("tx_channel_1")) {
+		dac_data_manager_set_tx_channel_state(dac_tx_manager,
+				1, !!atoi(value));
+	} else if (MATCH_ATTRIB("dac_buf_filename")) {
+		if (dac_data_manager_get_dds_mode(dac_tx_manager,
+					"cf-ad9122-core-lpc", 1) == DDS_BUFFER)
+			dac_data_manager_set_buffer_chooser_filename(
+					dac_tx_manager, value);
+	} else if (MATCH_ATTRIB("calibrate_rx_level")) {
+		cal_rx_level = atof(value);
+	} else if (MATCH_ATTRIB("cal_clear")) {
+		memset(&cal_eeprom_v1, 0, sizeof(cal_eeprom_v1));
+	} else if (MATCH_ATTRIB("cal_add")) {
+		cal_entry_add(&cal_eeprom_v1);
+	} else if (MATCH_ATTRIB("cal_save")) {
+		cal_save_to_eeprom(&cal_eeprom_v1);
+	} else if (MATCH_ATTRIB("calibrate_rx")) {
+		if (atoi(value) == 1) {
+			GThread *thr;
+			unsigned int i = 0;
+
+			gtk_widget_show(dialogs.calibrate);
+			kill_thread = 0;
+			cal_rx_button_clicked();
+			thr = g_thread_new("Display_thread",
+					(void *) &display_cal, (gpointer *) 1);
+			while (i <= 20) {
+				i += kill_thread;
+				gtk_main_iteration();
+			}
+			g_thread_join(thr);
+			cal_rx_flag = false;
+			gtk_widget_hide(dialogs.calibrate);
+		}
+	} else if (MATCH_ATTRIB("calibrate_tx")) {
+		if (atoi(value) == 1) {
+			GThread *thr, *thid;
+			unsigned int i = 0;
+
+			scpi_connect_functions();
+			gtk_widget_show(dialogs.calibrate);
+			kill_thread = 0;
+			thid = cal_tx_button_clicked();
+			thr = g_thread_new("Display_thread",
+					(void *) &display_cal, (gpointer *) 1);
+			while (i <= 20) {
+				i += kill_thread;
+				gtk_main_iteration();
+			}
+			g_thread_join(thid);
+			g_thread_join(thr);
+			gtk_widget_hide(dialogs.calibrate);
+		}
+	} else if (MATCH_ATTRIB("gain_locked")) {
+		gtk_toggle_button_set_active(
+				GTK_TOGGLE_BUTTON(gain_locked), atoi(value));
+	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
+		tx_update_values();
+		rx_update_values();
+		dac_data_manager_update_iio_widgets(dac_tx_manager);
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int fmcomms1_handle(const char *attrib, const char *value)
+{
+	return osc_plugin_default_handle(ctx, attrib, value,
+			fmcomms1_handle_driver);
+}
+
 static void load_profile(const char *ini_fn)
 {
-	char *value;
+	unsigned int i;
 
 	update_from_ini(ini_fn, THIS_DRIVER, dac, fmcomms1_sr_attribs,
 			ARRAY_SIZE(fmcomms1_sr_attribs));
@@ -1545,103 +1644,14 @@ static void load_profile(const char *ini_fn)
 				fmcomms1_sr_attribs,
 				ARRAY_SIZE(fmcomms1_sr_attribs));
 
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode");
-	if (value) {
-		dac_data_manager_set_dds_mode(dac_tx_manager, "cf-ad9122-core-lpc", 1, atoi(value));
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_0");
-	if (value) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager, 0, !!atoi(value));
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_1");
-	if (value) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, !!atoi(value));
-		free(value);
-	}
-
-	if (dac_data_manager_get_dds_mode(dac_tx_manager, "cf-ad9122-core-lpc", 1) == DDS_BUFFER) {
-		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
+	for (i = 0; i < ARRAY_SIZE(fmcomms1_driver_attribs); i++) {
+		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				fmcomms1_driver_attribs[i]);
 		if (value) {
-			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
+			fmcomms1_handle_driver(
+					fmcomms1_driver_attribs[i], value);
 			free(value);
 		}
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "calibrate_rx_level");
-	if (value) {
-		cal_rx_level = atof(value);
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "cal_clear");
-	if (value) {
-		memset(&cal_eeprom_v1, 0, sizeof(cal_eeprom_v1));
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "cal_add");
-	if (value) {
-		cal_entry_add(&cal_eeprom_v1);
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "cal_save");
-	if (value) {
-		cal_save_to_eeprom(&cal_eeprom_v1);
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "calibrate_rx");
-	if (value) {
-		if (atoi(value) == 1) {
-			GThread *thr;
-			unsigned int i = 0;
-
-			gtk_widget_show(dialogs.calibrate);
-			kill_thread = 0;
-			cal_rx_button_clicked();
-			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
-			while (i <= 20) {
-				i += kill_thread;
-				gtk_main_iteration();
-			}
-			g_thread_join(thr);
-			cal_rx_flag = false;
-			gtk_widget_hide(dialogs.calibrate);
-		}
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "calibrate_tx");
-	if (value) {
-		if (atoi(value) == 1) {
-			GThread *thr, *thid;
-			unsigned int i = 0;
-
-			scpi_connect_functions();
-			gtk_widget_show(dialogs.calibrate);
-			kill_thread = 0;
-			thid = cal_tx_button_clicked();
-			thr = g_thread_new("Display_thread", (void *) &display_cal, (gpointer *)1);
-			while (i <= 20) {
-				i += kill_thread;
-				gtk_main_iteration();
-			}
-			g_thread_join(thid);
-			g_thread_join(thr);
-			gtk_widget_hide(dialogs.calibrate);
-		}
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "gain_locked");
-	if (value) {
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gain_locked), atoi(value));
-		free(value);
 	}
 
 	if (can_update_widgets) {
@@ -1999,6 +2009,7 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = fmcomms1_identify,
 	.init = fmcomms1_init,
+	.handle_item = fmcomms1_handle,
 	.save_profile = save_profile,
 	.load_profile = load_profile,
 	.destroy = context_destroy,

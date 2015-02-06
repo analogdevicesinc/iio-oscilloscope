@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <iio.h>
 
@@ -74,34 +75,9 @@ static struct iio_channel * get_channel(const struct iio_device *dev,
 
 static double read_double_attr(const struct iio_channel *chn, const char *name)
 {
-	unsigned int i, nb = iio_channel_get_attrs_count(chn);
-
-	for (i = 0; i < nb; i++) {
-		char buf[1024];
-		size_t ret;
-		const char *attr = iio_channel_get_attr(chn, i);
-		if (strcmp(attr, name))
-			continue;
-
-		ret = iio_channel_attr_read(chn, attr, buf, sizeof(buf));
-		if (ret < 0)
-			return -1.0;
-		return g_strtod(buf, NULL);
-	}
-
-	return -1.0;
-}
-
-static bool has_attribute(const struct iio_channel *chn, const char *name)
-{
-	unsigned int i, nb = iio_channel_get_attrs_count(chn);
-
-	for (i = 0; i < nb; i++) {
-		const char *attr = iio_channel_get_attr(chn, i);
-		if (!strcmp(attr, name))
-			return true;
-	}
-	return false;
+	double val;
+	int ret = iio_channel_attr_read_double(chn, name, &val);
+	return ret < 0 ? -1.0 : val;
 }
 
 static void build_channel_list(void)
@@ -336,17 +312,17 @@ static void dmm_update_thread(void)
 					struct iio_channel *chn =
 						get_channel(dev, channel);
 
-					if (has_attribute(chn, "raw"))
+					if (iio_channel_find_attr(chn, "raw"))
 						value = read_double_attr(chn, "raw");
-					else if (has_attribute(chn, "processed"))
+					else if (iio_channel_find_attr(chn, "processed"))
 						value = read_double_attr(chn, "processed");
 					else
 						continue;
 
-					if (has_attribute(chn, "offset"))
+					if (iio_channel_find_attr(chn, "offset"))
 						value += read_double_attr(chn,
 								"offset");
-					if (has_attribute(chn, "scale"))
+					if (iio_channel_find_attr(chn, "scale"))
 						value *= read_double_attr(chn,
 								"scale");
 					value /= 1000.0;
@@ -457,120 +433,64 @@ static GtkWidget * dmm_init(GtkWidget *notebook, const char *ini_fn)
 	return dmm_panel;
 }
 
-#define DEVICE_LIST "device_list"
-#define CHANNEL_LIST "channel_list"
-#define RUNNING "running"
-
-static char *dmm_handle(struct osc_plugin *plugin, const char *attrib,
-		const char *value)
+static int dmm_handle_driver(const char *attrib, const char *value)
 {
 	GtkTreeIter iter;
 	char *device, *channel, tmp[256];
-	char *buf = NULL;
 	gboolean loop;
 	unsigned int enabled;
 
-	if (MATCH_ATTRIB(DEVICE_LIST)) {
-		loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL (device_list_store), &iter);
+	if (MATCH_ATTRIB("device_list")) {
+		GtkTreeModel *model = GTK_TREE_MODEL(device_list_store);
+		loop = gtk_tree_model_get_iter_first(model, &iter);
 		while (loop) {
-			gtk_tree_model_get(GTK_TREE_MODEL(device_list_store),
-					&iter, 0, &device, 1, &enabled, -1);
-			if (value) {
-				/* load/restore */
-				if (strstr(value, device)) {
-					enabled = value[strlen(value) - 1] == '1';
-					gtk_list_store_set(GTK_LIST_STORE(device_list_store),
+			gtk_tree_model_get(model, &iter, 0,
+					&device, 1, &enabled, -1);
+			/* load/restore */
+			if (strstr(value, device)) {
+				enabled = value[strlen(value) - 1] == '1';
+				gtk_list_store_set(device_list_store,
 						&iter, 1, enabled, -1);
-				}
-			} else {
-				/* save */
-				if (buf) {
-					buf = realloc(buf, strlen(DEVICE_LIST) + strlen(buf) + strlen(device) + 8);
-					sprintf(&buf[strlen(buf)], "\n%s = %s %i", DEVICE_LIST, device, enabled);
-				} else {
-					buf = malloc(strlen(device) + 5);
-					sprintf(buf, "%s %i", device, enabled);
-				}
 			}
 			g_free(device);
-			loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(device_list_store), &iter);
+			loop = gtk_tree_model_iter_next(model, &iter);
 		}
-		if (value)
-			build_channel_list();
+		build_channel_list();
 
-
-		return buf;
-
-	} else if (MATCH_ATTRIB(CHANNEL_LIST)) {
-		loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL (channel_list_store), &iter);
+	} else if (MATCH_ATTRIB("channel_list")) {
+		GtkTreeModel *model = GTK_TREE_MODEL(channel_list_store);
+		loop = gtk_tree_model_get_iter_first(model, &iter);
 		while (loop) {
-			gtk_tree_model_get(GTK_TREE_MODEL(channel_list_store),
-					&iter, 1, &enabled, 2, &device, 3, &channel, -1);
-			if (value) {
-				/* load/restore */
-				sprintf(tmp, "%s:%s", device, channel);
-				if (strstr(value, tmp)) {
-					enabled = 1;
-					gtk_list_store_set(GTK_LIST_STORE(channel_list_store),
-						&iter, 1, enabled, -1);
-				}
-			} else {
-				/* save */
-				if (enabled) {
-					if (buf) {
-						buf = realloc(buf, strlen(buf) +
-								strlen(CHANNEL_LIST) +
-								strlen(device) +
-								strlen(channel) + 8);
-						sprintf(&buf[strlen(buf)], "\n%s = %s:%s",
-								CHANNEL_LIST, device, channel);
-					} else {
-						buf = malloc(strlen(device) + strlen(channel) + 2);
-						sprintf(buf, "%s:%s", device, channel);
-					}
-				}
+			gtk_tree_model_get(model, &iter, 1,
+					&enabled, 2, &device, 3, &channel, -1);
+			/* load/restore */
+			sprintf(tmp, "%s:%s", device, channel);
+			if (strstr(value, tmp)) {
+				enabled = 1;
+				gtk_list_store_set(channel_list_store,
+					&iter, 1, enabled, -1);
 			}
 			g_free(channel);
 			g_free(device);
-			loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(channel_list_store), &iter);
+			loop = gtk_tree_model_iter_next(model, &iter);
 		}
-		return buf;
-	} else if (MATCH_ATTRIB(RUNNING)) {
-		if (value) {
-			/* load/restore */
-			if (!strcmp(value, "Yes"))
-				gtk_toggle_tool_button_set_active(
-						GTK_TOGGLE_TOOL_BUTTON(dmm_button), TRUE);
-			else
-				gtk_toggle_tool_button_set_active(
-						GTK_TOGGLE_TOOL_BUTTON(dmm_button), FALSE);
-		} else {
-			/* save */
-			if(gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(dmm_button)))
-				sprintf(tmp, "Yes");
-			else
-				sprintf(tmp, "No");
 
-			buf = strdup(tmp);
-			return buf;
-		}
+	} else if (MATCH_ATTRIB("running")) {
+		/* load/restore */
+		gtk_toggle_tool_button_set_active(
+				GTK_TOGGLE_TOOL_BUTTON(dmm_button),
+				!strcmp(value, "Yes"));
 	} else {
-		printf("Unhandled tokens in ini file,\n"
-				"\tSection %s\n\tAtttribute : %s\n\tValue: %s\n",
-				"DMM", attrib, value);
-		if (value)
-			return "FAIL";
+		return -EINVAL;
 	}
 
-	return NULL;
+	return 0;
 }
 
-static const char *dmm_sr_attribs[] = {
-	DEVICE_LIST,
-	CHANNEL_LIST,
-	RUNNING,
-	NULL,
-};
+static int dmm_handle(const char *attrib, const char *value)
+{
+	return osc_plugin_default_handle(ctx, attrib, value, dmm_handle_driver);
+}
 
 static void update_active_page(gint active_page, gboolean is_detached)
 {
@@ -610,7 +530,6 @@ struct osc_plugin plugin = {
 	.name = "DMM",
 	.identify = dmm_identify,
 	.init = dmm_init,
-	.save_restore_attribs = dmm_sr_attribs,
 	.handle_item = dmm_handle,
 	.update_active_page = update_active_page,
 	.destroy = context_destroy,

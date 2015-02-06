@@ -18,7 +18,6 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <malloc.h>
-#include <values.h>
 #include <sys/stat.h>
 #include <string.h>
 
@@ -74,6 +73,13 @@ static const char *daq2_sr_attribs[] = {
 	DAC_DEVICE".out_altvoltage1_1B_phase",
 	DAC_DEVICE".out_altvoltage2_2A_phase",
 	DAC_DEVICE".out_altvoltage3_2B_phase",
+};
+
+static const char * daq2_driver_attribs[] = {
+	"dds_mode",
+	"tx_channel_0",
+	"tx_channel_1",
+	"dac_buf_filename",
 };
 
 static void tx_update_values(void)
@@ -134,40 +140,56 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
+static int daq2_handle_driver(const char *attrib, const char *value)
+{
+	if (MATCH_ATTRIB("dds_mode")) {
+		dac_data_manager_set_dds_mode(dac_tx_manager,
+				DAC_DEVICE, 1, atoi(value));
+	} else if (!strncmp(attrib, "tx_channel_", sizeof("tx_channel_") - 1)) {
+		int tx = atoi(attrib + sizeof("tx_channel_") - 1);
+		dac_data_manager_set_tx_channel_state(
+				dac_tx_manager, tx, !!atoi(value));
+	} else if (MATCH_ATTRIB("dac_buf_filename")) {
+		if (dac_data_manager_get_dds_mode(dac_tx_manager,
+					DAC_DEVICE, 1) == DDS_BUFFER)
+			dac_data_manager_set_buffer_chooser_filename(
+					dac_tx_manager, value);
+	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
+		if (can_update_widgets) {
+			rx_update_values();
+			tx_update_values();
+			dac_data_manager_update_iio_widgets(dac_tx_manager);
+		}
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int daq2_handle(const char *attrib, const char *value)
+{
+	return osc_plugin_default_handle(ctx, attrib, value,
+			daq2_handle_driver);
+}
+
 static void load_profile(const char *ini_fn)
 {
-	char *value;
+	unsigned i;
+
+	for (i = 0; i < ARRAY_SIZE(daq2_driver_attribs); i++) {
+		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				daq2_driver_attribs[i]);
+		if (value) {
+			daq2_handle_driver(daq2_driver_attribs[i], value);
+			free(value);
+		}
+	}
 
 	update_from_ini(ini_fn, THIS_DRIVER, dac, daq2_sr_attribs,
 			ARRAY_SIZE(daq2_sr_attribs));
 	update_from_ini(ini_fn, THIS_DRIVER, adc, daq2_sr_attribs,
 			ARRAY_SIZE(daq2_sr_attribs));
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "dds_mode");
-	if (value) {
-		dac_data_manager_set_dds_mode(dac_tx_manager, DAC_DEVICE, 1, atoi(value));
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_0");
-	if (value) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager, 0, !!atoi(value));
-		free(value);
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "tx_channel_1");
-	if (value) {
-		dac_data_manager_set_tx_channel_state(dac_tx_manager, 1, !!atoi(value));
-		free(value);
-	}
-
-	if (dac_data_manager_get_dds_mode(dac_tx_manager, DAC_DEVICE, 1) == DDS_BUFFER) {
-		value = read_token_from_ini(ini_fn, THIS_DRIVER, "dac_buf_filename");
-		if (value) {
-			dac_data_manager_set_buffer_chooser_filename(dac_tx_manager, value);
-			free(value);
-		}
-	}
 
 	if (can_update_widgets) {
 		rx_update_values();
@@ -313,6 +335,7 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = daq2_identify,
 	.init = daq2_init,
+	.handle_item = daq2_handle,
 	.save_profile = save_profile,
 	.load_profile = load_profile,
 	.destroy = context_destroy,

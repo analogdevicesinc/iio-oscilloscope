@@ -1,8 +1,8 @@
+PREFIX ?= /usr/local
+
 TMP = temp_resources
-DESTDIR=/usr/local
-PREFIX=/usr/local
-PSHARE=$(PREFIX)/share/osc
-PLIB=$(PREFIX)/lib/osc
+PSHARE=$(DESTDIR)$(PREFIX)/share/osc
+PLIB=$(DESTDIR)$(PREFIX)/lib/osc
 
 # this is where the master fru files are (assuming they are installed at all)
 FRU_FILES=$(PREFIX)/lib/fmc-tools/
@@ -15,90 +15,109 @@ MULTIARCH := $(shell $(CC) -print-multiarch)
 GIT_BRANCH := $(shell git name-rev --name-only HEAD | sed 's:.*/::')
 GIT_HASH := $(shell git describe --abbrev=7 --dirty --always)
 
-PKG_CONFIG_PATHS := $(SYSROOT)/usr/share/pkgconfig \
-	$(SYSROOT)/usr/lib/pkgconfig \
-	$(SYSROOT)/usr/lib/$(MULTIARCH)/pkgconfig
-PKG_CONFIG_PATH := $(subst " ",":",$(strip $(PKG_CONFIG_PATHS)))
+WITH_MINGW := $(if $(shell echo | $(CC) -dM -E - |grep __MINGW32__),y)
+EXPORT_SYMBOLS := -Wl,--export-all-symbols
+EXPORT_SYMBOLS := $(if $(WITH_MINGW),$(EXPORT_SYMBOLS))
+
+PKG_CONFIG_PATH := $(SYSROOT)/usr/share/pkgconfig:$(SYSROOT)/usr/lib/pkgconfig:$(SYSROOT)/usr/lib/$(MULTIARCH)/pkgconfig
 PKG_CONFIG := env PKG_CONFIG_SYSROOT_DIR="$(SYSROOT)" \
 	PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" pkg-config
 
-LDFLAGS := $(shell $(PKG_CONFIG) --libs gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
-	$(shell $(SYSROOT)/usr/bin/xml2-config --libs) -lmatio -lz -lm -liio
+DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0
 
-CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-2.0 gthread-2.0 gtkdatabox fftw3) \
-	$(shell $(SYSROOT)/usr/bin/xml2-config --cflags) \
+LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
+	-L$(SYSROOT)/usr/lib -lmatio -lz -lm
+
+CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
+	-I$(SYSROOT)/usr/include $(if $(WITH_MINGW),,-fPIC) \
 	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
-	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\"
+	-DFRU_FILES=\"$(FRU_FILES)\" -DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\"
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
 
+SO := $(if $(WITH_MINGW),dll,so)
+EXE := $(if $(WITH_MINGW),.exe)
+
+OSC := osc$(EXE)
+LIBOSC := libosc.$(SO)
+
 PLUGINS=\
-	plugins/fmcomms1.so \
-	plugins/fmcomms2.so \
-	plugins/fmcomms5.so \
-	plugins/fmcomms6.so \
-	plugins/fmcomms2_adv.so \
-	plugins/ad6676.so \
-	plugins/pr_config.so \
-	plugins/debug.so \
-	plugins/daq2.so \
-	plugins/AD5628_1.so \
-	plugins/AD7303.so \
-	plugins/cn0357.so \
-	plugins/motor_control.so \
-	plugins/dmm.so \
-	plugins/scpi.so
+	plugins/fmcomms1.$(SO) \
+	plugins/fmcomms2.$(SO) \
+	plugins/fmcomms5.$(SO) \
+	plugins/fmcomms6.$(SO) \
+	plugins/fmcomms2_adv.$(SO) \
+	plugins/ad6676.$(SO) \
+	plugins/pr_config.$(SO) \
+	plugins/daq2.$(SO) \
+	plugins/AD5628_1.$(SO) \
+	plugins/AD7303.$(SO) \
+	plugins/cn0357.$(SO) \
+	plugins/motor_control.$(SO) \
+	plugins/dmm.$(SO) \
+	plugins/debug.$(SO) \
+	$(if $(WITH_MINGW),,plugins/scpi.so)
 
-all: osc $(PLUGINS)
+ifdef V
+	CMD:=
+	SUM:=@\#
+else
+	CMD:=@
+	SUM:=@echo
+endif
 
-osc: osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o trigger_dialog.o xml_utils.o libini/libini.o libini2.o dac_data_manager.o
-	$(CC) $+ $(LDFLAGS) -ldl -rdynamic -o $@
+OSC_OBJS := osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o \
+	trigger_dialog.o xml_utils.o libini/libini.o libini2.o plugins/dac_data_manager.o
 
-osc.o: osc.c iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
-	$(CC) osc.c -c $(CFLAGS)
+all: $(OSC) $(PLUGINS)
 
-oscplot.o: oscplot.c oscplot.h osc.h datatypes.h iio_widget.h libini2.h
-	$(CC) oscplot.c -c $(CFLAGS)
+analyze: $(OSC_OBJS:%.o=%.c) $(PLUGINS:%.so=%.c) oscmain.c
+	clang --analyze $(CFLAGS) $^
 
-datatypes.o: datatypes.c datatypes.h
-	$(CC) datatypes.c -c $(CFLAGS)
+$(LIBOSC): $(OSC_OBJS)
+	$(SUM) "  LD      $@"
+	$(CMD)$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@ $(EXPORT_SYMBOLS)
 
-int_fft.o: int_fft.c
-	$(CC) int_fft.c -c $(CFLAGS)
+$(OSC): oscmain.o $(if $(WITH_MINGW),oscicon.o) $(LIBOSC)
+	$(SUM) "  LD      $@"
+	$(CMD)$(CC) $^ $(LDFLAGS) -L. -losc -o $@
 
-iio_widget.o: iio_widget.c iio_widget.h
-	$(CC) iio_widget.c -c $(CFLAGS)
+oscicon.o: oscicon.rc
+	$(SUM) "  GEN     $@"
+	$(CMD)$(CROSS_COMPILE)windres $< $@
 
-fru.o: fru.c fru.h
-	$(CC) fru.c -c $(CFLAGS)
+%.o: %.c
+	$(SUM) "  CC      $@"
+	$(CMD)$(CC) $(CFLAGS) $< -c -o $@
 
-dialogs.o: dialogs.c fru.h osc.h
-	$(CC) dialogs.c -c $(CFLAGS) -DFRU_FILES=\"$(FRU_FILES)\"
+%.$(SO): %.c $(LIBOSC)
+	$(SUM) "  LD      $@"
+	$(CMD)$(CC) $(CFLAGS) $< $(LDFLAGS) -L. -losc -shared -o $@
 
-trigger_dialog.o: trigger_dialog.c fru.h osc.h iio_widget.h
-	$(CC) trigger_dialog.c -c $(CFLAGS)
+# Dependencies
+osc.o: iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
+oscmain.o: config.h osc.h
+oscplot.o: oscplot.h osc.h datatypes.h iio_widget.h libini2.h
+datatypes.o: datatypes.h
+iio_widget.o: iio_widget.h
+fru.o: fru.h
+dialogs.o: fru.h osc.h
+trigger_dialog.o: fru.h osc.h iio_widget.h
+xml_utils.o: xml_utils.h
+plugins/dac_data_manager.o: plugins/dac_data_manager.h
 
-xml_utils.o: xml_utils.c xml_utils.h
-	$(CC) xml_utils.c -c $(CFLAGS)
-
-dac_data_manager.o: plugins/dac_data_manager.c plugins/dac_data_manager.h
-	$(CC) plugins/dac_data_manager.c -c $(CFLAGS)
-
-%.so: %.c
-	$(CC) $+ $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@
-
-install:
-	install -d $(DESTDIR)/bin
-	install -d $(DESTDIR)/share/osc/
-	install -d $(DESTDIR)/lib/osc/
-	install -d $(DESTDIR)/lib/osc/xmls
-	install -d $(DESTDIR)/lib/osc/filters
-	install -d $(DESTDIR)/lib/osc/waveforms
-	install -d $(DESTDIR)/lib/osc/profiles
-	install -d $(DESTDIR)/lib/osc/block_diagrams
-	install -d $(HOME)/.config/autostart/
-	install ./osc $(DESTDIR)/bin/
+install-common-files: $(OSC) $(PLUGINS)
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install -d $(DESTDIR)$(PREFIX)/share/osc/
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/xmls
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/filters
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/waveforms
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/profiles
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/block_diagrams
+	install ./$(OSC) $(DESTDIR)$(PREFIX)/bin/
+	install ./$(LIBOSC) $(DESTDIR)$(PREFIX)/$(if $(WITH_MINGW),bin,lib)/
 	install ./*.glade $(PSHARE)
 	install ./icons/ADIlogo.png $(PSHARE)
 	install ./icons/IIOlogo.png $(PSHARE)
@@ -112,25 +131,32 @@ install:
 	install ./waveforms/* $(PLIB)/waveforms
 	install ./profiles/* $(PLIB)/profiles
 	install ./block_diagrams/* $(PLIB)/block_diagrams
-	install adi-osc.desktop $(HOME)/.config/autostart/osc.desktop
 
+install-all: install-common-files
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
 	xdg-icon-resource install --noupdate --size 32 ./icons/osc32.png adi-osc
 	xdg-icon-resource install --noupdate --size 64 ./icons/osc64.png adi-osc
 	xdg-icon-resource install --noupdate --size 128 ./icons/osc128.png adi-osc
 	xdg-icon-resource install --size 256 ./icons/osc256.png adi-osc
 	xdg-desktop-menu install adi-osc.desktop
+	ldconfig
 
-clean:
-	rm -rf osc *.o libini/*.o plugins/*.so
+uninstall-common-files:
+	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)$(PREFIX)/bin/$(OSC) $(DESTDIR)$(PREFIX)/lib/$(LIBOSC)
 
-uninstall:
-	rm -rf $(PLIB) $(PSHARE) $(DESTDIR)/bin/osc
-	rm -rf $(HOME)/.osc_profile.ini
-	rm -rf $(HOME)/.config/autostart/adi-osc.desktop
+uninstall-all: uninstall-common-files
 	xdg-icon-resource uninstall --noupdate --size 16 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 32 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 64 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 128 adi-osc
 	xdg-icon-resource uninstall --size 256 adi-osc
 	xdg-desktop-menu uninstall osc.desktop
+	ldconfig
+
+install: $(if $(DEBIAN_INSTALL),install-common-files,install-all)
+
+uninstall: $(if $(DEBIAN_INSTALL),uninstall-common-files,uninstall-all)
+
+clean:
+	$(SUM) "  CLEAN    ."
+	$(CMD)rm -rf $(OSC) $(LIBOSC) $(PLUGINS) *.o libini/*.o plugins/*.o *.plist

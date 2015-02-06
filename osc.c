@@ -23,8 +23,6 @@
 #include <string.h>
 #include <dirent.h>
 
-#include <complex.h>
-#include <fftw3.h>
 #include <iio.h>
 
 #include "libini2.h"
@@ -34,13 +32,11 @@
 #include "config.h"
 #include "osc_plugin.h"
 
+extern void math_expression_objects_clean(void);
+
 GSList *plugin_list = NULL;
 
 gint capture_function = 0;
-gfloat plugin_fft_corr = 0.0;
-static GtkWidget *main_window;
-static GtkWidget *tooltips_en;
-static GtkWidget *infobar;
 static GList *plot_list = NULL;
 static int num_capturing_plots;
 G_LOCK_DEFINE_STATIC(buffer_full);
@@ -48,7 +44,10 @@ static gboolean stop_capture;
 static struct plugin_check_fct *setup_check_functions = NULL;
 static int num_check_fcts = 0;
 static GSList *dplugin_list = NULL;
-GtkWidget  *notebook;
+GtkWidget *notebook;
+GtkWidget *infobar;
+GtkWidget *tooltips_en;
+GtkWidget *main_window;
 
 struct iio_context *ctx;
 unsigned int num_devices = 0;
@@ -56,12 +55,10 @@ unsigned int num_devices = 0;
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
 static void plugin_restore_ini_state(const char *plugin_name,
 		const char *attribute, int value);
-static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
 static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
 static void capture_profile_save(const char *filename);
 static void load_profile(const char *filename, bool load_plugins);
-static void do_init(struct iio_context *new_ctx);
 
 static char * dma_devices[] = {
 	"ad9122",
@@ -161,536 +158,6 @@ void * x_calloc (size_t nmemb, size_t size)
 	return (void *)ptr;
 }
 
-static double win_hanning(int j, int n)
-{
-	double a = 2.0 * M_PI / (n - 1), w;
-
-	w = 0.5 * (1.0 - cos(a * j));
-
-	return (w);
-}
-
-static void do_fft(Transform *tr)
-{
-	struct extra_info *ch_info;
-	struct _fft_settings *settings = tr->settings;
-	struct _fft_alg_data *fft = &settings->fft_alg_data;
-	struct marker_type *markers = settings->markers;
-	enum marker_types marker_type = MARKER_OFF;
-	gfloat *in_data = *tr->in_data;
-	gfloat *in_data_c;
-	gfloat *out_data = tr->y_axis;
-	gfloat *X = tr->x_axis;
-	unsigned int fft_size = settings->fft_size;
-	int i, j, k;
-	int cnt;
-	gfloat mag;
-	double avg, pwr_offset;
-	unsigned int maxX[MAX_MARKERS + 1];
-	gfloat maxY[MAX_MARKERS + 1];
-
-	if (settings->marker_type)
-		marker_type = *((enum marker_types *)settings->marker_type);
-
-	if ((fft->cached_fft_size == -1) || (fft->cached_fft_size != fft_size) ||
-		(fft->cached_num_active_channels != fft->num_active_channels)) {
-
-		if (fft->cached_fft_size != -1) {
-			fftw_destroy_plan(fft->plan_forward);
-			fftw_free(fft->win);
-			fftw_free(fft->out);
-			if (fft->in != NULL)
-				fftw_free(fft->in);
-			if (fft->in_c != NULL)
-				fftw_free(fft->in_c);
-			fft->in_c = NULL;
-			fft->in = NULL;
-		}
-
-		fft->win = fftw_malloc(sizeof(double) * fft_size);
-		if (fft->num_active_channels == 2) {
-			fft->m = fft_size;
-			fft->in_c = fftw_malloc(sizeof(fftw_complex) * fft_size);
-			fft->in = NULL;
-			fft->out = fftw_malloc(sizeof(fftw_complex) * (fft->m + 1));
-			fft->plan_forward = fftw_plan_dft_1d(fft_size, fft->in_c, fft->out, FFTW_FORWARD, FFTW_ESTIMATE);
-		} else {
-			fft->m = fft_size / 2;
-			fft->out = fftw_malloc(sizeof(fftw_complex) * (fft->m + 1));
-			fft->in_c = NULL;
-			fft->in = fftw_malloc(sizeof(double) * fft_size);
-			fft->plan_forward = fftw_plan_dft_r2c_1d(fft_size, fft->in, fft->out, FFTW_ESTIMATE);
-		}
-
-		for (i = 0; i < fft_size; i ++)
-			fft->win[i] = win_hanning(i, fft_size);
-
-		fft->cached_fft_size = fft_size;
-		fft->cached_num_active_channels = fft->num_active_channels;
-	}
-
-	if (fft->num_active_channels == 2) {
-		ch_info = iio_channel_get_data(tr->channel_parent2);
-		in_data_c = ch_info->data_ref;
-		for (cnt = 0, i = 0; cnt < fft_size; cnt++) {
-			/* normalization and scaling see fft_corr */
-			fft->in_c[cnt] = in_data[i] * fft->win[cnt] + I * in_data_c[i] * fft->win[cnt];
-			i++;
-		}
-	} else {
-		for (cnt = 0, i = 0; i < fft_size; i++) {
-			/* normalization and scaling see fft_corr */
-			fft->in[cnt] = in_data[i] * fft->win[cnt];
-			cnt++;
-		}
-	}
-
-	fftw_execute(fft->plan_forward);
-	avg = (double)settings->fft_avg;
-	if (avg && avg != 128 )
-		avg = 1.0f / avg;
-
-	pwr_offset = settings->fft_pwr_off;
-
-	for (j = 0; j <= MAX_MARKERS; j++) {
-		maxX[j] = 0;
-		maxY[j] = -200.0f;
-	}
-
-	for (i = 0; i < fft->m; ++i) {
-		if (fft->num_active_channels == 2) {
-			if (i < (fft->m / 2))
-				j = i + (fft->m / 2);
-			else
-				j = i - (fft->m / 2);
-		} else {
-				j = i;
-		}
-
-		if (creal(fft->out[j]) == 0 && cimag(fft->out[j]) == 0)
-			fft->out[j] = FLT_MIN + I * FLT_MIN;
-
-		mag = 10 * log10((creal(fft->out[j]) * creal(fft->out[j]) +
-				cimag(fft->out[j]) * cimag(fft->out[j])) / ((unsigned long long)fft->m * fft->m)) +
-			fft->fft_corr + pwr_offset + plugin_fft_corr;
-		/* it's better for performance to have seperate loops,
-		 * rather than do these tests inside the loop, but it makes
-		 * the code harder to understand... Oh well...
-		 ***/
-		if (out_data[i] == FLT_MAX) {
-			/* Don't average the first iterration */
-			 out_data[i] = mag;
-		} else if (!avg) {
-			/* keep peaks */
-			if (out_data[i] <= mag)
-				out_data[i] = mag;
-		} else if (avg == 128) {
-			/* keep min */
-			if (out_data[i] >= mag)
-				out_data[i] = mag;
-		} else {
-			/* do an average */
-			out_data[i] = ((1 - avg) * out_data[i]) + (avg * mag);
-		}
-		if (!tr->has_the_marker)
-			continue;
-		if (MAX_MARKERS && (marker_type == MARKER_PEAK ||
-				marker_type == MARKER_ONE_TONE ||
-				marker_type == MARKER_IMAGE)) {
-			if (i == 0) {
-				maxX[0] = 0;
-				maxY[0] = out_data[0];
-			} else {
-				for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
-					if  ((out_data[i - 1] > maxY[j]) &&
-						((!((out_data[i - 2] > out_data[i - 1]) &&
-						 (out_data[i - 1] > out_data[i]))) &&
-						 (!((out_data[i - 2] < out_data[i - 1]) &&
-						 (out_data[i - 1] < out_data[i]))))) {
-						if (marker_type == MARKER_PEAK) {
-							for (k = MAX_MARKERS; k > j; k--) {
-								maxY[k] = maxY[k - 1];
-								maxX[k] = maxX[k - 1];
-							}
-						}
-						maxY[j] = out_data[i - 1];
-						maxX[j] = i - 1;
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	if (!tr->has_the_marker)
-		return;
-
-	unsigned int m = fft->m;
-
-	if ((marker_type == MARKER_ONE_TONE || marker_type == MARKER_IMAGE) &&
-		((fft->num_active_channels == 1 && maxX[0] == 0) ||
-		(fft->num_active_channels == 2 && maxX[0] == m/2))) {
-		unsigned int max_tmp;
-
-		max_tmp = maxX[1];
-		maxX[1] = maxX[0];
-		maxX[0] = max_tmp;
-	}
-
-	if (MAX_MARKERS && marker_type != MARKER_OFF) {
-		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
-			if (marker_type == MARKER_PEAK) {
-				markers[j].x = (gfloat)X[maxX[j]];
-				markers[j].y = (gfloat)out_data[maxX[j]];
-				markers[j].bin = maxX[j];
-			} else if (marker_type == MARKER_FIXED) {
-				markers[j].x = (gfloat)X[markers[j].bin];
-				markers[j].y = (gfloat)out_data[markers[j].bin];
-			} else if (marker_type == MARKER_ONE_TONE) {
-				/* assume peak is the tone */
-				if (j == 0) {
-					markers[j].bin = maxX[j];
-					i = 1;
-				} else if (j == 1) {
-					/* keep DC */
-					if (tr->type_id == COMPLEX_FFT_TRANSFORM)
-						markers[j].bin = m / 2;
-					else
-						markers[j].bin = 0;
-				} else {
-					/* where should the spurs be? */
-					i++;
-					if (tr->type_id == COMPLEX_FFT_TRANSFORM) {
-						markers[j].bin = (markers[0].bin - (m / 2)) * i + (m / 2);
-						if (markers[j].bin > m)
-							markers[j].bin -= 2 * (markers[j].bin - m);
-						if (markers[j].bin < ( m/2 ))
-							markers[j].bin += 2 * ((m / 2) - markers[j].bin);
-					} else {
-						markers[j].bin = markers[0].bin * i;
-						if (markers[j].bin > (m))
-							markers[j].bin -= 2 * (markers[j].bin - (m));
-						if (markers[j].bin < 0)
-							markers[j].bin += -markers[j].bin;
-					}
-				}
-				/* make sure we don't need to nudge things one way or the other */
-				k = markers[j].bin;
-				while (out_data[k] < out_data[k + 1]) {
-					k++;
-				}
-
-				while (markers[j].bin != 0 &&
-						out_data[markers[j].bin] < out_data[markers[j].bin - 1]) {
-					markers[j].bin--;
-				}
-
-				if (out_data[k] > out_data[markers[j].bin])
-					markers[j].bin = k;
-
-				markers[j].x = (gfloat)X[markers[j].bin];
-				markers[j].y = (gfloat)out_data[markers[j].bin];
-			} else if (marker_type == MARKER_IMAGE) {
-				/* keep DC, fundamental, and image
-				 * num_active_channels always needs to be 2 for images */
-				if (j == 0) {
-					/* Fundamental */
-					markers[j].bin = maxX[j];
-				} else if (j == 1) {
-					/* DC */
-					markers[j].bin = m / 2;
-				} else if (j == 2) {
-					/* Image */
-					markers[j].bin = m / 2 - (markers[0].bin - m/2);
-				} else
-					continue;
-				markers[j].x = (gfloat)X[markers[j].bin];
-				markers[j].y = (gfloat)out_data[markers[j].bin];
-
-			}
-		}
-		if (*settings->markers_copy) {
-			memcpy(*settings->markers_copy, settings->markers,
-				sizeof(struct marker_type) * MAX_MARKERS);
-			*settings->markers_copy = NULL;
-			g_mutex_unlock(settings->marker_lock);
-		}
-	}
-}
-
-static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *result, int N)
-{
-	fftw_complex * signala_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
-	fftw_complex * signalb_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
-	fftw_complex * outa = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
-	fftw_complex * outb = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
-	fftw_complex * out = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
-	fftw_complex scale;
-	int i;
-
-	if (!signala_ext || !signalb_ext || !outa || !outb || !out)
-		return;
-
-	fftw_plan pa = fftw_plan_dft_1d(2 * N - 1, signala_ext, outa, FFTW_FORWARD, FFTW_ESTIMATE);
-	fftw_plan pb = fftw_plan_dft_1d(2 * N - 1, signalb_ext, outb, FFTW_FORWARD, FFTW_ESTIMATE);
-	fftw_plan px = fftw_plan_dft_1d(2 * N - 1, out, result, FFTW_BACKWARD, FFTW_ESTIMATE);
-
-	//zeropadding
-	memset(signala_ext, 0, sizeof(fftw_complex) * (N - 1));
-	memcpy(signala_ext + (N - 1), signala, sizeof(fftw_complex) * N);
-	memcpy(signalb_ext, signalb, sizeof(fftw_complex) * N);
-	memset(signalb_ext + N, 0, sizeof(fftw_complex) * (N - 1));
-
-	fftw_execute(pa);
-	fftw_execute(pb);
-
-	scale = 1.0/(2 * N -1);
-	for (i = 0; i < 2 * N - 1; i++)
-		out[i] = outa[i] * conj(outb[i]) * scale;
-
-	fftw_execute(px);
-
-	fftw_destroy_plan(pa);
-	fftw_destroy_plan(pb);
-	fftw_destroy_plan(px);
-
-	fftw_free(signala_ext);
-	fftw_free(signalb_ext);
-	fftw_free(out);
-	fftw_free(outa);
-	fftw_free(outb);
-
-	fftw_cleanup();
-
-	return;
-}
-
-void time_transform_function(Transform *tr, gboolean init_transform)
-{
-	struct _time_settings *settings = tr->settings;
-	unsigned axis_length = settings->num_samples;
-	int i;
-
-	if (init_transform) {
-		Transform_resize_x_axis(tr, axis_length);
-		for (i = 0; i < axis_length; i++)
-			tr->x_axis[i] = i;
-		tr->y_axis_size = axis_length;
-
-		if (settings->apply_inverse_funct || settings->apply_multiply_funct || settings->apply_add_funct) {
-			Transform_resize_y_axis(tr, tr->y_axis_size);
-			tr->local_output_buf = true;
-		} else {
-			tr->y_axis = *tr->in_data;
-			tr->local_output_buf = false;
-		}
-
-		return;
-	}
-	if (!tr->local_output_buf)
-		return;
-
-	for (i = 0; i < tr->y_axis_size; i++) {
-		if (settings->apply_inverse_funct) {
-			if ((*tr->in_data)[i] != 0)
-				tr->y_axis[i] = 1 / (*tr->in_data)[i];
-			else
-				tr->y_axis[i] = 65535;
-		} else {
-			tr->y_axis[i] = (*tr->in_data)[i];
-		}
-		if (settings->apply_multiply_funct)
-			tr->y_axis[i] *= settings->multiply_value;
-		if (settings->apply_add_funct)
-			tr->y_axis[i] += settings->add_value;
-	}
-}
-
-void cross_correlation_transform_function(Transform *tr, gboolean init_transform)
-{
-	struct _cross_correlation_settings *settings = tr->settings;
-	unsigned axis_length = settings->num_samples;
-	struct extra_info *ch_info;
-	gfloat *i_0, *q_0;
-	gfloat *i_1, *q_1;
-	int i;
-
-	ch_info = iio_channel_get_data(tr->channel_parent);
-	i_0 = ch_info->data_ref;
-	ch_info = iio_channel_get_data(tr->channel_parent2);
-	q_0 = ch_info->data_ref;
-	ch_info = iio_channel_get_data(tr->channel_parent3);
-	i_1 = ch_info->data_ref;
-	ch_info = iio_channel_get_data(tr->channel_parent4);
-	q_1 = ch_info->data_ref;
-
-	if (init_transform) {
-		if (settings->signal_a) {
-			fftw_free(settings->signal_a);
-			settings->signal_a = NULL;
-		}
-		if (settings->signal_b) {
-			fftw_free(settings->signal_b);
-			settings->signal_b = NULL;
-		}
-		if (settings->xcorr_data) {
-			fftw_free(settings->xcorr_data);
-			settings->xcorr_data = NULL;
-		}
-		settings->signal_a = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length);
-		settings->signal_b = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length);
-		settings->xcorr_data = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length * 2);
-
-		Transform_resize_x_axis(tr, 2 * axis_length);
-		Transform_resize_y_axis(tr, 2 * axis_length);
-		for (i = 0; i < 2 * axis_length - 1; i++) {
-			tr->x_axis[i] = i - (gfloat)axis_length + 1;
-			tr->y_axis[i] = 0;
-		}
-		tr->y_axis_size = 2 * axis_length - 1;
-
-		return;
-	}
-	for (i = 0; i < axis_length; i++) {
-		settings->signal_a[i] = q_0[i] + I * i_0[i];
-		settings->signal_b[i] = q_1[i] + I * i_1[i];
-	}
-
-	if (settings->revert_xcorr)
-		xcorr(settings->signal_b, settings->signal_a, settings->xcorr_data, axis_length);
-	else
-		xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length);
-
-	gfloat *out_data = tr->y_axis;
-	gfloat *X = tr->x_axis;
-	struct marker_type *markers = settings->markers;
-	enum marker_types marker_type = MARKER_OFF;
-	unsigned int maxX[MAX_MARKERS + 1];
-	gfloat maxY[MAX_MARKERS + 1];
-	int j, k;
-
-	if (settings->marker_type)
-		marker_type = *((enum marker_types *)settings->marker_type);
-
-	for (j = 0; j <= MAX_MARKERS; j++) {
-		maxX[j] = 0;
-		maxY[j] = -200.0f;
-	}
-
-	for (i = 0; i < 2 * axis_length - 1; i++) {
-		tr->y_axis[i] =  2 * creal(settings->xcorr_data[i]) / (gfloat)axis_length;
-		if (!tr->has_the_marker)
-			continue;
-
-		if (MAX_MARKERS && marker_type == MARKER_PEAK) {
-			if (i == 0) {
-				maxX[0] = 0;
-				maxY[0] = out_data[0];
-			} else {
-				for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
-					if  ((fabs(out_data[i - 1]) > maxY[j]) &&
-						((!((out_data[i - 2] > out_data[i - 1]) &&
-						 (out_data[i - 1] > out_data[i]))) &&
-						 (!((out_data[i - 2] < out_data[i - 1]) &&
-						 (out_data[i - 1] < out_data[i]))))) {
-						if (marker_type == MARKER_PEAK) {
-							for (k = MAX_MARKERS; k > j; k--) {
-								maxY[k] = maxY[k - 1];
-								maxX[k] = maxX[k - 1];
-							}
-						}
-						maxY[j] = fabs(out_data[i - 1]);
-						maxX[j] = i - 1;
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	if (!tr->has_the_marker)
-		return;
-
-	if (MAX_MARKERS && marker_type != MARKER_OFF) {
-		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++)
-			if (marker_type == MARKER_PEAK) {
-				markers[j].x = (gfloat)X[maxX[j]];
-				markers[j].y = (gfloat)out_data[maxX[j]];
-				markers[j].bin = maxX[j];
-			}
-		if (*settings->markers_copy) {
-			memcpy(*settings->markers_copy, settings->markers,
-				sizeof(struct marker_type) * MAX_MARKERS);
-			*settings->markers_copy = NULL;
-			g_mutex_unlock(settings->marker_lock);
-		}
-	}
-}
-
-void fft_transform_function(Transform *tr, gboolean init_transform)
-{
-	struct iio_channel *chn = tr->channel_parent;
-	struct extra_info *ch_info = iio_channel_get_data(chn);
-	struct extra_dev_info *dev_info = iio_device_get_data(ch_info->dev);
-	struct _fft_settings *settings = tr->settings;
-	unsigned axis_length;
-	unsigned num_samples = dev_info->sample_count / 2;
-	double corr;
-	int i;
-
-	if (init_transform) {
-		unsigned int bits_used = iio_channel_get_data_format(chn)->bits;
-		axis_length = settings->fft_size * settings->fft_alg_data.num_active_channels / 2;
-		Transform_resize_x_axis(tr, axis_length);
-		Transform_resize_y_axis(tr, axis_length);
-		tr->y_axis_size = axis_length;
-		if (settings->fft_alg_data.num_active_channels == 2)
-			corr = dev_info->adc_freq / 2.0;
-		else
-			corr = 0;
-		for (i = 0; i < axis_length; i++) {
-			tr->x_axis[i] = i * dev_info->adc_freq / num_samples - corr;
-			tr->y_axis[i] = FLT_MAX;
-		}
-
-		/* Compute FFT normalization and scaling offset */
-		settings->fft_alg_data.fft_corr = 20 * log10(2.0 / (1 << (bits_used - 1)));
-
-		/* Make sure that previous positions of markers are not out of bonds */
-		if (settings->markers)
-			for (i = 0; i <= MAX_MARKERS; i++)
-				if (settings->markers[i].bin >= axis_length)
-					settings->markers[i].bin = 0;
-
-		return;
-	}
-	do_fft(tr);
-}
-
-void constellation_transform_function(Transform *tr, gboolean init_transform)
-{
-	struct extra_info *ch_info = iio_channel_get_data(tr->channel_parent2);
-	gfloat *y_axis = ch_info->data_ref;
-	struct _constellation_settings *settings = tr->settings;
-	unsigned axis_length = settings->num_samples;
-
-	if (init_transform) {
-		tr->x_axis_size = axis_length;
-		tr->y_axis_size = axis_length;
-		tr->x_axis = *tr->in_data;
-		tr->y_axis = y_axis;
-
-		return;
-	}
-}
-
-static void gfunc_update_plot(gpointer data, gpointer user_data)
-{
-	GtkWidget *plot = data;
-
-	osc_plot_data_update(OSC_PLOT(plot));
-}
-
 static void gfunc_restart_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
@@ -712,9 +179,17 @@ static void gfunc_destroy_plot(gpointer data, gpointer user_data)
 	osc_plot_destroy(OSC_PLOT(plot));
 }
 
-static void update_all_plots(void)
+static void update_plot(struct iio_buffer *buf)
 {
-	g_list_foreach(plot_list, gfunc_update_plot, NULL);
+	GList *node;
+
+	for (node = plot_list; node; node = g_list_next(node)) {
+		OscPlot *plot = (OscPlot *) node->data;
+
+		if (osc_plot_get_buffer(plot) == buf) {
+			osc_plot_data_update(plot);
+		}
+	}
 }
 
 static void restart_all_running_plots(void)
@@ -769,21 +244,18 @@ static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detach
 {
 	GtkWidget *tab_box;
 	GtkWidget *tab_label;
-	GtkWidget *tab_toolbar;
 	GtkWidget *tab_detach_btn;
 	const struct osc_plugin *plugin = d_plugin->plugin;
 	const char *plugin_name = plugin->name;
 
 	tab_box = gtk_hbox_new(FALSE, 0);
 	tab_label = gtk_label_new(plugin_name);
-	tab_toolbar = gtk_toolbar_new();
 	tab_detach_btn = (GtkWidget *)gtk_tool_button_new_from_stock("gtk-disconnect");
 
-	gtk_widget_set_size_request(tab_detach_btn, 25, 5);
+	gtk_widget_set_size_request(tab_detach_btn, 25, 25);
 
-	gtk_toolbar_insert(GTK_TOOLBAR(tab_toolbar), GTK_TOOL_ITEM(tab_detach_btn), 0);
 	gtk_container_add(GTK_CONTAINER(tab_box), tab_label);
-	gtk_container_add(GTK_CONTAINER(tab_box), tab_toolbar);
+	gtk_container_add(GTK_CONTAINER(tab_box), tab_detach_btn);
 
 	gtk_widget_show_all(tab_box);
 
@@ -1239,7 +711,11 @@ static bool force_plugin(const char *name)
 	if (strcmp(force_plugin, "all") == 0)
 		return true;
 
+#ifdef __GLIBC__
 	pos = strcasestr(force_plugin, name);
+#else
+	pos = strstr(force_plugin, name);
+#endif
 	if (pos) {
 		switch (*(pos + strlen(name))) {
 		case ' ':
@@ -1278,18 +754,22 @@ static void close_plugins(const char *ini_fn)
 	plugin_list = NULL;
 }
 
-bool plugin_installed(const char *name)
+static struct osc_plugin * get_plugin_from_name(const char *name)
 {
 	GSList *node;
-	struct osc_plugin *plugin = NULL;
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
-		plugin = node->data;
+		struct osc_plugin *plugin = node->data;
 		if (plugin && !strcmp(plugin->name, name))
-			return true;
+			return plugin;
 	}
 
-	return false;
+	return NULL;
+}
+
+bool plugin_installed(const char *name)
+{
+	return !!get_plugin_from_name(name);
 }
 
 void * plugin_dlsym(const char *name, const char *symbol)
@@ -1298,7 +778,9 @@ void * plugin_dlsym(const char *name, const char *symbol)
 	struct osc_plugin *plugin = NULL;
 	void *fcn;
 	char *buf;
+#ifndef __MINGW32__
 	Dl_info info;
+#endif
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		plugin = node->data;
@@ -1309,17 +791,20 @@ void * plugin_dlsym(const char *name, const char *symbol)
 			if (buf) {
 				fprintf(stderr, "%s:%s(): found plugin %s, error looking up %s\n"
 						"\t%s\n", __FILE__, __func__, name, symbol, buf);
+#ifndef __MINGW32__
 				if (dladdr(__builtin_return_address(0), &info))
 					fprintf(stderr, "\tcalled from %s:%s()\n", info.dli_fname, info.dli_sname);
+#endif
 			}
 			return fcn;
 		}
 	}
 
 	fprintf(stderr, "%s:%s : No plugin with matching name %s\n", __FILE__, __func__, name);
+#ifndef __MINGW32__
 	if (dladdr(__builtin_return_address(0), &info))
 		fprintf(stderr, "\tcalled from %s:%s()\n", info.dli_fname, info.dli_sname);
-
+#endif
 	return NULL;
 }
 
@@ -1346,6 +831,24 @@ static void * init_plugin(void *data)
 	return widget;
 }
 
+static void load_plugin_finish(GtkNotebook *notebook,
+		GtkWidget *widget, struct osc_plugin *plugin)
+{
+	struct detachable_plugin *d_plugin;
+	gint page;
+
+	page = gtk_notebook_append_page(notebook, widget, NULL);
+	gtk_notebook_set_tab_label_text(notebook, widget, plugin->name);
+
+	if (plugin->update_active_page)
+		plugin->update_active_page(page, FALSE);
+
+	d_plugin = malloc(sizeof(*d_plugin));
+	d_plugin->plugin = plugin;
+	dplugin_list = g_slist_append(dplugin_list, (gpointer) d_plugin);
+	plugin_make_detachable(d_plugin);
+}
+
 static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 {
 	GSList *node;
@@ -1354,6 +857,12 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 	char *plugin_dir = "plugins";
 	char buf[512];
 	DIR *d;
+
+#ifdef __MINGW32__
+	const bool load_in_parallel = false;
+#else
+	const bool load_in_parallel = true;
+#endif
 
 	/* Check the local plugins folder first */
 	d = opendir(plugin_dir);
@@ -1370,10 +879,17 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 			const char *ini_fn;
 		} *params;
 
+#ifdef _DIRENT_HAVE_D_TYPE
 		if (ent->d_type != DT_REG)
 			continue;
+#endif
+#ifdef __MINGW32__
+		if (!str_endswith(ent->d_name, ".dll"))
+			continue;
+#else
 		if (!str_endswith(ent->d_name, ".so"))
 			continue;
+#endif
 		snprintf(buf, sizeof(buf), "%s/%s", plugin_dir, ent->d_name);
 
 		lib = dlopen(buf, RTLD_LOCAL | RTLD_LAZY);
@@ -1406,14 +922,20 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 		params->ini_fn = ini_fn;
 
 		/* Call plugin->init() in a thread to speed up boot time */
-		plugin->thd = g_thread_new(plugin->name, init_plugin, params);
+		if (load_in_parallel) {
+			plugin->thd = g_thread_new(plugin->name, init_plugin, params);
+		} else {
+			GtkWidget *widget = init_plugin(params);
+			load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
+		}
 	}
+
+	if (!load_in_parallel)
+		return;
 
 	/* Wait for all init functions to finish */
 	for (node = plugin_list; node; node = g_slist_next(node)) {
-		struct detachable_plugin *d_plugin;
 		GtkWidget *widget;
-		gint page;
 
 		plugin = node->data;
 		if (!plugin || !plugin->thd)
@@ -1423,19 +945,8 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 		if (!widget)
 			continue;
 
+		load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
 		printf("Loaded plugin: %s\n", plugin->name);
-		page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
-				widget, NULL);
-		gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),
-				widget, plugin->name);
-
-		if (plugin->update_active_page)
-			plugin->update_active_page(page, FALSE);
-
-		d_plugin = malloc(sizeof(*d_plugin));
-		d_plugin->plugin = plugin;
-		dplugin_list = g_slist_append(dplugin_list, (gpointer)d_plugin);
-		plugin_make_detachable(d_plugin);
 	}
 }
 
@@ -1495,18 +1006,18 @@ static ssize_t demux_sample(const struct iio_channel *chn,
 }
 
 static off_t get_trigger_offset(const struct iio_channel *chn,
-		bool falling_edge)
+		bool falling_edge, float trigger_value)
 {
 	struct extra_info *info = iio_channel_get_data(chn);
 	size_t i;
 
 	if (iio_channel_is_enabled(chn)) {
-		for (i = 1; i < info->offset / 2; i++) {
-			if (!falling_edge && info->data_ref[i - 1] < 0.0f &&
-					info->data_ref[i] >= 0.0f)
+		for (i = info->offset / 2; i >= 1; i--) {
+			if (!falling_edge && info->data_ref[i - 1] < trigger_value &&
+					info->data_ref[i] >= trigger_value)
 				return i * sizeof(gfloat);
-			if (falling_edge && info->data_ref[i - 1] >= 0.0f &&
-					info->data_ref[i] < 0.0f)
+			if (falling_edge && info->data_ref[i - 1] >= trigger_value &&
+					info->data_ref[i] < trigger_value)
 				return i * sizeof(gfloat);
 		}
 	}
@@ -1536,6 +1047,9 @@ static gboolean capture_process(void)
 {
 	unsigned int i;
 
+	if (stop_capture == TRUE)
+		goto capture_stop_check;
+
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
@@ -1543,7 +1057,7 @@ static gboolean capture_process(void)
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		unsigned int sample_count = dev_info->sample_count;
 		struct iio_channel *chn;
-		off_t offset;
+		off_t offset = 0;
 
 		if (dev_info->input_device == false)
 			continue;
@@ -1551,7 +1065,8 @@ static gboolean capture_process(void)
 		if (sample_size == 0)
 			continue;
 
-		if (device_is_oneshot(dev)) {
+		if (dev_info->buffer == NULL || device_is_oneshot(dev)) {
+			dev_info->buffer_size = sample_count;
 			dev_info->buffer = iio_device_create_buffer(dev,
 				sample_count, false);
 			if (!dev_info->buffer) {
@@ -1560,9 +1075,6 @@ static gboolean capture_process(void)
 			}
 		}
 
-		if (dev_info->buffer == NULL)
-			goto capture_stop_check;
-
 		/* Reset the data offset for all channels */
 		for (i = 0; i < nb_channels; i++) {
 			struct iio_channel *ch = iio_device_get_channel(dev, i);
@@ -1570,21 +1082,35 @@ static gboolean capture_process(void)
 			info->offset = 0;
 		}
 
-		do {
-			ssize_t ret, nb;
-			ret = iio_buffer_refill(dev_info->buffer);
-			if (ret >= 0)
-				ret = iio_buffer_foreach_sample(
-					dev_info->buffer, demux_sample, NULL);
+		while (true) {
+			ssize_t ret = iio_buffer_refill(dev_info->buffer);
 			if (ret < 0) {
 				fprintf(stderr, "Error while reading data: %s\n", strerror(-ret));
 				stop_capture = TRUE;
 				goto capture_stop_check;
 			}
 
-			nb = ret / sample_size;
-			sample_count = (sample_count < nb) ? 0 : sample_count - nb;
-		} while (sample_count);
+			ret /= iio_buffer_step(dev_info->buffer);
+			if (ret >= sample_count) {
+				iio_buffer_foreach_sample(
+						dev_info->buffer, demux_sample, NULL);
+
+				if (ret >= sample_count * 2) {
+					printf("Decreasing buffer size\n");
+					iio_buffer_destroy(dev_info->buffer);
+					dev_info->buffer_size /= 2;
+					dev_info->buffer = iio_device_create_buffer(dev,
+							dev_info->buffer_size, false);
+				}
+				break;
+			}
+
+			printf("Increasing buffer size\n");
+			iio_buffer_destroy(dev_info->buffer);
+			dev_info->buffer_size *= 2;
+			dev_info->buffer = iio_device_create_buffer(dev,
+					dev_info->buffer_size, false);
+		}
 
 		if (dev_info->channel_trigger_enabled) {
 			chn = iio_device_get_channel(dev, dev_info->channel_trigger);
@@ -1593,11 +1119,17 @@ static gboolean capture_process(void)
 		}
 
 		if (dev_info->channel_trigger_enabled) {
-			offset = get_trigger_offset(chn, dev_info->trigger_falling_edge);
-			for (i = 0; i < nb_channels; i++) {
-				chn = iio_device_get_channel(dev, i);
-				if (iio_channel_is_enabled(chn))
-					apply_trigger_offset(chn, offset);
+			struct extra_info *info = iio_channel_get_data(chn);
+			offset = get_trigger_offset(chn, dev_info->trigger_falling_edge,
+					dev_info->trigger_value);
+			if (offset / sizeof(gfloat) < info->offset / 4) {
+				offset = 0;
+			} else if (offset) {
+				for (i = 0; i < nb_channels; i++) {
+					chn = iio_device_get_channel(dev, i);
+					if (iio_channel_is_enabled(chn))
+						apply_trigger_offset(chn, offset - info->offset);
+				}
 			}
 		}
 
@@ -1606,7 +1138,7 @@ static gboolean capture_process(void)
 				struct iio_channel *ch = iio_device_get_channel(dev, i);
 				struct extra_info *info = iio_channel_get_data(ch);
 				memcpy(dev_info->channels_data_copy[i], info->data_ref,
-					dev_info->sample_count * sizeof(gfloat));
+					sample_count * sizeof(gfloat));
 			}
 			dev_info->channels_data_copy = NULL;
 			G_UNLOCK(buffer_full);
@@ -1616,9 +1148,12 @@ static gboolean capture_process(void)
 			iio_buffer_destroy(dev_info->buffer);
 			dev_info->buffer = NULL;
 		}
+
+		if (!dev_info->channel_trigger_enabled || offset)
+			update_plot(dev_info->buffer);
 	}
 
-	update_all_plots();
+	update_plot(NULL);
 
 capture_stop_check:
 	if (stop_capture == TRUE)
@@ -1720,14 +1255,7 @@ static int capture_setup(void)
 
 		if (dev_info->buffer)
 			iio_buffer_destroy(dev_info->buffer);
-
-		if (!device_is_oneshot(dev)) {
-			dev_info->buffer = iio_device_create_buffer(dev, sample_count, false);
-			if (!dev_info->buffer) {
-				fprintf(stderr, "Error: Unable to create buffer: %s\n", strerror(errno));
-				return -1;
-			}
-		}
+		dev_info->buffer = NULL;
 		dev_info->sample_count = sample_count;
 
 		iio_device_set_data(dev, dev_info);
@@ -1807,7 +1335,7 @@ static void plot_init(GtkWidget *plot)
 	gtk_widget_show(plot);
 }
 
-static GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data)
+GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data)
 {
 	GtkWidget *new_plot;
 
@@ -1879,8 +1407,6 @@ static gboolean idle_timeout_check(gpointer ptr)
 	}
 }
 
-#define DEFAULT_PROFILE_NAME ".osc_profile.ini"
-
 static void do_quit(bool reload)
 {
 	unsigned int i, nb = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
@@ -1925,6 +1451,8 @@ static void do_quit(bool reload)
 
 	if (ctx)
 		iio_context_destroy(ctx);
+
+	math_expression_objects_clean();
 }
 
 void application_reload(struct iio_context *new_ctx)
@@ -1943,11 +1471,6 @@ void application_reload(struct iio_context *new_ctx)
 void application_quit (void)
 {
 	do_quit(false);
-}
-
-void sigterm (int signum)
-{
-	application_quit();
 }
 
 /*
@@ -2087,12 +1610,14 @@ void rx_update_labels(double sampling_freq, double rx_lo_freq)
 }
 
 /* Before we really start, let's load the last saved profile */
-static bool check_inifile(const char *filepath)
+bool check_inifile(const char *filepath)
 {
 	struct stat sts;
 	FILE *fd;
 	char buf[1024];
 	size_t i;
+
+	buf[1023] = '\0';
 
 	if (stat(filepath, &sts) == -1)
 		return FALSE;
@@ -2104,7 +1629,7 @@ static bool check_inifile(const char *filepath)
 	if (!fd)
 		return FALSE;
 
-	i = fread(buf, 1023, 1, fd);
+	i = fread(buf, 1, sizeof(buf) - 1, fd);
 	fclose(fd);
 
 	if (i == 0 )
@@ -2116,7 +1641,7 @@ static bool check_inifile(const char *filepath)
 	return TRUE;
 }
 
-static int load_default_profile(char *filename, bool load_plugins)
+int load_default_profile(char *filename, bool load_plugins)
 {
 	/* Don't load anything */
 	if (filename && !strcmp(filename, "-"))
@@ -2168,40 +1693,14 @@ static void window_size_readjust(GtkWindow *window, int width, int height)
 	gtk_window_set_default_size(window, w, h);
 }
 
-static void create_default_plot(void)
+void create_default_plot(void)
 {
 	if (ctx && !!iio_context_get_devices_count(ctx) &&
 			g_list_length(plot_list) == 0)
 		new_plot_cb(NULL, NULL);
 }
 
-void tooltips_enable_cb (GtkCheckMenuItem *item, gpointer data)
-{
-	gboolean enable;
-	GdkScreen *screen;
-	GtkSettings *settings;
-
-	screen = gtk_window_get_screen(GTK_WINDOW(main_window));
-	settings = gtk_settings_get_for_screen(screen);
-	enable = gtk_check_menu_item_get_active(item);
-	g_object_set(settings, "gtk-enable-tooltips", enable, NULL);
-}
-
-static void infobar_hide_cb(GtkButton *btn, gpointer user_data)
-{
-	gtk_widget_set_visible(infobar, false);
-}
-
-static void infobar_reconnect_cb(GtkMenuItem *btn, gpointer user_data)
-{
-	struct iio_context *new_ctx = iio_context_clone(ctx);
-	if (new_ctx) {
-		application_reload(new_ctx);
-		gtk_widget_set_visible(infobar, false);
-	}
-}
-
-static void do_init(struct iio_context *new_ctx)
+void do_init(struct iio_context *new_ctx)
 {
 	init_device_list(new_ctx);
 	load_plugins(notebook, NULL);
@@ -2218,71 +1717,6 @@ static void do_init(struct iio_context *new_ctx)
 	}
 }
 
-static void init_application (const char *ini_fn)
-{
-	GtkBuilder *builder = NULL;
-	GtkWidget  *window;
-	GtkWidget  *btn_capture;
-	GtkWidget  *infobar_close, *infobar_reconnect;
-	GtkAboutDialog *about = NULL;
-
-	builder = gtk_builder_new();
-
-	if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL)) {
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
-	} else {
-		GtkImage *logo;
-		GdkPixbuf *pixbuf;
-		GError *err = NULL;
-
-		/* We are running locally, so load the local files */
-		logo = GTK_IMAGE(gtk_builder_get_object(builder, "about_ADI_logo"));
-		g_object_set(logo, "file","./icons/ADIlogo.png", NULL);
-		logo = GTK_IMAGE(gtk_builder_get_object(builder, "about_IIO_logo"));
-		g_object_set(logo, "file","./icons/IIOlogo.png", NULL);
-		about = GTK_ABOUT_DIALOG(gtk_builder_get_object(builder, "About_dialog"));
-		logo = GTK_IMAGE(gtk_builder_get_object(builder, "image_capture"));
-		g_object_set(logo, "file","./icons/osc_capture.png", NULL);
-		logo = GTK_IMAGE(gtk_builder_get_object(builder, "image_generator"));
-		g_object_set(logo, "file","./icons/osc_generator.png", NULL);
-		pixbuf = gdk_pixbuf_new_from_file("./icons/osc128.png", &err);
-		if (pixbuf) {
-			g_object_set(about, "logo", pixbuf,  NULL);
-			g_object_unref(pixbuf);
-		}
-	}
-
-	/* Override version in About menu with git branch and commit hash. */
-	if (!about)
-		about = GTK_ABOUT_DIALOG(gtk_builder_get_object(builder, "About_dialog"));
-	gtk_about_dialog_set_version(about, OSC_VERSION);
-
-	window = GTK_WIDGET(gtk_builder_get_object(builder, "main_menu"));
-	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
-	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "new_capture_plot"));
-	tooltips_en = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_tooltips_en"));
-	main_window = window;
-
-	infobar = GTK_WIDGET(gtk_builder_get_object(builder, "infobar1"));
-	infobar_close = GTK_WIDGET(gtk_builder_get_object(builder, "infobar_close"));
-	infobar_reconnect = GTK_WIDGET(gtk_builder_get_object(builder, "infobar_reconnect"));
-
-	/* Connect signals. */
-	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
-	g_signal_connect(G_OBJECT(btn_capture), "activate", G_CALLBACK(new_plot_cb), NULL);
-	g_signal_connect(G_OBJECT(tooltips_en), "toggled", G_CALLBACK(tooltips_enable_cb), NULL);
-
-	g_signal_connect(G_OBJECT(infobar_close), "clicked", G_CALLBACK(infobar_hide_cb), NULL);
-	g_signal_connect(G_OBJECT(infobar_reconnect), "clicked", G_CALLBACK(infobar_reconnect_cb), NULL);
-
-	dialogs_init(builder);
-
-	ctx = osc_create_context();
-	if (ctx)
-		do_init(ctx);
-	gtk_widget_show(window);
-}
-
 static char *prev_section;
 static GtkWidget *plot_widget;
 
@@ -2295,7 +1729,7 @@ static int capture_profile_handler(const char *section,
 {
 
 	if (strncmp(section, CAPTURE_INI_SECTION, sizeof(CAPTURE_INI_SECTION) - 1))
-		return -1;
+		return 1;
 
 	/* Check if a new section has been reached */
 	if (!prev_section || strcmp(section, prev_section) != 0) {
@@ -2303,19 +1737,18 @@ static int capture_profile_handler(const char *section,
 			g_free(prev_section);
 		/* Remember the last section */
 		prev_section = g_strdup(section);
+
 		/* Create a capture window and parse the line from ini file*/
-		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
-			if (ctx && !!iio_context_get_devices_count(ctx)) {
-				plot_widget = new_plot_cb(NULL, NULL);
-				osc_plot_set_visible(OSC_PLOT(plot_widget), false);
-				return osc_plot_ini_read_handler(OSC_PLOT(plot_widget), section, name, value);
-			}
+		if (ctx && !!iio_context_get_devices_count(ctx)) {
+			plot_widget = new_plot_cb(NULL, NULL);
+			osc_plot_set_visible(OSC_PLOT(plot_widget), false);
+			return osc_plot_ini_read_handler(OSC_PLOT(plot_widget),
+					section, name, value);
 		}
 	} else if (plot_widget) {
 		/* Parse the line from ini file */
-		if (strncmp(section, CAPTURE_INI_SECTION, strlen(CAPTURE_INI_SECTION)) == 0) {
-			return osc_plot_ini_read_handler(OSC_PLOT(plot_widget), section, name, value);
-		}
+		return osc_plot_ini_read_handler(OSC_PLOT(plot_widget),
+				section, name, value);
 	}
 
 	return 0;
@@ -2414,14 +1847,111 @@ void save_complete_profile(const char *filename)
 	}
 }
 
+static int handle_osc_param(const char *name, const char *value)
+{
+	char *buf;
+
+	if (!strcmp(name, "tooltips_enable")) {
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tooltips_en),
+				!!atoi(value));
+		return 0;
+	}
+
+	if (sscanf(name, "plugin.%m[^.].detached", &buf) == 1) {
+		printf("Restoring detached state for plugin %s (%i)\n",
+				buf, !!atoi(value));
+		plugin_restore_ini_state(buf, "detached", !!atoi(value));
+		free(buf);
+		return 0;
+	}
+
+	return 0;
+}
+
+static int load_profile_sequential_handler(const char *section,
+		const char *name, const char *value)
+{
+	struct osc_plugin *plugin = get_plugin_from_name(section);
+	if (plugin) {
+		if (plugin->handle_item)
+			return plugin->handle_item(name, value);
+		else
+			return 1;
+	}
+
+	if (!strncmp(section, CAPTURE_INI_SECTION, sizeof(CAPTURE_INI_SECTION) - 1))
+		return capture_profile_handler(section, name, value);
+
+	if (!strcmp(section, OSC_INI_SECTION))
+		return handle_osc_param(name, value);
+
+	fprintf(stderr, "Unhandled INI section: [%s]\n", section);
+	return 1;
+}
+
+static void load_profile_sequential(const char *filename)
+{
+	char buf[L_tmpnam];
+	int ret;
+
+	snprintf(buf, sizeof(buf), "%s/osc_%u.ini", P_tmpdir, getpid());
+	unlink(buf);
+
+	ret = ini_unroll(filename, buf);
+	if (ret < 0)
+		goto err_unlink;
+
+	printf("Loading profile sequentially from %s\n", buf);
+	ret = foreach_in_ini(buf, load_profile_sequential_handler);
+	if (ret < 0)
+		fprintf(stderr, "Sequential loading of profile aborted.\n");
+	else
+		fprintf(stderr, "Sequential loading completed.\n");
+
+err_unlink:
+	unlink(buf);
+}
+
 static void load_profile(const char *filename, bool load_plugins)
 {
 	GSList *node;
+	gint x_pos = 0, y_pos = 0;
+	char *value;
 
 	close_all_plots();
 	destroy_all_plots();
 
 	plot_widget = NULL;
+
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "test");
+	if (value) {
+		free(value);
+		load_profile_sequential(filename);
+		return;
+	}
+
+	value = read_token_from_ini(filename,
+			OSC_INI_SECTION, "tooltips_enable");
+	if (value) {
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tooltips_en),
+				!!atoi(value));
+		free(value);
+	}
+
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "window_x_pos");
+	if (value) {
+		x_pos = atoi(value);
+		free(value);
+	}
+
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "window_y_pos");
+	if (value) {
+		y_pos = atoi(value);
+		free(value);
+	}
+
+	gtk_window_move(GTK_WINDOW(main_window), x_pos, y_pos);
+
 	foreach_in_ini(filename, capture_profile_handler);
 	if (prev_section) {
 		g_free(prev_section);
@@ -2430,7 +1960,6 @@ static void load_profile(const char *filename, bool load_plugins)
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		struct osc_plugin *plugin = node->data;
-		char *value;
 		char buf[1024];
 
 		if (load_plugins && plugin->load_profile)
@@ -2451,93 +1980,314 @@ void load_complete_profile(const char *filename)
 	load_profile(filename, true);
 }
 
-void usage(char *program)
-{
-	printf("%s: the IIO visualization and control tool\n", program);
-	printf( " Copyright (C) Analog Devices, Inc. and others\n"
-		" This is free software; see the source for copying conditions.\n"
-		" There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n"
-		" PARTICULAR PURPOSE.\n\n");
-
-	/* please keep this list sorted in alphabetical order */
-	printf( "Command line options:\n"
-		"\t-p\tload specific profile\n");
-
-	printf("\nEnvironmental variables:\n"
-		"\tOSC_FORCE_PLUGIN\tforce loading of a specfic plugin\n");
-
-	exit(-1);
-}
-
-gint main (int argc, char **argv)
-{
-	int c;
-
-	char *profile = NULL;
-
-	opterr = 0;
-	while ((c = getopt (argc, argv, "p:")) != -1)
-		switch (c) {
-			case 'p':
-				profile = strdup(optarg);
-				break;
-			case '?':
-				usage(argv[0]);
-				break;
-			default:
-				printf("Unknown command line option\n");
-				usage(argv[0]);
-				break;
-		}
-
-	gdk_threads_init();
-	gtk_init(&argc, &argv);
-
-	signal(SIGTERM, sigterm);
-	signal(SIGINT, sigterm);
-	signal(SIGHUP, sigterm);
-
-	if (profile && strncmp(profile, "-", 1) == 0)
-		profile = NULL;
-
-	if (profile) {
-		char buf[1024];
-		strncpy(buf, profile, sizeof(buf));
-		profile = check_inifile(buf) ? strdup(buf) : NULL;
-	}
-
-	if (!profile) {
-		char buf[1024];
-		snprintf(buf, sizeof(buf), "%s/" DEFAULT_PROFILE_NAME,
-				getenv("HOME"));
-		if (check_inifile(buf))
-			profile = strdup(buf);
-	}
-
-	gdk_threads_enter();
-	init_application(profile);
-	c = load_default_profile(profile, false);
-	create_default_plot();
-	if (c == 0)
-		gtk_main();
-	else
-		application_quit();
-
-	gdk_threads_leave();
-
-	if (profile)
-	    free(profile);
-
-	if (c == 0 || c == -ENOTTY)
-		return 0;
-	else
-		return -1;
-}
-
 struct iio_context * osc_create_context(void)
 {
 	if (!ctx)
 		return iio_create_default_context();
 	else
 		return iio_context_clone(ctx);
+}
+
+/* Test something, according to:
+ * test.device.attribute.type = min max
+ */
+int osc_test_value(struct iio_context *ctx,
+		const char *attribute, const char *value)
+{
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	char *dev_name = NULL, *attr_name = NULL, *type = NULL;
+	const char *attr;
+	long long min_i, max_i, val_i;
+	double min_d, max_d, val_d;
+	int ret;
+
+	ret = sscanf(attribute, "test.%m[^.].%m[^.].%m[^.]",
+			&dev_name, &attr_name, &type);
+	if (ret != 3) {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	dev = iio_context_find_device(ctx, dev_name);
+	if (!dev) {
+		ret = -ENODEV;
+		goto cleanup;
+	}
+
+	ret = iio_device_identify_filename(dev, attr_name, &chn, &attr);
+	if (ret < 0)
+		goto cleanup;
+
+	if (!strcmp(type, "int")) {
+		ret = sscanf(value, "%lli %lli", &min_i, &max_i);
+		if (ret != 2) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
+
+		if (chn)
+			ret = iio_channel_attr_read_longlong(chn, attr, &val_i);
+		else
+			ret = iio_device_attr_read_longlong(dev, attr, &val_i);
+		if (ret < 0)
+			goto cleanup;
+
+		printf("(%s = %s): value = %lli\n", attribute, value, val_i);
+		ret = val_i >= min_i && val_i <= max_i;
+
+	} else if (!strcmp(type, "double")) {
+		gchar *end1, *end2;
+		min_d = g_ascii_strtod(value, &end1);
+		if (end1 == value) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
+
+		max_d = g_ascii_strtod(end1, &end2);
+		if (end1 == end2) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
+
+		if (chn)
+			ret = iio_channel_attr_read_double(chn, attr, &val_d);
+		else
+			ret = iio_device_attr_read_double(dev, attr, &val_d);
+		if (ret < 0)
+			goto cleanup;
+
+		printf("(%s = %s): value = %lf\n", attribute, value, val_d);
+		ret = val_d >= min_d && val_d <= max_d;
+
+	} else {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	if (ret < 0)
+		fprintf(stderr, "Unable to test \"%s\": %s\n",
+				attribute, strerror(-ret));
+	else if (ret == 0)
+		fprintf(stderr, "*** Test failed! ***\n");
+	else
+		fprintf(stderr, "Test passed.\n");
+
+cleanup:
+	if (dev_name)
+		free(dev_name);
+	if (attr_name)
+		free(attr_name);
+	if (type)
+		free(type);
+	return ret;
+}
+
+int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
+		struct iio_device **dev, struct iio_channel **chn,
+		const char **attr)
+{
+	struct iio_device *device;
+	char *dev_name = NULL, *filename = NULL;
+	int ret;
+
+	ret = sscanf(attrib, "%m[^.].%m[^.]", &dev_name, &filename);
+	if (ret != 2) {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	device = iio_context_find_device(ctx, dev_name);
+	if (!device) {
+		ret = -ENODEV;
+		goto cleanup;
+	}
+
+	ret = iio_device_identify_filename(device, filename, chn, attr);
+	if (!ret)
+		*dev = device;
+
+cleanup:
+	if (dev_name)
+		free(dev_name);
+	if (filename)
+		free(filename);
+	return ret;
+}
+
+static int osc_read_nonenclosed_value(struct iio_context *ctx,
+		const char *value, long long *out)
+{
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	const char *attr;
+	int ret = osc_identify_attrib(ctx, value, &dev, &chn, &attr);
+	if (ret < 0)
+		return ret;
+
+	if (chn)
+		ret = iio_channel_attr_read_longlong(chn, attr, out);
+	else
+		ret = iio_device_attr_read_longlong(dev, attr, out);
+	return ret < 0 ? ret : 0;
+}
+
+static int osc_read_enclosed_value(struct iio_context *ctx,
+		const char *value, long long *out)
+{
+	const char *plus = strstr(value, " + "),
+	      *minus = strstr(value, " - ");
+	char *sub, *left = NULL, *right = NULL;
+	long long val_left, val_right;
+	int ret;
+
+	if (!plus && !minus) {
+		ret = sscanf(value, "{%m[^{}]}", &sub);
+		if (ret != 1)
+			return -EINVAL;
+
+		ret = osc_read_nonenclosed_value(ctx, sub, out);
+		free(sub);
+		return ret;
+	}
+
+	if (plus)
+		ret = sscanf(value, "{{%m[^{^}]} + {%m[^{^}]}}",
+				&left, &right);
+	else
+		ret = sscanf(value, "{{%m[^{}]} - {%m[^{}]}}",
+				&left, &right);
+	if (ret != 2) {
+		ret = -EINVAL;
+		goto err_free;
+	}
+
+	ret = osc_read_nonenclosed_value(ctx, left, &val_left);
+	if (ret < 0)
+		goto err_free;
+
+	ret = osc_read_nonenclosed_value(ctx, right, &val_right);
+	if (ret < 0)
+		goto err_free;
+
+	if (plus)
+		*out = val_left + val_right;
+	else
+		*out = val_left - val_right;
+
+err_free:
+	if (left)
+		free(left);
+	if (right)
+		free(right);
+	return ret;
+}
+
+int osc_read_value(struct iio_context *ctx,
+		const char *value, long long *out)
+{
+	if (value[0] == '{') {
+		return osc_read_enclosed_value(ctx, value, out);
+	} else {
+		char *end;
+		long long result = strtoll(value, &end, 10);
+		if (value == end)
+			return -EINVAL;
+
+		*out = result;
+		return 0;
+	}
+}
+
+/* Log the value of a parameter in a text file:
+ * log.device.filename = output_file
+ */
+int osc_log_value(struct iio_context *ctx,
+		const char *attribute, const char *value)
+{
+	int ret;
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	const char *attr;
+	char buf[1024];
+	FILE *f;
+
+	if (strncmp(attribute, "log.", sizeof("log.") - 1)) {
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	ret = osc_identify_attrib(ctx,
+			attribute + sizeof("log.") - 1,
+			&dev, &chn, &attr);
+	if (ret < 0)
+		goto err_ret;
+
+	if (chn)
+		ret = iio_channel_attr_read(chn, attr, buf, sizeof(buf));
+	else
+		ret = iio_device_attr_read(dev, attr, buf, sizeof(buf));
+	if (ret < 0)
+		goto err_ret;
+
+	f = fopen(value, "a");
+	if (!f) {
+		ret = -errno;
+		goto err_ret;
+	}
+
+	fprintf(f, "%s, ", buf);
+	fclose(f);
+	return 0;
+
+err_ret:
+	fprintf(stderr, "Unable to log \"%s\": %s\n",
+			attribute, strerror(-ret));
+	return ret;
+}
+
+int osc_plugin_default_handle(struct iio_context *ctx,
+		const char *attrib, const char *value,
+		int (*driver_handle)(const char *, const char *))
+{
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	const char *attr;
+	int ret;
+
+	if (!strncmp(attrib, "test.", sizeof("test.") - 1)) {
+		ret = osc_test_value(ctx, attrib, value);
+		return ret < 1 ? -1 : 0;
+	}
+
+	if (!strncmp(attrib, "log.", sizeof("log.") - 1))
+		return osc_log_value(ctx, attrib, value);
+
+	ret = osc_identify_attrib(ctx, attrib, &dev, &chn, &attr);
+	if (ret < 0) {
+		if (driver_handle)
+			return driver_handle(attrib, value);
+		else
+			return ret;
+	}
+
+	if (value[0] == '{') {
+		long long lval;
+		ret = osc_read_value(ctx, value, &lval);
+		if (ret < 0) {
+			printf("Unable to read value: %s\n", value);
+			return ret;
+		}
+
+		if (chn)
+			ret = iio_channel_attr_write_longlong(chn, attr, lval);
+		else
+			ret = iio_device_attr_write_longlong(dev, attr, lval);
+	} else if (chn)
+		ret = iio_channel_attr_write(chn, attr, value);
+	else
+		ret = iio_device_attr_write(dev, attr, value);
+	if (ret < 0)
+		fprintf(stderr, "Unable to write value: %s\n", value);
+	return ret < 0 ? ret : 0;
 }

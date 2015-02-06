@@ -80,6 +80,9 @@ static const char *motor_control_sr_attribs[] = {
 	AD_MC_CTRL".mc_ctrl_delta",
 	AD_MC_CTRL".mc_ctrl_direction",
 	AD_MC_CTRL".mc_ctrl_matlab",
+};
+
+static const char * motor_control_driver_attribs[] = {
 	"pwm",
 	"gpo.1",
 	"gpo.2",
@@ -383,39 +386,51 @@ static void advanced_controller_init(GtkBuilder *builder)
 	g_signal_connect(G_OBJECT(zero_offset), "output", G_CALLBACK(spin_output_cb), &OENCODER_NUM_FRAC_BITS);
 }
 
-static void set_gpo_state(const char *ini_fn, unsigned i)
+static int motor_control_handle_driver(const char *attrib, const char *value)
 {
-	char buf[1024], *value;
-
-	snprintf(buf, sizeof(buf), "gpo.%i", i);
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, buf);
-	if (value) {
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gpo[i - 1]), !!atoi(value));
-		free(value);
-	}
-}
-
-static void load_profile(const char *ini_fn)
-{
-	char *value;
-	int i;
-
-	if (pid_dev) {
-		update_from_ini(ini_fn, THIS_DRIVER, pid_dev, motor_control_sr_attribs,
-			ARRAY_SIZE(motor_control_sr_attribs));
-	}
-
-	value = read_token_from_ini(ini_fn, THIS_DRIVER, "pwm");
-	if (value) {
+	if (MATCH_ATTRIB("pwm")) {
 		if (value[0]) {
 			gtk_entry_set_text(GTK_ENTRY(pwm_pid), value);
 			gtk_spin_button_update(GTK_SPIN_BUTTON(pwm_pid));
 		}
-		free(value);
+	} else if (!strncmp(attrib, "gpo.", sizeof("gpo.") - 1)) {
+		int id = atoi(attrib + sizeof("gpo.") - 1);
+		gtk_toggle_button_set_active(
+				GTK_TOGGLE_BUTTON(gpo[id - 1]), !!atoi(value));
+	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
+		if (can_update_widgets)
+			tx_update_values();
+	} else {
+		return -EINVAL;
 	}
 
-	for (i = 1; i < 12; i++)
-		set_gpo_state(ini_fn, i);
+	return 0;
+}
+
+static int motor_control_handle(const char *attrib, const char *value)
+{
+	return osc_plugin_default_handle(ctx, attrib, value,
+			motor_control_handle_driver);
+}
+
+static void load_profile(const char *ini_fn)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(motor_control_driver_attribs); i++) {
+		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				motor_control_driver_attribs[i]);
+		if (value) {
+			motor_control_handle_driver(
+					motor_control_driver_attribs[i], value);
+			free(value);
+		}
+	}
+
+	if (pid_dev)
+		update_from_ini(ini_fn, THIS_DRIVER, pid_dev,
+				motor_control_sr_attribs,
+				ARRAY_SIZE(motor_control_sr_attribs));
 
 	if (can_update_widgets)
 		tx_update_values();
@@ -522,7 +537,7 @@ static void save_widgets_to_ini(FILE *f)
 			"gpo.3 = %i\n"
 			"gpo.4 = %i\n"
 			"gpo.5 = %i\n"
-			"gpo.6= %i\n"
+			"gpo.6 = %i\n"
 			"gpo.7 = %i\n"
 			"gpo.8 = %i\n"
 			"gpo.9 = %i\n"
@@ -574,6 +589,7 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = motor_control_identify,
 	.init = motor_control_init,
+	.handle_item = motor_control_handle,
 	.save_profile = save_profile,
 	.load_profile = load_profile,
 	.destroy = context_destroy,

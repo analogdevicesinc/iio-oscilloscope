@@ -1,0 +1,5 @@
+iio-osc (1.0-0) unstable; urgency=low
+
+  * Initial release of the Debian package
+
+ -- Paul Cercueil <paul.cercueil@analog.com>  Fri, 23 Jan 2015 15:30:48 +0200

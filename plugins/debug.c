@@ -1376,10 +1376,13 @@ static void debug_register_section_init(struct iio_device *iio_dev)
 		}
 		gtk_widget_set_sensitive(register_section, true);
 	} else {
+#ifdef __linux__
 		int id = getuid();
-		if (id != 0)
+		if (id != 0) {
 			gtk_widget_show(warning_label);
 			gtk_widget_set_sensitive(register_section, false);
+		}
+#endif
 	}
 }
 

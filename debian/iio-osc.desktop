@@ -1,0 +1,8 @@
+[Desktop Entry]
+Exec=/usr/bin/osc
+Icon=/usr/share/osc/osc128.png
+Terminal=false
+Type=Application
+Categories=Science
+Name=ADI IIO Oscilloscope
+GenericName=ADI IIO Oscilloscope

@@ -14,6 +14,7 @@
 
 #include "oscplot.h"
 
+#define DEFAULT_PROFILE_NAME ".osc_profile.ini"
 #define OSC_INI_SECTION "IIO Oscilloscope"
 #define CAPTURE_INI_SECTION OSC_INI_SECTION " - Capture Window"
 
@@ -26,6 +27,8 @@ extern GtkWidget *capture_graph;
 extern gint capture_function;
 extern bool str_endswith(const char *str, const char *needle);
 
+/* Max 1 Meg (2^20) */
+#define MAX_SAMPLES 1048576
 #define TMP_INI_FILE "/tmp/.%s.tmp"
 #ifndef MAX_MARKERS
 #define MAX_MARKERS 10
@@ -103,5 +106,25 @@ gint fru_connect(void);
 void application_reload(struct iio_context *ctx);
 
 struct iio_context * osc_create_context(void);
+
+int osc_test_value(struct iio_context *ctx,
+		const char *attribute, const char *value);
+int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
+		struct iio_device **dev, struct iio_channel **chn,
+		const char **attr);
+int osc_read_value(struct iio_context *ctx,
+		const char *value, long long *out);
+int osc_log_value(struct iio_context *ctx,
+		const char *attribute, const char *value);
+int osc_plugin_default_handle(struct iio_context *ctx,
+		const char *attrib, const char *value,
+		int (*driver_handle)(const char *, const char *));
+
+/* Private functions */
+extern int load_default_profile(char *filename, bool load_plugins);
+extern void do_init(struct iio_context *new_ctx);
+extern void create_default_plot(void);
+extern GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
+extern bool check_inifile(const char *filepath);
 
 #endif

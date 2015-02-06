@@ -5,7 +5,9 @@
 #include <math.h>
 #include <ctype.h>
 #include <sys/stat.h>
+#ifdef __linux__
 #include <sys/utsname.h>
+#endif
 #include <matio.h>
 
 #include "dac_data_manager.h"
@@ -653,8 +655,6 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 	FILE *infile;
 	*/
 	unsigned int buffer_channels = 0;
-	unsigned int major, minor;
-	struct utsname uts;
 
 	if (manager->dds_buffer) {
 		iio_buffer_destroy(manager->dds_buffer);
@@ -662,6 +662,10 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 	}
 
 	if (manager->is_local) {
+#ifdef __linux__
+		unsigned int major, minor;
+		struct utsname uts;
+
 		uname(&uts);
 		sscanf(uts.release, "%u.%u", &major, &minor);
 		if (major < 2 || (major == 3 && minor < 14)) {
@@ -674,6 +678,7 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		} else {
 			buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(manager->dac_buffer_module.tx_channels_view), NULL);
 		}
+#endif
 	} else {
 		buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(manager->dac_buffer_module.tx_channels_view), NULL);
 	}

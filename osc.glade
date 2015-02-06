@@ -303,7 +303,7 @@ Robin Getz
 The "inih" library is Copyright (c) 2009, Brush Technology
 All rights reserved.
 </property>
-    <property name="logo">/usr/local/share/osc/osc128.png</property>
+    <property name="logo">osc128.png</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="aboutdialog-vbox3">
         <property name="can_focus">False</property>
@@ -372,7 +372,7 @@ All rights reserved.
                           <object class="GtkImage" id="about_IIO_logo">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="pixbuf">/usr/local/share/osc/IIOlogo.png</property>
+                            <property name="pixbuf">IIOlogo.png</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -454,7 +454,7 @@ The IIO Oscilloscope is generously sponsored by Analog Devices.</property>
                           <object class="GtkImage" id="about_ADI_logo">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="pixbuf">/usr/local/share/osc/ADIlogo.png</property>
+                            <property name="pixbuf">ADIlogo.png</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -539,6 +539,7 @@ A GUI for Linux IIO devices</property>
   </object>
   <object class="GtkDialog" id="connect_dialog">
     <property name="can_focus">False</property>
+    <property name="modal">True</property>
     <property name="border_width">5</property>
     <property name="type_hint">dialog</property>
     <child internal-child="vbox">
@@ -771,6 +772,40 @@ A GUI for Linux IIO devices</property>
                       </packing>
                     </child>
                     <child>
+                      <object class="GtkFrame" id="frame2">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label_xalign">0</property>
+                        <property name="shadow_type">none</property>
+                        <child>
+                          <object class="GtkAlignment" id="alignment2">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="left_padding">12</property>
+                            <child>
+                              <object class="GtkTextView" id="connect_iio_ctx_info">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child type="label">
+                          <object class="GtkLabel" id="label7">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="label" translatable="yes">&lt;b&gt;Context Info&lt;/b&gt;</property>
+                            <property name="use_markup">True</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                    <child>
                       <object class="GtkFrame" id="frame9">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
@@ -801,7 +836,7 @@ A GUI for Linux IIO devices</property>
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">2</property>
+                        <property name="position">3</property>
                       </packing>
                     </child>
                   </object>
@@ -853,12 +888,12 @@ Installed/Found IIO devices on this platform</property>
   <object class="GtkImage" id="image_capture">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">/usr/local/share/osc/osc_capture.png</property>
+    <property name="pixbuf">osc_capture.png</property>
   </object>
   <object class="GtkImage" id="image_generator">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">/usr/local/share/osc/osc_generator.png</property>
+    <property name="pixbuf">osc_generator.png</property>
   </object>
   <object class="GtkFileChooserDialog" id="load_save_profile">
     <property name="can_focus">False</property>
