@@ -1028,8 +1028,9 @@ static void apply_trigger_offset(const struct iio_channel *chn, off_t offset)
 {
 	if (offset) {
 		struct extra_info *info = iio_channel_get_data(chn);
+
 		memmove(info->data_ref, (void *) info->data_ref + offset,
-				info->offset * sizeof(gfloat));
+				info->offset * sizeof(gfloat) - offset);
 	}
 }
 
@@ -1125,10 +1126,11 @@ static gboolean capture_process(void)
 			if (offset / sizeof(gfloat) < info->offset / 4) {
 				offset = 0;
 			} else if (offset) {
+				offset -= info->offset * sizeof(gfloat) / 4;
 				for (i = 0; i < nb_channels; i++) {
 					chn = iio_device_get_channel(dev, i);
 					if (iio_channel_is_enabled(chn))
-						apply_trigger_offset(chn, offset - info->offset);
+						apply_trigger_offset(chn, offset);
 				}
 			}
 		}
