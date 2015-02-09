@@ -9,7 +9,7 @@
     <property name="program_name">Analog Devices Inc. Industrial I/O Oscilloscope</property>
     <property name="version">0.8</property>
     <property name="copyright" translatable="yes">Copyright Analog Devices, 2014, Copyright (c) 2009, Brush Technology</property>
-    <property name="website">http://wiki.analog.com/resources/tools-software/linux-software/iio_multi_plot_oscilloscope</property>
+	<property name="website">http://wiki.analog.com/resources/tools-software/linux-software/iio_oscilloscope</property>
     <property name="website_label" translatable="yes">Homepage</property>
     <property name="license" translatable="yes">http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -491,7 +491,7 @@ The IIO Oscilloscope is generously sponsored by Analog Devices.</property>
                             <property name="has_tooltip">True</property>
                             <property name="use_action_appearance">False</property>
                             <property name="relief">none</property>
-                            <property name="uri">http://wiki.analog.com/resources/tools-software/linux-software/iio_multi_plot_oscilloscope</property>
+                            <property name="uri">http://wiki.analog.com/resources/tools-software/linux-software/iio_oscilloscope</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
