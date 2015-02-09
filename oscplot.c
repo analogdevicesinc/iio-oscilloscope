@@ -2555,6 +2555,8 @@ static void plot_setup(OscPlot *plot)
 
 	gtk_databox_graph_remove_all(GTK_DATABOX(priv->databox));
 	markers_init(plot);
+	osc_plot_update_rx_lbl(plot, FORCE_UPDATE);
+
 	for (i = 0; i < tr_list->size; i++) {
 		transform = tr_list->transforms[i];
 		Transform_setup(transform);
@@ -2593,8 +2595,6 @@ static void plot_setup(OscPlot *plot)
 			!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
 			gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -1000.0, 1000.0, 1000, -1000);
 	}
-
-	osc_plot_update_rx_lbl(plot, FORCE_UPDATE);
 }
 
 static void single_shot_clicked_cb(GtkToggleToolButton *btn, gpointer data)
