@@ -1492,8 +1492,6 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 
 	block_diagram_init(builder, 2, "fmcomms2.svg", "AD_FMCOMMS5_EBZ.jpg");
 
-	this_page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), fmcomms5_panel, NULL);
-	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), fmcomms5_panel, "FMComms5");
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
 
@@ -1501,7 +1499,7 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 
 	can_update_widgets = true;
 
-	return 0;
+	return fmcomms5_panel;
 }
 
 static void update_active_page(gint active_page, gboolean is_detached)
