@@ -279,7 +279,9 @@ static void init_device_list(void)
 		0, GTK_SORT_ASCENDING);
 }
 
-static void dmm_update_thread(void)
+static gboolean dmm_update_loop_running;
+
+static gboolean dmm_update(void)
 {
 
 	GtkTreeIter tree_iter;
@@ -290,79 +292,65 @@ static void dmm_update_thread(void)
 	GtkTextBuffer *buf;
 	GtkTextIter text_iter;
 
-	gdk_threads_enter();
-	while (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(dmm_button))) {
-		/* start at the top every time */
-		buf = gtk_text_buffer_new(NULL);
-		gtk_text_buffer_get_iter_at_offset(buf, &text_iter, 0);
+	/* start at the top every time */
+	buf = gtk_text_buffer_new(NULL);
+	gtk_text_buffer_get_iter_at_offset(buf, &text_iter, 0);
 
-		if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
-			loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(channel_list_store), &tree_iter);
-			while (loop) {
-				gtk_tree_model_get(GTK_TREE_MODEL(channel_list_store), &tree_iter,
-						0, &name,
-						1, &enabled,
-						2, &device,
-						3, &channel,
-						4, &scale,
-						-1);
-				if (enabled) {
-					struct iio_device *dev =
-						get_device(device);
-					struct iio_channel *chn =
-						get_channel(dev, channel);
+	if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
+		loop = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(channel_list_store), &tree_iter);
+		while (loop) {
+			gtk_tree_model_get(GTK_TREE_MODEL(channel_list_store), &tree_iter,
+					0, &name,
+					1, &enabled,
+					2, &device,
+					3, &channel,
+					4, &scale,
+					-1);
+			if (enabled) {
+				struct iio_device *dev =
+					get_device(device);
+				struct iio_channel *chn =
+					get_channel(dev, channel);
 
-					if (iio_channel_find_attr(chn, "raw"))
-						value = read_double_attr(chn, "raw");
-					else if (iio_channel_find_attr(chn, "processed"))
-						value = read_double_attr(chn, "processed");
-					else
-						continue;
+				if (iio_channel_find_attr(chn, "raw"))
+					value = read_double_attr(chn, "raw");
+				else if (iio_channel_find_attr(chn, "processed"))
+					value = read_double_attr(chn, "processed");
+				else
+					continue;
 
-					if (iio_channel_find_attr(chn, "offset"))
-						value += read_double_attr(chn,
-								"offset");
-					if (iio_channel_find_attr(chn, "scale"))
-						value *= read_double_attr(chn,
-								"scale");
-					value /= 1000.0;
+				if (iio_channel_find_attr(chn, "offset"))
+					value += read_double_attr(chn,
+							"offset");
+				if (iio_channel_find_attr(chn, "scale"))
+					value *= read_double_attr(chn,
+							"scale");
+				value /= 1000.0;
 
-					if (!strncmp(channel, "voltage", 7))
-						sprintf(tmp, "%s = %f Volts\n", name, value);
-					else if (!strncmp(channel, "temp", 4))
-						sprintf(tmp, "%s = %f Celsius\n", name, value);
-					else
-						sprintf(tmp, "%s = %f\n", name, value);
+				if (!strncmp(channel, "voltage", 7))
+					sprintf(tmp, "%s = %f Volts\n", name, value);
+				else if (!strncmp(channel, "temp", 4))
+					sprintf(tmp, "%s = %f Celsius\n", name, value);
+				else
+					sprintf(tmp, "%s = %f\n", name, value);
 
-					gtk_text_buffer_insert(buf, &text_iter, tmp, -1);
-				}
-				loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(channel_list_store), &tree_iter);
+				gtk_text_buffer_insert(buf, &text_iter, tmp, -1);
 			}
-
-			gtk_text_view_set_buffer(GTK_TEXT_VIEW(dmm_results), buf);
-			g_object_unref(buf);
+			loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(channel_list_store), &tree_iter);
 		}
-		gdk_threads_leave();
-		usleep(500000);
-		gdk_threads_enter();
+
+		gtk_text_view_set_buffer(GTK_TEXT_VIEW(dmm_results), buf);
+		g_object_unref(buf);
 	}
 
-	gdk_threads_leave();
-	g_thread_exit(NULL);
+	return dmm_update_loop_running;
 }
 
 static void dmm_button_clicked(GtkToggleToolButton *btn, gpointer data)
 {
-	static GThread *thr = NULL;
-
-	if (gtk_toggle_tool_button_get_active(btn)) {
-		thr = g_thread_new("Update_DMM", (void *)dmm_update_thread, NULL);
-	} else {
-		if (thr) {
-			g_thread_unref(thr);
-			thr = NULL;
-		}
-	}
+	dmm_update_loop_running = gtk_toggle_tool_button_get_active(btn);
+	if (dmm_update_loop_running)
+		g_timeout_add(500, (GSourceFunc) dmm_update, NULL);
 }
 
 static gboolean dmm_button_icon_transform(GBinding *binding,
