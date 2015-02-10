@@ -121,7 +121,6 @@ static GtkWidget *fmcomms2_panel;
 static gboolean plugin_detached;
 
 static bool update_thd_stop;
-GThread *update_thd;
 
 static const char *fmcomms2_sr_attribs[] = {
 	PHY_DEVICE".trx_rate_governor",
@@ -327,26 +326,22 @@ static void rssi_update_labels(void)
 	}
 }
 
-static void update_display (void *ptr)
+static gboolean update_display(void)
 {
-	const char *gain_mode;
+	if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
+		const char *gain_mode;
 
-	/* This thread never exists, and just updates the control frame */
-	while (!update_thd_stop) {
-		if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
-			gdk_threads_enter();
-			rssi_update_labels();
-			gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes_rx1));
-			if (gain_mode && strcmp(gain_mode, "manual"))
-				iio_widget_update(&rx_widgets[rx1_gain]);
+		rssi_update_labels();
+		gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes_rx1));
+		if (gain_mode && strcmp(gain_mode, "manual"))
+			iio_widget_update(&rx_widgets[rx1_gain]);
 
-			gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes_rx2));
-			if (is_2rx_2tx && gain_mode && strcmp(gain_mode, "manual"))
-				iio_widget_update(&rx_widgets[rx2_gain]);
-			gdk_threads_leave();
-		}
-		sleep(1);
+		gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes_rx2));
+		if (is_2rx_2tx && gain_mode && strcmp(gain_mode, "manual"))
+			iio_widget_update(&rx_widgets[rx2_gain]);
 	}
+
+	return !update_thd_stop;
 }
 
 const double RX_CENTER_FREQ = 340; /* MHz */
@@ -1391,8 +1386,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	gtk_widget_set_visible(up_down_converter, has_udc_driver);
 
 	update_thd_stop = false;
-	update_thd = g_thread_new("Update_thread", (void *) &update_display, NULL);
-
+	g_timeout_add(1000, (GSourceFunc) update_display, NULL);
 	can_update_widgets = true;
 
 	return fmcomms2_panel;
@@ -1459,7 +1453,6 @@ static void save_profile(const char *ini_fn)
 static void context_destroy(const char *ini_fn)
 {
 	update_thd_stop = true;
-	g_thread_join(update_thd);
 
 	if (ini_fn)
 		save_profile(ini_fn);
