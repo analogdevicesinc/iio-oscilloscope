@@ -8,8 +8,8 @@
     <property name="type_hint">dialog</property>
     <property name="program_name">Analog Devices Inc. Industrial I/O Oscilloscope</property>
     <property name="version">0.8</property>
-    <property name="copyright" translatable="yes">Copyright Analog Devices, 2014, Copyright (c) 2009, Brush Technology</property>
-    <property name="website">http://wiki.analog.com/resources/tools-software/linux-software/iio_multi_plot_oscilloscope</property>
+    <property name="copyright" translatable="yes">Copyright Analog Devices, 2015</property>
+    <property name="website">http://wiki.analog.com/resources/tools-software/linux-software/iio_oscilloscope</property>
     <property name="website_label" translatable="yes">Homepage</property>
     <property name="license" translatable="yes">http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -299,9 +299,8 @@ Lars-Peter Clausen
 Michael Hennerich
 Dan Nechita
 Robin Getz
-
-The "inih" library is Copyright (c) 2009, Brush Technology
-All rights reserved.
+Paul Cercueil
+Timothy Harder
 </property>
     <property name="logo">osc128.png</property>
     <child internal-child="vbox">
