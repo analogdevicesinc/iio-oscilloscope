@@ -868,7 +868,7 @@ static void do_fft(Transform *tr)
 			/* do an average */
 			out_data[i] = ((1 - avg) * out_data[i]) + (avg * mag);
 		}
-		if (!tr->has_the_marker)
+		if (!tr->has_the_marker || i < 2)
 			continue;
 		if (MAX_MARKERS && (marker_type == MARKER_PEAK ||
 				marker_type == MARKER_ONE_TONE ||
