@@ -115,6 +115,8 @@ static GtkNotebook *nbook;
 static GtkWidget *fmcomms5_panel;
 static gboolean plugin_detached;
 
+static bool update_thd_stop;
+
 static const char *fmcomms5_sr_attribs[] = {
 	PHY_DEVICE1".trx_rate_governor",
 	PHY_DEVICE1".dcxo_tune_coarse",
@@ -456,26 +458,21 @@ static void rssi_update_labels(void)
 	}
 }
 
-static void update_display (void *ptr)
+static gboolean update_display(void)
 {
-	const char *gain_mode;
-	int i;
+	if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
+		const char *gain_mode;
+		int i;
 
-	/* This thread never exists, and just updates the control frame */
-	while (1) {
-		if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
-			gdk_threads_enter();
-			rssi_update_labels();
-			for (i = 1; i <= 4; i++) {
-				gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes[i]));
-				if (gain_mode && strcmp(gain_mode, "manual"))
-					iio_widget_update(&rx_widgets[rx_gains[i]]);
-			}
-
-			gdk_threads_leave();
+		rssi_update_labels();
+		for (i = 1; i <= 4; i++) {
+			gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes[i]));
+			if (gain_mode && strcmp(gain_mode, "manual"))
+				iio_widget_update(&rx_widgets[rx_gains[i]]);
 		}
-		sleep(1);
 	}
+
+	return !update_thd_stop;
 }
 
 void filter_fir_update(void)
@@ -1495,8 +1492,8 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
 
-	g_thread_new("Update_thread", (void *) &update_display, NULL);
-
+	update_thd_stop = false;
+	g_timeout_add(1000, (GSourceFunc) update_display, NULL);
 	can_update_widgets = true;
 
 	return fmcomms5_panel;
@@ -1583,12 +1580,16 @@ static void save_profile(const char *ini_fn)
 
 static void context_destroy(const char *ini_fn)
 {
-	save_profile(ini_fn);
+	update_thd_stop = true;
+
+	if (ini_fn)
+		save_profile(ini_fn);
 
 	if (dac_tx_manager) {
 		dac_data_manager_free(dac_tx_manager);
 		dac_tx_manager = NULL;
 	}
+
 	iio_context_destroy(ctx);
 }
 
