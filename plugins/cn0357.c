@@ -84,7 +84,6 @@ static GtkWidget *cn0357_panel;
 static gboolean plugin_detached;
 
 static bool update_thd_stop;
-GThread *update_thd;
 
 #define RDAC_BITS 10
 #define RDAC_END_TO_END_RES 20E3
@@ -236,17 +235,14 @@ static void program_rdac_clicked_cb(GtkButton *btn, gpointer data)
 	iio_channel_attr_write(rdac_ch, "raw", gtk_entry_get_text(GTK_ENTRY(rdac_val)));
 }
 
-static void update_display (void *ptr)
+static gboolean update_display(void)
 {
-	while (!update_thd_stop) {
-		if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
-			cn0357_read_status = cn0357_get_data(&cn0357_data);
-			gdk_threads_enter();
-			cn0357_update_widgets(&cn0357_data);
-			gdk_threads_leave();
-		}
-		sleep(1);
+	if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
+		cn0357_read_status = cn0357_get_data(&cn0357_data);
+		cn0357_update_widgets(&cn0357_data);
 	}
+
+	return !update_thd_stop;
 }
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
@@ -342,7 +338,7 @@ static GtkWidget* cn0357_init(GtkWidget *notebook, const char *ini_fn)
 	program_rdac_clicked_cb(GTK_BUTTON(program_rdac), NULL);
 
 	update_thd_stop = false;
-	update_thd = g_thread_new("Update_thread", (void *) &update_display, NULL);
+	g_timeout_add(1000, (GSourceFunc) update_display, NULL);
 
 	return cn0357_panel;
 }
@@ -364,7 +360,6 @@ static void cn0357_get_preferred_size(int *width, int *height)
 static void context_destroy(const char *ini_fn)
 {
 	update_thd_stop = true;
-	g_thread_join(update_thd);
 	iio_context_destroy(ctx);
 }
 
