@@ -305,6 +305,7 @@ struct _OscPlotPrivate
 	GtkTextBuffer* tbuf;
 	GtkTextBuffer* devices_buf;
 	GtkTextBuffer* math_expression;
+	GtkTextBuffer* math_expr_err_details;
 
 	unsigned int nb_input_devices;
 	unsigned int nb_plot_channels;
@@ -5067,6 +5068,21 @@ static void math_chooser_insert_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 	}
 }
 
+static void math_chooser_details_toggled_cb(GtkToggleButton *btn, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+
+	if (gtk_toggle_button_get_active(btn)) {
+		gtk_text_view_set_buffer(
+			GTK_TEXT_VIEW(priv->math_expression_textview),
+			GTK_TEXT_BUFFER(priv->math_expr_err_details));
+	} else {
+		gtk_text_view_set_buffer(
+			GTK_TEXT_VIEW(priv->math_expression_textview),
+			GTK_TEXT_BUFFER(priv->math_expression));
+	}
+}
+
 static void math_chooser_fullscale_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -5176,6 +5192,19 @@ end:
 	g_free(device_name);
 }
 
+static void err_details_append_expression(GtkTextBuffer *tbuf,
+		const char *expression, const char *chn_name)
+{
+	GtkTextIter iter;
+	gchar *buf;
+
+	buf = g_strdup_printf("%s = %s\n", chn_name, expression);
+
+	gtk_text_buffer_get_end_iter(tbuf, &iter);
+	gtk_text_buffer_insert(tbuf, &iter, buf, -1);
+	g_free(buf);
+}
+
 #define CHN_IDENTIFY_PATTERN "(\\W|^)%s(\\W|$)"
 
 /*
@@ -5224,6 +5253,10 @@ static char * math_expression_expand(OscPlot *plot,
 	char *current_expr, *expanded_expr, *buf;
 	GRegex *rex_channel;
 	bool expandable, recursive = false;
+	GtkTextBuffer *tb = GTK_TEXT_BUFFER(priv->math_expr_err_details);
+
+	gtk_text_buffer_set_text(tb, "", -1);
+	err_details_append_expression(tb, expression, channel_name);
 
 	/* Check for recursion */
 	buf = g_strdup_printf(CHN_IDENTIFY_PATTERN, channel_name);
@@ -5266,6 +5299,8 @@ static char * math_expression_expand(OscPlot *plot,
 			current_expr = expanded_expr;
 			expanded_expr = NULL;
 			expandable = true;
+			err_details_append_expression(tb, current_expr,
+					channel_name);
 
 			/* Check for recursion */
 			if (g_regex_match(rex_channel,
@@ -5285,6 +5320,7 @@ static char * math_expression_expand(OscPlot *plot,
 static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 {
 	OscPlotPrivate *priv = plot->priv;
+	GtkWidget *err_details;
 	char *active_device;
 	int ret;
 	void *lhandler;
@@ -5321,7 +5357,12 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 		g_free(expression_name);
 	}
 
+	err_details = GTK_WIDGET(gtk_builder_get_object(priv->builder,
+			"btn_math_err_details"));
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(err_details),
+			false);
 	gtk_widget_set_visible(priv->math_expr_error, false);
+	gtk_widget_set_visible(err_details, false);
 
 	/* Create a list with all existing math expression */
 	GSList *node;
@@ -5375,6 +5416,7 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 				"Invalid math expression: "
 				 "The expression is recursive.");
 			gtk_widget_show(priv->math_expr_error);
+			gtk_widget_show(err_details);
 			continue;
 		}
 
@@ -5933,6 +5975,7 @@ static void create_plot(OscPlot *plot)
 	priv->math_expression_dialog = GTK_WIDGET(gtk_builder_get_object(priv->builder, "math_expression_chooser"));
 	priv->math_expression_textview = GTK_WIDGET(gtk_builder_get_object(priv->builder, "textview_math_expression"));
 	priv->math_expression = GTK_TEXT_BUFFER(gtk_builder_get_object(priv->builder, "textbuffer_math_expression"));
+	priv->math_expr_err_details = GTK_TEXT_BUFFER(gtk_builder_get_object(priv->builder, "textbuffer_math_expr_error_details"));
 	priv->math_channel_name_entry = GTK_WIDGET(gtk_builder_get_object(priv->builder, "entry_math_ch_name"));
 	priv->math_expr_error = GTK_WIDGET(gtk_builder_get_object(priv->builder, "label_math_expr_invalid_msg"));
 	priv->math_expr_chooser = GTK_WIDGET(gtk_builder_get_object(priv->builder, "cmb_math_other_expr_chooser"));
@@ -6157,6 +6200,8 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(math_chooser_backspace_key_pressed_cb), plot);
 	g_builder_connect_signal(builder, "button_expr_insert", "clicked",
 		G_CALLBACK(math_chooser_insert_key_pressed_cb), plot);
+	g_builder_connect_signal(builder, "btn_math_err_details", "clicked",
+		G_CALLBACK(math_chooser_details_toggled_cb), plot);
 
 	GtkWidget *math_table = GTK_WIDGET(gtk_builder_get_object(priv->builder, "table_math_chooser"));
 	GtkWidget *key_fullscale = GTK_WIDGET(gtk_builder_get_object(priv->builder, "math_key_full_scale"));
@@ -6191,6 +6236,9 @@ static void create_plot(OscPlot *plot)
 		"sample_count", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
 		"sample_count_units", "sensitive", G_BINDING_INVERT_BOOLEAN);
+
+	g_builder_bind_property(builder, "btn_math_err_details", "active",
+		"textview_math_expression", "editable", G_BINDING_INVERT_BOOLEAN);
 
 	/* Bind the plot domain to the sensitivity of the sample count and
 	 * FFT size widgets */
