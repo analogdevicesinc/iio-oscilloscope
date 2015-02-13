@@ -29,6 +29,7 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
+#include "./block_diagram.h"
 #include "dac_data_manager.h"
 
 #define THIS_DRIVER "DAQ2"
@@ -276,6 +277,10 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
+
+	block_diagram_init(builder, 4,
+			"AD9680_11752-001.svg", "AD9144_11675-002.svg",
+			"AD9523_09278-020.svg", "AD-FMCDAQ2-EBZ.jpg");
 
 	can_update_widgets = true;
 
