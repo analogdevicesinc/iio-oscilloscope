@@ -209,6 +209,7 @@ struct math_channel_settings {
 	void (*math_expression)(float ***channels_data, float *out_data, unsigned long long chn_sample_cnt);
 	void *math_lib_handler;
 	float *data_ref;
+	GRegex *name_pattern;
 };
 
 /* Helpers */
@@ -299,6 +300,7 @@ struct _OscPlotPrivate
 	GtkWidget *math_device_select;
 	GtkWidget *math_channel_name_entry;
 	GtkWidget *math_expr_error;
+	GtkWidget *math_expr_chooser;
 
 	GtkTextBuffer* tbuf;
 	GtkTextBuffer* devices_buf;
@@ -1505,6 +1507,9 @@ static void plot_math_channel_destroy(PlotChn *obj)
 
 	if (this->txt_math_expression)
 		g_free(this->txt_math_expression);
+
+	if (this->name_pattern)
+		g_regex_unref(this->name_pattern);
 
 	math_expression_close_lib_handler(this->math_lib_handler);
 
@@ -5046,6 +5051,22 @@ static void math_chooser_backspace_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 	gtk_widget_grab_focus(priv->math_expression_textview);
 }
 
+static void math_chooser_insert_key_pressed_cb(GtkButton *btn, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkTextBuffer *tbuf = priv->math_expression;
+	GtkComboBoxText *mchooser;
+	char *expr_name;
+
+	mchooser = GTK_COMBO_BOX_TEXT(priv->math_expr_chooser);
+	expr_name = gtk_combo_box_text_get_active_text(mchooser);
+	if (expr_name) {
+		gtk_text_buffer_insert_at_cursor(tbuf, expr_name, -1);
+		gtk_widget_grab_focus(priv->math_expression_textview);
+		g_free(expr_name);
+	}
+}
+
 static void math_chooser_fullscale_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -5155,13 +5176,119 @@ end:
 	g_free(device_name);
 }
 
+#define CHN_IDENTIFY_PATTERN "(\\W|^)%s(\\W|$)"
+
+/*
+ * Helps replacing a char array within non-alphanumeric characters with
+ * the replacement word without discarding the non-alphanumeric
+ * characters
+ * Example: #word# -> #replacement#
+ * Where # can be 0 or more non-alphanumeric characters.
+ */
+static gboolean ch_pattern_eval(const GMatchInfo *info, GString *res,
+					gpointer data)
+{
+	gchar *match, *replace, *ch_name = (gchar *)data;
+	gint mch_len, chn_len = strlen(ch_name);
+	int i, j;
+
+	match = g_match_info_fetch(info, 0);
+	if (!match)
+		return false;
+
+	mch_len = strlen(match);
+	for (i = 0; !g_ascii_isalnum(match[i]) && i < mch_len; i++);
+	for (j = mch_len; !g_ascii_isalnum(match[j - 1]) && j > 0; j--);
+	j = mch_len - j;
+
+	replace = g_new(gchar, i + j + (chn_len + 1));
+	strncpy(replace, match, i);
+	strncpy((replace + i), ch_name, chn_len);
+	strncpy((replace + i + chn_len), (match + mch_len - j), j);
+	replace[i + chn_len + j] = '\0';
+
+	g_string_append(res, replace);
+	g_free(replace);
+	g_free(match);
+
+	return false;
+}
+
+static char * math_expression_expand(OscPlot *plot,
+		const char *expression, const char *channel_name)
+{
+	OscPlotPrivate *priv= plot->priv;
+	GSList *node, *list = priv->ch_settings_list;
+	PlotChn *pc;
+	PlotMathChn *pmc;
+	char *current_expr, *expanded_expr, *buf;
+	GRegex *rex_channel;
+	bool expandable, recursive = false;
+
+	/* Check for recursion */
+	buf = g_strdup_printf(CHN_IDENTIFY_PATTERN, channel_name);
+	rex_channel = g_regex_new(buf, 0, 0, NULL);
+	g_free(buf);
+	if (g_regex_match(rex_channel, expression, 0, NULL)) {
+		g_regex_unref(rex_channel);
+		return NULL;
+	}
+
+	/* Check if the expression embeds expressions of other math
+	 * channels by sweeping through all channels and replace them.
+	 * Repeat the action until no more repalcements are required. */
+	current_expr = g_strdup(expression);
+	do {
+		expandable = false;
+		for (node = list; node; node = g_slist_next(node)) {
+			pc = node->data;
+			if (pc->type != PLOT_MATH_CHANNEL || !pc->name)
+				continue;
+
+			pmc = (PlotMathChn *)pc;
+			if (!g_regex_match(pmc->name_pattern,
+						current_expr, 0, NULL))
+				continue;
+
+			buf = g_strdup_printf("(%s)",
+					pmc->txt_math_expression);
+			expanded_expr = g_regex_replace_eval(
+						pmc->name_pattern,
+						current_expr,
+						-1,
+						0,
+						0,
+						ch_pattern_eval,
+						buf,
+						NULL);
+			g_free(buf);
+			g_free(current_expr);
+			current_expr = expanded_expr;
+			expanded_expr = NULL;
+			expandable = true;
+
+			/* Check for recursion */
+			if (g_regex_match(rex_channel,
+					current_expr, 0, NULL)) {
+				recursive = true;
+				g_free(current_expr);
+				current_expr = NULL;
+				break;
+			}
+		}
+	} while (expandable && !recursive);
+	g_regex_unref(rex_channel);
+
+	return current_expr;
+}
+
 static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 {
 	OscPlotPrivate *priv = plot->priv;
 	char *active_device;
 	int ret;
 	void *lhandler;
-	math_function fn;
+	math_function fn = NULL;
 	GSList *channels = NULL;
 	gchar *txt_math_expr;
 	bool invalid_channels;
@@ -5196,15 +5323,40 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 
 	gtk_widget_set_visible(priv->math_expr_error, false);
 
+	/* Create a list with all existing math expression */
+	GSList *node;
+	GtkComboBox *mchooser = GTK_COMBO_BOX(priv->math_expr_chooser);
+	GtkListStore *store;
+	PlotChn *pchn;
+
+	store = GTK_LIST_STORE(gtk_combo_box_get_model(mchooser));
+	gtk_list_store_clear(store);
+
+	for (node = priv->ch_settings_list; node;
+					node = g_slist_next(node)) {
+		pchn = node->data;
+		if (pchn->type == PLOT_MATH_CHANNEL && pchn->name)
+			gtk_combo_box_text_prepend_text(
+					GTK_COMBO_BOX_TEXT(mchooser),
+					pchn->name);
+	}
+	gtk_combo_box_set_active(GTK_COMBO_BOX(mchooser), 0);
+	gtk_widget_hide(priv->math_expression_dialog);
+
 	/* Get the math expression from user */
 	do {
 		ret = gtk_dialog_run(GTK_DIALOG(priv->math_expression_dialog));
 		if (ret != GTK_RESPONSE_OK)
 			break;
 
+		/* Get and check the name of the expression */
 		channel_name = gtk_entry_get_text(GTK_ENTRY(priv->math_channel_name_entry));
-		if (plot_channel_check_name_exists(plot, channel_name, PLOT_CHN(pmc)))
-			channel_name = NULL;
+		if (plot_channel_check_name_exists(plot, channel_name, PLOT_CHN(pmc))) {
+			gtk_label_set_text(GTK_LABEL(priv->math_expr_error),
+				"An expression with the same name already exists.");
+			gtk_widget_show(priv->math_expr_error);
+			continue;
+		}
 
 		/* Get the string of the math expression */
 		GtkTextIter start;
@@ -5214,23 +5366,41 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 		gtk_text_buffer_get_end_iter(priv->math_expression, &end);
 		txt_math_expr = gtk_text_buffer_get_text(priv->math_expression, &start, &end, FALSE);
 
+		/* Expand expression if it embeds other expressions */
+		char *expanded_expr = math_expression_expand(plot,
+				txt_math_expr, channel_name);
+		if (!expanded_expr) {
+			gtk_label_set_text(
+				GTK_LABEL(priv->math_expr_error),
+				"Invalid math expression: "
+				 "The expression is recursive.");
+			gtk_widget_show(priv->math_expr_error);
+			continue;
+		}
+
 		/* Find device channels used in the expression */
-		channels = math_expression_get_iio_channel_list(txt_math_expr, active_device, &invalid_channels);
+		channels = math_expression_get_iio_channel_list(
+				expanded_expr, active_device,
+				&invalid_channels);
 
 		/* Get the compiled math expression */
-		fn = math_expression_get_math_function(txt_math_expr, &lhandler);
+		fn = math_expression_get_math_function(expanded_expr,
+			&lhandler);
 
-		gtk_widget_set_visible(priv->math_expr_error, true);
-		if (!fn)
-			gtk_label_set_text(GTK_LABEL(priv->math_expr_error), "Invalid math expression.");
-		else if (!channel_name)
-			gtk_label_set_text(GTK_LABEL(priv->math_expr_error), "An expression with the same name already exists");
-		else
-			gtk_widget_set_visible(priv->math_expr_error, false);
-	} while (!fn || !channel_name);
+		if (!fn) {
+			gtk_label_set_text(
+				GTK_LABEL(priv->math_expr_error),
+				"Invalid math expression: "
+				"Syntax is not C compilable.");
+			gtk_widget_show(priv->math_expr_error);
+		}
+	} while (!fn);
 	gtk_widget_hide(priv->math_expression_dialog);
 	if (ret != GTK_RESPONSE_OK)
 		return - 1;
+
+	char *ch_name_pattern = g_strdup_printf(CHN_IDENTIFY_PATTERN,
+					channel_name);
 
 	/* Store the settings of the new channel*/
 	if (pmc->txt_math_expression)
@@ -5241,6 +5411,8 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 		g_free(pmc->iio_device_name);
 	if (pmc->iio_channels)
 		g_slist_free(pmc->iio_channels);
+	if (pmc->name_pattern)
+		g_regex_unref(pmc->name_pattern);
 
 	pmc->txt_math_expression = txt_math_expr;
 	pmc->base.name = g_strdup(channel_name);
@@ -5250,7 +5422,9 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 	pmc->math_lib_handler = lhandler;
 	pmc->num_channels = g_slist_length(pmc->iio_channels);
 	pmc->iio_channels_data = iio_channels_get_data(pmc->iio_device_name);
+	pmc->name_pattern = g_regex_new(ch_name_pattern, 0, 0, NULL);
 
+	g_free(ch_name_pattern);
 	g_free(active_device);
 
 	return 0;
@@ -5761,6 +5935,7 @@ static void create_plot(OscPlot *plot)
 	priv->math_expression = GTK_TEXT_BUFFER(gtk_builder_get_object(priv->builder, "textbuffer_math_expression"));
 	priv->math_channel_name_entry = GTK_WIDGET(gtk_builder_get_object(priv->builder, "entry_math_ch_name"));
 	priv->math_expr_error = GTK_WIDGET(gtk_builder_get_object(priv->builder, "label_math_expr_invalid_msg"));
+	priv->math_expr_chooser = GTK_WIDGET(gtk_builder_get_object(priv->builder, "cmb_math_other_expr_chooser"));
 
 	priv->tbuf = NULL;
 	priv->ch_settings_list = NULL;
@@ -5980,6 +6155,8 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(math_chooser_clear_key_pressed_cb), plot);
 	g_builder_connect_signal(builder, "math_key_backspace", "clicked",
 		G_CALLBACK(math_chooser_backspace_key_pressed_cb), plot);
+	g_builder_connect_signal(builder, "button_expr_insert", "clicked",
+		G_CALLBACK(math_chooser_insert_key_pressed_cb), plot);
 
 	GtkWidget *math_table = GTK_WIDGET(gtk_builder_get_object(priv->builder, "table_math_chooser"));
 	GtkWidget *key_fullscale = GTK_WIDGET(gtk_builder_get_object(priv->builder, "math_key_full_scale"));
