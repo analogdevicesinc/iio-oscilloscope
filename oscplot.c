@@ -5142,6 +5142,7 @@ static void math_chooser_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 	GtkTextMark *insert_mark;
 	GtkTextIter insert_iter;
 	const gchar *key_label;
+	char c;
 
 	key_label = gtk_button_get_label(btn);
 	gtk_text_buffer_insert_at_cursor(tbuf, key_label, -1);
@@ -5149,7 +5150,12 @@ static void math_chooser_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 	if (g_str_has_suffix(key_label, ")") && g_strrstr(key_label, "(")) {
 		insert_mark = gtk_text_buffer_get_insert(tbuf);
 		gtk_text_buffer_get_iter_at_mark(tbuf, &insert_iter, insert_mark);
-		gtk_text_iter_backward_char(&insert_iter);
+		do {
+			gtk_text_iter_backward_char(&insert_iter);
+			c = gtk_text_iter_get_char(&insert_iter);
+		} while (c != '(');
+		gtk_text_iter_forward_char(&insert_iter);
+
 		gtk_text_buffer_place_cursor(tbuf, &insert_iter);
 	}
 
