@@ -2020,6 +2020,23 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	}
 }
 
+static bool math_chooser_check_key_exists(GtkWidget *math_table,
+		const char *key_name)
+{
+	bool exists = false;
+	const char *label;
+	GList *node;
+
+	for (node = gtk_container_get_children(GTK_CONTAINER(math_table));
+			node && !exists; node = g_list_next(node)) {
+		label = gtk_button_get_label(GTK_BUTTON(node->data));
+		if (label && !strncmp(label, key_name, strlen(key_name)))
+			exists = true;
+	}
+
+	return exists;
+}
+
 static void markers_init(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -5395,6 +5412,18 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 		if (plot_channel_check_name_exists(plot, channel_name, PLOT_CHN(pmc))) {
 			gtk_label_set_text(GTK_LABEL(priv->math_expr_error),
 				"An expression with the same name already exists.");
+			gtk_widget_show(priv->math_expr_error);
+			continue;
+		}
+
+		GtkWidget *math_table = GTK_WIDGET(
+					gtk_builder_get_object(priv->builder,
+					"table_math_chooser"));
+
+		if (math_chooser_check_key_exists(math_table, channel_name)) {
+			gtk_label_set_text(GTK_LABEL(priv->math_expr_error),
+				"Cannot create an expression with the "
+				"same name as an available math function.");
 			gtk_widget_show(priv->math_expr_error);
 			continue;
 		}
