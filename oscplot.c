@@ -64,6 +64,7 @@ static void save_as(OscPlot *plot, const char *filename, int type);
 static void treeview_expand_update(OscPlot *plot);
 static void treeview_icon_color_update(OscPlot *plot);
 static int device_find_by_name(const char *name);
+static int enabled_channels_of_device_iter(GtkTreeModel *model, GtkTreeIter *iter, unsigned *enabled_mask);
 static int enabled_channels_of_device(GtkTreeView *treeview, const char *name, unsigned *enabled_mask);
 static int enabled_channels_count(OscPlot *plot);
 static int num_of_channels_of_device(GtkTreeView *treeview, const char *name);
@@ -99,14 +100,11 @@ enum {
 	IS_DEVICE,
 	IS_CHANNEL,
 	CHANNEL_TYPE,
-	DEVICE_SELECTABLE,
-	DEVICE_ACTIVE,
 	CHANNEL_ACTIVE,
 	ELEMENT_REFERENCE,
 	EXPANDED,
 	CHANNEL_SETTINGS,
 	CHANNEL_COLOR_ICON,
-	SENSITIVE,
 	PLOT_TYPE,
 	NUM_COL
 };
@@ -571,24 +569,17 @@ void osc_plot_save_as (OscPlot *plot, char *filename, int type)
 
 const char * osc_plot_get_active_device (OscPlot *plot)
 {
-	OscPlotPrivate *priv = plot->priv;
-	GtkTreeModel *model;
-	GtkTreeIter iter;
-	gboolean next_iter;
-	gboolean active;
-	struct iio_device *dev;
+	const char *active_device = NULL;
+	struct iio_device *iio_dev;
 
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->channel_list_view));
-	next_iter = gtk_tree_model_get_iter_first(model, &iter);
-	while (next_iter) {
-		gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &dev, DEVICE_ACTIVE, &active, -1);
-		if (active)
-			return iio_device_get_name(dev) ?:
-				iio_device_get_id(dev);
-		next_iter = gtk_tree_model_iter_next(model, &iter);
+	if (plot) {
+		iio_dev = plot->priv->current_device;
+		if (iio_dev)
+			active_device = iio_device_get_name(iio_dev) ?:
+					iio_device_get_id(iio_dev);
 	}
 
-	return NULL;
+	return active_device;
 }
 
 int osc_plot_get_fft_avg (OscPlot *plot)
@@ -1583,6 +1574,15 @@ static void foreach_channel_iter_of_device(GtkTreeView *treeview, const char *na
 	}
 }
 
+static void iter_device_has_en_channels(GtkTreeModel *model,
+		GtkTreeIter *iter, void *data)
+{
+	int *num_dev = (int *)data;
+
+	if (enabled_channels_of_device_iter(model, iter, NULL))
+		(*num_dev)++;
+}
+
 static void set_may_be_enabled_bit(GtkTreeModel *model,
 	GtkTreeIter *iter, void *user_data)
 {
@@ -1623,57 +1623,31 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	struct iio_device *dev;
 	unsigned int nb_channels = num_of_channels_of_device(treeview, name);
 	unsigned enabled_channels_mask;
+	bool dma_valid;
 
 	GtkTreeModel *model;
 	GtkTreeIter iter;
-	gboolean device_enabled;
 
 	plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
 
 	model = gtk_tree_view_get_model(treeview);
 	get_iter_by_name(treeview, &iter, name, NULL);
 	gtk_tree_model_get(model, &iter,
-			ELEMENT_REFERENCE, &dev,
-			DEVICE_ACTIVE, &device_enabled, -1);
-	if (!device_enabled && plot_type != TIME_PLOT)
+			ELEMENT_REFERENCE, &dev, -1);
+
+	if (!dev)
 		return true;
 
 	num_enabled = enabled_channels_of_device(treeview, name, &enabled_channels_mask);
 
-	/* Basic validation rules */
-	if (plot_type == FFT_PLOT) {
-		if (num_enabled != 2 && num_enabled != 1) {
-			gtk_widget_set_tooltip_text(priv->capture_button,
-				"FFT needs 2 or less channels");
-			return false;
-		}
-	} else if (plot_type == XY_PLOT) {
-		if (num_enabled != 2) {
-			gtk_widget_set_tooltip_text(priv->capture_button,
-				"Constellation requires only 2 channels");
-			return false;
-		}
-	} else if (plot_type == TIME_PLOT) {
-		if (enabled_channels_count(plot) == 0) {
-			gtk_widget_set_tooltip_text(priv->capture_button,
-				"Time Domain needs at least one channel");
-			return false;
-		} else if (dev && !dma_valid_selection(name, enabled_channels_mask | global_enabled_channels_mask(dev), nb_channels)) {
-			gtk_widget_set_tooltip_text(priv->capture_button,
-				"Channel selection not supported");
-			return false;
-		}
-	} else if (plot_type == XCORR_PLOT) {
-		if (enabled_channels_count(plot) != 4) {
-			gtk_widget_set_tooltip_text(priv->capture_button,
-				"Correlation requires 2 or 4 channels");
-			return false;
-		}
+	dma_valid = dma_valid_selection(name, enabled_channels_mask |
+					global_enabled_channels_mask(dev),
+					nb_channels);
+	if (plot_type == TIME_PLOT && !dma_valid) {
+		gtk_widget_set_tooltip_text(priv->capture_button,
+			"Channel selection not supported");
+		return false;
 	}
-
-	/* No additional checking is needed for non iio devices */
-	if (!dev)
-		return TRUE;
 
 	char warning_text[100];
 
@@ -1715,30 +1689,89 @@ static gboolean check_valid_setup_of_all_devices(OscPlot *plot)
 	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	GtkTreeModel *model;
 	GtkTreeIter iter;
-	gboolean next_iter;
+	gboolean next_iter, valid;
 	gchar *dev_name;
-	gboolean valid;
 
 	model = gtk_tree_view_get_model(treeview);
-	next_iter = gtk_tree_model_get_iter_first(model, &iter);
-	while (next_iter) {
+	valid = next_iter = gtk_tree_model_get_iter_first(model, &iter);
+	while (next_iter && valid) {
 		gtk_tree_model_get(model, &iter, ELEMENT_NAME, &dev_name, -1);
 		valid = check_valid_setup_of_device(plot, dev_name);
 		g_free(dev_name);
-		if (!valid)
-			return false;
 		next_iter = gtk_tree_model_iter_next(model, &iter);
 	}
 
-	return true;
+	return valid;
+}
+
+static gboolean check_valid_setup_of_plot(OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	int plot_type = gtk_combo_box_get_active(
+				GTK_COMBO_BOX(priv->plot_domain));
+	int plot_en_channels = enabled_channels_count(plot);
+	gboolean valid = true;
+	int num_dev = 0;
+
+	foreach_device_iter(GTK_TREE_VIEW(priv->channel_list_view),
+			*iter_device_has_en_channels, &num_dev);
+
+	switch (plot_type) {
+	case TIME_PLOT:
+		if (plot_en_channels == 0) {
+			gtk_widget_set_tooltip_text(priv->capture_button,
+				"Time Domain needs at least one channel");
+			valid = false;
+		}
+		break;
+	case FFT_PLOT:
+		if (plot_en_channels != 2 && plot_en_channels != 1) {
+			gtk_widget_set_tooltip_text(priv->capture_button,
+				"FFT needs 2 or less channels");
+			valid = false;
+		} else if (plot_en_channels == 2 && (num_dev > 1)) {
+			gtk_widget_set_tooltip_text(priv->capture_button,
+				"FFT needs channels of a single device");
+			valid = false;
+		}
+		break;
+	case XY_PLOT:
+		if (plot_en_channels != 2) {
+			gtk_widget_set_tooltip_text(priv->capture_button,
+				"Constellation needs 2 channels");
+			valid = false;
+		}
+		else if ((num_dev > 1)) {
+			gtk_widget_set_tooltip_text(priv->capture_button,
+				"Constellation needs channels of a"
+				"single device");
+			valid = false;
+		}
+		break;
+	case XCORR_PLOT:
+		if (plot_en_channels != 4) {
+			gtk_widget_set_tooltip_text(priv->capture_button,
+				"Correlation needs 4 channels");
+			valid = false;
+		}
+		break;
+	default:
+		printf("Invalid plot type %d in %s\n",
+			plot_type, __func__);
+		valid = false;
+	};
+
+	return valid;
 }
 
 static gboolean check_valid_setup(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 
-	if (!check_valid_setup_of_all_devices(plot))
+	if (!check_valid_setup_of_plot(plot) ||
+			!check_valid_setup_of_all_devices(plot)) {
 		goto capture_button_err;
+	}
 
 	if (gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button)))
 		g_object_set(priv->capture_button, "stock-id", "gtk-stop", NULL);
@@ -2295,39 +2328,57 @@ static void call_all_transform_functions(OscPlotPrivate *priv)
 	}
 }
 
-static int enabled_channels_of_device(GtkTreeView *treeview, const char *name, unsigned *enabled_mask)
+static int enabled_channels_of_device_iter(GtkTreeModel *model,
+	GtkTreeIter *iter, unsigned *enabled_mask)
 {
-	GtkTreeIter iter;
-	GtkTreeIter child_iter;
-	gboolean next_child_iter;
-	char *str_device;
+	GtkTreeIter child;
+	gboolean next_child;
 	gboolean enabled;
 	int num_enabled = 0;
 	int ch_pos = 0;
 
+	if (!iter)
+		return 0;
+
+	if (enabled_mask)
+		*enabled_mask = 0;
+	next_child = gtk_tree_model_iter_children(model, &child, iter);
+	while (next_child) {
+		gtk_tree_model_get(model, &child, CHANNEL_ACTIVE,
+			&enabled, -1);
+		if (enabled) {
+			num_enabled++;
+			if (enabled_mask)
+				*enabled_mask |= 1 << ch_pos;
+		}
+		ch_pos++;
+		next_child = gtk_tree_model_iter_next(model, &child);
+	}
+
+	return num_enabled;
+}
+
+static int enabled_channels_of_device(GtkTreeView *treeview,
+		const char *name, unsigned *enabled_mask)
+{
+	GtkTreeIter iter;
+	gchar *str_device;
+	int num_enabled = 0;
+	bool dev_found = false;
+
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
 	gboolean next_iter = gtk_tree_model_get_iter_first(model, &iter);
-	while (next_iter) {
-		if (!gtk_tree_model_iter_children(model, &child_iter, &iter)) {
-			next_iter = gtk_tree_model_iter_next(model, &iter);
-			continue;
-		}
-		if (enabled_mask)
-			*enabled_mask = 0;
-		gtk_tree_model_get(model, &iter, ELEMENT_NAME, &str_device, -1);
+
+	while (next_iter && !dev_found) {
+		gtk_tree_model_get(model, &iter, ELEMENT_NAME,
+			&str_device, -1);
 		if (!strcmp(name, str_device)) {
-			next_child_iter = true;
-			while (next_child_iter) {
-				gtk_tree_model_get(model, &child_iter, CHANNEL_ACTIVE, &enabled, -1);
-				if (enabled) {
-					num_enabled++;
-					if (enabled_mask)
-						*enabled_mask |= 1 << ch_pos;
-				}
-				ch_pos++;
-				next_child_iter = gtk_tree_model_iter_next(model, &child_iter);
-			}
+			dev_found = true;
+			num_enabled = enabled_channels_of_device_iter(
+					model, &iter, enabled_mask);
 		}
+
+		g_free(str_device);
 		next_iter = gtk_tree_model_iter_next(model, &iter);
 	}
 
@@ -2355,15 +2406,13 @@ static int enabled_channels_count(OscPlot *plot)
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	gboolean next_iter;
-	gchar *dev_name;
 	int count = 0;
 
 	model = gtk_tree_view_get_model(treeview);
 	next_iter = gtk_tree_model_get_iter_first(model, &iter);
 	while (next_iter) {
-		gtk_tree_model_get(model, &iter, ELEMENT_NAME, &dev_name, -1);
-		count += enabled_channels_of_device(treeview, dev_name, NULL);
-		g_free(dev_name);
+		count += enabled_channels_of_device_iter(model, &iter,
+				NULL);
 		next_iter = gtk_tree_model_iter_next(model, &iter);
 	}
 
@@ -2702,29 +2751,6 @@ static void new_plot_button_clicked_cb(GtkToolButton *btn, OscPlot *plot)
 	g_signal_emit(plot, oscplot_signals[NEWPLOT_EVENT_SIGNAL], 0, new_plot);
 }
 
-static void iter_children_sensitivity_update(GtkTreeModel *model, GtkTreeIter *iter, void *data)
-{
-	GtkTreeIter child;
-	gboolean next_iter;
-	gboolean state;
-	gboolean *forced_state = data;
-
-	gtk_tree_model_get(model, iter, DEVICE_ACTIVE, &state, -1);
-	if (!gtk_tree_model_iter_children(model, &child, iter))
-		return;
-
-	if (forced_state)
-		state = *forced_state;
-
-	next_iter = true;
-	while (next_iter) {
-		gtk_tree_store_set(GTK_TREE_STORE(model), &child, SENSITIVE, state, -1);
-		if (state == false)
-			gtk_tree_store_set(GTK_TREE_STORE(model), &child, CHANNEL_ACTIVE, state, -1);
-		next_iter = gtk_tree_model_iter_next(model, &child);
-	}
-}
-
 static void iter_children_plot_type_update(GtkTreeModel *model, GtkTreeIter *iter, void *data)
 {
 	OscPlot *plot = data;
@@ -2761,42 +2787,6 @@ static void iter_children_icon_color_update(GtkTreeModel *model, GtkTreeIter *it
 
 		next_iter = gtk_tree_model_iter_next(model, &child);
 	}
-}
-
-static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer plot)
-{
-	OscPlotPrivate *priv = ((OscPlot *)plot)->priv;
-	GtkTreePath* path = gtk_tree_path_new_from_string(pathStr);
-	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
-	GtkTreeModel *model;
-	GtkTreeIter iter;
-	gboolean active;
-
-	model = gtk_tree_view_get_model(treeview);
-	gtk_tree_model_get_iter(model, &iter, path);
-	gtk_tree_model_get(model, &iter, DEVICE_ACTIVE, &active, -1);
-	if (active)
-		return;
-	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, DEVICE_ACTIVE, true, -1);
-
-	/* When one device is enabled, disable the others */
-	GtkTreePath *local_path;
-	GtkTreeIter local_iter;
-	gboolean next_iter;
-
-	gtk_tree_model_get_iter_first(model, &local_iter);
-	next_iter = true;
-	while (next_iter) {
-		local_path = gtk_tree_model_get_path(model, &local_iter);
-		if (gtk_tree_path_compare(local_path, path) != 0)
-				gtk_tree_store_set(GTK_TREE_STORE(model), &local_iter, DEVICE_ACTIVE, false, -1);
-		gtk_tree_path_free(local_path);
-
-		next_iter = gtk_tree_model_iter_next(model, &local_iter);
-	}
-
-	foreach_device_iter(treeview, *iter_children_sensitivity_update, NULL);
-	check_valid_setup(plot);
 }
 
 static void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer plot)
@@ -2842,7 +2832,6 @@ static void create_channel_list_view(OscPlot *plot)
 	GtkTreeViewColumn *col;
 	GtkCellRenderer *renderer_name;
 	GtkCellRenderer *renderer_ch_toggle;
-	GtkCellRenderer *renderer_dev_toggle;
 	GtkCellRenderer *renderer_ch_color;
 
 	col = gtk_tree_view_column_new();
@@ -2851,33 +2840,21 @@ static void create_channel_list_view(OscPlot *plot)
 
 	renderer_name = gtk_cell_renderer_text_new();
 	renderer_ch_toggle = gtk_cell_renderer_toggle_new();
-	renderer_dev_toggle = gtk_cell_renderer_toggle_new();
 	renderer_ch_color = gtk_cell_renderer_pixbuf_new();
 
 	gtk_tree_view_column_pack_end(col, renderer_ch_color, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_name, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_ch_toggle, FALSE);
-	gtk_tree_view_column_pack_end(col, renderer_dev_toggle, FALSE);
-
-	gtk_cell_renderer_toggle_set_radio(GTK_CELL_RENDERER_TOGGLE(renderer_dev_toggle), TRUE);
 
 	gtk_tree_view_column_set_attributes(col, renderer_name,
 					"text", ELEMENT_NAME,
-					"sensitive", SENSITIVE,
 					NULL);
 	gtk_tree_view_column_set_attributes(col, renderer_ch_toggle,
 					"visible", IS_CHANNEL,
 					"active", CHANNEL_ACTIVE,
-					"sensitive", SENSITIVE,
-					NULL);
-	gtk_tree_view_column_set_attributes(col, renderer_dev_toggle,
-					"visible", DEVICE_SELECTABLE,
-					"active", DEVICE_ACTIVE,
-					"sensitive", SENSITIVE,
 					NULL);
 	gtk_tree_view_column_set_attributes(col, renderer_ch_color,
 					"pixbuf", CHANNEL_COLOR_ICON,
-					"sensitive", SENSITIVE,
 					NULL);
 	gtk_tree_view_column_set_cell_data_func(col, renderer_ch_color,
 					*color_icon_renderer_visibility,
@@ -2886,7 +2863,6 @@ static void create_channel_list_view(OscPlot *plot)
 
 	g_object_set(renderer_ch_color, "follow-state", FALSE, NULL);
 	g_signal_connect(G_OBJECT(renderer_ch_toggle), "toggled", G_CALLBACK(channel_toggled), plot);
-	g_signal_connect(G_OBJECT(renderer_dev_toggle), "toggled", G_CALLBACK(device_toggled), plot);
 }
 
 static void plot_channel_add_to_plot(OscPlot *plot, PlotChn *settings)
@@ -2992,9 +2968,7 @@ static void plot_channels_add_device(OscPlot *plot, const char *dev_name)
 	gtk_tree_store_set(treestore, &iter,
 		ELEMENT_NAME, dev_name,
 		IS_DEVICE, !!iio_dev,
-		DEVICE_ACTIVE, !priv->nb_input_devices,
 		ELEMENT_REFERENCE, iio_dev,
-		SENSITIVE, TRUE,
 		EXPANDED, TRUE,
 		-1);
 }
@@ -3038,7 +3012,6 @@ static void plot_channels_add_channel(OscPlot *plot, PlotChn *pchn)
 			ELEMENT_REFERENCE, iio_chn,
 			CHANNEL_SETTINGS, pchn,
 			CHANNEL_COLOR_ICON, new_icon,
-			SENSITIVE, TRUE,
 			PLOT_TYPE, TIME_PLOT,
 			-1);
 }
@@ -4019,7 +3992,6 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 	gboolean next_dev_iter;
 	gboolean next_ch_iter;
 	gboolean expanded;
-	gboolean device_active;
 	gboolean ch_enabled;
 	PlotChn *csettings;
 	FILE *fp;
@@ -4116,12 +4088,10 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 		gtk_tree_model_get(model, &dev_iter,
 				ELEMENT_REFERENCE, &dev,
 				ELEMENT_NAME, &name,
-				DEVICE_ACTIVE, &device_active,
 				-1);
 
 		expanded = gtk_tree_view_row_expanded(tree, gtk_tree_model_get_path(model, &dev_iter));
 		fprintf(fp, "%s.expanded=%d\n", name, (expanded) ? 1 : 0);
-		fprintf(fp, "%s.active=%d\n", name, (device_active) ? 1 : 0);
 		next_ch_iter = gtk_tree_model_iter_children(model, &ch_iter, &dev_iter);
 
 		while (next_ch_iter) {
@@ -4279,7 +4249,6 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 	char *dev_name, *ch_name;
 	char *dev_property, *ch_property;
 	gboolean expanded;
-	gboolean device_active;
 	gboolean enabled;
 	int elem_type;
 	gchar **elems = NULL, **min_max = NULL;
@@ -4460,10 +4429,6 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				expanded = atoi(value);
 				get_iter_by_name(tree, &dev_iter, dev_name, NULL);
 				gtk_tree_store_set(store, &dev_iter, EXPANDED, expanded, -1);
-			}else if (MATCH(dev_property, "active")) {
-				device_active = atoi(value);
-				get_iter_by_name(tree, &dev_iter, dev_name, NULL);
-				gtk_tree_store_set(store, &dev_iter, DEVICE_ACTIVE, device_active, -1);
 			}
 			break;
 		case CHANNEL:
@@ -4865,28 +4830,9 @@ skip_no_peak_markers:
 	return FALSE;
 }
 
-static void enable_tree_device_selection(OscPlot *plot, gboolean enable)
-{
-	OscPlotPrivate *priv = plot->priv;
-	GtkTreeModel *model;
-	GtkTreeIter iter;
-	gboolean next_iter;
-
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->channel_list_view));
-	if (!gtk_tree_model_get_iter_first(model, &iter))
-		return;
-
-	next_iter = true;
-	while (next_iter) {
-		gtk_tree_store_set(GTK_TREE_STORE(model), &iter, DEVICE_SELECTABLE, enable, -1);
-		next_iter = gtk_tree_model_iter_next(model, &iter);
-	}
-}
-
 static void plot_domain_changed_cb(GtkComboBox *box, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
-	gboolean force_sensitive = true;
 	gint plot_type;
 
 	priv->marker_type = MARKER_OFF;
@@ -4902,24 +4848,6 @@ static void plot_domain_changed_cb(GtkComboBox *box, OscPlot *plot)
 	gtk_widget_set_sensitive(priv->hor_units, plot_type == TIME_PLOT);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->hor_units),
 		plot_type == TIME_PLOT ? priv->last_hor_unit : 0);
-
-	/* Allow only 1 active device for a FFT or XY plot */
-	if (priv->nb_input_devices < 2)
-		return;
-	switch (plot_type) {
-	case FFT_PLOT:
-	case XY_PLOT:
-		enable_tree_device_selection(plot, true);
-		foreach_device_iter(GTK_TREE_VIEW(priv->channel_list_view),
-			*iter_children_sensitivity_update, NULL);
-		break;
-	case TIME_PLOT:
-	case XCORR_PLOT:
-		enable_tree_device_selection(plot, false);
-		foreach_device_iter(GTK_TREE_VIEW(priv->channel_list_view),
-			*iter_children_sensitivity_update, &force_sensitive);
-		break;
-	};
 }
 
 static gboolean domain_is_fft(GBinding *binding,
@@ -6044,15 +5972,12 @@ static void create_plot(OscPlot *plot)
 					G_TYPE_BOOLEAN,   /* IS_DEVICE */
 					G_TYPE_BOOLEAN,   /* IS_CHANNEL */
 					G_TYPE_INT,       /* CHANNEL_TYPE */
-					G_TYPE_BOOLEAN,   /* DEVICE_SELECTABLE */
-					G_TYPE_BOOLEAN,   /* DEVICE_ACTIVE */
 					G_TYPE_BOOLEAN,   /* CHANNEL_ACTIVE */
 					G_TYPE_POINTER,   /* ELEMENT_REFERENCE */
 					G_TYPE_BOOLEAN,   /* EXPANDED */
 					G_TYPE_POINTER,   /* CHANNEL_SETTINGS */
 					GDK_TYPE_PIXBUF,  /* CHANNEL_COLOR_ICON */
-					G_TYPE_INT ,      /* PLOT_TYPE */
-					G_TYPE_BOOLEAN);  /* SENSITIVE */
+					G_TYPE_INT);      /* PLOT_TYPE */
 	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 
 	/* Create Device Settings Menu */
