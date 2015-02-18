@@ -39,6 +39,9 @@ typedef int mat_dim;
 typedef size_t mat_dim;
 #endif
 
+/* Search pattern for math functions or constants */
+#define MATH_ELEMENT_PATTERN "(\\W|^)%s(\\W|$)"
+
 extern void *find_setup_check_fct_by_devname(const char *dev_name);
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
@@ -82,6 +85,7 @@ static struct iio_device * transform_get_device_parent(Transform *transform);
 static gboolean tree_get_selected_row_iter(GtkTreeView *treeview, GtkTreeIter *iter);
 static void set_channel_shadow_of_enabled(gpointer data, gpointer user_data);
 static gfloat * plot_channels_get_nth_data_ref(GSList *list, guint n);
+static gboolean ch_pattern_eval(const GMatchInfo *info, GString *res, gpointer data);
 
 /* IDs of signals */
 enum {
@@ -4975,6 +4979,47 @@ static GSList * math_expression_get_iio_channel_list(const char *expression, con
 	return chn_list;
 }
 
+static char * math_expression_fullscale_insert(const char *expr,
+		const char *device_name)
+{
+	struct iio_device *iio_dev;
+	struct iio_channel *iio_chn;
+	const struct iio_data_format *format;
+	long long full_scale = 0;
+	char *search_pattern, *replacement, *math_expr = NULL;
+	GRegex *rex;
+	int i;
+
+	iio_dev = iio_context_find_device(ctx, device_name);
+	if (!iio_dev)
+		goto replace;
+
+	for (i = 0; i < iio_device_get_channels_count(iio_dev); i++) {
+		iio_chn = iio_device_get_channel(iio_dev, i);
+		if (!iio_channel_is_scan_element(iio_chn))
+			continue;
+		format = iio_channel_get_data_format(iio_chn);
+		full_scale = 2 << (format->bits - 1);
+		if (format->is_signed)
+			full_scale /= 2;
+		break;
+	}
+
+replace:
+	search_pattern = g_strdup_printf(MATH_ELEMENT_PATTERN,
+				"FullScale");
+	rex = g_regex_new(search_pattern, 0, 0, NULL);
+	replacement = g_strdup_printf("%lld", full_scale);
+	math_expr = g_regex_replace_eval(rex, expr, -1, 0, 0,
+					ch_pattern_eval, replacement,
+					NULL);
+	g_regex_unref(rex);
+	g_free(search_pattern);
+	g_free(replacement);
+
+	return math_expr;
+}
+
 static void math_chooser_clear_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -5026,41 +5071,6 @@ static void math_chooser_details_toggled_cb(GtkToggleButton *btn, OscPlot *plot)
 			GTK_TEXT_VIEW(priv->math_expression_textview),
 			GTK_TEXT_BUFFER(priv->math_expression));
 	}
-}
-
-static void math_chooser_fullscale_key_pressed_cb(GtkButton *btn, OscPlot *plot)
-{
-	OscPlotPrivate *priv = plot->priv;
-	GtkTextBuffer *tbuf = priv->math_expression;
-	struct iio_device *iio_dev;
-	char key_val[128] = "0";
-	const char *device_name;
-
-	device_name = gtk_combo_box_text_get_active_text(
-			GTK_COMBO_BOX_TEXT(priv->math_device_select));
-	if (device_name) {
-		iio_dev = iio_context_find_device(ctx, device_name);
-		if (iio_dev) {
-			int i;
-			struct iio_channel *iio_chn;
-			const struct iio_data_format *format;
-			int full_scale;
-			for (i = 0; i < iio_device_get_channels_count(iio_dev); i++) {
-				iio_chn = iio_device_get_channel(iio_dev, i);
-				if (!iio_channel_is_scan_element(iio_chn))
-					continue;
-				format = iio_channel_get_data_format(iio_chn);
-				full_scale = 2 << (format->bits - 1);
-				if (format->is_signed)
-					full_scale /= 2;
-				snprintf(key_val, sizeof(key_val), "%d", full_scale);
-				break;
-			}
-		}
-	}
-
-	gtk_text_buffer_insert_at_cursor(tbuf, key_val, -1);
-	gtk_widget_grab_focus(priv->math_expression_textview);
 }
 
 static void math_chooser_key_pressed_cb(GtkButton *btn, OscPlot *plot)
@@ -5156,8 +5166,6 @@ static void err_details_append_expression(GtkTextBuffer *tbuf,
 	g_free(buf);
 }
 
-#define CHN_IDENTIFY_PATTERN "(\\W|^)%s(\\W|$)"
-
 /*
  * Helps replacing a char array within non-alphanumeric characters with
  * the replacement word without discarding the non-alphanumeric
@@ -5210,7 +5218,7 @@ static char * math_expression_expand(OscPlot *plot,
 	err_details_append_expression(tb, expression, channel_name);
 
 	/* Check for recursion */
-	buf = g_strdup_printf(CHN_IDENTIFY_PATTERN, channel_name);
+	buf = g_strdup_printf(MATH_ELEMENT_PATTERN, channel_name);
 	rex_channel = g_regex_new(buf, 0, 0, NULL);
 	g_free(buf);
 	if (g_regex_match(rex_channel, expression, 0, NULL)) {
@@ -5383,6 +5391,15 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 			continue;
 		}
 
+		/* Replace all occurrences of "FullScale" with the actual value */
+		char *buf;
+		buf = math_expression_fullscale_insert(expanded_expr,
+				active_device);
+		if (buf) {
+			g_free(expanded_expr);
+			expanded_expr = buf;
+		}
+
 		/* Find device channels used in the expression */
 		channels = math_expression_get_iio_channel_list(
 				expanded_expr, active_device,
@@ -5404,7 +5421,7 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 	if (ret != GTK_RESPONSE_OK)
 		return - 1;
 
-	char *ch_name_pattern = g_strdup_printf(CHN_IDENTIFY_PATTERN,
+	char *ch_name_pattern = g_strdup_printf(MATH_ELEMENT_PATTERN,
 					channel_name);
 
 	/* Store the settings of the new channel*/
@@ -6164,7 +6181,6 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(math_chooser_details_toggled_cb), plot);
 
 	GtkWidget *math_table = GTK_WIDGET(gtk_builder_get_object(priv->builder, "table_math_chooser"));
-	GtkWidget *key_fullscale = GTK_WIDGET(gtk_builder_get_object(priv->builder, "math_key_full_scale"));
 	GList *node;
 
 	for (node = gtk_container_get_children(GTK_CONTAINER(math_table));
@@ -6172,9 +6188,6 @@ static void create_plot(OscPlot *plot)
 		g_signal_connect(node->data, "clicked",
 			G_CALLBACK(math_chooser_key_pressed_cb), plot);
 	}
-	g_signal_handlers_disconnect_by_func(key_fullscale, math_chooser_key_pressed_cb, plot);
-	g_signal_connect(key_fullscale, "clicked",
-			G_CALLBACK(math_chooser_fullscale_key_pressed_cb), plot);
 
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,
