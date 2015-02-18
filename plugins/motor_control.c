@@ -27,16 +27,26 @@
 
 #define THIS_DRIVER "Motor Control"
 #define AD_MC_CTRL "ad-mc-ctrl"
+#define AD_MC_CTRL_2ND "ad-mc-ctrl-m2"
 #define AD_MC_ADV_CTRL "ad-mc-adv-ctrl"
 
+#define ONE_MOTOR_GPO_MASK 0x7FF
+#define TWO_MOTOR_GPO_MASK 0x00F
+
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
+
+enum pid_no{
+	PID_1ST_DEV,
+	PID_2ND_DEV
+};
 
 extern int count_char_in_string(char c, const char *s);
 
 static struct iio_widget tx_widgets[50];
 static unsigned int num_tx;
-static struct iio_device *crt_device, *pid_dev, *adv_dev;
+static struct iio_device *crt_device, *pid_devs[2], *adv_dev;
 static struct iio_context *ctx;
+static unsigned gpo_mask;
 
 /* Global Widgets */
 static GtkWidget *controllers_notebook;
@@ -44,10 +54,10 @@ static GtkWidget *gpo[11];
 static int gpo_id[11];
 
 /* PID Controller Widgets */
-static GtkWidget *controller_type_pid;
-static GtkWidget *delta;
-static GtkWidget *pwm_pid;
-static GtkWidget *direction_pid;
+static GtkWidget *controller_type_pid[2];
+static GtkWidget *delta[2];
+static GtkWidget *pwm_pid[2];
+static GtkWidget *direction_pid[2];
 
 /* Advanced Controller Widgets */
 static GtkWidget *command;
@@ -80,10 +90,15 @@ static const char *motor_control_sr_attribs[] = {
 	AD_MC_CTRL".mc_ctrl_delta",
 	AD_MC_CTRL".mc_ctrl_direction",
 	AD_MC_CTRL".mc_ctrl_matlab",
+	AD_MC_CTRL_2ND".mc_ctrl_run",
+	AD_MC_CTRL_2ND".mc_ctrl_delta",
+	AD_MC_CTRL_2ND".mc_ctrl_direction",
+	AD_MC_CTRL_2ND".mc_ctrl_matlab",
 };
 
 static const char * motor_control_driver_attribs[] = {
 	"pwm",
+	"pwm_2nd",
 	"gpo.1",
 	"gpo.2",
 	"gpo.3",
@@ -96,6 +111,21 @@ static const char * motor_control_driver_attribs[] = {
 	"gpo.10",
 	"gpo.11",
 };
+
+const char *checkbutton_run[2] = {"checkbutton_run", "checkbutton_run_2nd"};
+const char *checkbutton_delta[2] = {"checkbutton_delta", "checkbutton_delta_2nd"};
+const char *togglebtn_direction[2] = {"togglebtn_direction", "togglebtn_direction_2nd"};
+const char *togglebtn_controller_type[2] = {"togglebtn_controller_type", "togglebtn_controller_type_2nd"};
+const char *spinbutton_pwm[2] = {"spinbutton_pwm", "spinbutton_pwm_2nd"};
+
+const char *vbox_manual_pwm_lbls[2] = {"vbox_manual_pwm_lbls", "vbox_manual_pwm_lbls_2nd"};
+const char *vbox_manual_pwm_widgets[2] = {"vbox_manual_pwm_widgets", "vbox_manual_pwm_widgets_2nd"};
+const char *vbox_torque_ctrl_lbls[2] = {"vbox_torque_ctrl_lbls", "vbox_torque_ctrl_lbls_2nd"};
+const char *vbox_torque_ctrl_widgets[2] = {"vbox_torque_ctrl_widgets", "vbox_torque_ctrl_widgets_2nd"};
+const char *vbox_delta_lbls[2] = {"vbox_delta_lbls", "vbox_delta_lbls_2nd"};
+const char *vbox_delta_widgets[2] = {"vbox_delta_widgets", "vbox_delta_widgets_2nd"};
+const char *vbox_direction_lbls[2] = {"vbox_delta_lbls", "vbox_direction_lbls_2nd"};
+const char *vbox_direction_widgets[2] = {"vbox_direction_widgets", "vbox_direction_widgets_2nd"};
 
 static void tx_update_values(void)
 {
@@ -194,15 +224,15 @@ static void gpo_toggled_cb(GtkToggleButton *btn, gpointer data)
 	int id = *((int *)data);
 	long long value;
 
-	if (pid_dev) {
-		iio_device_attr_read_longlong(pid_dev,
+	if (pid_devs[PID_1ST_DEV]) {
+		iio_device_attr_read_longlong(pid_devs[PID_1ST_DEV],
 				"mc_ctrl_gpo", &value);
 		if (gtk_toggle_button_get_active(btn))
 			value |= (1ul << id);
 		else
 			value &= ~(1ul << id);
-		iio_device_attr_write_longlong(pid_dev,
-				"mc_ctrl_gpo", value);
+		iio_device_attr_write_longlong(pid_devs[PID_1ST_DEV],
+				"mc_ctrl_gpo", value & gpo_mask);
 	}
 	if (adv_dev) {
 		iio_device_attr_read_longlong(adv_dev,
@@ -212,35 +242,38 @@ static void gpo_toggled_cb(GtkToggleButton *btn, gpointer data)
 		else
 			value &= ~(1ul << id);
 		iio_device_attr_write_longlong(adv_dev,
-				"mc_adv_ctrl_gpo", value);
+				"mc_adv_ctrl_gpo", value & gpo_mask);
 	}
 }
 
-void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder)
+void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder,
+		enum pid_no i)
 {
+	struct iio_device *pid_dev = pid_devs[i];
+
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 		pid_dev, NULL, "mc_ctrl_run",
-		builder, "checkbutton_run", 0);
+		builder, checkbutton_run[i], 0);
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 		pid_dev, NULL, "mc_ctrl_delta",
-		builder, "checkbutton_delta", 0);
-	delta = tx_widgets[num_tx - 1].widget;
+		builder, checkbutton_delta[i], 0);
+	delta[i] = tx_widgets[num_tx - 1].widget;
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 		pid_dev, NULL, "mc_ctrl_direction",
-		builder, "togglebtn_direction", 0);
-	direction_pid = tx_widgets[num_tx - 1].widget;
+		builder, togglebtn_direction[i], 0);
+	direction_pid[i] = tx_widgets[num_tx - 1].widget;
 
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 		pid_dev, NULL, "mc_ctrl_matlab",
-		builder, "togglebtn_controller_type", 0);
-	controller_type_pid = tx_widgets[num_tx - 1].widget;
+		builder, togglebtn_controller_type[i], 0);
+	controller_type_pid[i] = tx_widgets[num_tx - 1].widget;
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		pid_dev, NULL, "mc_ctrl_pwm",
-		builder, "spinbutton_pwm", NULL);
-	pwm_pid = tx_widgets[num_tx - 1].widget;
+		builder, spinbutton_pwm[i], NULL);
+	pwm_pid[i] = tx_widgets[num_tx - 1].widget;
 }
 
 void create_iio_bindings_for_advanced_ctrl(GtkBuilder *builder)
@@ -303,62 +336,77 @@ static void controllers_notebook_page_switched_cb (GtkNotebook *notebook,
 
 	page_name = gtk_notebook_get_tab_label_text(notebook, page);
 	if (!strcmp(page_name, "Controller"))
-		crt_device = pid_dev;
+		crt_device = pid_devs[PID_1ST_DEV];
 	else if (!strcmp(page_name, "Advanced"))
 		crt_device = adv_dev;
 	else
 		printf("Notebook page is unknown to the Motor Control Plugin\n");
 }
 
-static void pid_controller_init(GtkBuilder *builder)
+static void pid_controller_init(GtkBuilder *builder, enum pid_no pid)
 {
 	GtkWidget *box_manpwm_pid_widgets;
 	GtkWidget *box_manpwm_pid_lbls;
 	GtkWidget *box_controller_pid_widgets;
 	GtkWidget *box_controller_pid_lbls;
 
-	box_manpwm_pid_widgets = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_manual_pwm_widgets"));
-	box_manpwm_pid_lbls = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_manual_pwm_lbls"));
-	box_controller_pid_widgets = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_torque_ctrl_widgets"));
-	box_controller_pid_lbls = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_torque_ctrl_lbls"));
+	box_manpwm_pid_widgets = GTK_WIDGET(
+			gtk_builder_get_object(builder, vbox_manual_pwm_widgets[pid]));
+	box_manpwm_pid_lbls = GTK_WIDGET(
+			gtk_builder_get_object(builder, vbox_manual_pwm_lbls[pid]));
+	box_controller_pid_widgets = GTK_WIDGET(
+			gtk_builder_get_object(builder, vbox_torque_ctrl_widgets[pid]));
+	box_controller_pid_lbls = GTK_WIDGET(
+			gtk_builder_get_object(builder, vbox_torque_ctrl_lbls[pid]));
 
 	/* Bind the IIO device files to the GUI widgets */
-	create_iio_bindings_for_pid_ctrl(builder);
+	create_iio_bindings_for_pid_ctrl(builder, pid);
 
 	/* Connect signals. */
-	g_signal_connect(G_OBJECT(pwm_pid), "input", G_CALLBACK(spin_input_cb), &PWM_PERCENT_FLAG);
-	g_signal_connect(G_OBJECT(pwm_pid), "output", G_CALLBACK(spin_output_cb), &PWM_PERCENT_FLAG);
+	g_signal_connect(G_OBJECT(pwm_pid[pid]), "input",
+		G_CALLBACK(spin_input_cb), &PWM_PERCENT_FLAG);
+	g_signal_connect(G_OBJECT(pwm_pid[pid]), "output",
+		G_CALLBACK(spin_output_cb), &PWM_PERCENT_FLAG);
 
 	/* Bind properties. */
 
 	/* Show widgets listed below when in "PID Controller" state */
-	g_object_bind_property(controller_type_pid, "active", box_controller_pid_widgets, "visible", 0);
-	g_object_bind_property(controller_type_pid, "active", box_controller_pid_lbls, "visible", 0);
+	g_object_bind_property(controller_type_pid[pid], "active",
+		box_controller_pid_widgets, "visible", 0);
+	g_object_bind_property(controller_type_pid[pid], "active",
+		box_controller_pid_lbls, "visible", 0);
 	/* Show widgets listed below when in "Manual PWM" state */
-	g_object_bind_property(controller_type_pid, "active", box_manpwm_pid_widgets, "visible", G_BINDING_INVERT_BOOLEAN);
-	g_object_bind_property(controller_type_pid, "active", box_manpwm_pid_lbls, "visible", G_BINDING_INVERT_BOOLEAN);
+	g_object_bind_property(controller_type_pid[pid], "active",
+		box_manpwm_pid_widgets, "visible", G_BINDING_INVERT_BOOLEAN);
+	g_object_bind_property(controller_type_pid[pid], "active",
+		box_manpwm_pid_lbls, "visible", G_BINDING_INVERT_BOOLEAN);
 	/* Change between "PID Controller" and "Manual PWM" labels on a toggle button */
-	g_object_bind_property_full(controller_type_pid, "active", controller_type_pid, "label", 0, change_controller_type_label, NULL, NULL, NULL);
+	g_object_bind_property_full(controller_type_pid[pid], "active",
+		controller_type_pid[pid], "label", 0,
+		change_controller_type_label, NULL, NULL, NULL);
 	/* Change direction label between "CW" and "CCW" */
-	g_object_bind_property_full(direction_pid, "active", direction_pid, "label", 0, change_direction_label, NULL, NULL, NULL);
+	g_object_bind_property_full(direction_pid[pid], "active",
+		direction_pid[pid], "label", 0, change_direction_label,
+		NULL, NULL, NULL);
+
 	/* Hide widgets when Matlab Controller type is active */
-	g_object_bind_property_full(controller_type_pid, "label",
-		gtk_builder_get_object(builder, "vbox_delta_lbls"), "visible",
+	g_object_bind_property_full(controller_type_pid[pid], "label",
+		gtk_builder_get_object(builder, vbox_delta_lbls[pid]), "visible",
 		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
-	g_object_bind_property_full(controller_type_pid, "label",
-		gtk_builder_get_object(builder, "vbox_delta_widgets"), "visible",
+	g_object_bind_property_full(controller_type_pid[pid], "label",
+		gtk_builder_get_object(builder, vbox_delta_widgets[pid]), "visible",
 		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
-	g_object_bind_property_full(controller_type_pid, "label",
-		gtk_builder_get_object(builder, "vbox_direction_lbls"), "visible",
+	g_object_bind_property_full(controller_type_pid[pid], "label",
+		gtk_builder_get_object(builder, vbox_direction_lbls[pid]), "visible",
 		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
-	g_object_bind_property_full(controller_type_pid, "label",
-		gtk_builder_get_object(builder, "vbox_direction_widgets"), "visible",
+	g_object_bind_property_full(controller_type_pid[pid], "label",
+		gtk_builder_get_object(builder, vbox_direction_widgets[pid]), "visible",
 		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
-	g_object_bind_property_full(controller_type_pid, "label",
-		gtk_builder_get_object(builder, "vbox_manual_pwm_lbls"), "visible",
+	g_object_bind_property_full(controller_type_pid[pid], "label",
+		gtk_builder_get_object(builder, vbox_manual_pwm_lbls[pid]), "visible",
 		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
-	g_object_bind_property_full(controller_type_pid, "label",
-		gtk_builder_get_object(builder, "vbox_manual_pwm_widgets"), "visible",
+	g_object_bind_property_full(controller_type_pid[pid], "label",
+		gtk_builder_get_object(builder, vbox_manual_pwm_widgets[pid]), "visible",
 		0, enable_widgets_of_manual_pwn_mode, NULL, NULL, NULL);
 }
 
@@ -390,8 +438,13 @@ static int motor_control_handle_driver(const char *attrib, const char *value)
 {
 	if (MATCH_ATTRIB("pwm")) {
 		if (value[0]) {
-			gtk_entry_set_text(GTK_ENTRY(pwm_pid), value);
-			gtk_spin_button_update(GTK_SPIN_BUTTON(pwm_pid));
+			gtk_entry_set_text(GTK_ENTRY(pwm_pid[PID_1ST_DEV]), value);
+			gtk_spin_button_update(GTK_SPIN_BUTTON(pwm_pid[PID_1ST_DEV]));
+		}
+	} if (MATCH_ATTRIB("pwm_2nd")) {
+		if (value[0]) {
+			gtk_entry_set_text(GTK_ENTRY(pwm_pid[PID_2ND_DEV]), value);
+			gtk_spin_button_update(GTK_SPIN_BUTTON(pwm_pid[PID_2ND_DEV]));
 		}
 	} else if (!strncmp(attrib, "gpo.", sizeof("gpo.") - 1)) {
 		int id = atoi(attrib + sizeof("gpo.") - 1);
@@ -427,8 +480,12 @@ static void load_profile(const char *ini_fn)
 		}
 	}
 
-	if (pid_dev)
-		update_from_ini(ini_fn, THIS_DRIVER, pid_dev,
+	if (pid_devs[PID_1ST_DEV])
+		update_from_ini(ini_fn, THIS_DRIVER, pid_devs[PID_1ST_DEV],
+				motor_control_sr_attribs,
+				ARRAY_SIZE(motor_control_sr_attribs));
+	if (pid_devs[PID_2ND_DEV])
+		update_from_ini(ini_fn, THIS_DRIVER, pid_devs[PID_2ND_DEV],
 				motor_control_sr_attribs,
 				ARRAY_SIZE(motor_control_sr_attribs));
 
@@ -448,7 +505,8 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	if (!ctx)
 		return NULL;
 
-	pid_dev = iio_context_find_device(ctx, AD_MC_CTRL);
+	pid_devs[PID_1ST_DEV] = iio_context_find_device(ctx, AD_MC_CTRL);
+	pid_devs[PID_2ND_DEV] = iio_context_find_device(ctx, AD_MC_CTRL_2ND);
 	adv_dev = iio_context_find_device(ctx, AD_MC_ADV_CTRL);
 
 	builder = gtk_builder_new();
@@ -461,10 +519,12 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	pid_page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), 0);
 	advanced_page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), 1);
 
-	if (pid_dev)
-		pid_controller_init(builder);
+	if (pid_devs[PID_1ST_DEV])
+		pid_controller_init(builder, PID_1ST_DEV);
 	else
 		gtk_widget_hide(pid_page);
+	if (pid_devs[PID_2ND_DEV])
+		pid_controller_init(builder, PID_2ND_DEV);
 	if (adv_dev)
 		advanced_controller_init(builder);
 	else
@@ -507,14 +567,30 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 
 	tx_update_values();
 
-	if (pid_dev) {
+	if (pid_devs[PID_1ST_DEV]) {
 		/* Make sure  delta parameter is set to 1 */
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(delta), true);
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(delta[PID_1ST_DEV]), true);
 	}
 
 	if (adv_dev) {
 		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(controller_mode), 1);
 		gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(controller_mode), 0);
+	}
+
+	gpo_mask = ONE_MOTOR_GPO_MASK;
+	if (pid_devs[PID_2ND_DEV]) {
+		gpo_mask = TWO_MOTOR_GPO_MASK;
+		gtk_widget_show(GTK_WIDGET(gtk_builder_get_object(builder,
+			"frame_motor2")));
+		gtk_widget_show(GTK_WIDGET(gtk_builder_get_object(builder,
+			"label_frame_motor1")));
+
+		for (i = 4; i < 11; i++)
+			gtk_widget_hide(gpo[i]);
+		gtk_widget_set_sensitive(
+			controller_type_pid[PID_1ST_DEV], false);
+		gtk_widget_set_sensitive(
+			controller_type_pid[PID_2ND_DEV], false);
 	}
 
 	gint p;
@@ -543,7 +619,7 @@ static void save_widgets_to_ini(FILE *f)
 			"gpo.9 = %i\n"
 			"gpo.10 = %i\n"
 			"gpo.11 = %i\n",
-			(char *)gtk_entry_get_text(GTK_ENTRY(pwm_pid)),
+			(char *)gtk_entry_get_text(GTK_ENTRY(pwm_pid[PID_1ST_DEV])),
 			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[0])),
 			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[1])),
 			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[2])),
@@ -562,8 +638,14 @@ static void save_profile(const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
-		if (pid_dev) {
-			save_to_ini(f, THIS_DRIVER, pid_dev, motor_control_sr_attribs,
+		if (pid_devs[PID_1ST_DEV]) {
+			save_to_ini(f, THIS_DRIVER, pid_devs[PID_1ST_DEV],
+				motor_control_sr_attribs,
+				ARRAY_SIZE(motor_control_sr_attribs));
+		}
+		if (pid_devs[PID_2ND_DEV]) {
+			save_to_ini(f, THIS_DRIVER, pid_devs[PID_2ND_DEV],
+				motor_control_sr_attribs,
 				ARRAY_SIZE(motor_control_sr_attribs));
 		}
 		save_widgets_to_ini(f);
