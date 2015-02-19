@@ -5073,6 +5073,31 @@ static void math_chooser_details_toggled_cb(GtkToggleButton *btn, OscPlot *plot)
 	}
 }
 
+static void math_channel_name_edit_cb(GtkEditable *editable,
+		const gchar *text, gint length, gint *position,
+                     gpointer data)
+{
+	gchar *result = g_new(gchar, length);
+	int i, count = 0;
+
+	for (i = 0; i < length; i++) {
+		if (!g_ascii_isalnum(text[i]) && (text[i] != '_'))
+			continue;
+		result[count++] = text[i];
+	}
+
+	if (count > 0) {
+		g_signal_handlers_block_by_func(editable,
+			(gpointer)math_channel_name_edit_cb, data);
+		gtk_editable_insert_text(editable, result,
+			count, position);
+		g_signal_handlers_unblock_by_func(editable,
+			(gpointer)math_channel_name_edit_cb, data);
+	}
+	g_signal_stop_emission_by_name(editable, "insert-text");
+	g_free(result);
+}
+
 static void math_chooser_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -6179,6 +6204,9 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(math_chooser_insert_key_pressed_cb), plot);
 	g_builder_connect_signal(builder, "btn_math_err_details", "clicked",
 		G_CALLBACK(math_chooser_details_toggled_cb), plot);
+
+	g_signal_connect(priv->math_channel_name_entry, "insert-text",
+			G_CALLBACK(math_channel_name_edit_cb), plot);
 
 	GtkWidget *math_table = GTK_WIDGET(gtk_builder_get_object(priv->builder, "table_math_chooser"));
 	GList *node;
