@@ -306,12 +306,6 @@ static void attach_plugin(GtkWidget *window, struct detachable_plugin *d_plugin)
 	d_plugin->detach_attach_button = detach_btn;
 }
 
-static void plugin_attach_button_cb(GtkToolButton *btn, gpointer data)
-{
-	attach_plugin(gtk_widget_get_toplevel(GTK_WIDGET(btn)),
-			(struct detachable_plugin *)data);
-}
-
 static void debug_window_delete_cb(GtkWidget *w, GdkEvent *e, gpointer data)
 {
 	attach_plugin(w, (struct detachable_plugin *)data);
@@ -340,6 +334,8 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	GtkWidget *page = NULL;
 	GtkWidget *box;
 	GtkWidget *label;
+	GtkWidget *window;
+	GtkWidget *hbox;
 	int num_pages;
 	int i;
 
@@ -361,15 +357,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 		return;
 	}
 
-	GtkWidget *window;
-	GtkWidget *hbox;
-	GtkWidget *vbox;
-	GtkWidget *vbox_empty;
-	GtkWidget *toolbar;
-	GtkWidget *attach_button;
-
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_deletable(GTK_WINDOW(window), FALSE);
 	if (plugin->get_preferred_size) {
 		int width = -1, height = -1;
 
@@ -378,33 +366,21 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	}
 
 	hbox = gtk_hbox_new(FALSE, 0);
-	vbox = gtk_vbox_new(FALSE, 0);
-	vbox_empty = gtk_vbox_new(FALSE, 0);
-	toolbar = gtk_toolbar_new();
-	attach_button = (GtkWidget *)gtk_tool_button_new_from_stock("gtk-connect");
-	gtk_widget_set_size_request(attach_button, 25, 5);
 
 	gtk_window_set_title(GTK_WINDOW(window), page_name);
 	gtk_widget_reparent(page, hbox);
-	gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, TRUE, 0);
-	gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, TRUE, 0);
-	gtk_box_pack_start(GTK_BOX(vbox), vbox_empty, TRUE, TRUE, 0);
-	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(attach_button), 0);
 	gtk_container_add(GTK_CONTAINER(window), hbox);
 
-	g_signal_connect(attach_button, "clicked",
-			G_CALLBACK(plugin_attach_button_cb), (gpointer)d_plugin);
 	g_signal_connect(window, "delete-event",
 			G_CALLBACK(debug_window_delete_cb), (gpointer)d_plugin);
 
 	if (plugin->update_active_page)
 		plugin->update_active_page(-1, TRUE);
 	d_plugin->detached_state = TRUE;
-	d_plugin->detach_attach_button = attach_button;
+	d_plugin->detach_attach_button = NULL;
 
 	gtk_widget_show(window);
 	gtk_widget_show(hbox);
-	gtk_widget_show_all(vbox);
 }
 
 static const char * device_name_check(const char *name)
