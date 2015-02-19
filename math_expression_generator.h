@@ -10,6 +10,7 @@
 
 #ifdef linux
 #include <glib.h>
+#include <glib/gstdio.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -122,6 +123,20 @@ static char * c_file_create(const char *user_expression)
 	return base_filename;
 }
 
+static int resource_file_remove(const char *filename,
+	const char *file_extension)
+{
+	const char *path = g_strdup_printf("%s/%s%s",
+				MATH_OBJECT_FILES_DIR, filename,
+				file_extension);
+	int ret = g_unlink(path);
+
+	if (ret)
+		printf("Could not remove %s file\n", path);
+
+	return ret;
+}
+
 static int shared_object_compile(char *base_filename)
 {
 	char *pcommand, *object_path;
@@ -179,6 +194,7 @@ math_function math_expression_get_math_function(const char *expression_txt, void
 
 	ret = shared_object_compile(base_filename);
 	if (ret == EXIT_FAILURE) {
+		resource_file_remove(base_filename, ".c");
 		goto FAILED_SO;
 	}
 
