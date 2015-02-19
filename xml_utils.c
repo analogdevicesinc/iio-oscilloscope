@@ -111,6 +111,7 @@ char **get_xml_list(char * buf_dir_name, int *list_size)
 					return NULL;
 				}
 				snprintf(list[cnt - 1], n,  "%s", ent->d_name);
+				list[cnt - 1][n - 1] = '\0'; /* Required on MinGW */
 			}
 		}
 	}
