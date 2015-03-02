@@ -3154,6 +3154,50 @@ static void saveas_channels_list_fill(OscPlot *plot)
 	gtk_widget_show_all(vbox);
 }
 
+static GSList * iio_chn_basenames_get(OscPlot *plot, const char *dev_name)
+{
+	struct iio_device *iio_dev;
+	struct iio_channel *iio_chn;
+	GSList *list = NULL;
+	unsigned int i;
+
+	if (!dev_name)
+		return NULL;
+
+	iio_dev = iio_context_find_device(ctx, dev_name);
+	if (!iio_dev)
+		return NULL;
+
+	int nb_channels = iio_device_get_channels_count(iio_dev);
+
+	for (i = 0; i < nb_channels; i++) {
+		iio_chn = iio_device_get_channel(iio_dev, i);
+		if (!show_channel(iio_chn))
+			continue;
+
+		const char *chn_name = iio_channel_get_name(iio_chn) ?:
+			iio_channel_get_id(iio_chn);
+
+		char *basename, *c;
+
+		basename = g_strdup_printf("%s", chn_name);
+		for (c = basename; *c; c++) {
+			if (g_ascii_isdigit(*c))
+				*c = 0;
+		}
+
+		if (list) {
+			if (!g_slist_find_custom(list, basename, (GCompareFunc)strcmp)) {
+				list = g_slist_append(list, basename);
+			}
+		} else {
+			list = g_slist_append(list, basename);
+		}
+	}
+
+	return list;
+}
+
 static gboolean capture_button_icon_transform(GBinding *binding,
 	const GValue *source_value, GValue *target_value, gpointer data)
 {
@@ -5220,7 +5264,12 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 		channels = math_expression_get_iio_channel_list(txt_math_expr, active_device, &invalid_channels);
 
 		/* Get the compiled math expression */
-		fn = math_expression_get_math_function(txt_math_expr, &lhandler);
+		GSList *basenames = iio_chn_basenames_get(plot, active_device);
+		fn = math_expression_get_math_function(txt_math_expr, &lhandler, basenames);
+		if (basenames) {
+			g_slist_free_full(basenames, (GDestroyNotify)g_free);
+			basenames = NULL;
+		}
 
 		gtk_widget_set_visible(priv->math_expr_error, true);
 		if (!fn)
