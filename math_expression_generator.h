@@ -33,11 +33,21 @@ static gboolean eval(const GMatchInfo *info, GString *res, gpointer data)
 	gchar *match;
 	gchar *replace;
 	int index;
+	char *pos;
 
 	match = g_match_info_fetch(info, 0);
 	if (!match)
 		return FALSE;
-	index = atoi(match + strlen("voltage"));
+
+	for (pos = match; *pos; pos++) {
+		if (g_ascii_isdigit(*pos))
+			break;
+	}
+	if (pos - match < strlen(match))
+		index = atoi((pos + 1));
+	else
+		index = 0;
+
 	replace = g_strdup_printf("(*channels_data[%d])[i]", index);
 	g_string_append(res, replace);
 	g_free(replace);
@@ -62,7 +72,7 @@ static char * string_replace(const char * string, const char *pattern,
 	return result;
 }
 
-static char * c_file_create(const char *user_expression)
+static char * c_file_create(const char *user_expression, GSList *basenames)
 {
 	char *base_filename, *open_path;
 	FILE *fp;
@@ -90,8 +100,22 @@ static char * c_file_create(const char *user_expression)
 	}
 
 	char *s1, *s2;
+	GSList *node;
+	char *buf, *old_expr, *new_expr = NULL;
 
-	s1 = string_replace(user_expression, "voltage[0-9]+", NULL, eval);
+	old_expr = g_strdup(user_expression);
+	for (node = basenames; node; node = g_slist_next(node)) {
+		buf = g_strdup_printf("%s[0-9]+", (char *)node->data);
+		new_expr = string_replace(old_expr, buf, NULL, eval);
+		g_free(buf);
+		g_free(old_expr);
+		old_expr = new_expr;
+	}
+	if (new_expr)
+		s1 = new_expr;
+	else
+		s1 = g_strdup(user_expression);
+
 	s2 = string_replace(s1, "Index", "i", NULL);
 	g_free(s1);
 	s1 = string_replace(s2, "PreviousValue", "(i > 0 ? out_data[i  -1] : 0)", NULL);
@@ -166,14 +190,15 @@ static int shared_object_compile(char *base_filename)
 }
 #endif
 
-math_function math_expression_get_math_function(const char *expression_txt, void **lib_handler)
+math_function math_expression_get_math_function(const char *expression_txt,
+	void **lib_handler, GSList *basenames)
 {
 #ifdef linux
 	math_function math_fn;
 	char *base_filename, *dlopen_path;
 	int ret;
 
-	base_filename = c_file_create(expression_txt);
+	base_filename = c_file_create(expression_txt, basenames);
 	if (!base_filename)
 		return NULL;
 
