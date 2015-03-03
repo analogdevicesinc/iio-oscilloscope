@@ -1664,7 +1664,7 @@ static void tone_setup(struct dds_tone *tone)
 	bool combobox_scales = tone->parent->parent->parent->parent->scale_available_mode;
 
 	/* Bind the IIO Channel attributes to the GUI widgets */
-	iio_spin_button_init(&tone->iio_freq,
+	iio_spin_button_s64_init(&tone->iio_freq,
 			tone->iio_dac, tone->iio_ch, "frequency", tone->freq, &abs_mhz_scale);
 	iio_spin_button_add_progress(&tone->iio_freq);
 
