@@ -2478,7 +2478,7 @@ static void deassert_used_channels(OscPlot *plot)
 
 			plot_ch = node->data;
 			if (plot_ch)
-				plot_ch->assert_used_iio_channels(plot_ch, true);
+				plot_ch->assert_used_iio_channels(plot_ch, false);
 		}
 	}
 }
