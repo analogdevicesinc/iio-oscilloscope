@@ -197,12 +197,6 @@ get_serial_and_file:
 	g_free(filename);
 	return i;
 }
-#else
-static size_t write_fru(char *eeprom) {
-
-	return 0;
-}
-#endif
 
 static int is_eeprom_fru(char *eeprom_file, GtkTextBuffer *buf, GtkTextIter *iter)
 {
@@ -263,6 +257,12 @@ static int is_eeprom_fru(char *eeprom_file, GtkTextBuffer *buf, GtkTextIter *ite
 	}
 	return 0;
 }
+#else
+static size_t write_fru(char *eeprom) {
+
+	return 0;
+}
+#endif /* FRU_FILES */
 
 bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
 {
@@ -325,6 +325,7 @@ void connect_fillin(Dialogs *data)
 	struct iio_context *ctx;
 	const char *desc;
 
+#ifdef FRU_FILES
 	/* flushes all open output streams */
 	fflush(NULL);
 #if DEBUG
@@ -399,6 +400,7 @@ void connect_fillin(Dialogs *data)
 	}
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_fru), buf);
 	g_object_unref(buf);
+#endif
 
 	ctx = get_context(data);
 	desc = ctx ? iio_context_get_description(ctx) : "";
