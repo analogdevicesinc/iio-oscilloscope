@@ -29,7 +29,7 @@ LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 	-L$(SYSROOT)/usr/lib -lmatio -lz -lm
 
 ifeq ($(WITH_MINGW),y)
-	LDLAGS += -Wl,--subsystem,windows
+	LDFLAGS += -Wl,--subsystem,windows
 endif
 
 CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
