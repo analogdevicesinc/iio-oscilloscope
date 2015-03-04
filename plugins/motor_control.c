@@ -29,6 +29,7 @@
 #define AD_MC_CTRL "ad-mc-ctrl"
 #define AD_MC_CTRL_2ND "ad-mc-ctrl-m2"
 #define AD_MC_ADV_CTRL "ad-mc-adv-ctrl"
+#define RESOLVER "ad2s1210"
 
 #define ONE_MOTOR_GPO_MASK 0x7FF
 #define TWO_MOTOR_GPO_MASK 0x00F
@@ -44,7 +45,8 @@ extern int count_char_in_string(char c, const char *s);
 
 static struct iio_widget tx_widgets[50];
 static unsigned int num_tx;
-static struct iio_device *crt_device, *pid_devs[2], *adv_dev;
+static struct iio_device *crt_device, *pid_devs[2], *adv_dev,
+				*resolver_dev;
 static struct iio_context *ctx;
 static unsigned gpo_mask;
 
@@ -70,6 +72,10 @@ static GtkWidget *openloop_bias;
 static GtkWidget *openloop_scalar;
 static GtkWidget *zero_offset;
 
+/* Resolver Widgets */
+static GtkWidget *resolver_angle;
+static GtkWidget *resolver_angle_veloc;
+
 #define USE_PWM_PERCENT_MODE -1
 #define PWM_FULL_SCALE	2047
 static int PWM_PERCENT_FLAG = -1;
@@ -84,6 +90,12 @@ static int OPEN_LOOP_SCALAR_NUM_FRAC_BITS = 16;
 static int OENCODER_NUM_FRAC_BITS = 14;
 
 static bool can_update_widgets;
+static bool update_thd_stop;
+
+static gint this_page;
+static GtkNotebook *nbook;
+static GtkWidget *motor_control_panel;
+static gboolean plugin_detached;
 
 static const char *motor_control_sr_attribs[] = {
 	AD_MC_CTRL".mc_ctrl_run",
@@ -135,6 +147,46 @@ static void tx_update_values(void)
 void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
 	iio_w->save(iio_w);
+}
+
+static gboolean update_display(void)
+{
+	if (this_page != gtk_notebook_get_current_page(nbook) &&
+			!plugin_detached)
+		goto end;
+
+	/* Update values only if "Resolver" tab is selected */
+	if (gtk_notebook_get_current_page(
+			GTK_NOTEBOOK(controllers_notebook)) != 2)
+		goto end;
+
+	char buf[1024];
+	struct iio_channel *iio_chn;
+	ssize_t ret;
+
+	iio_chn = iio_device_find_channel(resolver_dev, "angl0", false);
+	if (!iio_chn)
+		goto end;
+	ret = iio_channel_attr_read(iio_chn, "raw", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(resolver_angle), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(resolver_angle), "<error>");
+
+	iio_chn = iio_device_find_channel(resolver_dev, "anglvel0",
+			false);
+	if (!iio_chn)
+		goto end;
+	ret = iio_channel_attr_read(iio_chn, "raw", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(resolver_angle_veloc),
+			buf);
+	else
+		gtk_label_set_text(GTK_LABEL(resolver_angle_veloc),
+			"<error>");
+
+end:
+	return !update_thd_stop;
 }
 
 static gboolean change_controller_type_label(GBinding *binding,
@@ -246,6 +298,46 @@ static void gpo_toggled_cb(GtkToggleButton *btn, gpointer data)
 	}
 }
 
+static void resolver_resolution_update_val(GtkBuilder *builder)
+{
+	GtkComboBox *box;
+	ssize_t ret;
+	char buf[1024];
+	int resolution;
+
+	box = GTK_COMBO_BOX(gtk_builder_get_object(builder,
+				"comboboxtext_resolver_resolution"));
+	ret = iio_device_attr_read(resolver_dev, "bits", buf,
+			sizeof(buf));
+	if (ret > 0) {
+		resolution = atoi(buf);
+		if (resolution >= 10 && resolution <= 16)
+			gtk_combo_box_set_active(box,
+				(resolution / 2) - 5);
+	} else {
+		printf("read to <bits> attribute failed:%zu\n", ret);
+	}
+}
+
+static void resolver_resolution_changed_cb(GtkComboBoxText *box,
+		gpointer user_data)
+{
+	gchar *buf;
+	ssize_t ret;
+
+	if (!resolver_dev)
+		return;
+
+	buf = gtk_combo_box_text_get_active_text(box);
+	if (buf) {
+		ret = iio_device_attr_write(resolver_dev, "bits", buf);
+		if (ret < 0)
+			printf("write to <bits> attribute failed:%zu\n",
+				ret);
+		g_free(buf);
+	}
+}
+
 void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder,
 		enum pid_no i)
 {
@@ -339,6 +431,8 @@ static void controllers_notebook_page_switched_cb (GtkNotebook *notebook,
 		crt_device = pid_devs[PID_1ST_DEV];
 	else if (!strcmp(page_name, "Advanced"))
 		crt_device = adv_dev;
+	else if (!strcmp(page_name, "Resolver"))
+		;
 	else
 		printf("Notebook page is unknown to the Motor Control Plugin\n");
 }
@@ -434,6 +528,29 @@ static void advanced_controller_init(GtkBuilder *builder)
 	g_signal_connect(G_OBJECT(zero_offset), "output", G_CALLBACK(spin_output_cb), &OENCODER_NUM_FRAC_BITS);
 }
 
+static void resolver_init(GtkBuilder *builder)
+{
+
+	resolver_angle = GTK_WIDGET(gtk_builder_get_object(builder,
+					"resolver_angle"));
+	resolver_angle_veloc = GTK_WIDGET(gtk_builder_get_object(builder,
+					"resolver_angle_veloc"));
+
+	/* Bind the IIO device files to the GUI widgets */
+	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+		resolver_dev, NULL, "fexcit",
+		builder, "spin_resolver_fexcit", NULL);
+
+	/* Connect signals. */
+	g_builder_connect_signal(builder,
+		"comboboxtext_resolver_resolution", "changed",
+		G_CALLBACK(resolver_resolution_changed_cb), NULL);
+
+	/* Set up a periodic read-only widget update function */
+	update_thd_stop = false;
+	g_timeout_add(1000, (GSourceFunc) update_display, NULL);
+}
+
 static int motor_control_handle_driver(const char *attrib, const char *value)
 {
 	if (MATCH_ATTRIB("pwm")) {
@@ -496,9 +613,9 @@ static void load_profile(const char *ini_fn)
 static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
-	GtkWidget *motor_control_panel;
 	GtkWidget *pid_page;
 	GtkWidget *advanced_page;
+	GtkWidget *resolver_page;
 	int i;
 
 	ctx = osc_create_context();
@@ -508,8 +625,11 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	pid_devs[PID_1ST_DEV] = iio_context_find_device(ctx, AD_MC_CTRL);
 	pid_devs[PID_2ND_DEV] = iio_context_find_device(ctx, AD_MC_CTRL_2ND);
 	adv_dev = iio_context_find_device(ctx, AD_MC_ADV_CTRL);
+	resolver_dev = iio_context_find_device(ctx, RESOLVER);
 
+	nbook = GTK_NOTEBOOK(notebook);
 	builder = gtk_builder_new();
+
 	if (!gtk_builder_add_from_file(builder, "motor_control.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "motor_control.glade", NULL);
 
@@ -518,6 +638,7 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 
 	pid_page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), 0);
 	advanced_page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), 1);
+	resolver_page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(controllers_notebook), 2);
 
 	if (pid_devs[PID_1ST_DEV])
 		pid_controller_init(builder, PID_1ST_DEV);
@@ -530,11 +651,18 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	else
 		gtk_widget_hide(advanced_page);
 
+	if (resolver_dev)
+		resolver_init(builder);
+	else
+		gtk_widget_hide(resolver_page);
+
 	if (ini_fn)
 		load_profile(ini_fn);
 
 	/* Update all widgets with current values */
 	tx_update_values();
+	if (resolver_dev)
+		resolver_resolution_update_val(builder);
 
 	/* Connect signals. */
 
@@ -603,6 +731,12 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	return motor_control_panel;
 }
 
+static void update_active_page(gint active_page, gboolean is_detached)
+{
+	this_page = active_page;
+	plugin_detached = is_detached;
+}
+
 static void save_widgets_to_ini(FILE *f)
 {
 	char buf[0x1000];
@@ -655,7 +789,12 @@ static void save_profile(const char *ini_fn)
 
 static void context_destroy(const char *ini_fn)
 {
-	save_profile(ini_fn);
+	update_thd_stop = true;
+
+
+	if (ini_fn)
+		save_profile(ini_fn);
+
 	iio_context_destroy(ctx);
 }
 
@@ -672,6 +811,7 @@ struct osc_plugin plugin = {
 	.identify = motor_control_identify,
 	.init = motor_control_init,
 	.handle_item = motor_control_handle,
+	.update_active_page = update_active_page,
 	.save_profile = save_profile,
 	.load_profile = load_profile,
 	.destroy = context_destroy,
