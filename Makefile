@@ -28,8 +28,12 @@ DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0
 LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 	-L$(SYSROOT)/usr/lib -lmatio -lz -lm
 
+ifeq ($(WITH_MINGW),y)
+	LDLAGS += -Wl,--subsystem,windows
+endif
+
 CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
-	-I$(SYSROOT)/usr/include $(if $(WITH_MINGW),,-fPIC) \
+	-I$(SYSROOT)/usr/include $(if $(WITH_MINGW),-mwindows,-fPIC) \
 	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
 	-DFRU_FILES=\"$(FRU_FILES)\" -DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\"
 
