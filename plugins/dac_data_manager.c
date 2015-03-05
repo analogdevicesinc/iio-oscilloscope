@@ -2028,9 +2028,13 @@ void dac_data_manager_set_buffer_chooser_current_folder(struct dac_data_manager 
 	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(fchooser), path);
 }
 
+#define NULL_FILENAME "(null)"
+
 void dac_data_manager_set_buffer_chooser_filename(struct dac_data_manager *manager, const char *filename)
 {
 	if (!manager || !filename)
+		return;
+	if (!strncmp(filename, NULL_FILENAME, strlen(NULL_FILENAME)))
 		return;
 
 	GtkWidget *fchooser = manager->dac_buffer_module.buffer_fchooser_btn;
