@@ -92,12 +92,23 @@ static ssize_t update_from_ini_chn_cb(struct iio_channel *chn,
 	struct load_store_params *params = (struct load_store_params *) d;
 	const char *dev_name = iio_device_get_name(params->dev);
 	size_t name_len = dev_name ? strlen(dev_name) : 0;
+	bool is_hardwaregain = !strncmp(attr, "hardwaregain", len);
 
 	attr = iio_channel_attr_get_filename(chn, attr);
 	if (attr_in_whitelist(attr, dev_name, name_len, false,
-				params->whitelist, params->list_len))
-		return read_from_ini(params,
+				params->whitelist, params->list_len)) {
+		ssize_t ret = read_from_ini(params,
 				dev_name, name_len, attr, buf, len);
+
+		/* Dirty workaround that strips the "dB" suffix of
+		 * hardwaregain value. Fix me when possible. */
+		if (is_hardwaregain) {
+			char *tmp = (char *)buf;
+			if (*strstr(tmp, " dB"))
+				(*strstr(tmp, " dB")) = 0;
+		}
+		return ret;
+	}
 	return 0;
 }
 
