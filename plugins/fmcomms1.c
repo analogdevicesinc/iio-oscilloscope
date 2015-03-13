@@ -284,9 +284,8 @@ static void rx_freq_info_update(void)
 {
 	double lo_freq;
 
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_lo_freq)));
-
+	rx_update_device_sampling_freq("cf-ad9643-core-lpc",
+		USE_INTERN_SAMPLING_FREQ);
 	lo_freq = mhz_scale * gtk_spin_button_get_value(
 				GTK_SPIN_BUTTON(rx_lo_freq));
 	rx_update_channel_lo_freq("cf-ad9643-core-lpc", "all", lo_freq);

@@ -37,14 +37,16 @@ static void tx_update_values(void)
 static void rx_update_values(void)
 {
 	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
+	rx_update_device_sampling_freq("ad5628-1",
+		USE_INTERN_SAMPLING_FREQ);
 }
 
 static void save_button_clicked(GtkButton *btn, gpointer data)
 {
 	iio_save_widgets(tx_widgets, num_tx);
 	iio_save_widgets(rx_widgets, num_rx);
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
+	rx_update_device_sampling_freq("ad5628-1",
+		USE_INTERN_SAMPLING_FREQ);
 }
 
 static GtkWidget * AD5628_1_init(GtkWidget *notebook, const char *ini_fn)

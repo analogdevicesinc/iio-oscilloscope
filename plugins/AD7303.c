@@ -271,7 +271,8 @@ static void tx_update_values(void)
 static void rx_update_values(void)
 {
 	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
+	rx_update_device_sampling_freq("ad7303",
+		USE_INTERN_SAMPLING_FREQ);
 }
 
 static void wave_param_changed(GtkRange *range, gpointer user_data)
@@ -290,7 +291,8 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	if (gtk_toggle_button_get_active((GtkToggleButton *)radio_single_val)){
 		iio_save_widgets(tx_widgets, num_tx);
 		iio_save_widgets(rx_widgets, num_rx);
-		rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
+		rx_update_device_sampling_freq("ad7303",
+			USE_INTERN_SAMPLING_FREQ);
 	} else if (gtk_toggle_button_get_active((GtkToggleButton *)radio_waveform)){
 		generateWavePeriod();
 		dev_opened = !buffer_open(buffer_size);

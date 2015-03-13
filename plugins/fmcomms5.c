@@ -288,8 +288,9 @@ static void rx_freq_info_update(void)
 	double lo_freqA;
 	double lo_freqB;
 
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 	dev_name = iio_device_get_name(cap1) ?: iio_device_get_id(cap1);
+	rx_update_device_sampling_freq(dev_name,
+		USE_INTERN_SAMPLING_FREQ);
 	lo_freqA = mhz_scale * gtk_spin_button_get_value(
 			GTK_SPIN_BUTTON(rx_widgets[rx_lo[0]].widget));
 	lo_freqB = mhz_scale * gtk_spin_button_get_value(

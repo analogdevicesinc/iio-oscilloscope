@@ -1526,7 +1526,6 @@ static void init_device_list(struct iio_context *ctx)
 			iio_channel_set_data(ch, info);
 		}
 	}
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
 }
 
 #define ENTER_KEY_CODE 0xFF0D
@@ -1540,37 +1539,58 @@ gboolean save_sample_count_cb(GtkWidget *widget, GdkEventKey *event, gpointer da
 	return FALSE;
 }
 
-void rx_update_labels(double sampling_freq, double rx_lo_freq)
+/*
+ * Allows plugins to set the "adc_freq" field of the "extra_dev_info"
+ * struct for the given iio device. Mostly is meant for updating the
+ * "adc_freq" field with the sampling freq iio attribute value. This can
+ * be done by passing a negative value to the "freq" parameter.
+ * @device - name of the device
+ * @freq   - value of the sampling frequency or a negative value to use
+ *           the iio attribute value instead.
+ */
+bool rx_update_device_sampling_freq(const char *device, double freq)
 {
-	unsigned int i;
+	struct iio_device *dev;
+	struct extra_dev_info *info;
 
-	for (i = 0; i < num_devices; i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
-		struct extra_dev_info *info = iio_device_get_data(dev);
+	g_return_val_if_fail(device, false);
 
-		if (sampling_freq)
-			info->adc_freq = sampling_freq;
-		else
-			info->adc_freq = read_sampling_frequency(dev);
+	dev = iio_context_find_device(ctx, device);
+	if (!dev) {
+		printf("Device: %s not found\n!", device);
+		return false;
+	}
 
-		if (info->adc_freq >= 1000000) {
-			info->adc_scale = 'M';
-			info->adc_freq /= 1000000.0;
-		} else if (info->adc_freq >= 1000) {
-			info->adc_scale = 'k';
-			info->adc_freq /= 1000.0;
-		} else if (info->adc_freq >= 0) {
-			info->adc_scale = ' ';
-		} else {
-			info->adc_scale = '?';
-			info->adc_freq = 0.0;
-		}
+	info = iio_device_get_data(dev);
+	if (!info) {
+		printf("Device: %s extra info not found\n!", device);
+		return false;
+	}
+
+	if (freq >= 0)
+		info->adc_freq = freq;
+	else
+		info->adc_freq = read_sampling_frequency(dev);
+
+	if (info->adc_freq >= 1000000) {
+		info->adc_scale = 'M';
+		info->adc_freq /= 1000000.0;
+	} else if (info->adc_freq >= 1000) {
+		info->adc_scale = 'k';
+		info->adc_freq /= 1000.0;
+	} else if (info->adc_freq >= 0) {
+		info->adc_scale = ' ';
+	} else {
+		info->adc_scale = '?';
+		info->adc_freq = 0.0;
 	}
 
 	GList *node;
 
 	for (node = plot_list; node; node = g_list_next(node))
 		osc_plot_update_rx_lbl(OSC_PLOT(node->data), NORMAL_UPDATE);
+
+	return true;
 }
 
 /*
