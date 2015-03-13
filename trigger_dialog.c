@@ -117,6 +117,7 @@ static void trigger_save_settings(GtkBuilder *builder, const char *device)
 	GtkComboBoxText *trigger_combobox;
 	GtkSpinButton *spinbtn_freq;
 	gchar *current_trigger;
+	const char *dev_name;
 
 	trigger_combobox = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(builder,
 			"comboboxtext_triggers"));
@@ -138,7 +139,10 @@ static void trigger_save_settings(GtkBuilder *builder, const char *device)
 			iio_device_attr_write_longlong(trigger, "frequency",
 				(long long)gtk_spin_button_get_value(spinbtn_freq));
 			iio_device_set_trigger(dev, trigger);
-			rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
+			dev_name = iio_device_get_name(dev) ?:
+					iio_device_get_id(dev);
+			rx_update_device_sampling_freq(dev_name,
+				USE_INTERN_SAMPLING_FREQ);
 		} else {
 			iio_device_set_trigger(dev, NULL);
 		}

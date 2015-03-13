@@ -67,10 +67,9 @@ enum marker_types {
 #define XY_PLOT 2
 #define XCORR_PLOT 3
 
-#define USE_INTERN_SAMPLING_FREQ 0.0
-#define USE_INTERN_RX_LO_FREQ 0.0
+#define USE_INTERN_SAMPLING_FREQ -1.0
 
-void rx_update_labels(double sampling_freq, double rx_lo_freq);
+bool rx_update_device_sampling_freq(const char *device, double freq);
 bool rx_update_channel_lo_freq(const char *device, const char *channel,
 	double lo_freq);
 void dialogs_init(GtkBuilder *builder);
