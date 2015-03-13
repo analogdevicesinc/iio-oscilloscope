@@ -71,6 +71,8 @@ enum marker_types {
 #define USE_INTERN_RX_LO_FREQ 0.0
 
 void rx_update_labels(double sampling_freq, double rx_lo_freq);
+bool rx_update_channel_lo_freq(const char *device, const char *channel,
+	double lo_freq);
 void dialogs_init(GtkBuilder *builder);
 void trigger_dialog_init(GtkBuilder *builder);
 void trigger_settings_for_device(GtkBuilder *builder, const char *device);

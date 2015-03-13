@@ -282,6 +282,38 @@ static void trigger_mcs_button(void)
 	}
 }
 
+static void rx_freq_info_update(void)
+{
+	const char *dev_name;
+	double lo_freqA;
+	double lo_freqB;
+
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
+	dev_name = iio_device_get_name(cap1) ?: iio_device_get_id(cap1);
+	lo_freqA = mhz_scale * gtk_spin_button_get_value(
+			GTK_SPIN_BUTTON(rx_widgets[rx_lo[0]].widget));
+	lo_freqB = mhz_scale * gtk_spin_button_get_value(
+			GTK_SPIN_BUTTON(rx_widgets[rx_lo[1]].widget));
+
+	rx_update_channel_lo_freq(dev_name, "voltage0",
+		lo_freqA);
+	rx_update_channel_lo_freq(dev_name, "voltage1",
+		lo_freqA);
+	rx_update_channel_lo_freq(dev_name, "voltage2",
+		lo_freqA);
+	rx_update_channel_lo_freq(dev_name, "voltage3",
+		lo_freqA);
+
+	rx_update_channel_lo_freq(dev_name, "voltage4",
+		lo_freqB);
+	rx_update_channel_lo_freq(dev_name, "voltage5",
+		lo_freqB);
+	rx_update_channel_lo_freq(dev_name, "voltage6",
+		lo_freqB);
+	rx_update_channel_lo_freq(dev_name, "voltage7",
+		lo_freqB);
+}
+
 static void tx_update_values(void)
 {
 	iio_update_widgets(tx_widgets, num_tx);
@@ -290,7 +322,7 @@ static void tx_update_values(void)
 static void rx_update_values(void)
 {
 	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
+	rx_freq_info_update();
 }
 
 static void glb_settings_update_labels(void)
@@ -409,7 +441,7 @@ static void rf_port_select_rx_changed_cb(GtkComboBoxText *cmb, gpointer data)
 static void sample_frequency_changed_cb(void *data)
 {
 	glb_settings_update_labels();
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
+	rx_freq_info_update();
 }
 
 static bool delayed_mcs_trigger(void)
@@ -621,7 +653,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	iio_update_widgets(rx_widgets, num_rx);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 	filter_fir_update();
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ, USE_INTERN_RX_LO_FREQ);
+	rx_freq_info_update();
 	glb_settings_update_labels();
 	rssi_update_labels();
 	rx_phase_rotation_update();

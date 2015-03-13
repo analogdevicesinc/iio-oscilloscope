@@ -280,6 +280,18 @@ static void rf_out_update(void)
 
 }
 
+static void rx_freq_info_update(void)
+{
+	double lo_freq;
+
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
+		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_lo_freq)));
+
+	lo_freq = mhz_scale * gtk_spin_button_get_value(
+				GTK_SPIN_BUTTON(rx_lo_freq));
+	rx_update_channel_lo_freq("cf-ad9643-core-lpc", "all", lo_freq);
+}
+
 static void rf_out_update_on_complete(void *data)
 {
 	rf_out_update();
@@ -287,8 +299,7 @@ static void rf_out_update_on_complete(void *data)
 
 static void rx_update_labels_on_complete(void *data)
 {
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_lo_freq)));
+	rx_freq_info_update();
 }
 
 static void tx_update_values(void)
@@ -300,8 +311,7 @@ static void tx_update_values(void)
 static void rx_update_values(void)
 {
 	iio_update_widgets(rx_widgets, num_rx);
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_lo_freq)));
+	rx_freq_info_update();
 }
 
 static void cal_update_values(void)

@@ -294,11 +294,22 @@ static void rf_port_select_rx_changed_cb(GtkComboBoxText *cmb, gpointer data)
 	g_free(port_name);
 }
 
+static void rx_freq_info_update(void)
+{
+	double lo_freq;
+
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
+		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
+
+	lo_freq = mhz_scale * gtk_spin_button_get_value(
+			GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget));
+	rx_update_channel_lo_freq(CAP_DEVICE, "all", lo_freq);
+}
+
 static void sample_frequency_changed_cb(void *data)
 {
 	glb_settings_update_labels();
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
+	rx_freq_info_update();
 }
 
 static void rssi_update_label(GtkWidget *label, bool is_tx)
@@ -410,8 +421,7 @@ static void updn_converter_lo_freq_changed_cb(GtkSpinButton *button, int data)
 	if (ret < 0)
 		fprintf(stderr,"Write to %s attribute of %s device: %s\n",
 			"frequency", (UPDN_TX) ? UDC_TX_DEVICE : UDC_RX_DEVICE, strerror(-ret));
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
+	rx_freq_info_update();
 }
 
 static void up_down_converter_toggled_cb(GtkToggleButton *button, gpointer data)
@@ -599,8 +609,7 @@ void filter_fir_enable(GtkToggleButton *button, gpointer data)
 	filter_fir_update();
 	glb_settings_update_labels();
 	update_widgets();
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
+	rx_freq_info_update();
 }
 
 static void reload_button_clicked(GtkButton *btn, gpointer data)
@@ -608,8 +617,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	update_widgets();
 
 	filter_fir_update();
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
+	rx_freq_info_update();
 	glb_settings_update_labels();
 	rssi_update_labels();
 	rx_phase_rotation_update();
@@ -1253,8 +1261,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	/* Update all widgets with current values */
 	printf("Updating widgets...\n");
 	update_widgets();
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget)));
+	rx_freq_info_update();
 	printf("Updating FIR filter...\n");
 	filter_fir_update();
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);

@@ -2181,7 +2181,7 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	GtkTextIter iter;
 	char text[256];
 	int markers_scale;
-	int lo_markers_scale_ratio;
+	double lo_freq;
 	int m;
 
 	if (tr->type_id == CROSS_CORRELATION_TRANSFORM)
@@ -2203,15 +2203,32 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 		return;
 	}
 	dev_info = iio_device_get_data(iio_dev);
+
+	/* Get the LO frequency stored by a iio channel which is used by
+	 * this transform. All channels should have the same lo freq. */
+	lo_freq = 0.0;
+	if (tr->plot_channels && g_slist_length(tr->plot_channels)) {
+		PlotChn *p = PLOT_CHN(tr->plot_channels->data);
+		if (p->type == PLOT_IIO_CHANNEL) {
+			struct iio_channel *ch;
+			struct extra_info *ch_info;
+			ch = PLOT_IIO_CHN(p)->iio_chn;
+			if (ch) {
+				ch_info = iio_channel_get_data(ch);
+				if (ch_info)
+					lo_freq = ch_info->lo_freq;
+			}
+		}
+	}
+
 	markers_scale = prefix2scale(dev_info->adc_scale);
-	lo_markers_scale_ratio = 1000000 / markers_scale; /* LO frequency - always in MHz */
 
 	if (MAX_MARKERS && priv->marker_type != MARKER_OFF) {
 		for (m = 0; m <= MAX_MARKERS && markers[m].active; m++) {
 			if (tr->type_id == FFT_TRANSFORM || tr->type_id == COMPLEX_FFT_TRANSFORM) {
 				sprintf(text, "%s: %2.2f dBFS @ %2.3f %cHz%c",
 					markers[m].label, markers[m].y,
-					dev_info->lo_freq * lo_markers_scale_ratio + markers[m].x,
+					lo_freq / markers_scale + markers[m].x,
 					dev_info->adc_scale,
 					m != MAX_MARKERS ? '\n' : '\0');
 			} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
@@ -4422,8 +4439,13 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 					const char *id = iio_device_get_name(dev) ?:
 						iio_device_get_id(dev);
 					if (!strcmp(id, "cf-ad9643-core-lpc") || !strcmp(id, "cf-ad9361-lpc")) {
-						struct extra_dev_info *info = iio_device_get_data(dev);
-						fprintf(fd, "%lf", info->lo_freq);
+						for (i = 0; i < iio_device_get_channels_count(dev); i++) {
+							struct iio_channel *chn = iio_device_get_channel(dev, i);
+							struct extra_info *ch_info = iio_channel_get_data(chn);
+							const char *name = iio_channel_get_name(chn) ?:
+										iio_channel_get_id(chn);
+							fprintf(fd, "%s:%lf", name, ch_info->lo_freq);
+						}
 					}
 				}
 

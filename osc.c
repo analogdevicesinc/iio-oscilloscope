@@ -1540,22 +1540,6 @@ gboolean save_sample_count_cb(GtkWidget *widget, GdkEventKey *event, gpointer da
 	return FALSE;
 }
 
-static float get_rx_lo_freq(const char *dev_name)
-{
-	struct iio_channel *chn;
-	double lo_freq = 0.0;
-	struct iio_device *dev = iio_context_find_device(ctx, dev_name);
-	if (!dev)
-		return (float) lo_freq;
-
-	chn = iio_device_find_channel(dev, "altvoltage0", true);
-	if (!chn)
-		return (float) lo_freq;
-
-	iio_channel_attr_read_double(chn, "frequency", &lo_freq);
-	return (float) lo_freq;
-}
-
 void rx_update_labels(double sampling_freq, double rx_lo_freq)
 {
 	unsigned int i;
@@ -1563,29 +1547,11 @@ void rx_update_labels(double sampling_freq, double rx_lo_freq)
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *info = iio_device_get_data(dev);
-		const char *name = iio_device_get_name(dev);
-
-		info->lo_freq = 0.0;
 
 		if (sampling_freq)
 			info->adc_freq = sampling_freq;
 		else
 			info->adc_freq = read_sampling_frequency(dev);
-
-		if (rx_lo_freq) {
-			info->lo_freq = rx_lo_freq;
-		} else if (!name) {
-			continue;
-
-		} else {
-			if (!strcmp(name, "cf-ad9463-core-lpc") ||
-				!strcmp(name, "axi-ad9652-lpc"))
-				info->lo_freq = get_rx_lo_freq("adf4351-rx-lpc");
-			else if (!strcmp(name, "cf-ad9361-lpc") ||
-					!strcmp(name, "cf-ad9361-A") ||
-					!strcmp(name, "cf-ad9361-B"))
-				info->lo_freq = get_rx_lo_freq("ad9361-phy");
-		}
 
 		if (info->adc_freq >= 1000000) {
 			info->adc_scale = 'M';
@@ -1599,14 +1565,74 @@ void rx_update_labels(double sampling_freq, double rx_lo_freq)
 			info->adc_scale = '?';
 			info->adc_freq = 0.0;
 		}
-
-		info->lo_freq /= 1000000.0;
 	}
 
 	GList *node;
 
 	for (node = plot_list; node; node = g_list_next(node))
 		osc_plot_update_rx_lbl(OSC_PLOT(node->data), NORMAL_UPDATE);
+}
+
+/*
+ * Allows plugins to set the "lo_freq" field of the "struct extra_info"
+ * for the given iio channel. Only input channels are affected.
+ * @device  - name of the device
+ * @channel - name of the channel
+ *          - use "all" value to target all iio scan_element channels
+ * @lo_freq - value of the Local Oscillcator frequency (Hz)
+ */
+bool rx_update_channel_lo_freq(const char *device, const char *channel,
+	double lo_freq)
+{
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	struct extra_info *chn_info;
+
+	g_return_val_if_fail(device, false);
+	g_return_val_if_fail(channel, false);
+
+	dev = iio_context_find_device(ctx, device);
+	if (!dev) {
+		printf("Device: %s not found\n!", device);
+		return false;
+	}
+
+	if (!strcmp(channel, "all")) {
+		bool success = true;
+		int i = 0;
+		for (; i < iio_device_get_channels_count(dev); i++) {
+			chn = iio_device_get_channel(dev, i);
+			if (!iio_channel_is_scan_element(chn) ||
+					iio_channel_is_output(chn)) {
+				continue;
+			}
+			chn_info = iio_channel_get_data(chn);
+			if (chn_info) {
+				chn_info->lo_freq = lo_freq;
+			} else {
+				printf("Channel: %s extra info "
+					"not found!\n", channel);
+				success = false;
+			}
+		}
+		return success;
+	}
+
+	chn = iio_device_find_channel(dev, channel, false);
+	if (!chn) {
+		printf("Channel: %s not found!\n", channel);
+		return false;
+	}
+
+	chn_info = iio_channel_get_data(chn);
+	if (!chn_info) {
+		printf("Channel: %s extra info not found!\n", channel);
+		return false;
+	}
+
+	chn_info->lo_freq = lo_freq;
+
+	return true;
 }
 
 /* Before we really start, let's load the last saved profile */
