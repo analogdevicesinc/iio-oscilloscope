@@ -83,17 +83,27 @@ static void adc_freq_val_changed_cb (GtkSpinButton *button, gpointer data)
 	gtk_adjustment_set_upper(adj_bandwidth, 0.05 * freq);
 }
 
+static void rx_freq_info_update(void)
+{
+	double lo_freq;
+
+	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
+		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_interm_freq)));
+
+	lo_freq = mhz_scale * gtk_spin_button_get_value(
+				GTK_SPIN_BUTTON(spin_interm_freq));
+	rx_update_channel_lo_freq(IIO_DEVICE, "all", lo_freq);
+}
+
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
 	iio_update_widgets_of_device(widgets, num_w, dev);
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_interm_freq)));
+	rx_freq_info_update();
 }
 
 static void rx_update_labels_on_complete(void *data)
 {
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_interm_freq)));
+	rx_freq_info_update();
 }
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
@@ -212,8 +222,7 @@ static GtkWidget * ad6676_init(GtkWidget *notebook, const char *ini_fn)
 
 	/* Update all widgets with current values */
 	iio_update_widgets_of_device(widgets, num_w, dev);
-	rx_update_labels(USE_INTERN_SAMPLING_FREQ,
-		mhz_scale * gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_interm_freq)));
+	rx_freq_info_update();
 
 	/* Connect signals */
 
