@@ -44,7 +44,7 @@ static gboolean eval(const GMatchInfo *info, GString *res, gpointer data)
 			break;
 	}
 	if (pos - match < strlen(match))
-		index = atoi((pos + 1));
+		index = atoi(pos);
 	else
 		index = 0;
 
