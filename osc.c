@@ -1525,6 +1525,9 @@ static void init_device_list(struct iio_context *ctx)
 			info->dev = dev;
 			iio_channel_set_data(ch, info);
 		}
+
+		rx_update_device_sampling_freq(iio_device_get_name(dev) ?:
+			iio_device_get_id(dev), USE_INTERN_SAMPLING_FREQ);
 	}
 }
 
