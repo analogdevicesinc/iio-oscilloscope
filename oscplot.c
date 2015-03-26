@@ -1241,7 +1241,6 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 void fft_transform_function(Transform *tr, gboolean init_transform)
 {
 	struct iio_device *dev;
-	struct iio_channel *chn;
 	struct extra_dev_info *dev_info;
 	struct _fft_settings *settings = tr->settings;
 	unsigned num_samples;
@@ -1263,14 +1262,21 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 		dev_info = iio_device_get_data(dev);
 		num_samples = dev_info->sample_count / 2;
 
+		PlotChn *chn = (PlotChn *)tr->plot_channels->data;
+		struct iio_channel *iio_chn = NULL;
+
 		bits_used = 0;
-		for (i = 0; i < iio_device_get_channels_count(dev); i++) {
-			chn = iio_device_get_channel(dev, i);
-			if (!iio_channel_is_scan_element(chn))
-					continue;
-			bits_used = iio_channel_get_data_format(chn)->bits;
-			break;
+		if (chn->type == PLOT_IIO_CHANNEL) {
+			iio_chn = PLOT_IIO_CHN(chn)->iio_chn;
+		} else if (PLOT_CHN(chn)->type == PLOT_MATH_CHANNEL) {
+			if (PLOT_MATH_CHN(chn)->iio_channels) {
+				iio_chn = (struct iio_channel *)
+						PLOT_MATH_CHN(chn)->iio_channels->data;
+			}
 		}
+		if (iio_chn)
+			bits_used = iio_channel_get_data_format(iio_chn)->bits;
+
 		if (!bits_used)
 			return;
 		axis_length = settings->fft_size * settings->fft_alg_data.num_active_channels / 2;
