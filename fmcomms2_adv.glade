@@ -345,6 +345,12 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
+  <object class="GtkAdjustment" id="adj_adi,mgc-inc-gain-step">
+    <property name="lower">1</property>
+    <property name="upper">8</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
   <object class="GtkAdjustment" id="adj_adi,rssi-delay">
     <property name="upper">10000</property>
     <property name="step_increment">1</property>
@@ -352,12 +358,6 @@
   </object>
   <object class="GtkAdjustment" id="adj_adi,rssi-duration">
     <property name="upper">100000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adj_adi,mgc-inc-gain-step">
-    <property name="lower">1</property>
-    <property name="upper">8</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -496,6 +496,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
+                                <property name="tooltip_text" translatable="yes">Use FDD mode - default TDD</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
@@ -529,6 +530,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
+                                <property name="tooltip_text" translatable="yes">ENSM control Pins (ENABLE/TXNRX) use Pulse mode - default Level Mode</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
@@ -544,6 +546,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
+                                <property name="tooltip_text" translatable="yes">ENSM control Pins (ENABLE/TXNRX) control ENSM state - default SPI writes</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
@@ -586,6 +589,7 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">In TDD mode use Dual Synth mode - default only one Synth is enabled</property>
                                         <property name="use_action_appearance">False</property>
                                         <property name="xalign">0</property>
                                         <property name="draw_indicator">True</property>
@@ -598,6 +602,7 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">In TDD mode use the FDD VCO tables</property>
                                         <property name="use_action_appearance">False</property>
                                         <property name="xalign">0</property>
                                         <property name="draw_indicator">True</property>
@@ -613,6 +618,7 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">Option to skip VCO cal in TDD mode when moving from TX/RX to Alert</property>
                                         <property name="use_action_appearance">False</property>
                                         <property name="xalign">0</property>
                                         <property name="draw_indicator">True</property>
@@ -628,6 +634,7 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
+                                        <property name="tooltip_text" translatable="yes">in TDD mode disable immediate TX Gain update and wait until ENSM moves to Alert</property>
                                         <property name="use_action_appearance">False</property>
                                         <property name="xalign">0</property>
                                         <property name="draw_indicator">True</property>
@@ -722,6 +729,7 @@
                           <object class="GtkComboBoxText" id="adi,rx-rf-port-input-select">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="tooltip_text" translatable="yes">RF Port Input Select</property>
                             <property name="entry_text_column">0</property>
                             <items>
                               <item translatable="yes">(RX1A_N &amp; RX1A_P) and (RX2A_N &amp; RX2A_P) balanced</item>
@@ -745,6 +753,7 @@
                           <object class="GtkComboBoxText" id="adi,tx-rf-port-input-select">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="tooltip_text" translatable="yes">RF Port Output Select</property>
                             <property name="entry_text_column">0</property>
                             <items>
                               <item translatable="yes">TX1A, TX2A</item>
@@ -766,6 +775,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
+                            <property name="tooltip_text" translatable="yes">If enabled RX1 and RX2 are phase aligned</property>
                             <property name="use_action_appearance">False</property>
                             <property name="xalign">0</property>
                             <property name="draw_indicator">True</property>
@@ -828,6 +838,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
+                            <property name="tooltip_text" translatable="yes">Disable XO use Ext CLK into XTAL_N - default XO into XTAL</property>
                             <property name="use_action_appearance">False</property>
                             <property name="xalign">0</property>
                             <property name="draw_indicator">True</property>
@@ -843,6 +854,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
+                            <property name="tooltip_text" translatable="yes">Enables external LO for RX</property>
                             <property name="use_action_appearance">False</property>
                             <property name="xalign">0</property>
                             <property name="draw_indicator">True</property>
@@ -859,6 +871,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
+                            <property name="tooltip_text" translatable="yes">Enables external LO for TX</property>
                             <property name="use_action_appearance">False</property>
                             <property name="xalign">0</property>
                             <property name="draw_indicator">True</property>
@@ -948,6 +961,7 @@
                           <object class="GtkSpinButton" id="adi,tx-fastlock-delay-ns">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <property name="tooltip_text" translatable="yes">TX fastlock delay in ns</property>
                             <property name="invisible_char">•</property>
                             <property name="adjustment">adj_adi,tx-fastlock-delay-ns</property>
                           </object>
@@ -964,6 +978,7 @@
                           <object class="GtkSpinButton" id="adi,rx-fastlock-delay-ns">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <property name="tooltip_text" translatable="yes">RX fastlock delay in ns</property>
                             <property name="invisible_char">•</property>
                             <property name="adjustment">adj_adi,rx-fastlock-delay-ns</property>
                           </object>
@@ -986,6 +1001,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
+                            <property name="tooltip_text" translatable="yes">RX fastlock pin control enable</property>
                             <property name="use_action_appearance">False</property>
                             <property name="xalign">0</property>
                             <property name="draw_indicator">True</property>
@@ -1002,6 +1018,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
+                            <property name="tooltip_text" translatable="yes">RX fastlock pin control enable</property>
                             <property name="use_action_appearance">False</property>
                             <property name="xalign">0</property>
                             <property name="draw_indicator">True</property>
@@ -1091,6 +1108,7 @@
               <object class="GtkSpinButton" id="adi,elna-gain-mdB">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
+                <property name="tooltip_text" translatable="yes">These options must have non-zero values only if (1) an external LNA is used and (2) the “Ext LNA ctrl” bits in the Gain Table have been programmed. For a fixed-gain LNA, set elna-gain-mdB to the gain of the LNA and leave register elna-bypass-loss-mdB at its default of 0. For an external LNA with a bypass mode, program elna-gain-mdB with the “high gain” (non-bypass) value and program elna-bypass-loss-mdB with the “low gain” (bypass) value. The part considers both values to represent positive gain in the front end prior to the AD9361. Both registers range from 0 to 31500mdB in 500mdB steps. See elna-rx[1|2]-gpo[0|1]-control-enable to route the external LNA gain table bits to the GPO pins.</property>
                 <property name="invisible_char">•</property>
                 <property name="adjustment">adj_adi,elna-gain-mdB</property>
               </object>
@@ -1104,6 +1122,7 @@
               <object class="GtkSpinButton" id="adi,elna-bypass-loss-mdB">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
+                <property name="tooltip_text" translatable="yes">These options must have non-zero values only if (1) an external LNA is used and (2) the “Ext LNA ctrl” bits in the Gain Table have been programmed. For a fixed-gain LNA, set elna-gain-mdB to the gain of the LNA and leave register elna-bypass-loss-mdB at its default of 0. For an external LNA with a bypass mode, program elna-gain-mdB with the “high gain” (non-bypass) value and program elna-bypass-loss-mdB with the “low gain” (bypass) value. The part considers both values to represent positive gain in the front end prior to the AD9361. Both registers range from 0 to 31500mdB in 500mdB steps. See elna-rx[1|2]-gpo[0|1]-control-enable to route the external LNA gain table bits to the GPO pins.</property>
                 <property name="invisible_char">•</property>
                 <property name="adjustment">adj_adi,elna-bypass-loss-mdB</property>
               </object>
@@ -1118,6 +1137,7 @@
               <object class="GtkSpinButton" id="adi,elna-settling-delay-ns">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
+                <property name="tooltip_text" translatable="yes">Settling delay of external LNA in ns</property>
                 <property name="invisible_char">•</property>
                 <property name="adjustment">adj_adi,elna-settling-delay-ns</property>
               </object>
@@ -1135,6 +1155,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">False</property>
+                <property name="tooltip_text" translatable="yes">When set, the “Ext LNA Ctrl” bit in the Rx1 gain table sets the GPO0 state</property>
                 <property name="use_action_appearance">False</property>
                 <property name="xalign">0</property>
                 <property name="draw_indicator">True</property>
@@ -1152,6 +1173,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">False</property>
+                <property name="tooltip_text" translatable="yes">When set, the “Ext LNA Ctrl” bit in the Rx2 gain table sets the GPO1 state</property>
                 <property name="use_action_appearance">False</property>
                 <property name="xalign">0</property>
                 <property name="draw_indicator">True</property>
@@ -1251,6 +1273,7 @@
                               <object class="GtkSpinButton" id="adi,rssi-duration">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="tooltip_text" translatable="yes">Total RSSI meassurement duration</property>
                                 <property name="invisible_char">•</property>
                                 <property name="width_chars">0</property>
                                 <property name="invisible_char_set">True</property>
@@ -1266,6 +1289,7 @@
                               <object class="GtkSpinButton" id="adi,rssi-delay">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="tooltip_text" translatable="yes">When the RSSI algorithm (re)starts, the AD9361 first waits for the Rx signal path to settle.  This delay is the "RSSI Delay"</property>
                                 <property name="invisible_char">•</property>
                                 <property name="invisible_char_set">True</property>
                                 <property name="adjustment">adj_adi,rssi-delay</property>
@@ -1281,6 +1305,7 @@
                               <object class="GtkSpinButton" id="adi,rssi-wait">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="tooltip_text" translatable="yes">After the "RSSI Delay" the RSSI algorithm alternates between measuring RSSI and waiting "RSSI Wait" to measure RSSI</property>
                                 <property name="invisible_char">•</property>
                                 <property name="invisible_char_set">True</property>
                                 <property name="adjustment">adj_adi,rssi-wait</property>
@@ -1296,6 +1321,7 @@
                               <object class="GtkComboBoxText" id="adi,rssi-restart-mode">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="tooltip_text" translatable="yes">See RSSI Restart Modes below</property>
                                 <property name="wrap_width">1</property>
                                 <property name="entry_text_column">0</property>
                                 <items>
@@ -1420,6 +1446,7 @@
                                   <object class="GtkComboBoxText" id="adi,gc-rx1-mode">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="tooltip_text" translatable="yes">RX1 Gain control operation: Manual gain (0); Fast attack AGC (1); Slow attack AGC (2); Hybrid AGC (3). See register 0x0FA, bits [D4], [D1:D0].</property>
                                     <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">Manual</item>
@@ -1436,6 +1463,7 @@
                                   <object class="GtkComboBoxText" id="adi,gc-rx2-mode">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="tooltip_text" translatable="yes">RX2 Gain control operation: Manual gain (0); Fast attack AGC (1); Slow attack AGC (2); Hybrid AGC (3). See register 0x0FA, bits [D4], [D3:D2].</property>
                                     <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">Manual</item>
@@ -1478,6 +1506,7 @@ MGC and Slow Attack AGC mode</property>
                                   <object class="GtkSpinButton" id="adi,gc-dec-pow-measurement-duration">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">The power measurement duration used by the gain control algorithm. See register 0x15C, bits [D3:D0]. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,gc-dec-pow-measurement-duration</property>
@@ -1493,6 +1522,7 @@ MGC and Slow Attack AGC mode</property>
                                   <object class="GtkSpinButton" id="adi,gc-low-power-thresh">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This threshold is used by the fast AGC to determine if the gain should be increased. It can also be used to trigger a CTRL_OUT signal transition in MGC mode. See register 0x114, bits [D6:D0]. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,gc-low-power-thresh</property>
@@ -1522,6 +1552,7 @@ MGC and Slow Attack AGC mode</property>
                                   <object class="GtkSpinButton" id="adi,agc-attack-delay-extra-margin-us">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">The AGC Attack Delay prevents the AGC from starting its algorithm until the receive path has settled. The delay counter starts when the ENSM enters the Rx state. See register 0x022, bits [D5:D0]. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-attack-delay-extra-margin-us</property>
@@ -1551,6 +1582,7 @@ MGC and Slow Attack AGC mode</property>
                                   <object class="GtkComboBoxText" id="adi,split-gain-table-mode-enable">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="tooltip_text" translatable="yes">Enable Split Gain Table Mode - default Full Table</property>
                                     <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">Full Gain Table</item>
@@ -1607,6 +1639,7 @@ MGC and Slow Attack AGC mode</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">If this attribute is clear, SPI writes change the RX1 gain. When this attribute is set, control input pins control the gain. See register 0x0FB, bit [D0].</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="xalign">0</property>
                                     <property name="draw_indicator">True</property>
@@ -1619,6 +1652,7 @@ MGC and Slow Attack AGC mode</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">If this attribute is clear, SPI writes change the RX2 gain. When this attribute is set, control input pins control the gain. See register 0x0FB, bit [D1].</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="xalign">0</property>
                                     <property name="draw_indicator">True</property>
@@ -1657,6 +1691,7 @@ MGC and Slow Attack AGC mode</property>
                                   <object class="GtkSpinButton" id="adi,mgc-inc-gain-step">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute applies if the CTRL_IN signals control gain. The gain index increases by this value when certain CTRL_IN signals transition high. See register 0x0FC, bits [D7:D5]. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_</property>
@@ -1670,6 +1705,7 @@ MGC and Slow Attack AGC mode</property>
                                   <object class="GtkSpinButton" id="adi,mgc-dec-gain-step">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute applies if the CTRL_IN signals control gain. The gain index decreases by this value when certain CTRL_IN signals transition high. See register 0x0FE, bits [D7:D5]. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,mgc-dec-gain-step</property>
@@ -1703,6 +1739,7 @@ MGC and Slow Attack AGC mode</property>
                                   <object class="GtkComboBoxText" id="adi,mgc-split-table-ctrl-inp-gain-mode">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="tooltip_text" translatable="yes">AGC determine this (0); Only in LPF(1); Only in LMT (2). See register 0x0FC, bits [D4], [D3].</property>
                                     <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">AGC determined</item>
@@ -1846,6 +1883,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-outer-thresh-high">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">The outer high threshold equals the inner high threshold plus this value. See register 0x129, bits [D7:D4]. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-outer-thresh-high</property>
@@ -1859,6 +1897,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-inner-thresh-high">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">When clear, digital saturation does not cause a gain decrease. When set, digital saturation will cause a gain decrease. See register 0x101, bit [D7].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-inner-thresh-high</property>
@@ -1873,6 +1912,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-inner-thresh-low">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute sets the slow AGC inner low window threshold. See register 0x120, bits [D6:D0].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-inner-thresh-low</property>
@@ -1887,6 +1927,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-outer-thresh-low">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">The outer low threshold equals the inner low threshold plus this value. See register 0x129, bits [D3:D0]. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-outer-thresh-low</property>
@@ -1901,6 +1942,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-outer-thresh-high-dec-steps">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">The slow AGC changes gain by this amount when the outer high threshold is exceeded. See register 0x12A, bits [D7:D4].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_agc_outer_thresh_high_dec_steps;</property>
@@ -1914,6 +1956,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-inner-thresh-high-dec-steps">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute sets the gain decrease amount when the inner high threshold is exceeded. See register 0x123, bits [D6:D4].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-inner-thresh-high-dec-steps</property>
@@ -1928,6 +1971,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-inner-thresh-low-inc-steps">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute sets the increase amount used when the gain goes under the inner low threshold. See register 0x123, bits [D2:D0].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-inner-thresh-low-inc-step</property>
@@ -1942,6 +1986,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-outer-thresh-low-inc-steps">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">The slow AGC changes gain by this amount when the outer low threshold is exceeded. See register 0x12A, bits [D3:D0].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-outer-thresh-low-inc-steps</property>
@@ -1981,6 +2026,7 @@ Fast AGC Lock Level (dBFS)</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">If this attribute is set, CTRL_IN2 transitioning high resets the counter.See register 0x128, bit D4.</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="xalign">0</property>
                                     <property name="draw_indicator">True</property>
@@ -2162,6 +2208,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,gc-adc-large-overload-thresh">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute sets the large ADC overload. See register 0x105.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,gc-adc-large-overload-thresh</property>
@@ -2174,6 +2221,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-adc-large-overload-exceed-counter">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This counter specifies the number of large ADC overloads that must occur before the gain will decrease by the large ADC overload gain step. See register 0x122, bits [D7:D4].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-adc-large-overload-exceed-counter</property>
@@ -2187,6 +2235,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-adc-large-overload-inc-steps">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute applies to AGC and determine how much the gain changes for large LPF in split tablemode or the large LMT and large ADC overloads in full table mode. See register 0x106, bits [D3:D0]</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-adc-large-overload-inc-steps</property>
@@ -2200,6 +2249,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,gc-adc-small-overload-thresh">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute sets the small ADC overload. See register 0x104.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,gc-adc-small-overload-thresh</property>
@@ -2212,6 +2262,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,agc-adc-small-overload-exceed-counter">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This counter specifies the number of small ADC overloads that must occur to prevent a gain increase. See register 0x122, bits [D3:D0].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-adc-small-overload-exceed-counter</property>
@@ -2228,6 +2279,7 @@ Fast AGC Lock Level (dBFS)</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute set the slow AGC inner low window threshold. See register 0x120, bits [D6:D0].</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="xalign">0</property>
                                     <property name="draw_indicator">True</property>
@@ -2252,6 +2304,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkSpinButton" id="adi,gc-adc-ovr-sample-size">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute equals the number of ADC output samples used to determine an ADC overload. See register 0x0FC, bits [D2:D0]. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,gc-adc-ovr-sample-size</property>
@@ -2281,6 +2334,7 @@ if Large Overload</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">Set this attribute to allow large ADC overload to reduce gain immediately. See register 0x123, bit D3.</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="xalign">0</property>
                                     <property name="draw_indicator">True</property>
@@ -2383,6 +2437,7 @@ if Large Overload</property>
                                   <object class="GtkSpinButton" id="adi,gc-lmt-overload-high-thresh">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute sets the large LMT overload threshold. See register 0x108. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,gc-lmt-overload-high-thresh</property>
@@ -2395,6 +2450,7 @@ if Large Overload</property>
                                   <object class="GtkSpinButton" id="adi,agc-lmt-overload-large-exceed-counter">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This counter specifies the number of large LMT overloads that must occur before gain decreases by the LMT Gain Step. See register 0x121, bits [D7:D4].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-lmt-overload-large-exceed-counter</property>
@@ -2408,6 +2464,7 @@ if Large Overload</property>
                                   <object class="GtkSpinButton" id="adi,agc-lmt-overload-large-inc-steps">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute determines how much the gain changes for large LMT in split tablemode or the small ADC overload for the full table. See register 0x103, bits [D4:D2].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj</property>
@@ -2421,6 +2478,7 @@ if Large Overload</property>
                                   <object class="GtkSpinButton" id="adi,gc-lmt-overload-low-thresh">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute sets the small LMT overload threshold. See register 0x107. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,gc-lmt-overload-low-thresh</property>
@@ -2433,6 +2491,7 @@ if Large Overload</property>
                                   <object class="GtkSpinButton" id="adi,agc-lmt-overload-small-exceed-counter">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This counter specifies the number of small LMT overloads that much occur to prevent a gain increase. See register 0x121, bits [D3:D0].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-lmt-overload-small-exceed-counter</property>
@@ -2462,6 +2521,7 @@ if Large Overload</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">Set this attribute to allow large LMT overloads to reduce gain immediately. See register 0x123, bit D7.</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="xalign">0</property>
                                     <property name="draw_indicator">True</property>
@@ -2514,6 +2574,7 @@ if Large Overload</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute is used in split table mode to enable the digital gain pointer. See register 0x0FB, bit D2.</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="xalign">0</property>
                                     <property name="draw_indicator">True</property>
@@ -2546,6 +2607,7 @@ if Large Overload</property>
                                   <object class="GtkSpinButton" id="adi,gc-max-dig-gain">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This attribute equals the maximum allowable digital gain, and applies to all gain control modes. See register 0x100, bits [D4:D0].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,gc-max-dig-gain</property>
@@ -2569,6 +2631,7 @@ if Large Overload</property>
                                   <object class="GtkSpinButton" id="adi,agc-dig-saturation-exceed-counter">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This counter specifies the number of digital saturnation events that much occur to prevent a gain increase. See register 0x128, bits [D3:D0].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-dig-saturation-exceed-counter</property>
@@ -2585,6 +2648,7 @@ if Large Overload</property>
                                   <object class="GtkSpinButton" id="adi,agc-dig-gain-step-size">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">If digital saturation occurs, digital gain reduces by this value. See register 0x100, bits [D7:D5].</property>
                                     <property name="invisible_char">•</property>
                                     <property name="invisible_char_set">True</property>
                                     <property name="adjustment">adj_adi,agc-dig-gain-step-size</property>
@@ -2662,6 +2726,7 @@ if Large Overload</property>
                                               <object class="GtkSpinButton" id="adi,fagc-state-wait-time-ns">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">The fast AGC delays moving from State 1 to State 2 until no peak overloads are detected for the value of this counter; measured in ClkRF cycles. See register 0x117, bits [D4:D0]. This data is processed by the driver.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-state-wait-time-ns</property>
                                               </object>
@@ -2714,6 +2779,7 @@ if signal below Low PWR Thresh</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">Setting this attribute allows the fast AGC to increase the gain while optimizing the gain index. Clearing it prevents the gain from increasing in any condition. See register 0x110, bit D0.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -2751,6 +2817,7 @@ if signal below Low PWR Thresh</property>
                                               <object class="GtkSpinButton" id="adi,fagc-lp-thresh-increment-time">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This attribute sets the time that the signal power must remain below the Low Power Threshold before the fast AGC will change gain. Also can be used by the MGC. See register 0x11B, bits [D7:D0].</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-lp-thresh-increment-time</property>
                                               </object>
@@ -2764,6 +2831,7 @@ if signal below Low PWR Thresh</property>
                                               <object class="GtkSpinButton" id="adi,fagc-lp-thresh-increment-steps">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">The Fast AGC will increase the gain index by this amount if signal power decreases below the Low Power Threshold and only if the Enable Incr Gain is enabled. See register 0x117, bits [D7:D5]. This data is processed by the driver.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-lp-thresh-increment-steps</property>
                                               </object>
@@ -2886,6 +2954,7 @@ if signal below Low PWR Thresh</property>
                                               <object class="GtkSpinButton" id="adi,fagc-lock-level-gain-increase-upper-limit">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This attribute sets the maximum gain index increase that the fast AGC can use for the lock level adjustment. See register 0x118, bits [D5:D0].</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-lock-level-gain-increase-upper-limit</property>
                                               </object>
@@ -2902,6 +2971,7 @@ if signal below Low PWR Thresh</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">Set this attribute to allow the AGC to use LMT gain if the gain index needs to increase when moving to the AGC Lock Level. See register 0x111, bit D6.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -2979,6 +3049,7 @@ Final Settling Steps</property>
                                               <object class="GtkSpinButton" id="adi,fagc-lpf-final-settling-steps">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This attribute sets the reduction to the gain index if a large LMT or large ADC overload occurs after Lock Level but before fast AGC state 5. If the number of overloads exceeds the Final Overrange Count (fagc_final_overrange_count), the AGC algorithm restarts. Depending on various conditions if a split table is used, the gain may reduce in in the LPF or the LMT (fagc_lmt_final_settling_steps). See register 0x112, bits [D7:D6].</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-lpf-final-settling-steps</property>
                                               </object>
@@ -2991,6 +3062,7 @@ Final Settling Steps</property>
                                               <object class="GtkSpinButton" id="adi,fagc-lmt-final-settling-steps">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">Post Lock Level Step for LMT Table. See register 0x113, bits [D7:D6].</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-lmt-final-settling-steps</property>
                                               </object>
@@ -3015,6 +3087,7 @@ Final Settling Steps</property>
                                               <object class="GtkSpinButton" id="adi,fagc-final-overrange-count">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">Final Overrange Count. See register 0x116, bits [D7:D5].</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-final-overrange-count</property>
                                               </object>
@@ -3032,6 +3105,7 @@ Gain Increase after Gain Lock</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">Set this attribute to allow gain increases after the gain has locked but before State 5. Signal power must be lower than the low power threshold for longer than the increment time duration register. See register 0x110, bit D7.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -3108,6 +3182,7 @@ Gain Lock Algorithm (GLA)  and goto</property>
                                               <object class="GtkComboBoxText" id="adi,fagc-gain-index-type-after-exit-rx-mode">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="tooltip_text" translatable="yes">MAX Gain (0); Optimized Gain (1); Set Gain (2). See register 0x110, bits D4,D2. This data is processed by the driver.</property>
                                                 <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">MAX Gain</item>
@@ -3124,6 +3199,7 @@ Gain Lock Algorithm (GLA)  and goto</property>
                                               <object class="GtkSpinButton" id="adi,fagc-optimized-gain-offset">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">The offset added to the last gain lock level of the previous frame. The result is the optimize gain index. See register 0x116, bits [D3:D0].</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-optimized-gain-offset</property>
                                               </object>
@@ -3137,6 +3213,7 @@ Gain Lock Algorithm (GLA)  and goto</property>
                                               <object class="GtkComboBoxText" id="adi,fagc-use-last-lock-level-for-set-gain-enable">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="tooltip_text" translatable="yes">Set this attribute to use the last gain index of the previous frame for set gain. Clear to use the first gain index of the previous frame. See register 0x111, bit D7.</property>
                                                 <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">Beginning of previous Burst</item>
@@ -3181,6 +3258,7 @@ above Lock Level by (dBFS)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">If this attribute is set and the fast AGC is in State 5, the gain will not change even if the signal power increase by more than the Stronger Signal Threshold. See register 0x115, bit D7.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -3198,6 +3276,7 @@ below Lock Level by  (dBFS)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">If this attribute is set and the fast AGC is in State 5, the gain will not change even if the average signal power decreases more than the Energy Lost Threshold regiser. See register 0x110, bit D3.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -3215,6 +3294,7 @@ not change Gain but restart GLA</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">Unlock Gain if Lg ADC or LMT Ovrg. See register 0x110, bit D1.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -3235,6 +3315,7 @@ not change Gain but restart GLA</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">Unlock gain if ADC Ovrg, Lg ADC or LMT Ovrg. See register 0x110, bit D1 and register 0x114, bit D7. This data is processed by the driver.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -3261,6 +3342,7 @@ GLA and goto </property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">See fagc_rst_gla_if_en_agc_pulled_high_mode. This data is processed by the driver.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -3280,6 +3362,7 @@ GLA and goto </property>
                                               <object class="GtkSpinButton" id="adi,fagc-rst-gla-stronger-sig-thresh-above-ll">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">If the signal power increases by this threshold and the signal power remains at this level or higher for a duration that is twice the Gain Lock Exit Count, the gain may unlock, depending on other AGC configuration bits. See register 0x113, bits [D5:D0].</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-rst-gla-stronger-sig-thresh-above-ll</property>
                                               </object>
@@ -3293,6 +3376,7 @@ GLA and goto </property>
                                               <object class="GtkSpinButton" id="adi,fagc-rst-gla-engergy-lost-sig-thresh-below-ll">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">If the signal power decreases by this threshold and the signal power remains at this level or lower for a duration that is twice the Gain Lock Exit Count, the gain may unlock, depending on other AGC configuration bits. See register 0x112, bits [D5:D0].</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-rst-gla-engergy-lost-sig-thresh-below-ll</property>
                                               </object>
@@ -3334,6 +3418,7 @@ restart GLA ...</property>
                                               <object class="GtkSpinButton" id="adi,fagc-energy-lost-stronger-sig-gain-lock-exit-cnt">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">Gain Lock Exit Count. See register 0x119, bits [D5:D0].</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-energy-lost-stronger-sig-gain-lock-exit-cnt</property>
                                               </object>
@@ -3375,6 +3460,7 @@ restart GLA ...</property>
                                               <object class="GtkComboBoxText" id="adi,fagc-rst-gla-engergy-lost-goto-optim-gain-enable">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="tooltip_text" translatable="yes">If this attribute is set and the fast AGC is in State 5, the gain index will go to the optimize gain value if an energy lost state occurs or when the EN_AGC signal goes high. See register 0x110, bit D6.</property>
                                                 <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">MAX Gain</item>
@@ -3394,6 +3480,7 @@ restart GLA ...</property>
                                               <object class="GtkComboBoxText" id="adi,fagc-rst-gla-if-en-agc-pulled-high-mode">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="tooltip_text" translatable="yes">MAX Gain (0); Optimized Gain (1); Set Gain (2), No gain change. See registers 0x110, 0x111</property>
                                                 <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">MAX Gain</item>
@@ -3431,6 +3518,7 @@ power for (sample periods)</property>
                                               <object class="GtkSpinButton" id="adi,fagc-power-measurement-duration-in-state5">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">The power measurement duration used by the gain control algorithm for State 5 (gain lock) - fast AGC. See register 0x109, bit D7 and 0x10a, bits [D7:D5].</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-power-measurement-duration-in-state5</property>
                                               </object>
@@ -3487,6 +3575,7 @@ power for (sample periods)</property>
                                               <object class="GtkSpinButton" id="adi,fagc-dec-pow-measurement-duration">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">The power measurement duration used by the gain control algorithm. See register 0x15C, bits [D3:D0]. This data is processed by the driver.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,fagc-dec-pow-measurement-duration</property>
                                               </object>
@@ -3610,6 +3699,7 @@ power for (sample periods)</property>
                       <object class="GtkComboBoxText" id="adi,txmon-1-front-end-gain">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">Open</item>
@@ -3629,6 +3719,7 @@ power for (sample periods)</property>
                       <object class="GtkComboBoxText" id="adi,txmon-2-front-end-gain">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">Open</item>
@@ -3660,6 +3751,7 @@ power for (sample periods)</property>
                       <object class="GtkSpinButton" id="adi,txmon-1-lo-cm">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="invisible_char">•</property>
                         <property name="adjustment">adj_adi,txmon-1-lo-cm</property>
                       </object>
@@ -3674,6 +3766,7 @@ power for (sample periods)</property>
                       <object class="GtkSpinButton" id="adi,txmon-2-lo-cm">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="invisible_char">•</property>
                         <property name="adjustment">adj_adi,txmon-2-lo-cm</property>
                       </object>
@@ -3751,6 +3844,7 @@ power for (sample periods)</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="use_action_appearance">False</property>
                         <property name="xalign">0</property>
                         <property name="draw_indicator">True</property>
@@ -3769,6 +3863,7 @@ power for (sample periods)</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="use_action_appearance">False</property>
                         <property name="xalign">0</property>
                         <property name="draw_indicator">True</property>
@@ -3806,6 +3901,7 @@ power for (sample periods)</property>
                       <object class="GtkSpinButton" id="adi,txmon-low-high-thresh">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="invisible_char">•</property>
                         <property name="adjustment">adj_adi,txmon-low-high-thresh</property>
                       </object>
@@ -3820,6 +3916,7 @@ power for (sample periods)</property>
                       <object class="GtkSpinButton" id="adi,txmon-low-gain">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="invisible_char">•</property>
                         <property name="adjustment">adj_adi,txmon-low-gain</property>
                       </object>
@@ -3834,6 +3931,7 @@ power for (sample periods)</property>
                       <object class="GtkSpinButton" id="adi,txmon-high-gain">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="invisible_char">•</property>
                         <property name="adjustment">adj_adi,txmon-high-gain</property>
                       </object>
@@ -3848,6 +3946,7 @@ power for (sample periods)</property>
                       <object class="GtkSpinButton" id="adi,txmon-delay">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="invisible_char">•</property>
                         <property name="adjustment">adj_adi,txmon-delay</property>
                       </object>
@@ -3862,6 +3961,7 @@ power for (sample periods)</property>
                       <object class="GtkSpinButton" id="adi,txmon-duration">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Please see the manual</property>
                         <property name="invisible_char">•</property>
                         <property name="adjustment">adj_adi,txmon-duration</property>
                       </object>
@@ -4081,6 +4181,7 @@ power for (sample periods)</property>
                                   <object class="GtkSpinButton" id="adi,temp-sense-measurement-interval-ms">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">Measurement interval in ms. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="adjustment">adj_adi,temp-sense-measurement-interval-ms</property>
                                   </object>
@@ -4129,6 +4230,7 @@ power for (sample periods)</property>
                                   <object class="GtkSpinButton" id="adi,temp-sense-offset-signed">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">Offset in signed deg. C, range -128...127</property>
                                     <property name="invisible_char">•</property>
                                     <property name="adjustment">adj_adi,temp-sense-offset-signed</property>
                                   </object>
@@ -4145,6 +4247,7 @@ power for (sample periods)</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">Enables periodic meassurement</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="xalign">0</property>
                                     <property name="draw_indicator">True</property>
@@ -4159,6 +4262,7 @@ power for (sample periods)</property>
                                   <object class="GtkSpinButton" id="adi,temp-sense-decimation">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">Decimation of the AuxADC used to derive the temperature. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="adjustment">adj_adi,temp-sense-decimation</property>
                                   </object>
@@ -4231,6 +4335,7 @@ power for (sample periods)</property>
                                   <object class="GtkSpinButton" id="adi,aux-adc-rate">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This sets the AuxADC clock frequency in Hz. See register 0x01C, bits [D5:D0]. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="adjustment">adj_adi,aux-adc-rate</property>
                                   </object>
@@ -4243,6 +4348,7 @@ power for (sample periods)</property>
                                   <object class="GtkSpinButton" id="adi,aux-adc-decimation">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="tooltip_text" translatable="yes">This sets the AuxADC decimation, See register 0x01D, bits [D3:D1]. This data is processed by the driver.</property>
                                     <property name="invisible_char">•</property>
                                     <property name="adjustment">adj_adi,aux-adc-decimation</property>
                                   </object>
@@ -4294,6 +4400,7 @@ power for (sample periods)</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="tooltip_text" translatable="yes">If enabled the Aux DAC doesn't slave the ENSM</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="xalign">0</property>
                                     <property name="draw_indicator">True</property>
@@ -4338,6 +4445,7 @@ power for (sample periods)</property>
                                                   <object class="GtkSpinButton" id="adi,aux-dac1-default-value-mV">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
+                                                    <property name="tooltip_text" translatable="yes">DAC1 default voltage in mV</property>
                                                     <property name="invisible_char">•</property>
                                                     <property name="adjustment">adj_adi,aux-dac1-default-value-mV</property>
                                                   </object>
@@ -4352,6 +4460,7 @@ power for (sample periods)</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>
+                                                    <property name="tooltip_text" translatable="yes">If enabled DAC is active in ALERT mode</property>
                                                     <property name="use_action_appearance">False</property>
                                                     <property name="xalign">0</property>
                                                     <property name="draw_indicator">True</property>
@@ -4367,6 +4476,7 @@ power for (sample periods)</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>
+                                                    <property name="tooltip_text" translatable="yes">If enabled DAC is active in RX mode</property>
                                                     <property name="use_action_appearance">False</property>
                                                     <property name="xalign">0</property>
                                                     <property name="draw_indicator">True</property>
@@ -4382,6 +4492,7 @@ power for (sample periods)</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>
+                                                    <property name="tooltip_text" translatable="yes">If enabled DAC is active in TX mode</property>
                                                     <property name="use_action_appearance">False</property>
                                                     <property name="xalign">0</property>
                                                     <property name="draw_indicator">True</property>
@@ -4405,6 +4516,7 @@ power for (sample periods)</property>
                                                   <object class="GtkSpinButton" id="adi,aux-dac1-rx-delay-us">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
+                                                    <property name="tooltip_text" translatable="yes">RX delay in us</property>
                                                     <property name="invisible_char">•</property>
                                                     <property name="adjustment">adj_adi,aux-dac1-rx-delay-us</property>
                                                   </object>
@@ -4417,6 +4529,7 @@ power for (sample periods)</property>
                                                   <object class="GtkSpinButton" id="adi,aux-dac1-tx-delay-us">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
+                                                    <property name="tooltip_text" translatable="yes">TX delay in us</property>
                                                     <property name="invisible_char">•</property>
                                                     <property name="adjustment">adj_adi,aux-dac1-tx-delay-us</property>
                                                   </object>
@@ -4467,6 +4580,7 @@ power for (sample periods)</property>
                                                   <object class="GtkSpinButton" id="adi,aux-dac2-default-value-mV">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
+                                                    <property name="tooltip_text" translatable="yes">DAC2 default voltage in mV</property>
                                                     <property name="invisible_char">•</property>
                                                     <property name="adjustment">adj_adi,aux-dac2-default-value-mV</property>
                                                   </object>
@@ -4481,6 +4595,7 @@ power for (sample periods)</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>
+                                                    <property name="tooltip_text" translatable="yes">If enabled DAC is active in ALERT mode</property>
                                                     <property name="use_action_appearance">False</property>
                                                     <property name="xalign">0</property>
                                                     <property name="draw_indicator">True</property>
@@ -4496,6 +4611,7 @@ power for (sample periods)</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>
+                                                    <property name="tooltip_text" translatable="yes">If enabled DAC is active in RX mode</property>
                                                     <property name="use_action_appearance">False</property>
                                                     <property name="xalign">0</property>
                                                     <property name="draw_indicator">True</property>
@@ -4511,6 +4627,7 @@ power for (sample periods)</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>
+                                                    <property name="tooltip_text" translatable="yes">If enabled DAC is active in TX mode</property>
                                                     <property name="use_action_appearance">False</property>
                                                     <property name="xalign">0</property>
                                                     <property name="draw_indicator">True</property>
@@ -4534,6 +4651,7 @@ power for (sample periods)</property>
                                                   <object class="GtkSpinButton" id="adi,aux-dac2-rx-delay-us">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
+                                                    <property name="tooltip_text" translatable="yes">RX delay in us</property>
                                                     <property name="invisible_char">•</property>
                                                     <property name="adjustment">adj_adi,aux-dac2-rx-delay-us</property>
                                                   </object>
@@ -4546,6 +4664,7 @@ power for (sample periods)</property>
                                                   <object class="GtkSpinButton" id="adi,aux-dac2-tx-delay-us">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
+                                                    <property name="tooltip_text" translatable="yes">TX delay in us</property>
                                                     <property name="invisible_char">•</property>
                                                     <property name="adjustment">adj_adi,aux-dac2-tx-delay-us</property>
                                                   </object>
@@ -4725,6 +4844,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When clear, the GPOs are logic low in the Sleep, Wait, and Alert States and when set, the GPOs are logic high in the Alert state.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -4741,6 +4861,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When set this GPO pin change state when the ENSM enters the RX state</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -4759,6 +4880,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When set this GPO pin change state when the ENSM enters the TX state</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -4787,6 +4909,7 @@ power for (sample periods)</property>
                                               <object class="GtkSpinButton" id="adi,gpo0-tx-delay-us">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This value set the delay from an ENSM state change of Alert to TX to the time that the GPOs change logic level. 1us/LSB with a range from 0 to 255 us.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="adjustment">adj_adi,gpo0-tx-delay-us</property>
                                               </object>
@@ -4803,6 +4926,7 @@ power for (sample periods)</property>
                                               <object class="GtkSpinButton" id="adi,gpo0-rx-delay-us">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This value set the delay from an ENSM state change of Alert to RX to the time that the GPOs change logic level. 1us/LSB with a range from 0 to 255 us.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adj_adi,gpo0-rx-delay-us</property>
@@ -4859,6 +4983,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When clear, the GPOs are logic low in the Sleep, Wait, and Alert States and when set, the GPOs are logic high in the Alert state.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -4875,6 +5000,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When set this GPO pin change state when the ENSM enters the RX state</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -4893,6 +5019,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When set this GPO pin change state when the ENSM enters the TX state</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -4922,6 +5049,7 @@ power for (sample periods)</property>
                                               <object class="GtkSpinButton" id="adi,gpo1-rx-delay-us">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This value set the delay from an ENSM state change of Alert to RX to the time that the GPOs change logic level. 1us/LSB with a range from 0 to 255 us.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adj_adi,gpo1-rx-delay-us</property>
@@ -4939,6 +5067,7 @@ power for (sample periods)</property>
                                               <object class="GtkSpinButton" id="adi,gpo1-tx-delay-us">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This value set the delay from an ENSM state change of Alert to TX to the time that the GPOs change logic level. 1us/LSB with a range from 0 to 255 us.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adj_adi,gpo1-tx-delay-us</property>
@@ -4997,6 +5126,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When clear, the GPOs are logic low in the Sleep, Wait, and Alert States and when set, the GPOs are logic high in the Alert state.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -5013,6 +5143,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When set this GPO pin change state when the ENSM enters the RX state</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -5031,6 +5162,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When set this GPO pin change state when the ENSM enters the TX state</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -5060,6 +5192,7 @@ power for (sample periods)</property>
                                               <object class="GtkSpinButton" id="adi,gpo2-rx-delay-us">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This value set the delay from an ENSM state change of Alert to RX to the time that the GPOs change logic level. 1us/LSB with a range from 0 to 255 us.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adj_adi,gpo2-rx-delay-us</property>
@@ -5077,6 +5210,7 @@ power for (sample periods)</property>
                                               <object class="GtkSpinButton" id="adi,gpo2-tx-delay-us">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This value set the delay from an ENSM state change of Alert to TX to the time that the GPOs change logic level. 1us/LSB with a range from 0 to 255 us.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adj_adi,gpo2-tx-delay-us</property>
@@ -5135,6 +5269,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When clear, the GPOs are logic low in the Sleep, Wait, and Alert States and when set, the GPOs are logic high in the Alert state.</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -5151,6 +5286,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When set this GPO pin change state when the ENSM enters the RX state</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -5169,6 +5305,7 @@ power for (sample periods)</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="tooltip_text" translatable="yes">When set this GPO pin change state when the ENSM enters the TX state</property>
                                                 <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
@@ -5198,6 +5335,7 @@ power for (sample periods)</property>
                                               <object class="GtkSpinButton" id="adi,gpo3-rx-delay-us">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This value set the delay from an ENSM state change of Alert to RX to the time that the GPOs change logic level. 1us/LSB with a range from 0 to 255 us.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adj_adi,gpo3-rx-delay-us</property>
@@ -5215,6 +5353,7 @@ power for (sample periods)</property>
                                               <object class="GtkSpinButton" id="adi,gpo3-tx-delay-us">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="tooltip_text" translatable="yes">This value set the delay from an ENSM state change of Alert to TX to the time that the GPOs change logic level. 1us/LSB with a range from 0 to 255 us.</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adj_adi,gpo3-tx-delay-us</property>
@@ -5371,6 +5510,7 @@ power for (sample periods)</property>
                           <object class="GtkSpinButton" id="adi,dc-offset-attenuation-high-range">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <property name="tooltip_text" translatable="yes">RX LO &gt; 4 GHz: These bits control the attenuator for the initialization and tracking RF DC offset calibrations. The integrated data shifts by this twos complement value and ranges from -16 to +15.</property>
                             <property name="invisible_char">•</property>
                             <property name="adjustment">adj_adi,dc-offset-attenuation-high-range</property>
                           </object>
@@ -5384,6 +5524,7 @@ power for (sample periods)</property>
                           <object class="GtkSpinButton" id="adi,dc-offset-attenuation-low-range">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <property name="tooltip_text" translatable="yes">RX LO &lt; 4 GHz: These bits control the attenuator for the initialization and tracking RF DC offset calibrations. The integrated data shifts by this twos complement value and ranges from -16 to +15.</property>
                             <property name="invisible_char">•</property>
                             <property name="adjustment">adj_adi,dc-offset-attenuation-low-range</property>
                           </object>
@@ -5397,6 +5538,7 @@ power for (sample periods)</property>
                           <object class="GtkSpinButton" id="adi,dc-offset-count-high-range">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <property name="tooltip_text" translatable="yes">RX LO &gt; 4 GHz: This value affects both RF DC offset initialization and tracking and it sets the number of integrated samples and the loop gain. The number of samples equals 256 × RF DC Offset Count[7:0] in ClkRF cycles. Increasing this value increases loop gain.</property>
                             <property name="invisible_char">•</property>
                             <property name="adjustment">adj_adi,dc-offset-count-high-range</property>
                           </object>
@@ -5410,6 +5552,7 @@ power for (sample periods)</property>
                           <object class="GtkSpinButton" id="adi,dc-offset-count-low-range">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <property name="tooltip_text" translatable="yes">RX LO &lt; 4 GHz: This value affects both RF DC offset initialization and tracking and it sets the number of integrated samples and the loop gain. The number of samples equals 256 × RF DC Offset Count[7:0] in ClkRF cycles. Increasing this value increases loop gain.</property>
                             <property name="invisible_char">•</property>
                             <property name="adjustment">adj_adi,dc-offset-count-low-range</property>
                           </object>
@@ -5435,6 +5578,7 @@ power for (sample periods)</property>
                           <object class="GtkSpinButton" id="adi,dc-offset-tracking-update-event-mask">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <property name="tooltip_text" translatable="yes">BIT(0) Apply a new tracking word when a gain change occurs. BIT(1) Apply a new tracking word when the received signal is less than the SOI Threshold. BIT(2) Apply a new tracking word after the device exits the receive state</property>
                             <property name="invisible_char">•</property>
                             <property name="adjustment">adj_adi,dc-offset-tracking-update-event-mask</property>
                           </object>
