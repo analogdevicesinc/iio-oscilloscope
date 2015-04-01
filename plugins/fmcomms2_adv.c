@@ -674,12 +674,16 @@ static void __cal_switch_ports_enable_cb (unsigned val)
 	near_end_loopback_ctrl(5, lp_master); /* LPC */
 #endif
 	iio_device_debug_attr_write_longlong(dev, "calibration_switch_control", sw);
-	iio_device_attr_write(dev, "in_voltage0_rf_port_select", rx_port);
-	iio_device_attr_write(dev, "out_voltage0_rf_port_select", tx_port);
+	iio_channel_attr_write(iio_device_find_channel(dev, "voltage0", false),
+			       "rf_port_select", rx_port);
+	iio_channel_attr_write(iio_device_find_channel(dev, "voltage0", true),
+			       "rf_port_select", tx_port);
 
 	if (dev_slave) {
-		iio_device_attr_write(dev_slave, "in_voltage0_rf_port_select", rx_port);
-		iio_device_attr_write(dev_slave, "out_voltage0_rf_port_select", tx_port);
+		iio_channel_attr_write(iio_device_find_channel(dev_slave, "voltage0", false),
+				"rf_port_select", rx_port);
+		iio_channel_attr_write(iio_device_find_channel(dev_slave, "voltage0", true),
+				"rf_port_select", tx_port);
 	}
 
 	return;
@@ -863,8 +867,18 @@ static void calibrate (gpointer button)
 {
 	GtkProgressBar *calib_progress;
 	double rx_phase_lpc, rx_phase_hpc, tx_phase_hpc;
+	struct iio_channel *in0 = NULL, *in0_slave = NULL;
 	long long cal_tone, cal_freq;
 	int ret, samples;
+
+	in0 = iio_device_find_channel(dev, "voltage0", false);
+	in0_slave = iio_device_find_channel(dev_slave, "voltage0", false);
+	if (!in0 || !in0_slave) {
+		printf("could not find channels\n");
+		ret = -ENODEV;
+		auto_calibrate = -1;
+		goto calibrate_fail;
+	}
 
 	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
 		printf("could not find capture cores\n");
@@ -879,6 +893,8 @@ static void calibrate (gpointer button)
 		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
+
+
 
 	calib_progress = GTK_PROGRESS_BAR(gtk_builder_get_object(builder, "progress_calibration"));
 	set_calibration_progress(calib_progress, 0.00);
@@ -909,8 +925,8 @@ static void calibrate (gpointer button)
 	gdk_threads_leave();
 
 
-	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "0");
-	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "0");
+	iio_channel_attr_write(in0, "in_voltage_quadrature_tracking_en", "0");
+	iio_channel_attr_write(in0_slave, "in_voltage_quadrature_tracking_en", "0");
 
 	trx_phase_rotation(cf_ad9361_lpc, 0.0);
 	trx_phase_rotation(cf_ad9361_hpc, 0.0);
@@ -980,8 +996,10 @@ calibrate_fail:
 	osc_plot_xcorr_revert(plot_xcorr_4ch, false);
 	__cal_switch_ports_enable_cb(0);
 
-	iio_device_attr_write(dev, "in_voltage_quadrature_tracking_en", "1");
-	iio_device_attr_write(dev_slave, "in_voltage_quadrature_tracking_en", "1");
+	if (in0 && in0_slave) {
+		iio_channel_attr_write(in0, "in_voltage_quadrature_tracking_en", "1");
+		iio_channel_attr_write(in0_slave, "in_voltage_quadrature_tracking_en", "1");
+	}
 
 	gdk_threads_enter();
 	reload_settings();
