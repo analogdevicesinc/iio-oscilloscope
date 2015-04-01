@@ -1642,9 +1642,9 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 
 	/* Basic validation rules */
 	if (plot_type == FFT_PLOT) {
-		if (num_enabled != 2 && num_enabled != 1) {
+		if (num_enabled != 4 && num_enabled != 2 && num_enabled != 1) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
-				"FFT needs 2 or less channels");
+				"FFT needs 4 or 2 or less channels");
 			return false;
 		}
 	} else if (plot_type == XY_PLOT) {
@@ -1912,7 +1912,7 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 	GSList *node;
 
 	transform = Transform_new(tr_type);
-	transform->graph_color = &color_graph[0];
+	transform->graph_color = &color_graph[priv->transform_list->size];
 	transform->plot_channels = g_slist_copy(channels);
 	transform->plot_channels_type = PLOT_CHN(channels->data)->type;
 
@@ -2431,7 +2431,7 @@ static void channels_transform_assignment(GtkTreeModel *model,
 	case FFT_PLOT:
 		if (prm->enabled_channels == 1) {
 			transform = add_transform_to_list(plot, FFT_TRANSFORM, prm->ch_settings);
-		} else if (prm->enabled_channels == 2 && num_added_chs == 2) {
+		} else if ((prm->enabled_channels == 2 || prm->enabled_channels == 4) && num_added_chs == 2) {
 			if (plugin_installed("FMComms6")) {
 				transform = add_transform_to_list(plot, COMPLEX_FFT_TRANSFORM, prm->ch_settings);
 			} else {
