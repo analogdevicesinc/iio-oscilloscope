@@ -81,6 +81,8 @@ static struct iio_device * transform_get_device_parent(Transform *transform);
 static gboolean tree_get_selected_row_iter(GtkTreeView *treeview, GtkTreeIter *iter);
 static void set_channel_shadow_of_enabled(gpointer data, gpointer user_data);
 static gfloat * plot_channels_get_nth_data_ref(GSList *list, guint n);
+static void transform_add_own_markers(OscPlot *plot, Transform *transform);
+static void transform_remove_own_markers(Transform *transform);
 
 /* IDs of signals */
 enum {
@@ -868,7 +870,7 @@ static void do_fft(Transform *tr)
 			/* do an average */
 			out_data[i] = ((1 - avg) * out_data[i]) + (avg * mag);
 		}
-		if (!tr->has_the_marker || i < 2)
+		if (!settings->markers || i < 2)
 			continue;
 		if (MAX_MARKERS && (marker_type == MARKER_PEAK ||
 				marker_type == MARKER_ONE_TONE ||
@@ -898,7 +900,7 @@ static void do_fft(Transform *tr)
 		}
 	}
 
-	if (!tr->has_the_marker)
+	if (!settings->markers)
 		return;
 
 	unsigned int m = fft->m;
@@ -985,7 +987,7 @@ static void do_fft(Transform *tr)
 
 			}
 		}
-		if (*settings->markers_copy) {
+		if (settings->markers_copy && *settings->markers_copy) {
 			memcpy(*settings->markers_copy, settings->markers,
 				sizeof(struct marker_type) * MAX_MARKERS);
 			*settings->markers_copy = NULL;
@@ -1190,7 +1192,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 
 	for (i = 0; i < 2 * axis_length - 1; i++) {
 		tr->y_axis[i] =  2 * creal(settings->xcorr_data[i]) / (gfloat)axis_length;
-		if (!tr->has_the_marker)
+		if (!settings->markers)
 			continue;
 
 		if (MAX_MARKERS && marker_type == MARKER_PEAK) {
@@ -1219,7 +1221,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		}
 	}
 
-	if (!tr->has_the_marker)
+	if (!settings->markers)
 		return;
 
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
@@ -1229,7 +1231,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 				markers[j].y = (gfloat)out_data[maxX[j]];
 				markers[j].bin = maxX[j];
 			}
-		if (*settings->markers_copy) {
+		if (settings->markers_copy && *settings->markers_copy) {
 			memcpy(*settings->markers_copy, settings->markers,
 				sizeof(struct marker_type) * MAX_MARKERS);
 			*settings->markers_copy = NULL;
@@ -2013,6 +2015,7 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	if (tr->has_the_marker)
 		priv->tr_with_marker = NULL;
 
+	transform_remove_own_markers(tr);
 	TrList_remove_transform(list, tr);
 	Transform_destroy(tr);
 	if (list->size == 0) {
@@ -2083,6 +2086,55 @@ static void transform_add_plot_markers(OscPlot *plot, Transform *transform)
 		XCORR_SETTINGS(transform)->marker_type = &priv->marker_type;
 		XCORR_SETTINGS(transform)->marker_lock = &priv->g_marker_copy_lock;
 	}
+}
+
+static void transform_add_own_markers(OscPlot *plot, Transform *transform)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct marker_type *markers;
+	int i;
+
+	markers = calloc(sizeof(struct marker_type), MAX_MARKERS + 2);
+	if (!markers) {
+		fprintf(stderr,
+			"Error: could not alloc memory for markers in %s\n",
+			__func__);
+		return;
+	}
+
+	for (i = 0; i < MAX_MARKERS; i++)
+		markers[i].active = (i <= 4);
+
+	if (transform->type_id == FFT_TRANSFORM ||
+		transform->type_id == COMPLEX_FFT_TRANSFORM) {
+		FFT_SETTINGS(transform)->markers = markers;
+		FFT_SETTINGS(transform)->marker_type = FFT_SETTINGS(
+					priv->tr_with_marker)->marker_type;
+	} else if (transform->type_id == CROSS_CORRELATION_TRANSFORM) {
+		XCORR_SETTINGS(transform)->markers = markers;
+		XCORR_SETTINGS(transform)->marker_type = XCORR_SETTINGS(
+					priv->tr_with_marker)->marker_type;
+	}
+}
+
+static void transform_remove_own_markers(Transform *transform)
+{
+	struct marker_type *markers;
+
+	if (transform->has_the_marker)
+		return;
+
+	if (transform->type_id == FFT_TRANSFORM ||
+		transform->type_id == COMPLEX_FFT_TRANSFORM) {
+		markers = FFT_SETTINGS(transform)->markers;
+	} else if (transform->type_id == CROSS_CORRELATION_TRANSFORM) {
+		markers = XCORR_SETTINGS(transform)->markers;
+	} else {
+		return;
+	}
+
+	if (markers)
+		free(markers);
 }
 
 static void plot_channels_update(OscPlot *plot)
@@ -2603,8 +2655,12 @@ static void plot_setup(OscPlot *plot)
 
 		if (priv->active_transform_type == FFT_TRANSFORM ||
 			priv->active_transform_type == COMPLEX_FFT_TRANSFORM ||
-			priv->active_transform_type == CROSS_CORRELATION_TRANSFORM)
-			transform_add_plot_markers(plot, transform);
+			priv->active_transform_type == CROSS_CORRELATION_TRANSFORM) {
+			if (i == 0)
+				transform_add_plot_markers(plot, transform);
+			else
+				transform_add_own_markers(plot, transform);
+		}
 
 		gtk_databox_graph_add(GTK_DATABOX(priv->databox), graph);
 	}
