@@ -260,6 +260,7 @@ struct _OscPlotPrivate
 	GtkWidget *hor_units;
 	GtkWidget *marker_label;
 	GtkWidget *devices_label;
+	GtkWidget *phase_label;
 	GtkWidget *saveas_button;
 	GtkWidget *saveas_dialog;
 	GtkWidget *saveas_type_dialog;
@@ -304,6 +305,7 @@ struct _OscPlotPrivate
 
 	GtkTextBuffer* tbuf;
 	GtkTextBuffer* devices_buf;
+	GtkTextBuffer* phase_buf;
 	GtkTextBuffer* math_expression;
 
 	unsigned int nb_input_devices;
@@ -985,6 +987,12 @@ static void do_fft(Transform *tr)
 				markers[j].x = (gfloat)X[markers[j].bin];
 				markers[j].y = (gfloat)out_data[markers[j].bin];
 
+			}
+			if (fft->num_active_channels == 2) {
+				markers[j].angle = atan2(settings->imag_source[markers[j].bin],
+						in_data[markers[j].bin]);
+			} else {
+				markers[j].angle = 0;
 			}
 		}
 		if (settings->markers_copy && *settings->markers_copy) {
@@ -1830,6 +1838,12 @@ static int plot_get_sample_count_of_device(OscPlot *plot, const char *device)
 	return count;
 }
 
+static void notebook_info_set_page_visibility(GtkNotebook *nb, int page, bool visbl)
+{
+	GtkWidget *wpage = gtk_notebook_get_nth_page(nb, page);
+	gtk_widget_set_visible(wpage, visbl);
+}
+
 static struct iio_device * transform_get_device_parent(Transform *transform)
 {
 	struct iio_device *iio_dev = NULL;
@@ -2231,6 +2245,53 @@ static gdouble prefix2scale (char adc_scale)
 	}
 }
 
+
+#define AVG_FACTOR 1 / 32.0
+
+static void markers_phase_diff_show(OscPlotPrivate *priv)
+{
+static float avg[MAX_MARKERS];
+
+	GtkTextIter iter;
+	char text[256];
+	int m;
+	struct marker_type *trA_markers;
+	struct marker_type *trB_markers;
+	float angle_diff;
+
+	gtk_text_buffer_set_text(priv->phase_buf, "", -1);
+	gtk_text_buffer_get_iter_at_line(priv->phase_buf, &iter, 1);
+
+	if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM &&
+					priv->transform_list->size == 2) {
+		trA_markers = FFT_SETTINGS(
+				priv->transform_list->transforms[0])->markers;
+		trB_markers = FFT_SETTINGS(
+				priv->transform_list->transforms[1])->markers;
+
+		if (MAX_MARKERS && priv->marker_type != MARKER_OFF) {
+			for (m = 0; m <= MAX_MARKERS &&
+						trA_markers[m].active; m++) {
+				angle_diff = trA_markers[m].angle -
+						trB_markers[m].angle;
+				avg[m] = ((1 - AVG_FACTOR) * avg[m]) + (AVG_FACTOR * angle_diff);
+
+				snprintf(text, sizeof(text),
+					"%s: Phase: %.3f(rad) @bin: %d%c",
+					trA_markers[m].label,
+					avg[m],
+					trA_markers[m].bin,
+					m != MAX_MARKERS ? '\n' : '\0');
+					gtk_text_buffer_insert(priv->phase_buf,
+						&iter, text, -1);
+			}
+		} else {
+			gtk_text_buffer_set_text(priv->phase_buf,
+				"No markers active", 17);
+		}
+	}
+}
+
 static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 {
 	struct iio_device *iio_dev;
@@ -2342,8 +2403,10 @@ static void call_all_transform_functions(OscPlotPrivate *priv)
 	for (; i < tr_list->size; i++) {
 		tr = tr_list->transforms[i];
 		Transform_update_output(tr);
-		if (tr->has_the_marker)
+		if (tr->has_the_marker) {
 			draw_marker_values(priv, tr);
+			markers_phase_diff_show(priv);
+		}
 	}
 }
 
@@ -2674,6 +2737,15 @@ static void plot_setup(OscPlot *plot)
 			!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
 			gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -1000.0, 1000.0, 1000, -1000);
 	}
+
+	bool show_phase_info = false;
+	if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM &&
+			priv->transform_list->size == 2) {
+		show_phase_info = true;
+	}
+	notebook_info_set_page_visibility(GTK_NOTEBOOK(
+		gtk_builder_get_object(priv->builder, "notebook_info")),
+		2, show_phase_info);
 }
 
 static void single_shot_clicked_cb(GtkToggleToolButton *btn, gpointer data)
@@ -5905,6 +5977,7 @@ static void create_plot(OscPlot *plot)
 	priv->hor_units =  GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_units"));
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	priv->devices_label = GTK_WIDGET(gtk_builder_get_object(builder, "device_info"));
+	priv->phase_label = GTK_WIDGET(gtk_builder_get_object(builder, "phase_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	priv->title_edit_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_plot_title_edit"));
@@ -6050,6 +6123,10 @@ static void create_plot(OscPlot *plot)
 	priv->devices_buf = gtk_text_buffer_new(NULL);
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(priv->devices_label), priv->devices_buf);
 
+	/* Initialize text view for Phase Info */
+	priv->phase_buf = gtk_text_buffer_new(NULL);
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(priv->phase_label), priv->phase_buf);
+
 	/* Initialize Impulse Generators (triggers) dialog */
 	trigger_dialog_init(builder);
 
@@ -6057,6 +6134,10 @@ static void create_plot(OscPlot *plot)
 	priv->math_device_select = GTK_WIDGET(gtk_builder_get_object(priv->builder, "cmb_math_device_chooser"));
 	comboboxtext_input_devices_fill(ctx, GTK_COMBO_BOX_TEXT(priv->math_device_select));
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->math_device_select), 0);
+
+	notebook_info_set_page_visibility(GTK_NOTEBOOK(
+		gtk_builder_get_object(priv->builder, "notebook_info")),
+		2, false);
 
 	/* Connect Signals */
 	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);

@@ -49,6 +49,7 @@ struct marker_type {
 	int bin;
 	bool active;
 	char label[6];
+	float angle;
 	GtkDataboxGraph *graph;
 };
 
