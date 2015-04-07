@@ -4166,8 +4166,22 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 		expanded = gtk_tree_view_row_expanded(tree, gtk_tree_model_get_path(model, &dev_iter));
 		fprintf(fp, "%s.expanded=%d\n", name, (expanded) ? 1 : 0);
 		fprintf(fp, "%s.active=%d\n", name, (device_active) ? 1 : 0);
-		next_ch_iter = gtk_tree_model_iter_children(model, &ch_iter, &dev_iter);
 
+		if (dev) {
+			struct extra_dev_info *info = iio_device_get_data(dev);
+			fprintf(fp, "%s.trigger_enabled=%i\n", name,
+					info->channel_trigger_enabled);
+			if (info->channel_trigger_enabled) {
+				fprintf(fp, "%s.trigger_channel=%u\n", name,
+						info->channel_trigger);
+				fprintf(fp, "%s.trigger_falling_edge=%i\n", name,
+						info->trigger_falling_edge);
+				fprintf(fp, "%s.trigger_value=%f\n", name,
+						info->trigger_value);
+			}
+		}
+
+		next_ch_iter = gtk_tree_model_iter_children(model, &ch_iter, &dev_iter);
 		while (next_ch_iter) {
 			struct iio_channel *ch;
 			char *ch_name;
@@ -4331,6 +4345,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 	PlotChn *csettings;
 	int ret = 0, i;
 	FILE *fd;
+	struct extra_dev_info *dev_info;
 
 	elem_type = count_char_in_string('.', name);
 	switch(elem_type) {
@@ -4505,6 +4520,9 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 			dev = device_find_by_name(dev_name);
 			if (dev == -1)
 				goto unhandled;
+
+			dev_info = iio_device_get_data(iio_context_find_device(ctx, dev_name));
+
 			if (MATCH(dev_property, "expanded")) {
 				expanded = atoi(value);
 				get_iter_by_name(tree, &dev_iter, dev_name, NULL);
@@ -4513,6 +4531,14 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				device_active = atoi(value);
 				get_iter_by_name(tree, &dev_iter, dev_name, NULL);
 				gtk_tree_store_set(store, &dev_iter, DEVICE_ACTIVE, device_active, -1);
+			} else if (MATCH(dev_property, "trigger_enabled")) {
+				dev_info->channel_trigger_enabled = !!atoi(value);
+			} else if (MATCH(dev_property, "trigger_channel")) {
+				dev_info->channel_trigger = atoi(value);
+			} else if (MATCH(dev_property, "trigger_falling_edge")) {
+				dev_info->trigger_falling_edge = !!atoi(value);
+			} else if (MATCH(dev_property, "trigger_value")) {
+				dev_info->trigger_value = (float) atof(value);
 			}
 			break;
 		case CHANNEL:
@@ -5444,13 +5470,13 @@ static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	GtkTreeView *treeview;
 	GtkTreeModel *model;
 	GtkComboBoxText *box;
-	GtkWidget *radio;
+	GtkWidget *item;
 	GtkTreeIter iter, child_iter;
 	GtkListStore *store;
 	gboolean selected;
 	bool box_has_channels = false;
 	gchar *active_channel;
-	unsigned cpt = 0, new_active = 0;
+	unsigned cpt = 0;
 
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(treeview);
@@ -5466,6 +5492,7 @@ static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	dev_info = iio_device_get_data(dev);
 
 	box = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, "comboboxtext_trigger_channel"));
+	gtk_combo_box_set_active(GTK_COMBO_BOX(box), dev_info->channel_trigger);
 	active_channel = gtk_combo_box_text_get_active_text(box);
 
 	/* This code empties the GtkComboBoxText (as it may contain channels
@@ -5492,22 +5519,31 @@ static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 		box_has_channels = true;
 
 		if (active_channel && !strcmp(name, active_channel))
-			new_active = cpt;
+			dev_info->channel_trigger = cpt;
 		cpt++;
 	} while (gtk_tree_model_iter_next(model, &child_iter));
 
 	gtk_widget_set_sensitive(GTK_WIDGET(box), box_has_channels);
 
 	if (box_has_channels)
-		gtk_combo_box_set_active(GTK_COMBO_BOX(box), new_active);
+		gtk_combo_box_set_active(GTK_COMBO_BOX(box), dev_info->channel_trigger);
+	else
+		dev_info->channel_trigger_enabled = FALSE;
 
-	if (!box_has_channels || !dev_info->channel_trigger_enabled) {
-		radio = GTK_WIDGET(gtk_builder_get_object(priv->builder, "radio_disable_trigger"));
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(radio), TRUE);
-	}
+	item = GTK_WIDGET(gtk_builder_get_object(priv->builder, "radio_disable_trigger"));
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(item),
+			!dev_info->channel_trigger_enabled);
 
-	radio = GTK_WIDGET(gtk_builder_get_object(priv->builder, "radio_enable_trigger"));
-	gtk_widget_set_sensitive(radio, box_has_channels);
+	item = GTK_WIDGET(gtk_builder_get_object(priv->builder, "radio_enable_trigger"));
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(item),
+			dev_info->channel_trigger_enabled);
+	gtk_widget_set_sensitive(item, box_has_channels);
+
+	item = GTK_WIDGET(gtk_builder_get_object(priv->builder, "radio_trigger_falling"));
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(item), dev_info->trigger_falling_edge);
+
+	item = GTK_WIDGET(gtk_builder_get_object(priv->builder, "spin_trigger_value"));
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(item), dev_info->trigger_value);
 
 	dialog = GTK_DIALOG(gtk_builder_get_object(priv->builder, "channel_trigger_dialog"));
 	switch (gtk_dialog_run(dialog)) {
