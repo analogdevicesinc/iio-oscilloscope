@@ -989,10 +989,10 @@ static void do_fft(Transform *tr)
 
 			}
 			if (fft->num_active_channels == 2) {
-				markers[j].angle = atan2(settings->imag_source[markers[j].bin],
-						in_data[markers[j].bin]);
+				markers[j].vector = I * settings->imag_source[markers[j].bin] +
+					in_data[markers[j].bin];
 			} else {
-				markers[j].angle = 0;
+				markers[j].vector = 0 + I * 0;
 			}
 		}
 		if (settings->markers_copy && *settings->markers_copy) {
@@ -2245,19 +2245,17 @@ static gdouble prefix2scale (char adc_scale)
 	}
 }
 
-
-#define AVG_FACTOR 1 / 32.0
-
 static void markers_phase_diff_show(OscPlotPrivate *priv)
 {
-static float avg[MAX_MARKERS];
+	static float avg[MAX_MARKERS] = {NAN};
 
 	GtkTextIter iter;
 	char text[256];
 	int m;
 	struct marker_type *trA_markers;
 	struct marker_type *trB_markers;
-	float angle_diff;
+	float angle_diff, lead_lag;
+	float filter, angle;
 
 	gtk_text_buffer_set_text(priv->phase_buf, "", -1);
 	gtk_text_buffer_get_iter_at_line(priv->phase_buf, &iter, 1);
@@ -2269,20 +2267,53 @@ static float avg[MAX_MARKERS];
 		trB_markers = FFT_SETTINGS(
 				priv->transform_list->transforms[1])->markers;
 
+		filter =  gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
+		if (!filter)
+			filter = 1;
+		filter = 1.0 / filter;
+
 		if (MAX_MARKERS && priv->marker_type != MARKER_OFF) {
 			for (m = 0; m <= MAX_MARKERS &&
 						trA_markers[m].active; m++) {
-				angle_diff = trA_markers[m].angle -
-						trB_markers[m].angle;
-				avg[m] = ((1 - AVG_FACTOR) * avg[m]) + (AVG_FACTOR * angle_diff);
+
+				/* find out the quadrant
+				 * since carg() returns something from [-pi, +pi], use that.
+				 * this does allow for reflex angles almost up to [-2*pi, +2*pi]
+				 */
+				lead_lag = (cargf(trA_markers[m].vector) - cargf(trB_markers[m].vector)) * 180 / M_PI;
+
+				if (isnan(avg[m]))
+					avg[m] = lead_lag;
+
+				/* Cosine law, answers are [0, +pi] */
+				angle_diff =  acosf((crealf(trA_markers[m].vector) * crealf(trB_markers[m].vector) +
+						cimagf(trA_markers[m].vector) * cimagf(trB_markers[m].vector)) /
+						(cabsf(trA_markers[m].vector) * cabsf(trB_markers[m].vector))) * 180 / M_PI;
+
+				/* put back into the correct quadrant */
+				if (lead_lag < 0)
+					angle_diff *= -1.0;
+
+				if (lead_lag > 180.0)
+					angle_diff = 360.0 - angle_diff;
+
+				avg[m] = ((1 - filter) * avg[m]) + (filter * angle_diff);
+
+				angle = avg[m];
+				if (angle > 180.0)
+					angle -= 360.0;
+				if (angle < -180.0)
+					angle += 360.0;
 
 				snprintf(text, sizeof(text),
-					"%s: Phase: %.3f(rad) @bin: %d%c",
+					"%s: %2.3f° @ %2.3f %cHz %c",
 					trA_markers[m].label,
-					avg[m],
-					trA_markers[m].bin,
+					angle,
+					/* lo_freq / markers_scale */ trA_markers[m].x,
+					/*dev_info->adc_scale */ 'M',
 					m != MAX_MARKERS ? '\n' : '\0');
-					gtk_text_buffer_insert(priv->phase_buf,
+
+				gtk_text_buffer_insert(priv->phase_buf,
 						&iter, text, -1);
 			}
 		} else {
