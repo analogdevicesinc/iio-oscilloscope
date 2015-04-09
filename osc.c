@@ -1063,7 +1063,7 @@ static gboolean capture_process(void)
 			ssize_t ret = iio_buffer_refill(dev_info->buffer);
 			if (ret < 0) {
 				fprintf(stderr, "Error while reading data: %s\n", strerror(-ret));
-				stop_capture = TRUE;
+				stop_sampling();
 				goto capture_stop_check;
 			}
 
