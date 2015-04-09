@@ -1207,7 +1207,10 @@ static int capture_setup(void)
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
-		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info) * 2;
+		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info);
+
+		if (dev_info->channel_trigger_enabled)
+			sample_count *= 2;
 
 		for (j = 0; j < nb_channels; j++) {
 			struct iio_channel *ch = iio_device_get_channel(dev, j);
@@ -1241,7 +1244,9 @@ static int capture_setup(void)
 		freq = read_sampling_frequency(dev);
 		if (freq > 0) {
 			/* 2 x capture time + 1s */
-			timeout = 2 * sample_count * 1000 / freq;
+			timeout = sample_count * 1000 / freq;
+			if (dev_info->channel_trigger_enabled)
+				timeout *= 2;
 			timeout += 1000;
 			if (timeout > min_timeout)
 				min_timeout = timeout;
