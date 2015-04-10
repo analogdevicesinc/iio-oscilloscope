@@ -1270,7 +1270,9 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 		if (!dev)
 			return;
 		dev_info = iio_device_get_data(dev);
-		num_samples = dev_info->sample_count / 2;
+		num_samples = dev_info->sample_count;
+		if (dev_info->channel_trigger_enabled)
+			num_samples /= 2;
 
 		PlotChn *chn = (PlotChn *)tr->plot_channels->data;
 		struct iio_channel *iio_chn = NULL;
