@@ -2426,6 +2426,7 @@ static void call_all_transform_functions(OscPlotPrivate *priv)
 {
 	TrList *tr_list = priv->transform_list;
 	Transform *tr;
+	bool show_diff_phase = false;
 	int i = 0;
 
 	if (priv->redraw_function <= 0)
@@ -2435,10 +2436,12 @@ static void call_all_transform_functions(OscPlotPrivate *priv)
 		tr = tr_list->transforms[i];
 		Transform_update_output(tr);
 		if (tr->has_the_marker) {
+			show_diff_phase = true;
 			draw_marker_values(priv, tr);
-			markers_phase_diff_show(priv);
 		}
 	}
+	if (show_diff_phase)
+		markers_phase_diff_show(priv);
 }
 
 static int enabled_channels_of_device(GtkTreeView *treeview, const char *name, unsigned *enabled_mask)
