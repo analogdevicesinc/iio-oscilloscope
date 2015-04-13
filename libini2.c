@@ -103,9 +103,9 @@ static ssize_t update_from_ini_chn_cb(struct iio_channel *chn,
 		/* Dirty workaround that strips the "dB" suffix of
 		 * hardwaregain value. Fix me when possible. */
 		if (is_hardwaregain) {
-			char *tmp = (char *)buf;
-			if (*strstr(tmp, " dB"))
-				(*strstr(tmp, " dB")) = 0;
+			char *tmp = strstr((char *) buf, " dB");
+			if (tmp)
+				*tmp = '\0';
 		}
 		return ret;
 	}
