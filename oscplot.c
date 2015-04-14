@@ -2280,17 +2280,30 @@ static void markers_phase_diff_show(OscPlotPrivate *priv)
 
 				/* find out the quadrant
 				 * since carg() returns something from [-pi, +pi], use that.
-				 * this does allow for reflex angles almost up to [-2*pi, +2*pi]
+				 * this handles reflex angles up to [-2*pi, +2*pi]
 				 */
 				lead_lag = (cargf(trA_markers[m].vector) - cargf(trB_markers[m].vector)) * 180 / M_PI;
+
+				/* [-2*pi, +2*pi] is kind of silly
+				 * move things to [-pi, +pi]
+				 */
+				if (lead_lag > 180)
+					lead_lag = lead_lag - 360;
+				if (lead_lag < -180)
+					lead_lag = 360 + lead_lag;
 
 				if (isnan(avg[m]))
 					avg[m] = lead_lag;
 
 				/* Cosine law, answers are [0, +pi] */
-				angle_diff =  acosf((crealf(trA_markers[m].vector) * crealf(trB_markers[m].vector) +
+				if (cabsf(trA_markers[m].vector) == 0.0 || cabsf(trB_markers[m].vector) == 0.0) {
+					/* divide by 0 is nan */
+					angle_diff = lead_lag;
+				} else {
+					angle_diff =  acosf((crealf(trA_markers[m].vector) * crealf(trB_markers[m].vector) +
 						cimagf(trA_markers[m].vector) * cimagf(trB_markers[m].vector)) /
 						(cabsf(trA_markers[m].vector) * cabsf(trB_markers[m].vector))) * 180 / M_PI;
+				}
 
 				/* put back into the correct quadrant */
 				if (lead_lag < 0)
@@ -2308,7 +2321,7 @@ static void markers_phase_diff_show(OscPlotPrivate *priv)
 					angle += 360.0;
 
 				snprintf(text, sizeof(text),
-					"%s: %2.3f° @ %2.3f %cHz %c",
+					"%s: %02.3f° @ %2.3f %cHz %c",
 					trA_markers[m].label,
 					angle,
 					/* lo_freq / markers_scale */ trA_markers[m].x,
