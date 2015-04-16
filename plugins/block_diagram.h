@@ -165,6 +165,26 @@ static int block_diagram_init(GtkBuilder *builder, int count, ...)
 	while (count--) {
 		block_filename[argno++] = va_arg(ap, char *);
 	}
+#ifdef linux
+	FILE *cpu_fd = fopen("/proc/cpuinfo", "rb");
+	char *line = NULL;
+	size_t n;
+	bool is_zynq = false;
+
+	if (cpu_fd) {
+		while (getline(&line, &n, cpu_fd) != -1) {
+			if (!strncmp(line, "Hardware", strlen("Hardware"))
+							&& strstr(line, "Zynq"))
+				is_zynq = true;
+			free(line);
+			line = NULL;
+		}
+		fclose(cpu_fd);
+	}
+	if (is_zynq) {
+		block_filename[argno++] = "Zynq.svg";
+	}
+#endif
 	block_filename[argno] = NULL;
 	block_num = 0;
 
