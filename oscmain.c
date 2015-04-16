@@ -162,21 +162,16 @@ gint main (int argc, char **argv)
 	signal(SIGHUP, sigterm);
 #endif
 
-	if (profile && strncmp(profile, "-", 1) == 0)
-		profile = NULL;
-
-	if (profile) {
-		char buf[1024];
-		strncpy(buf, profile, sizeof(buf));
-		profile = check_inifile(buf) ? strdup(buf) : NULL;
-	}
-
 	if (!profile) {
 		char buf[1024];
 		snprintf(buf, sizeof(buf), "%s/" DEFAULT_PROFILE_NAME,
 				getenv("HOME"));
 		if (check_inifile(buf))
 			profile = strdup(buf);
+	} else if (profile && strncmp(profile, "-", 1) != 0) {
+		char buf[1024];
+		strncpy(buf, profile, sizeof(buf));
+		profile = check_inifile(buf) ? strdup(buf) : NULL;
 	}
 
 	gdk_threads_enter();

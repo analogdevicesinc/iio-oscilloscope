@@ -1676,7 +1676,7 @@ bool check_inifile(const char *filepath)
 int load_default_profile(char *filename, bool load_plugins)
 {
 	/* Don't load anything */
-	if (filename && !strcmp(filename, "-"))
+	if (!filename || (filename && !strcmp(filename, "-")))
 		return 0;
 
 	if (filename && check_inifile(filename)) {
