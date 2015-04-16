@@ -51,6 +51,7 @@ struct marker_type {
 	bool active;
 	char label[6];
 	float complex vector;
+	float angle;
 	GtkDataboxGraph *graph;
 };
 

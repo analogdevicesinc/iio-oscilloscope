@@ -2320,6 +2320,9 @@ static void markers_phase_diff_show(OscPlotPrivate *priv)
 				if (angle < -180.0)
 					angle += 360.0;
 
+				trA_markers[m].angle = angle;
+				trB_markers[m].angle = angle;
+
 				snprintf(text, sizeof(text),
 					"%s: %02.3f° @ %2.3f %cHz %c",
 					trA_markers[m].label,
@@ -4647,6 +4650,8 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 
 				for (i = 0; i <= MAX_MARKERS; i++) {
 					fprintf(fd, ", %f, %f", priv->markers[i].x, priv->markers[i].y);
+					if (!isnan(priv->markers[i].angle))
+						fprintf(fd, ", %f", priv->markers[i].angle);
 				}
 				fprintf(fd, "\n");
 				fclose(fd);
