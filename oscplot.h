@@ -65,6 +65,7 @@ bool          osc_plot_set_sample_count (OscPlot *plot, gdouble count);
 double        osc_plot_get_sample_count (OscPlot *plot);
 void          osc_plot_set_channel_state(OscPlot *plot, const char *dev, int channel, bool state);
 void          osc_plot_xcorr_revert     (OscPlot *plot, int revert);
+void          osc_plot_set_quit_callback(OscPlot *plot, void (*qcallback)(void *user_data), void *user_data);
 
 G_END_DECLS
 

@@ -1315,6 +1315,7 @@ static void plot_init(GtkWidget *plot)
 	g_signal_connect(plot, "osc-capture-event", G_CALLBACK(start), NULL);
 	g_signal_connect(plot, "osc-destroy-event", G_CALLBACK(plot_destroyed_cb), NULL);
 	g_signal_connect(plot, "osc-newplot-event", G_CALLBACK(new_plot_created_cb), NULL);
+	osc_plot_set_quit_callback(OSC_PLOT(plot), (void (*)(void *))application_quit, NULL);
 	gtk_widget_show(plot);
 }
 

@@ -384,6 +384,9 @@ struct _OscPlotPrivate
 	int read_scale_params;
 
 	GMutex g_marker_copy_lock;
+
+	void (*quit_callback)(void *user_data);
+	void *qcb_user_data;
 };
 
 G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
@@ -722,6 +725,16 @@ void osc_plot_xcorr_revert (OscPlot *plot, int revert)
 		transform = tr_list->transforms[i];
 		XCORR_SETTINGS(transform)->revert_xcorr = revert;
 	}
+}
+
+void osc_plot_set_quit_callback(OscPlot *plot,
+	void (*qcallback)(void *user_data), void *user_data)
+{
+	g_return_if_fail(plot);
+	g_return_if_fail(qcallback);
+
+	plot->priv->quit_callback = qcallback;
+	plot->priv->qcb_user_data = user_data;
 }
 
 static void osc_plot_dispose(GObject *object)
@@ -5757,6 +5770,16 @@ static void menu_quit_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	osc_plot_destroy(plot);
 }
 
+static void quit_callback_default_cb(GtkMenuItem *menuitem, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	if (priv->quit_callback)
+		priv->quit_callback(priv->qcb_user_data);
+	else
+		printf("Plot %d does not have a quit callback!\n",
+			priv->object_id);
+}
+
 static void menu_title_edit_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -6088,6 +6111,9 @@ static void create_plot(OscPlot *plot)
 
 	g_builder_connect_signal(builder, "menuitem_close", "activate",
 		G_CALLBACK(menu_quit_cb), plot);
+
+	g_builder_connect_signal(builder, "menuitem_quit", "activate",
+		G_CALLBACK(quit_callback_default_cb), plot);
 
 	g_builder_connect_signal(builder, "menuitem_window_title", "activate",
 		G_CALLBACK(menu_title_edit_cb), plot);
