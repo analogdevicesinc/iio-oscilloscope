@@ -1907,8 +1907,10 @@ static int load_profile_sequential_handler(const char *section,
 	if (plugin) {
 		if (plugin->handle_item)
 			return plugin->handle_item(name, value);
-		else
+		else {
+			fprintf(stderr, "Unknown plugin for %s\n", section);
 			return 1;
+		}
 	}
 
 	if (!strncmp(section, CAPTURE_INI_SECTION, sizeof(CAPTURE_INI_SECTION) - 1))
@@ -2299,8 +2301,11 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 	if (ret < 0) {
 		if (driver_handle)
 			return driver_handle(attrib, value);
-		else
+		else {
+			fprintf(stderr, "Error parsing ini file; key:'%s' value:'%s'\n",
+					attrib, value);
 			return ret;
+		}
 	}
 
 	if (value[0] == '{') {

@@ -132,6 +132,8 @@ void update_from_ini(const char *ini_file,
 	while (!found && ini_next_section(ini, &name, &nlen) > 0)
 		found = !strncmp(name, driver_name, nlen);
 	if (!found) {
+		fprintf(stderr, "error parsing %s file: Could not find %s\n",
+				ini_file, driver_name);
 		ini_close(ini);
 		return;
 	}
@@ -283,6 +285,14 @@ int foreach_in_ini(const char *ini_file,
 			snprintf(v, vlen + 1, "%.*s", (int) vlen, value);
 
 			ret = cb(n, k, v);
+
+			/* only needed when debugging - this should be done in each section
+			if (ret < 0) {
+				fprintf(stderr, "issue in '%s' file: Section:'%s' key:'%s' value:'%s'\n",
+						ini_file, n, k, v);
+			}
+			*/
+
 			free(k);
 			free(v);
 
