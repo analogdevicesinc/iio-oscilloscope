@@ -112,7 +112,7 @@ int osc_test_value(struct iio_context *ctx,
 		const char *attribute, const char *value);
 int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
 		struct iio_device **dev, struct iio_channel **chn,
-		const char **attr);
+		const char **attr, bool *debug);
 int osc_read_value(struct iio_context *ctx,
 		const char *value, long long *out);
 int osc_log_value(struct iio_context *ctx,

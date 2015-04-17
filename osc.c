@@ -2119,11 +2119,18 @@ cleanup:
 
 int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
 		struct iio_device **dev, struct iio_channel **chn,
-		const char **attr)
+		const char **attr, bool *debug)
 {
 	struct iio_device *device;
 	char *dev_name = NULL, *filename = NULL;
 	int ret;
+
+	if (!strncmp(attrib, "debug.", sizeof("debug.") - 1)) {
+		*debug = true;
+		attrib += sizeof("debug.") - 1;
+	} else {
+		*debug = false;
+	}
 
 	ret = sscanf(attrib, "%m[^.].%m[^.]", &dev_name, &filename);
 	if (ret != 2) {
@@ -2155,12 +2162,15 @@ static int osc_read_nonenclosed_value(struct iio_context *ctx,
 	struct iio_device *dev;
 	struct iio_channel *chn;
 	const char *attr;
-	int ret = osc_identify_attrib(ctx, value, &dev, &chn, &attr);
+	bool debug;
+	int ret = osc_identify_attrib(ctx, value, &dev, &chn, &attr, &debug);
 	if (ret < 0)
 		return ret;
 
 	if (chn)
 		ret = iio_channel_attr_read_longlong(chn, attr, out);
+	else if (debug)
+		ret = iio_device_debug_attr_read_longlong(dev, attr, out);
 	else
 		ret = iio_device_attr_read_longlong(dev, attr, out);
 	return ret < 0 ? ret : 0;
@@ -2244,6 +2254,7 @@ int osc_log_value(struct iio_context *ctx,
 	struct iio_channel *chn;
 	const char *attr;
 	char buf[1024];
+	bool debug;
 	FILE *f;
 
 	if (strncmp(attribute, "log.", sizeof("log.") - 1)) {
@@ -2253,12 +2264,14 @@ int osc_log_value(struct iio_context *ctx,
 
 	ret = osc_identify_attrib(ctx,
 			attribute + sizeof("log.") - 1,
-			&dev, &chn, &attr);
+			&dev, &chn, &attr, &debug);
 	if (ret < 0)
 		goto err_ret;
 
 	if (chn)
 		ret = iio_channel_attr_read(chn, attr, buf, sizeof(buf));
+	else if (debug)
+		ret = iio_device_debug_attr_read(dev, attr, buf, sizeof(buf));
 	else
 		ret = iio_device_attr_read(dev, attr, buf, sizeof(buf));
 	if (ret < 0)
@@ -2287,6 +2300,7 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 	struct iio_device *dev;
 	struct iio_channel *chn;
 	const char *attr;
+	bool debug;
 	int ret;
 
 	if (!strncmp(attrib, "test.", sizeof("test.") - 1)) {
@@ -2297,7 +2311,7 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 	if (!strncmp(attrib, "log.", sizeof("log.") - 1))
 		return osc_log_value(ctx, attrib, value);
 
-	ret = osc_identify_attrib(ctx, attrib, &dev, &chn, &attr);
+	ret = osc_identify_attrib(ctx, attrib, &dev, &chn, &attr, &debug);
 	if (ret < 0) {
 		if (driver_handle)
 			return driver_handle(attrib, value);
@@ -2318,10 +2332,14 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 
 		if (chn)
 			ret = iio_channel_attr_write_longlong(chn, attr, lval);
+		else if (debug)
+			ret = iio_device_debug_attr_write_longlong(dev, attr, lval);
 		else
 			ret = iio_device_attr_write_longlong(dev, attr, lval);
 	} else if (chn)
 		ret = iio_channel_attr_write(chn, attr, value);
+	else if (debug)
+		ret = iio_device_debug_attr_write(dev, attr, value);
 	else
 		ret = iio_device_attr_write(dev, attr, value);
 	if (ret < 0)
