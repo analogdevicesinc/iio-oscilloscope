@@ -4517,11 +4517,15 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				}
 			}
 
-			dev = device_find_by_name(dev_name);
-			if (dev == -1)
-				goto unhandled;
 
-			dev_info = iio_device_get_data(iio_context_find_device(ctx, dev_name));
+			if (strncmp(dev_name, "Math", 4) == 0) {
+				dev_info = NULL;
+			} else {
+				dev = device_find_by_name(dev_name);
+				if (dev == -1)
+					goto unhandled;
+				dev_info = iio_device_get_data(iio_context_find_device(ctx, dev_name));
+			}
 
 			if (MATCH(dev_property, "expanded")) {
 				expanded = atoi(value);
@@ -4532,12 +4536,20 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				get_iter_by_name(tree, &dev_iter, dev_name, NULL);
 				gtk_tree_store_set(store, &dev_iter, DEVICE_ACTIVE, device_active, -1);
 			} else if (MATCH(dev_property, "trigger_enabled")) {
+				if (!dev_info)
+					goto unhandled;
 				dev_info->channel_trigger_enabled = !!atoi(value);
 			} else if (MATCH(dev_property, "trigger_channel")) {
+				if (!dev_info)
+					goto unhandled;
 				dev_info->channel_trigger = atoi(value);
 			} else if (MATCH(dev_property, "trigger_falling_edge")) {
+				if (!dev_info)
+					goto unhandled;
 				dev_info->trigger_falling_edge = !!atoi(value);
 			} else if (MATCH(dev_property, "trigger_value")) {
+				if (!dev_info)
+					goto unhandled;
 				dev_info->trigger_value = (float) atof(value);
 			}
 			break;
