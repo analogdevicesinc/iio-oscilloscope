@@ -1210,6 +1210,8 @@ static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 			gtk_main_iteration();
 		}
 	} else {
+		fprintf(stderr, "Unknown token in ini file; key:'%s' value:'%s'\n",
+				attrib, value);
 		return -EINVAL;
 	}
 
