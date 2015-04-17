@@ -6086,7 +6086,7 @@ static void create_plot(OscPlot *plot)
 	g_builder_connect_signal(builder, "menuitem_save_as", "activate",
 		G_CALLBACK(saveas_dialog_show), plot);
 
-	g_builder_connect_signal(builder, "menuitem_quit", "activate",
+	g_builder_connect_signal(builder, "menuitem_close", "activate",
 		G_CALLBACK(menu_quit_cb), plot);
 
 	g_builder_connect_signal(builder, "menuitem_window_title", "activate",
