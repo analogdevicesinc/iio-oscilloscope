@@ -742,6 +742,16 @@ void osc_plot_set_quit_callback(OscPlot *plot,
 	plot->priv->qcb_user_data = user_data;
 }
 
+int osc_plot_get_id(OscPlot *plot)
+{
+	return plot->priv->object_id;
+}
+
+void osc_plot_set_id(OscPlot *plot, int id)
+{
+	plot->priv->object_id = id;
+}
+
 static void osc_plot_dispose(GObject *object)
 {
 	G_OBJECT_CLASS(osc_plot_parent_class)->dispose(object);

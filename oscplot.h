@@ -67,6 +67,8 @@ void          osc_plot_set_channel_state(OscPlot *plot, const char *dev, int cha
 void          osc_plot_xcorr_revert     (OscPlot *plot, int revert);
 void          osc_plot_set_quit_callback(OscPlot *plot, void (*qcallback)(void *user_data), void *user_data);
 void          osc_plot_reset_numbering  (void);
+int           osc_plot_get_id           (OscPlot *plot);
+void          osc_plot_set_id           (OscPlot *plot, int id);
 
 G_END_DECLS
 

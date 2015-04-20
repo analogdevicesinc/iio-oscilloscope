@@ -1751,8 +1751,16 @@ void do_init(struct iio_context *new_ctx)
 	}
 }
 
-static char *prev_section;
-static GtkWidget *plot_widget;
+OscPlot * osc_find_plot_by_id(int id)
+{
+	GList *node;
+
+	for (node = plot_list; node; node = g_list_next(node))
+		if (id == osc_plot_get_id((OscPlot *) node->data))
+			return (OscPlot *) node->data;
+
+	return NULL;
+}
 
 /*
  * Check for settings in sections [MultiOsc_Capture_Configuration1,2,..]
@@ -1761,31 +1769,26 @@ static GtkWidget *plot_widget;
 static int capture_profile_handler(const char *section,
 		const char *name, const char *value)
 {
+	OscPlot *plot;
+	int plot_id;
 
 	if (strncmp(section, CAPTURE_INI_SECTION, sizeof(CAPTURE_INI_SECTION) - 1))
 		return 1;
 
-	/* Check if a new section has been reached */
-	if (!prev_section || strcmp(section, prev_section) != 0) {
-		if (prev_section)
-			g_free(prev_section);
-		/* Remember the last section */
-		prev_section = g_strdup(section);
+	if (!ctx || !iio_context_get_devices_count(ctx))
+		return 0;
 
-		/* Create a capture window and parse the line from ini file*/
-		if (ctx && !!iio_context_get_devices_count(ctx)) {
-			plot_widget = new_plot_cb(NULL, NULL);
-			osc_plot_set_visible(OSC_PLOT(plot_widget), false);
-			return osc_plot_ini_read_handler(OSC_PLOT(plot_widget),
-					section, name, value);
-		}
-	} else if (plot_widget) {
-		/* Parse the line from ini file */
-		return osc_plot_ini_read_handler(OSC_PLOT(plot_widget),
-				section, name, value);
+	plot_id = atoi(section + sizeof(CAPTURE_INI_SECTION) - 1);
+
+	plot = osc_find_plot_by_id(plot_id);
+	if (!plot) {
+		plot = plugin_get_new_plot();
+		osc_plot_set_id(plot, plot_id);
+		osc_plot_set_visible(plot, false);
 	}
 
-	return 0;
+	/* Parse the line from ini file */
+	return osc_plot_ini_read_handler(plot, section, name, value);
 }
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data)
@@ -1957,8 +1960,6 @@ static void load_profile(const char *filename, bool load_plugins)
 	close_all_plots();
 	destroy_all_plots();
 
-	plot_widget = NULL;
-
 	value = read_token_from_ini(filename, OSC_INI_SECTION, "test");
 	if (value) {
 		free(value);
@@ -1989,10 +1990,6 @@ static void load_profile(const char *filename, bool load_plugins)
 	gtk_window_move(GTK_WINDOW(main_window), x_pos, y_pos);
 
 	foreach_in_ini(filename, capture_profile_handler);
-	if (prev_section) {
-		g_free(prev_section);
-		prev_section = NULL;
-	}
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		struct osc_plugin *plugin = node->data;
