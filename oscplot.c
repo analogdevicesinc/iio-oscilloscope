@@ -452,6 +452,11 @@ void osc_plot_destroy (OscPlot *plot)
 	gtk_widget_destroy(GTK_WIDGET(plot));
 }
 
+void osc_plot_reset_numbering (void)
+{
+	object_count = 0;
+}
+
 void osc_plot_set_visible (OscPlot *plot, bool visible)
 {
 	gtk_widget_set_visible(plot->priv->window, visible);

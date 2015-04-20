@@ -1413,6 +1413,7 @@ static void do_quit(bool reload)
 
 	g_list_free(plot_list);
 	free_setup_check_fct_list();
+	osc_plot_reset_numbering();
 
 	if (!reload && gtk_main_level())
 		gtk_main_quit();
