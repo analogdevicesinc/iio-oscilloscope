@@ -10,6 +10,7 @@
 #define IIO_THREADS
 
 #include <gtkdatabox.h>
+#include <complex.h>
 #include <iio.h>
 
 #include "oscplot.h"
@@ -49,6 +50,8 @@ struct marker_type {
 	int bin;
 	bool active;
 	char label[6];
+	float complex vector;
+	float angle;
 	GtkDataboxGraph *graph;
 };
 

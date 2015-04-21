@@ -81,6 +81,8 @@ static struct iio_device * transform_get_device_parent(Transform *transform);
 static gboolean tree_get_selected_row_iter(GtkTreeView *treeview, GtkTreeIter *iter);
 static void set_channel_shadow_of_enabled(gpointer data, gpointer user_data);
 static gfloat * plot_channels_get_nth_data_ref(GSList *list, guint n);
+static void transform_add_own_markers(OscPlot *plot, Transform *transform);
+static void transform_remove_own_markers(Transform *transform);
 
 /* IDs of signals */
 enum {
@@ -258,6 +260,7 @@ struct _OscPlotPrivate
 	GtkWidget *hor_units;
 	GtkWidget *marker_label;
 	GtkWidget *devices_label;
+	GtkWidget *phase_label;
 	GtkWidget *saveas_button;
 	GtkWidget *saveas_dialog;
 	GtkWidget *saveas_type_dialog;
@@ -302,6 +305,7 @@ struct _OscPlotPrivate
 
 	GtkTextBuffer* tbuf;
 	GtkTextBuffer* devices_buf;
+	GtkTextBuffer* phase_buf;
 	GtkTextBuffer* math_expression;
 
 	unsigned int nb_input_devices;
@@ -896,7 +900,7 @@ static void do_fft(Transform *tr)
 			/* do an average */
 			out_data[i] = ((1 - avg) * out_data[i]) + (avg * mag);
 		}
-		if (!tr->has_the_marker || i < 2)
+		if (!settings->markers || i < 2)
 			continue;
 		if (MAX_MARKERS && (marker_type == MARKER_PEAK ||
 				marker_type == MARKER_ONE_TONE ||
@@ -926,7 +930,7 @@ static void do_fft(Transform *tr)
 		}
 	}
 
-	if (!tr->has_the_marker)
+	if (!settings->markers)
 		return;
 
 	unsigned int m = fft->m;
@@ -1012,8 +1016,14 @@ static void do_fft(Transform *tr)
 				markers[j].y = (gfloat)out_data[markers[j].bin];
 
 			}
+			if (fft->num_active_channels == 2) {
+				markers[j].vector = I * settings->imag_source[markers[j].bin] +
+					in_data[markers[j].bin];
+			} else {
+				markers[j].vector = 0 + I * 0;
+			}
 		}
-		if (*settings->markers_copy) {
+		if (settings->markers_copy && *settings->markers_copy) {
 			memcpy(*settings->markers_copy, settings->markers,
 				sizeof(struct marker_type) * MAX_MARKERS);
 			*settings->markers_copy = NULL;
@@ -1218,7 +1228,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 
 	for (i = 0; i < 2 * axis_length - 1; i++) {
 		tr->y_axis[i] =  2 * creal(settings->xcorr_data[i]) / (gfloat)axis_length;
-		if (!tr->has_the_marker)
+		if (!settings->markers)
 			continue;
 
 		if (MAX_MARKERS && marker_type == MARKER_PEAK) {
@@ -1247,7 +1257,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		}
 	}
 
-	if (!tr->has_the_marker)
+	if (!settings->markers)
 		return;
 
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
@@ -1257,7 +1267,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 				markers[j].y = (gfloat)out_data[maxX[j]];
 				markers[j].bin = maxX[j];
 			}
-		if (*settings->markers_copy) {
+		if (settings->markers_copy && *settings->markers_copy) {
 			memcpy(*settings->markers_copy, settings->markers,
 				sizeof(struct marker_type) * MAX_MARKERS);
 			*settings->markers_copy = NULL;
@@ -1672,9 +1682,9 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 
 	/* Basic validation rules */
 	if (plot_type == FFT_PLOT) {
-		if (num_enabled != 2 && num_enabled != 1) {
+		if (num_enabled != 4 && num_enabled != 2 && num_enabled != 1) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
-				"FFT needs 2 or less channels");
+				"FFT needs 4 or 2 or less channels");
 			return false;
 		}
 	} else if (plot_type == XY_PLOT) {
@@ -1858,6 +1868,12 @@ static int plot_get_sample_count_of_device(OscPlot *plot, const char *device)
 	return count;
 }
 
+static void notebook_info_set_page_visibility(GtkNotebook *nb, int page, bool visbl)
+{
+	GtkWidget *wpage = gtk_notebook_get_nth_page(nb, page);
+	gtk_widget_set_visible(wpage, visbl);
+}
+
 static struct iio_device * transform_get_device_parent(Transform *transform)
 {
 	struct iio_device *iio_dev = NULL;
@@ -1942,7 +1958,7 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 	GSList *node;
 
 	transform = Transform_new(tr_type);
-	transform->graph_color = &color_graph[0];
+	transform->graph_color = &color_graph[priv->transform_list->size];
 	transform->plot_channels = g_slist_copy(channels);
 	transform->plot_channels_type = PLOT_CHN(channels->data)->type;
 
@@ -2043,6 +2059,7 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 	if (tr->has_the_marker)
 		priv->tr_with_marker = NULL;
 
+	transform_remove_own_markers(tr);
 	TrList_remove_transform(list, tr);
 	Transform_destroy(tr);
 	if (list->size == 0) {
@@ -2113,6 +2130,55 @@ static void transform_add_plot_markers(OscPlot *plot, Transform *transform)
 		XCORR_SETTINGS(transform)->marker_type = &priv->marker_type;
 		XCORR_SETTINGS(transform)->marker_lock = &priv->g_marker_copy_lock;
 	}
+}
+
+static void transform_add_own_markers(OscPlot *plot, Transform *transform)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct marker_type *markers;
+	int i;
+
+	markers = calloc(sizeof(struct marker_type), MAX_MARKERS + 2);
+	if (!markers) {
+		fprintf(stderr,
+			"Error: could not alloc memory for markers in %s\n",
+			__func__);
+		return;
+	}
+
+	for (i = 0; i < MAX_MARKERS; i++)
+		markers[i].active = (i <= 4);
+
+	if (transform->type_id == FFT_TRANSFORM ||
+		transform->type_id == COMPLEX_FFT_TRANSFORM) {
+		FFT_SETTINGS(transform)->markers = markers;
+		FFT_SETTINGS(transform)->marker_type = FFT_SETTINGS(
+					priv->tr_with_marker)->marker_type;
+	} else if (transform->type_id == CROSS_CORRELATION_TRANSFORM) {
+		XCORR_SETTINGS(transform)->markers = markers;
+		XCORR_SETTINGS(transform)->marker_type = XCORR_SETTINGS(
+					priv->tr_with_marker)->marker_type;
+	}
+}
+
+static void transform_remove_own_markers(Transform *transform)
+{
+	struct marker_type *markers;
+
+	if (transform->has_the_marker)
+		return;
+
+	if (transform->type_id == FFT_TRANSFORM ||
+		transform->type_id == COMPLEX_FFT_TRANSFORM) {
+		markers = FFT_SETTINGS(transform)->markers;
+	} else if (transform->type_id == CROSS_CORRELATION_TRANSFORM) {
+		markers = XCORR_SETTINGS(transform)->markers;
+	} else {
+		return;
+	}
+
+	if (markers)
+		free(markers);
 }
 
 static void plot_channels_update(OscPlot *plot)
@@ -2206,6 +2272,100 @@ static gdouble prefix2scale (char adc_scale)
 		default:
 			return 1.0;
 			break;
+	}
+}
+
+static void markers_phase_diff_show(OscPlotPrivate *priv)
+{
+	static float avg[MAX_MARKERS] = {NAN};
+
+	GtkTextIter iter;
+	char text[256];
+	int m;
+	struct marker_type *trA_markers;
+	struct marker_type *trB_markers;
+	float angle_diff, lead_lag;
+	float filter, angle;
+
+	gtk_text_buffer_set_text(priv->phase_buf, "", -1);
+	gtk_text_buffer_get_iter_at_line(priv->phase_buf, &iter, 1);
+
+	if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM &&
+					priv->transform_list->size == 2) {
+		trA_markers = FFT_SETTINGS(
+				priv->transform_list->transforms[0])->markers;
+		trB_markers = FFT_SETTINGS(
+				priv->transform_list->transforms[1])->markers;
+
+		filter =  gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
+		if (!filter)
+			filter = 1;
+		filter = 1.0 / filter;
+
+		if (MAX_MARKERS && priv->marker_type != MARKER_OFF) {
+			for (m = 0; m <= MAX_MARKERS &&
+						trA_markers[m].active; m++) {
+
+				/* find out the quadrant
+				 * since carg() returns something from [-pi, +pi], use that.
+				 * this handles reflex angles up to [-2*pi, +2*pi]
+				 */
+				lead_lag = (cargf(trA_markers[m].vector) - cargf(trB_markers[m].vector)) * 180 / M_PI;
+
+				/* [-2*pi, +2*pi] is kind of silly
+				 * move things to [-pi, +pi]
+				 */
+				if (lead_lag > 180)
+					lead_lag = lead_lag - 360;
+				if (lead_lag < -180)
+					lead_lag = 360 + lead_lag;
+
+				if (isnan(avg[m]))
+					avg[m] = lead_lag;
+
+				/* Cosine law, answers are [0, +pi] */
+				if (cabsf(trA_markers[m].vector) == 0.0 || cabsf(trB_markers[m].vector) == 0.0) {
+					/* divide by 0 is nan */
+					angle_diff = lead_lag;
+				} else {
+					angle_diff =  acosf((crealf(trA_markers[m].vector) * crealf(trB_markers[m].vector) +
+						cimagf(trA_markers[m].vector) * cimagf(trB_markers[m].vector)) /
+						(cabsf(trA_markers[m].vector) * cabsf(trB_markers[m].vector))) * 180 / M_PI;
+				}
+
+				/* put back into the correct quadrant */
+				if (lead_lag < 0)
+					angle_diff *= -1.0;
+
+				if (lead_lag > 180.0)
+					angle_diff = 360.0 - angle_diff;
+
+				avg[m] = ((1 - filter) * avg[m]) + (filter * angle_diff);
+
+				angle = avg[m];
+				if (angle > 180.0)
+					angle -= 360.0;
+				if (angle < -180.0)
+					angle += 360.0;
+
+				trA_markers[m].angle = angle;
+				trB_markers[m].angle = angle;
+
+				snprintf(text, sizeof(text),
+					"%s: %02.3f° @ %2.3f %cHz %c",
+					trA_markers[m].label,
+					angle,
+					/* lo_freq / markers_scale */ trA_markers[m].x,
+					/*dev_info->adc_scale */ 'M',
+					m != MAX_MARKERS ? '\n' : '\0');
+
+				gtk_text_buffer_insert(priv->phase_buf,
+						&iter, text, -1);
+			}
+		} else {
+			gtk_text_buffer_set_text(priv->phase_buf,
+				"No markers active", 17);
+		}
 	}
 }
 
@@ -2312,6 +2472,7 @@ static void call_all_transform_functions(OscPlotPrivate *priv)
 {
 	TrList *tr_list = priv->transform_list;
 	Transform *tr;
+	bool show_diff_phase = false;
 	int i = 0;
 
 	if (priv->redraw_function <= 0)
@@ -2320,9 +2481,13 @@ static void call_all_transform_functions(OscPlotPrivate *priv)
 	for (; i < tr_list->size; i++) {
 		tr = tr_list->transforms[i];
 		Transform_update_output(tr);
-		if (tr->has_the_marker)
+		if (tr->has_the_marker) {
+			show_diff_phase = true;
 			draw_marker_values(priv, tr);
+		}
 	}
+	if (show_diff_phase)
+		markers_phase_diff_show(priv);
 }
 
 static int enabled_channels_of_device(GtkTreeView *treeview, const char *name, unsigned *enabled_mask)
@@ -2461,7 +2626,7 @@ static void channels_transform_assignment(GtkTreeModel *model,
 	case FFT_PLOT:
 		if (prm->enabled_channels == 1) {
 			transform = add_transform_to_list(plot, FFT_TRANSFORM, prm->ch_settings);
-		} else if (prm->enabled_channels == 2 && num_added_chs == 2) {
+		} else if ((prm->enabled_channels == 2 || prm->enabled_channels == 4) && num_added_chs == 2) {
 			if (plugin_installed("FMComms6")) {
 				transform = add_transform_to_list(plot, COMPLEX_FFT_TRANSFORM, prm->ch_settings);
 			} else {
@@ -2633,8 +2798,12 @@ static void plot_setup(OscPlot *plot)
 
 		if (priv->active_transform_type == FFT_TRANSFORM ||
 			priv->active_transform_type == COMPLEX_FFT_TRANSFORM ||
-			priv->active_transform_type == CROSS_CORRELATION_TRANSFORM)
-			transform_add_plot_markers(plot, transform);
+			priv->active_transform_type == CROSS_CORRELATION_TRANSFORM) {
+			if (i == 0)
+				transform_add_plot_markers(plot, transform);
+			else
+				transform_add_own_markers(plot, transform);
+		}
 
 		gtk_databox_graph_add(GTK_DATABOX(priv->databox), graph);
 	}
@@ -2648,6 +2817,15 @@ static void plot_setup(OscPlot *plot)
 			!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
 			gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -1000.0, 1000.0, 1000, -1000);
 	}
+
+	bool show_phase_info = false;
+	if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM &&
+			priv->transform_list->size == 2) {
+		show_phase_info = true;
+	}
+	notebook_info_set_page_visibility(GTK_NOTEBOOK(
+		gtk_builder_get_object(priv->builder, "notebook_info")),
+		2, show_phase_info);
 }
 
 static void single_shot_clicked_cb(GtkToggleToolButton *btn, gpointer data)
@@ -4501,6 +4679,8 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				for (i = 0; i <= MAX_MARKERS; i++) {
 					if (priv->markers[i].active)
 						fprintf(fd, ", %f, %f", priv->markers[i].x, priv->markers[i].y);
+					if (!isnan(priv->markers[i].angle))
+						fprintf(fd, ", %f", priv->markers[i].angle);
 				}
 				fprintf(fd, "\n");
 				fclose(fd);
@@ -5909,6 +6089,7 @@ static void create_plot(OscPlot *plot)
 	priv->hor_units =  GTK_WIDGET(gtk_builder_get_object(builder, "sample_count_units"));
 	priv->marker_label = GTK_WIDGET(gtk_builder_get_object(builder, "marker_info"));
 	priv->devices_label = GTK_WIDGET(gtk_builder_get_object(builder, "device_info"));
+	priv->phase_label = GTK_WIDGET(gtk_builder_get_object(builder, "phase_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
 	priv->title_edit_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_plot_title_edit"));
@@ -6054,6 +6235,10 @@ static void create_plot(OscPlot *plot)
 	priv->devices_buf = gtk_text_buffer_new(NULL);
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(priv->devices_label), priv->devices_buf);
 
+	/* Initialize text view for Phase Info */
+	priv->phase_buf = gtk_text_buffer_new(NULL);
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(priv->phase_label), priv->phase_buf);
+
 	/* Initialize Impulse Generators (triggers) dialog */
 	trigger_dialog_init(builder);
 
@@ -6061,6 +6246,10 @@ static void create_plot(OscPlot *plot)
 	priv->math_device_select = GTK_WIDGET(gtk_builder_get_object(priv->builder, "cmb_math_device_chooser"));
 	comboboxtext_input_devices_fill(ctx, GTK_COMBO_BOX_TEXT(priv->math_device_select));
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->math_device_select), 0);
+
+	notebook_info_set_page_visibility(GTK_NOTEBOOK(
+		gtk_builder_get_object(priv->builder, "notebook_info")),
+		2, false);
 
 	/* Connect Signals */
 	g_signal_connect(G_OBJECT(priv->window), "destroy", G_CALLBACK(plot_destroyed), plot);
