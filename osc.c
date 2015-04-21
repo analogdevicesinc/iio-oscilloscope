@@ -1904,7 +1904,11 @@ static int handle_osc_param(const char *name, const char *value)
 		return 0;
 	}
 
-	return 0;
+	create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+			"Unhandled attribute",
+			"Unhandled attribute in main section:\n"
+			"%s = %s\n", name, value);
+	return -1;
 }
 
 static int load_profile_sequential_handler(const char *section,
@@ -1926,6 +1930,9 @@ static int load_profile_sequential_handler(const char *section,
 	if (!strcmp(section, OSC_INI_SECTION))
 		return handle_osc_param(name, value);
 
+	create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+			"Unhandled INI section",
+			"Unhandled INI section: [%s]\n", section);
 	fprintf(stderr, "Unhandled INI section: [%s]\n", section);
 	return 1;
 }

@@ -4852,10 +4852,14 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 			break;
 		default:
 unhandled:
+			create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+					"Unhandled attribute",
+					"Unhandled attribute in section [%s]\n"
+					"%s = %s\n", section, name, value);
 			printf("Unhandled tokens in ini file, \n"
 				"\tSection %s\n\tAttribute : %s\n\tValue: %s\n",
 				section, name, value);
-			ret = 0;
+			ret = -1;
 			break;
 	}
 handled:
