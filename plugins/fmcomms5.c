@@ -471,6 +471,10 @@ static void rssi_update_label(GtkWidget *label,struct iio_device *dev, bool is_t
 	char buf[1024];
 	int ret;
 
+	/* don't update if it is hidden (to quiet down SPI) */
+	if (!gtk_widget_is_drawable(GTK_WIDGET(label)))
+		return;
+
 	ret = iio_channel_attr_read(
 			iio_device_find_channel(dev, "voltage0", is_tx),
 			"rssi", buf, sizeof(buf));
