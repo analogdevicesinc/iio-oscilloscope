@@ -1434,8 +1434,10 @@ static void do_quit(bool reload)
 	 */
 	close_plugins(!reload ? buf : NULL);
 
-	if (ctx)
+	if (ctx) {
 		iio_context_destroy(ctx);
+		ctx = NULL;
+	}
 
 	math_expression_objects_clean();
 }
