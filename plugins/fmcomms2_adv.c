@@ -55,7 +55,7 @@ struct iio_device *cf_ad9361_lpc, *cf_ad9361_hpc;
 
 static struct iio_channel *dds_out[2][8];
 OscPlot *plot_xcorr_4ch;
-static int auto_calibrate = 0;
+static volatile int auto_calibrate = 0;
 
 static bool can_update_widgets;
 
@@ -1039,8 +1039,9 @@ void do_calibration (GtkWidget *widget, gpointer data)
 	} else
 		return;
 
+	if (data)
+		gtk_widget_hide(GTK_WIDGET(data));
 	g_thread_new("Calibrate_thread", (void *) &calibrate, data);
-	gtk_widget_hide(GTK_WIDGET(data));
 }
 
 void undo_calibration (GtkWidget *widget, gpointer data)
@@ -1201,14 +1202,10 @@ int handle_external_request (const char *request)
 static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 {
 	if (MATCH_ATTRIB("calibrate")) {
-		unsigned int i = 0;
-
 		do_calibration(NULL, NULL);
 
-		while (i <= 20 && auto_calibrate >= 0) {
-			i += auto_calibrate;
+		while (!auto_calibrate)
 			gtk_main_iteration();
-		}
 	} else {
 		fprintf(stderr, "Unknown token in ini file; key:'%s' value:'%s'\n",
 				attrib, value);
