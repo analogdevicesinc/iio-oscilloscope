@@ -372,6 +372,13 @@ int ini_unroll(const char *input, const char *output)
 			fsetpos(in, &pos);
 
 			while(fgets(buf, sizeof(buf), in) != NULL) {
+				if (!strncmp(buf, "<SEQ>", sizeof("<SEQ>") - 1)) {
+					fprintf(stderr, "%s  : %s\n", __func__, buf);
+					fprintf(stderr, "Sorry, we don't support nested SEQ lines yet\n");
+					ret = -EINVAL;
+					goto err_close;
+				}
+
 				if (!strncmp(buf, "</SEQ>", 6)) {
 					in_seq = false;
 					break;
