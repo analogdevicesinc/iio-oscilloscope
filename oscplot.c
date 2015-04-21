@@ -4497,7 +4497,8 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				}
 
 				for (i = 0; i <= MAX_MARKERS; i++) {
-					fprintf(fd, ", %f, %f", priv->markers[i].x, priv->markers[i].y);
+					if (priv->markers[i].active)
+						fprintf(fd, ", %f, %f", priv->markers[i].x, priv->markers[i].y);
 				}
 				fprintf(fd, "\n");
 				fclose(fd);
