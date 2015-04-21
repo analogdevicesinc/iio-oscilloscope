@@ -2074,8 +2074,8 @@ int osc_test_value(struct iio_context *ctx,
 			create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 					"Test failure",
 					"Test failed!\n\n"
-					"Test was: %s = %i %i\n"
-					"Value read = %i\n",
+					"Test was: %s = %lli %lli\n"
+					"Value read = %lli\n",
 					attribute, min_i, max_i, val_i);
 
 	} else if (!strcmp(type, "double")) {
