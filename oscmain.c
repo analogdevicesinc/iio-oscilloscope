@@ -177,11 +177,13 @@ gint main (int argc, char **argv)
 	gdk_threads_enter();
 	init_application(profile);
 	c = load_default_profile(profile, false);
-	create_default_plot();
-	if (c == 0)
-		gtk_main();
-	else
-		application_quit();
+	if (ctx) {
+		create_default_plot();
+		if (c == 0)
+			gtk_main();
+		else
+			application_quit();
+	}
 	gdk_threads_leave();
 
 	if (profile)
