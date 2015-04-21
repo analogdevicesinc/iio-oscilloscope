@@ -4471,10 +4471,10 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 			} else if (MATCH_NAME("save_png")) {
 				save_as(plot, value, SAVE_PNG);
 			} else if (MATCH_NAME("cycle")) {
-				i = 0;
-				while (gtk_events_pending() && i < atoi(value)) {
-					i++;
+				unsigned int cycles = atoi(value) / 16;
+				for (i = 0; i < cycles; i++) {
 					gtk_main_iteration();
+					g_usleep(16);
 				}
 			} else if (MATCH_NAME("save_markers")) {
 				fd = fopen(value, "a");
