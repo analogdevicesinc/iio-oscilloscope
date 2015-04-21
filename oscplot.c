@@ -4608,6 +4608,13 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 					} else {
 						ret = -1;
 						printf("*** Test failed! ***\n");
+						create_blocking_popup(GTK_MESSAGE_ERROR,
+								GTK_BUTTONS_CLOSE,
+								"Test failure",
+								"Test failed!\n\n"
+								"Test was: test.marker.%i = %f %f\n"
+								"Value read = %f\n",
+								i, min_f, max_f, priv->markers[i].y);
 					}
 					g_strfreev(min_max);
 				} else {

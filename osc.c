@@ -2070,6 +2070,13 @@ int osc_test_value(struct iio_context *ctx,
 
 		printf("(%s = %s): value = %lli\n", attribute, value, val_i);
 		ret = val_i >= min_i && val_i <= max_i;
+		if (!ret)
+			create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+					"Test failure",
+					"Test failed!\n\n"
+					"Test was: %s = %i %i\n"
+					"Value read = %i\n",
+					attribute, min_i, max_i, val_i);
 
 	} else if (!strcmp(type, "double")) {
 		gchar *end1, *end2;
@@ -2094,6 +2101,13 @@ int osc_test_value(struct iio_context *ctx,
 
 		printf("(%s = %s): value = %lf\n", attribute, value, val_d);
 		ret = val_d >= min_d && val_d <= max_d;
+		if (!ret)
+			create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+					"Test failure",
+					"Test failed!\n\n"
+					"Test was: %s = %f %f\n"
+					"Value read = %f\n",
+					attribute, min_d, max_d, val_d);
 
 	} else {
 		ret = -EINVAL;
