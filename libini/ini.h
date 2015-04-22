@@ -57,4 +57,12 @@ int ini_read_pair(struct INI *ini,
 /* Set the read head to a specified offset. */
 void ini_set_read_pointer(struct INI *ini, const char *pointer);
 
+/* Get the number of the line that contains the specified address.
+ *
+ * Returns:
+ * -EINVAL if the pointer points outside the INI string,
+ *  The line number otherwise.
+ */
+int ini_get_line_number(struct INI *ini, const char *pointer);
+
 #endif /* __INI_H */

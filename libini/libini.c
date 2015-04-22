@@ -228,3 +228,19 @@ void ini_set_read_pointer(struct INI *ini, const char *pointer)
 	else
 		ini->curr = pointer;
 }
+
+int ini_get_line_number(struct INI *ini, const char *pointer)
+{
+	int line = 1;
+	const char *it;
+
+	if ((uintptr_t) pointer < (uintptr_t) ini->buf)
+		return -EINVAL;
+	if ((uintptr_t) pointer > (uintptr_t) ini->end)
+		return -EINVAL;
+
+	for (it = ini->buf; (uintptr_t) it < (uintptr_t) pointer; it++)
+		line += (*it == '\n');
+
+	return line;
+}
