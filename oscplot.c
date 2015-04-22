@@ -4677,10 +4677,11 @@ int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *n
 				}
 
 				for (i = 0; i <= MAX_MARKERS; i++) {
-					if (priv->markers[i].active)
+					if (priv->markers[i].active) {
 						fprintf(fd, ", %f, %f", priv->markers[i].x, priv->markers[i].y);
-					if (!isnan(priv->markers[i].angle))
-						fprintf(fd, ", %f", priv->markers[i].angle);
+						if (!isnan(priv->markers[i].angle))
+							fprintf(fd, ", %f", priv->markers[i].angle);
+					}
 				}
 				fprintf(fd, "\n");
 				fclose(fd);
