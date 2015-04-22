@@ -1452,7 +1452,7 @@ void application_reload(struct iio_context *new_ctx)
 	do_quit(true);
 	ctx = new_ctx;
 	do_init(new_ctx);
-
+	load_default_profile(NULL, true);
 }
 
 void application_quit (void)
@@ -1680,7 +1680,7 @@ bool check_inifile(const char *filepath)
 int load_default_profile(char *filename, bool load_plugins)
 {
 	/* Don't load anything */
-	if (!filename || (filename && !strcmp(filename, "-")))
+	if (filename && !strcmp(filename, "-"))
 		return 0;
 
 	if (filename && check_inifile(filename)) {
@@ -1740,7 +1740,6 @@ void do_init(struct iio_context *new_ctx)
 {
 	init_device_list(new_ctx);
 	load_plugins(notebook, NULL);
-	load_default_profile(NULL, true);
 
 	int width = -1, height = -1;
 	plugins_get_preferred_size(plugin_list, &width, &height);

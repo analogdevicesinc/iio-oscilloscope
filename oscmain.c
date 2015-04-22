@@ -40,7 +40,7 @@ static void tooltips_enable_cb (GtkCheckMenuItem *item, gpointer data)
 	g_object_set(settings, "gtk-enable-tooltips", enable, NULL);
 }
 
-static void init_application (const char *ini_fn)
+static void init_application ()
 {
 	GtkBuilder *builder = NULL;
 	GtkWidget  *window;
@@ -162,21 +162,9 @@ gint main (int argc, char **argv)
 	signal(SIGHUP, sigterm);
 #endif
 
-	if (!profile) {
-		char buf[1024];
-		snprintf(buf, sizeof(buf), "%s/" DEFAULT_PROFILE_NAME,
-				getenv("HOME"));
-		if (check_inifile(buf))
-			profile = strdup(buf);
-	} else if (profile && strncmp(profile, "-", 1) != 0) {
-		char buf[1024];
-		strncpy(buf, profile, sizeof(buf));
-		profile = check_inifile(buf) ? strdup(buf) : NULL;
-	}
-
 	gdk_threads_enter();
-	init_application(profile);
-	c = load_default_profile(profile, false);
+	init_application();
+	c = load_default_profile(profile, true);
 	if (ctx) {
 		create_default_plot();
 		if (c == 0)
