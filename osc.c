@@ -1904,6 +1904,12 @@ static int handle_osc_param(const char *name, const char *value)
 		return 0;
 	}
 
+	if (!strcmp(name, "test") || !strcmp(name, "window_x_pos") ||
+			!strcmp(name, "window_y_pos")) {
+		printf("Ignoring token \'%s\' when loading sequentially\n", name);
+		return 0;
+	}
+
 	create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 			"Unhandled attribute",
 			"Unhandled attribute in main section:\n"
