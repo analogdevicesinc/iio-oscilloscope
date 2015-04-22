@@ -4782,8 +4782,8 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 					max_f = atof(min_max[1]);
 					i = atoi(elems[2]);
 
-					printf("(test.marker.%i = %f %f): %f\n",
-							i, min_f, max_f,
+					printf("Line %i: (test.marker.%i = %f %f): %f\n",
+							line, i, min_f, max_f,
 							priv->markers[i].y);
 					if (priv->markers[i].active &&
 						priv->markers[i].y >= min_f &&
@@ -4796,10 +4796,10 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 						create_blocking_popup(GTK_MESSAGE_ERROR,
 								GTK_BUTTONS_CLOSE,
 								"Test failure",
-								"Test failed!\n\n"
+								"Test failed! Line: %i\n\n"
 								"Test was: test.marker.%i = %f %f\n"
 								"Value read = %f\n",
-								i, min_f, max_f, priv->markers[i].y);
+								line, i, min_f, max_f, priv->markers[i].y);
 					}
 					g_strfreev(min_max);
 				} else {
@@ -4856,11 +4856,10 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 unhandled:
 			create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 					"Unhandled attribute",
-					"Unhandled attribute in section [%s]\n"
-					"%s = %s\n", section, name, value);
-			printf("Unhandled tokens in ini file, \n"
-				"\tSection %s\n\tAttribute : %s\n\tValue: %s\n",
-				section, name, value);
+					"Unhandled attribute in section [%s], "
+					"line %i:\n%s = %s\n", line, section, name, value);
+			fprintf(stderr, "Unhandled tokens in section [%s], line: %i: "
+					"%s = %s\n", section, line, name, value);
 			ret = -1;
 			break;
 	}

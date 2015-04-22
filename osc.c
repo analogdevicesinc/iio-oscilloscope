@@ -1911,8 +1911,10 @@ static int handle_osc_param(int line, const char *name, const char *value)
 
 	create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 			"Unhandled attribute",
-			"Unhandled attribute in main section:\n"
-			"%s = %s\n", name, value);
+			"Unhandled attribute in main section, line %i:\n"
+			"%s = %s\n", line, name, value);
+	fprintf(stderr, "Unhandled attribute in main section, line %i: "
+			"%s = %s\n", line, name, value);
 	return -1;
 }
 
@@ -2080,15 +2082,16 @@ int osc_test_value(struct iio_context *ctx, int line,
 		if (ret < 0)
 			goto cleanup;
 
-		printf("(%s = %s): value = %lli\n", attribute, value, val_i);
+		printf("Line %i: (%s = %s): value = %lli\n",
+				line, attribute, value, val_i);
 		ret = val_i >= min_i && val_i <= max_i;
 		if (!ret)
 			create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 					"Test failure",
-					"Test failed!\n\n"
+					"Test failed! Line: %i\n\n"
 					"Test was: %s = %lli %lli\n"
 					"Value read = %lli\n",
-					attribute, min_i, max_i, val_i);
+					line, attribute, min_i, max_i, val_i);
 
 	} else if (!strcmp(type, "double")) {
 		gchar *end1, *end2;
@@ -2111,15 +2114,16 @@ int osc_test_value(struct iio_context *ctx, int line,
 		if (ret < 0)
 			goto cleanup;
 
-		printf("(%s = %s): value = %lf\n", attribute, value, val_d);
+		printf("Line %i: (%s = %s): value = %lf\n",
+				line, attribute, value, val_d);
 		ret = val_d >= min_d && val_d <= max_d;
 		if (!ret)
 			create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 					"Test failure",
-					"Test failed!\n\n"
+					"Test failed! Line: %i\n\n"
 					"Test was: %s = %f %f\n"
 					"Value read = %f\n",
-					attribute, min_d, max_d, val_d);
+					line, attribute, min_d, max_d, val_d);
 
 	} else {
 		ret = -EINVAL;
