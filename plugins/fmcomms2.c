@@ -948,9 +948,9 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 	return 0;
 }
 
-static int fmcomms2_handle(const char *attrib, const char *value)
+static int fmcomms2_handle(int line, const char *attrib, const char *value)
 {
-	return osc_plugin_default_handle(ctx, attrib, value,
+	return osc_plugin_default_handle(ctx, line, attrib, value,
 			fmcomms2_handle_driver);
 }
 

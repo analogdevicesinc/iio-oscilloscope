@@ -743,7 +743,7 @@ static int mag_input_seek(const char *value)
 	return ret;
 }
 
-static int scpi_handle(const char *attrib, const char *value)
+static int scpi_handle(int line, const char *attrib, const char *value)
 {
 	current_instrument = NULL;
 

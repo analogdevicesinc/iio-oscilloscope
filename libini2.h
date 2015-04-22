@@ -16,7 +16,7 @@ char * read_token_from_ini(const char *ini_file,
 		const char *driver_name, const char *token);
 
 int foreach_in_ini(const char *ini_file,
-		int (*cb)(const char *, const char *, const char *));
+		int (*cb)(int, const char *, const char *, const char *));
 
 int ini_unroll(const char *input, const char *output);
 

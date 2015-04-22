@@ -475,9 +475,10 @@ static int dmm_handle_driver(const char *attrib, const char *value)
 	return 0;
 }
 
-static int dmm_handle(const char *attrib, const char *value)
+static int dmm_handle(int line, const char *attrib, const char *value)
 {
-	return osc_plugin_default_handle(ctx, attrib, value, dmm_handle_driver);
+	return osc_plugin_default_handle(ctx, line,
+			attrib, value, dmm_handle_driver);
 }
 
 static void update_active_page(gint active_page, gboolean is_detached)

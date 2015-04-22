@@ -4535,7 +4535,8 @@ static int count_char_in_string(char c, const char *s)
 	return i;
 }
 
-int osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *name, const char *value)
+int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
+		const char *name, const char *value)
 {
 	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *tree = GTK_TREE_VIEW(priv->channel_list_view);

@@ -577,9 +577,9 @@ static int motor_control_handle_driver(const char *attrib, const char *value)
 	return 0;
 }
 
-static int motor_control_handle(const char *attrib, const char *value)
+static int motor_control_handle(int line, const char *attrib, const char *value)
 {
-	return osc_plugin_default_handle(ctx, attrib, value,
+	return osc_plugin_default_handle(ctx, line, attrib, value,
 			motor_control_handle_driver);
 }
 

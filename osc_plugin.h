@@ -17,7 +17,7 @@ struct osc_plugin {
 
 	bool (*identify)(void);
 	GtkWidget * (*init)(GtkWidget *notebook, const char *ini_fn);
-	int (*handle_item) (const char *attrib, const char *value);
+	int (*handle_item) (int line, const char *attrib, const char *value);
 	int (*handle_external_request) (const char *request);
 	void (*update_active_page)(gint active_page, gboolean is_detached);
 	void (*get_preferred_size)(int *width, int *size);

@@ -300,9 +300,9 @@ static int pr_config_handle_driver(const char *attrib, const char *value)
 	return 0;
 }
 
-static int pr_config_handle(const char *attrib, const char *value)
+static int pr_config_handle(int line, const char *attrib, const char *value)
 {
-	return osc_plugin_default_handle(ctx, attrib, value,
+	return osc_plugin_default_handle(ctx, line, attrib, value,
 			pr_config_handle_driver);
 }
 

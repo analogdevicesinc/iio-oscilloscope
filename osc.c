@@ -1767,7 +1767,7 @@ OscPlot * osc_find_plot_by_id(int id)
  * Check for settings in sections [MultiOsc_Capture_Configuration1,2,..]
  * Handler should return zero on success, a negative number on error.
  */
-static int capture_profile_handler(const char *section,
+static int capture_profile_handler(int line, const char *section,
 		const char *name, const char *value)
 {
 	OscPlot *plot;
@@ -1789,7 +1789,7 @@ static int capture_profile_handler(const char *section,
 	}
 
 	/* Parse the line from ini file */
-	return osc_plot_ini_read_handler(plot, section, name, value);
+	return osc_plot_ini_read_handler(plot, line, section, name, value);
 }
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data)
@@ -1885,7 +1885,7 @@ void save_complete_profile(const char *filename)
 	}
 }
 
-static int handle_osc_param(const char *name, const char *value)
+static int handle_osc_param(int line, const char *name, const char *value)
 {
 	char *buf;
 
@@ -1916,13 +1916,13 @@ static int handle_osc_param(const char *name, const char *value)
 	return -1;
 }
 
-static int load_profile_sequential_handler(const char *section,
+static int load_profile_sequential_handler(int line, const char *section,
 		const char *name, const char *value)
 {
 	struct osc_plugin *plugin = get_plugin_from_name(section);
 	if (plugin) {
 		if (plugin->handle_item)
-			return plugin->handle_item(name, value);
+			return plugin->handle_item(line, name, value);
 		else {
 			fprintf(stderr, "Unknown plugin for %s\n", section);
 			return 1;
@@ -1930,10 +1930,10 @@ static int load_profile_sequential_handler(const char *section,
 	}
 
 	if (!strncmp(section, CAPTURE_INI_SECTION, sizeof(CAPTURE_INI_SECTION) - 1))
-		return capture_profile_handler(section, name, value);
+		return capture_profile_handler(line, section, name, value);
 
 	if (!strcmp(section, OSC_INI_SECTION))
-		return handle_osc_param(name, value);
+		return handle_osc_param(line, name, value);
 
 	create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 			"Unhandled INI section",
@@ -2038,7 +2038,7 @@ struct iio_context * osc_create_context(void)
 /* Test something, according to:
  * test.device.attribute.type = min max
  */
-int osc_test_value(struct iio_context *ctx,
+int osc_test_value(struct iio_context *ctx, int line,
 		const char *attribute, const char *value)
 {
 	struct iio_device *dev;
@@ -2321,7 +2321,7 @@ err_ret:
 }
 
 int osc_plugin_default_handle(struct iio_context *ctx,
-		const char *attrib, const char *value,
+		int line, const char *attrib, const char *value,
 		int (*driver_handle)(const char *, const char *))
 {
 	struct iio_device *dev;
@@ -2331,7 +2331,7 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 	int ret;
 
 	if (!strncmp(attrib, "test.", sizeof("test.") - 1)) {
-		ret = osc_test_value(ctx, attrib, value);
+		ret = osc_test_value(ctx, line, attrib, value);
 		return ret < 1 ? -1 : 0;
 	}
 

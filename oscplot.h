@@ -50,7 +50,7 @@ bool          osc_plot_running_state    (OscPlot *plot);
 void          osc_plot_draw_start       (OscPlot *plot);
 void          osc_plot_draw_stop        (OscPlot *plot);
 void          osc_plot_save_to_ini      (OscPlot *plot, char *filename);
-int           osc_plot_ini_read_handler (OscPlot *plot, const char *section, const char *name, const char *value);
+int           osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section, const char *name, const char *value);
 void          osc_plot_save_as          (OscPlot *plot, char *filename, int type);
 const char *  osc_plot_get_active_device(OscPlot *plot);
 int           osc_plot_get_fft_avg      (OscPlot *plot);

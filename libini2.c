@@ -251,7 +251,7 @@ void save_to_ini(FILE *f, const char *driver_name, struct iio_device *dev,
 }
 
 int foreach_in_ini(const char *ini_file,
-		int (*cb)(const char *, const char *, const char *))
+		int (*cb)(int, const char *, const char *, const char *))
 {
 	int ret = 0;
 	const char *name, *key, *value;
@@ -268,6 +268,7 @@ int foreach_in_ini(const char *ini_file,
 		snprintf(n, nlen + 1, "%.*s", (int) nlen, name);
 
 		while (ini_read_pair(ini, &key, &klen, &value, &vlen) > 0) {
+			int line = ini_get_line_number(ini, key);
 			char *v, *k = malloc(klen + 1);
 			if (!k) {
 				free(n);
@@ -284,7 +285,7 @@ int foreach_in_ini(const char *ini_file,
 			snprintf(k, klen + 1, "%.*s", (int) klen, key);
 			snprintf(v, vlen + 1, "%.*s", (int) vlen, value);
 
-			ret = cb(n, k, v);
+			ret = cb(line, n, k, v);
 
 			/* only needed when debugging - this should be done in each section
 			if (ret < 0) {

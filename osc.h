@@ -112,7 +112,7 @@ void application_reload(struct iio_context *ctx);
 struct iio_context * osc_create_context(void);
 
 int osc_test_value(struct iio_context *ctx,
-		const char *attribute, const char *value);
+		int line, const char *attribute, const char *value);
 int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
 		struct iio_device **dev, struct iio_channel **chn,
 		const char **attr, bool *debug);
@@ -121,7 +121,7 @@ int osc_read_value(struct iio_context *ctx,
 int osc_log_value(struct iio_context *ctx,
 		const char *attribute, const char *value);
 int osc_plugin_default_handle(struct iio_context *ctx,
-		const char *attrib, const char *value,
+		int line, const char *attrib, const char *value,
 		int (*driver_handle)(const char *, const char *));
 
 /* Private functions */

@@ -1045,7 +1045,8 @@ static const char *dds_scale_get_string_value(GtkWidget *scale)
 	return NULL;
 }
 
-static int parse_cal_handler(const char* section, const char* name, const char* value)
+static int parse_cal_handler(int line, const char* section,
+		const char* name, const char* value)
 {
 
 	if (MATCH_SECT("SYS_SETTINGS")) {
@@ -1626,9 +1627,9 @@ static int fmcomms1_handle_driver(const char *attrib, const char *value)
 	return 0;
 }
 
-static int fmcomms1_handle(const char *attrib, const char *value)
+static int fmcomms1_handle(int line, const char *attrib, const char *value)
 {
-	return osc_plugin_default_handle(ctx, attrib, value,
+	return osc_plugin_default_handle(ctx, line, attrib, value,
 			fmcomms1_handle_driver);
 }
 
