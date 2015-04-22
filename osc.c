@@ -1686,7 +1686,7 @@ int load_default_profile(char *filename, bool load_plugins)
 		return 0;
 
 	if (filename && check_inifile(filename)) {
-		load_profile(filename, false);
+		load_profile(filename, load_plugins);
 	} else {
 		char buf[1024];
 		sprintf(buf, "%s/" DEFAULT_PROFILE_NAME, getenv("HOME"));
