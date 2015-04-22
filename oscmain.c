@@ -13,6 +13,7 @@ extern GtkWidget *infobar;
 extern GtkWidget *tooltips_en;
 extern GtkWidget *main_window;
 extern struct iio_context *ctx;
+extern bool ctx_destroyed_by_do_quit;
 
 static void infobar_hide_cb(GtkButton *btn, gpointer user_data)
 {
@@ -165,7 +166,7 @@ gint main (int argc, char **argv)
 	gdk_threads_enter();
 	init_application();
 	c = load_default_profile(profile, true);
-	if (ctx) {
+	if (!ctx_destroyed_by_do_quit) {
 		create_default_plot();
 		if (c == 0)
 			gtk_main();

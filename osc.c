@@ -51,6 +51,7 @@ GtkWidget *main_window;
 
 struct iio_context *ctx;
 unsigned int num_devices = 0;
+bool ctx_destroyed_by_do_quit;
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
 static void plugin_restore_ini_state(const char *plugin_name,
@@ -1437,6 +1438,7 @@ static void do_quit(bool reload)
 	if (ctx) {
 		iio_context_destroy(ctx);
 		ctx = NULL;
+		ctx_destroyed_by_do_quit = true;
 	}
 
 	math_expression_objects_clean();
