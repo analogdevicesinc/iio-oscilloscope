@@ -368,7 +368,7 @@ int ini_unroll(const char *input, const char *output)
 		fgetpos(in, &pos);
 		tmplen = strlen(tmp);
 
-		for(i = first; i <= last; i = i + inc) {
+		for(i = first; inc > 0 ? i <= last : i >= last; i = i + inc) {
 			fsetpos(in, &pos);
 
 			while(fgets(buf, sizeof(buf), in) != NULL) {
