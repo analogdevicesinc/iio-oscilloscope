@@ -4857,7 +4857,7 @@ unhandled:
 			create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 					"Unhandled attribute",
 					"Unhandled attribute in section [%s], "
-					"line %i:\n%s = %s\n", line, section, name, value);
+					"line %i:\n%s = %s\n",section, line, name, value);
 			fprintf(stderr, "Unhandled tokens in section [%s], line: %i: "
 					"%s = %s\n", section, line, name, value);
 			ret = -1;
