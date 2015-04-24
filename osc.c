@@ -2375,7 +2375,12 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 		ret = iio_device_debug_attr_write(dev, attr, value);
 	else
 		ret = iio_device_attr_write(dev, attr, value);
-	if (ret < 0)
-		fprintf(stderr, "Unable to write value: %s\n", value);
+
+	if (ret < 0) {
+		fprintf(stderr, "Unable to write '%s' to %s:%s\n", value,
+				chn ? iio_channel_get_name(chn) : iio_device_get_name(dev),
+				attr);
+	}
+
 	return ret < 0 ? ret : 0;
 }
