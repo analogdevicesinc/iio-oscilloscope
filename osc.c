@@ -1392,6 +1392,13 @@ static gboolean idle_timeout_check(gpointer ptr)
 	}
 }
 
+static gchar * get_default_profile_name(void)
+{
+	return g_build_filename(
+			getenv("HOME") ?: getenv("LOCALAPPDATA"),
+			DEFAULT_PROFILE_NAME, NULL);
+}
+
 static void do_quit(bool reload)
 {
 	unsigned int i, nb = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
@@ -1399,9 +1406,9 @@ static void do_quit(bool reload)
 
 	/* Before we shut down, let's save the profile */
 	if (!reload) {
-		const char *home_dir = getenv("HOME");
-		sprintf(buf, "%s/%s", home_dir, DEFAULT_PROFILE_NAME);
-		capture_profile_save(buf);
+		gchar *path = get_default_profile_name();
+		capture_profile_save(path);
+		g_free(path);
 	}
 
 	stop_capture = TRUE;
@@ -1688,13 +1695,14 @@ int load_default_profile(char *filename, bool load_plugins)
 	if (filename && check_inifile(filename)) {
 		load_profile(filename, load_plugins);
 	} else {
-		char buf[1024];
-		sprintf(buf, "%s/" DEFAULT_PROFILE_NAME, getenv("HOME"));
+		gchar *path = get_default_profile_name();
 
 		/* if this is bad, we don't load anything and
 		 * return success, so we still run */
-		if (check_inifile(buf))
-			load_profile(buf, load_plugins);
+		if (check_inifile(path))
+			load_profile(path, load_plugins);
+
+		g_free(path);
 	}
 
 	return 0;
