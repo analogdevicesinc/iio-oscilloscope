@@ -101,7 +101,7 @@ static bool skip_comments(struct INI *ini)
 	const char *end = ini->end;
 
 	while (curr != end) {
-		if (*curr == '\n')
+		if (*curr == '\r' || *curr == '\n')
 			curr++;
 		else if (*curr == '#')
 			do { curr++; } while (curr != end && *curr != '\n');
@@ -211,7 +211,7 @@ int ini_read_pair(struct INI *ini,
 	}
 
 	*value = _value;
-	*value_len = curr - _value;
+	*value_len = curr - _value - (*(curr - 1) == '\r');
 	*key = _key;
 	*key_len = _key_len;
 
