@@ -75,7 +75,7 @@ struct INI *ini_open(const char *file)
 
 	rewind(f);
 
-	if (fread(buf, 1, len, f) < len) {
+	if (fread(buf, len, 1, f) < 0) {
 		free(buf);
 		perror("Unable to read file");
 		goto error_fclose;
