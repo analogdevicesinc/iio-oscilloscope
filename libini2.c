@@ -316,9 +316,11 @@ err_ini_close:
 	return ret;
 }
 
-int ini_unroll(const char *input, const char *output)
+/*
+ * Expand a <SEQ>..</SEQ> entity and any other SEQ entities inside the first one
+ */
+static int seq_expand_full(FILE *in, FILE *out, char *buf_with_seq, bool *seq_end)
 {
-	FILE *in, *out;
 	char *replace, *eol;
 	char buf[1024];
 	char var[128], tmp[128];
@@ -327,6 +329,68 @@ int ini_unroll(const char *input, const char *output)
 	bool in_seq = false;
 	int ret = 0;
 	long long i, first, inc, last;
+
+	in_seq = true;
+
+	/* # seq [OPTION]... FIRST INCREMENT LAST */
+	ret = sscanf(buf_with_seq, "<SEQ> %s %lli %lli %lli",
+			var, &first, &inc, &last);
+	if (ret != 4) {
+		ret = -EINVAL;
+		fprintf(stderr, "Unrecognized SEQ line\n");
+		goto err_close;
+	}
+
+	snprintf(tmp, sizeof(tmp), "<%s>", var);
+	fgetpos(in, &pos);
+	tmplen = strlen(tmp);
+
+	for (i = first; inc > 0 ? i <= last : i >= last; i = i + inc) {
+		fsetpos(in, &pos);
+
+		while (fgets(buf, sizeof(buf), in) != NULL) {
+			if (!strncmp(buf, "<SEQ>", sizeof("<SEQ>") - 1)) {
+				ret = seq_expand_full(in, out, buf, seq_end);
+				if (ret < 0) {
+					goto err_close;
+				}
+			} else {
+
+				if (!strncmp(buf, "</SEQ>", 6)) {
+					in_seq = false;
+					break;
+				}
+
+				replace = strstr(buf, tmp);
+				if (!replace) {
+					fprintf(out, "%s", buf);
+					continue;
+				}
+
+				eol = strchr(buf, '\0');
+				fprintf(out, "%.*s%lli%.*s",
+					(int) (long) (replace - buf), buf, i,
+					(int) (eol - replace - tmplen),
+					(char *)((uintptr_t) replace + tmplen));
+			}
+		}
+	}
+
+	if (in_seq) {
+		*seq_end = false;
+		ret = -EINVAL;
+	}
+
+err_close:
+	return ret;
+}
+
+int ini_unroll(const char *input, const char *output)
+{
+	FILE *in, *out;
+	char buf[1024];
+	int ret = 0;
+	bool seq_has_end;
 
 	in = fopen(input, "r");
 	out = fopen (output, "w");
@@ -354,58 +418,15 @@ int ini_unroll(const char *input, const char *output)
 			continue;
 		}
 
-		in_seq = true;
-
-		/* # seq [OPTION]... FIRST INCREMENT LAST */
-		ret = sscanf(buf, "<SEQ> %s %lli %lli %lli",
-				var, &first, &inc, &last);
-		if (ret != 4) {
-			ret = -EINVAL;
-			fprintf(stderr, "Unrecognized SEQ line\n");
-			goto err_close;
-		}
-
-		snprintf(tmp, sizeof(tmp), "<%s>", var);
-		fgetpos(in, &pos);
-		tmplen = strlen(tmp);
-
-		for(i = first; inc > 0 ? i <= last : i >= last; i = i + inc) {
-			fsetpos(in, &pos);
-
-			while(fgets(buf, sizeof(buf), in) != NULL) {
-				if (!strncmp(buf, "<SEQ>", sizeof("<SEQ>") - 1)) {
-					fprintf(stderr, "%s  : %s\n", __func__, buf);
-					fprintf(stderr, "Sorry, we don't support nested SEQ lines yet\n");
-					ret = -EINVAL;
-					goto err_close;
-				}
-
-				if (!strncmp(buf, "</SEQ>", 6)) {
-					in_seq = false;
-					break;
-				}
-
-				replace = strstr(buf, tmp);
-				if (!replace) {
-					fprintf(out, "%s", buf);
-					continue;
-				}
-
-				eol = strchr(buf, '\0');
-				fprintf(out, "%.*s%lli%.*s",
-					(int) (long) (replace - buf), buf, i,
-					(int) (eol - replace - tmplen),
-					(char *)((uintptr_t) replace + tmplen));
-			}
+		ret = seq_expand_full(in, out, buf, &seq_has_end);
+		if (ret < 0) {
+			if (!seq_has_end)
+				printf("loop isn't closed in %s\n", input);
+			break;
 		}
 	}
 
-	if (in_seq) {
-		printf("loop isn't closed in %s\n", input);
-		ret = -EINVAL;
-	}
-
-err_close:
+	err_close:
 	fclose(in);
 	fclose(out);
 	return ret;
