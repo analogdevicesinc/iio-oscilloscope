@@ -129,6 +129,11 @@ void update_from_ini(const char *ini_file,
 		.ini = ini,
 	};
 
+	if (!ini) {
+		fprintf(stderr, "ERROR: Cannot open INI file %s\n", ini_file);
+		return;
+	}
+
 	while (!found && ini_next_section(ini, &name, &nlen) > 0)
 		found = !strncmp(name, driver_name, nlen);
 	if (!found) {
