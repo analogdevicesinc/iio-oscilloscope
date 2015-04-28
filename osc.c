@@ -1970,6 +1970,11 @@ static void load_profile_sequential(const char *filename)
 	if (ret < 0)
 		goto err_unlink;
 
+	if (!ctx)
+		connect_dialog(false);
+	if (!ctx)
+		goto err_unlink;
+
 	printf("Loading profile sequentially from %s\n", new_filename);
 	ret = foreach_in_ini(new_filename, load_profile_sequential_handler);
 	if (ret < 0)
