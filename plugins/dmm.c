@@ -136,11 +136,20 @@ static void build_channel_list(void)
 				const char *name, *id, *devid;
 				char buf[1024], *scale;
 
+				/* Must be input */
 				if (iio_channel_is_output(chn))
 					continue;
 
-				if (iio_channel_attr_read(chn, "scale",
-							buf, sizeof(buf)) < 0)
+				/* find the name */
+				devid = iio_device_get_id(dev);
+				name = iio_channel_get_name(chn);
+				id = iio_channel_get_id(chn);
+				if (!name)
+					name = id;
+
+				/* Must have 'scale', or be a temperature, which doesn't need scale */
+				if (!strstr(name, "temp") &&
+						iio_channel_attr_read(chn, "scale", buf, sizeof(buf)) < 0)
 					continue;
 
 				if (iter3_valid) {
@@ -158,12 +167,6 @@ static void build_channel_list(void)
 
 				scale = strdup(buf);
 
-				devid = iio_device_get_id(dev);
-				name = iio_channel_get_name(chn);
-				id = iio_channel_get_id(chn);
-				if (!name)
-					name = id;
-				
 				snprintf(dev_ch, sizeof(dev_ch), "%s:%s", 
 					device, name);
 				
@@ -316,8 +319,12 @@ static gboolean dmm_update(void)
 					value = read_double_attr(chn, "raw");
 				else if (iio_channel_find_attr(chn, "processed"))
 					value = read_double_attr(chn, "processed");
-				else
-					continue;
+				else if (iio_channel_find_attr(chn, "input"))
+					value = read_double_attr(chn, "input");
+				else {
+					sprintf(tmp, "skipping %s", name);
+					goto dmm_update_next;
+				}
 
 				if (iio_channel_find_attr(chn, "offset"))
 					value += read_double_attr(chn,
@@ -330,12 +337,13 @@ static gboolean dmm_update(void)
 				if (!strncmp(channel, "voltage", 7))
 					sprintf(tmp, "%s = %f Volts\n", name, value);
 				else if (!strncmp(channel, "temp", 4))
-					sprintf(tmp, "%s = %f Celsius\n", name, value);
+					sprintf(tmp, "%s = %3.2f °C\n", name, value);
 				else
 					sprintf(tmp, "%s = %f\n", name, value);
 
 				gtk_text_buffer_insert(buf, &text_iter, tmp, -1);
 			}
+dmm_update_next:
 			loop = gtk_tree_model_iter_next(GTK_TREE_MODEL(channel_list_store), &tree_iter);
 		}
 
