@@ -1956,25 +1956,29 @@ static int load_profile_sequential_handler(int line, const char *section,
 
 static void load_profile_sequential(const char *filename)
 {
-	char buf[L_tmpnam];
+	gchar *new_filename;
+	char buf[32];
 	int ret;
 
-	snprintf(buf, sizeof(buf), "%s/osc_%u.ini", P_tmpdir, getpid());
-	unlink(buf);
+	snprintf(buf, sizeof(buf), "osc_%u.ini", getpid());
 
-	ret = ini_unroll(filename, buf);
+	new_filename = g_build_filename(getenv("TEMP") ?: P_tmpdir, buf, NULL);
+	unlink(new_filename);
+
+	ret = ini_unroll(filename, new_filename);
 	if (ret < 0)
 		goto err_unlink;
 
-	printf("Loading profile sequentially from %s\n", buf);
-	ret = foreach_in_ini(buf, load_profile_sequential_handler);
+	printf("Loading profile sequentially from %s\n", new_filename);
+	ret = foreach_in_ini(new_filename, load_profile_sequential_handler);
 	if (ret < 0)
 		fprintf(stderr, "Sequential loading of profile aborted.\n");
 	else
 		fprintf(stderr, "Sequential loading completed.\n");
 
 err_unlink:
-	unlink(buf);
+	unlink(new_filename);
+	g_free(new_filename);
 }
 
 static void load_profile(const char *filename, bool load_plugins)
