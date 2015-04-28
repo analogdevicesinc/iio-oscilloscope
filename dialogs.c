@@ -434,7 +434,7 @@ void connect_fillin(Dialogs *data)
 	return;
 }
 
-G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
+static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 {
 	/* Connect Dialog */
 	gint ret;
@@ -464,7 +464,7 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 			break;
 		case GTK_RESPONSE_OK:
 			widget_set_cursor(data->connect, GDK_WATCH);
-			application_reload(get_context(data));
+			application_reload(get_context(data), load_profile);
 			widget_use_parent_cursor(data->connect);
 			break;
 		default:
@@ -475,9 +475,20 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 
 	return ret;
 }
+
+G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
+{
+	return fru_connect_dialog(data, true);
+}
+
 gint fru_connect(void)
 {
 	return cb_connect(NULL, &dialogs);
+}
+
+gint connect_dialog(bool load_profile)
+{
+	return fru_connect_dialog(&dialogs, load_profile);
 }
 
 G_MODULE_EXPORT void cb_show_about(GtkButton *button, Dialogs *data)

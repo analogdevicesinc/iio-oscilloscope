@@ -24,7 +24,7 @@ static void infobar_reconnect_cb(GtkMenuItem *btn, gpointer user_data)
 {
 	struct iio_context *new_ctx = iio_context_clone(ctx);
 	if (new_ctx) {
-		application_reload(new_ctx);
+		application_reload(new_ctx, true);
 		gtk_widget_set_visible(infobar, false);
 	}
 }

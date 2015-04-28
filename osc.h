@@ -106,8 +106,9 @@ GtkWidget * create_nonblocking_popup(GtkMessageType type,
 gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 			const char *title, const char *str, ...);
 gint fru_connect(void);
+gint connect_dialog(bool load_profile);
 
-void application_reload(struct iio_context *ctx);
+void application_reload(struct iio_context *ctx, bool load_profile);
 
 struct iio_context * osc_create_context(void);
 

@@ -1451,7 +1451,7 @@ static void do_quit(bool reload)
 	math_expression_objects_clean();
 }
 
-void application_reload(struct iio_context *new_ctx)
+void application_reload(struct iio_context *new_ctx, bool load_profile)
 {
 	if (!new_ctx) {
 		fprintf(stderr, "Invalid new context!\n");
@@ -1461,7 +1461,8 @@ void application_reload(struct iio_context *new_ctx)
 	do_quit(true);
 	ctx = new_ctx;
 	do_init(new_ctx);
-	load_default_profile(NULL, true);
+	if (load_profile)
+		load_default_profile(NULL, true);
 }
 
 void application_quit (void)
