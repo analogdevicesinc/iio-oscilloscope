@@ -1898,19 +1898,11 @@ void save_complete_profile(const char *filename)
 
 static int handle_osc_param(int line, const char *name, const char *value)
 {
-	char *buf;
+	gchar **elems;
 
 	if (!strcmp(name, "tooltips_enable")) {
 		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tooltips_en),
 				!!atoi(value));
-		return 0;
-	}
-
-	if (sscanf(name, "plugin.%m[^.].detached", &buf) == 1) {
-		printf("Restoring detached state for plugin %s (%i)\n",
-				buf, !!atoi(value));
-		plugin_restore_ini_state(buf, "detached", !!atoi(value));
-		free(buf);
 		return 0;
 	}
 
@@ -1919,6 +1911,15 @@ static int handle_osc_param(int line, const char *name, const char *value)
 		printf("Ignoring token \'%s\' when loading sequentially\n", name);
 		return 0;
 	}
+
+	elems = g_strsplit(name, ".", 3);
+	if (elems && !strcmp(elems[0], "plugin")) {
+		plugin_restore_ini_state(elems[1], elems[2], !!atoi(value));
+		g_strfreev(elems);
+		return 0;
+	}
+
+	g_strfreev(elems);
 
 	create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
 			"Unhandled attribute",
@@ -2065,30 +2066,34 @@ int osc_test_value(struct iio_context *ctx, int line,
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
-	char *dev_name = NULL, *attr_name = NULL, *type = NULL;
 	const char *attr;
 	long long min_i, max_i, val_i;
 	double min_d, max_d, val_d;
-	int ret;
+	unsigned int i;
+	int ret = -EINVAL;
 
-	ret = sscanf(attribute, "test.%m[^.].%m[^.].%m[^.]",
-			&dev_name, &attr_name, &type);
-	if (ret != 3) {
-		ret = -EINVAL;
+	gchar **elems = g_strsplit(attribute, ".", 4);
+	if (!elems)
+		goto err_popup;
+
+	if (!elems[0] || strcmp(elems[0], "test"))
 		goto cleanup;
-	}
 
-	dev = iio_context_find_device(ctx, dev_name);
+	for (i = 1; i < 4; i++)
+		if (!elems[i])
+			goto cleanup;
+
+	dev = iio_context_find_device(ctx, elems[1]);
 	if (!dev) {
 		ret = -ENODEV;
 		goto cleanup;
 	}
 
-	ret = iio_device_identify_filename(dev, attr_name, &chn, &attr);
+	ret = iio_device_identify_filename(dev, elems[2], &chn, &attr);
 	if (ret < 0)
 		goto cleanup;
 
-	if (!strcmp(type, "int")) {
+	if (!strcmp(elems[3], "int")) {
 		ret = sscanf(value, "%lli %lli", &min_i, &max_i);
 		if (ret != 2) {
 			ret = -EINVAL;
@@ -2113,7 +2118,7 @@ int osc_test_value(struct iio_context *ctx, int line,
 					"Value read = %lli\n",
 					line, attribute, min_i, max_i, val_i);
 
-	} else if (!strcmp(type, "double")) {
+	} else if (!strcmp(elems[3], "double")) {
 		gchar *end1, *end2;
 		min_d = g_ascii_strtod(value, &end1);
 		if (end1 == value) {
@@ -2158,13 +2163,18 @@ int osc_test_value(struct iio_context *ctx, int line,
 	else
 		fprintf(stderr, "Test passed.\n");
 
+	g_strfreev(elems);
+	return ret;
+
 cleanup:
-	if (dev_name)
-		free(dev_name);
-	if (attr_name)
-		free(attr_name);
-	if (type)
-		free(type);
+	g_strfreev(elems);
+err_popup:
+	create_blocking_popup(GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+			"INI parsing failure",
+			"Unable to parse line: %i\n\n%s = %lli %lli\n",
+			line, attribute, min_i, max_i);
+	fprintf(stderr, "Unable to parse line: %i: %s = %lli %lli\n",
+			line, attribute, min_i, max_i);
 	return ret;
 }
 
@@ -2173,20 +2183,25 @@ int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
 		const char **attr, bool *debug)
 {
 	struct iio_device *device;
-	char *dev_name = NULL, *filename = NULL;
-	int ret;
+	unsigned int i;
+	bool is_debug;
+	int ret = -EINVAL;
+	gchar *dev_name, *filename, **elems = g_strsplit(attrib, ".", 3);
+	if (!elems)
+		return -EINVAL;
 
-	if (!strncmp(attrib, "debug.", sizeof("debug.") - 1)) {
-		*debug = true;
-		attrib += sizeof("debug.") - 1;
+	is_debug = !strcmp(elems[0], "debug");
+
+	for (i = 0; i < 2 + is_debug; i++)
+		if (!elems[i])
+			goto cleanup;
+
+	if (is_debug) {
+		dev_name = elems[1];
+		filename = elems[2];
 	} else {
-		*debug = false;
-	}
-
-	ret = sscanf(attrib, "%m[^.].%m[^.]", &dev_name, &filename);
-	if (ret != 2) {
-		ret = -EINVAL;
-		goto cleanup;
+		dev_name = elems[0];
+		filename = elems[1];
 	}
 
 	device = iio_context_find_device(ctx, dev_name);
@@ -2196,14 +2211,13 @@ int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
 	}
 
 	ret = iio_device_identify_filename(device, filename, chn, attr);
-	if (!ret)
+	if (!ret) {
+		*debug = is_debug;
 		*dev = device;
+	}
 
 cleanup:
-	if (dev_name)
-		free(dev_name);
-	if (filename)
-		free(filename);
+	g_strfreev(elems);
 	return ret;
 }
 
@@ -2232,50 +2246,46 @@ static int osc_read_enclosed_value(struct iio_context *ctx,
 {
 	const char *plus = strstr(value, " + "),
 	      *minus = strstr(value, " - ");
-	char *sub, *left = NULL, *right = NULL;
+	size_t len = strlen(value);
+	gchar *ptr, *val;
 	long long val_left, val_right;
 	int ret;
 
-	if (!plus && !minus) {
-		ret = sscanf(value, "{%m[^{}]}", &sub);
-		if (ret != 1)
-			return -EINVAL;
+	if (value[0] != '{' || value[len - 1] != '}')
+		return -EINVAL;
 
-		ret = osc_read_nonenclosed_value(ctx, sub, out);
-		free(sub);
+	if (!plus && !minus) {
+		ptr = g_strndup(value + 1, len - 2);
+		ret = osc_read_nonenclosed_value(ctx, ptr, out);
+		g_free(ptr);
 		return ret;
 	}
 
-	if (plus)
-		ret = sscanf(value, "{{%m[^{^}]} + {%m[^{^}]}}",
-				&left, &right);
-	else
-		ret = sscanf(value, "{{%m[^{}]} - {%m[^{}]}}",
-				&left, &right);
-	if (ret != 2) {
-		ret = -EINVAL;
-		goto err_free;
-	}
+	ptr = strchr(value + 1, '}');
+	if (!ptr)
+		return -EINVAL;
 
-	ret = osc_read_nonenclosed_value(ctx, left, &val_left);
+	val = g_strndup(value + 2, ptr - value - 2);
+	ret = osc_read_nonenclosed_value(ctx, val, &val_left);
+	g_free(val);
 	if (ret < 0)
-		goto err_free;
+		return ret;
 
-	ret = osc_read_nonenclosed_value(ctx, right, &val_right);
+	ptr = strchr(value + 2, '{');
+	if (!ptr)
+		return -EINVAL;
+
+	val = g_strndup(ptr + 1, value + len - ptr - 3);
+	ret = osc_read_nonenclosed_value(ctx, val, &val_right);
+	g_free(val);
 	if (ret < 0)
-		goto err_free;
+		return ret;
 
 	if (plus)
 		*out = val_left + val_right;
 	else
 		*out = val_left - val_right;
-
-err_free:
-	if (left)
-		free(left);
-	if (right)
-		free(right);
-	return ret;
+	return 0;
 }
 
 int osc_read_value(struct iio_context *ctx,
