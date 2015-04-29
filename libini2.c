@@ -6,6 +6,7 @@
 #include <iio.h>
 #include <stdio.h>
 #include <string.h>
+#include <glib.h>
 
 struct load_store_params {
 	const struct iio_device *dev;
@@ -321,72 +322,168 @@ err_ini_close:
 	return ret;
 }
 
+enum ini_loop_types {
+	INI_LOOP_SEQ,
+};
+
+struct ini_loop {
+	int type;
+	char var[128];
+	char end_loop[128];
+	long long i;
+};
+
+struct loops_parse_params {
+	FILE *in_file;
+	FILE *out_file;
+	GSList *ini_loops;
+	bool unclosed_loops;
+};
+
+static void loops_params_init(struct loops_parse_params *p, FILE *i, FILE *o)
+{
+	if (p) {
+		p->in_file = i;
+		p->out_file = o;
+		p->ini_loops = NULL;
+		p->unclosed_loops = false;
+	} else {
+		printf("Structure to init in %s is invalid\n", __func__);
+	}
+}
+
 /*
- * Expand a <SEQ>..</SEQ> entity and any other SEQ entities inside the first one
+ * Check if a char array starts with a keyword and extracts the keyword.
+ * A keyword is any char array between '<' and '>' characters and is found at
+ * the beginning of the array and does not start with '/' character.
  */
-static int seq_expand_full(FILE *in, FILE *out, char *buf_with_seq, bool *seq_end)
+static bool ini_line_begins_with_keyword(char *line, char *extracted_keyword)
+{
+	char *keyword_start = strstr(line, "<");
+	char *keyword_end = strstr(line, ">");
+	bool ret = false;
+
+	if (keyword_start && (keyword_start - line == 0) && keyword_end &&
+						*(++keyword_start) != '/') {
+		strncpy(extracted_keyword, keyword_start,
+				keyword_end - keyword_start);
+		extracted_keyword[keyword_end - keyword_start] = 0;
+		ret = true;
+	}
+
+	return ret;
+}
+
+/*
+ * Expand a <loop>..</loop> structure and any other inner loop structures.
+ */
+static int loop_expand(struct loops_parse_params *parse_params,
+		char *buf_with_loop, char *loop_name)
 {
 	char *replace, *eol;
 	char buf[1024];
-	char var[128], tmp[128];
+	char inner_loop[128];
+	char var[128];
 	size_t tmplen;
 	fpos_t pos;
-	bool in_seq = false;
 	int ret = 0;
 	long long i, first, inc, last;
+	int loop_type;
+	struct ini_loop *iniloop = NULL;
+	bool unclosed_loop = true;
 
-	in_seq = true;
+	/* Check loop type. Base on that gather up all of it's parameters */
+	if (!strncmp(loop_name, "SEQ", sizeof("SEQ") - 1)) {
+		loop_type = INI_LOOP_SEQ;
 
-	/* # seq [OPTION]... FIRST INCREMENT LAST */
-	ret = sscanf(buf_with_seq, "<SEQ> %s %lli %lli %lli",
-			var, &first, &inc, &last);
-	if (ret != 4) {
+		/* # seq [OPTION]... FIRST INCREMENT LAST */
+		ret = sscanf(buf_with_loop, "<SEQ> %s %lli %lli %lli",
+				var, &first, &inc, &last);
+		if (ret != 4) {
+			ret = -EINVAL;
+			fprintf(stderr, "Unrecognized SEQ line\n");
+			goto err_close;
+		}
+	} else {
 		ret = -EINVAL;
-		fprintf(stderr, "Unrecognized SEQ line\n");
+		fprintf(stderr, "Unrecognized %s loop keyword\n", loop_name);
 		goto err_close;
 	}
 
-	snprintf(tmp, sizeof(tmp), "<%s>", var);
-	fgetpos(in, &pos);
-	tmplen = strlen(tmp);
+	/* Store all necessary parameters of a loop */
+	iniloop = calloc(sizeof(struct ini_loop), 1);
+	if (!iniloop) {
+		fprintf(stderr, "%s is %s", strerror(errno), __func__);
+		goto err_close;
+	}
+	iniloop->type = loop_type;
+	snprintf(iniloop->var, sizeof(iniloop->var), "<%s>", var);
+	snprintf(iniloop->end_loop, sizeof(iniloop->end_loop), "</%s>",
+			loop_name);
 
+	parse_params->ini_loops = g_slist_prepend(parse_params->ini_loops,
+					iniloop);
+
+	fgetpos(parse_params->in_file, &pos);
 	for (i = first; inc > 0 ? i <= last : i >= last; i = i + inc) {
-		fsetpos(in, &pos);
+		fsetpos(parse_params->in_file, &pos);
+		iniloop->i = i;
 
-		while (fgets(buf, sizeof(buf), in) != NULL) {
-			if (!strncmp(buf, "<SEQ>", sizeof("<SEQ>") - 1)) {
-				ret = seq_expand_full(in, out, buf, seq_end);
+		while (fgets(buf, sizeof(buf), parse_params->in_file) != NULL) {
+			if (ini_line_begins_with_keyword(buf, inner_loop)) {
+				ret = loop_expand(parse_params, buf,
+					inner_loop);
 				if (ret < 0) {
 					goto err_close;
 				}
 			} else {
-
-				if (!strncmp(buf, "</SEQ>", 6)) {
-					in_seq = false;
+				if (!strncmp(buf, iniloop->end_loop,
+						strlen(iniloop->end_loop))) {
+					unclosed_loop = false;
 					break;
 				}
 
-				replace = strstr(buf, tmp);
+				GSList *list, *node;
+				struct ini_loop *loop;
+
+				list = parse_params->ini_loops;
+				replace = NULL;
+				for (node = list; node;
+						node = g_slist_next(node)) {
+					loop = (struct ini_loop *)node->data;
+					replace = strstr(buf, loop->var);
+					if (replace)
+						break;
+				}
 				if (!replace) {
-					fprintf(out, "%s", buf);
+					fprintf(parse_params->out_file, "%s",
+						buf);
 					continue;
 				}
 
+				tmplen = strlen(iniloop->var);
 				eol = strchr(buf, '\0');
-				fprintf(out, "%.*s%lli%.*s",
-					(int) (long) (replace - buf), buf, i,
-					(int) (eol - replace - tmplen),
+				fprintf(parse_params->out_file, "%.*s%lli%.*s",
+					(int) (long) (replace - buf), buf,
+					loop->i, (int) (eol - replace - tmplen),
 					(char *)((uintptr_t) replace + tmplen));
 			}
 		}
 	}
 
-	if (in_seq) {
-		*seq_end = false;
+err_close:
+
+	if (iniloop) {
+		parse_params->ini_loops = g_slist_remove(
+					parse_params->ini_loops, iniloop);
+		free(iniloop);
+	}
+
+	if (unclosed_loop) {
+		parse_params->unclosed_loops = true;
 		ret = -EINVAL;
 	}
 
-err_close:
 	return ret;
 }
 
@@ -394,8 +491,9 @@ int ini_unroll(const char *input, const char *output)
 {
 	FILE *in, *out;
 	char buf[1024];
+	char loop_name[128];
 	int ret = 0;
-	bool seq_has_end;
+	struct loops_parse_params loops_params;
 
 	in = fopen(input, "r");
 	out = fopen (output, "w");
@@ -414,18 +512,19 @@ int ini_unroll(const char *input, const char *output)
 		goto err_close;
 	}
 
-	while(fgets(buf, sizeof(buf), in) != NULL) {
+	loops_params_init(&loops_params, in, out);
+	while (fgets(buf, sizeof(buf), in) != NULL) {
 		if (!buf[0])
 			continue;
 
-		if (strncmp(buf, "<SEQ>", sizeof("<SEQ>") - 1)) {
+		if (!ini_line_begins_with_keyword(buf, loop_name)) {
 			fprintf(out, "%s", buf);
 			continue;
 		}
 
-		ret = seq_expand_full(in, out, buf, &seq_has_end);
+		ret = loop_expand(&loops_params, buf, loop_name);
 		if (ret < 0) {
-			if (!seq_has_end)
+			if (loops_params.unclosed_loops)
 				printf("loop isn't closed in %s\n", input);
 			break;
 		}
