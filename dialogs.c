@@ -38,6 +38,7 @@ struct _Dialogs
 	GtkWidget *load_save_profile;
 	GtkWidget *connect_net;
 	GtkWidget *net_ip;
+	GtkWidget *ok_btn;
 };
 
 static Dialogs dialogs;
@@ -311,7 +312,7 @@ static struct iio_context * get_context(Dialogs *data)
 	}
 }
 
-void connect_fillin(Dialogs *data)
+static bool connect_fillin(Dialogs *data)
 {
 	char eprom_names[128];
 	unsigned char *raw_input_data = NULL;
@@ -336,7 +337,7 @@ void connect_fillin(Dialogs *data)
 
 	if(fp == NULL) {
 		fprintf(stderr, "can't execute find\n");
-		return;
+		return false;
 	}
 
 	buf = gtk_text_buffer_new(NULL);
@@ -431,7 +432,7 @@ void connect_fillin(Dialogs *data)
 
 	if (ctx)
 		iio_context_destroy(ctx);
-	return;
+	return !!ctx;
 }
 
 static gint fru_connect_dialog(Dialogs *data, bool load_profile)
@@ -440,6 +441,7 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 	gint ret;
 	struct iio_context *ctx;
 	const char *name = NULL;
+	bool has_context = false;
 
 	/* Preload the device list and FRU info only if we can use the local
 	 * backend */
@@ -447,33 +449,37 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 	if (ctx)
 		name = iio_context_get_name(ctx);
 	if (name && !strcmp(name, "local"))
-		connect_fillin(data);
+		has_context = connect_fillin(data);
 
-	do {
+	while (true) {
+		gtk_widget_set_sensitive(data->ok_btn, has_context);
+
 		ret = gtk_dialog_run(GTK_DIALOG(data->connect));
-		if (ret == GTK_RESPONSE_APPLY) {
+		switch (ret) {
+		case GTK_RESPONSE_APPLY:
 			widget_set_cursor(data->connect, GDK_WATCH);
-			connect_fillin(data);
+			has_context = connect_fillin(data);
 			widget_use_parent_cursor(data->connect);
-		}
-	} while (ret == GTK_RESPONSE_APPLY);
-
-	switch(ret) {
-		case GTK_RESPONSE_CANCEL:
-		case GTK_RESPONSE_DELETE_EVENT:
-			break;
+			continue;
 		case GTK_RESPONSE_OK:
+			ctx = get_context(data);
 			widget_set_cursor(data->connect, GDK_WATCH);
-			application_reload(get_context(data), load_profile);
 			widget_use_parent_cursor(data->connect);
+			if (!ctx)
+				continue;
+
+			application_reload(ctx, load_profile);
 			break;
 		default:
 			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
+		case GTK_RESPONSE_CANCEL:
+		case GTK_RESPONSE_DELETE_EVENT:
 			break;
-	}
-	gtk_widget_hide(data->connect);
+		}
 
-	return ret;
+		gtk_widget_hide(data->connect);
+		return ret;
+	}
 }
 
 G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
@@ -628,6 +634,7 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
 	dialogs.connect_net = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
 	dialogs.net_ip = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
+	dialogs.ok_btn = GTK_WIDGET(gtk_builder_get_object(builder, "button3"));
 	gtk_builder_connect_signals(builder, &dialogs);
 
 	/* Bind some dialogs radio buttons to text/labels */
