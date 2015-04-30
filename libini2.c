@@ -322,17 +322,54 @@ err_ini_close:
 	return ret;
 }
 
+/*
+ * Types of loops that can be handled while parsing .ini files
+ * INI_LOOP_SEQ - Loops through a sequence of numbers. Ini syntax:
+ * <SEQ> [var] [first] [increment] [last]
+ * </SEQ>
+ *
+ * INI_LOOP_FOR - Loops through a given list of values. Ini syntax:
+ * <FOR> [var] in {space-separated values}
+ * </FOR>
+ *
+ */
 enum ini_loop_types {
 	INI_LOOP_SEQ,
+	INI_LOOP_FOR,
 };
 
+/*
+ * Structure of a ini loop that stores loop properties and attributes.
+ * type - The type of the loop. See enum ini_loop_types.
+ * var - The variable of the loop that is used as an iterator.
+ * end_loop - The keyword used to mark the end of the loop.
+ * first - first iteration to start from.
+ * inc - incrementation step.
+ * last - last iteration.
+ * i - Holds the current iteration of the loop.
+ * for_values - Use only by the <FOR> loop to store the list of values that the
+ *              loop will iterate through.
+ */
 struct ini_loop {
 	int type;
 	char var[128];
 	char end_loop[128];
+	long long first;
+	long long inc;
+	long long last;
 	long long i;
+	gchar **for_values;
 };
 
+/*
+ * Structure of a set of parameters that are used when parsing and expanding
+ * an ini loop structure and all its inner loops.
+ * in_file - input ini file
+ * out_file - output (expanded) ini file
+ * ini_loops - list of loop and its inner loops
+ * unclosed_loops - flag is set when one of the loops is left unclosed in the
+ *                  input ini file.
+ */
 struct loops_parse_params {
 	FILE *in_file;
 	FILE *out_file;
@@ -375,6 +412,95 @@ static bool ini_line_begins_with_keyword(char *line, char *extracted_keyword)
 }
 
 /*
+ * Create and initialize a new ini_loop structure base on the supplied data.
+ * buf_with_loop - array containing loop instruction and all its parameters.
+ * loop_name - keyword used to identify the type of loop.
+ */
+static struct ini_loop * ini_loop_new(char *buf_with_loop, char *loop_name)
+{
+	struct ini_loop *loop = NULL;
+	long long first, inc, last;
+	int loop_type;
+	char var[128];
+	gchar *for_raw_list = NULL;
+	gchar **for_values = NULL;
+	int ret;
+
+	/* Check loop type. Base on that gather up all of it's parameters */
+	if (!strncmp(loop_name, "SEQ", sizeof("SEQ") - 1)) {
+		loop_type = INI_LOOP_SEQ;
+
+		ret = sscanf(buf_with_loop, "<SEQ> %s %lli %lli %lli",
+				var, &first, &inc, &last);
+		if (ret != 4) {
+			ret = -EINVAL;
+			fprintf(stderr, "Unrecognized SEQ line\n");
+			goto err_close;
+		}
+	} else if (!strncmp(loop_name, "FOR", sizeof("FOR") - 1)) {
+		loop_type = INI_LOOP_FOR;
+
+		ret = sscanf(buf_with_loop, "<FOR> %s in {", var);
+		for_raw_list = g_strstr_len(buf_with_loop, -1, "{");
+		if (!for_raw_list) {
+			ret = -EINVAL;
+			fprintf(stderr, "Unrecognized FOR line\n");
+			goto err_close;
+		}
+		char *s = g_strdup(for_raw_list);
+		s = g_strstrip(g_strdelimit(s, "{}\n", ' '));
+		for_values = g_strsplit_set(s, " {}\n", -1);
+		g_free(s);
+		first = 0;
+		inc = 1;
+		last = g_strv_length(for_values) - 1;
+	} else {
+		ret = -EINVAL;
+		fprintf(stderr, "Unrecognized %s loop keyword\n", loop_name);
+		goto err_close;
+	}
+
+	/* Store all necessary parameters of a loop */
+	loop = calloc(sizeof(struct ini_loop), 1);
+	if (!loop) {
+		fprintf(stderr, "%s is %s", strerror(errno), __func__);
+		goto err_close;
+	}
+	loop->type = loop_type;
+	loop->first = first;
+	loop->inc = inc;
+	loop->last = last;
+	snprintf(loop->var, sizeof(loop->var), "<%s>", var);
+	snprintf(loop->end_loop, sizeof(loop->end_loop), "</%s>", loop_name);
+	loop->for_values = for_values;
+
+err_close:
+
+	return loop;
+}
+
+/*
+ * Get the current iteration that the loop is at.
+ */
+static char * ini_loop_get_iteration(struct ini_loop *loop)
+{
+	char *iteration;
+
+	switch (loop->type) {
+	case INI_LOOP_SEQ:
+		iteration = g_strdup_printf("%lli", loop->i);
+		break;
+	case INI_LOOP_FOR:
+		iteration = g_strdup(loop->for_values[loop->i]);
+		break;
+	default:
+		iteration = NULL;
+	}
+
+	return iteration;
+}
+
+/*
  * Expand a <loop>..</loop> structure and any other inner loop structures.
  */
 static int loop_expand(struct loops_parse_params *parse_params,
@@ -383,47 +509,23 @@ static int loop_expand(struct loops_parse_params *parse_params,
 	char *replace, *eol;
 	char buf[1024];
 	char inner_loop[128];
-	char var[128];
 	size_t tmplen;
 	fpos_t pos;
-	int ret = 0;
 	long long i, first, inc, last;
-	int loop_type;
+	int ret = 0;
 	struct ini_loop *iniloop = NULL;
 	bool unclosed_loop = true;
 
-	/* Check loop type. Base on that gather up all of it's parameters */
-	if (!strncmp(loop_name, "SEQ", sizeof("SEQ") - 1)) {
-		loop_type = INI_LOOP_SEQ;
-
-		/* # seq [OPTION]... FIRST INCREMENT LAST */
-		ret = sscanf(buf_with_loop, "<SEQ> %s %lli %lli %lli",
-				var, &first, &inc, &last);
-		if (ret != 4) {
-			ret = -EINVAL;
-			fprintf(stderr, "Unrecognized SEQ line\n");
-			goto err_close;
-		}
-	} else {
-		ret = -EINVAL;
-		fprintf(stderr, "Unrecognized %s loop keyword\n", loop_name);
+	iniloop = ini_loop_new(buf_with_loop, loop_name);
+	if (!iniloop)
 		goto err_close;
-	}
-
-	/* Store all necessary parameters of a loop */
-	iniloop = calloc(sizeof(struct ini_loop), 1);
-	if (!iniloop) {
-		fprintf(stderr, "%s is %s", strerror(errno), __func__);
-		goto err_close;
-	}
-	iniloop->type = loop_type;
-	snprintf(iniloop->var, sizeof(iniloop->var), "<%s>", var);
-	snprintf(iniloop->end_loop, sizeof(iniloop->end_loop), "</%s>",
-			loop_name);
 
 	parse_params->ini_loops = g_slist_prepend(parse_params->ini_loops,
 					iniloop);
 
+	first = iniloop->first;
+	inc = iniloop->inc;
+	last = iniloop->last;
 	fgetpos(parse_params->in_file, &pos);
 	for (i = first; inc > 0 ? i <= last : i >= last; i = i + inc) {
 		fsetpos(parse_params->in_file, &pos);
@@ -463,10 +565,13 @@ static int loop_expand(struct loops_parse_params *parse_params,
 
 				tmplen = strlen(iniloop->var);
 				eol = strchr(buf, '\0');
-				fprintf(parse_params->out_file, "%.*s%lli%.*s",
+				gchar *it = ini_loop_get_iteration(loop);
+				fprintf(parse_params->out_file, "%.*s%s%.*s",
 					(int) (long) (replace - buf), buf,
-					loop->i, (int) (eol - replace - tmplen),
+					it, (int) (eol - replace - tmplen),
 					(char *)((uintptr_t) replace + tmplen));
+				if (it)
+					g_free(it);
 			}
 		}
 	}
@@ -476,6 +581,8 @@ err_close:
 	if (iniloop) {
 		parse_params->ini_loops = g_slist_remove(
 					parse_params->ini_loops, iniloop);
+		if (iniloop->for_values)
+			g_strfreev(iniloop->for_values);
 		free(iniloop);
 	}
 
