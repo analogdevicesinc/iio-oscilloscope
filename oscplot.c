@@ -4646,9 +4646,27 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 					gtk_window_move(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
 				}
 			} else if (MATCH_NAME("marker_type")) {
-				set_marker_labels(plot, (gchar *)value, MARKER_NULL);
-				for (i = 0; i <= MAX_MARKERS; i++)
-					priv->markers[i].active = FALSE;
+				if (!strncmp(value, PEAK_MRK, strlen(PEAK_MRK))) {
+					printf("set to peak\n");
+					osc_plot_set_marker_type(plot, MARKER_PEAK);
+				} else if (!strncmp(value, FIX_MRK, strlen(FIX_MRK))) {
+					printf("set to fixed\n");
+					osc_plot_set_marker_type(plot, MARKER_FIXED);
+				} else if (!strncmp(value, SINGLE_MRK, strlen(SINGLE_MRK))) {
+					printf("set to single tone markers\n");
+					osc_plot_set_marker_type(plot, MARKER_ONE_TONE);
+				} else if (!strncmp(value, DUAL_MRK, strlen(DUAL_MRK))) {
+					printf("set to two tone markers\n");
+					osc_plot_set_marker_type(plot, MARKER_TWO_TONE);
+				} else if (!strncmp(value, IMAGE_MRK, strlen(IMAGE_MRK))) {
+					printf("set to image markers\n");
+					osc_plot_set_marker_type(plot, MARKER_IMAGE);
+				} else {
+					printf("setting all off\n");
+					osc_plot_set_marker_type(plot, MARKER_OFF);
+					for (i = 0; i <= MAX_MARKERS; i++)
+						priv->markers[i].active = FALSE;
+				}
 			} else if (MATCH_NAME("save_png")) {
 				save_as(plot, value, SAVE_PNG);
 			} else if (MATCH_NAME("cycle")) {
@@ -4661,22 +4679,6 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 				fd = osc_get_log_file(value);
 				if (!fd)
 					return 0;
-
-				for (i = 0; i < num_devices; i++) {
-					unsigned int j;
-					struct iio_device *dev = iio_context_get_device(ctx, i);
-					const char *id = iio_device_get_name(dev) ?:
-						iio_device_get_id(dev);
-					if (!strcmp(id, "cf-ad9643-core-lpc") || !strcmp(id, "cf-ad9361-lpc")) {
-						for (j = 0; j < iio_device_get_channels_count(dev); j++) {
-							struct iio_channel *chn = iio_device_get_channel(dev, j);
-							struct extra_info *ch_info = iio_channel_get_data(chn);
-							const char *name = iio_channel_get_name(chn) ?:
-										iio_channel_get_id(chn);
-							fprintf(fd, "%s:%lf", name, ch_info->lo_freq);
-						}
-					}
-				}
 
 				for (i = 0; i <= MAX_MARKERS; i++) {
 					if (priv->markers[i].active) {
@@ -4955,7 +4957,7 @@ static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type
 				gtk_databox_graph_set_hide(priv->markers[i].graph, TRUE);
 		}
 		return;
-	} else if (buf && !strcmp(buf, OFF_MRK)) {
+	} else if ((buf && !strcmp(buf, OFF_MRK)) || type == MARKER_OFF) {
 		priv->marker_type = MARKER_OFF;
 		for (i = 0; i <= MAX_MARKERS; i++) {
 			if (priv->markers[i].graph)
