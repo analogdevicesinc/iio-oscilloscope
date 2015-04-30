@@ -44,6 +44,13 @@ extern bool str_endswith(const char *str, const char *needle);
 #define ADD_MRK    "Add Marker"
 #define REMOVE_MRK "Remove Marker"
 
+#ifndef timespeccmp
+#define timespeccmp(tsp, usp, cmp)			\
+	(((tsp)->tv_sec == (usp)->tv_sec) ?		\
+		((tsp)->tv_nsec cmp (usp)->tv_nsec) :	\
+		((tsp)->tv_sec cmp (usp)->tv_sec))
+#endif
+
 struct marker_type {
 	gfloat x;
 	gfloat y;
@@ -112,6 +119,7 @@ void application_reload(struct iio_context *ctx, bool load_profile);
 
 struct iio_context * osc_create_context(void);
 
+void osc_process_gtk_events(unsigned int msecs);
 int osc_test_value(struct iio_context *ctx,
 		int line, const char *attribute, const char *value);
 int osc_identify_attrib(struct iio_context *ctx, const char *attrib,

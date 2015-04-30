@@ -19,6 +19,7 @@
 #include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <string.h>
 #include <dirent.h>
@@ -2061,6 +2062,23 @@ struct iio_context * osc_create_context(void)
 		return iio_create_default_context();
 	else
 		return iio_context_clone(ctx);
+}
+
+/* Wait while processing GTK events for a given number of milliseconds. Used
+ * for waiting for certain gtk events to settle when performing various widget
+ * related test procedures. */
+void osc_process_gtk_events(unsigned int msecs)
+{
+	struct timespec ts_current, ts_end;
+	unsigned long long nsecs;
+	clock_gettime(CLOCK_MONOTONIC, &ts_current);
+	nsecs = ts_current.tv_nsec + (msecs * pow(10.0, 6));
+	ts_end.tv_sec = ts_current.tv_sec + (nsecs / pow(10.0, 9));
+	ts_end.tv_nsec = nsecs % (unsigned long long) pow(10.0, 9);
+	while (timespeccmp(&ts_current, &ts_end, >) == 0) {
+		gtk_main_iteration();
+		clock_gettime(CLOCK_MONOTONIC, &ts_current);
+	}
 }
 
 /* Test something, according to:
