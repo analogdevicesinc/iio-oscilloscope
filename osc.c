@@ -1913,7 +1913,7 @@ static int handle_osc_param(int line, const char *name, const char *value)
 	}
 
 	if (!strcmp(name, "test") || !strcmp(name, "window_x_pos") ||
-			!strcmp(name, "window_y_pos")) {
+			!strcmp(name, "window_y_pos") || !strcmp(name, "remote_ip_addr")) {
 		printf("Ignoring token \'%s\' when loading sequentially\n", name);
 		return 0;
 	}
@@ -2002,6 +2002,16 @@ static void load_profile(const char *filename, bool load_plugins)
 
 	close_all_plots();
 	destroy_all_plots();
+
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "remote_ip_addr");
+	if (value) {
+		struct iio_context *new_ctx = iio_create_network_context(value);
+		if (new_ctx)
+			application_reload(new_ctx, false);
+		else
+			fprintf(stderr, "Failed connecting to remote device: %s\n", value);
+		free(value);
+	}
 
 	value = read_token_from_ini(filename, OSC_INI_SECTION, "test");
 	if (value) {
