@@ -1402,13 +1402,12 @@ static gchar * get_default_profile_name(void)
 static void do_quit(bool reload)
 {
 	unsigned int i, nb = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
-	char buf[1024];
+	gchar *path = NULL;
 
 	/* Before we shut down, let's save the profile */
 	if (!reload) {
-		gchar *path = get_default_profile_name();
+		path = get_default_profile_name();
 		capture_profile_save(path);
-		g_free(path);
 	}
 
 	stop_capture = TRUE;
@@ -1440,7 +1439,8 @@ static void do_quit(bool reload)
 	/* This can't be done until all the windows are detroyed with main_quit
 	 * otherwise, the widgets need to be updated, but they don't exist anymore
 	 */
-	close_plugins(!reload ? buf : NULL);
+	close_plugins(path);
+	g_free(path);
 
 	if (ctx) {
 		iio_context_destroy(ctx);
