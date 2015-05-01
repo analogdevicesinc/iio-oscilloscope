@@ -116,7 +116,8 @@ static void usage(char *program)
 
 	/* please keep this list sorted in alphabetical order */
 	printf( "Command line options:\n"
-		"\t-p\tload specific profile\n");
+		"\t-p\tload specific profile\n"
+		"\t-c\tIP address of device to connect to\n");
 
 	printf("\nEnvironmental variables:\n"
 		"\tOSC_FORCE_PLUGIN\tforce loading of a specfic plugin\n");
@@ -136,8 +137,15 @@ gint main (int argc, char **argv)
 	char *profile = NULL;
 
 	opterr = 0;
-	while ((c = getopt (argc, argv, "p:")) != -1)
+	while ((c = getopt (argc, argv, "c:p:")) != -1)
 		switch (c) {
+			case 'c':
+				ctx = iio_create_network_context(optarg);
+				if (!ctx) {
+					printf("Failed connecting to remote device: %s\n", optarg);
+					exit(-1);
+				}
+				break;
 			case 'p':
 				profile = strdup(optarg);
 				break;
