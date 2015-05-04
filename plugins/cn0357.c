@@ -83,8 +83,6 @@ static GtkNotebook *nbook;
 static GtkWidget *cn0357_panel;
 static gboolean plugin_detached;
 
-static bool update_thd_stop;
-
 #define RDAC_BITS 10
 #define RDAC_END_TO_END_RES 20E3
 
@@ -242,7 +240,7 @@ static gboolean update_display(void)
 		cn0357_update_widgets(&cn0357_data);
 	}
 
-	return !update_thd_stop;
+	return TRUE;
 }
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
@@ -337,8 +335,7 @@ static GtkWidget* cn0357_init(GtkWidget *notebook, const char *ini_fn)
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(sensor), 65);
 	program_rdac_clicked_cb(GTK_BUTTON(program_rdac), NULL);
 
-	update_thd_stop = false;
-	g_timeout_add(1000, (GSourceFunc) update_display, NULL);
+	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 
 	return cn0357_panel;
 }
@@ -359,7 +356,7 @@ static void cn0357_get_preferred_size(int *width, int *height)
 
 static void context_destroy(const char *ini_fn)
 {
-	update_thd_stop = true;
+	g_source_remove_by_user_data(ctx);
 	iio_context_destroy(ctx);
 }
 
