@@ -120,8 +120,6 @@ static GtkNotebook *nbook;
 static GtkWidget *fmcomms2_panel;
 static gboolean plugin_detached;
 
-static bool update_thd_stop;
-
 static const char *fmcomms2_sr_attribs[] = {
 	PHY_DEVICE".trx_rate_governor",
 	PHY_DEVICE".dcxo_tune_coarse",
@@ -355,7 +353,7 @@ static gboolean update_display(void)
 			iio_widget_update(&rx_widgets[rx2_gain]);
 	}
 
-	return !update_thd_stop;
+	return TRUE;
 }
 
 const double RX_CENTER_FREQ = 340; /* MHz */
@@ -1395,8 +1393,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	}
 	gtk_widget_set_visible(up_down_converter, has_udc_driver);
 
-	update_thd_stop = false;
-	g_timeout_add(1000, (GSourceFunc) update_display, NULL);
+	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 	can_update_widgets = true;
 
 	return fmcomms2_panel;
@@ -1462,7 +1459,7 @@ static void save_profile(const char *ini_fn)
 
 static void context_destroy(const char *ini_fn)
 {
-	update_thd_stop = true;
+	g_source_remove_by_user_data(ctx);
 
 	if (ini_fn)
 		save_profile(ini_fn);
