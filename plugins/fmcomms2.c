@@ -981,6 +981,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	GtkWidget *dds_container;
 	struct iio_channel *ch0, *ch1;
 
+	can_update_widgets = false;
+
 	ctx = osc_create_context();
 	if (!ctx)
 		return NULL;
