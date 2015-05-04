@@ -358,7 +358,7 @@ static void dmm_button_clicked(GtkToggleToolButton *btn, gpointer data)
 {
 	dmm_update_loop_running = gtk_toggle_tool_button_get_active(btn);
 	if (dmm_update_loop_running)
-		g_timeout_add(500, (GSourceFunc) dmm_update, NULL);
+		g_timeout_add(500, (GSourceFunc) dmm_update, ctx);
 }
 
 static gboolean dmm_button_icon_transform(GBinding *binding,
@@ -497,6 +497,7 @@ static void update_active_page(gint active_page, gboolean is_detached)
 
 static void context_destroy(const char *ini_fn)
 {
+	g_source_remove_by_user_data(ctx);
 	iio_context_destroy(ctx);
 }
 
