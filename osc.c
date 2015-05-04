@@ -1434,14 +1434,11 @@ static void do_quit(bool reload)
 	for (i = 0; i < nb; i++)
 	while (true) {
 		GtkNotebook *book = GTK_NOTEBOOK(notebook);
-		GtkWidget *widget;
 		int page = gtk_notebook_get_current_page(book);
 		if (page < 0)
 			break;
 
-		widget = gtk_notebook_get_nth_page(book, page);
 		gtk_notebook_remove_page(book, page);
-		gtk_widget_destroy(widget);
 	}
 
 	/* This can't be done until all the windows are detroyed with main_quit
