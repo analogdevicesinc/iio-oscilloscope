@@ -608,29 +608,29 @@ static void cal_rx_button_clicked(void)
 	gtk_widget_hide(cal_rx);
 }
 
-static void display_temp(void *ptr)
+static gboolean display_temp(void *ptr)
 {
 	double temp, tmp;
 	struct iio_channel *chn = iio_device_find_channel(dac, "temp0", false);
 
-	while (!kill_thread) {
-		if (iio_channel_attr_read_double(chn, "input", &temp) < 0) {
-			/* Just assume it's 25C, units are in milli-degrees C */
-			temp = 25 * 1000;
-			iio_channel_attr_write_double(chn, "input", temp);
-			iio_channel_attr_read_double(chn, "calibbias", &tmp);
-			/* This will eventually be stored in the EEPROM */
-			temp_calibbias = (unsigned short) tmp;
-			printf("AD9122 temp cal value : %hi\n", temp_calibbias);
-		} else {
-			char buf[25];
-			sprintf(buf, "%2.1f", temp/1000);
-			gdk_threads_enter();
-			gtk_label_set_text(GTK_LABEL(ad9122_temp), buf);
-			gdk_threads_leave();
-		}
-		usleep(500000);
+	if (kill_thread)
+		return FALSE;
+
+	if (iio_channel_attr_read_double(chn, "input", &temp) < 0) {
+		/* Just assume it's 25C, units are in milli-degrees C */
+		temp = 25 * 1000;
+		iio_channel_attr_write_double(chn, "input", temp);
+		iio_channel_attr_read_double(chn, "calibbias", &tmp);
+		/* This will eventually be stored in the EEPROM */
+		temp_calibbias = (unsigned short) tmp;
+		printf("AD9122 temp cal value : %hi\n", temp_calibbias);
+	} else {
+		char buf[25];
+		sprintf(buf, "%2.1f", temp/1000);
+		gtk_label_set_text(GTK_LABEL(ad9122_temp), buf);
 	}
+
+	return TRUE;
 }
 
 #define RX_CAL_THRESHOLD -75
@@ -1247,7 +1247,7 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 {
 	gint ret;
 	char *filename = NULL;
-	GThread *thid_rx = NULL, *thid_tmp = NULL;
+	GThread *thid_rx = NULL;
 
 	kill_thread = 0;
 
@@ -1282,7 +1282,7 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 	if (fmcomms1_cal_eeprom() < 0)
 		gtk_widget_hide(load_eeprom);
 
-	thid_tmp = g_thread_new("Display_temp", (void *) &display_temp, NULL);
+	g_timeout_add(500, &display_temp, data);
 
 	do {
 		ret = gtk_dialog_run(GTK_DIALOG(dialogs.calibrate));
@@ -1327,13 +1327,11 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 	} while (ret != GTK_RESPONSE_CLOSE &&		/* Clicked on the close button */
 		 ret != GTK_RESPONSE_DELETE_EVENT);	/* Clicked on the close icon */
 
-	if (thid_rx)
-		kill_thread = 1;
+	kill_thread = 1;
+	g_source_remove_by_user_data(data);
 
-	if (thid_tmp) {
-		kill_thread = 1;
-		g_thread_join(thid_tmp);
-	}
+	if (thid_rx)
+		g_thread_join(thid_rx);
 
 	if (filename)
 		g_free(filename);
