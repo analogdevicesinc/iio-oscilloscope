@@ -275,6 +275,7 @@ static void plugin_make_detachable(struct detachable_plugin *d_plugin)
 	num_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
 	page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), num_pages - 1);
 
+	d_plugin->window = NULL;
 	d_plugin->detached_state = FALSE;
 	d_plugin->detach_attach_button = plugin_tab_add_detach_btn(page, d_plugin);
 }
@@ -305,6 +306,7 @@ static void attach_plugin(GtkWidget *window, struct detachable_plugin *d_plugin)
 		plugin->update_active_page(plugin_page_index, FALSE);
 	d_plugin->detached_state = FALSE;
 	d_plugin->detach_attach_button = detach_btn;
+	d_plugin->window = NULL;
 }
 
 static void debug_window_delete_cb(GtkWidget *w, GdkEvent *e, gpointer data)
@@ -379,6 +381,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 		plugin->update_active_page(-1, TRUE);
 	d_plugin->detached_state = TRUE;
 	d_plugin->detach_attach_button = NULL;
+	d_plugin->window = window;
 
 	gtk_widget_show(window);
 	gtk_widget_show(hbox);
@@ -713,6 +716,9 @@ static void close_plugins(const char *ini_fn)
 	for (node = dplugin_list; node; node = g_slist_next(node)) {
 		struct detachable_plugin *d_plugin = node->data;
 		const struct osc_plugin *plugin = d_plugin->plugin;
+
+		if (d_plugin->window)
+			gtk_widget_destroy(d_plugin->window);
 
 		if (plugin) {
 			printf("Closing plugin: %s\n", plugin->name);
@@ -1428,12 +1434,14 @@ static void do_quit(bool reload)
 	for (i = 0; i < nb; i++)
 	while (true) {
 		GtkNotebook *book = GTK_NOTEBOOK(notebook);
+		GtkWidget *widget;
 		int page = gtk_notebook_get_current_page(book);
-
-		if (page >= 0)
-			gtk_notebook_remove_page(book, page);
-		else
+		if (page < 0)
 			break;
+
+		widget = gtk_notebook_get_nth_page(book, page);
+		gtk_notebook_remove_page(book, page);
+		gtk_widget_destroy(widget);
 	}
 
 	/* This can't be done until all the windows are detroyed with main_quit

@@ -22,6 +22,7 @@ struct detachable_plugin {
 	const struct osc_plugin *plugin;
 	gboolean detached_state;
 	GtkWidget *detach_attach_button;
+	GtkWidget *window;
 	gint xpos;
 	gint ypos;
 };
