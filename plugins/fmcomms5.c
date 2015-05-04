@@ -115,8 +115,6 @@ static GtkNotebook *nbook;
 static GtkWidget *fmcomms5_panel;
 static gboolean plugin_detached;
 
-static bool update_thd_stop;
-
 static const char *fmcomms5_sr_attribs[] = {
 	PHY_DEVICE1".trx_rate_governor",
 	PHY_DEVICE1".dcxo_tune_coarse",
@@ -509,7 +507,7 @@ static gboolean update_display(void)
 		}
 	}
 
-	return !update_thd_stop;
+	return TRUE;
 }
 
 void filter_fir_update(void)
@@ -1529,8 +1527,7 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
 
-	update_thd_stop = false;
-	g_timeout_add(1000, (GSourceFunc) update_display, NULL);
+	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 	can_update_widgets = true;
 
 	return fmcomms5_panel;
@@ -1617,7 +1614,7 @@ static void save_profile(const char *ini_fn)
 
 static void context_destroy(const char *ini_fn)
 {
-	update_thd_stop = true;
+	g_source_remove_by_user_data(ctx);
 
 	if (ini_fn)
 		save_profile(ini_fn);
