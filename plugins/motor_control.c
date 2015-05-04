@@ -90,7 +90,6 @@ static int OPEN_LOOP_SCALAR_NUM_FRAC_BITS = 16;
 static int OENCODER_NUM_FRAC_BITS = 14;
 
 static bool can_update_widgets;
-static bool update_thd_stop;
 
 static gint this_page;
 static GtkNotebook *nbook;
@@ -186,7 +185,7 @@ static gboolean update_display(void)
 			"<error>");
 
 end:
-	return !update_thd_stop;
+	return TRUE;
 }
 
 static gboolean change_controller_type_label(GBinding *binding,
@@ -547,8 +546,7 @@ static void resolver_init(GtkBuilder *builder)
 		G_CALLBACK(resolver_resolution_changed_cb), NULL);
 
 	/* Set up a periodic read-only widget update function */
-	update_thd_stop = false;
-	g_timeout_add(1000, (GSourceFunc) update_display, NULL);
+	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 }
 
 static int motor_control_handle_driver(const char *attrib, const char *value)
@@ -789,8 +787,7 @@ static void save_profile(const char *ini_fn)
 
 static void context_destroy(const char *ini_fn)
 {
-	update_thd_stop = true;
-
+	g_source_remove_by_user_data(ctx);
 
 	if (ini_fn)
 		save_profile(ini_fn);
