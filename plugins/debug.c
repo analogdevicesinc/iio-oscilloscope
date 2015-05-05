@@ -521,7 +521,6 @@ reg_autoread:
 static void reg_value_change_value_cb(GtkSpinButton *btn, gpointer user_data)
 {
 	unsigned value;
-	unsigned new_value;
 	char buf[16];
 
 	if (!xml_file_opened) {
@@ -532,13 +531,8 @@ static void reg_value_change_value_cb(GtkSpinButton *btn, gpointer user_data)
 	}
 	value = gtk_spin_button_get_value(btn);
 	block_bit_option_signals();
-	new_value = update_regmap(value);
+	update_regmap(value);
 	unblock_bit_option_signals();
-	g_signal_handler_block(btn, reg_val_hid);
-	gtk_spin_button_set_value(btn, new_value);
-	g_signal_handler_unblock(btn, reg_val_hid);
-	snprintf(buf, sizeof(buf), "%u", new_value);
-	gtk_label_set_text(GTK_LABEL(label_reg_hex_value), buf);
 }
 
 static void spin_or_combo_changed_cb(GtkSpinButton *spinbutton,
