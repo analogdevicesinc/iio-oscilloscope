@@ -2309,6 +2309,23 @@ int osc_read_value(struct iio_context *ctx,
 	}
 }
 
+FILE * osc_get_log_file(const char *path)
+{
+	FILE *f;
+	const char *wave = strstr(path, "~/") ?: strstr(path, "~\\");
+	if (wave) {
+		gchar *tmp = g_build_filename(
+				getenv("HOME") ?: getenv("LOCALAPPDATA"),
+				wave + 2, NULL);
+		f = fopen(tmp, "a");
+		g_free(tmp);
+	} else {
+		f = fopen(path, "a");
+	}
+
+	return f;
+}
+
 /* Log the value of a parameter in a text file:
  * log.device.filename = output_file
  */
@@ -2343,7 +2360,7 @@ int osc_log_value(struct iio_context *ctx,
 	if (ret < 0)
 		goto err_ret;
 
-	f = fopen(value, "a");
+	f = osc_get_log_file(value);
 	if (!f) {
 		ret = -errno;
 		goto err_ret;

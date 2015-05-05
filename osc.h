@@ -119,6 +119,7 @@ int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
 		const char **attr, bool *debug);
 int osc_read_value(struct iio_context *ctx,
 		const char *value, long long *out);
+FILE * osc_get_log_file(const char *path);
 int osc_log_value(struct iio_context *ctx,
 		const char *attribute, const char *value);
 int osc_plugin_default_handle(struct iio_context *ctx,
