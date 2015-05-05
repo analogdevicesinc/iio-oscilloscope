@@ -4658,7 +4658,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 					g_usleep(16);
 				}
 			} else if (MATCH_NAME("save_markers")) {
-				fd = fopen(value, "a");
+				fd = osc_get_log_file(value);
 				if (!fd)
 					return 0;
 
