@@ -4663,12 +4663,13 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 					return 0;
 
 				for (i = 0; i < num_devices; i++) {
+					unsigned int j;
 					struct iio_device *dev = iio_context_get_device(ctx, i);
 					const char *id = iio_device_get_name(dev) ?:
 						iio_device_get_id(dev);
 					if (!strcmp(id, "cf-ad9643-core-lpc") || !strcmp(id, "cf-ad9361-lpc")) {
-						for (i = 0; i < iio_device_get_channels_count(dev); i++) {
-							struct iio_channel *chn = iio_device_get_channel(dev, i);
+						for (j = 0; j < iio_device_get_channels_count(dev); j++) {
+							struct iio_channel *chn = iio_device_get_channel(dev, j);
 							struct extra_info *ch_info = iio_channel_get_data(chn);
 							const char *name = iio_channel_get_name(chn) ?:
 										iio_channel_get_id(chn);
