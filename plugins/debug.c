@@ -576,7 +576,7 @@ static void spin_or_combo_changed_cb(GtkSpinButton *spinbutton,
 	g_signal_handler_block(spin_btn_reg_value, reg_val_hid);
 	gtk_spin_button_set_value((GtkSpinButton *)spin_btn_reg_value, spin_val);
 	g_signal_handler_unblock(spin_btn_reg_value, reg_val_hid);
-	snprintf(buf, sizeof(buf), "0x%04X", spin_val);
+	snprintf(buf, sizeof(buf), "%u", spin_val);
 	gtk_label_set_text((GtkLabel *)label_reg_hex_value, buf);
 }
 
