@@ -42,8 +42,6 @@
 
 #define THIS_DRIVER "FMComms2/3/4/5 Advanced"
 
-#define SYNC_RELOAD "SYNC_RELOAD"
-
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 static struct iio_context *ctx;
@@ -1206,6 +1204,10 @@ static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 
 		while (!auto_calibrate)
 			gtk_main_iteration();
+	} else if (MATCH_ATTRIB("SYNC_RELOAD") && atoi(value)) {
+		if (can_update_widgets)
+			update_widgets(builder);
+		reload_settings();
 	} else {
 		fprintf(stderr, "Unknown token in ini file; key:'%s' value:'%s'\n",
 				attrib, value);
