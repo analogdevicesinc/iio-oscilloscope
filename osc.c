@@ -2066,7 +2066,8 @@ struct iio_context * osc_create_context(void)
 
 /* Wait while processing GTK events for a given number of milliseconds. Used
  * for waiting for certain gtk events to settle when performing various widget
- * related test procedures. */
+ * related test procedures.
+ */
 void osc_process_gtk_events(unsigned int msecs)
 {
 	struct timespec ts_current, ts_end;
