@@ -538,8 +538,8 @@ A GUI for Linux IIO devices</property>
   </object>
   <object class="GtkDialog" id="connect_dialog">
     <property name="can_focus">False</property>
-    <property name="modal">True</property>
     <property name="border_width">5</property>
+    <property name="modal">True</property>
     <property name="type_hint">dialog</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="dialog-vbox6">
@@ -588,9 +588,9 @@ A GUI for Linux IIO devices</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
                 <property name="can_default">True</property>
                 <property name="has_default">True</property>
+                <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
                 <property name="use_stock">True</property>
               </object>
@@ -702,7 +702,6 @@ A GUI for Linux IIO devices</property>
                                             <property name="can_focus">True</property>
                                             <property name="invisible_char">•</property>
                                             <property name="activates_default">True</property>
-                                            <property name="text"></property>
                                             <property name="invisible_char_set">True</property>
                                           </object>
                                           <packing>
@@ -1119,65 +1118,11 @@ Installed/Found IIO devices on this platform</property>
           </packing>
         </child>
         <child>
-          <object class="GtkInfoBar" id="infobar1">
-            <property name="visible">False</property>
-            <property name="app_paintable">True</property>
+          <object class="GtkVBox" id="connect_infobar_container">
+            <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="message_type">error</property>
-            <child internal-child="action_area">
-              <object class="GtkButtonBox" id="infobar-action_area1">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="spacing">6</property>
-                <property name="layout_style">end</property>
-                <property name="orientation">horizontal</property>
-                <child>
-                  <object class="GtkButton" id="infobar_reconnect">
-                    <property name="label" translatable="yes">Reconnect</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkButton" id="infobar_close">
-                    <property name="label" translatable="yes">Close</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-              </object>
-            </child>
-            <child internal-child="content_area">
-              <object class="GtkBox" id="infobar-content_area1">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <child>
-                  <object class="GtkLabel" id="labelerror">
-                    <property name="use_markup">True</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">&lt;b&gt;ERROR: Connection lost&lt;/b&gt;</property>
-                    <property name="xalign">0</property>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-              </object>
+            <child>
+              <placeholder/>
             </child>
           </object>
           <packing>

@@ -41,12 +41,42 @@ static void tooltips_enable_cb (GtkCheckMenuItem *item, gpointer data)
 	g_object_set(settings, "gtk-enable-tooltips", enable, NULL);
 }
 
+static GtkWidget * gui_connection_infobar_new(GtkWidget **out_infobar_close,
+			GtkWidget **out_infobar_reconnect)
+{
+	GtkWidget *infobar;
+	GtkWidget *msg_label, *content_area, *action_area;
+
+	msg_label = gtk_label_new("");
+	gtk_label_set_markup(GTK_LABEL(msg_label),
+				"<b>ERROR: Connection lost</b>");
+	gtk_widget_show(msg_label);
+
+	infobar = gtk_info_bar_new();
+	gtk_info_bar_set_message_type(GTK_INFO_BAR(infobar), GTK_MESSAGE_ERROR);
+	content_area = gtk_info_bar_get_content_area(GTK_INFO_BAR(infobar));
+	gtk_container_add(GTK_CONTAINER(content_area), msg_label);
+	*out_infobar_close = gtk_info_bar_add_button(GTK_INFO_BAR(infobar),
+					"Close", 0);
+	*out_infobar_reconnect = gtk_info_bar_add_button(GTK_INFO_BAR(infobar),
+					"Reconnect", 0);
+	gtk_widget_set_no_show_all(infobar, TRUE);
+
+
+	action_area = gtk_info_bar_get_action_area(GTK_INFO_BAR(infobar));
+	gtk_orientable_set_orientation(GTK_ORIENTABLE(action_area),
+					GTK_ORIENTATION_HORIZONTAL);
+
+	return infobar;
+}
+
 static void init_application ()
 {
 	GtkBuilder *builder = NULL;
 	GtkWidget  *window;
 	GtkWidget  *btn_capture;
 	GtkWidget  *infobar_close, *infobar_reconnect;
+	GtkWidget  *infobar_box;
 	GtkAboutDialog *about = NULL;
 
 	builder = gtk_builder_new();
@@ -84,11 +114,10 @@ static void init_application ()
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "new_capture_plot"));
 	tooltips_en = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_tooltips_en"));
+	infobar_box = GTK_WIDGET(gtk_builder_get_object(builder, "connect_infobar_container"));
+	infobar = gui_connection_infobar_new(&infobar_close, &infobar_reconnect);
+	gtk_box_pack_start(GTK_BOX(infobar_box), infobar, FALSE, TRUE, 0);
 	main_window = window;
-
-	infobar = GTK_WIDGET(gtk_builder_get_object(builder, "infobar1"));
-	infobar_close = GTK_WIDGET(gtk_builder_get_object(builder, "infobar_close"));
-	infobar_reconnect = GTK_WIDGET(gtk_builder_get_object(builder, "infobar_reconnect"));
 
 	/* Connect signals. */
 	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
