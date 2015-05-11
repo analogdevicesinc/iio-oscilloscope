@@ -1243,6 +1243,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		maxY[j] = -200.0f;
 	}
 
+	/* find the peaks */
 	for (i = 0; i < 2 * axis_length - 1; i++) {
 		tr->y_axis[i] =  2 * creal(settings->xcorr_data[i]) / (gfloat)axis_length;
 		if (!settings->markers)
@@ -1277,11 +1278,25 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	if (!settings->markers)
 		return;
 
+	/* now we know where the peaks are, we estimate the actual peaks,
+	 * by quadratic interpolation of existing spectral peaks, which is explained:
+	 * https://ccrma.stanford.edu/~jos/sasp/Quadratic_Interpolation_Spectral_Peaks.html
+	 * written by Julius Orion Smith III.
+	 */
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
 		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++)
 			if (marker_type == MARKER_PEAK) {
-				markers[j].x = (gfloat)X[maxX[j]];
-				markers[j].y = (gfloat)out_data[maxX[j]];
+				/* sync'ed with the pictures in the url above:
+				* alpha = (gfloat)out_data[maxX[j] - 1];
+				 * gamma = (gfloat)out_data[maxX[j] + 1];
+				 * beta  = (gfloat)out_data[maxX[j]];
+				 */
+				markers[j].x = (gfloat)((out_data[maxX[j] - 1] - out_data[maxX[j] + 1]) /
+						(2 * (out_data[maxX[j] - 1] - 2 * out_data[maxX[j]] +
+						out_data[maxX[j] + 1])));
+				markers[j].y = (gfloat)(out_data[maxX[j]] - (out_data[maxX[j] - 1] - out_data[maxX[j] + 1]) *
+						markers[j].x / 4);
+				markers[j].x += (gfloat)X[maxX[j]];
 				markers[j].bin = maxX[j];
 			}
 		if (settings->markers_copy && *settings->markers_copy) {
