@@ -2145,7 +2145,7 @@ static void markers_init(OscPlot *plot)
 
 	for (i = 0; i <= MAX_MARKERS; i++) {
 		markers[i].x = 0.0f;
-		markers[i].y = -100.0f;
+		markers[i].y = 0.0f;
 		if (markers[i].graph)
 			g_object_unref(markers[i].graph);
 		markers[i].graph = gtk_databox_markers_new(1, &markers[i].x, &markers[i].y, &color_marker,
