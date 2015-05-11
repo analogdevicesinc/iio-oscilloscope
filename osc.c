@@ -106,7 +106,7 @@ bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_cou
 		0x00
 	};
 	bool ret = true;
-	int i;
+	unsigned int i;
 
 	device = get_adi_part_code(device);
 	if (!device)
@@ -532,7 +532,7 @@ int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
 	struct marker_type *markers_copy = NULL;
 	GMutex *markers_lock;
 	bool is_fft_mode;
-	int i, j;
+	unsigned int i, j;
 	bool new = FALSE;
 	const char *tmp = NULL;
 
@@ -1040,7 +1040,7 @@ static gboolean capture_process(void)
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		unsigned int i, sample_size = iio_device_get_sample_size(dev);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
-		unsigned int sample_count = dev_info->sample_count;
+		ssize_t sample_count = dev_info->sample_count;
 		struct iio_channel *chn;
 		off_t offset = 0;
 
@@ -1107,7 +1107,7 @@ static gboolean capture_process(void)
 			struct extra_info *info = iio_channel_get_data(chn);
 			offset = get_trigger_offset(chn, dev_info->trigger_falling_edge,
 					dev_info->trigger_value);
-			if (offset / sizeof(gfloat) < info->offset / 4) {
+			if (offset / (off_t)sizeof(gfloat) < info->offset / 4) {
 				offset = 0;
 			} else if (offset) {
 				offset -= info->offset * sizeof(gfloat) / 4;
@@ -1625,7 +1625,7 @@ bool rx_update_channel_lo_freq(const char *device, const char *channel,
 
 	if (!strcmp(channel, "all")) {
 		bool success = true;
-		int i = 0;
+		unsigned int i = 0;
 		for (; i < iio_device_get_channels_count(dev); i++) {
 			chn = iio_device_get_channel(dev, i);
 			if (!iio_channel_is_scan_element(chn) ||
@@ -2207,9 +2207,10 @@ int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
 		const char **attr, bool *debug)
 {
 	struct iio_device *device;
-	unsigned int i;
+	int i;
 	bool is_debug;
 	int ret = -EINVAL;
+
 	gchar *dev_name, *filename, **elems = g_strsplit(attrib, ".", 3);
 	if (!elems)
 		return -EINVAL;

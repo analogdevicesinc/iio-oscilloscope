@@ -43,7 +43,7 @@ static gboolean eval(const GMatchInfo *info, GString *res, gpointer data)
 		if (g_ascii_isdigit(*pos))
 			break;
 	}
-	if (pos - match < strlen(match))
+	if ((size_t)(pos - match) < strlen(match))
 		index = atoi(pos);
 	else
 		index = 0;

@@ -688,7 +688,7 @@ double osc_plot_get_sample_count (OscPlot *plot) {
 	return count;
 }
 
-void osc_plot_set_channel_state(OscPlot *plot, const char *dev, int channel, bool state)
+void osc_plot_set_channel_state(OscPlot *plot, const char *dev, unsigned int channel, bool state)
 {
 	OscPlotPrivate *priv = plot->priv;
 	struct iio_device *iio_dev;
@@ -785,12 +785,12 @@ static void do_fft(Transform *tr)
 	gfloat *in_data_c;
 	gfloat *out_data = tr->y_axis;
 	gfloat *X = tr->x_axis;
-	unsigned int fft_size = settings->fft_size;
+	int fft_size = settings->fft_size;
 	int i, j, k;
 	int cnt;
 	gfloat mag;
 	double avg, pwr_offset;
-	unsigned int maxX[MAX_MARKERS + 1];
+	int maxX[MAX_MARKERS + 1];
 	gfloat maxY[MAX_MARKERS + 1];
 	gfloat plugin_fft_corr;
 
@@ -933,7 +933,7 @@ static void do_fft(Transform *tr)
 	if (!settings->markers)
 		return;
 
-	unsigned int m = fft->m;
+	int m = fft->m;
 
 	if ((marker_type == MARKER_ONE_TONE || marker_type == MARKER_IMAGE) &&
 		((fft->num_active_channels == 1 && maxX[0] == 0) ||
@@ -1084,7 +1084,7 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 	struct _time_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
 	gfloat *in_data;
-	int i;
+	unsigned int i;
 
 	if (init_transform) {
 
@@ -1149,7 +1149,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	unsigned axis_length = settings->num_samples;
 	gfloat *i_0, *q_0;
 	gfloat *i_1, *q_1;
-	int i;
+	unsigned int i;
 
 	if (init_transform) {
 		/* Set the sources of the transfrom */
@@ -1282,7 +1282,7 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 	struct extra_dev_info *dev_info;
 	struct _fft_settings *settings = tr->settings;
 	unsigned num_samples;
-	unsigned axis_length;
+	int axis_length;
 	unsigned int bits_used;
 	double corr;
 	int i;
@@ -1639,7 +1639,8 @@ static void set_may_be_enabled_bit(GtkTreeModel *model,
 static unsigned global_enabled_channels_mask(struct iio_device *dev)
 {
 	unsigned mask = 0;
-	int i = 0, scan_i = 0;
+	int scan_i = 0;
+	unsigned int i = 0;
 
 	for (; i < iio_device_get_channels_count(dev); i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
@@ -2449,7 +2450,7 @@ static void device_rx_info_update(OscPlot *plot)
 	OscPlotPrivate *priv = plot->priv;
 	GtkTextIter iter;
 	char text[256];
-	int i;
+	unsigned int i;
 
 	gtk_text_buffer_set_text(priv->devices_buf, "", -1);
 	gtk_text_buffer_get_iter_at_line(priv->devices_buf, &iter, 1);
@@ -2767,7 +2768,7 @@ static void plot_setup(OscPlot *plot)
 	Transform *transform;
 	gfloat *transform_x_axis;
 	gfloat *transform_y_axis;
-	int max_x_axis = 0;
+	unsigned int max_x_axis = 0;
 	GtkDataboxGraph *graph;
 	int i;
 
@@ -2839,7 +2840,7 @@ static void single_shot_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 
 static bool comboboxtext_input_devices_fill(struct iio_context *iio_ctx, GtkComboBoxText *box)
 {
-	int i;
+	unsigned int i;
 
 	if (!iio_ctx || !box) {
 		fprintf(stderr, "Error: invalid parameters in %s\n", __func__);
@@ -3399,7 +3400,7 @@ static GSList * iio_chn_basenames_get(OscPlot *plot, const char *dev_name)
 	if (!iio_dev)
 		return NULL;
 
-	int nb_channels = iio_device_get_channels_count(iio_dev);
+	unsigned int nb_channels = iio_device_get_channels_count(iio_dev);
 
 	for (i = 0; i < nb_channels; i++) {
 		iio_chn = iio_device_get_channel(iio_dev, i);
@@ -3670,7 +3671,7 @@ static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
 {
 	gfloat *tr_data;
 	gfloat *tr_x_axis;
-	int i;
+	unsigned int i;
 	GSList *node;
 	const char *id1 = NULL, *id2 = NULL;
 
@@ -3882,8 +3883,8 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 	char *name;
 	gchar *active_device;
 	int *save_channels_mask;
-	int i, j, d;
-	unsigned int nb_channels;
+	int d;
+	unsigned int nb_channels, i, j;
 	const char *dev_name;
 
 	name = malloc(strlen(filename) + 5);
@@ -3975,8 +3976,8 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				fprintf(fp, "\n");
 				free(save_channels_mask);
 			} else {
-				for (i = 0; i < priv->transform_list->size; i++) {
-						transform_csv_print(priv, fp, priv->transform_list->transforms[i]);
+				for (d = 0; d < priv->transform_list->size; d++) {
+						transform_csv_print(priv, fp, priv->transform_list->transforms[d]);
 				}
 			}
 			fprintf(fp, "\n");
@@ -4996,7 +4997,7 @@ static gint moved_fixed(GtkDatabox *box, GdkEventMotion *event, gpointer user_da
 	OscPlot *plot = data->plot;
 	OscPlotPrivate *priv = plot->priv;
 	int mark = data->int_obj;
-	unsigned int max_size;
+	int max_size;
 	gfloat *X = Transform_get_x_axis_ref(priv->tr_with_marker);
 
 	if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM)
@@ -5393,7 +5394,7 @@ static void math_chooser_fullscale_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 	if (device_name) {
 		iio_dev = iio_context_find_device(ctx, device_name);
 		if (iio_dev) {
-			int i;
+			unsigned int i;
 			struct iio_channel *iio_chn;
 			const struct iio_data_format *format;
 			int full_scale;
@@ -5450,7 +5451,8 @@ static void math_device_cmb_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 	struct iio_device *iio_dev;
 	struct iio_channel *iio_chn;
 	GtkWidget *button, *buttons_table;
-	int row, col, i, sc;
+	int row, col, sc;
+	unsigned int i;
 
 	device_name = gtk_combo_box_text_get_active_text(box);
 	if (!device_name)

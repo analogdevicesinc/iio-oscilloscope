@@ -74,7 +74,7 @@ struct buffer {
 };
 
 struct plot_params{
-	unsigned int plot_id;
+	int plot_id;
 	unsigned int sample_count;
 };
 
@@ -82,7 +82,7 @@ struct _fft_alg_data{
 	gfloat fft_corr;
 	double *in;
 	double *win;
-	unsigned int m;
+	int m;			/* size of fft; -1 if not initialized */
 	fftw_complex *in_c;
 	fftw_complex *out;
 	fftw_plan plan_forward;
