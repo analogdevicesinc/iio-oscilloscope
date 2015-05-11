@@ -1032,6 +1032,10 @@ static void do_fft(Transform *tr)
 	}
 }
 
+/* sections of the xcorr function are borrowed (under the GPL) from
+ * http://blog.dmaggot.org/2010/06/cross-correlation-using-fftw3/
+ * which is copyright 2010 David E. Narváez
+ */
 static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *result, int N)
 {
 	fftw_complex * signala_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
@@ -1041,6 +1045,7 @@ static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *re
 	fftw_complex * out = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
 	fftw_complex scale;
 	int i;
+	double peak_a = 0.0, peak_b = 0.0;
 
 	if (!signala_ext || !signalb_ext || !outa || !outb || !out)
 		return;
@@ -1055,13 +1060,25 @@ static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *re
 	memcpy(signalb_ext, signalb, sizeof(fftw_complex) * N);
 	memset(signalb_ext + N, 0, sizeof(fftw_complex) * (N - 1));
 
+	/* find the peaks of the time domain, for normalization */
+	for (i = 0; i < N; i++) {
+		if (peak_a < cabs(signala[i]))
+			peak_a = cabs(signala[i]);
+
+		if (peak_b < cabs(signalb[i]))
+			peak_b = cabs(signalb[i]);
+	}
+
+	/* Move the two signals into the fourier domain */
 	fftw_execute(pa);
 	fftw_execute(pb);
 
-	scale = 1.0/(2 * N -1);
+	/* Compute the dot product, and scale them */
+	scale = (2 * N -1) * peak_a * peak_b * 2;
 	for (i = 0; i < 2 * N - 1; i++)
-		out[i] = outa[i] * conj(outb[i]) * scale;
+		out[i] = outa[i] * conj(outb[i]) / scale;
 
+	/* Inverse FFT on the dot product */
 	fftw_execute(px);
 
 	fftw_destroy_plan(pa);
@@ -2428,7 +2445,7 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 					dev_info->adc_scale,
 					m != MAX_MARKERS ? '\n' : '\0');
 			} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
-				sprintf(text, "M%i: %2.2f @ %2.3f%c", m, markers[m].y, markers[m].x,
+				sprintf(text, "M%i: %1.6f @ %2.3f%c", m, markers[m].y, markers[m].x,
 					m != MAX_MARKERS ? '\n' : '\0');
 			}
 
