@@ -1036,7 +1036,7 @@ static void do_fft(Transform *tr)
  * http://blog.dmaggot.org/2010/06/cross-correlation-using-fftw3/
  * which is copyright 2010 David E. Narváez
  */
-static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *result, int N)
+static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *result, int N, double avg)
 {
 	fftw_complex * signala_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
 	fftw_complex * signalb_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
@@ -1044,15 +1044,22 @@ static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *re
 	fftw_complex * outb = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
 	fftw_complex * out = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
 	fftw_complex scale;
+	fftw_complex *cross;
+
 	int i;
 	double peak_a = 0.0, peak_b = 0.0;
 
 	if (!signala_ext || !signalb_ext || !outa || !outb || !out)
 		return;
 
+	if (avg > 1)
+		cross = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * (2 * N));
+	else
+		cross = result;
+
 	fftw_plan pa = fftw_plan_dft_1d(2 * N - 1, signala_ext, outa, FFTW_FORWARD, FFTW_ESTIMATE);
 	fftw_plan pb = fftw_plan_dft_1d(2 * N - 1, signalb_ext, outb, FFTW_FORWARD, FFTW_ESTIMATE);
-	fftw_plan px = fftw_plan_dft_1d(2 * N - 1, out, result, FFTW_BACKWARD, FFTW_ESTIMATE);
+	fftw_plan px = fftw_plan_dft_1d(2 * N - 1, out, cross, FFTW_BACKWARD, FFTW_ESTIMATE);
 
 	//zeropadding
 	memset(signala_ext, 0, sizeof(fftw_complex) * (N - 1));
@@ -1090,6 +1097,17 @@ static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *re
 	fftw_free(out);
 	fftw_free(outa);
 	fftw_free(outb);
+
+	if(avg > 1) {
+		if (result[0] == FLT_MAX) {
+			for (i = 0; i < 2 * N -1; i++)
+				result[i] = cross[i];
+		} else {
+			for (i = 0; i < 2 * N -1; i++)
+				result[i] = (result[i] * (avg - 1) + cross[i]) / avg;
+		}
+		fftw_free(cross);
+	}
 
 	fftw_cleanup();
 
@@ -1191,6 +1209,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		settings->signal_a = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length);
 		settings->signal_b = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length);
 		settings->xcorr_data = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length * 2);
+		settings->xcorr_data[0] = FLT_MAX;
 
 		Transform_resize_x_axis(tr, 2 * axis_length);
 		Transform_resize_y_axis(tr, 2 * axis_length);
@@ -1223,9 +1242,9 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	}
 
 	if (settings->revert_xcorr)
-		xcorr(settings->signal_b, settings->signal_a, settings->xcorr_data, axis_length);
+		xcorr(settings->signal_b, settings->signal_a, settings->xcorr_data, axis_length, (double)settings->avg);
 	else
-		xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length);
+		xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length, (double)settings->avg);
 
 	gfloat *out_data = tr->y_axis;
 	gfloat *X = tr->x_axis;
@@ -1968,6 +1987,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 		CONSTELLATION_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	} else if (plot_type == XCORR_PLOT){
 		XCORR_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+		XCORR_SETTINGS(transform)->avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
 		XCORR_SETTINGS(transform)->revert_xcorr = 0;
 		XCORR_SETTINGS(transform)->signal_a = NULL;
 		XCORR_SETTINGS(transform)->signal_b = NULL;
@@ -5279,14 +5299,26 @@ static gboolean domain_is_time(GBinding *binding,
 	return TRUE;
 }
 
+static gboolean domain_is_xcorr_fft(GBinding *binding,
+	const GValue *source_value, GValue *target_value, gpointer user_data)
+{
+	g_value_set_boolean(target_value, g_value_get_int(source_value) == FFT_PLOT ||
+			g_value_get_int(source_value) == XCORR_PLOT);
+	return TRUE;
+}
 
 static void fft_avg_value_changed_cb(GtkSpinButton *button, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
-	int i;
+	int i, plot_type;
+
+	plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
 
 	for (i = 0; i < priv->transform_list->size; i++) {
-		FFT_SETTINGS(priv->transform_list->transforms[i])->fft_avg = gtk_spin_button_get_value(button);
+		if (plot_type == FFT_PLOT)
+			FFT_SETTINGS(priv->transform_list->transforms[i])->fft_avg = gtk_spin_button_get_value(button);
+		else if (plot_type == XCORR_PLOT)
+			XCORR_SETTINGS(priv->transform_list->transforms[i])->avg = gtk_spin_button_get_value(button);
 	}
 }
 static void fft_pwr_offset_value_changed_cb(GtkSpinButton *button, OscPlot *plot)
@@ -6428,9 +6460,9 @@ static void create_plot(OscPlot *plot)
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg_label"));
 	 g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
-		0, domain_is_fft, NULL, NULL, NULL);
+		0, domain_is_xcorr_fft, NULL, NULL, NULL);
 	 g_object_bind_property_full(priv->plot_domain, "active", priv->fft_avg_widget, "visible",
-		0, domain_is_fft, NULL, NULL, NULL);
+		0, domain_is_xcorr_fft, NULL, NULL, NULL);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset_label"));
 	 g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
