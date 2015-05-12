@@ -11,6 +11,7 @@
 extern GtkWidget *notebook;
 extern GtkWidget *infobar;
 extern GtkWidget *tooltips_en;
+extern GtkWidget *versioncheck_en;
 extern GtkWidget *main_window;
 extern struct iio_context *ctx;
 extern bool ctx_destroyed_by_do_quit;
@@ -112,6 +113,7 @@ static void init_application ()
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
 	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "new_capture_plot"));
 	tooltips_en = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_tooltips_en"));
+	versioncheck_en = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_vcheck_startup"));
 	infobar_box = GTK_WIDGET(gtk_builder_get_object(builder, "connect_infobar_container"));
 	infobar = gui_connection_infobar_new(&infobar_close, &infobar_reconnect);
 	gtk_box_pack_start(GTK_BOX(infobar_box), infobar, FALSE, TRUE, 0);
@@ -204,7 +206,9 @@ gint main (int argc, char **argv)
 	if (!ctx_destroyed_by_do_quit) {
 		create_default_plot();
 		if (c == 0) {
-			version_check_start(NULL);
+			if (gtk_check_menu_item_get_active(
+					GTK_CHECK_MENU_ITEM(versioncheck_en)))
+				version_check_start(NULL);
 			gtk_main();
 		} else
 			application_quit();
