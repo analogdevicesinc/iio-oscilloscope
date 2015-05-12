@@ -1044,10 +1044,23 @@ void do_calibration (GtkWidget *widget, gpointer data)
 
 void undo_calibration (GtkWidget *widget, gpointer data)
 {
+	struct osc_plugin *plugin;
+	GSList *node;
+
 	trx_phase_rotation(dev_dds_master, 0.0);
 	trx_phase_rotation(dev_dds_slave, 0.0);
 	trx_phase_rotation(cf_ad9361_lpc, 0.0);
 	trx_phase_rotation(cf_ad9361_hpc, 0.0);
+
+	gtk_range_set_value(GTK_RANGE(data), 0);
+
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		plugin = node->data;
+		if (plugin && (!strncmp(plugin->name, "FMComms5", 8))) {
+			if (plugin->handle_external_request)
+				plugin->handle_external_request("Reload Settings");
+		}
+	}
 }
 
 void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
@@ -1347,7 +1360,7 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 				G_CALLBACK(do_calibration), gtk_builder_get_object(builder, "do_fmcomms5_cal"));
 
 		g_builder_connect_signal(builder, "undo_fmcomms5_cal", "clicked",
-				G_CALLBACK(undo_calibration), NULL);
+				G_CALLBACK(undo_calibration), gtk_builder_get_object(builder, "tx_phase"));
 
 		g_object_bind_property(gtk_builder_get_object(builder, "silent_calibration"), "active",
 		gtk_builder_get_object(builder, "progress_calibration"), "visible", G_BINDING_DEFAULT);
