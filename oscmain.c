@@ -15,6 +15,8 @@ extern GtkWidget *main_window;
 extern struct iio_context *ctx;
 extern bool ctx_destroyed_by_do_quit;
 
+extern void version_check_start(void *_dialogs);
+
 static void infobar_hide_cb(GtkButton *btn, gpointer user_data)
 {
 	gtk_widget_set_visible(infobar, false);
@@ -201,9 +203,10 @@ gint main (int argc, char **argv)
 	c = load_default_profile(profile, true);
 	if (!ctx_destroyed_by_do_quit) {
 		create_default_plot();
-		if (c == 0)
+		if (c == 0) {
+			version_check_start(NULL);
 			gtk_main();
-		else
+		} else
 			application_quit();
 	}
 	gdk_threads_leave();

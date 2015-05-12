@@ -21,6 +21,7 @@
 #include "fru.h"
 #include "osc.h"
 #include "config.h"
+#include "phone_home.h"
 
 #if defined(FRU_FILES) && !defined(__linux__)
 #undef FRU_FILES
@@ -29,6 +30,7 @@
 typedef struct _Dialogs Dialogs;
 struct _Dialogs
 {
+	GtkBuilder *builder;
 	GtkWidget *about;
 	GtkWidget *connect;
 	GtkWidget *connect_fru;
@@ -39,12 +41,17 @@ struct _Dialogs
 	GtkWidget *connect_net;
 	GtkWidget *net_ip;
 	GtkWidget *ok_btn;
+	GtkWidget *latest_version;
+	GtkWidget *ver_progress_window;
+	GtkWidget *ver_progress_bar;
 };
 
 static Dialogs dialogs;
 static GtkWidget *serial_num;
 static GtkWidget *fru_date;
 static GtkWidget *fru_file_list;
+static volatile bool ver_check_done;
+static Release *release;
 
 #ifdef FRU_FILES
 static time_t mins_since_jan_1_1996(void)
@@ -619,11 +626,138 @@ gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 	return run;
 }
 
+/*
+ * Dispaly the up-to-date status of the software. If a new release is available
+ * display information about it.
+ */
+static gboolean version_info_show(gpointer data)
+{
+	Dialogs *_dialogs = (data) ? (Dialogs *)data : &dialogs;
+	GtkBuilder *builder = _dialogs->builder;
+	GtkWidget *r_name, *r_link, *r_dld_link;
+	GtkWidget *internal_vbox;
+	gchar *buf;
+
+	gdk_threads_enter();
+	internal_vbox = GTK_WIDGET(gtk_builder_get_object(builder,
+				"msg_dialog_vbox"));
+
+	if (!release) {
+		g_object_set(G_OBJECT(_dialogs->latest_version), "text",
+				"Failed to get the latest version."
+				"Make sure you have an internet connection.",
+				NULL);
+		gtk_widget_hide(internal_vbox);
+	} else if (strncmp(GIT_VERSION, release->commit, 7)) {
+		g_object_set(G_OBJECT(_dialogs->latest_version), "text",
+				"A new version is available", NULL);
+		r_name = GTK_WIDGET(gtk_builder_get_object(builder,
+					"latest_version_name"));
+		r_link = GTK_WIDGET(gtk_builder_get_object(builder,
+					"latest_version_link"));
+		r_dld_link = GTK_WIDGET(gtk_builder_get_object(builder,
+					"latest_version_donwnload_link"));
+
+		buf = g_strdup_printf("<b>%s</b>", release->name);
+		gtk_label_set_markup(GTK_LABEL(r_name), buf);
+		g_free(buf);
+		gtk_link_button_set_uri(GTK_LINK_BUTTON(r_link), release->url);
+		gtk_link_button_set_uri(GTK_LINK_BUTTON(r_dld_link),
+					release->windows_dld_url);
+		#ifndef __MINGW32__
+		gtk_widget_hide(r_dld_link);
+		#endif
+
+		gtk_widget_show(internal_vbox);
+	} else {
+		/* No data means that a silent version checking has been
+		   requested. The progress bar has already been hidden and so
+		   should the message dialog be. */
+		if (!data)
+			goto end;
+		g_object_set(G_OBJECT(_dialogs->latest_version), "text",
+				"This software is up to date", NULL);
+		gtk_widget_hide(internal_vbox);
+	}
+
+	release_dispose(release);
+	release = NULL;
+
+	gtk_dialog_run(GTK_DIALOG(_dialogs->latest_version));
+	gtk_widget_hide(_dialogs->latest_version);
+
+end:
+	gdk_threads_leave();
+
+	return false;
+}
+
+/*
+ * Use CURL to get the latest release of the software.
+ * All release information will be stored globally variable.
+ * Use release_dispose() when the release information are no longer needed.
+ */
+static gpointer version_check(gpointer data)
+{
+	bool status = true;
+
+	ver_check_done = false;
+	if (phone_home_init()) {
+		release = release_get_latest();
+		phone_home_terminate();
+	} else {
+		status = false;
+	}
+	ver_check_done = true;
+
+	return (gpointer)status;
+}
+
+/*
+ * Periodically animate the progress bar as long as the version checking thread
+ * is still working. When the thread has finished, signal (using g_idle_add())
+ * the GUI to run the dialog that contains latest version information.
+ */
+static gboolean version_progress_update(gpointer data)
+{
+	Dialogs *_dialogs = (Dialogs *)data;
+
+	if (_dialogs)
+		gtk_progress_bar_pulse(GTK_PROGRESS_BAR(_dialogs->ver_progress_bar));
+	if (ver_check_done) {
+		if (_dialogs)
+			gtk_widget_hide(_dialogs->ver_progress_window);
+		g_idle_add(version_info_show, (gpointer)_dialogs);
+	}
+
+	return !ver_check_done;
+}
+
+/*
+ * Start the version checking in a new thread.
+ * @dialogs - The Dialogs structure to be used. Set it to NULL if a process bar
+ *            is not required to be shown during version checking.
+ */
+void version_check_start(Dialogs *_dialogs)
+{
+	g_thread_new("version-check", (GThreadFunc)version_check, NULL);
+	g_timeout_add(150, version_progress_update, _dialogs);
+	if (_dialogs)
+		gtk_widget_show(_dialogs->ver_progress_window);
+}
+
+G_MODULE_EXPORT void cb_check_for_updates(GtkCheckMenuItem *item, Dialogs *_dialogs)
+{
+	version_check_start(_dialogs);
+}
+
 void dialogs_init(GtkBuilder *builder)
 {
 	const char *name = NULL;
 	struct iio_context *ctx;
 	GtkWidget *tmp;
+
+	dialogs.builder = builder;
 
 	dialogs.about = GTK_WIDGET(gtk_builder_get_object(builder, "About_dialog"));
 	dialogs.connect = GTK_WIDGET(gtk_builder_get_object(builder, "connect_dialog"));
@@ -635,6 +769,9 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.connect_net = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
 	dialogs.net_ip = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
 	dialogs.ok_btn = GTK_WIDGET(gtk_builder_get_object(builder, "button3"));
+	dialogs.latest_version = GTK_WIDGET(gtk_builder_get_object(builder, "latest_version_popup"));
+	dialogs.ver_progress_window = GTK_WIDGET(gtk_builder_get_object(builder, "progress_window"));
+	dialogs.ver_progress_bar = GTK_WIDGET(gtk_builder_get_object(builder, "progressbar"));
 	gtk_builder_connect_signals(builder, &dialogs);
 
 	/* Bind some dialogs radio buttons to text/labels */
