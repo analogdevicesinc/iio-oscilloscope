@@ -626,6 +626,23 @@ gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 	return run;
 }
 
+glong date_compare_against_build_date(const char *iso8601_date)
+{
+	GTimeVal time;
+	glong build_time = atol(GIT_COMMIT_TIMESTAMP);
+	gboolean parsed;
+	glong ret = 0;
+
+	parsed = g_time_val_from_iso8601(iso8601_date, &time);
+	if (parsed) {
+		ret = time.tv_sec - build_time;
+	} else {
+		printf("%s could not parse date. Not a ISO 8601 format.", __func__);
+	}
+
+	return ret;
+}
+
 /*
  * Dispaly the up-to-date status of the software. If a new release is available
  * display information about it.
@@ -649,8 +666,21 @@ static gboolean version_info_show(gpointer data)
 				NULL);
 		gtk_widget_hide(internal_vbox);
 	} else if (strncmp(GIT_VERSION, release->commit, 7)) {
-		g_object_set(G_OBJECT(_dialogs->latest_version), "text",
+
+		if (date_compare_against_build_date(release->build_date) > 0) {
+			g_object_set(G_OBJECT(_dialogs->latest_version), "text",
 				"A new version is available", NULL);
+		} else {
+			/* No data means that a silent version checking has been
+			   requested. The progress bar has already been hidden
+			   and so should the message dialog be. */
+			if (!data)
+				goto end;
+			g_object_set(G_OBJECT(_dialogs->latest_version), "text",
+				"This software is newer than the latest release",
+				NULL);
+		}
+
 		r_name = GTK_WIDGET(gtk_builder_get_object(builder,
 					"latest_version_name"));
 		r_link = GTK_WIDGET(gtk_builder_get_object(builder,
