@@ -255,7 +255,7 @@ Release * release_get_latest(void)
 	}
 
 	release->name = strdup(json_string_value(json_object_get(j_release, "name")));
-	release->build_date = strdup(json_string_value(json_object_get(j_release, "published_at")));
+	release->build_date = strdup(json_string_value(json_object_get(j_release, "created_at")));
 	release->url = strdup(json_string_value(json_object_get(j_release, "html_url")));
 
 	/* Get the release SHA commit */
