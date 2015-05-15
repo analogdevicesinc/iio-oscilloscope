@@ -95,7 +95,7 @@ static void entry_set_hex_int(GtkWidget *entry, unsigned data)
  */
 static const char * updatePR(const char * pr_bin_path) {
 
-	uint32_t status = 0;
+	ssize_t status = 0;
 	int ret, fd;
 
 	fd = open(pr_bin_path, O_RDONLY);
