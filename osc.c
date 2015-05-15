@@ -48,6 +48,7 @@ static GSList *dplugin_list = NULL;
 GtkWidget *notebook;
 GtkWidget *infobar;
 GtkWidget *tooltips_en;
+GtkWidget *versioncheck_en;
 GtkWidget *main_window;
 
 struct iio_context *ctx;
@@ -1839,7 +1840,10 @@ static void capture_profile_save(const char *filename)
 	fprintf(fp, "window_x_pos=%d\n", x_pos);
 	fprintf(fp, "window_y_pos=%d\n", y_pos);
 
-	fprintf(fp, "tooltips_enable=%d\n", gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(tooltips_en)));
+	fprintf(fp, "tooltips_enable=%d\n",
+		gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(tooltips_en)));
+	fprintf(fp, "startup_version_check=%d\n",
+		gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(versioncheck_en)));
 
 	fclose(fp);
 
@@ -1910,6 +1914,9 @@ static int handle_osc_param(int line, const char *name, const char *value)
 		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tooltips_en),
 				!!atoi(value));
 		return 0;
+	} else if (!strcmp(name, "startup_version_check")) {
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(versioncheck_en),
+				!!atoi(value));
 	}
 
 	if (!strcmp(name, "test") || !strcmp(name, "window_x_pos") ||
@@ -2014,6 +2021,14 @@ static void load_profile(const char *filename, bool load_plugins)
 			OSC_INI_SECTION, "tooltips_enable");
 	if (value) {
 		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tooltips_en),
+				!!atoi(value));
+		free(value);
+	}
+
+	value = read_token_from_ini(filename,
+			OSC_INI_SECTION, "startup_version_check");
+	if (value) {
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(versioncheck_en),
 				!!atoi(value));
 		free(value);
 	}

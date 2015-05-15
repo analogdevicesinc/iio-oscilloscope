@@ -14,6 +14,8 @@ MULTIARCH := $(shell $(CC) -print-multiarch)
 
 GIT_BRANCH := $(shell git name-rev --name-only HEAD | sed 's:.*/::')
 GIT_HASH := $(shell git describe --abbrev=7 --dirty --always)
+GIT_VERSION := $(shell git rev-parse --short HEAD)
+GIT_COMMIT_TIMESTAMP := $(shell git show -s --pretty=format:"%ct" HEAD)
 
 WITH_MINGW := $(if $(shell echo | $(CC) -dM -E - |grep __MINGW32__),y)
 EXPORT_SYMBOLS := -Wl,--export-all-symbols
@@ -23,7 +25,7 @@ PKG_CONFIG_PATH := $(SYSROOT)/usr/share/pkgconfig:$(SYSROOT)/usr/lib/pkgconfig:$
 PKG_CONFIG := env PKG_CONFIG_SYSROOT_DIR="$(SYSROOT)" \
 	PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" pkg-config
 
-DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0
+DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0 libcurl jansson
 
 LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 	-L$(SYSROOT)/usr/lib -lmatio -lz -lm
@@ -35,7 +37,9 @@ endif
 CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-I$(SYSROOT)/usr/include $(if $(WITH_MINGW),-mwindows,-fPIC) \
 	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
-	-DFRU_FILES=\"$(FRU_FILES)\" -DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\"
+	-DFRU_FILES=\"$(FRU_FILES)\" -DGIT_VERSION=\"$(GIT_VERSION)\" \
+	-DGIT_COMMIT_TIMESTAMP='"$(GIT_COMMIT_TIMESTAMP)"' \
+	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\"
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
@@ -72,7 +76,8 @@ else
 endif
 
 OSC_OBJS := osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o \
-	trigger_dialog.o xml_utils.o libini/libini.o libini2.o plugins/dac_data_manager.o
+	trigger_dialog.o xml_utils.o libini/libini.o libini2.o phone_home.o \
+	plugins/dac_data_manager.o
 
 all: $(OSC) $(PLUGINS)
 
@@ -109,6 +114,7 @@ fru.o: fru.h
 dialogs.o: fru.h osc.h
 trigger_dialog.o: fru.h osc.h iio_widget.h
 xml_utils.o: xml_utils.h
+phone_home.o: phone_home.h
 plugins/dac_data_manager.o: plugins/dac_data_manager.h
 
 install-common-files: $(OSC) $(PLUGINS)
