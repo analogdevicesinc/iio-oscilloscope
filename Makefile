@@ -28,6 +28,7 @@ PKG_CONFIG := env PKG_CONFIG_SYSROOT_DIR="$(SYSROOT)" \
 DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0 libcurl jansson
 
 LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
+	$(if $(WITH_MINGW),-lwinpthread) \
 	-L$(SYSROOT)/usr/lib -lmatio -lz -lm
 
 ifeq ($(WITH_MINGW),y)
@@ -39,7 +40,8 @@ CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
 	-DFRU_FILES=\"$(FRU_FILES)\" -DGIT_VERSION=\"$(GIT_VERSION)\" \
 	-DGIT_COMMIT_TIMESTAMP='"$(GIT_COMMIT_TIMESTAMP)"' \
-	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\"
+	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\" \
+	-D_POSIX_C_SOURCE=200809L
 
 #CFLAGS+=-DDEBUG
 #CFLAGS += -DNOFFTW
