@@ -62,6 +62,7 @@ static GtkNotebook *nbook;
 static gboolean plugin_detached;
 static GtkBuilder *builder;
 
+/* 1MHZ tone */
 #define CAL_TONE	1000000
 #define CAL_SCALE	0.12500
 #define MARKER_AVG	3
@@ -800,7 +801,7 @@ static double tune_trx_phase_offset(struct iio_device *ldev, int *ret,
 			break;
 
 		(void) min_phase; /* Avoid compiler warnings */
-		DBG("Step: %f Phase: %f, min_Phase: %f\ndelta %d, pdelta %d, min_delta %d\n",
+		DBG("Step: %f Phase: %f, min_Phase: %f\ndelta %d, min_delta %d\n",
 		    step, phase, min_phase, (int)delta, (int)min_delta);
 
 		tune(ldev, phase * sign);
@@ -892,8 +893,6 @@ static void calibrate (gpointer button)
 		goto calibrate_fail;
 	}
 
-
-
 	calib_progress = GTK_PROGRESS_BAR(gtk_builder_get_object(builder, "progress_calibration"));
 	set_calibration_progress(calib_progress, 0.00);
 
@@ -915,17 +914,18 @@ static void calibrate (gpointer button)
 
 	samples = get_cal_samples(cal_tone, cal_freq);
 
-	DBG("cal_tone %u cal_freq %u samples %d", cal_tone, cal_freq, samples);
+	DBG("cal_tone %llu cal_freq %llu samples %d", cal_tone, cal_freq, samples);
 
 	gdk_threads_enter();
 	osc_plot_set_sample_count(plot_xcorr_4ch, samples);
 	osc_plot_draw_start(plot_xcorr_4ch);
 	gdk_threads_leave();
 
-
+	/* Turn off quadrature tracking while the sync is going on */
 	iio_channel_attr_write(in0, "in_voltage_quadrature_tracking_en", "0");
 	iio_channel_attr_write(in0_slave, "in_voltage_quadrature_tracking_en", "0");
 
+	/* reset any Tx rotation to zero */
 	trx_phase_rotation(cf_ad9361_lpc, 0.0);
 	trx_phase_rotation(cf_ad9361_hpc, 0.0);
 	set_calibration_progress(calib_progress, 0.16);
