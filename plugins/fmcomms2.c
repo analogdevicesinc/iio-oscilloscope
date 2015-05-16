@@ -1377,7 +1377,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 			adc_info->plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
 	}
 
-	block_diagram_init(builder, 2, "fmcomms2.svg", "AD_FMCOMM2S2_RevC.jpg");
+	block_diagram_init(builder, 2, "AD9361.svg", "AD_FMCOMM2S2_RevC.jpg");
 
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
