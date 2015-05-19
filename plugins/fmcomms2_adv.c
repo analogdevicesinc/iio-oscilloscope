@@ -453,7 +453,7 @@ static double scale_phase_0_360(double val)
 	return val;
 }
 
-static double calc_phase_offset(double fsample, double dds_freq, int offset, int mag)
+static double calc_phase_offset(double fsample, double dds_freq, double offset, double mag)
 {
 	double val = 360.0 / ((fsample / dds_freq) / offset);
 
@@ -471,7 +471,7 @@ static void trx_phase_rotation(struct iio_device *dev, gdouble val)
 
 	bool output = (dev == dev_dds_slave) || (dev == dev_dds_master);
 
-	DBG("%s %f\n", iio_device_get_name(dev), val);
+	DBG("%s %f", iio_device_get_name(dev), val);
 
 	phase = val * 2 * M_PI / 360.0;
 
@@ -578,7 +578,7 @@ static void near_end_loopback_ctrl(unsigned channel, bool enable)
 
 }
 
-static void get_markers(int *offset, long long *mag, long long *mag1, long long *mag2, long long *x1)
+static void get_markers(double *offset, double *mag)
 {
 	int ret, sum = MARKER_AVG;
 	struct marker_type *markers = NULL;
@@ -588,9 +588,6 @@ static void get_markers(int *offset, long long *mag, long long *mag1, long long 
 
 	*offset = 0;
 	*mag = 0;
-	*mag1 = 0;
-	*mag2 = 0;
-	*x1 = 0;
 
 	for (sum = 0; sum < MARKER_AVG; sum++) {
 		if (device_ref) {
@@ -602,20 +599,14 @@ static void get_markers(int *offset, long long *mag, long long *mag1, long long 
 		if (markers) {
 			*offset += markers[0].x;
 			*mag += markers[0].y;
-			*mag1 += markers[1].y;
-			*mag2 += markers[2].y;
-			*x1 += markers[1].x;
 		}
 	}
 
 	*offset /= MARKER_AVG;
 	*mag /= MARKER_AVG;
-	*mag1 /= MARKER_AVG;
-	*mag2 /= MARKER_AVG;
-	*x1 /= MARKER_AVG;
 
 
-	DBG("offset: %d, MAG0 %d, MAG1 %d, MAG2 %d", *offset, (int)*mag, (int)*mag1, (int)*mag2);
+	DBG("offset: %f, MAG0 %f", *offset, *mag);
 
 	plugin_data_capture_with_domain(NULL, NULL, &markers, XCORR_PLOT);
 }
@@ -751,63 +742,30 @@ static double tune_trx_phase_offset(struct iio_device *ldev, int *ret,
 			double sign, double abort,
 			void (*tune)(struct iio_device *, gdouble))
 {
-	long long y, y1, y2, delta = LLONG_MAX,
-		min_delta = LLONG_MAX, x1;
-	int i, offset, pos = 0, neg = 0;
-	double min_phase, phase = 0.0, step = 1.0;
+	int i;
+	double offset, mag;
+	double phase = 0.0, increment;
 
-	for (i = 0; i < 30; i++) {
+	for (i = 0; i < 10; i++) {
 
-		get_markers(&offset, &y, &y1, &y2, &x1);
-		get_markers(&offset, &y, &y1, &y2, &x1);
+		get_markers(&offset, &mag);
+		get_markers(&offset, &mag);
 
-		if (i == 0) {
-			phase = calc_phase_offset(cal_freq, cal_tone, offset, y);
-			tune(ldev, phase * sign);
-			continue;
-		}
+		increment = calc_phase_offset(cal_freq, cal_tone, offset, mag);
+		increment *= sign;
 
+		phase += increment;
 
-		if (offset != 0) {
-			phase += (360.0 / ((cal_freq / cal_tone) / offset) / 2);
-			tune(ldev, phase * sign);
-			continue;
-		}
+		phase = scale_phase_0_360(phase);
+		tune(ldev, phase);
 
-		delta = abs(y1) - abs(y2);
+		DBG("Step: %i increment %f Phase: %f\n", i, increment, phase);
 
-		if (delta < min_delta) {
-			min_delta = delta;
-			min_phase = phase;
-		}
-
-		if (x1 > 0) {
-			if (pos == 1) {
-				step /= 2;
-				pos = 0;
-			}
-			phase -= step;
-			neg = 1;
-		} else {
-			if (neg == 1) {
-				step /= 2;
-				neg = 0;
-			}
-			phase += step;
-			pos = 1;
-		}
-
-		if (step < abort)
+		if (fabs(offset) < 0.001)
 			break;
-
-		(void) min_phase; /* Avoid compiler warnings */
-		DBG("Step: %f Phase: %f, min_Phase: %f\ndelta %d, min_delta %d\n",
-		    step, phase, min_phase, (int)delta, (int)min_delta);
-
-		tune(ldev, phase * sign);
 	}
 
-	if (offset)
+	if (fabs(offset) > 0.1)
 		*ret = -EFAULT;
 	else
 		*ret = 0;
@@ -836,7 +794,7 @@ static int get_cal_samples(long long cal_tone, long long cal_freq)
 	int samples, env_samples;
 	const char *cal_samples = getenv("CAL_SAMPLES");
 
-	samples = exp2(ceil(log2(cal_freq/cal_tone)) + 1);
+	samples = exp2(ceil(log2(cal_freq/cal_tone)) + 2);
 
 	if (!cal_samples)
 		return samples;
@@ -938,7 +896,7 @@ static void calibrate (gpointer button)
 	__cal_switch_ports_enable_cb(1);
 	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	if (ret < 0) {
-		printf("Failed to tune phase\n");
+		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
 		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
@@ -955,7 +913,7 @@ static void calibrate (gpointer button)
 	__cal_switch_ports_enable_cb(3);
 	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	if (ret < 0) {
-		printf("Failed to tune phase\n");
+		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
 		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
@@ -974,7 +932,7 @@ static void calibrate (gpointer button)
 	__cal_switch_ports_enable_cb(4);
 	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, &ret, cal_freq, cal_tone, -1.0 , 0.001, trx_phase_rotation);
 	if (ret < 0) {
-		printf("Failed to tune phase\n");
+		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
 		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
