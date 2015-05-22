@@ -1564,7 +1564,6 @@ bool rx_update_device_sampling_freq(const char *device, double freq)
 
 	dev = iio_context_find_device(ctx, device);
 	if (!dev) {
-		printf("Device: %s not found\n!", device);
 		return false;
 	}
 
@@ -1620,7 +1619,6 @@ bool rx_update_channel_lo_freq(const char *device, const char *channel,
 
 	dev = iio_context_find_device(ctx, device);
 	if (!dev) {
-		printf("Device: %s not found\n!", device);
 		return false;
 	}
 
