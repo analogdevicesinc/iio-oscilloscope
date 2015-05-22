@@ -463,6 +463,9 @@ static void rx_phase_rotation_update()
 	gdouble val[4];
 	int i, d = 0;
 
+	if (!cap)
+		return;
+
 	out[0] = iio_device_find_channel(cap, "voltage0", false);
 	out[1] = iio_device_find_channel(cap, "voltage1", false);
 
@@ -533,7 +536,8 @@ static void dxco_widgets_update(void)
 static void update_widgets(void)
 {
 	iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dev);
-	iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dds);
+	if (dds)
+		iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dds);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 	dxco_widgets_update();
 }
@@ -790,6 +794,9 @@ static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
 	struct iio_channel *out0, *out1;
 	gdouble val, phase;
 
+	if (!cap)
+		return;
+
 	val = gtk_spin_button_get_value(spinbutton);
 
 	phase = val * 2 * M_PI / 360.0;
@@ -968,8 +975,9 @@ static void load_profile(const char *ini_fn)
 
 	update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
 			ARRAY_SIZE(fmcomms2_sr_attribs));
-	update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
-			ARRAY_SIZE(fmcomms2_sr_attribs));
+	if (dds)
+		update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
+				ARRAY_SIZE(fmcomms2_sr_attribs));
 
 	if (can_update_widgets)
 		reload_button_clicked(NULL, NULL);
@@ -998,10 +1006,6 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	ch1 = iio_device_find_channel(dev, "voltage1", false);
 
 	dac_tx_manager = dac_data_manager_new(dds, NULL, ctx);
-	if (!dac_tx_manager) {
-		iio_context_destroy(ctx);
-		return NULL;
-	}
 
 	const char *env_freq_span = getenv("OSC_UPDN_FREQ_SPAN");
 	const char *env_freq_mix_sign = getenv("OSC_UPDN_FREQ_MIX_SIGN");
@@ -1078,7 +1082,9 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	tx1_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx1"));
 	tx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx2"));
 	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));
-	gtk_container_add(GTK_CONTAINER(dds_container), dac_data_manager_get_gui_container(dac_tx_manager));
+	if (dac_tx_manager)
+		gtk_container_add(GTK_CONTAINER(dds_container),
+			dac_data_manager_get_gui_container(dac_tx_manager));
 	gtk_widget_show_all(dds_container);
 
 	rx_phase_rotation[0] = GTK_WIDGET(gtk_builder_get_object(builder, "rx1_phase_rotation"));
@@ -1395,6 +1401,9 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	}
 	gtk_widget_set_visible(up_down_converter, has_udc_driver);
 
+	if (!dac_tx_manager)
+		gtk_widget_hide(gtk_widget_get_parent(section_setting[SECTION_FPGA]));
+
 	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 	can_update_widgets = true;
 
@@ -1452,8 +1461,9 @@ static void save_profile(const char *ini_fn)
 	if (f) {
 		save_to_ini(f, THIS_DRIVER, dev, fmcomms2_sr_attribs,
 				ARRAY_SIZE(fmcomms2_sr_attribs));
-		save_to_ini(f, NULL, dds, fmcomms2_sr_attribs,
-				ARRAY_SIZE(fmcomms2_sr_attribs));
+		if (dds)
+			save_to_ini(f, NULL, dds, fmcomms2_sr_attribs,
+					ARRAY_SIZE(fmcomms2_sr_attribs));
 		save_widgets_to_ini(f);
 		fclose(f);
 	}
@@ -1481,8 +1491,7 @@ static bool fmcomms2_identify(void)
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
 
-	if (!iio_context_find_device(osc_ctx, PHY_DEVICE)
-		|| !iio_context_find_device(osc_ctx, DDS_DEVICE))
+	if (!iio_context_find_device(osc_ctx, PHY_DEVICE))
 		return false;
 
 	/* Check if FMComms5 is used */
