@@ -148,6 +148,7 @@ struct _cross_correlation_settings {
 	gfloat *i1_source;
 	gfloat *q1_source;
 	unsigned int num_samples;
+	unsigned int avg;
 	int revert_xcorr;
 	fftw_complex *signal_a;
 	fftw_complex *signal_b;
