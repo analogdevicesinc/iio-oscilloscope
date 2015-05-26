@@ -1564,13 +1564,13 @@ bool rx_update_device_sampling_freq(const char *device, double freq)
 
 	dev = iio_context_find_device(ctx, device);
 	if (!dev) {
-		printf("Device: %s not found\n!", device);
+		printf("Device: %s not found!\n", device);
 		return false;
 	}
 
 	info = iio_device_get_data(dev);
 	if (!info) {
-		printf("Device: %s extra info not found\n!", device);
+		printf("Device: %s extra info not found!\n", device);
 		return false;
 	}
 
