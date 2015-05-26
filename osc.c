@@ -358,7 +358,8 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 			break;
 	}
 	if (i == num_pages) {
-		printf("Could not find %s plugin in the notebook\n", plugin_name);
+		fprintf(stderr, "Could not find %s plugin in the notebook\n",
+				plugin_name);
 		return;
 	}
 
@@ -673,7 +674,7 @@ int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
  	return 0;
 
 capture_malloc_fail:
-	printf("%s:%s malloc failed\n", __FILE__, __func__);
+	fprintf(stderr, "%s:%s malloc failed\n", __FILE__, __func__);
 	return -ENOMEM;
 }
 
@@ -1564,13 +1565,13 @@ bool rx_update_device_sampling_freq(const char *device, double freq)
 
 	dev = iio_context_find_device(ctx, device);
 	if (!dev) {
-		printf("Device: %s not found!\n", device);
+		fprintf(stderr, "Device: %s not found!\n", device);
 		return false;
 	}
 
 	info = iio_device_get_data(dev);
 	if (!info) {
-		printf("Device: %s extra info not found!\n", device);
+		fprintf(stderr, "Device: %s extra info not found!\n", device);
 		return false;
 	}
 
@@ -1620,7 +1621,7 @@ bool rx_update_channel_lo_freq(const char *device, const char *channel,
 
 	dev = iio_context_find_device(ctx, device);
 	if (!dev) {
-		printf("Device: %s not found\n!", device);
+		fprintf(stderr, "Device: %s not found\n!", device);
 		return false;
 	}
 
@@ -1637,7 +1638,7 @@ bool rx_update_channel_lo_freq(const char *device, const char *channel,
 			if (chn_info) {
 				chn_info->lo_freq = lo_freq;
 			} else {
-				printf("Channel: %s extra info "
+				fprintf(stderr, "Channel: %s extra info "
 					"not found!\n", channel);
 				success = false;
 			}
@@ -1647,13 +1648,13 @@ bool rx_update_channel_lo_freq(const char *device, const char *channel,
 
 	chn = iio_device_find_channel(dev, channel, false);
 	if (!chn) {
-		printf("Channel: %s not found!\n", channel);
+		fprintf(stderr, "Channel: %s not found!\n", channel);
 		return false;
 	}
 
 	chn_info = iio_channel_get_data(chn);
 	if (!chn_info) {
-		printf("Channel: %s extra info not found!\n", channel);
+		fprintf(stderr, "Channel: %s extra info not found!\n", channel);
 		return false;
 	}
 
@@ -2453,7 +2454,7 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 		long long lval;
 		ret = osc_read_value(ctx, value, &lval);
 		if (ret < 0) {
-			printf("Unable to read value: %s\n", value);
+			fprintf(stderr, "Unable to read value: %s\n", value);
 			return ret;
 		}
 
