@@ -2051,7 +2051,7 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 		Transform_attach_settings(transform, xcross_settings);
 		break;
 	default:
-		printf("Invalid transform\n");
+		fprintf(stderr, "Invalid transform\n");
 		return NULL;
 	}
 	TrList_add_transform(priv->transform_list, transform);
@@ -2077,7 +2077,8 @@ static gfloat *** iio_channels_get_data(const char *device_name)
 
 	iio_dev = iio_context_find_device(ctx, device_name);
 	if (!iio_dev) {
-		printf("Could not find device %s in %s\n", device_name, __func__);
+		fprintf(stderr, "Could not find device %s in %s\n",
+				device_name, __func__);
 		return NULL;
 	}
 	nb_channels = iio_device_get_channels_count(iio_dev);
@@ -2447,7 +2448,9 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	}
 	iio_dev = transform_get_device_parent(tr);
 	if (!iio_dev) {
-		printf("Error: Could not find iio device parent for the given transform.%s\n", __func__);
+		fprintf(stderr,
+			"Error: Could not find iio device parent for the given transform.%s\n",
+			__func__);
 		return;
 	}
 	dev_info = iio_device_get_data(iio_dev);
@@ -2623,13 +2626,13 @@ static gfloat * plot_channels_get_nth_data_ref(GSList *list, guint n)
 	gfloat *data = NULL;
 
 	if (!list) {
-		printf("Invalid list argument.");
+		fprintf(stderr, "Invalid list argument.");
 		goto end;
 	}
 
 	nth_node = g_slist_nth(list, n);
 	if (!nth_node || !nth_node->data) {
-		printf("Element at index %d does not exist.", n);
+		fprintf(stderr, "Element at index %d does not exist.", n);
 		goto end;
 	}
 
@@ -2639,7 +2642,8 @@ static gfloat * plot_channels_get_nth_data_ref(GSList *list, guint n)
 
 end:
 	if (!data)
-		printf("Could not find data reference in %s\n", __func__);
+		fprintf(stderr, "Could not find data reference in %s\n",
+				__func__);
 
 	return data;
 }
@@ -3794,7 +3798,7 @@ static void screenshot_saveas_png(OscPlot *plot)
 
 	filename = priv->saveas_filename;
 	if (!filename) {
-		printf("error invalid filename");
+		fprintf(stderr, "error invalid filename");
 		return;
 	}
 
@@ -3802,13 +3806,15 @@ static void screenshot_saveas_png(OscPlot *plot)
 	if (pixbuf)
 		ret = gdk_pixbuf_save(pixbuf, filename, "png", &err, NULL);
 	else
-		printf("error getting the pixbug of the Capture Plot window\n");
+		fprintf(stderr,
+			"error getting the pixbug of the Capture Plot window\n");
 
 
 	if (!ret) {
-		printf("error creating %s\n", filename);
+		fprintf(stderr, "error creating %s\n", filename);
 		if (err)
-			printf("error(%d):%s\n", err->code, err->message);
+			fprintf(stderr, "error(%d):%s\n", err->code,
+					err->message);
 	}
 
 	return;
@@ -4108,7 +4114,9 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				}
 
 				if (!matvar)
-					printf("error creating matvar on channel %s\n", tmp);
+					fprintf(stderr,
+						"error creating matvar on channel %s\n",
+						tmp);
 				else {
 					Mat_VarWrite(mat, matvar, 0);
 					Mat_VarFree(matvar);
@@ -4120,7 +4128,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			break;
 
 		default:
-			printf("SaveAs response: %i\n", type);
+			fprintf(stderr, "SaveAs response: %i\n", type);
 	}
 
 	if (priv->saveas_filename)
@@ -5034,7 +5042,7 @@ static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type
 		return;
 	}
 
-	printf("unhandled event at %s : %s\n", __func__, buf);
+	fprintf(stderr, "unhandled event at %s : %s\n", __func__, buf);
 }
 
 static void marker_menu (struct string_and_plot *string_data)
@@ -6051,7 +6059,7 @@ static void quit_callback_default_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	if (priv->quit_callback)
 		priv->quit_callback(priv->qcb_user_data);
 	else
-		printf("Plot %d does not have a quit callback!\n",
+		fprintf(stderr, "Plot %d does not have a quit callback!\n",
 			priv->object_id);
 }
 
