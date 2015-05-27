@@ -91,11 +91,11 @@ struct dds_dac {
 	unsigned index;
 	const char *name;
 	struct iio_device *iio_dac;
-	int tx_count;
+	unsigned tx_count;
 	struct dds_tx tx1;
 	struct dds_tx tx2;
 	int dds_mode;
-	int tones_count;
+	unsigned tones_count;
 
 	GtkWidget *frame;
 };
@@ -1049,7 +1049,7 @@ static GtkWidget *gui_dac_channels_tree_create(struct dac_buffer *d_buffer)
 
 	struct iio_device *dac = d_buffer->dac_with_scanelems;
 	GtkTreeIter iter;
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < iio_device_get_channels_count(dac); i++) {
 		struct iio_channel *ch = iio_device_get_channel(dac, i);
@@ -1197,7 +1197,7 @@ static const char * get_tone_name(struct iio_channel *ch)
 
 static unsigned get_iio_tones_count(struct iio_device *dev)
 {
-	int i, count;
+	unsigned int i, count;
 
 	for (i = 0, count = 0; i < iio_device_get_channels_count(dev); i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
@@ -1215,7 +1215,7 @@ static int dac_channels_assign(struct dds_dac *ddac)
 	struct dac_data_manager *manager;
 	struct iio_device *dac = ddac->iio_dac;
 	const char *ch_name;
-	int i, processed_ch = 0;
+	unsigned int i, processed_ch = 0;
 
 	if (!dac)
 		return 0;
@@ -1800,7 +1800,8 @@ static int dds_dac_init(struct dac_data_manager *manager,
 
 static int device_scan_elements_count(struct iio_device *dev)
 {
-	int i, count;
+	unsigned int i;
+	int count;
 
 	for (i = 0, count = 0; i < iio_device_get_channels_count(dev); i++) {
 		struct iio_channel *ch = iio_device_get_channel(dev, i);
@@ -2068,7 +2069,7 @@ void dac_data_manager_set_tx_channel_state(struct dac_data_manager *manager,
 	GtkTreeIter iter;
 	GtkTreeModel *model;
 	gboolean next_iter;
-	int index;
+	unsigned int index;
 
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(manager->dac_buffer_module.tx_channels_view));
 	if (!gtk_tree_model_get_iter_first(model, &iter))
@@ -2093,7 +2094,7 @@ bool dac_data_manager_get_tx_channel_state(struct dac_data_manager *manager, uns
 	GtkTreeIter iter;
 	GtkTreeModel *model;
 	gboolean next_iter;
-	int index;
+	unsigned int index;
 	gboolean state;
 
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(manager->dac_buffer_module.tx_channels_view));
@@ -2119,7 +2120,7 @@ static struct dds_tone *dds_tone_find(struct dac_data_manager *manager,
 {
 	GSList *node;
 	struct dds_tone *tn = NULL;
-	int tone_type;
+	unsigned int tone_type;
 
 	for (node = manager->dds_tones; node; node = g_slist_next(node)) {
 		tn = node->data;
