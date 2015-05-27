@@ -31,7 +31,7 @@
 
 static unsigned int buffer_size;
 static uint8_t *soft_buffer_ch0;
-static int current_sample = 0;
+static unsigned int current_sample = 0;
 static gint fill_buffer_function = 0;
 static struct iio_device *dev;
 static bool dev_opened;
@@ -104,7 +104,7 @@ static int buffer_close()
 
 static int FillSoftBuffer(int waveType, uint8_t *softBuffer)
 {
-	int sampleNr = 0;
+	unsigned int sampleNr = 0;
 	int rawVal;
 	int intAmpl;
 	int intOffset;
@@ -181,7 +181,7 @@ static void generateWavePeriod(void)
 {
 	int waveType = 0;
 	double waveFreq;
-	int i;
+	unsigned int i;
 	struct iio_device *trigger = iio_context_find_device(ctx, "hrtimer-1");
 	unsigned long triggerFreq;
 	long long triggerFreqLL = 0;
