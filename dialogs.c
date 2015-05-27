@@ -96,7 +96,7 @@ static size_t write_fru(char *eeprom)
 	fp = fopen(".serialnum", "r");
 	if (fp) {
 		i = fread(ser_num, 1, 128, fp);
-		if (i >= 0)
+		if (!ferror(fp) && (i == 128 || feof(fp)))
 			gtk_entry_set_text(GTK_ENTRY(serial_num), (const gchar*)&ser_num[1]);
 		fclose(fp);
 	}
@@ -320,7 +320,7 @@ static bool connect_fillin(Dialogs *data)
 	GtkTextBuffer *buf;
 	GtkTextIter iter;
 	char text[256];
-	int num;
+	unsigned int num;
 	size_t i;
 	struct stat st;
 	struct iio_context *ctx;
