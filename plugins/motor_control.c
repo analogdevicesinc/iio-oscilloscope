@@ -614,7 +614,7 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	GtkWidget *pid_page;
 	GtkWidget *advanced_page;
 	GtkWidget *resolver_page;
-	int i;
+	size_t i;
 
 	ctx = osc_create_context();
 	if (!ctx)
@@ -667,7 +667,7 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	/* Signal connections for GPOs */
 	char widget_name[25];
 	for (i = 0; i < sizeof(gpo)/sizeof(gpo[0]); i++) {
-		sprintf(widget_name, "checkbutton_gpo%d", i+1);
+		sprintf(widget_name, "checkbutton_gpo%zd", i+1);
 		gpo_id[i] = i;
 		gpo[i] = GTK_WIDGET(gtk_builder_get_object(builder, widget_name));
 		g_signal_connect(G_OBJECT(gpo[i]), "toggled", G_CALLBACK(gpo_toggled_cb), &gpo_id[i]);
