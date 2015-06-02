@@ -792,7 +792,7 @@ static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data
 
 static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
 {
-	glong offset = (glong) user_data;
+	uintptr_t offset = (uintptr_t) user_data;
 	struct iio_channel *out0, *out1;
 	gdouble val, phase;
 
