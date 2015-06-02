@@ -1032,7 +1032,11 @@ static void do_fft(Transform *tr)
 	}
 }
 
-static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *result, int N)
+/* sections of the xcorr function are borrowed (under the GPL) from
+ * http://blog.dmaggot.org/2010/06/cross-correlation-using-fftw3/
+ * which is copyright 2010 David E. Narváez
+ */
+static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *result, int N, double avg)
 {
 	fftw_complex * signala_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
 	fftw_complex * signalb_ext = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
@@ -1040,14 +1044,22 @@ static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *re
 	fftw_complex * outb = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
 	fftw_complex * out = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * (2 * N - 1));
 	fftw_complex scale;
+	fftw_complex *cross;
+
 	int i;
+	double peak_a = 0.0, peak_b = 0.0;
 
 	if (!signala_ext || !signalb_ext || !outa || !outb || !out)
 		return;
 
+	if (avg > 1)
+		cross = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * (2 * N));
+	else
+		cross = result;
+
 	fftw_plan pa = fftw_plan_dft_1d(2 * N - 1, signala_ext, outa, FFTW_FORWARD, FFTW_ESTIMATE);
 	fftw_plan pb = fftw_plan_dft_1d(2 * N - 1, signalb_ext, outb, FFTW_FORWARD, FFTW_ESTIMATE);
-	fftw_plan px = fftw_plan_dft_1d(2 * N - 1, out, result, FFTW_BACKWARD, FFTW_ESTIMATE);
+	fftw_plan px = fftw_plan_dft_1d(2 * N - 1, out, cross, FFTW_BACKWARD, FFTW_ESTIMATE);
 
 	//zeropadding
 	memset(signala_ext, 0, sizeof(fftw_complex) * (N - 1));
@@ -1055,13 +1067,25 @@ static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *re
 	memcpy(signalb_ext, signalb, sizeof(fftw_complex) * N);
 	memset(signalb_ext + N, 0, sizeof(fftw_complex) * (N - 1));
 
+	/* find the peaks of the time domain, for normalization */
+	for (i = 0; i < N; i++) {
+		if (peak_a < cabs(signala[i]))
+			peak_a = cabs(signala[i]);
+
+		if (peak_b < cabs(signalb[i]))
+			peak_b = cabs(signalb[i]);
+	}
+
+	/* Move the two signals into the fourier domain */
 	fftw_execute(pa);
 	fftw_execute(pb);
 
-	scale = 1.0/(2 * N -1);
+	/* Compute the dot product, and scale them */
+	scale = (2 * N -1) * peak_a * peak_b * 2;
 	for (i = 0; i < 2 * N - 1; i++)
-		out[i] = outa[i] * conj(outb[i]) * scale;
+		out[i] = outa[i] * conj(outb[i]) / scale;
 
+	/* Inverse FFT on the dot product */
 	fftw_execute(px);
 
 	fftw_destroy_plan(pa);
@@ -1073,6 +1097,17 @@ static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *re
 	fftw_free(out);
 	fftw_free(outa);
 	fftw_free(outb);
+
+	if(avg > 1) {
+		if (result[0] == FLT_MAX) {
+			for (i = 0; i < 2 * N -1; i++)
+				result[i] = cross[i];
+		} else {
+			for (i = 0; i < 2 * N -1; i++)
+				result[i] = (result[i] * (avg - 1) + cross[i]) / avg;
+		}
+		fftw_free(cross);
+	}
 
 	fftw_cleanup();
 
@@ -1174,6 +1209,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		settings->signal_a = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length);
 		settings->signal_b = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length);
 		settings->xcorr_data = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * axis_length * 2);
+		settings->xcorr_data[0] = FLT_MAX;
 
 		Transform_resize_x_axis(tr, 2 * axis_length);
 		Transform_resize_y_axis(tr, 2 * axis_length);
@@ -1206,9 +1242,9 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	}
 
 	if (settings->revert_xcorr)
-		xcorr(settings->signal_b, settings->signal_a, settings->xcorr_data, axis_length);
+		xcorr(settings->signal_b, settings->signal_a, settings->xcorr_data, axis_length, (double)settings->avg);
 	else
-		xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length);
+		xcorr(settings->signal_a, settings->signal_b, settings->xcorr_data, axis_length, (double)settings->avg);
 
 	gfloat *out_data = tr->y_axis;
 	gfloat *X = tr->x_axis;
@@ -1226,6 +1262,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		maxY[j] = -200.0f;
 	}
 
+	/* find the peaks */
 	for (i = 0; i < 2 * axis_length - 1; i++) {
 		tr->y_axis[i] =  2 * creal(settings->xcorr_data[i]) / (gfloat)axis_length;
 		if (!settings->markers)
@@ -1260,11 +1297,25 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	if (!settings->markers)
 		return;
 
+	/* now we know where the peaks are, we estimate the actual peaks,
+	 * by quadratic interpolation of existing spectral peaks, which is explained:
+	 * https://ccrma.stanford.edu/~jos/sasp/Quadratic_Interpolation_Spectral_Peaks.html
+	 * written by Julius Orion Smith III.
+	 */
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
 		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++)
 			if (marker_type == MARKER_PEAK) {
-				markers[j].x = (gfloat)X[maxX[j]];
-				markers[j].y = (gfloat)out_data[maxX[j]];
+				/* sync'ed with the pictures in the url above:
+				* alpha = (gfloat)out_data[maxX[j] - 1];
+				 * gamma = (gfloat)out_data[maxX[j] + 1];
+				 * beta  = (gfloat)out_data[maxX[j]];
+				 */
+				markers[j].x = (gfloat)((out_data[maxX[j] - 1] - out_data[maxX[j] + 1]) /
+						(2 * (out_data[maxX[j] - 1] - 2 * out_data[maxX[j]] +
+						out_data[maxX[j] + 1])));
+				markers[j].y = (gfloat)(out_data[maxX[j]] - (out_data[maxX[j] - 1] - out_data[maxX[j] + 1]) *
+						markers[j].x / 4);
+				markers[j].x += (gfloat)X[maxX[j]];
 				markers[j].bin = maxX[j];
 			}
 		if (settings->markers_copy && *settings->markers_copy) {
@@ -1937,6 +1988,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 		CONSTELLATION_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	} else if (plot_type == XCORR_PLOT){
 		XCORR_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+		XCORR_SETTINGS(transform)->avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
 		XCORR_SETTINGS(transform)->revert_xcorr = 0;
 		XCORR_SETTINGS(transform)->signal_a = NULL;
 		XCORR_SETTINGS(transform)->signal_b = NULL;
@@ -2000,7 +2052,7 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 		Transform_attach_settings(transform, xcross_settings);
 		break;
 	default:
-		printf("Invalid transform\n");
+		fprintf(stderr, "Invalid transform\n");
 		return NULL;
 	}
 	TrList_add_transform(priv->transform_list, transform);
@@ -2026,7 +2078,8 @@ static gfloat *** iio_channels_get_data(const char *device_name)
 
 	iio_dev = iio_context_find_device(ctx, device_name);
 	if (!iio_dev) {
-		printf("Could not find device %s in %s\n", device_name, __func__);
+		fprintf(stderr, "Could not find device %s in %s\n",
+				device_name, __func__);
 		return NULL;
 	}
 	nb_channels = iio_device_get_channels_count(iio_dev);
@@ -2094,7 +2147,7 @@ static void markers_init(OscPlot *plot)
 
 	for (i = 0; i <= MAX_MARKERS; i++) {
 		markers[i].x = 0.0f;
-		markers[i].y = -100.0f;
+		markers[i].y = 0.0f;
 		if (markers[i].graph)
 			g_object_unref(markers[i].graph);
 		markers[i].graph = gtk_databox_markers_new(1, &markers[i].x, &markers[i].y, &color_marker,
@@ -2396,7 +2449,9 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	}
 	iio_dev = transform_get_device_parent(tr);
 	if (!iio_dev) {
-		printf("Error: Could not find iio device parent for the given transform.%s\n", __func__);
+		fprintf(stderr,
+			"Error: Could not find iio device parent for the given transform.%s\n",
+			__func__);
 		return;
 	}
 	dev_info = iio_device_get_data(iio_dev);
@@ -2429,7 +2484,7 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 					dev_info->adc_scale,
 					m != MAX_MARKERS ? '\n' : '\0');
 			} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
-				sprintf(text, "M%i: %2.2f @ %2.3f%c", m, markers[m].y, markers[m].x,
+				sprintf(text, "M%i: %1.6f @ %2.3f%c", m, markers[m].y, markers[m].x,
 					m != MAX_MARKERS ? '\n' : '\0');
 			}
 
@@ -2572,13 +2627,13 @@ static gfloat * plot_channels_get_nth_data_ref(GSList *list, guint n)
 	gfloat *data = NULL;
 
 	if (!list) {
-		printf("Invalid list argument.");
+		fprintf(stderr, "Invalid list argument.");
 		goto end;
 	}
 
 	nth_node = g_slist_nth(list, n);
 	if (!nth_node || !nth_node->data) {
-		printf("Element at index %d does not exist.", n);
+		fprintf(stderr, "Element at index %d does not exist.", n);
 		goto end;
 	}
 
@@ -2588,7 +2643,8 @@ static gfloat * plot_channels_get_nth_data_ref(GSList *list, guint n)
 
 end:
 	if (!data)
-		printf("Could not find data reference in %s\n", __func__);
+		fprintf(stderr, "Could not find data reference in %s\n",
+				__func__);
 
 	return data;
 }
@@ -3743,7 +3799,7 @@ static void screenshot_saveas_png(OscPlot *plot)
 
 	filename = priv->saveas_filename;
 	if (!filename) {
-		printf("error invalid filename");
+		fprintf(stderr, "error invalid filename");
 		return;
 	}
 
@@ -3751,13 +3807,15 @@ static void screenshot_saveas_png(OscPlot *plot)
 	if (pixbuf)
 		ret = gdk_pixbuf_save(pixbuf, filename, "png", &err, NULL);
 	else
-		printf("error getting the pixbug of the Capture Plot window\n");
+		fprintf(stderr,
+			"error getting the pixbug of the Capture Plot window\n");
 
 
 	if (!ret) {
-		printf("error creating %s\n", filename);
+		fprintf(stderr, "error creating %s\n", filename);
 		if (err)
-			printf("error(%d):%s\n", err->code, err->message);
+			fprintf(stderr, "error(%d):%s\n", err->code,
+					err->message);
 	}
 
 	return;
@@ -4057,7 +4115,9 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				}
 
 				if (!matvar)
-					printf("error creating matvar on channel %s\n", tmp);
+					fprintf(stderr,
+						"error creating matvar on channel %s\n",
+						tmp);
 				else {
 					Mat_VarWrite(mat, matvar, 0);
 					Mat_VarFree(matvar);
@@ -4069,7 +4129,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			break;
 
 		default:
-			printf("SaveAs response: %i\n", type);
+			fprintf(stderr, "SaveAs response: %i\n", type);
 	}
 
 	if (priv->saveas_filename)
@@ -4983,7 +5043,7 @@ static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type
 		return;
 	}
 
-	printf("unhandled event at %s : %s\n", __func__, buf);
+	fprintf(stderr, "unhandled event at %s : %s\n", __func__, buf);
 }
 
 static void marker_menu (struct string_and_plot *string_data)
@@ -5248,14 +5308,26 @@ static gboolean domain_is_time(GBinding *binding,
 	return TRUE;
 }
 
+static gboolean domain_is_xcorr_fft(GBinding *binding,
+	const GValue *source_value, GValue *target_value, gpointer user_data)
+{
+	g_value_set_boolean(target_value, g_value_get_int(source_value) == FFT_PLOT ||
+			g_value_get_int(source_value) == XCORR_PLOT);
+	return TRUE;
+}
 
 static void fft_avg_value_changed_cb(GtkSpinButton *button, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
-	int i;
+	int i, plot_type;
+
+	plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
 
 	for (i = 0; i < priv->transform_list->size; i++) {
-		FFT_SETTINGS(priv->transform_list->transforms[i])->fft_avg = gtk_spin_button_get_value(button);
+		if (plot_type == FFT_PLOT)
+			FFT_SETTINGS(priv->transform_list->transforms[i])->fft_avg = gtk_spin_button_get_value(button);
+		else if (plot_type == XCORR_PLOT)
+			XCORR_SETTINGS(priv->transform_list->transforms[i])->avg = gtk_spin_button_get_value(button);
 	}
 }
 static void fft_pwr_offset_value_changed_cb(GtkSpinButton *button, OscPlot *plot)
@@ -5989,7 +6061,7 @@ static void quit_callback_default_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	if (priv->quit_callback)
 		priv->quit_callback(priv->qcb_user_data);
 	else
-		printf("Plot %d does not have a quit callback!\n",
+		fprintf(stderr, "Plot %d does not have a quit callback!\n",
 			priv->object_id);
 }
 
@@ -6398,9 +6470,9 @@ static void create_plot(OscPlot *plot)
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg_label"));
 	 g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
-		0, domain_is_fft, NULL, NULL, NULL);
+		0, domain_is_xcorr_fft, NULL, NULL, NULL);
 	 g_object_bind_property_full(priv->plot_domain, "active", priv->fft_avg_widget, "visible",
-		0, domain_is_fft, NULL, NULL, NULL);
+		0, domain_is_xcorr_fft, NULL, NULL, NULL);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset_label"));
 	 g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
