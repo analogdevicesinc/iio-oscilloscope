@@ -1025,7 +1025,7 @@ void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 {
 	double value = gtk_range_get_value(hscale1);
 
-	if ((unsigned long)data)
+	if ((uintptr_t) data)
 		trx_phase_rotation(dev_dds_master, value);
 	else
 		trx_phase_rotation(dev_dds_slave, value);

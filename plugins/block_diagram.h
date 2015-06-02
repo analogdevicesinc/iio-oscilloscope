@@ -9,13 +9,14 @@
 #define __OSC_PLUGIN_BLOCK_H__
 
 #include <stdarg.h>
+#include <stdint.h>
 
 static double scale_block = 1.0;
 static int x_block = 0, y_block = 0, redraw_block = 0;
 static GtkWidget *block_diagram_events;
 static GtkWidget *next_pict, *previous_pict;
 static char *block_filename[256];
-static unsigned int block_num = 0;
+static unsigned long block_num = 0;
 
 static gboolean zoom_image_press_cb (GtkWidget *event_box, GdkEventButton *event, gpointer data)
 {
@@ -30,7 +31,7 @@ static gboolean zoom_image_press_cb (GtkWidget *event_box, GdkEventButton *event
 
 static void next_image_cb (GtkButton *btn, gpointer data)
 {
-	block_num += (long) data;
+	block_num += (uintptr_t) data;
 
 	if (block_filename[block_num + 1] == NULL)
 		gtk_widget_hide(next_pict);
@@ -49,7 +50,7 @@ static void next_image_cb (GtkButton *btn, gpointer data)
 
 static void zoom_image_cb (GtkButton *btn, gpointer data)
 {
-	switch ((long) data) {
+	switch ((uintptr_t) data) {
 		case 0:
 			scale_block += .1;
 			break;
