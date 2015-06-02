@@ -8,6 +8,12 @@
 #include <string.h>
 #include <glib.h>
 
+#ifdef _WIN32
+#define LONG_LONG_FORMAT "%I64d"
+#else
+#define LONG_LONG_FORMAT "%lld"
+#endif
+
 struct load_store_params {
 	const struct iio_device *dev;
 	const char * const *whitelist;
@@ -488,7 +494,7 @@ static char * ini_loop_get_iteration(struct ini_loop *loop)
 
 	switch (loop->type) {
 	case INI_LOOP_SEQ:
-		iteration = g_strdup_printf("%lli", loop->i);
+		iteration = g_strdup_printf(LONG_LONG_FORMAT, loop->i);
 		break;
 	case INI_LOOP_FOR:
 		iteration = g_strdup(loop->for_values[loop->i]);
