@@ -415,7 +415,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 					re = complex_data->Re;
 					im = complex_data->Im;
 
-					for (j = 0; j < matvars[rep]->dims[0] ; j++) {
+					for (j = 0; j < (unsigned int) matvars[rep]->dims[0] ; j++) {
 						 if (fabs(re[j]) > max)
 							 max = fabs(re[j]);
 						 if (fabs(im[j]) > max)
@@ -425,7 +425,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 				} else {
 					double re;
 
-					for (j = 0; j < matvars[rep]->dims[0] ; j++) {
+					for (j = 0; j < (unsigned int) matvars[rep]->dims[0] ; j++) {
 						re = ((double *)matvars[rep]->data)[j];
 						if (fabs(re) > max)
 							max = fabs(re);
@@ -455,7 +455,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			size = matvars[0]->dims[0];
 
 			for (i = 0; i <= (unsigned int) rep; i++) {
-				if (size != matvars[i]->dims[0]) {
+				if (size != (unsigned int) matvars[i]->dims[0]) {
 					fprintf(stderr, "ERROR: Vector dimensions in the matlab file don't match\n");
 					free(matvars);
 					return WAVEFORM_MAT_INVALID_FORMAT;
