@@ -261,7 +261,7 @@ Release * release_get_latest(void)
 	/* Get the release SHA commit */
 	json_t *j_tags, *tag, *name, *commit;
 	char *tag_name;
-	int i;
+	size_t i;
 
 	tag_name = strdup(json_string_value(json_object_get(j_release, "tag_name")));
 	j_tags = decode_url_feedback("https://api.github.com/repos/analogdevicesinc/iio-oscilloscope/tags");
