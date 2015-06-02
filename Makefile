@@ -37,7 +37,10 @@ endif
 
 CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-I$(SYSROOT)/usr/include $(if $(WITH_MINGW),-mwindows,-fPIC) \
-	-Wall -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
+	-Wall -Wclobbered -Wempty-body -Wignored-qualifiers -Wmissing-field-initializers \
+	-Wmissing-parameter-type -Wold-style-declaration -Woverride-init \
+	-Wsign-compare -Wtype-limits -Wuninitialized -Wunused-but-set-parameter \
+	-g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
 	-DFRU_FILES=\"$(FRU_FILES)\" -DGIT_VERSION=\"$(GIT_VERSION)\" \
 	-DGIT_COMMIT_TIMESTAMP='"$(GIT_COMMIT_TIMESTAMP)"' \
 	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\" \

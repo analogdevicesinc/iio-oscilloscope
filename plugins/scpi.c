@@ -413,7 +413,7 @@ static int tty_connect(struct scpi_instrument *scpi)
  */
 static ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t count)
 {
-	int retval = -1;
+	ssize_t retval = -1;
 
 	if (!scpi->network && !scpi->serial)
 		return -ENOENT;
@@ -422,7 +422,7 @@ static ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t 
 		return -ENXIO;
 	else if (scpi->network) {
 		retval = send(scpi->control_socket, buf, count, 00);
-		if (retval == count && memchr(buf, '?', count)) {
+		if (retval == (ssize_t)count && memchr(buf, '?', count)) {
 			memset(scpi->response, 0, SOCKETS_BUFFER_SIZE);
 			scpi_network_read(scpi);
 		}
@@ -432,7 +432,7 @@ static ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t 
 		return -ENXIO;
 	else if (scpi->serial) {
 		retval  = write(scpi->ttyfd, buf, count);
-		if (retval == count) {
+		if (retval == (ssize_t)count) {
 			if (memchr(buf, '?', count)) {
 				memset(scpi->response, 0, SOCKETS_BUFFER_SIZE);
 				tty_read(scpi);

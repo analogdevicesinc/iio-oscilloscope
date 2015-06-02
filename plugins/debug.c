@@ -413,9 +413,6 @@ static void reg_read_clicked(GtkButton *button, gpointer user_data)
 	int ret;
 
 	address = (uint32_t)gtk_spin_button_get_value(GTK_SPIN_BUTTON(spin_btn_reg_addr));
-	if (address < 0)
-		return;
-
 	if (gtk_combo_box_get_active(GTK_COMBO_BOX(reg_map_type)) == REG_MAP_AXI_CORE)
 		address |= 0x80000000;
 	ret = iio_device_reg_read(dev, address, &i);

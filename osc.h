@@ -54,7 +54,7 @@ extern bool str_endswith(const char *str, const char *needle);
 struct marker_type {
 	gfloat x;
 	gfloat y;
-	int bin;
+	int bin;	/* need to keep this signed, due to the way we calc harmonics */
 	bool active;
 	char label[6];
 	float complex vector;
