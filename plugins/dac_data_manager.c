@@ -241,7 +241,8 @@ static unsigned short convert(double scale, float val, double offset)
 static int analyse_wavefile(struct dac_data_manager *manager,
 		const char *file_name, char **buf, int *count, int tx_channels)
 {
-	int ret, j, i = 0, size, rep;
+	int ret, rep;
+	unsigned int size, j, i = 0;
 	double max = 0.0, val[4], scale = 0.0;
 	double i1, q1, i2, q2;
 	double offset;
@@ -279,7 +280,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 					return WAVEFORM_TXT_INVALID_FORMAT;
 				}
 
-				for (i = 0; i < ret; i++)
+				for (i = 0; i < (unsigned int) ret; i++)
 					if (fabs(val[i]) > max)
 						max = fabs(val[i]);
 
@@ -316,7 +317,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 						if ((ret != 2 && ret != 4) && line_is_empty(line))
 							continue;
 
-						for (j = 0; j < rep; j++) {
+						for (j = 0; j < (unsigned int) rep; j++) {
 							if (ret == 4 && tx_channels >= 4) {
 								sample[i++] = ((unsigned long long) convert(scale, q2, offset) << 48) |
 								    ((unsigned long long) convert(scale, i2, offset) << 32) |
@@ -453,7 +454,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 
 			size = matvars[0]->dims[0];
 
-			for (i = 0; i <= rep; i++) {
+			for (i = 0; i <= (unsigned int) rep; i++) {
 				if (size != matvars[i]->dims[0]) {
 					fprintf(stderr, "ERROR: Vector dimensions in the matlab file don't match\n");
 					free(matvars);
@@ -484,13 +485,13 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			mat_complex_split_t *complex_data[4];
 
 			if (complex_format) {
-				for (i = 0; i <= rep; i++) {
+				for (i = 0; i <= (unsigned int) rep; i++) {
 					complex_data[i] = matvars[i]->data;
 					tx_data[i].re = complex_data[i]->Re;
 					tx_data[i].im = complex_data[i]->Im;
 				}
 			} else if (real_format) {
-				for (i = 0; i <= rep; i++) {
+				for (i = 0; i <= (unsigned int) rep; i++) {
 					if (i % 2)
 						tx_data[i / 2].im = matvars[i]->data;
 					else
@@ -533,7 +534,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 				break;
 			}
 
-			for (j = 0; j <= rep; j++) {
+			for (j = 0; j <= (unsigned int) rep; j++) {
 				Mat_VarFree(matvars[j]);
 			}
 			free(matvars);
