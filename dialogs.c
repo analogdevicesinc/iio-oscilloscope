@@ -265,11 +265,6 @@ static int is_eeprom_fru(char *eeprom_file, GtkTextBuffer *buf, GtkTextIter *ite
 	}
 	return 0;
 }
-#else
-static size_t write_fru(char *eeprom) {
-
-	return 0;
-}
 #endif /* FRU_FILES */
 
 bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
@@ -321,19 +316,20 @@ static struct iio_context * get_context(Dialogs *data)
 
 static bool connect_fillin(Dialogs *data)
 {
-	char eprom_names[128];
-	unsigned char *raw_input_data = NULL;
-	FILE *efp, *fp;
 	GtkTextBuffer *buf;
 	GtkTextIter iter;
 	char text[256];
 	unsigned int num;
 	size_t i;
-	struct stat st;
 	struct iio_context *ctx;
 	const char *desc;
 
 #ifdef FRU_FILES
+	char eprom_names[128];
+	unsigned char *raw_input_data = NULL;
+	FILE *efp, *fp;
+	struct stat st;
+
 	/* flushes all open output streams */
 	fflush(NULL);
 #if DEBUG

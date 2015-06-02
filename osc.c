@@ -962,7 +962,7 @@ static ssize_t demux_sample(const struct iio_channel *chn,
 	const struct iio_data_format *format = iio_channel_get_data_format(chn);
 
 	/* Prevent buffer overflow */
-	if (info->offset == dev_info->sample_count)
+	if ((unsigned long) info->offset == (unsigned long) dev_info->sample_count)
 		return 0;
 
 	if (size == 1) {
