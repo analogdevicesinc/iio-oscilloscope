@@ -464,7 +464,8 @@ static void tx_sample_frequency_changed_cb(void *data)
 	sample_frequency_changed_cb(data);
 }
 
-static void rssi_update_label(GtkWidget *label,struct iio_device *dev, bool is_tx)
+static void rssi_update_label(GtkWidget *label, struct iio_device *dev,
+		const char* chn, bool is_tx)
 {
 	char buf[1024];
 	int ret;
@@ -474,7 +475,7 @@ static void rssi_update_label(GtkWidget *label,struct iio_device *dev, bool is_t
 		return;
 
 	ret = iio_channel_attr_read(
-			iio_device_find_channel(dev, "voltage0", is_tx),
+			iio_device_find_channel(dev, chn, is_tx),
 			"rssi", buf, sizeof(buf));
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(label), buf);
@@ -485,11 +486,21 @@ static void rssi_update_label(GtkWidget *label,struct iio_device *dev, bool is_t
 static void rssi_update_labels(void)
 {
 	int i;
+	char *channel_name;
 
 	for (i = 1; i < 5; i++) {
-		rssi_update_label(rx_rssi[i], (i < 3) ? dev1 : dev2, false);
+		channel_name = g_strdup_printf("voltage%d", (i - 1) % 2);
+		if (!channel_name) {
+			fprintf(stderr, "Failed to alloc string in %s\n",
+				__func__);
+			return;
+		}
+		rssi_update_label(rx_rssi[i], (i < 3) ? dev1 : dev2,
+					channel_name, false);
 		if (tx_rssi_available)
-			rssi_update_label(tx_rssi[i], (i < 3) ? dev1 : dev2, true);
+			rssi_update_label(tx_rssi[i], (i < 3) ? dev1 : dev2,
+						channel_name, true);
+		g_free(channel_name);
 	}
 }
 
