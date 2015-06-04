@@ -905,7 +905,7 @@ static void do_fft(Transform *tr)
 		if (MAX_MARKERS && (marker_type == MARKER_PEAK ||
 				marker_type == MARKER_ONE_TONE ||
 				marker_type == MARKER_IMAGE)) {
-			if (i == 0) {
+			if (i <= 2) {
 				maxX[0] = 0;
 				maxY[0] = out_data[0];
 			} else {
@@ -1269,7 +1269,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 			continue;
 
 		if (MAX_MARKERS && marker_type == MARKER_PEAK) {
-			if (i == 0) {
+			if (i <= 2) {
 				maxX[0] = 0;
 				maxY[0] = out_data[0];
 			} else {
