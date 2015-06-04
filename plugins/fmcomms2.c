@@ -310,7 +310,7 @@ static void sample_frequency_changed_cb(void *data)
 	rx_freq_info_update();
 }
 
-static void rssi_update_label(GtkWidget *label, bool is_tx)
+static void rssi_update_label(GtkWidget *label, const char *chn,  bool is_tx)
 {
 	char buf[1024];
 	int ret;
@@ -320,7 +320,7 @@ static void rssi_update_label(GtkWidget *label, bool is_tx)
 		return;
 
 	ret = iio_channel_attr_read(
-			iio_device_find_channel(dev, "voltage0", is_tx),
+			iio_device_find_channel(dev, chn, is_tx),
 			"rssi", buf, sizeof(buf));
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(label), buf);
@@ -330,13 +330,13 @@ static void rssi_update_label(GtkWidget *label, bool is_tx)
 
 static void rssi_update_labels(void)
 {
-	rssi_update_label(rx1_rssi, false);
+	rssi_update_label(rx1_rssi, "voltage0", false);
 	if (tx_rssi_available)
-		rssi_update_label(tx1_rssi, true);
+		rssi_update_label(tx1_rssi, "voltage0", true);
 	if (is_2rx_2tx) {
-		rssi_update_label(rx2_rssi, false);
+		rssi_update_label(rx2_rssi, "voltage1", false);
 		if (tx_rssi_available)
-			rssi_update_label(tx2_rssi, true);
+			rssi_update_label(tx2_rssi, "voltage1", true);
 	}
 }
 
