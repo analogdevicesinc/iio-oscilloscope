@@ -1214,7 +1214,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		Transform_resize_x_axis(tr, 2 * axis_length);
 		Transform_resize_y_axis(tr, 2 * axis_length);
 		for (i = 0; i < 2 * axis_length - 1; i++) {
-			tr->x_axis[i] = i - (gfloat)axis_length + 1;
+			tr->x_axis[i] = ((i - (gfloat)axis_length + 1) * settings->max_x_axis)/(gfloat)axis_length;
 			tr->y_axis[i] = 0;
 		}
 		tr->y_axis_size = 2 * axis_length - 1;
@@ -1920,6 +1920,19 @@ static int plot_get_sample_count_of_device(OscPlot *plot, const char *device)
 	return count;
 }
 
+static int plot_get_sample_count_for_transform(OscPlot *plot, Transform *transform)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct iio_device *iio_dev = transform_get_device_parent(transform);
+
+	if (!iio_dev)
+		iio_dev = priv->current_device;
+
+	return plot_get_sample_count_of_device(plot,
+			iio_device_get_name(iio_dev) ?:
+			iio_device_get_id(iio_dev));
+}
+
 static void notebook_info_set_page_visibility(GtkNotebook *nb, int page, bool visbl)
 {
 	GtkWidget *wpage = gtk_notebook_get_nth_page(nb, page);
@@ -1959,16 +1972,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 		FFT_SETTINGS(transform)->marker_lock = NULL;
 		FFT_SETTINGS(transform)->marker_type = NULL;
 	} else if (plot_type == TIME_PLOT) {
-		struct iio_device *iio_dev = transform_get_device_parent(transform);
-		int dev_samples;
-
-		if (!iio_dev)
-			iio_dev = priv->current_device;
-
-		dev_samples = plot_get_sample_count_of_device(plot,
-				iio_device_get_name(iio_dev) ?:
-				iio_device_get_id(iio_dev));
-
+		int dev_samples = plot_get_sample_count_for_transform(plot, transform);
 		if (dev_samples < 0)
 			return;
 
@@ -1987,7 +1991,11 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 	} else if (plot_type == XY_PLOT){
 		CONSTELLATION_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	} else if (plot_type == XCORR_PLOT){
-		XCORR_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+		int dev_samples = plot_get_sample_count_for_transform(plot, transform);
+		if (dev_samples < 0)
+			return;
+
+		XCORR_SETTINGS(transform)->num_samples = dev_samples;
 		XCORR_SETTINGS(transform)->avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
 		XCORR_SETTINGS(transform)->revert_xcorr = 0;
 		XCORR_SETTINGS(transform)->signal_a = NULL;
@@ -1997,6 +2005,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 		XCORR_SETTINGS(transform)->markers_copy = NULL;
 		XCORR_SETTINGS(transform)->marker_lock = NULL;
 		XCORR_SETTINGS(transform)->marker_type = NULL;
+		XCORR_SETTINGS(transform)->max_x_axis = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	}
 }
 
@@ -5259,6 +5268,7 @@ static void plot_domain_changed_cb(GtkComboBox *box, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 	gboolean force_sensitive = true;
+	gboolean enabled_plot_units;
 	gint plot_type;
 
 	priv->marker_type = MARKER_OFF;
@@ -5271,9 +5281,10 @@ static void plot_domain_changed_cb(GtkComboBox *box, OscPlot *plot)
 	/* Allow horizontal units selection only for TIME plots */
 	if (gtk_widget_is_sensitive(priv->hor_units))
 		priv->last_hor_unit = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->hor_units));
-	gtk_widget_set_sensitive(priv->hor_units, plot_type == TIME_PLOT);
+	enabled_plot_units = (plot_type == TIME_PLOT) || (plot_type == XCORR_PLOT);
+	gtk_widget_set_sensitive(priv->hor_units, enabled_plot_units);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->hor_units),
-		plot_type == TIME_PLOT ? priv->last_hor_unit : 0);
+		enabled_plot_units ? priv->last_hor_unit : 0);
 
 	/* Allow only 1 active device for a FFT or XY plot */
 	if (priv->nb_input_devices < 2)
@@ -6458,7 +6469,7 @@ static void create_plot(OscPlot *plot)
 	g_builder_bind_property(builder, "capture_button", "active",
 		"sample_count", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
-		"sample_count_units", "sensitive", G_BINDING_INVERT_BOOLEAN);
+		"plot_units_container", "sensitive", G_BINDING_INVERT_BOOLEAN);
 
 	/* Bind the plot domain to the sensitivity of the sample count and
 	 * FFT size widgets */
