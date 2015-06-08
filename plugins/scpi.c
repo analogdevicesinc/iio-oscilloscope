@@ -675,10 +675,11 @@ static int scpi_query_errors(struct scpi_instrument *scpi)
 
 static int get_markers(const char *device_ref, struct marker_type *markers)
 {
+	OscPlot *fft_plot = plugin_find_plot_with_domain(FFT_PLOT);
 	int ret = 0;
 
 	do {
-		ret = plugin_data_capture_with_domain(device_ref, NULL, &markers, FFT_PLOT);
+		ret = plugin_data_capture_of_plot(fft_plot, device_ref, NULL, &markers);
 	} while (ret == -EBUSY);
 	return ret;
 }

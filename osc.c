@@ -525,15 +525,13 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 	return iio_device_get_sample_size(dev);
 }
 
-int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
-			struct marker_type **markers_cp, int domain)
+int plugin_data_capture_of_plot(OscPlot *plot, const char *device, gfloat ***cooked_data,
+			struct marker_type **markers_cp)
 {
-	OscPlot *fft_plot;
 	struct iio_device *dev, *tmp_dev = NULL;
 	struct extra_dev_info *dev_info;
 	struct marker_type *markers_copy = NULL;
 	GMutex *markers_lock;
-	bool is_fft_mode;
 	unsigned int i, j;
 	bool new = FALSE;
 	const char *tmp = NULL;
@@ -542,9 +540,9 @@ int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
 		dev = NULL;
 	else
 		dev = iio_context_find_device(ctx, device);
-	fft_plot = plugin_find_plot_with_domain(domain);
-	if (fft_plot) {
-		tmp = osc_plot_get_active_device(fft_plot);
+
+	if (plot) {
+		tmp = osc_plot_get_active_device(plot);
 		tmp_dev = iio_context_find_device(ctx, tmp);
 	}
 
@@ -570,10 +568,10 @@ int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
 
 	if (!dev)
 		return -ENXIO;
-	if (osc_plot_running_state(fft_plot) == FALSE)
+	if (osc_plot_running_state(plot) == FALSE)
 		return -ENXIO;
-	if (osc_plot_get_marker_type(fft_plot) == MARKER_OFF ||
-			osc_plot_get_marker_type(fft_plot) == MARKER_NULL)
+	if (osc_plot_get_marker_type(plot) == MARKER_OFF ||
+			osc_plot_get_marker_type(plot) == MARKER_NULL)
 		return -ENXIO;
 
 	if (cooked_data) {
@@ -626,16 +624,13 @@ int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
 		}
 	}
 
-	if (!fft_plot) {
-		is_fft_mode = false;
-	} else {
-		markers_copy = (struct marker_type *)osc_plot_get_markers_copy(fft_plot);
-		markers_lock = osc_plot_get_marker_lock(fft_plot);
-		is_fft_mode = true;
+	if (plot) {
+		markers_copy = (struct marker_type *)osc_plot_get_markers_copy(plot);
+		markers_lock = osc_plot_get_marker_lock(plot);
 	}
 
 	if (markers_cp) {
-		if (!is_fft_mode) {
+		if (!plot) {
 			if (*markers_cp) {
 				g_free(*markers_cp);
 				*markers_cp = NULL;
@@ -658,7 +653,7 @@ int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
 			goto capture_malloc_fail;
 
 		/* where to put the copy */
-		osc_plot_set_markers_copy(fft_plot, *markers_cp);
+		osc_plot_set_markers_copy(plot, *markers_cp);
 
 		/* Wait til the copy is complete */
 		g_mutex_lock(markers_lock);
@@ -667,7 +662,7 @@ int plugin_data_capture_with_domain(const char *device, gfloat ***cooked_data,
 		 * that's because someone else broke the lock
 		 */
 		 if (markers_copy) {
-			osc_plot_set_markers_copy(fft_plot, NULL);
+			osc_plot_set_markers_copy(plot, NULL);
 			 return -EINTR;
 		 }
 	}

@@ -592,7 +592,8 @@ static void get_markers(double *offset, double *mag)
 	for (sum = 0; sum < MARKER_AVG; sum++) {
 		if (device_ref) {
 			do {
-				ret = plugin_data_capture_with_domain(device_ref, NULL, &markers, XCORR_PLOT);
+				ret = plugin_data_capture_of_plot(plot_xcorr_4ch,
+						device_ref, NULL, &markers);
 			} while ((ret == -EBUSY));
 		}
 
@@ -608,7 +609,7 @@ static void get_markers(double *offset, double *mag)
 
 	DBG("offset: %f, MAG0 %f", *offset, *mag);
 
-	plugin_data_capture_with_domain(NULL, NULL, &markers, XCORR_PLOT);
+	plugin_data_capture_of_plot(plot_xcorr_4ch, NULL, NULL, &markers);
 }
 
 
