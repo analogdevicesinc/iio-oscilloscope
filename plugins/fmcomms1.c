@@ -653,7 +653,7 @@ static void display_cal(void *ptr)
 	bool show = false;
 	const char *device_ref;
 	int ret, attempt = 0;
-	OscPlot *fft_plot;
+	OscPlot *fft_plot = NULL;
 	double ln10 = log(10.0);
 
 	device_ref = plugin_get_device_by_reference("cf-ad9643-core-lpc");
