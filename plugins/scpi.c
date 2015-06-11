@@ -294,15 +294,15 @@ network_connect(struct scpi_instrument *scpi)
 static int tty_read(struct scpi_instrument *scpi)
 {
 #ifdef TTY_RAW_MODE
-	int n, end = 0, i;
-	int bc = 0;
+	int n, i, end = 0;
+	int byte_count = 0;
 
 	do {
-		n = read(scpi->ttyfd, (char *)scpi->response + bc,
-				SOCKETS_BUFFER_SIZE - bc);
+		n = read(scpi->ttyfd, (char *)scpi->response + byte_count,
+				SOCKETS_BUFFER_SIZE - byte_count);
 		if (n >= 0) {
-			bc += n;
-			for (i = 0; i < bc; i++)
+			byte_count += n;
+			for (i = 0; i < byte_count; i++)
 				/* Handle line feeds or carriage returns */
 				if (scpi->response[i] == 0x0A || scpi->response[i] == 0x0D) {
 					end = 1;
@@ -319,9 +319,9 @@ static int tty_read(struct scpi_instrument *scpi)
 					__func__, scpi->tty_path, strerror(errno), errno);
 			}
 		}
-	} while (bc < SOCKETS_BUFFER_SIZE && (end == 0));
+	} while (byte_count < SOCKETS_BUFFER_SIZE && (end == 0));
 
-	return bc;
+	return byte_count;
 #else
 	int ret = read(scpi->ttyfd, (char *)scpi->response,
 			SOCKETS_BUFFER_SIZE);
