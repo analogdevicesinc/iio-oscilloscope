@@ -295,8 +295,8 @@ static int tty_read(struct scpi_instrument *scpi)
 		if (n > 0) {
 			bc += n;
 			for (i = 0; i < bc; i++)
-				/* Handle LineFeeds */
-				if (scpi->response[i] == 0x0A) {
+				/* Handle line feeds or carriage returns */
+				if (scpi->response[i] == 0x0A || scpi->response[i] == 0x0D) {
 					end = 1;
 					scpi->response[i + 1] = 0;
 				}
