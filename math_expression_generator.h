@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <errno.h>
+#include <ftw.h>
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <string.h>
@@ -28,6 +29,17 @@
 typedef void (*math_function)(float ***channels_data, float *out_data, unsigned long long chn_sample_cnt);
 
 #ifdef linux
+static int remove_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
+{
+	return remove(fpath);
+}
+
+/* Recursively remove the given path from the filesystem. */
+static int recursive_remove(char *dirpath)
+{
+	return nftw(dirpath, remove_cb, 64, FTW_DEPTH | FTW_PHYS);
+}
+
 static gboolean eval(const GMatchInfo *info, GString *res, gpointer data)
 {
 	gchar *match;
@@ -240,17 +252,8 @@ void math_expression_close_lib_handler(void *lib_handler)
 void math_expression_objects_clean(void)
 {
 #ifdef linux
-	FILE *pstream;
-	char *pcommand;
-
-	pcommand = g_strdup_printf("rm -rf %s", MATH_OBJECT_FILES_DIR);
-	pstream = popen(pcommand, "w");
-	g_free(pcommand);
-	if (!pstream) {
-		fprintf(stderr, "%s", strerror(errno));
-		return;
-	}
-	pclose(pstream);
+	if (recursive_remove(MATH_OBJECT_FILES_DIR) != 0)
+		fprintf(stderr, "Can't remove %s: %s\n", MATH_OBJECT_FILES_DIR, strerror(errno));
 #endif
 }
 
