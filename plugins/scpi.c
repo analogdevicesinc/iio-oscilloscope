@@ -516,9 +516,9 @@ static int scpi_connect(struct scpi_instrument *scpi)
 		return -1;
 	}
 
-	scpi_fprintf(scpi, "*CLS\n");
-	scpi_fprintf(scpi, "*RST\n");
-	scpi_fprintf(scpi, "*IDN?\n");
+	scpi_fprintf(scpi, "*CLS\r\n");
+	scpi_fprintf(scpi, "*RST\r\n");
+	scpi_fprintf(scpi, "*IDN?\r\n");
 	if (!strstr(scpi->response, scpi->id_regex)) {
 		printf("instrument doesn't match regex\n");
 		printf("\twanted   : '%s'\n", scpi->id_regex);
@@ -1045,7 +1045,7 @@ static void connect_clicked_cb(void)
 	}
 
 	if (ret == 0) {
-		scpi_fprintf(current_instrument, "*IDN?\n");
+		scpi_fprintf(current_instrument, "*IDN?\r\n");
 		if (strlen(current_instrument->response)) {
 			gtk_label_set_text(GTK_LABEL(scpi_id), current_instrument->response);
 			for (i = 0; supported_spectrum_analyzers[i] != NULL; i++) {
@@ -1113,7 +1113,7 @@ static void scpi_cmd_cb (GtkButton *button, GtkEntry *box)
 		return;
 
 	current_instrument->response[0] = 0;
-	scpi_fprintf(current_instrument, "%s\n", buf);
+	scpi_fprintf(current_instrument, "%s\r\n", buf);
 
 	printf("send '%s',\n", buf);
 	if (current_instrument->response)
