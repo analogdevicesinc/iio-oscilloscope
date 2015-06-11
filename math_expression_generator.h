@@ -66,7 +66,7 @@ static char * string_replace(const char * string, const char *pattern,
 	if (eval)
 		result = g_regex_replace_eval(rex, string, -1, 0, 0, eval, NULL, NULL);
 	else
-	result = g_regex_replace_literal(rex, string, -1, 0, replacement, 0, NULL);
+		result = g_regex_replace_literal(rex, string, -1, 0, replacement, 0, NULL);
 	g_regex_unref(rex);
 
 	return result;
@@ -83,9 +83,9 @@ static char * c_file_create(const char *user_expression, GSList *basenames)
 		fprintf(stderr, "NULL user_expression parameter in %s", __func__);
 		return NULL;
 	}
-	 if (stat(MATH_OBJECT_FILES_DIR, &st) == -1) {
-		 mkdir(MATH_OBJECT_FILES_DIR, S_IRWXU|S_IRWXG|S_IRWXO);
-	 }
+	if (stat(MATH_OBJECT_FILES_DIR, &st) == -1) {
+		mkdir(MATH_OBJECT_FILES_DIR, S_IRWXU|S_IRWXG|S_IRWXO);
+	}
 
 	base_filename = g_strdup_printf("%s_%llu",
 		MATH_EXPRESSION_BASE_FILE, file_count++);
