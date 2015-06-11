@@ -650,16 +650,19 @@ static int tx_freq_set_Hz(struct scpi_instrument *scpi, unsigned long long freq)
 	return scpi_fprintf(scpi, ":FREQ:CW %llu;*WAI\n", freq);
 }
 
+/* Enable a signal generator's output. */
 static int tx_output_set(struct scpi_instrument *scpi, unsigned on)
 {
 	return scpi_fprintf(scpi, ":OUTPut %s;*WAI\n", on ? "ON" : "OFF");
 }
 
+/* Set the power level for an instrument in dBm. */
 static int tx_mag_set_dBm(struct scpi_instrument *scpi, double lvl)
 {
 	return scpi_fprintf(scpi, ":POW %f DBM;*WAI\n", lvl);
 }
 
+/* Retrieve the current power level for an instrument in dBm. */
 static int tx_mag_get_dBm(struct scpi_instrument *scpi, double *lvl)
 {
 	int ret = 0;
@@ -674,6 +677,7 @@ static int tx_mag_get_dBm(struct scpi_instrument *scpi, double *lvl)
 }
 
 #if 0
+/* Query a given instrument for errors. */
 static int scpi_query_errors(struct scpi_instrument *scpi)
 {
 	int ret = 0;
@@ -691,6 +695,7 @@ static int scpi_query_errors(struct scpi_instrument *scpi)
 }
 #endif
 
+/* Retrieve the plot markers related to a certain device. */
 static int get_markers(const char *device_ref, struct marker_type *markers)
 {
 	OscPlot *fft_plot = plugin_find_plot_with_domain(FFT_PLOT);
@@ -702,6 +707,9 @@ static int get_markers(const char *device_ref, struct marker_type *markers)
 	return ret;
 }
 
+/* Perform a binary search for a given magnitude in dBm when driving an input
+ * signal into the AD9625.
+ */
 static int tx_mag_seek_dBm(struct mag_seek *mag_seek)
 {
 	int ret = 0;
