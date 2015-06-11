@@ -97,12 +97,20 @@ struct mag_seek {
 
 static struct scpi_instrument signal_generator;
 static struct scpi_instrument spectrum_analyzer;
+static struct scpi_instrument prog_counter;;
+static struct scpi_instrument *current_instrument = NULL;
 
 static char *supported_spectrum_analyzers[] = {
 	"Rohde&Schwarz,FSEA 20,839161/004,3.40.2",
 	"Rohde&Schwarz,FSEA 30,827765/004,3.30",
 	NULL
-	};
+};
+
+static char *supported_counters[] = {
+	"HAMEG Instruments,HM8123,5.12",
+	"HEWLETT-PACKARD,53131A,0,3944",
+	NULL
+};
 
 #define SOCKETS_BUFFER_SIZE  1024
 #define SOCKETS_TIMEOUT      2
@@ -722,11 +730,122 @@ static int tx_mag_seek_dBm(struct mag_seek *mag_seek)
 	return ret;
 }
 
+/* Programmable Counter functions */
+static bool scpi_counter_connected()
+{
+	int i;
+
+	if (current_instrument && strlen(current_instrument->model)) {
+		for (i = 0; supported_counters[i] != NULL; i++) {
+			if (supported_counters[i] &&
+						strstr(current_instrument->model, supported_counters[i])) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+/* Connect to a supported programmable counter device.
+ * Returns 0 when able to connect to a supported device, otherwise -1.
+ */
+int scpi_connect_counter()
+{
+	int ret = -1;
+	unsigned int tty_node;
+
+	if (!scpi_counter_connected()) {
+		current_instrument = &prog_counter;
+		current_instrument->serial = true;
+		current_instrument->id_regex = "";
+		current_instrument->gpib_addr = 3;
+
+		/* Iterate over tty dev nodes, trying to connect to a supported device. */
+		for (tty_node = 0; tty_node <= 9; tty_node++) {
+			current_instrument->tty_path[strlen(current_instrument->tty_path)-1] = (char)(tty_node + '0');
+			if (scpi_connect(current_instrument) == 0 && scpi_counter_connected()) {
+				if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
+					/* Select the correct input. */
+					scpi_fprintf(current_instrument, "FRC\r\n");
+				} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
+					/* reset the counter */
+					scpi_fprintf(current_instrument, "*RST\r\n");
+					scpi_fprintf(current_instrument, "*CLS\r\n");
+					scpi_fprintf(current_instrument, "*SRE 0\r\n");
+					scpi_fprintf(current_instrument, "*ESE 0\r\n");
+					scpi_fprintf(current_instrument, ":STAT:PRES\r\n");
+
+					/* perform queries on channel 1 and return ascii formatted data */
+					scpi_fprintf(current_instrument, ":FUNC 'FREQ 1'\r\n");
+					scpi_fprintf(current_instrument, ":FORM:DATA ASCII\r\n");
+				}
+				ret = 0;
+				break;
+			}
+		}
+	} else {
+		ret = 0;
+	}
+
+	return ret;
+}
+
+
+/* Retrieve the current frequency from supported frequency counter devices. */
+int scpi_counter_get_freq(double *freq)
+{
+	int ret = -1;
+	double scale = 1.0;
+	gchar **freq_tokens = NULL;
+	gchar *freq_str = NULL;
+
+	/* Query instrument for the current measured frequency. */
+	if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
+		ret = scpi_fprintf(current_instrument, "XMT?\r\n");
+	} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
+		ret = scpi_fprintf(current_instrument, ":READ?\r\n");
+	} else {
+		/* No supported device attached */
+		ret = -ENODEV;
+	}
+
+	if (ret < 0)
+		return ret;
+
+	if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
+		/* Output is usually of the form "value scale" where scale is often "GHz" */
+		freq_tokens = g_strsplit(current_instrument->response, " ", 2);
+		if (freq_tokens[0] != NULL)
+			freq_str = strdup(freq_tokens[0]);
+
+		/* Scale the value returned from the device to Hz */
+		if (strstr(freq_tokens[1], "GHz"))
+			scale = pow(10.0, 9);
+		else if (strstr(freq_tokens[1], "MHz"))
+			scale = pow(10.0, 6);
+		else if (strstr(freq_tokens[1], "KHz"))
+			scale = pow(10.0, 3);
+
+		g_strfreev(freq_tokens);
+	} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
+		/* output is in scientific E notation, Hz scale by default */
+		freq_str = strdup(current_instrument->response);
+	}
+
+	ret = sscanf(freq_str, "%lf", freq);
+
+	if (freq_str)
+		g_free(freq_str);
+
+	if (ret == 1)
+		*freq *= scale;
+		return 0;
+	return -1;
+}
+
 /*
  * Save/Restore stuff
  */
-
-static struct scpi_instrument *current_instrument;
 
 static int mag_input_seek(const char *value)
 {
@@ -756,8 +875,6 @@ static int mag_input_seek(const char *value)
 
 static int scpi_handle(int line, const char *attrib, const char *value)
 {
-	current_instrument = NULL;
-
 	if (!strncmp(attrib, "rx.", sizeof("rx.") - 1))
 		current_instrument = &spectrum_analyzer;
 	else if (!strncmp(attrib, "tx.", sizeof("tx.") - 1))
@@ -1134,6 +1251,7 @@ static GtkWidget * scpi_init(GtkWidget *notebook, const char *ini_fn)
 
 	init_scpi_device(&signal_generator);
 	init_scpi_device(&spectrum_analyzer);
+	init_scpi_device(&prog_counter);
 
 	builder = gtk_builder_new();
 	if (!gtk_builder_add_from_file(builder, "scpi.glade", NULL))

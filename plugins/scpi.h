@@ -20,6 +20,8 @@ void (*scpi_rx_set_averaging)(int average) = NULL;
 int (*scpi_rx_set_marker_freq)(unsigned int, unsigned long long) = NULL;
 int (*scpi_rx_get_marker_level)(unsigned int, bool, double *) = NULL;
 int (*scpi_rx_get_marker_freq)(unsigned int, bool, double *) = NULL;
+int (*scpi_connect_counter)() = NULL;
+int (*scpi_counter_get_freq)(double *freq) = NULL;
 
 
 static bool scpi_connect_functions(void)
@@ -74,6 +76,14 @@ static bool scpi_connect_functions(void)
 
 	*(void **)(&scpi_rx_get_marker_freq) = plugin_dlsym("SCPI", "scpi_rx_get_marker_freq");
 	if (*scpi_rx_get_marker_freq == NULL)
+		return false;
+
+	*(void **)(&scpi_connect_counter) = plugin_dlsym("SCPI", "scpi_connect_counter");
+	if (*scpi_connect_counter == NULL)
+		return false;
+
+	*(void **)(&scpi_counter_get_freq) = plugin_dlsym("SCPI", "scpi_counter_get_freq");
+	if (*scpi_counter_get_freq == NULL)
 		return false;
 
 	scpi_rx_connected_flag = true;
