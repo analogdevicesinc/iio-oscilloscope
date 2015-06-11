@@ -433,7 +433,7 @@ static ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t 
 	else if (scpi->serial) {
 		retval  = write(scpi->ttyfd, buf, count);
 		if (retval == (ssize_t)count) {
-			if (memchr(buf, '?', count)) {
+			if (memrchr(buf, '?', count)) {
 				memset(scpi->response, 0, SOCKETS_BUFFER_SIZE);
 				tty_read(scpi);
 			}
