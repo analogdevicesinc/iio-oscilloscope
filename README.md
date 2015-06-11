@@ -31,4 +31,4 @@ The IIO 'scope uses:
   - inih, a simple .INI file parser written in C
     http://code.google.com/p/inih/
 
-The IIO 'scope is copyright it's authors, and is released under the GPL 2.0
+The IIO 'scope is copyright its authors, and is released under the GPL 2.0
