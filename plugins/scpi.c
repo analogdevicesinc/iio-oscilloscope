@@ -292,7 +292,7 @@ static int tty_read(struct scpi_instrument *scpi)
 	do {
 		n = read(scpi->ttyfd, (char *)scpi->response + bc,
 				SOCKETS_BUFFER_SIZE - bc);
-		if (n > 0) {
+		if (n >= 0) {
 			bc += n;
 			for (i = 0; i < bc; i++)
 				/* Handle line feeds or carriage returns */
@@ -300,6 +300,16 @@ static int tty_read(struct scpi_instrument *scpi)
 					end = 1;
 					scpi->response[i + 1] = 0;
 				}
+		} else {
+			/* Raw mode does non-blocking I/O by default so try to read data
+			 * until some exists.
+			 */
+			if (errno == EAGAIN) {
+				continue;
+			} else {
+				print_output_sys(stderr, "%s: Can't read from TTY device: %s %s (%d)\n",
+					__func__, scpi->tty_path, strerror(errno), errno);
+			}
 		}
 	} while (bc < SOCKETS_BUFFER_SIZE && (end == 0));
 
