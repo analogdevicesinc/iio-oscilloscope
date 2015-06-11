@@ -94,7 +94,7 @@ static char * c_file_create(const char *user_expression, GSList *basenames)
 	fp = fopen(open_path, "w+");
 	g_free(open_path);
 	if (!fp) {
-		fprintf(stderr, "%s", strerror(errno));
+		perror(base_filename);
 		g_free(base_filename);
 		return NULL;
 	}
@@ -157,7 +157,7 @@ static int shared_object_compile(char *base_filename)
 	pstream = popen(pcommand, "w");
 	g_free(pcommand);
 	if (!pstream) {
-		fprintf(stderr, "%s", strerror(errno));
+		perror("Error compiling math expression");
 		return EXIT_FAILURE;
 	}
 	pclose(pstream);
@@ -174,7 +174,7 @@ static int shared_object_compile(char *base_filename)
 	pstream = popen(pcommand, "w");
 	g_free(pcommand);
 	if (!pstream) {
-		fprintf(stderr, "%s", strerror(errno));
+		perror("Error creating math expression library");
 		return EXIT_FAILURE;
 	}
 	pclose(pstream);
