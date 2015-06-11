@@ -140,14 +140,14 @@ static int network_waitfordata(int MySocket)
 	FD_SET(MySocket,&MyFDSet);
 
 	/* Set Timeout */
-	tv.tv_sec=SOCKETS_TIMEOUT;
-	tv.tv_usec=0;
+	tv.tv_sec = SOCKETS_TIMEOUT;
+	tv.tv_usec = 0;
 
 	/* Wait for change */
-	retval=select(MySocket+1,&MyFDSet,NULL,NULL,&tv);
+	retval = select(MySocket+1,&MyFDSet,NULL,NULL,&tv);
 
 	/* Interpret return value */
-	if(retval==-1) {
+	if(retval == -1) {
 		printf("Error: Problem with select (%i)...\n",errno);
 		perror(__func__);
 		exit(1);
@@ -407,7 +407,7 @@ static int tty_connect(struct scpi_instrument *scpi)
  * writes count bytes from the buffer (buf) to the
  * scpi instrument referred to by the descriptor *scpi.
  *
- * On  success, the number of bytes written is returned
+ * On success, the number of bytes written is returned
  * (zero indicates nothing was written).
  * On error, -1 is returned
  */
