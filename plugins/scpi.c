@@ -146,18 +146,18 @@ static int network_waitfordata(int MySocket)
 	FD_ZERO(&MyFDSet);
 
 	/* Add socket to "watch list" */
-	FD_SET(MySocket,&MyFDSet);
+	FD_SET(MySocket, &MyFDSet);
 
 	/* Set Timeout */
 	tv.tv_sec = SOCKETS_TIMEOUT;
 	tv.tv_usec = 0;
 
 	/* Wait for change */
-	retval = select(MySocket+1,&MyFDSet,NULL,NULL,&tv);
+	retval = select(MySocket+1, &MyFDSet, NULL, NULL, &tv);
 
 	/* Interpret return value */
 	if(retval == -1) {
-		printf("Error: Problem with select (%i)...\n",errno);
+		printf("Error: Problem with select (%i)...\n", errno);
 		perror(__func__);
 		exit(1);
 	}
@@ -181,7 +181,7 @@ static int scpi_network_read(struct scpi_instrument *scpi)
 	actual = recv(scpi->control_socket, scpi->response,
 			SOCKETS_BUFFER_SIZE, 0);
 	if (actual == -1) {
-		printf("Error: Unable to receive data (%i)...\n",errno);
+		printf("Error: Unable to receive data (%i)...\n", errno);
 		perror(__func__);
 		exit(1);
 	} else {
@@ -201,7 +201,7 @@ static void network_setnodelay(int MySocket)
 			(void *)&StateNODELAY, sizeof StateNODELAY);
 
 	if (ret == -1) {
-		printf("Error: Unable to set NODELAY option (%i)...\n",errno);
+		printf("Error: Unable to set NODELAY option (%i)...\n", errno);
 		perror("sockets");
 		exit(1);
 	}
@@ -223,7 +223,7 @@ network_connect(struct scpi_instrument *scpi)
 	scpi->main_socket = socket(PF_INET, SOCK_STREAM, 0);
 
 	if (scpi->main_socket == -1) {
-		printf("Error: Unable to create socket (%i)...\n",errno);
+		printf("Error: Unable to create socket (%i)...\n", errno);
 		return -1;
 	}
 
@@ -237,7 +237,7 @@ network_connect(struct scpi_instrument *scpi)
 		perror("setsockopt failed\n");
 
 	/* Establish TCP connection */
-	memset(&MyAddress,0,sizeof(struct sockaddr_in));
+	memset(&MyAddress, 0, sizeof(struct sockaddr_in));
 	MyAddress.sin_family = PF_INET;
 	MyAddress.sin_port = htons(scpi->main_port);
 	MyAddress.sin_addr.s_addr = inet_addr(scpi->ip_address);
@@ -1141,7 +1141,7 @@ static void scpi_text_entry_cb (GtkEntry *box, int data)
 			if (current_instrument->tty_path)
 				free(current_instrument->tty_path);
 
-			current_instrument->tty_path = strdup (gtk_entry_get_text(box));
+			current_instrument->tty_path = strdup(gtk_entry_get_text(box));
 			break;
 		case 2:
 			current_instrument->gpib_addr = atoi(gtk_entry_get_text(box));
@@ -1150,7 +1150,7 @@ static void scpi_text_entry_cb (GtkEntry *box, int data)
 			if (current_instrument->id_regex)
 				free(current_instrument->id_regex);
 
-			current_instrument->id_regex = strdup (gtk_entry_get_text(box));
+			current_instrument->id_regex = strdup(gtk_entry_get_text(box));
 
 			if (strstr(gtk_label_get_text(GTK_LABEL(scpi_id)), current_instrument->id_regex))
 				gtk_widget_modify_text(GTK_WIDGET(box), GTK_STATE_NORMAL, &green);
@@ -1160,7 +1160,7 @@ static void scpi_text_entry_cb (GtkEntry *box, int data)
 		case 4:
 			if (cmd_to_send)
 				free(cmd_to_send);
-			cmd_to_send = strdup (gtk_entry_get_text(box));
+			cmd_to_send = strdup(gtk_entry_get_text(box));
 			break;
 		default:
 			printf("Unknown selection in %s:%s: %i\n",
