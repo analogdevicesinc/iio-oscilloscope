@@ -1170,13 +1170,10 @@ static void connect_clicked_cb(void)
 	}
 
 	if (ret == 0) {
-		scpi_fprintf(current_instrument, "*IDN?\r\n");
+		scpi_fprintf(current_instrument, "*CLS;*RST;*IDN?\r\n");
 		if (strlen(current_instrument->response)) {
 			gtk_label_set_text(GTK_LABEL(scpi_id), current_instrument->response);
 			for (i = 0; supported_spectrum_analyzers[i] != NULL; i++) {
-printf("%i\n", i);
-printf("%s\n", current_instrument->response);
-printf("%s\n", supported_spectrum_analyzers[i]);
 				if (supported_spectrum_analyzers[i] &&
 							!strcmp(supported_spectrum_analyzers[i], current_instrument->response)) {
 					gtk_label_set_text(GTK_LABEL(scpi_regex), current_instrument->response);
