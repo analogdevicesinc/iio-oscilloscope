@@ -33,8 +33,6 @@
 #include "config.h"
 #include "osc_plugin.h"
 
-extern void math_expression_objects_clean(void);
-
 GSList *plugin_list = NULL;
 
 gint capture_function = 0;
