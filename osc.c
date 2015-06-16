@@ -52,7 +52,7 @@ GtkWidget *versioncheck_en;
 GtkWidget *main_window;
 
 struct iio_context *ctx;
-unsigned int num_devices = 0;
+static unsigned int num_devices = 0;
 bool ctx_destroyed_by_do_quit;
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
@@ -1328,7 +1328,7 @@ GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data)
 {
 	GtkWidget *new_plot;
 
-	new_plot = osc_plot_new();
+	new_plot = osc_plot_new(ctx);
 	osc_plot_set_visible(OSC_PLOT(new_plot), true);
 	plot_init(new_plot);
 

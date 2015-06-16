@@ -42,9 +42,6 @@ typedef size_t mat_dim;
 extern void *find_setup_check_fct_by_devname(const char *dev_name);
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
-extern struct iio_context *ctx;
-extern unsigned num_devices;
-
 static int (*plugin_setup_validation_fct)(struct iio_device *, const char **) = NULL;
 static unsigned object_count = 0;
 
@@ -63,7 +60,6 @@ static void osc_plot_dispose(GObject *object);
 static void save_as(OscPlot *plot, const char *filename, int type);
 static void treeview_expand_update(OscPlot *plot);
 static void treeview_icon_color_update(OscPlot *plot);
-static int device_find_by_name(const char *name);
 static int enabled_channels_of_device(GtkTreeView *treeview, const char *name, unsigned *enabled_mask);
 static int enabled_channels_count(OscPlot *plot);
 static int num_of_channels_of_device(GtkTreeView *treeview, const char *name);
@@ -73,8 +69,8 @@ static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color);
 static int comboboxtext_set_active_by_string(GtkComboBox *combo_box, const char *name);
 static int comboboxtext_get_active_text_as_int(GtkComboBoxText* combobox);
 static gboolean check_valid_setup(OscPlot *plot);
-static int device_find_by_name(const char *name);
-static int channel_find_by_name(int device_index, const char *name);
+static int device_find_by_name(struct iio_context *ctx, const char *name);
+static int channel_find_by_name(struct iio_context *ctx, int device_index, const char *name);
 static void device_rx_info_update(OscPlot *plot);
 static gdouble prefix2scale (char adc_scale);
 static struct iio_device * transform_get_device_parent(Transform *transform);
@@ -183,6 +179,7 @@ struct channel_settings {
 	unsigned type;
 	char *name;
 	char *parent_name;
+	struct iio_context *ctx;
 	GdkColor graph_color;
 
 	struct iio_device * (*get_iio_parent)(PlotChn *);
@@ -307,6 +304,8 @@ struct _OscPlotPrivate
 	GtkTextBuffer* devices_buf;
 	GtkTextBuffer* phase_buf;
 	GtkTextBuffer* math_expression;
+
+	struct iio_context *ctx;
 
 	unsigned int nb_input_devices;
 	unsigned int nb_plot_channels;
@@ -435,19 +434,17 @@ static void osc_plot_class_init(OscPlotClass *klass)
 static void osc_plot_init(OscPlot *plot)
 {
 	plot->priv = G_TYPE_INSTANCE_GET_PRIVATE (plot, OSC_PLOT_TYPE, OscPlotPrivate);
-
-	create_plot(plot);
-
-	/* Create a empty list of transforms */
-	plot->priv->transform_list = TrList_new();
-
-	/* No active transforms by default */
-	plot->priv->active_transform_type = NO_TRANSFORM_TYPE;
 }
 
-GtkWidget *osc_plot_new(void)
+GtkWidget *osc_plot_new(struct iio_context *ctx)
 {
-	return GTK_WIDGET(g_object_new(OSC_PLOT_TYPE, NULL));
+	GtkWidget *plot;
+
+	plot = GTK_WIDGET(g_object_new(OSC_PLOT_TYPE, NULL));
+	OSC_PLOT(plot)->priv->ctx = ctx;
+	create_plot(OSC_PLOT(plot));
+
+	return plot;
 }
 
 void osc_plot_destroy (OscPlot *plot)
@@ -691,6 +688,7 @@ double osc_plot_get_sample_count (OscPlot *plot) {
 void osc_plot_set_channel_state(OscPlot *plot, const char *dev, unsigned int channel, bool state)
 {
 	OscPlotPrivate *priv = plot->priv;
+	struct iio_context *ctx = priv->ctx;
 	struct iio_device *iio_dev;
 	struct iio_channel *iio_ch;
 
@@ -1443,7 +1441,7 @@ static gfloat* plot_iio_channel_get_data_ref(PlotChn *obj);
 static void plot_iio_channel_assert_channels(PlotChn *obj, bool assert);
 static void plot_iio_channel_destroy(PlotChn *obj);
 
-static PlotIioChn * plot_iio_channel_new(void)
+static PlotIioChn * plot_iio_channel_new(struct iio_context *ctx)
 {
 	PlotIioChn *obj;
 
@@ -1454,6 +1452,7 @@ static PlotIioChn * plot_iio_channel_new(void)
 	}
 
 	obj->base.type = PLOT_IIO_CHANNEL;
+	obj->base.ctx = ctx;
 	obj->base.get_iio_parent = *plot_iio_channel_get_iio_parent;
 	obj->base.get_data_ref = *plot_iio_channel_get_data_ref;
 	obj->base.assert_used_iio_channels = *plot_iio_channel_assert_channels;
@@ -1525,7 +1524,7 @@ static gfloat * plot_math_channel_get_data_ref(PlotChn *obj);
 static void plot_math_channel_assert_channels(PlotChn *obj, bool assert);
 static void plot_math_channel_destroy(PlotChn *obj);
 
-static PlotMathChn * plot_math_channel_new(void)
+static PlotMathChn * plot_math_channel_new(struct iio_context *ctx)
 {
 	PlotMathChn *obj;
 
@@ -1536,6 +1535,7 @@ static PlotMathChn * plot_math_channel_new(void)
 	}
 
 	obj->base.type = PLOT_MATH_CHANNEL;
+	obj->base.ctx = ctx;
 	obj->base.get_iio_parent = *plot_math_channel_get_iio_parent;
 	obj->base.get_data_ref = *plot_math_channel_get_data_ref;
 	obj->base.assert_used_iio_channels = *plot_math_channel_assert_channels;
@@ -1550,7 +1550,7 @@ static struct iio_device *plot_math_channel_get_iio_parent(PlotChn *obj)
 	struct iio_device *iio_dev = NULL;
 
 	if (this && this->iio_device_name) {
-		iio_dev = iio_context_find_device(ctx,
+		iio_dev = iio_context_find_device(this->base.ctx,
 				this->iio_device_name);
 	}
 
@@ -1890,6 +1890,7 @@ static bool plot_channel_check_name_exists(OscPlot *plot, const char *name,
 static int plot_get_sample_count_of_device(OscPlot *plot, const char *device)
 {
 	OscPlotPrivate *priv = plot->priv;
+	struct iio_context *ctx = priv->ctx;
 	struct iio_device *iio_dev;
 	struct extra_dev_info *dev_info;
 	gdouble freq;
@@ -2073,7 +2074,8 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 	return transform;
 }
 
-static gfloat *** iio_channels_get_data(const char *device_name)
+static gfloat *** iio_channels_get_data(struct iio_context *ctx,
+					const char *device_name)
 {
 	gfloat ***data;
 	struct iio_device *iio_dev;
@@ -2274,11 +2276,12 @@ static void plot_channels_update(OscPlot *plot)
 static void collect_parameters_from_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
+	struct iio_context *ctx = priv->ctx;
 	struct plot_params *prms;
 	GSList *list;
 	unsigned int i;
 
-	for (i = 0; i < num_devices; i++) {
+	for (i = 0; i < iio_context_get_devices_count(ctx); i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *info = iio_device_get_data(dev);
 		const char *dev_name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
@@ -2298,12 +2301,13 @@ static void collect_parameters_from_plot(OscPlot *plot)
 static void dispose_parameters_from_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
+	struct iio_context *ctx = priv->ctx;
 	struct plot_params *prms;
 	GSList *node;
 	GSList *del_link = NULL;
 	unsigned int i;
 
-	for (i = 0; i < num_devices; i++) {
+	for (i = 0; i < iio_context_get_devices_count(ctx); i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *info = iio_device_get_data(dev);
 		GSList *list = info->plots_sample_counts;
@@ -2514,13 +2518,16 @@ static void device_rx_info_update(OscPlot *plot)
 	OscPlotPrivate *priv = plot->priv;
 	GtkTextIter iter;
 	char text[256];
-	unsigned int i;
+	unsigned int i, num_devices = 0;
 
 	gtk_text_buffer_set_text(priv->devices_buf, "", -1);
 	gtk_text_buffer_get_iter_at_line(priv->devices_buf, &iter, 1);
 
+	if (priv->ctx)
+		num_devices = iio_context_get_devices_count(priv->ctx);
+
 	for (i = 0; i < num_devices; i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
+		struct iio_device *dev = iio_context_get_device(priv->ctx, i);
 		const char *name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 
@@ -2905,15 +2912,17 @@ static void single_shot_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 
 static bool comboboxtext_input_devices_fill(struct iio_context *iio_ctx, GtkComboBoxText *box)
 {
-	unsigned int i;
+	unsigned int i, num_devices = 0;
 
-	if (!iio_ctx || !box) {
+	if (!box) {
 		fprintf(stderr, "Error: invalid parameters in %s\n", __func__);
 		return false;
 	}
+	if (iio_ctx)
+		num_devices = iio_context_get_devices_count(iio_ctx);
 
-	for (i = 0; i < iio_context_get_devices_count(iio_ctx); i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
+	for (i = 0; i < num_devices; i++) {
+		struct iio_device *dev = iio_context_get_device(iio_ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		const char *name;
 
@@ -2971,7 +2980,7 @@ static void new_plot_button_clicked_cb(GtkToolButton *btn, OscPlot *plot)
 {
 	OscPlot *new_plot;
 
-	new_plot = OSC_PLOT(osc_plot_new());
+	new_plot = OSC_PLOT(osc_plot_new(plot->priv->ctx));
 	osc_plot_set_visible(new_plot, true);
 	g_signal_emit(plot, oscplot_signals[NEWPLOT_EVENT_SIGNAL], 0, new_plot);
 }
@@ -3251,6 +3260,7 @@ static bool show_channel(struct iio_channel *chn)
 static void plot_channels_add_device(OscPlot *plot, const char *dev_name)
 {
 	OscPlotPrivate *priv = plot->priv;
+	struct iio_context *ctx = priv->ctx;
 	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	GtkTreeStore *treestore;
 	GtkTreeIter iter;
@@ -3276,6 +3286,7 @@ static void plot_channels_add_device(OscPlot *plot, const char *dev_name)
 static void plot_channels_add_channel(OscPlot *plot, PlotChn *pchn)
 {
 	OscPlotPrivate *priv = plot->priv;
+	struct iio_context *ctx = priv->ctx;
 	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	GtkTreeStore *treestore;
 	GtkTreeIter parent_iter, child_iter;
@@ -3333,10 +3344,13 @@ static void plot_channels_remove_channel(OscPlot *plot, GtkTreeIter *iter)
 static void device_list_treeview_init(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
+	struct iio_context *ctx = priv->ctx;
 	unsigned int i, j;
 
 	priv->nb_input_devices = 0;
-	for (i = 0; i < num_devices; i++) {
+	if (!ctx)
+		goto math_channels;
+	for (i = 0; i < iio_context_get_devices_count(ctx); i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
@@ -3361,7 +3375,7 @@ static void device_list_treeview_init(OscPlot *plot)
 				iio_channel_get_id(ch);
 			PlotIioChn *pic;
 
-			pic = plot_iio_channel_new();
+			pic = plot_iio_channel_new(priv->ctx);
 			if (!pic)
 				return;
 			plot_channel_add_to_plot(plot, PLOT_CHN(pic));
@@ -3372,6 +3386,7 @@ static void device_list_treeview_init(OscPlot *plot)
 			plot_channels_add_channel(plot, PLOT_CHN(pic));
 		}
 	}
+math_channels:
 #ifdef linux
 	plot_channels_add_device(plot, MATH_CHANNELS_DEVICE);
 	priv->nb_input_devices++;
@@ -3383,6 +3398,7 @@ static void device_list_treeview_init(OscPlot *plot)
 static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
+	struct iio_context *ctx = priv->ctx;
 	struct iio_device *dev;
 	GtkWidget *parent;
 	GtkWidget *ch_checkbtn;
@@ -3396,7 +3412,7 @@ static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 	gtk_box_pack_start(GTK_BOX(parent), priv->saveas_channels_list, FALSE, TRUE, 0);
 
 	active_device = gtk_combo_box_text_get_active_text(box);
-	d = device_find_by_name(active_device);
+	d = device_find_by_name(ctx, active_device);
 	g_free(active_device);
 	if (d < 0)
 		return;
@@ -3419,8 +3435,11 @@ static void saveas_channels_list_fill(OscPlot *plot)
 	OscPlotPrivate *priv = plot->priv;
 	GtkWidget *ch_window;
 	GtkWidget *vbox;
+	unsigned int num_devices = 0;
 	unsigned int i;
 
+	if (priv->ctx)
+		num_devices = iio_context_get_devices_count(priv->ctx);
 	ch_window = priv->viewport_saveas_channels;
 	vbox = gtk_vbox_new(FALSE, 10);
 	gtk_container_add(GTK_CONTAINER(ch_window), vbox);
@@ -3430,7 +3449,7 @@ static void saveas_channels_list_fill(OscPlot *plot)
 	gtk_box_pack_end(GTK_BOX(vbox), priv->saveas_channels_list, FALSE, TRUE, 0);
 
 	for (i = 0; i < num_devices; i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
+		struct iio_device *dev = iio_context_get_device(priv->ctx, i);
 		const char *name = iio_device_get_name(dev) ?:
 			iio_device_get_id(dev);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
@@ -3441,7 +3460,7 @@ static void saveas_channels_list_fill(OscPlot *plot)
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(priv->device_combobox), name);
 	}
 
-	if (!num_devices)
+	if (num_devices == 0)
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(priv->device_combobox),
 			"No Devices Available");
 	g_signal_connect(priv->device_combobox, "changed",
@@ -3461,7 +3480,7 @@ static GSList * iio_chn_basenames_get(OscPlot *plot, const char *dev_name)
 	if (!dev_name)
 		return NULL;
 
-	iio_dev = iio_context_find_device(ctx, dev_name);
+	iio_dev = iio_context_find_device(plot->priv->ctx, dev_name);
 	if (!iio_dev)
 		return NULL;
 
@@ -3869,7 +3888,7 @@ static void channel_selection_set_default(OscPlot *plot)
 	int d;
 
 	device_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->device_combobox));
-	d = device_find_by_name(device_name);
+	d = device_find_by_name(priv->ctx, device_name);
 	if (d >= 0)
 		foreach_channel_iter_of_device(GTK_TREE_VIEW(priv->channel_list_view),
 				device_name, *copy_channel_state_to_selection_channel, plot);
@@ -3896,10 +3915,10 @@ static int * get_user_saveas_channel_selection(OscPlot *plot, unsigned int nb_ch
 		gchar *dev_name, *ch_name;
 
 		dev_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->device_combobox));
-		dev_index = device_find_by_name(dev_name);
+		dev_index = device_find_by_name(priv->ctx, dev_name);
 		g_free(dev_name);
 		g_object_get(btn, "label", &ch_name, NULL);
-		ch_index = channel_find_by_name(dev_index, ch_name);
+		ch_index = channel_find_by_name(priv->ctx, dev_index, ch_name);
 		if (ch_index < 0) {
 			fprintf(stderr, "Cannot find channel %s\n", ch_name);
 			g_free(ch_name);
@@ -3939,6 +3958,7 @@ static void saveas_dialog_show(GtkWidget *w, OscPlot *plot)
 static void save_as(OscPlot *plot, const char *filename, int type)
 {
 	OscPlotPrivate *priv = plot->priv;
+	struct iio_context *ctx = priv->ctx;
 	FILE *fp;
 	mat_t *mat;
 	matvar_t *matvar;
@@ -3967,7 +3987,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				break;
 
 			active_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->device_combobox));
-			d = device_find_by_name(active_device);
+			d = device_find_by_name(ctx, active_device);
 			g_free(active_device);
 			if (d < 0)
 				break;
@@ -4019,7 +4039,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				break;
 			if (priv->active_saveas_type == SAVE_AS_RAW_DATA) {
 				active_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->device_combobox));
-				d = device_find_by_name(active_device);
+				d = device_find_by_name(ctx, active_device);
 				g_free(active_device);
 				if (d < 0)
 					break;
@@ -4077,7 +4097,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			}
 
 			active_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->device_combobox));
-			d = device_find_by_name(active_device);
+			d = device_find_by_name(ctx, active_device);
 			g_free(active_device);
 			if (d < 0)
 				break;
@@ -4557,12 +4577,15 @@ static int comboboxtext_get_active_text_as_int(GtkComboBoxText* combobox)
 #define DEVICE 1
 #define CHANNEL 2
 
-static int device_find_by_name(const char *name)
+static int device_find_by_name(struct iio_context *ctx, const char *name)
 {
+	unsigned int num_devices = 0;
 	unsigned int i;
 
 	if (!name)
 		return -1;
+	if (ctx)
+		num_devices = iio_context_get_devices_count(ctx);
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
@@ -4574,13 +4597,20 @@ static int device_find_by_name(const char *name)
 	return -1;
 }
 
-static int channel_find_by_name(int device_index, const char *name)
+static int channel_find_by_name(struct iio_context *ctx, int device_index,
+				const char *name)
 {
-	struct iio_device *dev = iio_context_get_device(ctx, device_index);
-	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
+	struct iio_device *dev;
+	unsigned int i, nb_channels = 0;
 
+	if (!ctx)
+		return -1;
 	if (!name)
 		return -1;
+
+	dev = iio_context_get_device(ctx, device_index);
+	if (dev)
+		nb_channels = iio_device_get_channels_count(dev);
 
 	for (i = 0; i < nb_channels; i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
@@ -4609,6 +4639,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 		const char *name, const char *value)
 {
 	OscPlotPrivate *priv = plot->priv;
+	struct iio_context *ctx = priv->ctx;
 	GtkTreeView *tree = GTK_TREE_VIEW(priv->channel_list_view);
 	GtkTreeStore *store = GTK_TREE_STORE(gtk_tree_view_get_model(tree));
 	GtkTreeIter dev_iter, ch_iter;
@@ -4805,7 +4836,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 			if (strncmp(dev_name, "Math", 4) == 0) {
 				dev_info = NULL;
 			} else {
-				dev = device_find_by_name(dev_name);
+				dev = device_find_by_name(ctx, dev_name);
 				if (dev == -1)
 					goto unhandled;
 				dev_info = iio_device_get_data(iio_context_find_device(ctx, dev_name));
@@ -4879,10 +4910,10 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 				break;
 			}
 
-			dev = device_find_by_name(dev_name);
+			dev = device_find_by_name(ctx, dev_name);
 			if (dev == -1)
 				goto unhandled;
-			ch = channel_find_by_name(dev, ch_name);
+			ch = channel_find_by_name(ctx, dev, ch_name);
 			if (ch == -1)
 				goto unhandled;
 			if (MATCH(ch_property, "enabled")) {
@@ -5400,7 +5431,7 @@ static gint channel_compare(gconstpointer a, gconstpointer b)
 	return strcmp(a_name, b_name);
 }
 
-static GSList * math_expression_get_iio_channel_list(const char *expression, const char *device, bool *has_invalid_ch)
+static GSList * math_expression_get_iio_channel_list(const char *expression, struct iio_context *ctx, const char *device, bool *has_invalid_ch)
 {
 	GSList *chn_list = NULL;
 	GRegex *regex;
@@ -5475,7 +5506,7 @@ static void math_chooser_fullscale_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 	device_name = gtk_combo_box_text_get_active_text(
 			GTK_COMBO_BOX_TEXT(priv->math_device_select));
 	if (device_name) {
-		iio_dev = iio_context_find_device(ctx, device_name);
+		iio_dev = iio_context_find_device(priv->ctx, device_name);
 		if (iio_dev) {
 			unsigned int i;
 			struct iio_channel *iio_chn;
@@ -5541,7 +5572,7 @@ static void math_device_cmb_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 	if (!device_name)
 		return;
 
-	iio_dev = iio_context_find_device(ctx, device_name);
+	iio_dev = iio_context_find_device(plot->priv->ctx, device_name);
 	if (!iio_dev)
 		goto end;
 
@@ -5634,7 +5665,8 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 		txt_math_expr = gtk_text_buffer_get_text(priv->math_expression, &start, &end, FALSE);
 
 		/* Find device channels used in the expression */
-		channels = math_expression_get_iio_channel_list(txt_math_expr, active_device, &invalid_channels);
+		channels = math_expression_get_iio_channel_list(txt_math_expr,
+				priv->ctx, active_device, &invalid_channels);
 
 		/* Get the compiled math expression */
 		GSList *basenames = iio_chn_basenames_get(plot, active_device);
@@ -5673,7 +5705,8 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 	pmc->math_expression = fn;
 	pmc->math_lib_handler = lhandler;
 	pmc->num_channels = g_slist_length(pmc->iio_channels);
-	pmc->iio_channels_data = iio_channels_get_data(pmc->iio_device_name);
+	pmc->iio_channels_data = iio_channels_get_data(priv->ctx,
+					pmc->iio_device_name);
 
 	g_free(active_device);
 
@@ -5687,7 +5720,7 @@ static void new_math_channel_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	/* Build a new Math Channel */
 	PlotMathChn *pmc;
 
-	pmc = plot_math_channel_new();
+	pmc = plot_math_channel_new(plot->priv->ctx);
 	if (!pmc)
 		return;
 
@@ -6222,6 +6255,12 @@ static void create_plot(OscPlot *plot)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_type), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->cmb_saveas_type), SAVE_CSV);
 
+	/* Create a empty list of transforms */
+	plot->priv->transform_list = TrList_new();
+
+	/* No active transforms by default */
+	plot->priv->active_transform_type = NO_TRANSFORM_TYPE;
+
 	/* Create a GtkDatabox widget along with scrollbars and rulers */
 	gtk_databox_create_box_with_scrollbars_and_rulers(&priv->databox, &table,
 		TRUE, TRUE, TRUE, TRUE);
@@ -6335,7 +6374,7 @@ static void create_plot(OscPlot *plot)
 
 	/* Add a device chooser to the Math Expression Chooser */
 	priv->math_device_select = GTK_WIDGET(gtk_builder_get_object(priv->builder, "cmb_math_device_chooser"));
-	comboboxtext_input_devices_fill(ctx, GTK_COMBO_BOX_TEXT(priv->math_device_select));
+	comboboxtext_input_devices_fill(priv->ctx, GTK_COMBO_BOX_TEXT(priv->math_device_select));
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->math_device_select), 0);
 
 	notebook_info_set_page_visibility(GTK_NOTEBOOK(
