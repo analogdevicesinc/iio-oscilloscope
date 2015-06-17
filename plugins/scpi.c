@@ -455,8 +455,10 @@ static ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t 
 				memset(scpi->response, 0, SOCKETS_BUFFER_SIZE);
 				tty_read(scpi);
 			}
-		} else
+		} else {
 			fprintf(stderr, "SCPI:%s tty didn't write the entire buffer\n", __func__);
+			return -EIO;
+		}
 
 		tcflush(scpi->ttyfd, TCIOFLUSH);
 	}
