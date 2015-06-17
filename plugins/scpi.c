@@ -1242,9 +1242,9 @@ static void scpi_cmd_cb (GtkButton *button, GtkEntry *box)
 	current_instrument->response[0] = 0;
 	scpi_fprintf(current_instrument, "%s\r\n", buf);
 
-	printf("send '%s',\n", buf);
+	printf("sent: '%s'\n", buf);
 	if (current_instrument->response)
-		printf("received '%s'\n", current_instrument->response);
+		printf("received: '%s'\n", current_instrument->response);
 }
 
 /*
