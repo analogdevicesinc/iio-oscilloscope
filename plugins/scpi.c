@@ -298,6 +298,15 @@ static int tty_read(struct scpi_instrument *scpi)
 	int n, i, end = 0;
 	int byte_count = 0;
 
+	/* Number of seconds before signaling a tty read timeout. */
+	struct timespec ts_current, ts_end;
+	unsigned long long nsecs;
+	clock_gettime(CLOCK_MONOTONIC, &ts_current);
+	nsecs = ts_current.tv_nsec + (SOCKETS_TIMEOUT * pow(10.0, 9));
+	ts_end.tv_sec = ts_current.tv_sec + (nsecs / pow(10.0, 9));
+	ts_end.tv_nsec = nsecs % (unsigned long long) pow(10.0, 9);
+	ts_end.tv_nsec = ts_current.tv_nsec;
+
 	do {
 		n = read(scpi->ttyfd, (char *)scpi->response + byte_count,
 				SOCKETS_BUFFER_SIZE - byte_count);
@@ -314,6 +323,11 @@ static int tty_read(struct scpi_instrument *scpi)
 			 * until some exists.
 			 */
 			if (errno == EAGAIN) {
+				if (timespeccmp(&ts_current, &ts_end, >) != 0) {
+					fprintf(stderr, "SCPI: reading from TTY timed out\n");
+					return -ETIMEDOUT;
+				}
+				clock_gettime(CLOCK_MONOTONIC, &ts_current);
 				continue;
 			} else {
 				print_output_sys(stderr, "%s: Can't read from TTY device: %s %s (%d)\n",
@@ -454,7 +468,7 @@ static ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t 
 		if (retval == (ssize_t)count) {
 			if (memrchr(buf, '?', count)) {
 				memset(scpi->response, 0, SOCKETS_BUFFER_SIZE);
-				tty_read(scpi);
+				retval = tty_read(scpi);
 			}
 		} else {
 			fprintf(stderr, "SCPI:%s tty didn't write the entire buffer\n", __func__);
