@@ -71,7 +71,8 @@ struct scpi_instrument {
 	bool         serial;
 	bool         network;
 	char        *id_regex;
-	char	    *response;
+	char        *model;
+	char        *response;
 
 	/* network based instrument */
 	char        *ip_address;
@@ -529,13 +530,14 @@ static int scpi_connect(struct scpi_instrument *scpi)
 	scpi_fprintf(scpi, "*CLS\r\n");
 	scpi_fprintf(scpi, "*RST\r\n");
 	scpi_fprintf(scpi, "*IDN?\r\n");
-	if (!strstr(scpi->response, scpi->id_regex)) {
+	scpi->model = strdup(scpi->response);
+	if (!strstr(scpi->model, scpi->id_regex)) {
 		printf("instrument doesn't match regex\n");
 		printf("\twanted   : '%s'\n", scpi->id_regex);
 		printf("\treceived : '%s'\n", scpi->response);
 		return -1;
 	}
-	printf("Instrument ID: %s\n", scpi->response);
+	printf("Instrument ID: %s\n", scpi->model);
 
 	return 0;
 }
@@ -1174,6 +1176,7 @@ static void connect_clicked_cb(void)
 	if (ret == 0) {
 		scpi_fprintf(current_instrument, "*CLS;*RST;*IDN?\r\n");
 		if (strlen(current_instrument->response)) {
+			current_instrument->model = current_instrument->response;
 			gtk_label_set_text(GTK_LABEL(scpi_id), current_instrument->response);
 			for (i = 0; supported_spectrum_analyzers[i] != NULL; i++) {
 				if (supported_spectrum_analyzers[i] &&
