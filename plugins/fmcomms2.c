@@ -524,7 +524,7 @@ static void rx_phase_rotation_update()
 	}
 }
 
-static void dxco_widgets_update(void)
+static void dcxo_widgets_update(void)
 {
 	char val[64];
 	int ret;
@@ -543,7 +543,7 @@ static void update_widgets(void)
 	if (dds)
 		iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dds);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
-	dxco_widgets_update();
+	dcxo_widgets_update();
 }
 
 static void filter_fir_update(void)
