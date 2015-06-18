@@ -53,8 +53,6 @@ else
 	CFLAGS += -DNDEBUG
 endif
 
-#CFLAGS += -DNOFFTW
-
 SO := $(if $(WITH_MINGW),dll,so)
 EXE := $(if $(WITH_MINGW),.exe)
 
