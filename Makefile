@@ -46,7 +46,13 @@ CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\" \
 	-D_POSIX_C_SOURCE=200809L
 
-#CFLAGS+=-DDEBUG
+DEBUG ?= 0
+ifeq ($(DEBUG),1)
+	CFLAGS += -DDEBUG
+else
+	CFLAGS += -DNDEBUG
+endif
+
 #CFLAGS += -DNOFFTW
 
 SO := $(if $(WITH_MINGW),dll,so)
