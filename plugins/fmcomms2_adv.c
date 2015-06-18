@@ -70,14 +70,6 @@ static GtkBuilder *builder;
 #define CAL_SCALE	0.12500
 #define MARKER_AVG	3
 
-//#define DEBUG
-
-#ifdef DEBUG
-#define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
-#else
-#define DBG(D...)
-#endif
-
 enum fmcomms2adv_wtype {
 	CHECKBOX,
 	SPINBUTTON,

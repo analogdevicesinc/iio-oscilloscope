@@ -52,6 +52,12 @@ extern void math_expression_objects_clean(void);
 		((tsp)->tv_sec cmp (usp)->tv_sec))
 #endif
 
+#ifdef DEBUG
+#define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
+#else
+#define DBG(D...)
+#endif
+
 struct marker_type {
 	gfloat x;
 	gfloat y;
