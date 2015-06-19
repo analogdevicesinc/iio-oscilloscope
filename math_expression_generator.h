@@ -252,7 +252,7 @@ void math_expression_close_lib_handler(void *lib_handler)
 void math_expression_objects_clean(void)
 {
 #ifdef linux
-	if (recursive_remove(MATH_OBJECT_FILES_DIR) != 0)
+	if (recursive_remove(MATH_OBJECT_FILES_DIR) != 0 && errno != ENOENT)
 		fprintf(stderr, "Can't remove %s: %s\n", MATH_OBJECT_FILES_DIR, strerror(errno));
 #endif
 }
