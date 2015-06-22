@@ -134,6 +134,8 @@ static const char *fmcomms2_sr_attribs[] = {
 	PHY_DEVICE".in_voltage_quadrature_tracking_en",
 	PHY_DEVICE".in_voltage_rf_dc_offset_tracking_en",
 	PHY_DEVICE".out_voltage0_rf_port_select",
+	PHY_DEVICE".out_altvoltage0_RX_LO_external",
+	PHY_DEVICE".out_altvoltage1_TX_LO_external",
 	PHY_DEVICE".out_altvoltage0_RX_LO_frequency",
 	PHY_DEVICE".out_altvoltage1_TX_LO_frequency",
 	PHY_DEVICE".out_voltage0_hardwaregain",
@@ -1187,6 +1189,10 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev, ch1, "external", builder,
+		"rx_lo_external", 0);
+
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
 		dev, ch0, "quadrature_tracking_en", builder,
 		"quad", 0);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
@@ -1259,6 +1265,10 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		dev, ch1, freq_name, builder, "tx_lo_freq", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
+	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+		dev, ch1, "external", builder,
+		"tx_lo_external", 0);
+
 	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
 
 	if (ini_fn)
@@ -1282,6 +1292,18 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		"label_rssi_tx1", "sensitive", G_BINDING_DEFAULT);
 	g_builder_bind_property(builder, "rssi_tx2", "visible",
 		"label_rssi_tx2", "sensitive", G_BINDING_DEFAULT);
+	g_builder_bind_property(builder, "rx_lo_external", "active",
+		"rx_fastlock_profile", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external", "active",
+		"rx_fastlock_label", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external", "active",
+		"rx_fastlock_actions", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external", "active",
+		"tx_fastlock_profile", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external", "active",
+		"tx_fastlock_label", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external", "active",
+		"tx_fastlock_actions", "visible", G_BINDING_INVERT_BOOLEAN);
 
 	/* Connect signals */
 
