@@ -249,21 +249,6 @@
                                           <placeholder/>
                                         </child>
                                         <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
                                           <object class="GtkLabel" id="label2">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
@@ -583,7 +568,7 @@ configuration:</property>
                                                 </child>
                                               </object>
                                               <packing>
-                                                <property name="expand">True</property>
+                                                <property name="expand">False</property>
                                                 <property name="fill">True</property>
                                                 <property name="position">0</property>
                                               </packing>
@@ -619,7 +604,7 @@ configuration:</property>
                                                 </child>
                                               </object>
                                               <packing>
-                                                <property name="expand">True</property>
+                                                <property name="expand">False</property>
                                                 <property name="fill">True</property>
                                                 <property name="position">1</property>
                                               </packing>
@@ -698,6 +683,8 @@ configuration:</property>
                                             <property name="right_attach">6</property>
                                             <property name="top_attach">3</property>
                                             <property name="bottom_attach">4</property>
+                                            <property name="x_options">GTK_FILL</property>
+                                            <property name="y_options">GTK_FILL</property>
                                             <property name="y_padding">5</property>
                                           </packing>
                                         </child>
@@ -713,8 +700,11 @@ configuration:</property>
                                             <property name="draw_indicator">True</property>
                                           </object>
                                           <packing>
+                                            <property name="right_attach">6</property>
                                             <property name="top_attach">4</property>
                                             <property name="bottom_attach">5</property>
+                                            <property name="x_options">GTK_FILL</property>
+                                            <property name="y_options">GTK_FILL</property>
                                           </packing>
                                         </child>
                                       </object>
@@ -797,7 +787,7 @@ configuration:</property>
                                             <property name="can_focus">False</property>
                                             <property name="n_rows">3</property>
                                             <property name="n_columns">5</property>
-                                            <property name="column_spacing">5</property>
+                                            <property name="column_spacing">10</property>
                                             <child>
                                               <placeholder/>
                                             </child>
@@ -1491,7 +1481,7 @@ configuration:</property>
                                         <property name="can_focus">False</property>
                                         <property name="n_rows">3</property>
                                         <property name="n_columns">5</property>
-                                        <property name="column_spacing">15</property>
+                                        <property name="column_spacing">10</property>
                                         <child>
                                           <placeholder/>
                                         </child>
@@ -1505,7 +1495,6 @@ configuration:</property>
                                           <object class="GtkLabel" id="label16">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
                                             <property name="label" translatable="yes">RF Bandwidth(MHz):</property>
                                           </object>
                                           <packing>
@@ -1533,7 +1522,6 @@ configuration:</property>
                                           <object class="GtkLabel" id="label19">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
                                             <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
                                           </object>
                                           <packing>
@@ -1565,7 +1553,6 @@ configuration:</property>
                                           <object class="GtkLabel" id="label20">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
                                             <property name="label" translatable="yes">TX LO Frequency(MHz):</property>
                                           </object>
                                           <packing>
