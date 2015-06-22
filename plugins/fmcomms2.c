@@ -1271,22 +1271,6 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
 
-	if (ini_fn)
-		load_profile(ini_fn);
-
-	/* Update all widgets with current values */
-	printf("Updating widgets...\n");
-	update_widgets();
-	rx_freq_info_update();
-	printf("Updating FIR filter...\n");
-	filter_fir_update();
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
-	glb_settings_update_labels();
-	rssi_update_labels();
-	dac_data_manager_freq_widgets_range_update(dac_tx_manager,
-		get_gui_tx_sampling_freq() / 2.0);
-	dac_data_manager_update_iio_widgets(dac_tx_manager);
-
 	/* Widgets bindings */
 	g_builder_bind_property(builder, "rssi_tx1", "visible",
 		"label_rssi_tx1", "sensitive", G_BINDING_DEFAULT);
@@ -1304,6 +1288,22 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		"tx_fastlock_label", "visible", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "tx_lo_external", "active",
 		"tx_fastlock_actions", "visible", G_BINDING_INVERT_BOOLEAN);
+
+	if (ini_fn)
+		load_profile(ini_fn);
+
+	/* Update all widgets with current values */
+	printf("Updating widgets...\n");
+	update_widgets();
+	rx_freq_info_update();
+	printf("Updating FIR filter...\n");
+	filter_fir_update();
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
+	glb_settings_update_labels();
+	rssi_update_labels();
+	dac_data_manager_freq_widgets_range_update(dac_tx_manager,
+		get_gui_tx_sampling_freq() / 2.0);
+	dac_data_manager_update_iio_widgets(dac_tx_manager);
 
 	/* Connect signals */
 
