@@ -729,7 +729,7 @@ static void mcs_cb (GtkWidget *widget, gpointer data)
 	iio_device_attr_write(dev, "ensm_mode", "alert");
 	iio_device_attr_write(dev_slave, "ensm_mode", "alert");
 
-	for (step = 1; step <= 5; step++) {
+	for (step = 0; step <= 5; step++) {
 		sprintf(temp, "%d", step);
 		/* Don't change the order here - the master controls the SYNC GPIO */
 		iio_device_debug_attr_write(dev_slave, "multichip_sync", temp);
