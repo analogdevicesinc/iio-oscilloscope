@@ -29,6 +29,7 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../iio_widget.h"
+#include "../datatypes.h"
 
 #define PHY_DEVICE	"ad9361-phy"
 #define PHY_SLAVE_DEVICE	"ad9361-phy-B"
@@ -54,6 +55,7 @@ struct iio_device *cf_ad9361_lpc, *cf_ad9361_hpc;
 static struct iio_channel *dds_out[2][8];
 OscPlot *plot_xcorr_4ch;
 static volatile int auto_calibrate = 0;
+static bool cap_device_channels_enabled;
 
 static bool can_update_widgets;
 
@@ -439,6 +441,21 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 
 	if (!strcmp(item->name, "initialize")) {
 		reload_settings();
+	}
+}
+
+static void iio_channels_change_shadow_of_enabled(struct iio_device *dev, bool increment)
+{
+	struct iio_channel *chn;
+	struct extra_info *info;
+	unsigned i;
+	for (i = 0; i < iio_device_get_channels_count(dev); i++) {
+		chn = iio_device_get_channel(dev, i);
+		info = iio_channel_get_data(chn);
+		if (increment)
+			info->shadow_of_enabled++;
+		else
+			info->shadow_of_enabled--;
 	}
 }
 
@@ -971,11 +988,21 @@ calibrate_fail:
 		gtk_widget_show(GTK_WIDGET(button));
 	gdk_threads_leave();
 
+	/* Disable the channels that were enabled at the beginning of the calibration */
+	struct iio_device *iio_dev;
+	iio_dev = iio_context_find_device(get_context_from_osc(), CAP_DEVICE_ALT);
+	if (iio_dev && cap_device_channels_enabled) {
+		iio_channels_change_shadow_of_enabled(iio_dev, false);
+		cap_device_channels_enabled = false;
+	}
+
 	g_thread_exit(NULL);
 }
 
 void do_calibration (GtkWidget *widget, gpointer data)
 {
+	struct iio_device *iio_dev;
+	unsigned num_chs, enabled_chs_mask;
 	GtkToggleButton *silent_calib;
 
 	plot_xcorr_4ch = plugin_get_new_plot();
@@ -983,6 +1010,21 @@ void do_calibration (GtkWidget *widget, gpointer data)
 	silent_calib = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder, "silent_calibration"));
 	if (gtk_toggle_button_get_active(silent_calib)) {
 		osc_plot_set_visible(plot_xcorr_4ch, false);
+	}
+
+	/* If channel selection of the plot used in the calibration combined
+	 * with the channel selections of other existing plots is invalid then
+	 * enable all channels. NOTE: remove this implementation once the dma
+	 * starts working with any combination of channels.
+	 */
+	iio_dev = iio_context_find_device(get_context_from_osc(), CAP_DEVICE_ALT);
+	if (iio_dev) {
+		num_chs = iio_device_get_channels_count(iio_dev);
+		enabled_chs_mask = global_enabled_channels_mask(iio_dev);
+		if (!dma_valid_selection(CAP_DEVICE_ALT, enabled_chs_mask | 0x33, num_chs)) {
+			cap_device_channels_enabled = true;
+			iio_channels_change_shadow_of_enabled(iio_dev, true);
+		}
 	}
 
 	if (plot_xcorr_4ch) {

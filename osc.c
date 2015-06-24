@@ -135,6 +135,25 @@ bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_cou
 	return ret;
 }
 
+unsigned global_enabled_channels_mask(struct iio_device *dev)
+{
+	unsigned mask = 0;
+	int scan_i = 0;
+	unsigned int i = 0;
+
+	for (; i < iio_device_get_channels_count(dev); i++) {
+		struct iio_channel *chn = iio_device_get_channel(dev, i);
+
+		if (iio_channel_is_scan_element(chn)) {
+			if (iio_channel_is_enabled(chn))
+				mask |= 1 << scan_i;
+			scan_i++;
+		}
+	}
+
+	return mask;
+}
+
 /* Couple helper functions from fru parsing */
 void printf_warn (const char * fmt, ...)
 {

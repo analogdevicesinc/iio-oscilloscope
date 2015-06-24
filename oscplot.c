@@ -40,7 +40,6 @@ typedef size_t mat_dim;
 #endif
 
 extern void *find_setup_check_fct_by_devname(const char *dev_name);
-extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
 extern struct iio_context *ctx;
 extern unsigned num_devices;
@@ -1685,25 +1684,6 @@ static void set_may_be_enabled_bit(GtkTreeModel *model,
 			CHANNEL_ACTIVE, &enabled, -1);
 	info = iio_channel_get_data(chn);
 	info->may_be_enabled = enabled;
-}
-
-static unsigned global_enabled_channels_mask(struct iio_device *dev)
-{
-	unsigned mask = 0;
-	int scan_i = 0;
-	unsigned int i = 0;
-
-	for (; i < iio_device_get_channels_count(dev); i++) {
-		struct iio_channel *chn = iio_device_get_channel(dev, i);
-
-		if (iio_channel_is_scan_element(chn)) {
-			if (iio_channel_is_enabled(chn))
-				mask |= 1 << scan_i;
-			scan_i++;
-		}
-	}
-
-	return mask;
 }
 
 static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
