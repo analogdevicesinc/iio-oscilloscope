@@ -793,6 +793,7 @@ int scpi_connect_counter()
 				if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
 					/* Select the correct input. */
 					scpi_fprintf(current_instrument, "FRC\r\n");
+					sleep(1);
 				} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
 					/* reset the counter */
 					scpi_fprintf(current_instrument, "*RST\r\n");
