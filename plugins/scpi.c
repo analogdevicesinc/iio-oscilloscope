@@ -777,14 +777,22 @@ static bool scpi_counter_connected()
  */
 int scpi_connect_counter()
 {
-	int ret = -1;
+	int i = 0, ret = -1;
 	unsigned int tty_node;
+
+	static char *hameg_inputs[] = {
+		"FRA",
+		"FRB",
+		"FRC",
+		NULL
+	};
 
 	if (!scpi_counter_connected()) {
 		current_instrument = &prog_counter;
 		current_instrument->serial = true;
 		current_instrument->id_regex = "";
 		current_instrument->gpib_addr = 3;
+		current_instrument->response[0] = 0;
 
 		/* Iterate over tty dev nodes, trying to connect to a supported device. */
 		for (tty_node = 0; tty_node <= 9; tty_node++) {
@@ -792,8 +800,14 @@ int scpi_connect_counter()
 			if (scpi_connect(current_instrument) == 0 && scpi_counter_connected()) {
 				if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
 					/* Select the correct input. */
-					scpi_fprintf(current_instrument, "FRC\r\n");
-					sleep(1);
+					do {
+						if (hameg_inputs[i] == NULL)
+							break;
+						scpi_fprintf(current_instrument, "%s\r\n", hameg_inputs[i++]);
+						sleep(1);
+						scpi_fprintf(current_instrument, "XMT?\r\n");
+						sleep(1);
+					} while (strstr(current_instrument->response, "Not Available"));
 				} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
 					/* reset the counter */
 					scpi_fprintf(current_instrument, "*RST\r\n");
