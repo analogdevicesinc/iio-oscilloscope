@@ -82,7 +82,7 @@ endif
 
 OSC_OBJS := osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o \
 	trigger_dialog.o xml_utils.o libini/libini.o libini2.o phone_home.o \
-	plugins/dac_data_manager.o
+	plugins/dac_data_manager.o plugins/ad9361_multichip_sync.o
 
 all: $(OSC) $(PLUGINS)
 
@@ -121,6 +121,7 @@ trigger_dialog.o: fru.h osc.h iio_widget.h
 xml_utils.o: xml_utils.h
 phone_home.o: phone_home.h
 plugins/dac_data_manager.o: plugins/dac_data_manager.h
+plugins/ad9361_multichip_sync.o: plugins/ad9361_multichip_sync.h
 
 install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/bin

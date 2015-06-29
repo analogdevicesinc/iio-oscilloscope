@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include <iio.h>
+#include "ad9361_multichip_sync.h"
 
 #include "../libini2.h"
 #include "../osc.h"
@@ -705,54 +706,11 @@ static void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
 
 static void mcs_cb (GtkWidget *widget, gpointer data)
 {
-	unsigned step;
-	struct iio_channel *tx_sample_master, *tx_sample_slave;
-	long long tx_sample_master_freq, tx_sample_slave_freq;
-	char temp[40], ensm_mode[40];
-	unsigned tmp;
-	static int fix_slave_tune = 1;
+	/* Master device must list first! */
+	struct iio_device *devices[] = {dev, dev_slave};
 
-	tx_sample_master = iio_device_find_channel(dev, "voltage0", true);
-	tx_sample_slave = iio_device_find_channel(dev_slave, "voltage0", true);
-
-	iio_channel_attr_read_longlong(tx_sample_master, "sampling_frequency", &tx_sample_master_freq);
-	iio_channel_attr_read_longlong(tx_sample_slave, "sampling_frequency", &tx_sample_slave_freq);
-
-	if (tx_sample_master_freq != tx_sample_slave_freq) {
-		printf("tx_sample_master_freq != tx_sample_slave_freq\nUpdating...\n");
-		iio_channel_attr_write_longlong(tx_sample_slave, "sampling_frequency", tx_sample_master_freq);
-	}
-
-	if (fix_slave_tune) {
-		iio_device_reg_read(dev, 0x6, &tmp);
-		iio_device_reg_write(dev_slave, 0x6, tmp);
-		iio_device_reg_read(dev, 0x7, &tmp);
-		iio_device_reg_write(dev_slave, 0x7, tmp);
-		fix_slave_tune = 0;
-	}
-
-	iio_device_attr_read(dev, "ensm_mode", ensm_mode, sizeof(ensm_mode));
-
-	/* Move the parts int ALERT for MCS */
-	iio_device_attr_write(dev, "ensm_mode", "alert");
-	iio_device_attr_write(dev_slave, "ensm_mode", "alert");
-
-	for (step = 0; step <= 5; step++) {
-		sprintf(temp, "%d", step);
-		/* Don't change the order here - the master controls the SYNC GPIO */
-		iio_device_debug_attr_write(dev_slave, "multichip_sync", temp);
-		iio_device_debug_attr_write(dev, "multichip_sync", temp);
-		sleep(0.1);
-	}
-
-	iio_device_attr_write(dev, "ensm_mode", ensm_mode);
-	iio_device_attr_write(dev_slave, "ensm_mode", ensm_mode);
-
-#if 0
-	iio_device_debug_attr_write(dev, "multichip_sync", "6");
-	iio_device_debug_attr_write(dev_slave, "multichip_sync", "6");
-#endif
-
+	ad9361_multichip_sync(devices, ARRAY_SIZE(devices),
+			FIXUP_INTERFACE_TIMING | CHECK_SAMPLE_RATES | MCS_IS_DEBUG_ATTR);
 }
 
 static double tune_trx_phase_offset(struct iio_device *ldev, int *ret,
