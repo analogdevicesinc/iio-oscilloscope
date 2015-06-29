@@ -50,7 +50,7 @@ int ad9361_multichip_sync(struct iio_device **devices, int num, unsigned flags)
 		iio_device_attr_write(devices[i], "ensm_mode", "alert");
 	}
 
-	for (step = 1; step <= 5; step++) {
+	for (step = 0; step <= 5; step++) {
 		char temp[20];
 		sprintf(temp, "%d", step);
 		/* Don't change the order here - the master controls the SYNC GPIO */
