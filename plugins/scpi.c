@@ -840,17 +840,9 @@ int scpi_counter_get_freq(double *freq)
 	/* Query instrument for the current measured frequency. */
 	if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
 		ret = scpi_fprintf(current_instrument, "XMT?\r\n");
-	} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
-		ret = scpi_fprintf(current_instrument, ":READ?\r\n");
-	} else {
-		/* No supported device attached */
-		ret = -ENODEV;
-	}
+		if (ret < 0)
+			return ret;
 
-	if (ret < 0)
-		return ret;
-
-	if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
 		/* Output is usually of the form "value scale" where scale is often "GHz" */
 		freq_tokens = g_strsplit(current_instrument->response, " ", 2);
 		if (freq_tokens[0] != NULL)
@@ -867,7 +859,16 @@ int scpi_counter_get_freq(double *freq)
 		g_strfreev(freq_tokens);
 	} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
 		/* output is in scientific E notation, Hz scale by default */
+		ret = scpi_fprintf(current_instrument, ":READ?\r\n");
+		if (ret < 0)
+			return ret;
+
 		freq_str = strdup(current_instrument->response);
+		/* re-enable continuous output */
+		scpi_fprintf(current_instrument, ":INIT:CONT ON\r\n");
+	} else {
+		/* No supported device attached */
+		return -ENODEV;
 	}
 
 	ret = sscanf(freq_str, "%lf", freq);
