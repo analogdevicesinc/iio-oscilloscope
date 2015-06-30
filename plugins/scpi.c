@@ -787,45 +787,42 @@ int scpi_connect_counter()
 		NULL
 	};
 
-	if (!scpi_counter_connected()) {
-		current_instrument = &prog_counter;
-		current_instrument->serial = true;
-		current_instrument->id_regex = "";
-		current_instrument->gpib_addr = 3;
-		current_instrument->response[0] = 0;
+	current_instrument = &prog_counter;
+	current_instrument->serial = true;
+	current_instrument->id_regex = "";
+	current_instrument->gpib_addr = 3;
+	current_instrument->response[0] = 0;
 
-		/* Iterate over tty dev nodes, trying to connect to a supported device. */
-		for (tty_node = 0; tty_node <= 9; tty_node++) {
-			current_instrument->tty_path[strlen(current_instrument->tty_path)-1] = (char)(tty_node + '0');
-			if (scpi_connect(current_instrument) == 0 && scpi_counter_connected()) {
-				if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
-					/* Select the correct input. */
-					do {
-						if (hameg_inputs[i] == NULL)
-							break;
-						scpi_fprintf(current_instrument, "%s\r\n", hameg_inputs[i++]);
-						sleep(1);
-						scpi_fprintf(current_instrument, "XMT?\r\n");
-						sleep(1);
-					} while (strstr(current_instrument->response, "Not Available"));
-				} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
-					/* reset the counter */
-					scpi_fprintf(current_instrument, "*RST\r\n");
-					scpi_fprintf(current_instrument, "*CLS\r\n");
-					scpi_fprintf(current_instrument, "*SRE 0\r\n");
-					scpi_fprintf(current_instrument, "*ESE 0\r\n");
-					scpi_fprintf(current_instrument, ":STAT:PRES\r\n");
-
-					/* perform queries on channel 1 and return ascii formatted data */
-					scpi_fprintf(current_instrument, ":FUNC 'FREQ 1'\r\n");
-					scpi_fprintf(current_instrument, ":FORM:DATA ASCII\r\n");
-				}
-				ret = 0;
-				break;
+	/* Iterate over tty dev nodes, trying to connect to a supported device. */
+	for (tty_node = 0; tty_node <= 9; tty_node++) {
+		current_instrument->tty_path[strlen(current_instrument->tty_path)-1] = (char)(tty_node + '0');
+		if (scpi_connect(current_instrument) == 0 && scpi_counter_connected()) {
+			if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
+				/* Select the correct input. */
+				do {
+					if (hameg_inputs[i] == NULL)
+						break;
+					scpi_fprintf(current_instrument, "%s\r\n", hameg_inputs[i++]);
+					sleep(1);
+					scpi_fprintf(current_instrument, "XMT?\r\n");
+					sleep(1);
+				} while (strstr(current_instrument->response, "Not Available"));
+			} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
+				/* reset the counter */
+				scpi_fprintf(current_instrument, "*RST\r\n");
+				scpi_fprintf(current_instrument, "*CLS\r\n");
+				scpi_fprintf(current_instrument, "*SRE 0\r\n");
+				scpi_fprintf(current_instrument, "*ESE 0\r\n");
+				scpi_fprintf(current_instrument, ":STAT:PRES\r\n");
+				scpi_fprintf(current_instrument, ":DISP:CALC:MATH:STAT OFF\r\n");
+				scpi_fprintf(current_instrument, ":TRAC SCALE, 1.000000\r\n");
+				/* perform queries on channel 1 and return ascii formatted data */
+				scpi_fprintf(current_instrument, ":FUNC 'FREQ 1'\r\n");
+				scpi_fprintf(current_instrument, ":FORM:DATA ASCII\r\n");
 			}
+			ret = 0;
+			break;
 		}
-	} else {
-		ret = 0;
 	}
 
 	return ret;
