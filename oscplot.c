@@ -51,7 +51,7 @@ static void capture_button_clicked_cb (GtkToggleToolButton *btn, gpointer data);
 static void single_shot_clicked_cb (GtkToggleToolButton *btn, gpointer data);
 static void add_grid(OscPlot *plot);
 static void rescale_databox(OscPlotPrivate *priv, GtkDatabox *box, gfloat border);
-static void call_all_transform_functions(OscPlotPrivate *priv);
+static bool call_all_transform_functions(OscPlotPrivate *priv);
 static void capture_start(OscPlotPrivate *priv);
 static void plot_profile_save(OscPlot *plot, char *filename);
 static void transform_add_plot_markers(OscPlot *plot, Transform *transform);
@@ -215,6 +215,7 @@ struct math_channel_settings {
 #define FFT_SETTINGS(obj) ((struct _fft_settings *)obj->settings)
 #define CONSTELLATION_SETTINGS(obj) ((struct _constellation_settings *)obj->settings)
 #define XCORR_SETTINGS(obj) ((struct _cross_correlation_settings *)obj->settings)
+#define FREQ_SPECTRUM_SETTINGS(obj) ((struct _freq_spectrum_settings *)obj->settings)
 #define MATH_SETTINGS(obj) ((struct _math_settings *)obj->settings)
 
 #define PLOT_CHN(obj) ((PlotChn *)obj)
@@ -351,11 +352,18 @@ struct _OscPlotPrivate
 	GtkDataboxGraph *grid;
 	gfloat gridy[25], gridx[25];
 
+	/* Spectrum mode - Parameters */
+	unsigned fft_count;
+	double start_freq;
+	double filter_bw;
+
 	gint line_thickness;
 
 	gint redraw_function;
 	gboolean stop_redraw;
 	gboolean redraw;
+
+	bool spectrum_data_ready;
 
 	gboolean fullscreen_state;
 
@@ -473,8 +481,8 @@ struct iio_buffer * osc_plot_get_buffer(OscPlot *plot)
 
 void osc_plot_data_update (OscPlot *plot)
 {
-	call_all_transform_functions(plot->priv);
-	plot->priv->redraw = TRUE;
+	if (call_all_transform_functions(plot->priv))
+		plot->priv->redraw = TRUE;
 
 	if (plot->priv->single_shot_mode) {
 		plot->priv->single_shot_mode = false;
@@ -651,7 +659,8 @@ bool osc_plot_set_sample_count (OscPlot *plot, gdouble count)
 	if (gtk_toggle_tool_button_get_active((GtkToggleToolButton *)priv->capture_button))
 		return false;
 
-	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT) {
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT ||
+			gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == SPECTRUM_PLOT) {
 		char s_count[32];
 		snprintf(s_count, sizeof(s_count), "%d", (int)count);
 		ret = comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_size_widget), s_count);
@@ -677,7 +686,8 @@ double osc_plot_get_sample_count (OscPlot *plot) {
 	OscPlotPrivate *priv = plot->priv;
 	int count;
 
-	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT)
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == FFT_PLOT ||
+			gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)) == SPECTRUM_PLOT)
 		count = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 	else
 		count = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
@@ -752,6 +762,54 @@ int osc_plot_get_id(OscPlot *plot)
 void osc_plot_set_id(OscPlot *plot, int id)
 {
 	plot->priv->object_id = id;
+}
+
+void osc_plot_spect_mode(OscPlot *plot, bool enable)
+{
+	OscPlotPrivate *priv = plot->priv;
+	GtkComboBox *cbox = GTK_COMBO_BOX(priv->plot_domain);
+
+	g_return_if_fail(plot);
+
+	if (enable) {
+		if (!comboboxtext_set_active_by_string(cbox, "Spectrum Mode"))
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(cbox),
+				"Spectrum Mode");
+		gtk_widget_hide(priv->capture_button);
+		gtk_widget_hide(priv->ss_button);
+	} else {
+		GtkTreeIter iter;
+		GtkTreeModel *model;
+
+		model = gtk_combo_box_get_model(cbox);
+		if (gtk_tree_model_get_iter_from_string(model, &iter,
+							"Spectrum Mode")) {
+			gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
+		}
+		gtk_widget_show(priv->capture_button);
+		gtk_widget_show(priv->ss_button);
+	}
+}
+
+void osc_plot_spect_set_start_f(OscPlot *plot, double freq_mhz)
+{
+	g_return_if_fail(plot);
+
+	plot->priv->start_freq = freq_mhz;
+}
+
+void osc_plot_spect_set_len(OscPlot *plot, unsigned fft_count)
+{
+	g_return_if_fail(plot);
+
+	plot->priv->fft_count = fft_count;
+}
+
+void osc_plot_spect_set_filter_bw(OscPlot *plot, double bw)
+{
+	g_return_if_fail(plot);
+
+	plot->priv->filter_bw = bw;
 }
 
 static void osc_plot_dispose(GObject *object)
@@ -1030,6 +1088,105 @@ static void do_fft(Transform *tr)
 	}
 }
 
+static void do_no_markers_complex_fft(Transform *tr)
+{
+	struct _freq_spectrum_settings *settings = tr->settings;
+	struct _fft_alg_data *fft = &settings->ffts_alg_data[settings->fft_index];
+	gfloat *in_data = settings->real_source;
+	gfloat *in_data_c = settings->imag_source;
+	gfloat *out_data = tr->y_axis + (settings->fft_index *
+				(settings->fft_upper_clipping_limit -
+				settings->fft_lower_clipping_limit));
+	int fft_size = settings->fft_size;
+	int i, j, k;
+	int cnt;
+	gfloat mag;
+	double avg, pwr_offset;
+	gfloat plugin_fft_corr;
+
+	if ((fft->cached_fft_size == -1) || (fft->cached_fft_size != fft_size) ||
+		(fft->cached_num_active_channels != fft->num_active_channels)) {
+
+		if (fft->cached_fft_size != -1) {
+			fftw_destroy_plan(fft->plan_forward);
+			fftw_free(fft->win);
+			fftw_free(fft->out);
+			if (fft->in != NULL)
+				fftw_free(fft->in);
+			if (fft->in_c != NULL)
+				fftw_free(fft->in_c);
+			fft->in_c = NULL;
+			fft->in = NULL;
+		}
+
+		fft->win = fftw_malloc(sizeof(double) * fft_size);
+		fft->m = fft_size;
+		fft->in_c = fftw_malloc(sizeof(fftw_complex) * fft_size);
+		fft->in = NULL;
+		fft->out = fftw_malloc(sizeof(fftw_complex) * (fft->m + 1));
+		fft->plan_forward = fftw_plan_dft_1d(fft_size, fft->in_c, fft->out, FFTW_FORWARD, FFTW_ESTIMATE);
+
+		for (i = 0; i < fft_size; i ++)
+			fft->win[i] = win_hanning(i, fft_size);
+
+		fft->cached_fft_size = fft_size;
+		fft->cached_num_active_channels = fft->num_active_channels;
+	}
+
+	for (cnt = 0, i = 0; cnt < fft_size; cnt++) {
+		/* normalization and scaling see fft_corr */
+		fft->in_c[cnt] = in_data[i] * fft->win[cnt] + I * in_data_c[i] * fft->win[cnt];
+		i++;
+	}
+
+	struct iio_device *iio_dev = transform_get_device_parent(tr);
+	struct extra_dev_info *dev_info = iio_device_get_data(iio_dev);
+	plugin_fft_corr = dev_info->plugin_fft_corr;
+
+	fftw_execute(fft->plan_forward);
+	avg = (double)settings->fft_avg;
+	if (avg && avg != 128 )
+		avg = 1.0f / avg;
+
+	pwr_offset = settings->fft_pwr_off;
+
+	for (i = 0, k = 0; i < fft->m; ++i) {
+		if ((unsigned)i < settings->fft_lower_clipping_limit || (unsigned)i >= settings->fft_upper_clipping_limit)
+			continue;
+		if (i < (fft->m / 2))
+			j = i + (fft->m / 2);
+		else
+			j = i - (fft->m / 2);
+
+		if (creal(fft->out[j]) == 0 && cimag(fft->out[j]) == 0)
+			fft->out[j] = FLT_MIN + I * FLT_MIN;
+
+		mag = 10 * log10((creal(fft->out[j]) * creal(fft->out[j]) +
+				cimag(fft->out[j]) * cimag(fft->out[j])) / ((unsigned long long)fft->m * fft->m)) +
+			settings->fft_corr + pwr_offset + plugin_fft_corr;
+		/* it's better for performance to have separate loops,
+		 * rather than do these tests inside the loop, but it makes
+		 * the code harder to understand... Oh well...
+		 ***/
+		if (out_data[k] == FLT_MAX) {
+			/* Don't average the first iteration */
+			 out_data[k] = mag;
+		} else if (!avg) {
+			/* keep peaks */
+			if (out_data[k] <= mag)
+				out_data[k] = mag;
+		} else if (avg == 128) {
+			/* keep min */
+			if (out_data[k] >= mag)
+				out_data[k] = mag;
+		} else {
+			/* do an average */
+			out_data[k] = ((1 - avg) * out_data[k]) + (avg * mag);
+		}
+		k++;
+	}
+}
+
 /* sections of the xcorr function are borrowed (under the GPL) from
  * http://blog.dmaggot.org/2010/06/cross-correlation-using-fftw3/
  * which is copyright 2010 David E. Narváez
@@ -1112,7 +1269,7 @@ static void xcorr(fftw_complex *signala, fftw_complex *signalb, fftw_complex *re
 	return;
 }
 
-void time_transform_function(Transform *tr, gboolean init_transform)
+bool time_transform_function(Transform *tr, gboolean init_transform)
 {
 	struct _time_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
@@ -1142,7 +1299,7 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 			tr->y_axis = settings->data_source;
 		}
 
-		return;
+		return true;
 	}
 
 	if (tr->plot_channels_type == PLOT_MATH_CHANNEL) {
@@ -1153,11 +1310,11 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 		if (!settings->apply_inverse_funct &&
 				!settings->apply_multiply_funct &&
 				!settings->apply_add_funct)
-			return;
+			return true;
 
 		in_data = plot_channels_get_nth_data_ref(tr->plot_channels, 0);
 		if (!in_data)
-			return;
+			return false;
 
 		for (i = 0; i < tr->y_axis_size; i++) {
 			if (settings->apply_inverse_funct) {
@@ -1174,9 +1331,11 @@ void time_transform_function(Transform *tr, gboolean init_transform)
 				tr->y_axis[i] += settings->add_value;
 		}
 	}
+
+	return true;
 }
 
-void cross_correlation_transform_function(Transform *tr, gboolean init_transform)
+bool cross_correlation_transform_function(Transform *tr, gboolean init_transform)
 {
 	struct _cross_correlation_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
@@ -1217,7 +1376,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 		}
 		tr->y_axis_size = 2 * axis_length - 1;
 
-		return;
+		return true;
 	}
 
 	GSList *node;
@@ -1293,7 +1452,7 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	}
 
 	if (!settings->markers)
-		return;
+		return true;
 
 	/* now we know where the peaks are, we estimate the actual peaks,
 	 * by quadratic interpolation of existing spectral peaks, which is explained:
@@ -1323,9 +1482,71 @@ void cross_correlation_transform_function(Transform *tr, gboolean init_transform
 			g_mutex_unlock(settings->marker_lock);
 		}
 	}
+
+	return true;
 }
 
-void fft_transform_function(Transform *tr, gboolean init_transform)
+bool freq_spectrum_transform_function(Transform *tr, gboolean init_transform)
+{
+	struct iio_channel *chn;
+	struct _freq_spectrum_settings *settings = tr->settings;
+	unsigned i, j, k, axis_length, fft_size, bits_used;
+	int ret;
+	double sampling_freq;
+	bool complete_transform = false;
+
+	if (init_transform) {
+		fft_size = settings->fft_size;
+		chn = PLOT_IIO_CHN(tr->plot_channels->data)->iio_chn;
+		ret = iio_channel_attr_read_double(chn, "sampling_frequency",
+				&sampling_freq);
+		if (ret < 0)
+			return false;
+		sampling_freq /= 1000000; /* Hz to MHz*/
+
+		bits_used = iio_channel_get_data_format(chn)->bits;
+
+		if (!bits_used)
+			return false;
+
+		/* Compute FFT normalization and scaling offset */
+		settings->fft_corr = 20 * log10(2.0 / (1ULL << (bits_used - 1)));
+
+		settings->fft_lower_clipping_limit = (fft_size / 2) - (settings->filter_bandwidth * fft_size) / (2 * sampling_freq);
+		settings->fft_upper_clipping_limit = (fft_size / 2) + (settings->filter_bandwidth * fft_size) / (2 * sampling_freq);
+
+		settings->real_source = plot_channels_get_nth_data_ref(tr->plot_channels, 0);
+		settings->imag_source = plot_channels_get_nth_data_ref(tr->plot_channels, 1);
+
+		axis_length = (settings->fft_upper_clipping_limit - settings->fft_lower_clipping_limit) * settings->fft_count;
+		Transform_resize_x_axis(tr, axis_length);
+		Transform_resize_y_axis(tr, axis_length);
+
+		for (i = 0, k = 0; i < settings->fft_count; i++) {
+			for (j = 0; j < fft_size; j++) {
+				if (j >= settings->fft_lower_clipping_limit && j < settings->fft_upper_clipping_limit) {
+					tr->x_axis[k] = (j * sampling_freq / settings->fft_size - sampling_freq / 2) + settings->freq_sweep_start + (settings->filter_bandwidth) * i;
+					tr->y_axis[k] = FLT_MAX;
+					k++;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	do_no_markers_complex_fft(tr);
+	settings->fft_index++;
+
+	if (settings->fft_index == settings->fft_count) {
+		settings->fft_index = 0;
+		complete_transform = true;
+	}
+
+	return complete_transform;
+}
+
+bool fft_transform_function(Transform *tr, gboolean init_transform)
 {
 	struct iio_device *dev;
 	struct extra_dev_info *dev_info;
@@ -1345,7 +1566,7 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 		/* Initialize axis */
 		dev = transform_get_device_parent(tr);
 		if (!dev)
-			return;
+			return false;
 		dev_info = iio_device_get_data(dev);
 		num_samples = dev_info->sample_count;
 		if (dev_info->channel_trigger_enabled)
@@ -1367,7 +1588,7 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 			bits_used = iio_channel_get_data_format(iio_chn)->bits;
 
 		if (!bits_used)
-			return;
+			return false;
 		axis_length = settings->fft_size * settings->fft_alg_data.num_active_channels / 2;
 		Transform_resize_x_axis(tr, axis_length);
 		Transform_resize_y_axis(tr, axis_length);
@@ -1390,7 +1611,7 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 				if (settings->markers[i].bin >= axis_length)
 					settings->markers[i].bin = 0;
 
-		return;
+		return true;
 	}
 
 	GSList *node;
@@ -1402,9 +1623,11 @@ void fft_transform_function(Transform *tr, gboolean init_transform)
 				m->data_ref, settings->fft_size);
 		}
 	do_fft(tr);
+
+	return true;
 }
 
-void constellation_transform_function(Transform *tr, gboolean init_transform)
+bool constellation_transform_function(Transform *tr, gboolean init_transform)
 {
 	struct _constellation_settings *settings = tr->settings;
 	unsigned axis_length = settings->num_samples;
@@ -1420,7 +1643,7 @@ void constellation_transform_function(Transform *tr, gboolean init_transform)
 		tr->x_axis = settings->x_source;
 		tr->y_axis = settings->y_source;
 
-		return;
+		return true;
 	}
 
 	GSList *node;
@@ -1431,6 +1654,8 @@ void constellation_transform_function(Transform *tr, gboolean init_transform)
 			m->math_expression(m->iio_channels_data,
 				m->data_ref, settings->num_samples);
 		}
+
+	return true;
 }
 
 
@@ -1958,6 +2183,7 @@ static struct iio_device * transform_get_device_parent(Transform *transform)
 static void update_transform_settings(OscPlot *plot, Transform *transform)
 {
 	OscPlotPrivate *priv = plot->priv;
+	unsigned i;
 	int plot_type;
 
 	plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
@@ -2007,6 +2233,19 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 		XCORR_SETTINGS(transform)->marker_lock = NULL;
 		XCORR_SETTINGS(transform)->marker_type = NULL;
 		XCORR_SETTINGS(transform)->max_x_axis = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+	} else if (plot_type == SPECTRUM_PLOT) {
+		FREQ_SPECTRUM_SETTINGS(transform)->ffts_alg_data = calloc(sizeof(struct _fft_alg_data), priv->fft_count);
+		FREQ_SPECTRUM_SETTINGS(transform)->fft_count = priv->fft_count;
+		FREQ_SPECTRUM_SETTINGS(transform)->freq_sweep_start = priv->start_freq;
+		FREQ_SPECTRUM_SETTINGS(transform)->filter_bandwidth = priv->filter_bw;
+		FREQ_SPECTRUM_SETTINGS(transform)->fft_size = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
+		FREQ_SPECTRUM_SETTINGS(transform)->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
+		FREQ_SPECTRUM_SETTINGS(transform)->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_pwr_offset_widget));
+		for (i = 0; i < priv->fft_count; i++) {
+			FREQ_SPECTRUM_SETTINGS(transform)->ffts_alg_data[i].cached_fft_size = -1;
+			FREQ_SPECTRUM_SETTINGS(transform)->ffts_alg_data[i].cached_num_active_channels = -1;
+			FREQ_SPECTRUM_SETTINGS(transform)->ffts_alg_data[i].num_active_channels = g_slist_length(transform->plot_channels);
+		}
 	}
 }
 
@@ -2018,6 +2257,7 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 	struct _fft_settings *fft_settings;
 	struct _constellation_settings *constellation_settings;
 	struct _cross_correlation_settings *xcross_settings;
+	struct _freq_spectrum_settings *freq_spectrum_settings;
 	GSList *node;
 
 	transform = Transform_new(tr_type);
@@ -2060,6 +2300,11 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 		Transform_attach_function(transform, cross_correlation_transform_function);
 		xcross_settings = (struct _cross_correlation_settings *)calloc(sizeof(struct _cross_correlation_settings), 1);
 		Transform_attach_settings(transform, xcross_settings);
+		break;
+	case FREQ_SPECTRUM_TRANSFORM:
+		Transform_attach_function(transform, freq_spectrum_transform_function);
+		freq_spectrum_settings = (struct _freq_spectrum_settings *)calloc(sizeof(struct _freq_spectrum_settings), 1);
+		Transform_attach_settings(transform, freq_spectrum_settings);
 		break;
 	default:
 		fprintf(stderr, "Invalid transform\n");
@@ -2125,6 +2370,8 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 		priv->tr_with_marker = NULL;
 
 	transform_remove_own_markers(tr);
+	if (tr->type_id == FREQ_SPECTRUM_TRANSFORM)
+		free(FREQ_SPECTRUM_SETTINGS(tr)->ffts_alg_data);
 	TrList_remove_transform(list, tr);
 	Transform_destroy(tr);
 	if (list->size == 0) {
@@ -2540,19 +2787,20 @@ static void device_rx_info_update(OscPlot *plot)
 	}
 }
 
-static void call_all_transform_functions(OscPlotPrivate *priv)
+static bool call_all_transform_functions(OscPlotPrivate *priv)
 {
 	TrList *tr_list = priv->transform_list;
 	Transform *tr;
 	bool show_diff_phase = false;
+	bool valid = true;
 	int i = 0;
 
 	if (priv->redraw_function <= 0)
-		return;
+		return false;
 
 	for (; i < tr_list->size; i++) {
 		tr = tr_list->transforms[i];
-		Transform_update_output(tr);
+		valid = valid && Transform_update_output(tr);
 		if (tr->has_the_marker) {
 			show_diff_phase = true;
 			draw_marker_values(priv, tr);
@@ -2560,6 +2808,8 @@ static void call_all_transform_functions(OscPlotPrivate *priv)
 	}
 	if (show_diff_phase)
 		markers_phase_diff_show(priv);
+
+	return valid;
 }
 
 static int enabled_channels_of_device(GtkTreeView *treeview, const char *name, unsigned *enabled_mask)
@@ -2719,6 +2969,11 @@ static void channels_transform_assignment(GtkTreeModel *model,
 			prm->ch_settings = g_slist_reverse(prm->ch_settings);
 			transform = add_transform_to_list(plot, CROSS_CORRELATION_TRANSFORM, prm->ch_settings);
 		}
+	case SPECTRUM_PLOT:
+		if (prm->enabled_channels == 2 && num_added_chs == 2) {
+			prm->ch_settings = g_slist_reverse(prm->ch_settings);
+			transform = add_transform_to_list(plot, FREQ_SPECTRUM_TRANSFORM, prm->ch_settings);
+		}
 	default:
 		break;
 	}
@@ -2812,9 +3067,9 @@ static gboolean plot_redraw(OscPlotPrivate *priv)
 	if (!GTK_IS_DATABOX(priv->databox))
 		return FALSE;
 	if (priv->redraw) {
-		auto_scale_databox(priv, GTK_DATABOX(priv->databox));
-		gtk_widget_queue_draw(priv->databox);
-		fps_counter(priv);
+			auto_scale_databox(priv, GTK_DATABOX(priv->databox));
+			gtk_widget_queue_draw(priv->databox);
+			fps_counter(priv);
 	}
 	if (priv->stop_redraw == TRUE)
 		priv->redraw_function = 0;
@@ -2889,6 +3144,13 @@ static void plot_setup(OscPlot *plot)
 		else if (priv->active_transform_type == CONSTELLATION_TRANSFORM &&
 			!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)))
 			gtk_databox_set_total_limits(GTK_DATABOX(priv->databox), -1000.0, 1000.0, 1000, -1000);
+		else if (priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM) {
+			double end_freq = priv->start_freq + priv->filter_bw * priv->fft_count;
+			double width = end_freq - priv->start_freq;
+			gtk_databox_set_total_limits(GTK_DATABOX(priv->databox),
+				-0.08 * width + priv->start_freq, end_freq + 0.08 * width,
+				0.0, -100.0);
+		}
 	}
 
 	bool show_phase_info = false;
@@ -3562,12 +3824,11 @@ static void add_grid(OscPlot *plot)
 		fill_axis(priv->gridx, 0, 10, 15);
 		fill_axis(priv->gridy, 10, -10, 15);
 		priv->grid = gtk_databox_grid_array_new (15, 15, priv->gridy, priv->gridx, &color_grid, 1);
-	}else if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
+	} else if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
 		fill_axis(priv->gridx, -30, 10, 15);
 		fill_axis(priv->gridy, 10, -10, 15);
 		priv->grid = gtk_databox_grid_array_new (15, 15, priv->gridy, priv->gridx, &color_grid, 1);
-	}
-	 else if (priv->active_transform_type == CONSTELLATION_TRANSFORM) {
+	} else if (priv->active_transform_type == CONSTELLATION_TRANSFORM) {
 		fill_axis(priv->gridx, -80000, 10000, 18);
 		fill_axis(priv->gridy, -80000, 10000, 18);
 		priv->grid = gtk_databox_grid_array_new (18, 18, priv->gridy, priv->gridx, &color_grid, 1);
@@ -3628,6 +3889,24 @@ static void rescale_databox(OscPlotPrivate *priv, GtkDatabox *box, gfloat border
 
 		gtk_databox_set_total_limits(box, min_x, max_x, max_x, min_x);
 
+	} else if (priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM) {
+		gfloat min_x;
+		gfloat max_x;
+		gfloat min_y;
+		gfloat max_y;
+		gfloat width;
+
+		gint extrema_success = gtk_databox_calculate_extrema(box,
+				&min_x, &max_x, &min_y, &max_y);
+		if (extrema_success)
+			return;
+		if (min_x == 0) {
+			min_x = priv->start_freq + 5;
+			max_x += 5;
+		}
+		width = max_x - min_x;
+
+		gtk_databox_set_total_limits(box, min_x - 0.08 * width, max_x + 0.08 * width, max_y, min_y);
 	} else {
 		gtk_databox_auto_rescale(box, border);
 	}
@@ -5339,7 +5618,8 @@ static void plot_domain_changed_cb(GtkComboBox *box, OscPlot *plot)
 static gboolean domain_is_fft(GBinding *binding,
 	const GValue *source_value, GValue *target_value, gpointer user_data)
 {
-	g_value_set_boolean(target_value, g_value_get_int(source_value) == FFT_PLOT);
+	g_value_set_boolean(target_value, g_value_get_int(source_value) == FFT_PLOT ||
+			g_value_get_int(source_value) == SPECTRUM_PLOT);
 	return TRUE;
 }
 
@@ -5354,7 +5634,8 @@ static gboolean domain_is_xcorr_fft(GBinding *binding,
 	const GValue *source_value, GValue *target_value, gpointer user_data)
 {
 	g_value_set_boolean(target_value, g_value_get_int(source_value) == FFT_PLOT ||
-			g_value_get_int(source_value) == XCORR_PLOT);
+			g_value_get_int(source_value) == XCORR_PLOT ||
+			g_value_get_int(source_value) == SPECTRUM_PLOT);
 	return TRUE;
 }
 
@@ -5370,15 +5651,22 @@ static void fft_avg_value_changed_cb(GtkSpinButton *button, OscPlot *plot)
 			FFT_SETTINGS(priv->transform_list->transforms[i])->fft_avg = gtk_spin_button_get_value(button);
 		else if (plot_type == XCORR_PLOT)
 			XCORR_SETTINGS(priv->transform_list->transforms[i])->avg = gtk_spin_button_get_value(button);
+		else if (plot_type == SPECTRUM_PLOT)
+			FREQ_SPECTRUM_SETTINGS(priv->transform_list->transforms[i])->fft_avg = gtk_spin_button_get_value(button);
 	}
 }
 static void fft_pwr_offset_value_changed_cb(GtkSpinButton *button, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
-	int i;
+	int i, plot_type;
+
+	plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
 
 	for (i = 0; i < priv->transform_list->size; i++) {
-		FFT_SETTINGS(priv->transform_list->transforms[i])->fft_pwr_off = gtk_spin_button_get_value(button);
+		if (plot_type == FFT_PLOT)
+			FFT_SETTINGS(priv->transform_list->transforms[i])->fft_pwr_off = gtk_spin_button_get_value(button);
+		else if (plot_type == SPECTRUM_PLOT)
+			FREQ_SPECTRUM_SETTINGS(priv->transform_list->transforms[i])->fft_pwr_off = gtk_spin_button_get_value(button);
 	}
 }
 

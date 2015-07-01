@@ -40,7 +40,7 @@ CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-Wall -Wclobbered -Wempty-body -Wignored-qualifiers -Wmissing-field-initializers \
 	-Wmissing-parameter-type -Wold-style-declaration -Woverride-init \
 	-Wsign-compare -Wtype-limits -Wuninitialized -Wunused-but-set-parameter \
-	-Werror -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
+	-Werror -g -std=gnu90 -D_GNU_SOURCE -ggdb -DPREFIX='"$(PREFIX)"' \
 	-DFRU_FILES=\"$(FRU_FILES)\" -DGIT_VERSION=\"$(GIT_VERSION)\" \
 	-DGIT_COMMIT_TIMESTAMP='"$(GIT_COMMIT_TIMESTAMP)"' \
 	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\" \
@@ -70,6 +70,7 @@ PLUGINS=\
 	plugins/motor_control.$(SO) \
 	plugins/dmm.$(SO) \
 	plugins/debug.$(SO) \
+	plugins/spectrum_analyzer.$(SO) \
 	$(if $(WITH_MINGW),,plugins/scpi.so)
 
 ifdef V

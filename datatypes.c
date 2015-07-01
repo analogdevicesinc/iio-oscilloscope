@@ -91,7 +91,7 @@ void Transform_attach_settings(Transform *tr, void *settings)
 	tr->settings = settings;
 }
 
-void Transform_attach_function(Transform *tr, void (*f)(Transform *tr , gboolean init_transform))
+void Transform_attach_function(Transform *tr, bool (*f)(Transform *tr , gboolean init_transform))
 {
 	tr->transform_function = f;
 }
@@ -101,9 +101,9 @@ void Transform_setup(Transform *tr)
 	tr->transform_function(tr, TRUE);
 }
 
-void Transform_update_output(Transform *tr)
+bool Transform_update_output(Transform *tr)
 {
-	tr->transform_function(tr, FALSE);
+	return tr->transform_function(tr, FALSE);
 }
 
 TrList* TrList_new(void)

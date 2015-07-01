@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
+  <!-- interface-naming-policy toplevel-contextual -->
   <object class="GtkAdjustment" id="adjust_rx1_phase">
     <property name="lower">-180</property>
     <property name="upper">180</property>
@@ -153,46 +154,6 @@
   <object class="GtkAdjustment" id="adjustment_tx_lo_freq">
     <property name="lower">70</property>
     <property name="upper">6000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="dds_tone_I1_tx1_scale_adj">
-    <property name="lower">-91</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="dds_tone_I1_tx2_scale_adj">
-    <property name="lower">-91</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="dds_tone_I2_tx1_scale_adj">
-    <property name="lower">-91</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="dds_tone_I2_tx2_scale_adj">
-    <property name="lower">-91</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="dds_tone_Q1_tx1_scale_adj">
-    <property name="lower">-91</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="dds_tone_Q1_tx2_scale_adj">
-    <property name="lower">-91</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="dds_tone_Q2_tx1_scale_adj">
-    <property name="lower">-91</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="dds_tone_Q2_tx2_scale_adj">
-    <property name="lower">-91</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -462,7 +423,7 @@ configuration:</property>
                                             <property name="top_attach">1</property>
                                             <property name="bottom_attach">2</property>
                                             <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options"></property>
+                                            <property name="y_options"/>
                                           </packing>
                                         </child>
                                         <child>
@@ -472,10 +433,8 @@ configuration:</property>
                                             <child>
                                               <object class="GtkRadioButton" id="enable_fir_filter_rx">
                                                 <property name="label" translatable="yes">Enable Rx FIR Filter only</property>
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
                                                 <property name="group">enable_fir_filter_tx_rx</property>
@@ -489,10 +448,8 @@ configuration:</property>
                                             <child>
                                               <object class="GtkRadioButton" id="fir_filter_en_tx">
                                                 <property name="label" translatable="yes">Enable Tx FIR Filter only</property>
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
                                                 <property name="group">enable_fir_filter_tx_rx</property>
@@ -506,10 +463,8 @@ configuration:</property>
                                             <child>
                                               <object class="GtkRadioButton" id="enable_fir_filter_tx_rx">
                                                 <property name="label" translatable="yes">Enable Rx &amp; Tx FIR Filters</property>
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="active">True</property>
                                                 <property name="draw_indicator">True</property>
@@ -523,10 +478,8 @@ configuration:</property>
                                             <child>
                                               <object class="GtkRadioButton" id="disable_all_fir_filters">
                                                 <property name="label" translatable="yes">Disable All</property>
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
                                                 <property name="group">enable_fir_filter_tx_rx</property>
@@ -658,6 +611,10 @@ configuration:</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="primary_icon_sensitive">True</property>
+                                                <property name="secondary_icon_sensitive">True</property>
                                                 <property name="adjustment">adjustment_dcxo_coarse_tune</property>
                                               </object>
                                               <packing>
@@ -685,6 +642,10 @@ configuration:</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="primary_icon_sensitive">True</property>
+                                                <property name="secondary_icon_sensitive">True</property>
                                                 <property name="adjustment">adjustment_dcxo_fine_tune</property>
                                               </object>
                                               <packing>
@@ -704,11 +665,9 @@ configuration:</property>
                                         <child>
                                           <object class="GtkCheckButton" id="checkbox_up_down_converter">
                                             <property name="label" translatable="yes">FMComms3 with AD-FREQCVT1-EBZ</property>
-                                            <property name="use_action_appearance">False</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
-                                            <property name="use_action_appearance">False</property>
                                             <property name="xalign">0</property>
                                             <property name="draw_indicator">True</property>
                                           </object>
@@ -732,23 +691,21 @@ configuration:</property>
                               <object class="GtkHBox" id="box7">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                  <child>
-                                    <object class="GtkToggleToolButton" id="global_settings_toggle">
-                                      <property name="use_action_appearance">False</property>
-                                      <property name="visible">True</property>
-                                      <property name="can_focus">False</property>
-                                      <property name="use_action_appearance">False</property>
-                                      <property name="label" translatable="yes">Zoom In</property>
-                                      <property name="use_underline">True</property>
-                                      <property name="stock_id">gtk-go-down</property>
-                                      <property name="active">True</property>
-                                    </object>
-                                    <packing>
-                                      <property name="expand">True</property>
-                                      <property name="fill">True</property>
-                                      <property name="position">0</property>
-                                    </packing>
-                                  </child>
+                                <child>
+                                  <object class="GtkToggleToolButton" id="global_settings_toggle">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="label" translatable="yes">Zoom In</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="stock_id">gtk-go-down</property>
+                                    <property name="active">True</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">True</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
                                 <child>
                                   <object class="GtkLabel" id="label3">
                                     <property name="visible">True</property>
@@ -823,6 +780,10 @@ configuration:</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="primary_icon_sensitive">True</property>
+                                                <property name="secondary_icon_sensitive">True</property>
                                                 <property name="adjustment">adjustment_rf_bw_rx</property>
                                                 <property name="digits">3</property>
                                               </object>
@@ -848,6 +809,10 @@ configuration:</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="primary_icon_sensitive">True</property>
+                                                <property name="secondary_icon_sensitive">True</property>
                                                 <property name="adjustment">adjustment_sampl_freq_tx</property>
                                                 <property name="digits">6</property>
                                               </object>
@@ -875,6 +840,10 @@ configuration:</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="primary_icon_sensitive">True</property>
+                                                <property name="secondary_icon_sensitive">True</property>
                                                 <property name="adjustment">adjustment_rx_lo_freq</property>
                                                 <property name="digits">6</property>
                                               </object>
@@ -950,11 +919,9 @@ configuration:</property>
                                                 <child>
                                                   <object class="GtkButton" id="rx_fastlock_store">
                                                     <property name="label" translatable="yes">Store</property>
-                                                    <property name="use_action_appearance">False</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">True</property>
-                                                    <property name="use_action_appearance">False</property>
                                                   </object>
                                                   <packing>
                                                     <property name="y_options">GTK_FILL</property>
@@ -963,11 +930,9 @@ configuration:</property>
                                                 <child>
                                                   <object class="GtkButton" id="rx_fastlock_recall">
                                                     <property name="label" translatable="yes">Recall</property>
-                                                    <property name="use_action_appearance">False</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">True</property>
-                                                    <property name="use_action_appearance">False</property>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">1</property>
@@ -1031,6 +996,10 @@ configuration:</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
+                                                            <property name="primary_icon_activatable">False</property>
+                                                            <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_hw_gain_rx1</property>
                                                             <property name="digits">2</property>
                                                           </object>
@@ -1185,6 +1154,10 @@ configuration:</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
+                                                            <property name="primary_icon_activatable">False</property>
+                                                            <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_hw_gain_rx2</property>
                                                             <property name="digits">2</property>
                                                           </object>
@@ -1336,11 +1309,9 @@ configuration:</property>
                                                 <child>
                                                   <object class="GtkCheckButton" id="quad">
                                                     <property name="label" translatable="yes">Quadrature</property>
-                                                    <property name="use_action_appearance">False</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>
-                                                    <property name="use_action_appearance">False</property>
                                                     <property name="xalign">0</property>
                                                     <property name="draw_indicator">True</property>
                                                   </object>
@@ -1353,11 +1324,9 @@ configuration:</property>
                                                 <child>
                                                   <object class="GtkCheckButton" id="rfdc">
                                                     <property name="label" translatable="yes">RF DC</property>
-                                                    <property name="use_action_appearance">False</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>
-                                                    <property name="use_action_appearance">False</property>
                                                     <property name="xalign">0</property>
                                                     <property name="active">True</property>
                                                     <property name="draw_indicator">True</property>
@@ -1371,11 +1340,9 @@ configuration:</property>
                                                 <child>
                                                   <object class="GtkCheckButton" id="bbdc">
                                                     <property name="label" translatable="yes">BB DC</property>
-                                                    <property name="use_action_appearance">False</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>
-                                                    <property name="use_action_appearance">False</property>
                                                     <property name="xalign">0</property>
                                                     <property name="active">True</property>
                                                     <property name="draw_indicator">True</property>
@@ -1415,10 +1382,8 @@ configuration:</property>
                                 <property name="can_focus">False</property>
                                 <child>
                                   <object class="GtkToggleToolButton" id="rx_toggle">
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="label" translatable="yes">Zoom In</property>
                                     <property name="use_underline">True</property>
                                     <property name="stock_id">gtk-go-down</property>
@@ -1505,6 +1470,10 @@ configuration:</property>
                                             <property name="can_focus">True</property>
                                             <property name="invisible_char">•</property>
                                             <property name="invisible_char_set">True</property>
+                                            <property name="primary_icon_activatable">False</property>
+                                            <property name="secondary_icon_activatable">False</property>
+                                            <property name="primary_icon_sensitive">True</property>
+                                            <property name="secondary_icon_sensitive">True</property>
                                             <property name="adjustment">adjustment_rf_bw_tx</property>
                                             <property name="digits">3</property>
                                           </object>
@@ -1535,6 +1504,10 @@ configuration:</property>
                                             <property name="can_focus">True</property>
                                             <property name="invisible_char">•</property>
                                             <property name="invisible_char_set">True</property>
+                                            <property name="primary_icon_activatable">False</property>
+                                            <property name="secondary_icon_activatable">False</property>
+                                            <property name="primary_icon_sensitive">True</property>
+                                            <property name="secondary_icon_sensitive">True</property>
                                             <property name="adjustment">adjustment_sampl_freq_tx</property>
                                             <property name="digits">6</property>
                                           </object>
@@ -1580,6 +1553,10 @@ configuration:</property>
                                             <property name="can_focus">True</property>
                                             <property name="invisible_char">•</property>
                                             <property name="invisible_char_set">True</property>
+                                            <property name="primary_icon_activatable">False</property>
+                                            <property name="secondary_icon_activatable">False</property>
+                                            <property name="primary_icon_sensitive">True</property>
+                                            <property name="secondary_icon_sensitive">True</property>
                                             <property name="adjustment">adjustment_tx_lo_freq</property>
                                             <property name="digits">6</property>
                                           </object>
@@ -1652,21 +1629,17 @@ configuration:</property>
                                             <child>
                                               <object class="GtkButton" id="tx_fastlock_store">
                                                 <property name="label" translatable="yes">Store</property>
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
-                                                <property name="use_action_appearance">False</property>
                                               </object>
                                             </child>
                                             <child>
                                               <object class="GtkButton" id="tx_fastlock_recall">
                                                 <property name="label" translatable="yes">Recall</property>
-                                                <property name="use_action_appearance">False</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
-                                                <property name="use_action_appearance">False</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1732,6 +1705,10 @@ configuration:</property>
                                                         <property name="can_focus">True</property>
                                                         <property name="invisible_char">•</property>
                                                         <property name="invisible_char_set">True</property>
+                                                        <property name="primary_icon_activatable">False</property>
+                                                        <property name="secondary_icon_activatable">False</property>
+                                                        <property name="primary_icon_sensitive">True</property>
+                                                        <property name="secondary_icon_sensitive">True</property>
                                                         <property name="adjustment">adjustment_hw_gain_tx1</property>
                                                         <property name="digits">2</property>
                                                       </object>
@@ -1827,6 +1804,10 @@ configuration:</property>
                                                         <property name="can_focus">True</property>
                                                         <property name="invisible_char">•</property>
                                                         <property name="invisible_char_set">True</property>
+                                                        <property name="primary_icon_activatable">False</property>
+                                                        <property name="secondary_icon_activatable">False</property>
+                                                        <property name="primary_icon_sensitive">True</property>
+                                                        <property name="secondary_icon_sensitive">True</property>
                                                         <property name="adjustment">adjustment_hw_gain_tx2</property>
                                                         <property name="digits">2</property>
                                                       </object>
@@ -1903,10 +1884,8 @@ configuration:</property>
                                 <property name="can_focus">False</property>
                                 <child>
                                   <object class="GtkToggleToolButton" id="tx_toggle">
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="label" translatable="yes">Zoom In</property>
                                     <property name="use_underline">True</property>
                                     <property name="stock_id">gtk-go-down</property>
@@ -2051,6 +2030,10 @@ configuration:</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
+                                                            <property name="primary_icon_activatable">False</property>
+                                                            <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjust_rx1_phase</property>
                                                             <property name="digits">4</property>
                                                             </object>
@@ -2118,6 +2101,10 @@ configuration:</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
                                                             <property name="invisible_char_set">True</property>
+                                                            <property name="primary_icon_activatable">False</property>
+                                                            <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjust_rx2_phase</property>
                                                             <property name="digits">4</property>
                                                             </object>
@@ -2176,10 +2163,8 @@ configuration:</property>
                                 <property name="can_focus">False</property>
                                 <child>
                                   <object class="GtkToggleToolButton" id="fpga_toggle">
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="use_action_appearance">False</property>
                                     <property name="label" translatable="yes">Zoom In</property>
                                     <property name="use_underline">True</property>
                                     <property name="stock_id">gtk-go-down</property>
@@ -2234,11 +2219,9 @@ configuration:</property>
                 <child>
                   <object class="GtkButton" id="fmcomms2_settings_reload">
                     <property name="label">Reload Settings</property>
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
-                    <property name="use_action_appearance">False</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -2292,10 +2275,8 @@ configuration:</property>
                     <property name="can_focus">False</property>
                     <child>
                       <object class="GtkToolButton" id="previous_pict">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="use_action_appearance">False</property>
                         <property name="label" translatable="yes">Previous</property>
                         <property name="use_underline">True</property>
                         <property name="stock_id">gtk-go-back</property>
@@ -2307,10 +2288,8 @@ configuration:</property>
                     </child>
                     <child>
                       <object class="GtkToolButton" id="zoom_image">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="use_action_appearance">False</property>
                         <property name="label" translatable="yes">Zoom In</property>
                         <property name="use_underline">True</property>
                         <property name="stock_id">gtk-zoom-in</property>
@@ -2322,10 +2301,8 @@ configuration:</property>
                     </child>
                     <child>
                       <object class="GtkToolButton" id="unzoom_image">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="use_action_appearance">False</property>
                         <property name="label" translatable="yes">Zoom Out</property>
                         <property name="use_underline">True</property>
                         <property name="stock_id">gtk-zoom-out</property>
@@ -2337,10 +2314,8 @@ configuration:</property>
                     </child>
                     <child>
                       <object class="GtkToolButton" id="auto_image">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="use_action_appearance">False</property>
                         <property name="label" translatable="yes">Reset Zoom</property>
                         <property name="use_underline">True</property>
                         <property name="stock_id">gtk-zoom-fit</property>
@@ -2352,10 +2327,8 @@ configuration:</property>
                     </child>
                     <child>
                       <object class="GtkToolButton" id="next_pict">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="use_action_appearance">False</property>
                         <property name="label" translatable="yes">Next</property>
                         <property name="use_underline">True</property>
                         <property name="stock_id">gtk-go-forward</property>
@@ -2420,6 +2393,46 @@ configuration:</property>
         <property name="position">0</property>
       </packing>
     </child>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_I1_tx1_scale_adj">
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_I1_tx2_scale_adj">
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_I2_tx1_scale_adj">
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_I2_tx2_scale_adj">
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_Q1_tx1_scale_adj">
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_Q1_tx2_scale_adj">
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_Q2_tx1_scale_adj">
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="dds_tone_Q2_tx2_scale_adj">
+    <property name="lower">-91</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkTreeStore" id="treestore_tx_channels">
     <columns>
