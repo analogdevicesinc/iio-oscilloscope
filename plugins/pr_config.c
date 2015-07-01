@@ -170,7 +170,7 @@ static void readReg(char* device, uint32_t address, uint32_t* data) {
 	iio_device_reg_read(dev, address, data);
 }
 
-int getPrId() {
+static int getPrId() {
 
 	uint32_t data = 0;
 

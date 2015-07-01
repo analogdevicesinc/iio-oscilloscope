@@ -571,7 +571,7 @@ static void spin_or_combo_changed_cb(GtkSpinButton *spinbutton,
 	gtk_label_set_text((GtkLabel *)label_reg_hex_value, buf);
 }
 
-void detailed_regmap_toggled_cb(GtkToggleButton *btn, gpointer data)
+static void detailed_regmap_toggled_cb(GtkToggleButton *btn, gpointer data)
 {
 	char *current_device;
 
@@ -592,7 +592,7 @@ static void reg_map_type_changed_cb(GtkComboBox box, gpointer data)
 	detailed_regmap_toggled_cb(GTK_TOGGLE_BUTTON(toggle_detailed_regmap), NULL);
 }
 
-void debug_panel_destroy_cb(GObject *object, gpointer user_data)
+static void debug_panel_destroy_cb(GObject *object, gpointer user_data)
 {
 	destroy_device_context();
 }

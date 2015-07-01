@@ -521,7 +521,7 @@ static gboolean update_display(void)
 	return TRUE;
 }
 
-void filter_fir_update(void)
+static void filter_fir_update(void)
 {
 	bool rx = false, tx = false, rxtx = false;
 	struct iio_channel *chn;
@@ -546,7 +546,7 @@ void filter_fir_update(void)
 	glb_settings_update_labels();
 }
 
-void filter_fir_enable(GtkToggleButton *button, gpointer data)
+static void filter_fir_enable(GtkToggleButton *button, gpointer data)
 {
 	bool rx, tx, rxtx, disable;
 
@@ -811,7 +811,7 @@ static int load_fir_filter(const char *file_name)
 	return ret;
 }
 
-void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+static void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 {
 	char *file_name = gtk_file_chooser_get_filename(chooser);
 
@@ -874,7 +874,7 @@ static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
  * Return 1 if the channel combination is valid
  * Return 0 if the combination is not valid
  */
-int channel_combination_check(struct iio_device *dev, const char **ch_names)
+static int channel_combination_check(struct iio_device *dev, const char **ch_names)
 {
 	bool consecutive_ch = FALSE;
 	unsigned int i, k, nb_channels = iio_device_get_channels_count(dev);
@@ -937,7 +937,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-int handle_external_request (const char *request)
+static int handle_external_request (const char *request)
 {
 	int ret = 0;
 

@@ -410,7 +410,7 @@ static void reload_settings(void)
 	}
 }
 
-void signal_handler_cb (GtkWidget *widget, gpointer data)
+static void signal_handler_cb (GtkWidget *widget, gpointer data)
 {
 	struct w_info *item = data;
 	unsigned val;
@@ -974,7 +974,7 @@ calibrate_fail:
 	g_thread_exit(NULL);
 }
 
-void do_calibration (GtkWidget *widget, gpointer data)
+static void do_calibration (GtkWidget *widget, gpointer data)
 {
 	GtkToggleButton *silent_calib;
 
@@ -1001,7 +1001,7 @@ void do_calibration (GtkWidget *widget, gpointer data)
 	g_thread_new("Calibrate_thread", (void *) &calibrate, data);
 }
 
-void undo_calibration (GtkWidget *widget, gpointer data)
+static void undo_calibration (GtkWidget *widget, gpointer data)
 {
 	struct osc_plugin *plugin;
 	GSList *node;
@@ -1022,7 +1022,7 @@ void undo_calibration (GtkWidget *widget, gpointer data)
 	}
 }
 
-void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
+static void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 {
 	double value = gtk_range_get_value(hscale1);
 
@@ -1033,7 +1033,7 @@ void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 
 }
 
-void bist_tone_cb (GtkWidget *widget, gpointer data)
+static void bist_tone_cb (GtkWidget *widget, gpointer data)
 {
 	GtkBuilder *builder = data;
 	unsigned mode, level, freq, c2i, c2q, c1i, c1q;
@@ -1143,7 +1143,7 @@ static int update_widgets(GtkBuilder *builder)
 	return iio_device_debug_attr_read_all(dev, __update_widget, builder);
 }
 
-void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
+static void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		     guint page_num, gpointer user_data)
 {
 	GtkWidget *tohide = user_data;
@@ -1154,7 +1154,7 @@ void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
-int handle_external_request (const char *request)
+static int handle_external_request (const char *request)
 {
 	int ret = 0;
 
