@@ -218,7 +218,7 @@ static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpoi
 	build_channel_list();
 }
 
-void channel_toggle(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer data)
+static void channel_toggle(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer data)
 {
 	GtkTreePath* path = gtk_tree_path_new_from_string(pathStr);
 	GtkTreeIter iter;
