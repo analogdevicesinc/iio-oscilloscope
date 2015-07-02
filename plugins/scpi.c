@@ -1398,6 +1398,21 @@ static void scpi_save_profile(const char *ini_fn)
 	fclose(f);
 }
 
+static void scpi_destroy(const char *ini_fn)
+{
+	if (ini_fn)
+		scpi_save_profile(ini_fn);
+
+	if (current_instrument) {
+		if (current_instrument->model)
+			free(current_instrument->model);
+		if (current_instrument->ip_address)
+			free(current_instrument->ip_address);
+		if (current_instrument->tty_path)
+			free(current_instrument->tty_path);
+	}
+}
+
 /* This is normally used for test, and the GUI is used for
  * setting up the test infrastructure
  */
@@ -1417,4 +1432,5 @@ struct osc_plugin plugin = {
 	.init = scpi_init,
 	.handle_item = scpi_handle,
 	.save_profile = scpi_save_profile,
+	.destroy = scpi_destroy,
 };
