@@ -2236,7 +2236,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 	} else if (plot_type == SPECTRUM_PLOT) {
 		FREQ_SPECTRUM_SETTINGS(transform)->ffts_alg_data = calloc(sizeof(struct _fft_alg_data), priv->fft_count);
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_count = priv->fft_count;
-		FREQ_SPECTRUM_SETTINGS(transform)->freq_sweep_start = priv->start_freq;
+		FREQ_SPECTRUM_SETTINGS(transform)->freq_sweep_start = priv->start_freq + priv->filter_bw / 2;
 		FREQ_SPECTRUM_SETTINGS(transform)->filter_bandwidth = priv->filter_bw;
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_size = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
@@ -3148,7 +3148,7 @@ static void plot_setup(OscPlot *plot)
 			double end_freq = priv->start_freq + priv->filter_bw * priv->fft_count;
 			double width = end_freq - priv->start_freq;
 			gtk_databox_set_total_limits(GTK_DATABOX(priv->databox),
-				-0.08 * width + priv->start_freq, end_freq + 0.08 * width,
+				priv->start_freq - 0.05 * width, end_freq + 0.05 * width,
 				0.0, -100.0);
 		}
 	}
@@ -3901,12 +3901,12 @@ static void rescale_databox(OscPlotPrivate *priv, GtkDatabox *box, gfloat border
 		if (extrema_success)
 			return;
 		if (min_x == 0) {
-			min_x = priv->start_freq + 5;
-			max_x += 5;
+			min_x = priv->start_freq;
 		}
-		width = max_x - min_x;
+		width = priv->filter_bw * priv->fft_count;
 
-		gtk_databox_set_total_limits(box, min_x - 0.08 * width, max_x + 0.08 * width, max_y, min_y);
+		gtk_databox_set_total_limits(box, min_x - 0.05 * width,
+				max_x + 0.05 * width, max_y, min_y);
 	} else {
 		gtk_databox_auto_rescale(box, border);
 	}

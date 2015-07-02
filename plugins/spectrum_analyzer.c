@@ -35,6 +35,7 @@
 #define PHY_DEVICE "ad9361-phy"
 #define CAP_DEVICE "cf-ad9361-lpc"
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
+#define MHZ_TO_HZ(x) ((x) * 1000000)
 #define MHZ_TO_KHZ(x) ((x) * 1000)
 #define HZ_TO_MHZ(x) ((x) / 1E6)
 
@@ -51,6 +52,8 @@ typedef struct _plugin_setup {
 	double resolution_bw;
 	unsigned int fft_size;
 	enum receivers rx;
+	GSList *rx_profiles;
+	unsigned int profile_count;
 } plugin_setup;
 
 typedef struct _fastlock_profile {
@@ -59,23 +62,31 @@ typedef struct _fastlock_profile {
 	char data[66];
 } fastlock_profile;
 
+/* Plugin Global Variables */
 static struct iio_context *ctx;
 static struct iio_device *dev, *cap;
 static struct iio_channel *alt_ch0;
 static struct iio_buffer *capture_buffer;
 static bool is_2rx_2tx;
-static GSList *rx_profiles;
 static char *rx_fastlock_store_name;
 static char *rx_fastlock_save_name;
-static volatile bool kill_sweep_thread;
 static double sweep_freq_step = 18; /* 18 MHz */
-static unsigned int profile_count;
 static GtkWidget *spectrum_window;
-static GMutex profile_recall_lock;
 static plugin_setup psetup;
 
-/* Plugin threads */
-static GThread *freq_sweep_thread, *capture_thread;
+/* Plugin Threads */
+static GThread *freq_sweep_thread;
+static GThread *capture_thread;
+
+/* Threads Synchronization */
+static GCond profile_applied_cond;
+static GCond capture_done_cond;
+static GMutex profile_applied_mutex;
+static GMutex capture_done_mutex;
+static bool profile_applied;
+static bool capture_done;
+static bool kill_sweep_thread;
+static bool kill_capture_thread;
 
 /* Control Widgets */
 static GtkWidget *center_freq;
@@ -85,13 +96,19 @@ static GtkWidget *receiver1;
 static GtkWidget *start_button;
 static GtkWidget *stop_button;
 
-/* Default plugin variables */
+/* Default Plugin Variables */
 static gint this_page;
 static GtkNotebook *nbook;
 static GtkWidget *analyzer_panel;
 static gboolean plugin_detached;
 
+#define DEBUG 1
+
+#if DEBUG
 GTimer *gtimer;
+double loop_durations_sum;
+unsigned long long loop_count;
+#endif
 
 static ssize_t demux_sample(const struct iio_channel *chn,
 		void *sample, size_t size, void *d)
@@ -179,8 +196,8 @@ static void log_before_sweep_starts(plugin_setup *setup)
 	}
 
 	fprintf(fp, "Spectrum Setup Log File\n\n");
-	fprintf(fp, "Profile count: %d\n", g_slist_length(rx_profiles));
-	for (node = rx_profiles; node; node = g_slist_next(node)) {
+	fprintf(fp, "Profile count: %d\n", g_slist_length(setup->rx_profiles));
+	for (node = setup->rx_profiles; node; node = g_slist_next(node)) {
 		fastlock_profile *profile = node->data;
 		fprintf(fp, "Index: %d\n", profile->index);
 		fprintf(fp, "Frequency: %lld\n", profile->frequency);
@@ -246,17 +263,17 @@ static void build_profiles_for_entire_sweep(plugin_setup *setup)
 	g_return_if_fail(setup);
 
 	/* Clear any previous profiles */
-	g_slist_free_full(rx_profiles, (GDestroyNotify)free);
-	rx_profiles = NULL;
+	g_slist_free_full(setup->rx_profiles, (GDestroyNotify)free);
+	setup->rx_profiles = NULL;
 
-	start = setup->start_freq;
+	start = setup->start_freq + sweep_freq_step / 2;
 	stop = setup->stop_freq;
 
 	step = sweep_freq_step;
 
-	for (f = start; (step > 0) ? f <= stop : f >= stop; f += step) {
+	for (f = start; f <= stop; f += step) {
 		iio_channel_attr_write_longlong(alt_ch0, "frequency",
-				(long long)f * 1000000ul);
+				(long long)MHZ_TO_HZ(f));
 		iio_channel_attr_write_longlong(alt_ch0,
 					rx_fastlock_store_name, 0);
 		profile = malloc(sizeof(fastlock_profile));
@@ -264,9 +281,9 @@ static void build_profiles_for_entire_sweep(plugin_setup *setup)
 			return;
 		iio_channel_attr_read(alt_ch0, rx_fastlock_save_name,
 					profile->data, sizeof(profile->data));
-		profile->frequency = (long long)f * 1000000ul;
+		profile->frequency = (long long)MHZ_TO_HZ(f);
 		profile->index = i++;
-		rx_profiles = g_slist_prepend(rx_profiles, profile);
+		setup->rx_profiles = g_slist_prepend(setup->rx_profiles, profile);
 
 		/* Make sure two consecutive profiles do not have the same ALC.
 		 * Disregard the LBS of the ALC when comparing.
@@ -279,8 +296,8 @@ static void build_profiles_for_entire_sweep(plugin_setup *setup)
 		sprintf(last_byte, "%d", alc);
 
 	}
-	rx_profiles = g_slist_reverse(rx_profiles);
-	profile_count = g_slist_length(rx_profiles);
+	setup->rx_profiles = g_slist_reverse(setup->rx_profiles);
+	setup->profile_count = g_slist_length(setup->rx_profiles);
 	log_before_sweep_starts(setup);
 }
 
@@ -299,7 +316,7 @@ static void configure_spectrum_window(plugin_setup *setup)
 		osc_plot_set_channel_state(OSC_PLOT(spectrum_window), CAP_DEVICE,
 			i, enable);
 	}
-	osc_plot_spect_set_len(OSC_PLOT(spectrum_window), profile_count);
+	osc_plot_spect_set_len(OSC_PLOT(spectrum_window), setup->profile_count);
 	osc_plot_spect_set_start_f(OSC_PLOT(spectrum_window), setup->start_freq);
 	osc_plot_spect_set_filter_bw(OSC_PLOT(spectrum_window), sweep_freq_step);
 	osc_plot_set_visible(OSC_PLOT(spectrum_window), true);
@@ -347,101 +364,141 @@ static gpointer capture_and_display(plugin_setup *setup)
 {
 	g_return_val_if_fail(setup, NULL);
 
-	g_mutex_lock(&profile_recall_lock);
-	if (capture_buffer) {
-		iio_buffer_destroy(capture_buffer);
-		capture_buffer = NULL;
-		if (spectrum_window)
-			osc_plot_data_update(OSC_PLOT(spectrum_window));
+	while (!kill_capture_thread) {
+		/* Feed the previously captured data to the plot window */
+		if (capture_buffer) {
+			iio_buffer_destroy(capture_buffer);
+			capture_buffer = NULL;
+			if (spectrum_window)
+				osc_plot_data_update(OSC_PLOT(spectrum_window));
+		}
+
+		/* Capture new data */
+		capture_buffer = iio_device_create_buffer(cap, setup->fft_size, false);
+		if (!capture_buffer) {
+			fprintf(stderr, "Could not create iio buffer in %s\n", __func__);
+			goto kill_sweep_thd;
+		}
+
+		/* Reset the data offset for all channels */
+		unsigned int i;
+		for (i = 0; i < iio_device_get_channels_count(cap); i++) {
+			struct iio_channel *ch = iio_device_get_channel(cap, i);
+			struct extra_info *info = iio_channel_get_data(ch);
+			info->offset = 0;
+		}
+
+		/* Block until the "RX LO Sweep" thread finishes to apply a new profile */
+		g_mutex_lock(&profile_applied_mutex);
+		while (!profile_applied)
+			g_cond_wait(&profile_applied_cond, &profile_applied_mutex);
+		profile_applied = false;
+		g_mutex_unlock(&profile_applied_mutex);
+
+		/* Get captured data */
+		ssize_t ret = iio_buffer_refill(capture_buffer);
+		if (ret < 0) {
+			fprintf(stderr, "Error while refilling iio buffer: %s\n", strerror(-ret));
+			goto kill_sweep_thd;
+		}
+
+		/* Signal the "RX LO Sweep" thread that a data capture has been performed */
+		g_mutex_lock(&capture_done_mutex);
+		capture_done = true;
+		g_cond_signal(&capture_done_cond);
+		g_mutex_unlock(&capture_done_mutex);
+
+		/* Demux captured data */
+		ret /= iio_buffer_step(capture_buffer);
+		if ((unsigned)ret >= setup->fft_size)
+			iio_buffer_foreach_sample(capture_buffer, demux_sample, NULL);
 	}
 
-	capture_buffer = iio_device_create_buffer(cap, setup->fft_size, false);
-	if (!capture_buffer) {
-		fprintf(stderr, "Could not create iio buffer in %s\n", __func__);
-		g_mutex_unlock(&profile_recall_lock);
-		goto end;
-	}
+	return NULL;
 
-	/* Reset the data offset for all channels */
-	unsigned int i;
-	for (i = 0; i < iio_device_get_channels_count(cap); i++) {
-		struct iio_channel *ch = iio_device_get_channel(cap, i);
-		struct extra_info *info = iio_channel_get_data(ch);
-		info->offset = 0;
-	}
-	/* Get captured data */
-	ssize_t ret = iio_buffer_refill(capture_buffer);
-	if (ret < 0) {
-		fprintf(stderr, "Error while refilling iio buffer: %s\n", strerror(-ret));
-		goto end;
-	}
-	g_mutex_unlock(&profile_recall_lock);
-	/* Demux captured data */
-	ret /= iio_buffer_step(capture_buffer);
-	if ((unsigned)ret >= setup->fft_size)
-		iio_buffer_foreach_sample(capture_buffer, demux_sample, NULL);
+kill_sweep_thd:
+	kill_sweep_thread = true;
+	/* In order to kill the "RX LO Sweep" thread, make sure it is not blocked */
+	g_mutex_lock(&capture_done_mutex);
+	capture_done = true;
+	g_cond_signal(&capture_done_cond);
+	g_mutex_unlock(&capture_done_mutex);
 
-end:
 	return NULL;
 }
 
 static gpointer rx_lo_frequency_sweep(plugin_setup *setup)
 {
-	GSList *node = rx_profiles;
+	GSList *node;
 	fastlock_profile *profile;
 	ssize_t ret;
 
 	g_return_val_if_fail(setup, NULL);
 
-	/* Set the first profile */
-	profile = (fastlock_profile *)node->data;
+	node = setup->rx_profiles;
 
-	ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
-			profile->data);
-	if (ret < 0)
-		fprintf(stderr, "Could not write to fastlock_load"
-			"attribute in %s\n", __func__);
+	/* Here I intend to change the fastlock using only the fastlock_load
+	 * call provided that I use one and the same fastlock profile slot and
+	 * after the fastlock_recall gets called at least once. Also this works
+	 * only if profiles do not have the same ALS - which is taken care of
+	 * somewhere in this code. */
 	ret = iio_channel_attr_write_longlong(alt_ch0,
 			"fastlock_recall", 0);
 	if (ret < 0)
 		fprintf(stderr, "Could not write to fastlock_recall"
 			"attribute in %s\n", __func__);
-gtimer = g_timer_new();
-	node = g_slist_next(node);
+
+	profile_applied = false;
+	capture_done = true;
+	kill_capture_thread = false;
+	capture_thread = g_thread_new("Capture",
+				(GThreadFunc)capture_and_display, setup);
+#if DEBUG
+	gtimer = g_timer_new();
+#endif
 	/* Start the Sweep */
 	while (!kill_sweep_thread) {
-		capture_thread = g_thread_new("Capture",
-				(GThreadFunc)capture_and_display, setup);
-
-		/* When only one profile exists */
-		if (!node)
-			goto skip_profile_load;
-
 		profile = (fastlock_profile *)node->data;
 
+		/* Block until the "Capture" thread has finished a data capture */
+		g_mutex_lock(&capture_done_mutex);
+		while (!capture_done)
+			g_cond_wait(&capture_done_cond, &capture_done_mutex);
+		capture_done = false;
+		g_mutex_unlock(&capture_done_mutex);
+
+		/* Apply a new profile */
 		ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
 				profile->data);
 		if (ret < 0)
 			fprintf(stderr, "Could not write to fastlock_load"
 				"attribute in %s\n", __func__);
-		g_mutex_lock(&profile_recall_lock);
-		ret = iio_channel_attr_write_longlong(alt_ch0,
-				"fastlock_recall", 0);
-		g_mutex_unlock(&profile_recall_lock);
-		if (ret < 0)
-			fprintf(stderr, "Could not write to fastlock_recall"
-				"attribute in %s\n", __func__);
-skip_profile_load:
+
+		/* Signal the "Capture" thread that a new profile has been applied */
+		g_mutex_lock(&profile_applied_mutex);
+		profile_applied = true;
+		g_cond_signal(&profile_applied_cond);
+		g_mutex_unlock(&profile_applied_mutex);
+
 		node = g_slist_next(node);
 		if (!node) {
-			node = rx_profiles;
+			node = setup->rx_profiles;
+			#if DEBUG
 			g_timer_stop(gtimer);
-			fprintf(stderr, "%f\n", g_timer_elapsed(gtimer, NULL));
+			loop_durations_sum += g_timer_elapsed(gtimer, NULL);
+			loop_count++;
 			g_timer_start(gtimer);
+			#endif
 		}
-		g_thread_join(capture_thread);
-		capture_thread = NULL;
 	}
+	kill_capture_thread = true;
+	/* In order to kill the "Capture" thread, make sure it is not blocked */
+	g_mutex_lock(&profile_applied_mutex);
+	profile_applied = true;
+	g_cond_signal(&profile_applied_cond);
+	g_mutex_unlock(&profile_applied_mutex);
+
+	g_thread_join(capture_thread);
 
 	return NULL;
 }
@@ -450,6 +507,10 @@ static void start_sweep_clicked(GtkButton *btn, gpointer data)
 {
 	gtk_widget_set_sensitive(GTK_WIDGET(btn), false);
 
+#if DEBUG
+	loop_durations_sum = 0;
+	loop_count = 0;
+#endif
 	plugin_gather_user_setup(&psetup);
 	build_profiles_for_entire_sweep(&psetup);
 	configure_data_capture(&psetup);
@@ -483,6 +544,9 @@ static void stop_sweep_clicked(GtkButton *btn, gpointer data)
 	}
 
 	gtk_widget_set_sensitive(GTK_WIDGET(start_button), true);
+#if DEBUG
+fprintf(stderr, "Average Sweep Duration: %f\n", loop_durations_sum / loop_count);
+#endif
 }
 
 static void center_freq_changed(GtkSpinButton *btn, gpointer data)
@@ -499,15 +563,6 @@ static void center_freq_changed(GtkSpinButton *btn, gpointer data)
 	gtk_adjustment_set_upper(bw_adj, upper);
 	if (bw > upper)
 		gtk_spin_button_set_value(bw_spin, upper);
-
-	//~ if (center - bw / 2 < 100.72) {
-		//~ upper = (center - 100.72) * 2;
-//~
-	//~ } else if (center + bw / 2 > 5969.28) {
-		//~ upper = (5969.28 - center) * 2;
-	//~ } else {
-		//~ return;
-	//~ }
 }
 
 static void spectrum_window_destroyed_cb(OscPlot *plot)
