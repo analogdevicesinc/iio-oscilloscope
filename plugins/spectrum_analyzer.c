@@ -54,6 +54,7 @@ typedef struct _plugin_setup {
 	enum receivers rx;
 	GSList *rx_profiles;
 	unsigned int profile_count;
+	unsigned int profile_slot;
 } plugin_setup;
 
 typedef struct _fastlock_profile {
@@ -77,16 +78,24 @@ static plugin_setup psetup;
 /* Plugin Threads */
 static GThread *freq_sweep_thread;
 static GThread *capture_thread;
+static GThread *fft_thread;
 
 /* Threads Synchronization */
-static GCond profile_applied_cond;
-static GCond capture_done_cond;
-static GMutex profile_applied_mutex;
-static GMutex capture_done_mutex;
-static bool profile_applied;
-static bool capture_done;
-static bool kill_sweep_thread;
-static bool kill_capture_thread;
+static GCond profile_applied_cond,
+		capture_done_cond,
+		demux_done_cond,
+		fft_done_cond;
+static GMutex profile_applied_mutex,
+		capture_done_mutex,
+		demux_done_mutex,
+		fft_done_mutex;
+static bool profile_applied,
+		capture_done,
+		demux_done,
+		fft_done;
+static bool kill_sweep_thread,
+		kill_capture_thread,
+		kill_fft_thread;
 
 /* Control Widgets */
 static GtkWidget *center_freq;
@@ -249,6 +258,7 @@ static void plugin_gather_user_setup(plugin_setup *setup)
 		else
 			setup->rx = RX2;
 	}
+	setup->profile_slot = 1;
 }
 
 static void build_profiles_for_entire_sweep(plugin_setup *setup)
@@ -360,24 +370,21 @@ static void configure_data_capture(plugin_setup *setup)
 	}
 }
 
-static gpointer capture_and_display(plugin_setup *setup)
+static gpointer capture_data_thread_func(plugin_setup *setup)
 {
-	g_return_val_if_fail(setup, NULL);
-
 	while (!kill_capture_thread) {
-		/* Feed the previously captured data to the plot window */
+
+		/* Clean iio buffer */
 		if (capture_buffer) {
 			iio_buffer_destroy(capture_buffer);
 			capture_buffer = NULL;
-			if (spectrum_window)
-				osc_plot_data_update(OSC_PLOT(spectrum_window));
 		}
 
 		/* Capture new data */
 		capture_buffer = iio_device_create_buffer(cap, setup->fft_size, false);
 		if (!capture_buffer) {
 			fprintf(stderr, "Could not create iio buffer in %s\n", __func__);
-			goto kill_sweep_thd;
+			break;
 		}
 
 		/* Reset the data offset for all channels */
@@ -388,77 +395,68 @@ static gpointer capture_and_display(plugin_setup *setup)
 			info->offset = 0;
 		}
 
-		/* Block until the "RX LO Sweep" thread finishes to apply a new profile */
-		g_mutex_lock(&profile_applied_mutex);
-		while (!profile_applied)
-			g_cond_wait(&profile_applied_cond, &profile_applied_mutex);
-		profile_applied = false;
-		g_mutex_unlock(&profile_applied_mutex);
-
 		/* Get captured data */
 		ssize_t ret = iio_buffer_refill(capture_buffer);
 		if (ret < 0) {
 			fprintf(stderr, "Error while refilling iio buffer: %s\n", strerror(-ret));
-			goto kill_sweep_thd;
+			break;
 		}
 
-		/* Signal the "RX LO Sweep" thread that a data capture has been performed */
+		/* Signal the "Frequency Sweep" thread that data capture has completed */
 		g_mutex_lock(&capture_done_mutex);
 		capture_done = true;
 		g_cond_signal(&capture_done_cond);
 		g_mutex_unlock(&capture_done_mutex);
 
+		/* Block until the "Do FFT" thread has finished doing a FFT*/
+		g_mutex_lock(&fft_done_mutex);
+		while (!fft_done)
+			g_cond_wait(&fft_done_cond, &fft_done_mutex);
+		fft_done = false;
+		g_mutex_unlock(&fft_done_mutex);
+		if (kill_capture_thread)
+			break;
+
 		/* Demux captured data */
 		ret /= iio_buffer_step(capture_buffer);
 		if ((unsigned)ret >= setup->fft_size)
 			iio_buffer_foreach_sample(capture_buffer, demux_sample, NULL);
+
+		/* Signal the "Do FFT" thread that data demux has completed */
+		g_mutex_lock(&demux_done_mutex);
+		demux_done = true;
+		g_cond_signal(&demux_done_cond);
+		g_mutex_unlock(&demux_done_mutex);
+
+		/* Block until the "Data Capture" thread has recalled a new profile */
+		g_mutex_lock(&profile_applied_mutex);
+		while (!profile_applied)
+			g_cond_wait(&profile_applied_cond, &profile_applied_mutex);
+		profile_applied = false;
+		g_mutex_unlock(&profile_applied_mutex);
+		if (kill_capture_thread)
+			break;
 	}
 
-	return NULL;
-
-kill_sweep_thd:
+	/* Wake-up the "Frequency Sweep" thread and kill it */
 	kill_sweep_thread = true;
-	/* In order to kill the "RX LO Sweep" thread, make sure it is not blocked */
 	g_mutex_lock(&capture_done_mutex);
 	capture_done = true;
 	g_cond_signal(&capture_done_cond);
 	g_mutex_unlock(&capture_done_mutex);
 
+	g_thread_join(freq_sweep_thread);
+
 	return NULL;
 }
 
-static gpointer rx_lo_frequency_sweep(plugin_setup *setup)
+static gpointer profile_load_thread_func(plugin_setup *setup)
 {
-	GSList *node;
+	GSList *node = g_slist_nth(setup->rx_profiles, 1);
 	fastlock_profile *profile;
 	ssize_t ret;
 
-	g_return_val_if_fail(setup, NULL);
-
-	node = setup->rx_profiles;
-
-	/* Here I intend to change the fastlock using only the fastlock_load
-	 * call provided that I use one and the same fastlock profile slot and
-	 * after the fastlock_recall gets called at least once. Also this works
-	 * only if profiles do not have the same ALS - which is taken care of
-	 * somewhere in this code. */
-	ret = iio_channel_attr_write_longlong(alt_ch0,
-			"fastlock_recall", 0);
-	if (ret < 0)
-		fprintf(stderr, "Could not write to fastlock_recall"
-			"attribute in %s\n", __func__);
-
-	profile_applied = false;
-	capture_done = true;
-	kill_capture_thread = false;
-	capture_thread = g_thread_new("Capture",
-				(GThreadFunc)capture_and_display, setup);
-#if DEBUG
-	gtimer = g_timer_new();
-#endif
-	/* Start the Sweep */
 	while (!kill_sweep_thread) {
-		profile = (fastlock_profile *)node->data;
 
 		/* Block until the "Capture" thread has finished a data capture */
 		g_mutex_lock(&capture_done_mutex);
@@ -466,20 +464,24 @@ static gpointer rx_lo_frequency_sweep(plugin_setup *setup)
 			g_cond_wait(&capture_done_cond, &capture_done_mutex);
 		capture_done = false;
 		g_mutex_unlock(&capture_done_mutex);
+		if (kill_sweep_thread)
+			break;
 
-		/* Apply a new profile */
-		ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
-				profile->data);
+		/* Recall profile at slot 0 or 1 (alternative) */
+		ret = iio_channel_attr_write_longlong(alt_ch0,
+			"fastlock_recall", setup->profile_slot);
+		setup->profile_slot = (setup->profile_slot + 1) % 2;
 		if (ret < 0)
-			fprintf(stderr, "Could not write to fastlock_load"
-				"attribute in %s\n", __func__);
+		fprintf(stderr, "Could not write to fastlock_recall"
+			"attribute in %s\n", __func__);
 
-		/* Signal the "Capture" thread that a new profile has been applied */
+		/* Signal the "Data Capture" thread that a new profile has been applied */
 		g_mutex_lock(&profile_applied_mutex);
 		profile_applied = true;
 		g_cond_signal(&profile_applied_cond);
 		g_mutex_unlock(&profile_applied_mutex);
 
+		/* Move to the next fastlock profile */
 		node = g_slist_next(node);
 		if (!node) {
 			node = setup->rx_profiles;
@@ -490,17 +492,99 @@ static gpointer rx_lo_frequency_sweep(plugin_setup *setup)
 			g_timer_start(gtimer);
 			#endif
 		}
+		profile = node->data;
+		profile->data[0] = '0' + setup->profile_slot;
+		ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
+				profile->data);
+		if (ret < 0)
+			fprintf(stderr, "Could not write to fastlock_load"
+				"attribute in %s\n", __func__);
 	}
-	kill_capture_thread = true;
-	/* In order to kill the "Capture" thread, make sure it is not blocked */
-	g_mutex_lock(&profile_applied_mutex);
-	profile_applied = true;
-	g_cond_signal(&profile_applied_cond);
-	g_mutex_unlock(&profile_applied_mutex);
 
-	g_thread_join(capture_thread);
+	/* Wake-up and kill "Do FFT" thread */
+	kill_fft_thread = true;
+	g_mutex_lock(&demux_done_mutex);
+	demux_done = true;
+	g_cond_signal(&demux_done_cond);
+	g_mutex_unlock(&demux_done_mutex);
+
+	g_thread_join(fft_thread);
 
 	return NULL;
+}
+
+static gpointer do_fft_thread_func(plugin_setup *setup)
+{
+	while (!kill_fft_thread) {
+
+		/* Block until the "Data Capture" thread finishes to demux data */
+		g_mutex_lock(&demux_done_mutex);
+		while (!demux_done)
+			g_cond_wait(&demux_done_cond, &demux_done_mutex);
+		demux_done = false;
+		g_mutex_unlock(&demux_done_mutex);
+		if (kill_fft_thread)
+			break;
+
+		/* Tell the oscplot object to process the captured data, perform FFT
+		 * and concatenate with the rest of the FFTs in order to build the spectrum */
+		if (spectrum_window)
+			osc_plot_data_update(OSC_PLOT(spectrum_window));
+
+		/* Signal the "Data Capture" thread that the FFT has finished */
+		g_mutex_lock(&fft_done_mutex);
+		fft_done = true;
+		g_cond_signal(&fft_done_cond);
+		g_mutex_unlock(&fft_done_mutex);
+	}
+
+	return NULL;
+}
+
+static void setup_before_sweep_start(plugin_setup *setup)
+{
+	GSList *node;
+	fastlock_profile *profile;
+	ssize_t ret;
+
+	g_return_if_fail(setup);
+
+	/* Fill fastlock slot 0 */
+	node = setup->rx_profiles;
+	profile = node->data;
+	profile->data[0] = '0';
+
+	ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
+			profile->data);
+	if (ret < 0)
+		fprintf(stderr, "Could not write to fastlock_load"
+			"attribute in %s\n", __func__);
+
+	/* Fill fastlock slot 1 */
+	node = g_slist_next(node);
+	profile = node->data;
+	profile->data[0] = '1';
+	ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
+			profile->data);
+	if (ret < 0)
+		fprintf(stderr, "Could not write to fastlock_load"
+			"attribute in %s\n", __func__);
+
+	/* Recall profile at slot 0 */
+	ret = iio_channel_attr_write_longlong(alt_ch0,
+			"fastlock_recall", 0);
+	if (ret < 0)
+		fprintf(stderr, "Could not write to fastlock_recall"
+			"attribute in %s\n", __func__);
+
+	kill_capture_thread = false;
+	kill_sweep_thread = false;
+	kill_fft_thread = false;
+
+	capture_done = false;
+	profile_applied = false;
+	demux_done = false;
+	fft_done = true;
 }
 
 static void start_sweep_clicked(GtkButton *btn, gpointer data)
@@ -508,6 +592,7 @@ static void start_sweep_clicked(GtkButton *btn, gpointer data)
 	gtk_widget_set_sensitive(GTK_WIDGET(btn), false);
 
 #if DEBUG
+	gtimer = g_timer_new();
 	loop_durations_sum = 0;
 	loop_count = 0;
 #endif
@@ -520,9 +605,13 @@ static void start_sweep_clicked(GtkButton *btn, gpointer data)
 		configure_spectrum_window(&psetup);
 	osc_plot_draw_start(OSC_PLOT(spectrum_window));
 
-	kill_sweep_thread = false;
-	freq_sweep_thread = g_thread_new("RX LO Sweep",
-				(GThreadFunc)rx_lo_frequency_sweep, &psetup);
+	setup_before_sweep_start(&psetup);
+	capture_thread = g_thread_new("Data Capture",
+				(GThreadFunc)capture_data_thread_func, &psetup);
+	freq_sweep_thread = g_thread_new("Frequency Sweep",
+				(GThreadFunc)profile_load_thread_func, &psetup);
+	fft_thread = g_thread_new("Do FFT",
+				(GThreadFunc)do_fft_thread_func, &psetup);
 
 	gtk_widget_set_sensitive(GTK_WIDGET(stop_button), true);
 }
@@ -533,10 +622,10 @@ static void stop_sweep_clicked(GtkButton *btn, gpointer data)
 
 	if (spectrum_window)
 		osc_plot_draw_stop(OSC_PLOT(spectrum_window));
-	if (freq_sweep_thread) {
-		kill_sweep_thread = true;
-		g_thread_join(freq_sweep_thread);
-		freq_sweep_thread = NULL;
+	if (capture_thread) {
+		kill_capture_thread = true;
+		g_thread_join(capture_thread);
+		capture_thread = NULL;
 	}
 	if (capture_buffer) {
 		iio_buffer_destroy(capture_buffer);
