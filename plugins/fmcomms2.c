@@ -771,7 +771,7 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 		/* Querying frequency counters via SCPI too quickly leads to failures. */
 		sleep(1);
 
-		if (scpi_counter_get_freq(&current_freq) != 0) {
+		if (scpi_counter_get_freq(&current_freq, roundf(target_freq)) != 0) {
 			failure_msg = "Error retrieving counter frequency. "
 				"Make sure the counter has the correct input attached.";
 			break;

@@ -21,7 +21,7 @@ int (*scpi_rx_set_marker_freq)(unsigned int, unsigned long long) = NULL;
 int (*scpi_rx_get_marker_level)(unsigned int, bool, double *) = NULL;
 int (*scpi_rx_get_marker_freq)(unsigned int, bool, double *) = NULL;
 int (*scpi_connect_counter)() = NULL;
-int (*scpi_counter_get_freq)(double *freq) = NULL;
+int (*scpi_counter_get_freq)(double *freq, double target_freq) = NULL;
 
 
 static bool scpi_connect_functions(void)

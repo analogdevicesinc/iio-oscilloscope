@@ -107,9 +107,12 @@ static char *supported_spectrum_analyzers[] = {
 	NULL
 };
 
+#define HAMEG_HM8123 "HAMEG Instruments,HM8123,5.12"
+#define AGILENT_53131A "HEWLETT-PACKARD,53131A,0,3944"
+
 static char *supported_counters[] = {
-	"HAMEG Instruments,HM8123,5.12",
-	"HEWLETT-PACKARD,53131A,0,3944",
+	HAMEG_HM8123,
+	AGILENT_53131A,
 	NULL
 };
 
@@ -790,14 +793,13 @@ int scpi_connect_counter()
 	current_instrument = &prog_counter;
 	current_instrument->serial = true;
 	current_instrument->id_regex = "";
-	current_instrument->gpib_addr = 3;
 	current_instrument->response[0] = 0;
 
 	/* Iterate over tty dev nodes, trying to connect to a supported device. */
 	for (tty_node = 0; tty_node <= 9; tty_node++) {
 		current_instrument->tty_path[strlen(current_instrument->tty_path)-1] = (char)(tty_node + '0');
 		if (scpi_connect(current_instrument) == 0 && scpi_counter_connected()) {
-			if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
+			if (strstr(current_instrument->model, HAMEG_HM8123)) {
 				/* Select the correct input. */
 				do {
 					if (hameg_inputs[i] == NULL)
@@ -807,7 +809,7 @@ int scpi_connect_counter()
 					scpi_fprintf(current_instrument, "XMT?\r\n");
 					sleep(1);
 				} while (strstr(current_instrument->response, "Not Available"));
-			} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
+			} else if (strstr(current_instrument->model, AGILENT_53131A)) {
 				/* reset the counter */
 				scpi_fprintf(current_instrument, "*RST\r\n");
 				scpi_fprintf(current_instrument, "*CLS\r\n");
@@ -830,7 +832,7 @@ int scpi_connect_counter()
 
 
 /* Retrieve the current frequency from supported frequency counter devices. */
-int scpi_counter_get_freq(double *freq)
+int scpi_counter_get_freq(double *freq, double target_freq)
 {
 	int ret = -1;
 	double scale = 1.0;
@@ -838,12 +840,12 @@ int scpi_counter_get_freq(double *freq)
 	gchar *freq_str = NULL;
 
 	/* Query instrument for the current measured frequency. */
-	if (strstr(current_instrument->model, "HAMEG Instruments,HM8123")) {
+	if (strstr(current_instrument->model, HAMEG_HM8123)) {
 		ret = scpi_fprintf(current_instrument, "XMT?\r\n");
 		if (ret < 0)
 			return ret;
 
-		/* Output is usually of the form "value scale" where scale is often "GHz" */
+		/* Output is usually of the form "value scale" where scale is often "GHz". */
 		freq_tokens = g_strsplit(current_instrument->response, " ", 2);
 		if (freq_tokens[0] != NULL)
 			freq_str = strdup(freq_tokens[0]);
@@ -857,14 +859,16 @@ int scpi_counter_get_freq(double *freq)
 			scale = pow(10.0, 3);
 
 		g_strfreev(freq_tokens);
-	} else if (strstr(current_instrument->model, "HEWLETT-PACKARD,53131A")) {
-		/* output is in scientific E notation, Hz scale by default */
-		ret = scpi_fprintf(current_instrument, ":READ?\r\n");
+	} else if (strstr(current_instrument->model, AGILENT_53131A)) {
+		/* Output is in scientific E notation, Hz scale by default. */
+		ret = scpi_fprintf(current_instrument, ":MEASURE:FREQ? %E HZ, 1 HZ\r\n", target_freq);
 		if (ret < 0)
 			return ret;
 
 		freq_str = strdup(current_instrument->response);
-		/* re-enable continuous output */
+		/* Re-enable continuous output otherwise we leave the display in a
+		 * stopped state.
+		 */
 		scpi_fprintf(current_instrument, ":INIT:CONT ON\r\n");
 	} else {
 		/* No supported device attached */
