@@ -85,8 +85,9 @@ else
 endif
 
 OSC_OBJS := osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o \
-	trigger_dialog.o xml_utils.o libini/libini.o libini2.o phone_home.o eeprom.o \
-	plugins/dac_data_manager.o plugins/ad9361_multichip_sync.o
+	trigger_dialog.o xml_utils.o libini/libini.o libini2.o phone_home.o \
+	plugins/dac_data_manager.o plugins/ad9361_multichip_sync.o \
+	$(if $(WITH_MINGW),,eeprom.o)
 
 all: $(OSC) $(PLUGINS)
 
