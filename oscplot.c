@@ -1088,21 +1088,28 @@ static void do_fft(Transform *tr)
 	}
 }
 
-static void do_no_markers_complex_fft(Transform *tr)
+static void do_fft_for_spectrum(Transform *tr)
 {
 	struct _freq_spectrum_settings *settings = tr->settings;
 	struct _fft_alg_data *fft = &settings->ffts_alg_data[settings->fft_index];
+	struct marker_type *markers = settings->markers;
+	enum marker_types marker_type = MARKER_OFF;
+	int fft_clip_size = settings->fft_upper_clipping_limit -
+				settings->fft_lower_clipping_limit;
 	gfloat *in_data = settings->real_source;
 	gfloat *in_data_c = settings->imag_source;
-	gfloat *out_data = tr->y_axis + (settings->fft_index *
-				(settings->fft_upper_clipping_limit -
-				settings->fft_lower_clipping_limit));
+	gfloat *out_data = tr->y_axis + (settings->fft_index * fft_clip_size);
 	int fft_size = settings->fft_size;
-	int i, j, k;
+	int i, j, k, m;
 	int cnt;
 	gfloat mag;
 	double avg, pwr_offset;
 	gfloat plugin_fft_corr;
+	unsigned int *maxX = settings->maxXaxis;
+	gfloat *maxY = settings->maxYaxis;
+
+	if (settings->marker_type)
+		marker_type = *((enum marker_types *)settings->marker_type);
 
 	if ((fft->cached_fft_size == -1) || (fft->cached_fft_size != fft_size) ||
 		(fft->cached_num_active_channels != fft->num_active_channels)) {
@@ -1183,6 +1190,33 @@ static void do_no_markers_complex_fft(Transform *tr)
 			/* do an average */
 			out_data[k] = ((1 - avg) * out_data[k]) + (avg * mag);
 		}
+
+		if (MAX_MARKERS && marker_type == MARKER_PEAK) {
+			if (settings->fft_index == 0 && k <= 2) {
+				maxX[0] = 0;
+				maxY[0] = out_data[0];
+			} else {
+				for (j = 0; j <= MAX_MARKERS && markers[j].active; j++) {
+					if  ((*(out_data + k - 1) > maxY[j]) &&
+						((!((*(out_data + k - 2) > *(out_data + k - 1)) &&
+						 (*(out_data + k - 1) > *(out_data + k)))) &&
+						 (!((*(out_data + k - 2) < *(out_data + k - 1)) &&
+						 (*(out_data + k - 1) < *(out_data + k)))))) {
+
+						if (marker_type == MARKER_PEAK) {
+							for (m = MAX_MARKERS; m > j; m--) {
+								maxY[m] = maxY[m - 1];
+								maxX[m] = maxX[m - 1];
+							}
+						}
+						maxY[j] = *(out_data + k - 1);
+						maxX[j] = k + (settings->fft_index * fft_clip_size) - 1;
+						break;
+					}
+				}
+			}
+		}
+
 		k++;
 	}
 }
@@ -1532,15 +1566,40 @@ bool freq_spectrum_transform_function(Transform *tr, gboolean init_transform)
 			}
 		}
 
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			settings->maxXaxis[i] = 0;
+			settings->maxYaxis[i] = -200.0f;
+		}
+
 		return true;
 	}
 
-	do_no_markers_complex_fft(tr);
+	do_fft_for_spectrum(tr);
 	settings->fft_index++;
 
 	if (settings->fft_index == settings->fft_count) {
 		settings->fft_index = 0;
 		complete_transform = true;
+
+		if (MAX_MARKERS && *settings->marker_type != MARKER_OFF) {
+			for (j = 0; j <= MAX_MARKERS && settings->markers[j].active; j++)
+				if (*settings->marker_type == MARKER_PEAK) {
+					settings->markers[j].x = (gfloat)tr->x_axis[settings->maxXaxis[j]];
+					settings->markers[j].y = (gfloat)tr->y_axis[settings->maxXaxis[j]];
+					settings->markers[j].bin = settings->maxXaxis[j];
+				}
+			if (*settings->markers_copy) {
+				memcpy(*settings->markers_copy, settings->markers,
+					sizeof(struct marker_type) * MAX_MARKERS);
+				*settings->markers_copy = NULL;
+				g_mutex_unlock(settings->marker_lock);
+			}
+		}
+
+		for (i = 0; i <= MAX_MARKERS; i++) {
+			settings->maxXaxis[i] = 0;
+			settings->maxYaxis[i] = -200.0f;
+		}
 	}
 
 	return complete_transform;
@@ -2241,6 +2300,8 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_size = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_pwr_offset_widget));
+		FREQ_SPECTRUM_SETTINGS(transform)->maxXaxis = malloc(sizeof(unsigned int) * (MAX_MARKERS + 1));
+		FREQ_SPECTRUM_SETTINGS(transform)->maxYaxis = malloc(sizeof(unsigned int) * (MAX_MARKERS + 1));
 		for (i = 0; i < priv->fft_count; i++) {
 			FREQ_SPECTRUM_SETTINGS(transform)->ffts_alg_data[i].cached_fft_size = -1;
 			FREQ_SPECTRUM_SETTINGS(transform)->ffts_alg_data[i].cached_num_active_channels = -1;
@@ -2370,8 +2431,11 @@ static void remove_transform_from_list(OscPlot *plot, Transform *tr)
 		priv->tr_with_marker = NULL;
 
 	transform_remove_own_markers(tr);
-	if (tr->type_id == FREQ_SPECTRUM_TRANSFORM)
+	if (tr->type_id == FREQ_SPECTRUM_TRANSFORM) {
 		free(FREQ_SPECTRUM_SETTINGS(tr)->ffts_alg_data);
+		free(FREQ_SPECTRUM_SETTINGS(tr)->maxXaxis);
+		free(FREQ_SPECTRUM_SETTINGS(tr)->maxYaxis);
+	}
 	TrList_remove_transform(list, tr);
 	Transform_destroy(tr);
 	if (list->size == 0) {
@@ -2441,6 +2505,11 @@ static void transform_add_plot_markers(OscPlot *plot, Transform *transform)
 		XCORR_SETTINGS(transform)->markers_copy = &priv->markers_copy;
 		XCORR_SETTINGS(transform)->marker_type = &priv->marker_type;
 		XCORR_SETTINGS(transform)->marker_lock = &priv->g_marker_copy_lock;
+	} else if (priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM) {
+		FREQ_SPECTRUM_SETTINGS(transform)->markers = priv->markers;
+		FREQ_SPECTRUM_SETTINGS(transform)->markers_copy = &priv->markers_copy;
+		FREQ_SPECTRUM_SETTINGS(transform)->marker_type = &priv->marker_type;
+		FREQ_SPECTRUM_SETTINGS(transform)->marker_lock = &priv->g_marker_copy_lock;
 	}
 }
 
@@ -2696,6 +2765,8 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 
 	if (tr->type_id == CROSS_CORRELATION_TRANSFORM)
 		markers = XCORR_SETTINGS(tr)->markers;
+	else if (tr->type_id == FREQ_SPECTRUM_TRANSFORM)
+		markers = FREQ_SPECTRUM_SETTINGS(tr)->markers;
 	else if(tr->type_id == FFT_TRANSFORM)
 		markers = FFT_SETTINGS(tr)->markers;
 	else if(tr->type_id == COMPLEX_FFT_TRANSFORM)
@@ -2744,6 +2815,9 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 					dev_info->adc_scale,
 					m != MAX_MARKERS ? '\n' : '\0');
 			} else if (tr->type_id == CROSS_CORRELATION_TRANSFORM) {
+				sprintf(text, "M%i: %1.6f @ %2.3f%c", m, markers[m].y, markers[m].x,
+					m != MAX_MARKERS ? '\n' : '\0');
+			} else if (tr->type_id == FREQ_SPECTRUM_TRANSFORM) {
 				sprintf(text, "M%i: %1.6f @ %2.3f%c", m, markers[m].y, markers[m].x,
 					m != MAX_MARKERS ? '\n' : '\0');
 			}
@@ -3135,7 +3209,8 @@ static void plot_setup(OscPlot *plot)
 
 		if (priv->active_transform_type == FFT_TRANSFORM ||
 			priv->active_transform_type == COMPLEX_FFT_TRANSFORM ||
-			priv->active_transform_type == CROSS_CORRELATION_TRANSFORM) {
+			priv->active_transform_type == CROSS_CORRELATION_TRANSFORM ||
+			priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM) {
 			if (i == 0)
 				transform_add_plot_markers(plot, transform);
 			else
@@ -5417,7 +5492,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	/* FFT? */
 	if (priv->active_transform_type != FFT_TRANSFORM &&
 		priv->active_transform_type != COMPLEX_FFT_TRANSFORM &&
-		priv->active_transform_type != CROSS_CORRELATION_TRANSFORM)
+		priv->active_transform_type != CROSS_CORRELATION_TRANSFORM &&
+		priv->active_transform_type != FREQ_SPECTRUM_TRANSFORM)
 	return FALSE;
 
 	/* Right button */
@@ -5500,7 +5576,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gtk_widget_show(menuitem);
 	i++;
 
-	if (priv->active_transform_type == CROSS_CORRELATION_TRANSFORM)
+	if (priv->active_transform_type == CROSS_CORRELATION_TRANSFORM ||
+			priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM)
 		goto skip_no_peak_markers;
 
 	menuitem = gtk_check_menu_item_new_with_label(FIX_MRK);

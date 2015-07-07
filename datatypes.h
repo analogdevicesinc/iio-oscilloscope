@@ -179,6 +179,12 @@ struct _freq_spectrum_settings {
 	unsigned fft_upper_clipping_limit;
 	struct _fft_alg_data *ffts_alg_data;
 	gfloat fft_corr;
+	unsigned int *maxXaxis;
+	gfloat *maxYaxis;
+	struct marker_type *markers;
+	struct marker_type **markers_copy;
+	GMutex *marker_lock;
+	enum marker_types *marker_type;
 };
 
 Transform* Transform_new(int tr_type);
