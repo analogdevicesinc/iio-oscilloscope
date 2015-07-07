@@ -46,8 +46,12 @@ CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\" \
 	-D_POSIX_C_SOURCE=200809L
 
-#CFLAGS+=-DDEBUG
-#CFLAGS += -DNOFFTW
+DEBUG ?= 0
+ifeq ($(DEBUG),1)
+	CFLAGS += -DDEBUG
+else
+	CFLAGS += -DNDEBUG
+endif
 
 SO := $(if $(WITH_MINGW),dll,so)
 EXE := $(if $(WITH_MINGW),.exe)
@@ -82,7 +86,8 @@ endif
 
 OSC_OBJS := osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o \
 	trigger_dialog.o xml_utils.o libini/libini.o libini2.o phone_home.o \
-	plugins/dac_data_manager.o plugins/ad9361_multichip_sync.o
+	plugins/dac_data_manager.o plugins/ad9361_multichip_sync.o \
+	$(if $(WITH_MINGW),,eeprom.o)
 
 all: $(OSC) $(PLUGINS)
 
