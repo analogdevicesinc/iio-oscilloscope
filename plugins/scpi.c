@@ -877,8 +877,7 @@ int scpi_counter_get_freq(double *freq, double target_freq)
 
 	ret = sscanf(freq_str, "%lf", freq);
 
-	if (freq_str)
-		g_free(freq_str);
+	g_free(freq_str);
 
 	if (ret == 1)
 		*freq *= scale;

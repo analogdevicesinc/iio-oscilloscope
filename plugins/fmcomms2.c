@@ -729,19 +729,22 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 					failure_msg = "Wrong AD9361 reference clock rate output mode selected. "
 							"Please enable the \"XTALN DCXO Buffered\" selection for clock output "
 							"under the FMComms2/3/4/5 Advanced tab.";
-					break;
+					goto dcxo_cleanup;
 			}
 
 			if (!strcmp(iio_context_get_name(ctx), "network")) {
 				target_freq = REFCLK_RATE;
 			} else if (!strcmp(iio_context_get_name(ctx), "local")) {
 				fp = fopen("/sys/kernel/debug/clk/ad9361_ext_refclk/clk_rate", "r");
-				if (fscanf(fp, "%lf", &target_freq) != 1)
+				if (fscanf(fp, "%lf", &target_freq) != 1) {
 					failure_msg = "Unable to read AD9361 reference clock rate from debugfs.";
+					goto dcxo_cleanup;
+				}
 				if (fp)
 					fclose(fp);
 			} else {
 				failure_msg = "AD9361 Reference clock rate missing from debugfs.";
+				goto dcxo_cleanup;
 			}
 			break;
 		case 1: /* RF Output */
@@ -752,17 +755,21 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 			break;
 		case 2: /* RF Input */
 			failure_msg = "RF Input is not supported yet for DCXO calibration.";
+			goto dcxo_cleanup;
 			break;
 		default:
 			failure_msg = "Unsupported calibration method selected.";
+			goto dcxo_cleanup;
 	}
 
-	if (!failure_msg && scpi_connect_counter() != 0)
+	if (scpi_connect_counter() != 0) {
 		failure_msg = "Failed to connect to Programmable Counter device.";
+		goto dcxo_cleanup;
+	}
 
 	tuning_elems = g_queue_new();
 
-	while (!failure_msg && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn))) {
+	while (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn))) {
 		gtk_widget_show(dcxo_cal_progressbar);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_coarse_num].widget), coarse);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_fine_num].widget), fine);
@@ -776,7 +783,7 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 		if (scpi_counter_get_freq(&current_freq, roundf(target_freq)) != 0) {
 			failure_msg = "Error retrieving counter frequency. "
 				"Make sure the counter has the correct input attached.";
-			break;
+			goto dcxo_cleanup;
 		}
 
 		/* Sometimes the frequency counter returns entirely wrong values that
@@ -851,7 +858,7 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 		if (coarse < 0 || coarse > 63 || fine < 0 || fine > 8191) {
 			failure_msg = "Outside of tuning bounds. Make sure you have the "
 				"correct calibration method selected.\n";
-			break;
+			goto dcxo_cleanup;
 		}
 	}
 
@@ -883,6 +890,7 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 			glb_widgets[dcxo_fine_num].widget), tuning_elem->fine);
 	}
 
+dcxo_cleanup:
 	if (failure_msg) {
 		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms2_panel);
 		if (!gtk_widget_is_toplevel(toplevel))
@@ -898,7 +906,6 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 			gtk_widget_destroy(dcxo_cal_dialog_done);
 	}
 
-dcxo_cleanup:
 	gtk_widget_hide(dcxo_cal_progressbar);
 
 	/* reset calibration buttons */
@@ -912,8 +919,7 @@ dcxo_cleanup:
 	gtk_widget_set_sensitive(glb_widgets[dcxo_coarse_num].widget, TRUE);
 	gtk_widget_set_sensitive(glb_widgets[dcxo_fine_num].widget, TRUE);
 
-	if (tuning_elems)
-		g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
+	g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
