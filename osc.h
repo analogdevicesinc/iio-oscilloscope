@@ -46,10 +46,16 @@ extern void math_expression_objects_clean(void);
 #define REMOVE_MRK "Remove Marker"
 
 #ifndef timespeccmp
-#define timespeccmp(tsp, usp, cmp)			\
-	(((tsp)->tv_sec == (usp)->tv_sec) ?		\
-		((tsp)->tv_nsec cmp (usp)->tv_nsec) :	\
+#define timespeccmp(tsp, usp, cmp) \
+	(((tsp)->tv_sec == (usp)->tv_sec) ? \
+		((tsp)->tv_nsec cmp (usp)->tv_nsec) : \
 		((tsp)->tv_sec cmp (usp)->tv_sec))
+#endif
+
+#ifdef DEBUG
+#define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
+#else
+#define DBG(D...)
 #endif
 
 struct marker_type {

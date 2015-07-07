@@ -20,6 +20,8 @@
 #define ADI_MAGIC_1	'D'
 #define ADI_VERSION(v)	('0' + (v))
 
+const char *find_eeprom(const char *path);
+
 /* Version 0 */
 
 struct fmcomms1_calib_data {
