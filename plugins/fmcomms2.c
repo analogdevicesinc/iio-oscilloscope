@@ -639,6 +639,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	rx_phase_rotation_update();
 }
 
+#ifndef _WIN32
 static void dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 {
 	unsigned coarse, fine;
@@ -694,6 +695,7 @@ static void dcxo_cal_from_eeprom_clicked(GtkButton *btn, gpointer data)
 	if (eeprom_path)
 		g_free((void *)eeprom_path);
 }
+#endif /* _WIN32 */
 
 static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 {
@@ -1333,6 +1335,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	if (!scpi_connect_functions())
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_grid")));
 
+#ifndef _WIN32
 	/* Disable EEPROM functionality if not running locally or as root. */
 	if (getuid() != 0 || strcmp(iio_context_get_name(ctx), "local") != 0) {
 		gtk_widget_set_sensitive(GTK_WIDGET(
@@ -1340,6 +1343,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		gtk_widget_set_sensitive(GTK_WIDGET(
 			gtk_builder_get_object(builder, "dcxo_cal_from_eeprom")), FALSE);
 	}
+#endif
 
 	/* Global settings */
 
@@ -1635,10 +1639,12 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	g_builder_connect_signal(builder, "dcxo_cal", "clicked",
 		G_CALLBACK(dcxo_cal_clicked), NULL);
+#ifndef _WIN32
 	g_builder_connect_signal(builder, "dcxo_cal_to_eeprom", "clicked",
 		G_CALLBACK(dcxo_cal_to_eeprom_clicked), NULL);
 	g_builder_connect_signal(builder, "dcxo_cal_from_eeprom", "clicked",
 		G_CALLBACK(dcxo_cal_from_eeprom_clicked), NULL);
+#endif
 
 	g_builder_connect_signal(builder, "rx_fastlock_store", "clicked",
 		G_CALLBACK(fastlock_clicked), (gpointer) 1);
