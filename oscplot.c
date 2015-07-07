@@ -2791,7 +2791,6 @@ static bool call_all_transform_functions(OscPlotPrivate *priv)
 {
 	TrList *tr_list = priv->transform_list;
 	Transform *tr;
-	bool show_diff_phase = false;
 	bool valid = true;
 	int i = 0;
 
@@ -2801,13 +2800,7 @@ static bool call_all_transform_functions(OscPlotPrivate *priv)
 	for (; i < tr_list->size; i++) {
 		tr = tr_list->transforms[i];
 		valid = valid && Transform_update_output(tr);
-		if (tr->has_the_marker) {
-			show_diff_phase = true;
-			draw_marker_values(priv, tr);
-		}
 	}
-	if (show_diff_phase)
-		markers_phase_diff_show(priv);
 
 	return valid;
 }
@@ -3064,12 +3057,28 @@ static void fps_counter(OscPlotPrivate *priv)
 
 static gboolean plot_redraw(OscPlotPrivate *priv)
 {
+	TrList *tr_list = priv->transform_list;
+	Transform *tr;
+	bool show_diff_phase = false;
+	int i;
+
 	if (!GTK_IS_DATABOX(priv->databox))
 		return FALSE;
+
 	if (priv->redraw) {
 			auto_scale_databox(priv, GTK_DATABOX(priv->databox));
 			gtk_widget_queue_draw(priv->databox);
 			fps_counter(priv);
+			for (i = 0; i < tr_list->size; i++) {
+				tr = tr_list->transforms[i];
+				if (tr->has_the_marker) {
+
+					show_diff_phase = true;
+					draw_marker_values(priv, tr);
+				}
+			}
+			if (show_diff_phase)
+				markers_phase_diff_show(priv);
 	}
 	if (priv->stop_redraw == TRUE)
 		priv->redraw_function = 0;
