@@ -3933,6 +3933,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 	int d;
 	unsigned int nb_channels, i, j;
 	const char *dev_name;
+	unsigned int dev_sample_count;
 
 	name = malloc(strlen(filename) + 5);
 	switch(type) {
@@ -3973,8 +3974,12 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			fprintf(fp, "FreqValidMin\t-%e\n", freq / 2);
 			fprintf(fp, "Y\n");
 
+			dev_sample_count = dev_info->sample_count;
+			if (dev_info->channel_trigger_enabled)
+				dev_sample_count /= 2;
+
 			/* Start writing the samples */
-			for (i = 0; i < dev_info->sample_count / 2; i++) {
+			for (i = 0; i < dev_sample_count; i++) {
 				for (j = 0; j < nb_channels; j++) {
 					struct extra_info *info = iio_channel_get_data(iio_device_get_channel(dev, j));
 					if (save_channels_mask[j] == 1)
@@ -4011,7 +4016,11 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				/* Find which channel need to be saved */
 				save_channels_mask = get_user_saveas_channel_selection(plot, nb_channels);
 
-				for (i = 0; i < dev_info->sample_count / 2; i++) {
+				dev_sample_count = dev_info->sample_count;
+				if (dev_info->channel_trigger_enabled)
+					dev_sample_count /= 2;
+
+				for (i = 0; i < dev_sample_count; i++) {
 					for (j = 0; j < nb_channels; j++) {
 						struct extra_info *info = iio_channel_get_data(iio_device_get_channel(dev, j));
 						if (save_channels_mask[j] == 1)
@@ -4071,7 +4080,11 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			/* Find which channel need to be saved */
 			save_channels_mask = get_user_saveas_channel_selection(plot, nb_channels);
 
-			dims[0] = dev_info->sample_count / 2;
+			dev_sample_count = dev_info->sample_count;
+			if (dev_info->channel_trigger_enabled)
+				dev_sample_count /= 2;
+
+			dims[0] = dev_sample_count;
 			for (i = 0; i < nb_channels; i++) {
 				struct iio_channel *chn = iio_device_get_channel(dev, i);
 				const char *ch_name = iio_channel_get_name(chn) ?:
@@ -4089,12 +4102,12 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 					gdouble *tmp_data;
 					double k;
 
-					tmp_data = g_new(gdouble, dev_info->sample_count / 2);
+					tmp_data = g_new(gdouble, dev_sample_count);
 					if (format->is_signed)
 						k = format->bits - 1;
 					else
 						k = format->bits;
-					for (j = 0; j < dev_info->sample_count / 2; j++) {
+					for (j = 0; j < dev_sample_count; j++) {
 						tmp_data[j] = (gdouble)info->data_ref[j] /
 									(pow(2.0, k));
 					}
