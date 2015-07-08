@@ -29,7 +29,8 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
-#include "./block_diagram.h"
+#include "../fru.h"
+#include "block_diagram.h"
 #include "dac_data_manager.h"
 #include "scpi.h"
 
@@ -643,15 +644,27 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 static void dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 {
 	unsigned coarse, fine;
+	char cmd[256];
 	const char *eeprom_path = find_eeprom(NULL);
+	FILE *fp = NULL;
+	const char *failure_msg = NULL;
 
-	if (eeprom_path != NULL) {
-		coarse = gtk_spin_button_get_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_coarse_num].widget));
-		fine = gtk_spin_button_get_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_fine_num].widget));
-		/* TODO: save tuning values to EEPROM here */
-		fprintf(stderr, "coarse: %u\n", coarse);
-		fprintf(stderr, "fine: %u\n", fine);
-	} else {
+	if (!eeprom_path) {
+		failure_msg = "Can't find EEPROM file in the sysfs";
+		goto cleanup;
+	}
+
+	coarse = gtk_spin_button_get_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_coarse_num].widget));
+	fine = gtk_spin_button_get_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_fine_num].widget));
+	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %.02x%.04x 2>&1", eeprom_path,
+			eeprom_path, coarse, fine);
+	fp = popen(cmd, "r");
+
+	if (!fp || pclose(fp) != 0)
+		failure_msg = "Error running fru-dump to write to EEPROM";
+
+cleanup:
+	if (failure_msg) {
 		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms2_panel);
 		if (!gtk_widget_is_toplevel(toplevel))
 			toplevel = NULL;
@@ -660,24 +673,79 @@ static void dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 			GTK_DIALOG_MODAL,
 			GTK_MESSAGE_ERROR,
 			GTK_BUTTONS_CLOSE,
-			"Can't find eeprom file in the sysfs");
+			"%s", failure_msg);
 		gtk_window_set_title(GTK_WINDOW(dcxo_cal_eeprom_fail), "Save to EEPROM");
 		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_eeprom_fail)))
 			gtk_widget_destroy(dcxo_cal_eeprom_fail);
 	}
 
-	if (eeprom_path)
-		g_free((void *)eeprom_path);
+	g_free((void *)eeprom_path);
 }
 
 static void dcxo_cal_from_eeprom_clicked(GtkButton *btn, gpointer data)
 {
 	const char *eeprom_path = find_eeprom(NULL);
+	unsigned char *raw_eeprom = NULL;
+	struct FRU_DATA *fru = NULL;
+	FILE *fp;
+	size_t bytes;
+	const char *failure_msg = NULL;
+	char coarse_str[3], fine_str[5];
+	int coarse, fine;
 
-	if (eeprom_path != NULL) {
-		fprintf(stderr, "eeprom: %s\n", eeprom_path);
-		/* TODO: load tuning values from EEPROM here */
-	} else {
+	if (!eeprom_path) {
+		failure_msg = "Can't find EEPROM file in the sysfs";
+		goto cleanup;
+	}
+
+	fp = fopen(eeprom_path, "rb");
+	if (!fp) {
+		failure_msg = "Can't open EEPROM file";
+		goto cleanup;
+	}
+
+	raw_eeprom = g_malloc(FAB_SIZE_FRU_EEPROM);
+	bytes = fread(raw_eeprom, 1, FAB_SIZE_FRU_EEPROM, fp);
+
+	/* FRU format specifies a 256 byte file size. */
+	if (ferror(fp) || bytes != FAB_SIZE_FRU_EEPROM) {
+		failure_msg = "Failed to read EEPROM file";
+		fclose(fp);
+		goto cleanup;
+	}
+	fclose(fp);
+
+	fru = parse_FRU(raw_eeprom);
+	if (!fru) {
+		failure_msg = "Failed to parse EEPROM";
+		goto cleanup;
+	}
+
+	/* The tuning parameters are stored as a single, concatenated hex string,
+	 * with the first two characters being the coarse value and the last four
+	 * characters being the fine value.
+	 *
+	 * Note that there are two header bytes that must be skipped first.
+	 */
+	memcpy(coarse_str, &fru->Board_Area->custom[4][2], 2);
+	coarse_str[2] = '\0';
+	memcpy(fine_str, &fru->Board_Area->custom[4][4], 4);
+	fine_str[4] = '\0';
+
+	coarse = strtol(coarse_str, NULL, 16);
+	fine = strtol(fine_str, NULL, 16);
+	if (errno == ERANGE || errno == EINVAL) {
+		failure_msg = "Failed parsing coarse and/or fine values from EEPROM";
+		goto cleanup;
+	}
+
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(
+		glb_widgets[dcxo_coarse_num].widget), coarse);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(
+		glb_widgets[dcxo_fine_num].widget), fine);
+
+cleanup:
+	if (failure_msg) {
 		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms2_panel);
 		if (!gtk_widget_is_toplevel(toplevel))
 			toplevel = NULL;
@@ -686,14 +754,15 @@ static void dcxo_cal_from_eeprom_clicked(GtkButton *btn, gpointer data)
 			GTK_DIALOG_MODAL,
 			GTK_MESSAGE_ERROR,
 			GTK_BUTTONS_CLOSE,
-			"Can't find eeprom file in the sysfs");
+			"%s", failure_msg);
 		gtk_window_set_title(GTK_WINDOW(dcxo_cal_eeprom_fail), "Load from EEPROM");
 		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_eeprom_fail)))
 			gtk_widget_destroy(dcxo_cal_eeprom_fail);
 	}
 
-	if (eeprom_path)
-		g_free((void *)eeprom_path);
+	g_free((void *)eeprom_path);
+	g_free(raw_eeprom);
+	g_free(fru);
 }
 #endif /* _WIN32 */
 
@@ -729,19 +798,22 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 					failure_msg = "Wrong AD9361 reference clock rate output mode selected. "
 							"Please enable the \"XTALN DCXO Buffered\" selection for clock output "
 							"under the FMComms2/3/4/5 Advanced tab.";
-					break;
+					goto dcxo_cleanup;
 			}
 
 			if (!strcmp(iio_context_get_name(ctx), "network")) {
 				target_freq = REFCLK_RATE;
 			} else if (!strcmp(iio_context_get_name(ctx), "local")) {
 				fp = fopen("/sys/kernel/debug/clk/ad9361_ext_refclk/clk_rate", "r");
-				if (fscanf(fp, "%lf", &target_freq) != 1)
+				if (fscanf(fp, "%lf", &target_freq) != 1) {
 					failure_msg = "Unable to read AD9361 reference clock rate from debugfs.";
+					goto dcxo_cleanup;
+				}
 				if (fp)
 					fclose(fp);
 			} else {
 				failure_msg = "AD9361 Reference clock rate missing from debugfs.";
+				goto dcxo_cleanup;
 			}
 			break;
 		case 1: /* RF Output */
@@ -752,17 +824,21 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 			break;
 		case 2: /* RF Input */
 			failure_msg = "RF Input is not supported yet for DCXO calibration.";
+			goto dcxo_cleanup;
 			break;
 		default:
 			failure_msg = "Unsupported calibration method selected.";
+			goto dcxo_cleanup;
 	}
 
-	if (!failure_msg && scpi_connect_counter() != 0)
+	if (scpi_connect_counter() != 0) {
 		failure_msg = "Failed to connect to Programmable Counter device.";
+		goto dcxo_cleanup;
+	}
 
 	tuning_elems = g_queue_new();
 
-	while (!failure_msg && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn))) {
+	while (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn))) {
 		gtk_widget_show(dcxo_cal_progressbar);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_coarse_num].widget), coarse);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_fine_num].widget), fine);
@@ -776,7 +852,7 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 		if (scpi_counter_get_freq(&current_freq, roundf(target_freq)) != 0) {
 			failure_msg = "Error retrieving counter frequency. "
 				"Make sure the counter has the correct input attached.";
-			break;
+			goto dcxo_cleanup;
 		}
 
 		/* Sometimes the frequency counter returns entirely wrong values that
@@ -851,7 +927,7 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 		if (coarse < 0 || coarse > 63 || fine < 0 || fine > 8191) {
 			failure_msg = "Outside of tuning bounds. Make sure you have the "
 				"correct calibration method selected.\n";
-			break;
+			goto dcxo_cleanup;
 		}
 	}
 
@@ -883,6 +959,7 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 			glb_widgets[dcxo_fine_num].widget), tuning_elem->fine);
 	}
 
+dcxo_cleanup:
 	if (failure_msg) {
 		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms2_panel);
 		if (!gtk_widget_is_toplevel(toplevel))
@@ -898,7 +975,6 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 			gtk_widget_destroy(dcxo_cal_dialog_done);
 	}
 
-dcxo_cleanup:
 	gtk_widget_hide(dcxo_cal_progressbar);
 
 	/* reset calibration buttons */
@@ -912,8 +988,7 @@ dcxo_cleanup:
 	gtk_widget_set_sensitive(glb_widgets[dcxo_coarse_num].widget, TRUE);
 	gtk_widget_set_sensitive(glb_widgets[dcxo_fine_num].widget, TRUE);
 
-	if (tuning_elems)
-		g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
+	g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
