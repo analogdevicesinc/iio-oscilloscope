@@ -366,7 +366,7 @@ static bool configure_data_capture(plugin_setup *setup)
 
 	g_return_val_if_fail(setup, false);
 
-	device_set_rx_sampling_freq(cap, MHZ_TO_HZ(sampling_rate));
+	device_set_rx_sampling_freq(dev, MHZ_TO_HZ(sampling_rate));
 
 	dev_info = iio_device_get_data(cap);
 	dev_info->sample_count = setup->fft_size;
