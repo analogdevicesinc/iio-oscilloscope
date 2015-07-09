@@ -22,8 +22,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <ad9361.h>
 #include <iio.h>
-#include "ad9361_multichip_sync.h"
 
 #include "../libini2.h"
 #include "../osc.h"
@@ -698,11 +698,8 @@ static void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
 
 static void mcs_cb (GtkWidget *widget, gpointer data)
 {
-	/* Master device must list first! */
-	struct iio_device *devices[] = {dev, dev_slave};
-
-	ad9361_multichip_sync(devices, ARRAY_SIZE(devices),
-			FIXUP_INTERFACE_TIMING | CHECK_SAMPLE_RATES | MCS_IS_DEBUG_ATTR);
+	ad9361_multichip_sync(dev, &dev_slave, 1,
+			FIXUP_INTERFACE_TIMING | CHECK_SAMPLE_RATES);
 }
 
 static double tune_trx_phase_offset(struct iio_device *ldev, int *ret,

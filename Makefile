@@ -29,7 +29,7 @@ DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0
 
 LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 	$(if $(WITH_MINGW),-lwinpthread) \
-	-L$(SYSROOT)/usr/lib -lmatio -lz -lm
+	-L$(SYSROOT)/usr/lib -lmatio -lz -lm -lad9361
 
 ifeq ($(WITH_MINGW),y)
 	LDFLAGS += -Wl,--subsystem,windows
@@ -86,7 +86,7 @@ endif
 
 OSC_OBJS := osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o \
 	trigger_dialog.o xml_utils.o libini/libini.o libini2.o phone_home.o \
-	plugins/dac_data_manager.o plugins/ad9361_multichip_sync.o \
+	plugins/dac_data_manager.o \
 	$(if $(WITH_MINGW),,eeprom.o)
 
 all: $(OSC) $(PLUGINS)
