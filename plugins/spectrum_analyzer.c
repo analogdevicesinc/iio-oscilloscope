@@ -34,6 +34,7 @@
 #define THIS_DRIVER "Spectrum Analyzer"
 #define PHY_DEVICE "ad9361-phy"
 #define CAP_DEVICE "cf-ad9361-lpc"
+#define FIR_FILTER "61_44_28MHz.ftr"
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 #define MHZ_TO_HZ(x) ((x) * 1000000)
 #define MHZ_TO_KHZ(x) ((x) * 1000)
@@ -565,13 +566,51 @@ static gpointer do_fft_thread_func(plugin_setup *setup)
 	return NULL;
 }
 
-static void setup_before_sweep_start(plugin_setup *setup)
+static bool setup_before_sweep_start(plugin_setup *setup)
 {
 	GSList *node;
 	fastlock_profile *profile;
 	ssize_t ret;
 
-	g_return_if_fail(setup);
+	g_return_val_if_fail(setup, false);
+
+	/* Configure the FIR filter */
+	FILE *fp;
+	char *buf;
+	ssize_t len;
+
+	fp = fopen("filters/"FIR_FILTER, "r");
+	if (!fp)
+		fp = fopen(OSC_FILTER_FILE_PATH"/"FIR_FILTER, "r");
+	if (!fp) {
+		fprintf(stderr, "Could not open file %s for reading in %s. %s\n",
+			FIR_FILTER, __func__, strerror(errno));
+		goto fail;
+	}
+
+	fseek(fp, 0, SEEK_END);
+	len = ftell(fp);
+	buf = malloc(len);
+	fseek(fp, 0, SEEK_SET);
+	len = fread(buf, 1, len, fp);
+	fclose(fp);
+
+	ret = iio_device_attr_write_raw(dev,
+			"filter_fir_config", buf, len);
+	if (ret < 0) {
+		fprintf(stderr, "FIR filter config failed in %s. %s\n",
+			__func__, strerror(ret));
+		goto fail;
+	}
+	free(buf);
+
+	ret = iio_device_attr_write_bool(dev,
+		"in_out_voltage_filter_fir_en", true);
+	if (ret < 0) {
+		fprintf(stderr, "a write to in_out_voltage_filter_fir_en failed"
+			"in %s. %s\n", __func__, strerror(ret));
+		goto fail;
+	}
 
 	/* Fill fastlock slot 0 */
 	node = setup->rx_profiles;
@@ -580,9 +619,11 @@ static void setup_before_sweep_start(plugin_setup *setup)
 
 	ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
 			profile->data);
-	if (ret < 0)
+	if (ret < 0) {
 		fprintf(stderr, "Could not write to fastlock_load"
-			"attribute in %s\n", __func__);
+			"attribute in %s. %s\n", __func__, strerror(ret));
+		goto fail;
+	}
 
 	/* Fill fastlock slot 1 */
 	node = g_slist_next(node);
@@ -590,16 +631,20 @@ static void setup_before_sweep_start(plugin_setup *setup)
 	profile->data[0] = '1';
 	ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
 			profile->data);
-	if (ret < 0)
+	if (ret < 0) {
 		fprintf(stderr, "Could not write to fastlock_load"
-			"attribute in %s\n", __func__);
+			"attribute in %s. %s\n", __func__, strerror(ret));
+		goto fail;
+	}
 
 	/* Recall profile at slot 0 */
 	ret = iio_channel_attr_write_longlong(alt_ch0,
 			"fastlock_recall", 0);
-	if (ret < 0)
+	if (ret < 0) {
 		fprintf(stderr, "Could not write to fastlock_recall"
-			"attribute in %s\n", __func__);
+			"attribute in %s. %s\n", __func__, strerror(ret));
+		goto fail;
+	}
 
 	kill_capture_thread = false;
 	kill_sweep_thread = false;
@@ -609,6 +654,11 @@ static void setup_before_sweep_start(plugin_setup *setup)
 	profile_applied = false;
 	demux_done = false;
 	fft_done = true;
+
+	return true;
+
+fail:
+	return false;
 }
 
 static void start_sweep_clicked(GtkButton *btn, gpointer data)
@@ -630,7 +680,9 @@ static void start_sweep_clicked(GtkButton *btn, gpointer data)
 		configure_spectrum_window(&psetup);
 	osc_plot_draw_start(OSC_PLOT(spectrum_window));
 
-	setup_before_sweep_start(&psetup);
+	if (!setup_before_sweep_start(&psetup))
+		goto abort;
+
 	capture_thread = g_thread_new("Data Capture",
 				(GThreadFunc)capture_data_thread_func, &psetup);
 	freq_sweep_thread = g_thread_new("Frequency Sweep",
