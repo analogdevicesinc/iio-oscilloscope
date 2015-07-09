@@ -194,21 +194,6 @@ static const char * fmcomms2_driver_attribs[] = {
 	"dac_buf_filename",
 };
 
-static void sampling_freq_changed_plugin_broadcast(void)
-{
-	struct osc_plugin *plugin;
-	GSList *node;
-
-	for (node = plugin_list; node; node = g_slist_next(node)) {
-		plugin = node->data;
-		if (plugin && (!strcmp(plugin->name, "Spectrum Analyzer"))) {
-			if (plugin->handle_external_request) {
-				plugin->handle_external_request("AD9361 Sampling Rate Changed");
-			}
-		}
-	}
-}
-
 static void glb_settings_update_labels(void)
 {
 	float rates[6];
@@ -323,7 +308,6 @@ static void sample_frequency_changed_cb(void *data)
 {
 	glb_settings_update_labels();
 	rx_freq_info_update();
-	sampling_freq_changed_plugin_broadcast();
 }
 
 static void rssi_update_label(GtkWidget *label, const char *chn,  bool is_tx)

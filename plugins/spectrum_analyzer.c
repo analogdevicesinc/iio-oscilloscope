@@ -64,6 +64,9 @@ typedef struct _fastlock_profile {
 } fastlock_profile;
 
 /* Plugin Global Variables */
+static const double sweep_freq_step = 56; /* 56 MHz */
+static const double sampling_rate = 61.44; /* 61.44 MSPS */
+
 static struct iio_context *ctx;
 static struct iio_device *dev, *cap;
 static struct iio_channel *alt_ch0;
@@ -71,7 +74,6 @@ static struct iio_buffer *capture_buffer;
 static bool is_2rx_2tx;
 static char *rx_fastlock_store_name;
 static char *rx_fastlock_save_name;
-static double sweep_freq_step = 18; /* 18 MHz */
 static GtkWidget *spectrum_window;
 static plugin_setup psetup;
 
@@ -154,6 +156,17 @@ static ssize_t demux_sample(const struct iio_channel *chn,
 	}
 
 	return size;
+}
+
+static void device_set_rx_sampling_freq(struct iio_device *dev, double freq)
+{
+	struct iio_channel *ch0;
+
+	ch0 = iio_device_find_channel(dev, "voltage0", false);
+	if (ch0)
+		iio_channel_attr_write_double(ch0, "sampling_frequency", freq);
+	else
+		fprintf(stderr, "Failed to retrieve iio channel in %s\n", __func__);
 }
 
 static double device_get_rx_sampling_freq(struct iio_device *dev)
@@ -343,17 +356,26 @@ static void build_spectrum_window(plugin_setup *setup)
 			G_CALLBACK(spectrum_window_destroyed_cb), NULL);
 }
 
-static void configure_data_capture(plugin_setup *setup)
+static bool configure_data_capture(plugin_setup *setup)
 {
 	struct iio_channel *chn;
 	struct extra_info *info;
 	struct extra_dev_info *dev_info;
 	unsigned int i;
 
-	g_return_if_fail(setup);
+	g_return_val_if_fail(setup, false);
+
+	device_set_rx_sampling_freq(cap, MHZ_TO_HZ(sampling_rate));
 
 	dev_info = iio_device_get_data(cap);
 	dev_info->sample_count = setup->fft_size;
+	dev_info->adc_freq = device_get_rx_sampling_freq(cap);
+	if (HZ_TO_MHZ(dev_info->adc_freq) != sampling_rate) {
+		fprintf(stderr, "Failed to set the rx sampling rate to %f"
+			"in %s\n", sampling_rate, __func__);
+		return false;
+	}
+
 	for (i = 0; i < iio_device_get_channels_count(cap); i++) {
 		chn = iio_device_get_channel(cap, i);
 		info = iio_channel_get_data(chn);
@@ -368,6 +390,8 @@ static void configure_data_capture(plugin_setup *setup)
 			iio_channel_disable(chn);
 		}
 	}
+
+	return true;
 }
 
 static gpointer capture_data_thread_func(plugin_setup *setup)
@@ -598,7 +622,8 @@ static void start_sweep_clicked(GtkButton *btn, gpointer data)
 #endif
 	plugin_gather_user_setup(&psetup);
 	build_profiles_for_entire_sweep(&psetup);
-	configure_data_capture(&psetup);
+	if (!configure_data_capture(&psetup))
+		goto abort;
 	if (!spectrum_window)
 		build_spectrum_window(&psetup);
 	else
@@ -614,6 +639,12 @@ static void start_sweep_clicked(GtkButton *btn, gpointer data)
 				(GThreadFunc)do_fft_thread_func, &psetup);
 
 	gtk_widget_set_sensitive(GTK_WIDGET(stop_button), true);
+
+	return;
+
+abort:
+	g_signal_emit_by_name(stop_button, "clicked", NULL);
+	return;
 }
 
 static void stop_sweep_clicked(GtkButton *btn, gpointer data)
@@ -717,7 +748,7 @@ static GtkWidget * analyzer_init(GtkWidget *notebook, const char *ini_fn)
 
 	/* Widgets initialization */
 	comboboxtext_rbw_fill(GTK_COMBO_BOX_TEXT(available_RBWs),
-				HZ_TO_MHZ(device_get_rx_sampling_freq(cap)));
+				sampling_rate);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(available_RBWs), 6);
 
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(receiver1), true);
@@ -738,22 +769,6 @@ static GtkWidget * analyzer_init(GtkWidget *notebook, const char *ini_fn)
 			G_CALLBACK(center_freq_changed), center_freq);
 
 	return analyzer_panel;
-}
-
-static int handle_external_request(const char *request)
-{
-	int ret = 0;
-
-	if (!strcmp(request, "AD9361 Sampling Rate Changed")) {
-		if (available_RBWs) {
-			comboboxtext_rbw_fill(GTK_COMBO_BOX_TEXT(available_RBWs),
-				HZ_TO_MHZ(device_get_rx_sampling_freq(cap)));
-			gtk_combo_box_set_active(GTK_COMBO_BOX(available_RBWs), 6);
-			ret = 1;
-		}
-	}
-
-	return ret;
 }
 
 static void update_active_page(gint active_page, gboolean is_detached)
@@ -795,7 +810,6 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = analyzer_identify,
 	.init = analyzer_init,
-	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.get_preferred_size = analyzer_get_preferred_size,
 	.destroy = context_destroy,
