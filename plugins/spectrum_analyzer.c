@@ -259,7 +259,7 @@ static bool plugin_gather_user_setup(plugin_setup *setup)
 	int rbw_index;
 	bool data_is_new = false;
 
-	g_return_if_fail(setup);
+	g_return_val_if_fail(setup, false);
 
 	center = gtk_spin_button_get_value(GTK_SPIN_BUTTON(center_freq));
 	bw = gtk_spin_button_get_value(GTK_SPIN_BUTTON(freq_bw));
