@@ -253,17 +253,27 @@ static void init_device_list(struct iio_context *ctx)
 	}
 }
 
-static void plugin_gather_user_setup(plugin_setup *setup)
+static bool plugin_gather_user_setup(plugin_setup *setup)
 {
-	double center, bw;
+	double center, bw, start_freq, stop_freq;
+	int rbw_index;
+	bool data_is_new = false;
 
 	g_return_if_fail(setup);
 
 	center = gtk_spin_button_get_value(GTK_SPIN_BUTTON(center_freq));
 	bw = gtk_spin_button_get_value(GTK_SPIN_BUTTON(freq_bw));
-	setup->start_freq = center - bw / 2;
-	setup->stop_freq = center + bw / 2;
-	setup->fft_size = 65536 >> gtk_combo_box_get_active(GTK_COMBO_BOX(available_RBWs));
+	rbw_index = gtk_combo_box_get_active(GTK_COMBO_BOX(available_RBWs));
+	start_freq = center - bw / 2;
+	stop_freq = center + bw / 2;
+	setup->fft_size = 65536 >> rbw_index;
+
+	if ((setup->start_freq != start_freq) || (setup->stop_freq != stop_freq)) {
+		setup->start_freq = start_freq;
+		setup->stop_freq = stop_freq;
+		data_is_new = true;
+	}
+
 	if (!is_2rx_2tx) {
 		setup->rx = RX1;
 	} else {
@@ -273,6 +283,8 @@ static void plugin_gather_user_setup(plugin_setup *setup)
 			setup->rx = RX2;
 	}
 	setup->profile_slot = 1;
+
+	return data_is_new;
 }
 
 static void build_profiles_for_entire_sweep(plugin_setup *setup)
@@ -670,8 +682,8 @@ static void start_sweep_clicked(GtkButton *btn, gpointer data)
 	loop_durations_sum = 0;
 	loop_count = 0;
 #endif
-	plugin_gather_user_setup(&psetup);
-	build_profiles_for_entire_sweep(&psetup);
+	if (plugin_gather_user_setup(&psetup))
+		build_profiles_for_entire_sweep(&psetup);
 	if (!configure_data_capture(&psetup))
 		goto abort;
 	if (!spectrum_window)
