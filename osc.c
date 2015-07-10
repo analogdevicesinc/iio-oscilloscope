@@ -60,6 +60,9 @@ static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
 static void capture_profile_save(const char *filename);
 static void load_profile(const char *filename, bool load_plugins);
+static int capture_setup(void);
+static void capture_start(void);
+static void stop_sampling(void);
 
 static char * dma_devices[] = {
 	"ad9122",
@@ -693,6 +696,22 @@ capture_malloc_fail:
 OscPlot * plugin_get_new_plot(void)
 {
 	return OSC_PLOT(new_plot_cb(NULL, NULL));
+}
+
+void plugin_osc_stop_capture(void)
+{
+	stop_sampling();
+}
+
+void plugin_osc_start_capture(void)
+{
+	capture_setup();
+	capture_start();
+}
+
+bool plugin_osc_running_state(void)
+{
+	return !!capture_function;
 }
 
 static bool force_plugin(const char *name)

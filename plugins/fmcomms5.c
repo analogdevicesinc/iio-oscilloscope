@@ -582,6 +582,11 @@ static void filter_fir_enable(GtkToggleButton *button, gpointer data)
 
 	filter_fir_update();
 	trigger_mcs_button();
+
+	if (plugin_osc_running_state() == true) {
+		plugin_osc_stop_capture();
+		plugin_osc_start_capture();
+	}
 }
 
 static void rx_phase_rotation_update()

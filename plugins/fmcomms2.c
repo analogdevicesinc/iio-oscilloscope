@@ -623,6 +623,11 @@ static void filter_fir_enable(GtkToggleButton *button, gpointer data)
 		}
 	}
 
+	if (plugin_osc_running_state() == true) {
+		plugin_osc_stop_capture();
+		plugin_osc_start_capture();
+	}
+
 	filter_fir_update();
 	glb_settings_update_labels();
 	update_widgets();

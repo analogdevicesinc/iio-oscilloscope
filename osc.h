@@ -113,6 +113,9 @@ enum marker_types plugin_get_plot_marker_type(OscPlot *plot, const char *device)
 void plugin_set_plot_marker_type(OscPlot *plot, const char *device, enum marker_types type);
 gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device);
 OscPlot * plugin_get_new_plot(void);
+void plugin_osc_stop_capture(void);
+void plugin_osc_start_capture(void);
+bool plugin_osc_running_state(void);
 
 void save_complete_profile(const char *filename);
 void load_complete_profile(const char *filename);
