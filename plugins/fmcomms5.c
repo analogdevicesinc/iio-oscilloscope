@@ -31,6 +31,7 @@
 #include "../libini2.h"
 #include "./block_diagram.h"
 #include "dac_data_manager.h"
+#include "fir_filter.h"
 
 #define THIS_DRIVER "FMComms5"
 
@@ -740,92 +741,14 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 	}
 }
 
-static int load_fir_filter(const char *file_name)
-{
-	bool rx = false, tx = false;
-	int ret = -1;
-	FILE *f = fopen(file_name, "r");
-	if (f) {
-		char *buf;
-		ssize_t len;
-		char line[80];
-		int ret1, ret2;
-
-		while (fgets(line, 80, f) != NULL && line[0] == '#');
-		if (!strncmp(line, "RX", strlen("RX")))
-			rx = true;
-		else if (!strncmp(line, "TX", strlen("TX")))
-			tx = true;
-		if (fgets(line, 80, f) != NULL) {
-			if (!strncmp(line, "TX", strlen("TX")))
-				tx = true;
-			else if (!strncmp(line, "RX", strlen("RX")))
-				rx = true;
-		}
-
-		fseek(f, 0, SEEK_END);
-		len = ftell(f);
-		buf = malloc(len);
-		fseek(f, 0, SEEK_SET);
-		len = fread(buf, 1, len, f);
-		fclose(f);
-
-		ret1 = iio_device_attr_write_raw(dev1,
-				"filter_fir_config", buf, len);
-		ret2 = iio_device_attr_write_raw(dev2,
-				"filter_fir_config", buf, len);
-		ret = (ret1 > ret2) ? ret2 : ret1;
-		free(buf);
-	}
-
-	if (ret < 0) {
-		fprintf(stderr, "FIR filter config failed\n");
-		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms5_panel);
-		if (!gtk_widget_is_toplevel(toplevel))
-			toplevel = NULL;
-
-		GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(toplevel),
-						GTK_DIALOG_MODAL,
-						GTK_MESSAGE_ERROR,
-						GTK_BUTTONS_CLOSE,
-						"\nFailed to configure the FIR filter using the selected file.");
-		gtk_window_set_title(GTK_WINDOW(dialog), "FIR Filter Configuration Failed");
-		if (gtk_dialog_run(GTK_DIALOG(dialog)))
-			gtk_widget_destroy(dialog);
-
-	} else {
-		strcpy(last_fir_filter, file_name);
-
-		gtk_widget_hide(fir_filter_en_tx);
-		gtk_widget_hide(enable_fir_filter_rx);
-		gtk_widget_hide(enable_fir_filter_rx_tx);
-		gtk_widget_show(disable_all_fir_filters);
-
-		if (rx && tx)
-			gtk_widget_show(enable_fir_filter_rx_tx);
-		else if (rx)
-			gtk_widget_show(enable_fir_filter_rx);
-		else if (tx)
-			gtk_widget_show(fir_filter_en_tx);
-		else
-			gtk_widget_hide(disable_all_fir_filters);
-		gtk_toggle_button_set_active(
-			GTK_TOGGLE_BUTTON (disable_all_fir_filters), true);
-	}
-
-	return ret;
-}
-
 static void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 {
 	char *file_name = gtk_file_chooser_get_filename(chooser);
 
-	if (load_fir_filter(file_name) < 0) {
-		if (strlen(last_fir_filter) == 0)
-			gtk_file_chooser_set_filename(chooser, "(None)");
-		else
-			gtk_file_chooser_set_filename(chooser, last_fir_filter);
-	}
+	load_fir_filter(file_name, dev1, dev2, fmcomms5_panel, chooser,
+			fir_filter_en_tx, enable_fir_filter_rx,
+			enable_fir_filter_rx_tx, disable_all_fir_filters,
+			last_fir_filter);
 }
 
 static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data)
@@ -958,10 +881,12 @@ static int fmcomms5_handle_driver(const char *attrib, const char *value)
 {
 	if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value[0]) {
-			load_fir_filter(value);
-			gtk_file_chooser_set_filename(
+			load_fir_filter(value, dev1, dev2, fmcomms5_panel,
 					GTK_FILE_CHOOSER(filter_fir_config),
-					value);
+					fir_filter_en_tx, enable_fir_filter_rx,
+					enable_fir_filter_rx_tx,
+					disable_all_fir_filters,
+					last_fir_filter);
 		}
 	} else if (MATCH_ATTRIB("global_settings_show")) {
 		gtk_toggle_tool_button_set_active(
