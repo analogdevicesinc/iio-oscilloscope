@@ -492,7 +492,7 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 
 gint fru_connect(void)
 {
-	return cb_connect(NULL, &dialogs);
+	return fru_connect_dialog(&dialogs, false);
 }
 
 gint connect_dialog(bool load_profile)
