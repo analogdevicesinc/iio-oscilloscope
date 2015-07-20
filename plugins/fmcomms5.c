@@ -130,6 +130,8 @@ static const char *fmcomms5_sr_attribs[] = {
 	PHY_DEVICE1".in_voltage_quadrature_tracking_en",
 	PHY_DEVICE1".in_voltage_rf_dc_offset_tracking_en",
 	PHY_DEVICE1".out_voltage0_rf_port_select",
+	PHY_DEVICE1".out_altvoltage0_RX_LO_external",
+	PHY_DEVICE1".out_altvoltage1_TX_LO_external",
 	PHY_DEVICE1".out_altvoltage0_RX_LO_frequency",
 	PHY_DEVICE1".out_altvoltage1_TX_LO_frequency",
 	PHY_DEVICE1".out_voltage0_hardwaregain",
@@ -152,6 +154,8 @@ static const char *fmcomms5_sr_attribs[] = {
 	PHY_DEVICE2".out_voltage0_rf_port_select",
 	PHY_DEVICE2".out_altvoltage0_RX_LO_frequency",
 	PHY_DEVICE2".out_altvoltage1_TX_LO_frequency",
+	PHY_DEVICE2".out_altvoltage0_RX_LO_external",
+	PHY_DEVICE2".out_altvoltage1_TX_LO_external",
 	PHY_DEVICE2".out_voltage0_hardwaregain",
 	PHY_DEVICE2".out_voltage1_hardwaregain",
 	PHY_DEVICE2".out_voltage_sampling_frequency",
@@ -1214,6 +1218,11 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev1, d1_ch1, "external", builder, "rx_lo_external1", 0);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev2, d2_ch1, "external", builder, "rx_lo_external2", 0);
+
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
 		dev1, d1_ch0, "quadrature_tracking_en", builder,
 		"quad", 0);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
@@ -1320,6 +1329,11 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 		dev2, d2_ch1, freq_name, builder, "tx_lo_freq2", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
+	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+		dev1, d1_ch1, "external", builder, "tx_lo_external1", 0);
+	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+		dev2, d2_ch1, "external", builder, "tx_lo_external2", 0);
+
 	d1_ch1 = iio_device_find_channel(dev1, "altvoltage1", true);
 
 	if (iio_channel_find_attr(d1_ch1, "fastlock_store"))
@@ -1340,6 +1354,31 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 		"label_rssi_tx3", "sensitive", G_BINDING_DEFAULT);
 	g_builder_bind_property(builder, "rssi_tx4", "visible",
 		"label_rssi_tx4", "sensitive", G_BINDING_DEFAULT);
+
+	g_builder_bind_property(builder, "rx_lo_external1", "active",
+		"rx_fastlock_profile1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external1", "active",
+		"rx_fastlock_label1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external1", "active",
+		"rx_fastlock_actions1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external2", "active",
+		"rx_fastlock_profile2", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external2", "active",
+		"rx_fastlock_label2", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external2", "active",
+		"rx_fastlock_actions2", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external1", "active",
+		"tx_fastlock_profile1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external1", "active",
+		"tx_fastlock_label1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external1", "active",
+		"tx_fastlock_actions1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external2", "active",
+		"tx_fastlock_profile2", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external2", "active",
+		"tx_fastlock_label2", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external2", "active",
+		"tx_fastlock_actions2", "visible", G_BINDING_INVERT_BOOLEAN);
 
 	if (ini_fn)
 		load_profile(ini_fn);
