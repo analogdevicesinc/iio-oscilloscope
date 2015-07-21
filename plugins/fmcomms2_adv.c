@@ -789,7 +789,7 @@ static void set_calibration_progress(GtkProgressBar *pbar, float fraction)
 
 static void calibrate (gpointer button)
 {
-	GtkProgressBar *calib_progress;
+	GtkProgressBar *calib_progress = NULL;
 	double rx_phase_lpc, rx_phase_hpc, tx_phase_hpc;
 	struct iio_channel *in0 = NULL, *in0_slave = NULL;
 	long long cal_tone, cal_freq;
@@ -936,6 +936,10 @@ calibrate_fail:
 	if (button)
 		gtk_widget_show(GTK_WIDGET(button));
 	gdk_threads_leave();
+
+	/* reset progress bar */
+	gtk_progress_bar_set_fraction(calib_progress, 0.0);
+	gtk_progress_bar_set_text(calib_progress, "Calibration Progress");
 
 	/* Disable the channels that were enabled at the beginning of the calibration */
 	struct iio_device *iio_dev;
