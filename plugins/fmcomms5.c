@@ -883,6 +883,8 @@ static int handle_external_request (const char *request)
 
 static int fmcomms5_handle_driver(const char *attrib, const char *value)
 {
+	int ret = 0;
+
 	if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value[0]) {
 			load_fir_filter(value, dev1, dev2, fmcomms5_panel,
@@ -933,7 +935,7 @@ static int fmcomms5_handle_driver(const char *attrib, const char *value)
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int fmcomms5_handle(int line, const char *attrib, const char *value)

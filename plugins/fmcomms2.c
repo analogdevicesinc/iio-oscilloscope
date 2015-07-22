@@ -66,6 +66,7 @@ static const gdouble inv_scale = -1.0;
 
 static const char *freq_name;
 
+static volatile int auto_calibrate = 0;
 static unsigned int dcxo_coarse_num, dcxo_fine_num;
 struct tuning_param
 {
@@ -647,13 +648,14 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 }
 
 #ifndef _WIN32
-static void dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
+static int dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 {
 	unsigned coarse, fine;
 	char cmd[256];
 	const char *eeprom_path = find_eeprom(NULL);
 	FILE *fp = NULL;
 	const char *failure_msg = NULL;
+	int ret = 0;
 
 	if (!eeprom_path) {
 		failure_msg = "Can't find EEPROM file in the sysfs";
@@ -666,8 +668,10 @@ static void dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 			eeprom_path, coarse, fine);
 	fp = popen(cmd, "r");
 
-	if (!fp || pclose(fp) != 0)
+	if (!fp || pclose(fp) != 0) {
 		failure_msg = "Error running fru-dump to write to EEPROM";
+		goto cleanup;
+	}
 
 cleanup:
 	if (failure_msg) {
@@ -683,12 +687,15 @@ cleanup:
 		gtk_window_set_title(GTK_WINDOW(dcxo_cal_eeprom_fail), "Save to EEPROM");
 		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_eeprom_fail)))
 			gtk_widget_destroy(dcxo_cal_eeprom_fail);
+		ret = -1;
 	}
 
 	g_free((void *)eeprom_path);
+
+	return ret;
 }
 
-static void dcxo_cal_from_eeprom_clicked(GtkButton *btn, gpointer data)
+static int dcxo_cal_from_eeprom_clicked(GtkButton *btn, gpointer data)
 {
 	const char *eeprom_path = find_eeprom(NULL);
 	unsigned char *raw_eeprom = NULL;
@@ -697,7 +704,7 @@ static void dcxo_cal_from_eeprom_clicked(GtkButton *btn, gpointer data)
 	size_t bytes;
 	const char *failure_msg = NULL;
 	char coarse_str[3], fine_str[5];
-	int coarse, fine;
+	int coarse, fine, ret = 0;
 
 	if (!eeprom_path) {
 		failure_msg = "Can't find EEPROM file in the sysfs";
@@ -764,18 +771,21 @@ cleanup:
 		gtk_window_set_title(GTK_WINDOW(dcxo_cal_eeprom_fail), "Load from EEPROM");
 		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_eeprom_fail)))
 			gtk_widget_destroy(dcxo_cal_eeprom_fail);
+		ret = -1;
 	}
 
 	g_free((void *)eeprom_path);
 	g_free(raw_eeprom);
 	g_free(fru);
+
+	return ret;
 }
 #endif /* _WIN32 */
 
-static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
+static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
 {
 	double current_freq, target_freq = 0, diff = 0, orig_diff = 0, prev_diff = 0;
-	int coarse = 0, fine = 4095, tune_step = 1, direction = 0;
+	int coarse = 0, fine = 4095, tune_step = 1, direction = 0, ret = 0;
 	GQueue *tuning_elems = NULL;
 	struct tuning_param *tuning_elem = NULL;
 	bool fine_tune = false;
@@ -798,7 +808,7 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 
 	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dcxo_cal_type))) {
 		case 0: /* REFCLK */
-			/* Make sure the write clock output mode is selected. */
+			/* Make sure the right clock output mode is selected. */
 			iio_device_debug_attr_read_longlong(dev, "adi,clk-output-mode-select", &clk_output_mode);
 			if (clk_output_mode != 1) {
 					failure_msg = "Wrong AD9361 reference clock rate output mode selected. "
@@ -979,6 +989,7 @@ dcxo_cleanup:
 		gtk_window_set_title(GTK_WINDOW(dcxo_cal_dialog_done), "DCXO calibration");
 		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_dialog_done)))
 			gtk_widget_destroy(dcxo_cal_dialog_done);
+		ret = -1;
 	}
 
 	gtk_widget_hide(dcxo_cal_progressbar);
@@ -994,7 +1005,11 @@ dcxo_cleanup:
 	gtk_widget_set_sensitive(glb_widgets[dcxo_coarse_num].widget, TRUE);
 	gtk_widget_set_sensitive(glb_widgets[dcxo_fine_num].widget, TRUE);
 
+	auto_calibrate = 1;
+
 	g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
+
+	return ret;
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
@@ -1203,6 +1218,8 @@ static int handle_external_request (const char *request)
 
 static int fmcomms2_handle_driver(const char *attrib, const char *value)
 {
+	int ret = 0;
+
 	if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value[0]) {
 			load_fir_filter(value, dev, NULL, fmcomms2_panel,
@@ -1252,7 +1269,7 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int fmcomms2_handle(int line, const char *attrib, const char *value)
