@@ -32,6 +32,7 @@
 #include "./block_diagram.h"
 #include "dac_data_manager.h"
 #include "fir_filter.h"
+#include "scpi.h"
 
 #define THIS_DRIVER "FMComms5"
 
@@ -869,7 +870,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int handle_external_request (const char *request)
+static int handle_external_request(const char *request)
 {
 	int ret = 0;
 
@@ -880,6 +881,62 @@ static int handle_external_request (const char *request)
 
 	return ret;
 }
+
+#ifndef _WIN32
+static int dcxo_to_eeprom(void)
+{
+	const char *eeprom_path = find_eeprom(NULL);
+	char cmd[256];
+	FILE *fp = NULL;
+	const char *failure_msg = NULL;
+	double current_freq;
+	int ret = 0;
+
+	if (!eeprom_path) {
+		failure_msg = "Can't find EEPROM file in the sysfs";
+		goto cleanup;
+	}
+
+	if (scpi_connect_counter() != 0) {
+		failure_msg = "Failed to connect to Programmable Counter device.";
+		goto cleanup;
+	}
+
+	if (scpi_counter_get_freq(&current_freq, NULL) != 0) {
+		failure_msg = "Error retrieving counter frequency. "
+			"Make sure the counter has the correct input attached.";
+		goto cleanup;
+	}
+
+	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %a 2>&1", eeprom_path,
+			eeprom_path, current_freq);
+	fp = popen(cmd, "r");
+
+	if (!fp || pclose(fp) != 0)
+		failure_msg = "Error running fru-dump to write to EEPROM";
+
+cleanup:
+	if (failure_msg) {
+		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms5_panel);
+		if (!gtk_widget_is_toplevel(toplevel))
+			toplevel = NULL;
+		GtkWidget *dcxo_to_eeprom_fail = gtk_message_dialog_new(
+			GTK_WINDOW(toplevel),
+			GTK_DIALOG_MODAL,
+			GTK_MESSAGE_ERROR,
+			GTK_BUTTONS_CLOSE,
+			"%s", failure_msg);
+		gtk_window_set_title(GTK_WINDOW(dcxo_to_eeprom_fail), "Save to EEPROM");
+		if (gtk_dialog_run(GTK_DIALOG(dcxo_to_eeprom_fail)))
+			gtk_widget_destroy(dcxo_to_eeprom_fail);
+		ret = -1;
+	}
+
+	g_free((void *)eeprom_path);
+
+	return ret;
+}
+#endif /* _WIN32 */
 
 static int fmcomms5_handle_driver(const char *attrib, const char *value)
 {
@@ -931,6 +988,10 @@ static int fmcomms5_handle_driver(const char *attrib, const char *value)
 	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
 		if (can_update_widgets)
 			reload_button_clicked(NULL, NULL);
+#ifndef _WIN32
+	} else if (MATCH_ATTRIB("dcxo_to_eeprom") && scpi_connect_functions()) {
+		ret = dcxo_to_eeprom();
+#endif /* _WIN32 */
 	} else {
 		return -EINVAL;
 	}
