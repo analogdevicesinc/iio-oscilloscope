@@ -921,7 +921,7 @@ static int fmcomms5_handle_driver(const char *attrib, const char *value)
 		int tx = atoi(attrib + sizeof("dds_mode_tx") - 1);
 		dac_data_manager_set_dds_mode(dac_tx_manager,
 				tx <= 2 ? DDS_DEVICE1 : DDS_DEVICE2,
-				tx, atoi(value));
+				tx <= 2 ? tx : tx % 2, atoi(value));
 	} else if (!strncmp(attrib, "tx_channel_", sizeof("tx_channel_") - 1)) {
 		int tx = atoi(attrib + sizeof("tx_channel_") - 1);
 		dac_data_manager_set_tx_channel_state(
@@ -1581,8 +1581,8 @@ static void save_widgets_to_ini(FILE *f)
 			last_fir_filter,
 			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 1),
 			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 2),
-			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 3),
-			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 4),
+			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 1),
+			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 2),
 			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 0),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 1),
