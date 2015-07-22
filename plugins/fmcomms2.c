@@ -853,6 +853,7 @@ static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
 	}
 
 	tuning_elems = g_queue_new();
+	target_freq = roundf(target_freq);
 
 	while (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn))) {
 		gtk_widget_show(dcxo_cal_progressbar);
@@ -865,7 +866,7 @@ static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
 		/* Querying frequency counters via SCPI too quickly leads to failures. */
 		sleep(1);
 
-		if (scpi_counter_get_freq(&current_freq, roundf(target_freq)) != 0) {
+		if (scpi_counter_get_freq(&current_freq, &target_freq) != 0) {
 			failure_msg = "Error retrieving counter frequency. "
 				"Make sure the counter has the correct input attached.";
 			goto dcxo_cleanup;
