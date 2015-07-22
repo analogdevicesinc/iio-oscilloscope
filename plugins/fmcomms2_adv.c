@@ -800,21 +800,18 @@ static void calibrate (gpointer button)
 	if (!in0 || !in0_slave) {
 		printf("could not find channels\n");
 		ret = -ENODEV;
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
 	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
 		printf("could not find capture cores\n");
 		ret = -ENODEV;
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
 	if (!dev_dds_master || !dev_dds_slave) {
 		printf("could not find dds cores\n");
 		ret = -ENODEV;
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
@@ -830,7 +827,6 @@ static void calibrate (gpointer button)
 	ret = default_dds(get_cal_tone(), CAL_SCALE);
 	if (ret < 0) {
 		printf("could not set dds cores\n");
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
@@ -864,7 +860,6 @@ static void calibrate (gpointer button)
 	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.40);
@@ -881,7 +876,6 @@ static void calibrate (gpointer button)
 	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.64);
@@ -900,7 +894,6 @@ static void calibrate (gpointer button)
 	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, &ret, cal_freq, cal_tone, -1.0 , 0.001, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.88);
