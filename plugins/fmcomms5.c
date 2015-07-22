@@ -944,6 +944,8 @@ static int fmcomms5_handle(int line, const char *attrib, const char *value)
 
 static void load_profile(const char *ini_fn)
 {
+	struct iio_channel *ch;
+	char *value;
 	unsigned i;
 
 	for (i = 0; i < ARRAY_SIZE(fmcomms5_driver_attribs); i++) {
@@ -955,6 +957,33 @@ static void load_profile(const char *ini_fn)
 			free(value);
 		}
 	}
+
+	/* The gain_control_mode iio attribute should be set prior to setting
+	 * hardwaregain iio attribute. This is neccessary due to the fact that
+	 * some control modes change the hardwaregain automatically. */
+	ch = iio_device_find_channel(dev1, "voltage0", false);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				PHY_DEVICE1".in_voltage0_gain_control_mode");
+	if (value)
+		iio_channel_attr_write(ch, "gain_control_mode", value);
+
+	ch = iio_device_find_channel(dev1, "voltage1", false);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				PHY_DEVICE1".in_voltage1_gain_control_mode");
+	if (value)
+		iio_channel_attr_write(ch, "gain_control_mode", value);
+
+	ch = iio_device_find_channel(dev2, "voltage0", false);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				PHY_DEVICE2".in_voltage0_gain_control_mode");
+	if (value)
+		iio_channel_attr_write(ch, "gain_control_mode", value);
+
+	ch = iio_device_find_channel(dev2, "voltage1", false);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				PHY_DEVICE2".in_voltage1_gain_control_mode");
+	if (value)
+		iio_channel_attr_write(ch, "gain_control_mode", value);
 
 	update_from_ini(ini_fn, THIS_DRIVER, dev1, fmcomms5_sr_attribs,
 			ARRAY_SIZE(fmcomms5_sr_attribs));
