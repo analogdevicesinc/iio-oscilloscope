@@ -108,6 +108,7 @@ static GtkWidget *filter_fir_config;
 static GtkWidget *up_down_converter;
 static GtkWidget *dcxo_cal_progressbar;
 static GtkWidget *dcxo_cal_type;
+static GtkWidget *dcxo_cal;
 
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control_rx1;
@@ -1263,6 +1264,20 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 	} else if (MATCH_ATTRIB("dac_buf_filename")) {
 		dac_data_manager_set_buffer_chooser_filename(
 				dac_tx_manager, value);
+#ifndef _WIN32
+	} else if (MATCH_ATTRIB("dcxo_calibrate")) {
+		/* calibration button needs to be active for the function to run */
+		g_signal_handlers_block_by_func(
+			GTK_TOGGLE_BUTTON(dcxo_cal), G_CALLBACK(dcxo_cal_clicked), NULL);
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dcxo_cal), TRUE);
+		g_signal_handlers_unblock_by_func(
+			GTK_TOGGLE_BUTTON(dcxo_cal), G_CALLBACK(dcxo_cal_clicked), NULL);
+		ret = dcxo_cal_clicked(GTK_BUTTON(dcxo_cal), NULL);
+		while (!auto_calibrate)
+			gtk_main_iteration();
+	} else if (MATCH_ATTRIB("dcxo_to_eeprom")) {
+		ret = dcxo_cal_to_eeprom_clicked(NULL, NULL);
+#endif /* _WIN32 */
 	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
 		if (can_update_widgets)
 			reload_button_clicked(NULL, NULL);
@@ -1407,6 +1422,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	up_down_converter = GTK_WIDGET(gtk_builder_get_object(builder, "checkbox_up_down_converter"));
 	dcxo_cal_progressbar = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_progressbar"));
 	dcxo_cal_type = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_type"));
+	dcxo_cal = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal"));
 
 	section_toggle[SECTION_GLOBAL] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "global_settings_toggle"));
 	section_setting[SECTION_GLOBAL] = GTK_WIDGET(gtk_builder_get_object(builder, "global_settings"));
