@@ -1182,6 +1182,9 @@ static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 		 */
 		if (!auto_calibrate)
 			ret = -1;
+
+		/* reset calibration completion flag */
+		auto_calibrate = 0;
 	} else if (MATCH_ATTRIB("SYNC_RELOAD") && atoi(value)) {
 		if (can_update_widgets)
 			update_widgets(builder);
