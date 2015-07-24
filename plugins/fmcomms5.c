@@ -1007,6 +1007,7 @@ static int fmcomms5_handle_driver(const char *attrib, const char *value)
 			reload_button_clicked(NULL, NULL);
 #ifndef _WIN32
 	} else if (MATCH_ATTRIB("dcxo_to_eeprom") && scpi_connect_functions()) {
+		fprintf(stderr, "SCPI: Saving current clock rate to EEPROM.\n");
 		ret = dcxo_to_eeprom();
 #endif /* _WIN32 */
 	} else {
