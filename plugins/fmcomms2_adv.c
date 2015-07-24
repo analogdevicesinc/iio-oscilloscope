@@ -20,6 +20,7 @@
 #include <malloc.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <ad9361.h>
@@ -1159,11 +1160,28 @@ static int handle_external_request (const char *request)
 
 static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 {
-	if (MATCH_ATTRIB("calibrate")) {
-		do_calibration(NULL, NULL);
+	int ret = 0;
 
-		while (!auto_calibrate)
+	if (MATCH_ATTRIB("calibrate")) {
+		/* Set a timer for 20 seconds that calibration should succeed within. */
+		struct timespec ts_current, ts_end;
+		unsigned long long nsecs;
+		clock_gettime(CLOCK_MONOTONIC, &ts_current);
+		nsecs = ts_current.tv_nsec + (20000 * pow(10.0, 6));
+		ts_end.tv_sec = ts_current.tv_sec + (nsecs / pow(10.0, 9));
+		ts_end.tv_nsec = nsecs % (unsigned long long) pow(10.0, 9);
+
+		do_calibration(NULL, NULL);
+		while (!auto_calibrate && (timespeccmp(&ts_current, &ts_end, >) == 0)) {
 			gtk_main_iteration();
+			clock_gettime(CLOCK_MONOTONIC, &ts_current);
+		}
+
+		/* Calibration timed out without succeeding, probably running an old board
+		 * without an ADF5355 on it.
+		 */
+		if (!auto_calibrate)
+			ret = -1;
 	} else if (MATCH_ATTRIB("SYNC_RELOAD") && atoi(value)) {
 		if (can_update_widgets)
 			update_widgets(builder);
@@ -1174,7 +1192,7 @@ static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int fmcomms2adv_handle(int line, const char *attrib, const char *value)
