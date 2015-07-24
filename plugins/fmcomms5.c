@@ -39,6 +39,7 @@
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 #define HANNING_ENBW 1.50
+#define REFCLK_RATE 40000000
 
 #define PHY_DEVICE1 "ad9361-phy"
 #define DDS_DEVICE1 "cf-ad9361-dds-core-lpc" /* can be hpc as well */
@@ -887,13 +888,29 @@ static int dcxo_to_eeprom(void)
 {
 	const char *eeprom_path = find_eeprom(NULL);
 	char cmd[256];
-	FILE *fp = NULL;
+	FILE *fp = NULL, *cmdfp = NULL;
 	const char *failure_msg = NULL;
-	double current_freq;
+	double current_freq, target_freq;
 	int ret = 0;
 
 	if (!eeprom_path) {
 		failure_msg = "Can't find EEPROM file in the sysfs";
+		goto cleanup;
+	}
+
+	if (!strcmp(iio_context_get_name(ctx), "network")) {
+		target_freq = REFCLK_RATE;
+	} else if (!strcmp(iio_context_get_name(ctx), "local")) {
+		fp = fopen("/sys/kernel/debug/clk/ad9361_ext_refclk/clk_rate", "r");
+		if (fscanf(fp, "%lf", &target_freq) != 1) {
+			failure_msg = "Unable to read AD9361 reference clock rate from debugfs.";
+			goto cleanup;
+		}
+		if (fp) {
+			fclose(fp);
+		}
+	} else {
+		failure_msg = "AD9361 Reference clock rate missing from debugfs.";
 		goto cleanup;
 	}
 
@@ -902,7 +919,7 @@ static int dcxo_to_eeprom(void)
 		goto cleanup;
 	}
 
-	if (scpi_counter_get_freq(&current_freq, NULL) != 0) {
+	if (scpi_counter_get_freq(&current_freq, &target_freq) != 0) {
 		failure_msg = "Error retrieving counter frequency. "
 			"Make sure the counter has the correct input attached.";
 		goto cleanup;
@@ -910,9 +927,9 @@ static int dcxo_to_eeprom(void)
 
 	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %a 2>&1", eeprom_path,
 			eeprom_path, current_freq);
-	fp = popen(cmd, "r");
+	cmdfp = popen(cmd, "r");
 
-	if (!fp || pclose(fp) != 0)
+	if (!cmdfp || pclose(cmdfp) != 0)
 		failure_msg = "Error running fru-dump to write to EEPROM";
 
 cleanup:
