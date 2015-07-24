@@ -921,9 +921,12 @@ calibrate_fail:
 	gdk_threads_enter();
 	reload_settings();
 
-	create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
-			"FMCOMMS5", "Calibration finished %s",
-			ret ? "with Error" : "Successfully");
+	if (ret) {
+		create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
+			"FMCOMMS5", "Calibration failed");
+	}
+
+	/* set completed flag for testing */
 	auto_calibrate = 1;
 
 	osc_plot_destroy(plot_xcorr_4ch);
