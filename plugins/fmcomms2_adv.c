@@ -20,6 +20,7 @@
 #include <malloc.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <ad9361.h>
@@ -800,21 +801,18 @@ static void calibrate (gpointer button)
 	if (!in0 || !in0_slave) {
 		printf("could not find channels\n");
 		ret = -ENODEV;
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
 	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
 		printf("could not find capture cores\n");
 		ret = -ENODEV;
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
 	if (!dev_dds_master || !dev_dds_slave) {
 		printf("could not find dds cores\n");
 		ret = -ENODEV;
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
@@ -830,7 +828,6 @@ static void calibrate (gpointer button)
 	ret = default_dds(get_cal_tone(), CAL_SCALE);
 	if (ret < 0) {
 		printf("could not set dds cores\n");
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
@@ -864,7 +861,6 @@ static void calibrate (gpointer button)
 	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.40);
@@ -881,7 +877,6 @@ static void calibrate (gpointer button)
 	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.64);
@@ -900,7 +895,6 @@ static void calibrate (gpointer button)
 	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, &ret, cal_freq, cal_tone, -1.0 , 0.001, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.88);
@@ -927,9 +921,12 @@ calibrate_fail:
 	gdk_threads_enter();
 	reload_settings();
 
-	create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
-			"FMCOMMS5", "Calibration finished %s",
-			ret ? "with Error" : "Successfully");
+	if (ret) {
+		create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
+			"FMCOMMS5", "Calibration failed");
+	}
+
+	/* set completed flag for testing */
 	auto_calibrate = 1;
 
 	osc_plot_destroy(plot_xcorr_4ch);
@@ -1166,11 +1163,31 @@ static int handle_external_request (const char *request)
 
 static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 {
-	if (MATCH_ATTRIB("calibrate")) {
-		do_calibration(NULL, NULL);
+	int ret = 0;
 
-		while (!auto_calibrate)
+	if (MATCH_ATTRIB("calibrate")) {
+		/* Set a timer for 20 seconds that calibration should succeed within. */
+		struct timespec ts_current, ts_end;
+		unsigned long long nsecs;
+		clock_gettime(CLOCK_MONOTONIC, &ts_current);
+		nsecs = ts_current.tv_nsec + (20000 * pow(10.0, 6));
+		ts_end.tv_sec = ts_current.tv_sec + (nsecs / pow(10.0, 9));
+		ts_end.tv_nsec = nsecs % (unsigned long long) pow(10.0, 9);
+
+		do_calibration(NULL, NULL);
+		while (!auto_calibrate && (timespeccmp(&ts_current, &ts_end, >) == 0)) {
 			gtk_main_iteration();
+			clock_gettime(CLOCK_MONOTONIC, &ts_current);
+		}
+
+		/* Calibration timed out without succeeding, probably running an old board
+		 * without an ADF5355 on it.
+		 */
+		if (!auto_calibrate)
+			ret = -1;
+
+		/* reset calibration completion flag */
+		auto_calibrate = 0;
 	} else if (MATCH_ATTRIB("SYNC_RELOAD") && atoi(value)) {
 		if (can_update_widgets)
 			update_widgets(builder);
@@ -1181,7 +1198,7 @@ static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int fmcomms2adv_handle(int line, const char *attrib, const char *value)

@@ -3758,7 +3758,7 @@ static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
 static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 {
 	osc_plot_draw_stop(plot);
-	g_slist_free_full(plot->priv->ch_settings_list, *free);
+	g_slist_free_full(plot->priv->ch_settings_list, (GDestroyNotify)g_free);
 	g_mutex_trylock(&plot->priv->g_marker_copy_lock);
 	g_mutex_unlock(&plot->priv->g_marker_copy_lock);
 
@@ -4641,6 +4641,8 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 				gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button), atoi(value));
 				priv->profile_loaded_scale = FALSE;
 				osc_plot_set_visible(plot, true);
+			} else if (MATCH_NAME("destroy_plot")) {
+				osc_plot_destroy(plot);
 			} else if (MATCH_NAME("domain")) {
 				if (!strcmp(value, "time"))
 					gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_domain), TIME_PLOT);
