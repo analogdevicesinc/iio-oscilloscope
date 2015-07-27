@@ -927,15 +927,19 @@ static int dcxo_to_eeprom(void)
 		goto cleanup;
 	}
 
-	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %a 2>&1", eeprom_path,
-			eeprom_path, current_freq);
+	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %x 2>&1", eeprom_path,
+			eeprom_path, (unsigned int)current_freq);
 	cmdfp = popen(cmd, "r");
 
-	if (!cmdfp || pclose(cmdfp) != 0)
+	fprintf(stderr, "Running fru-dump: %s\n", cmd);
+	if (!cmdfp || pclose(cmdfp) != 0) {
 		failure_msg = "Error running fru-dump to write to EEPROM";
+		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
+	}
 
 cleanup:
 	if (failure_msg) {
+		fprintf(stderr, "SCPI failed: %s\n", failure_msg);
 		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms5_panel);
 		if (!gtk_widget_is_toplevel(toplevel))
 			toplevel = NULL;
@@ -1008,9 +1012,14 @@ static int fmcomms5_handle_driver(const char *attrib, const char *value)
 		if (can_update_widgets)
 			reload_button_clicked(NULL, NULL);
 #ifndef _WIN32
-	} else if (MATCH_ATTRIB("dcxo_to_eeprom") && scpi_connect_functions()) {
-		fprintf(stderr, "SCPI: Saving current clock rate to EEPROM.\n");
-		ret = dcxo_to_eeprom();
+	} else if (MATCH_ATTRIB("dcxo_to_eeprom")) {
+		if (scpi_connect_functions()) {
+			fprintf(stderr, "SCPI: Saving current clock rate to EEPROM.\n");
+			ret = dcxo_to_eeprom();
+		} else {
+			fprintf(stderr, "SCPI plugin not loaded, can't query frequency.\n");
+			ret = -1;
+		}
 #endif /* _WIN32 */
 	} else {
 		return -EINVAL;
