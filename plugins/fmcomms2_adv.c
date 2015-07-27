@@ -924,10 +924,11 @@ calibrate_fail:
 	if (ret) {
 		create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
 			"FMCOMMS5", "Calibration failed");
+		auto_calibrate = -1;
+	} else {
+		/* set completed flag for testing */
+		auto_calibrate = 1;
 	}
-
-	/* set completed flag for testing */
-	auto_calibrate = 1;
 
 	osc_plot_destroy(plot_xcorr_4ch);
 	if (button)
@@ -1180,11 +1181,13 @@ static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 			clock_gettime(CLOCK_MONOTONIC, &ts_current);
 		}
 
-		/* Calibration timed out without succeeding, probably running an old board
+		/* Calibration timed out or failed, probably running an old board
 		 * without an ADF5355 on it.
 		 */
-		if (!auto_calibrate)
+		if (auto_calibrate < 0) {
+			fprintf(stderr, "FMCOMMS5 calibration failed.\n");
 			ret = -1;
+		}
 
 		/* reset calibration completion flag */
 		auto_calibrate = 0;
