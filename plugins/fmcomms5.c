@@ -32,7 +32,9 @@
 #include "./block_diagram.h"
 #include "dac_data_manager.h"
 #include "fir_filter.h"
+#ifndef _WIN32
 #include "scpi.h"
+#endif
 
 #define THIS_DRIVER "FMComms5"
 
