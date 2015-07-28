@@ -792,7 +792,6 @@ static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
 	bool fine_tune = false;
 	char *failure_msg = NULL;
 
-	long long clk_output_mode;
 	FILE *fp;
 
 	/* Alter toggle button text on start and stop. */
@@ -809,14 +808,9 @@ static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
 
 	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dcxo_cal_type))) {
 		case 0: /* REFCLK */
-			/* Make sure the right clock output mode is selected. */
-			iio_device_debug_attr_read_longlong(dev, "adi,clk-output-mode-select", &clk_output_mode);
-			if (clk_output_mode != 1) {
-					failure_msg = "Wrong AD9361 reference clock rate output mode selected. "
-							"Please enable the \"XTALN DCXO Buffered\" selection for clock output "
-							"under the FMComms2/3/4/5 Advanced tab.";
-					goto dcxo_cleanup;
-			}
+			/* Force the correct clock output mode. */
+			iio_device_debug_attr_write_longlong(dev, "adi,clk-output-mode-select", 1);
+			iio_device_debug_attr_write_longlong(dev, "initialize", 1);
 
 			if (!strcmp(iio_context_get_name(ctx), "network")) {
 				target_freq = REFCLK_RATE;
