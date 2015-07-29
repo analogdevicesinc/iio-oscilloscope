@@ -671,6 +671,7 @@ static int dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 
 	if (!fp || pclose(fp) != 0) {
 		failure_msg = "Error running fru-dump to write to EEPROM";
+		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
 		goto cleanup;
 	}
 

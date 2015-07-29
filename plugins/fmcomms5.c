@@ -931,10 +931,10 @@ static int dcxo_to_eeprom(void)
 			eeprom_path, (unsigned int)current_freq);
 	cmdfp = popen(cmd, "r");
 
-	fprintf(stderr, "Running fru-dump: %s\n", cmd);
 	if (!cmdfp || pclose(cmdfp) != 0) {
 		failure_msg = "Error running fru-dump to write to EEPROM";
 		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
+		goto cleanup;
 	}
 
 cleanup:
