@@ -544,9 +544,7 @@ static int scpi_connect(struct scpi_instrument *scpi)
 		return -1;
 	}
 
-	scpi_fprintf(scpi, "*CLS\r\n");
-	scpi_fprintf(scpi, "*RST\r\n");
-	scpi_fprintf(scpi, "*IDN?\r\n");
+	ret = scpi_fprintf(current_instrument, "*CLS;*RST;*IDN?\r\n");
 	scpi->model = strdup(scpi->response);
 	if (!strstr(scpi->model, scpi->id_regex)) {
 		printf("instrument doesn't match regex\n");
@@ -554,9 +552,10 @@ static int scpi_connect(struct scpi_instrument *scpi)
 		printf("\treceived : '%s'\n", scpi->response);
 		return -1;
 	}
-	printf("Instrument ID: %s\n", scpi->model);
+	if (ret > 0)
+		printf("Instrument ID: %s\n", scpi->model);
 
-	return 0;
+	return ret < 0 ? ret : 0;
 }
 
 /* Spectrum Analyzer commands */
