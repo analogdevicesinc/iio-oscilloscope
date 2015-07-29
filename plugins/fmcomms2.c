@@ -66,6 +66,7 @@ static const gdouble inv_scale = -1.0;
 
 static const char *freq_name;
 
+static volatile int auto_calibrate = 0;
 static unsigned int dcxo_coarse_num, dcxo_fine_num;
 struct tuning_param
 {
@@ -107,6 +108,7 @@ static GtkWidget *filter_fir_config;
 static GtkWidget *up_down_converter;
 static GtkWidget *dcxo_cal_progressbar;
 static GtkWidget *dcxo_cal_type;
+static GtkWidget *dcxo_cal;
 
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control_rx1;
@@ -647,13 +649,14 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 }
 
 #ifndef _WIN32
-static void dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
+static int dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 {
 	unsigned coarse, fine;
 	char cmd[256];
 	const char *eeprom_path = find_eeprom(NULL);
 	FILE *fp = NULL;
 	const char *failure_msg = NULL;
+	int ret = 0;
 
 	if (!eeprom_path) {
 		failure_msg = "Can't find EEPROM file in the sysfs";
@@ -666,8 +669,10 @@ static void dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 			eeprom_path, coarse, fine);
 	fp = popen(cmd, "r");
 
-	if (!fp || pclose(fp) != 0)
+	if (!fp || pclose(fp) != 0) {
 		failure_msg = "Error running fru-dump to write to EEPROM";
+		goto cleanup;
+	}
 
 cleanup:
 	if (failure_msg) {
@@ -683,12 +688,15 @@ cleanup:
 		gtk_window_set_title(GTK_WINDOW(dcxo_cal_eeprom_fail), "Save to EEPROM");
 		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_eeprom_fail)))
 			gtk_widget_destroy(dcxo_cal_eeprom_fail);
+		ret = -1;
 	}
 
 	g_free((void *)eeprom_path);
+
+	return ret;
 }
 
-static void dcxo_cal_from_eeprom_clicked(GtkButton *btn, gpointer data)
+static int dcxo_cal_from_eeprom_clicked(GtkButton *btn, gpointer data)
 {
 	const char *eeprom_path = find_eeprom(NULL);
 	unsigned char *raw_eeprom = NULL;
@@ -697,7 +705,7 @@ static void dcxo_cal_from_eeprom_clicked(GtkButton *btn, gpointer data)
 	size_t bytes;
 	const char *failure_msg = NULL;
 	char coarse_str[3], fine_str[5];
-	int coarse, fine;
+	int coarse, fine, ret = 0;
 
 	if (!eeprom_path) {
 		failure_msg = "Can't find EEPROM file in the sysfs";
@@ -764,24 +772,26 @@ cleanup:
 		gtk_window_set_title(GTK_WINDOW(dcxo_cal_eeprom_fail), "Load from EEPROM");
 		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_eeprom_fail)))
 			gtk_widget_destroy(dcxo_cal_eeprom_fail);
+		ret = -1;
 	}
 
 	g_free((void *)eeprom_path);
 	g_free(raw_eeprom);
 	g_free(fru);
+
+	return ret;
 }
 #endif /* _WIN32 */
 
-static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
+static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
 {
 	double current_freq, target_freq = 0, diff = 0, orig_diff = 0, prev_diff = 0;
-	int coarse = 0, fine = 4095, tune_step = 1, direction = 0;
+	int coarse = 0, fine = 4095, tune_step = 1, direction = 0, ret = 0;
 	GQueue *tuning_elems = NULL;
 	struct tuning_param *tuning_elem = NULL;
 	bool fine_tune = false;
 	char *failure_msg = NULL;
 
-	long long clk_output_mode;
 	FILE *fp;
 
 	/* Alter toggle button text on start and stop. */
@@ -798,14 +808,9 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 
 	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dcxo_cal_type))) {
 		case 0: /* REFCLK */
-			/* Make sure the write clock output mode is selected. */
-			iio_device_debug_attr_read_longlong(dev, "adi,clk-output-mode-select", &clk_output_mode);
-			if (clk_output_mode != 1) {
-					failure_msg = "Wrong AD9361 reference clock rate output mode selected. "
-							"Please enable the \"XTALN DCXO Buffered\" selection for clock output "
-							"under the FMComms2/3/4/5 Advanced tab.";
-					goto dcxo_cleanup;
-			}
+			/* Force the correct clock output mode. */
+			iio_device_debug_attr_write_longlong(dev, "adi,clk-output-mode-select", 1);
+			iio_device_debug_attr_write_longlong(dev, "initialize", 1);
 
 			if (!strcmp(iio_context_get_name(ctx), "network")) {
 				target_freq = REFCLK_RATE;
@@ -843,6 +848,7 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 	}
 
 	tuning_elems = g_queue_new();
+	target_freq = roundf(target_freq);
 
 	while (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn))) {
 		gtk_widget_show(dcxo_cal_progressbar);
@@ -855,7 +861,7 @@ static void dcxo_cal_clicked(GtkButton *btn, gpointer data)
 		/* Querying frequency counters via SCPI too quickly leads to failures. */
 		sleep(1);
 
-		if (scpi_counter_get_freq(&current_freq, roundf(target_freq)) != 0) {
+		if (scpi_counter_get_freq(&current_freq, &target_freq) != 0) {
 			failure_msg = "Error retrieving counter frequency. "
 				"Make sure the counter has the correct input attached.";
 			goto dcxo_cleanup;
@@ -979,6 +985,7 @@ dcxo_cleanup:
 		gtk_window_set_title(GTK_WINDOW(dcxo_cal_dialog_done), "DCXO calibration");
 		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_dialog_done)))
 			gtk_widget_destroy(dcxo_cal_dialog_done);
+		ret = -1;
 	}
 
 	gtk_widget_hide(dcxo_cal_progressbar);
@@ -994,7 +1001,11 @@ dcxo_cleanup:
 	gtk_widget_set_sensitive(glb_widgets[dcxo_coarse_num].widget, TRUE);
 	gtk_widget_set_sensitive(glb_widgets[dcxo_fine_num].widget, TRUE);
 
+	auto_calibrate = 1;
+
 	g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
+
+	return ret;
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
@@ -1203,6 +1214,8 @@ static int handle_external_request (const char *request)
 
 static int fmcomms2_handle_driver(const char *attrib, const char *value)
 {
+	int ret = 0;
+
 	if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value[0]) {
 			load_fir_filter(value, dev, NULL, fmcomms2_panel,
@@ -1245,6 +1258,20 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 	} else if (MATCH_ATTRIB("dac_buf_filename")) {
 		dac_data_manager_set_buffer_chooser_filename(
 				dac_tx_manager, value);
+#ifndef _WIN32
+	} else if (MATCH_ATTRIB("dcxo_calibrate")) {
+		/* calibration button needs to be active for the function to run */
+		g_signal_handlers_block_by_func(
+			GTK_TOGGLE_BUTTON(dcxo_cal), G_CALLBACK(dcxo_cal_clicked), NULL);
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dcxo_cal), TRUE);
+		g_signal_handlers_unblock_by_func(
+			GTK_TOGGLE_BUTTON(dcxo_cal), G_CALLBACK(dcxo_cal_clicked), NULL);
+		ret = dcxo_cal_clicked(GTK_BUTTON(dcxo_cal), NULL);
+		while (!auto_calibrate)
+			gtk_main_iteration();
+	} else if (MATCH_ATTRIB("dcxo_to_eeprom")) {
+		ret = dcxo_cal_to_eeprom_clicked(NULL, NULL);
+#endif /* _WIN32 */
 	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
 		if (can_update_widgets)
 			reload_button_clicked(NULL, NULL);
@@ -1252,7 +1279,7 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int fmcomms2_handle(int line, const char *attrib, const char *value)
@@ -1389,6 +1416,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	up_down_converter = GTK_WIDGET(gtk_builder_get_object(builder, "checkbox_up_down_converter"));
 	dcxo_cal_progressbar = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_progressbar"));
 	dcxo_cal_type = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_type"));
+	dcxo_cal = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal"));
 
 	section_toggle[SECTION_GLOBAL] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "global_settings_toggle"));
 	section_setting[SECTION_GLOBAL] = GTK_WIDGET(gtk_builder_get_object(builder, "global_settings"));

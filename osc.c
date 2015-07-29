@@ -2023,10 +2023,12 @@ static void load_profile_sequential(const char *filename)
 
 	printf("Loading profile sequentially from %s\n", new_filename);
 	ret = foreach_in_ini(new_filename, load_profile_sequential_handler);
-	if (ret < 0)
+	if (ret < 0) {
 		fprintf(stderr, "Sequential loading of profile aborted.\n");
-	else
+		application_quit();
+	} else {
 		fprintf(stderr, "Sequential loading completed.\n");
+	}
 
 err_unlink:
 	unlink(new_filename);

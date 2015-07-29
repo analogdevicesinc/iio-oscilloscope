@@ -32,12 +32,16 @@
 #include "./block_diagram.h"
 #include "dac_data_manager.h"
 #include "fir_filter.h"
+#ifndef _WIN32
+#include "scpi.h"
+#endif
 
 #define THIS_DRIVER "FMComms5"
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 #define HANNING_ENBW 1.50
+#define REFCLK_RATE 40000000
 
 #define PHY_DEVICE1 "ad9361-phy"
 #define DDS_DEVICE1 "cf-ad9361-dds-core-lpc" /* can be hpc as well */
@@ -869,7 +873,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int handle_external_request (const char *request)
+static int handle_external_request(const char *request)
 {
 	int ret = 0;
 
@@ -881,8 +885,86 @@ static int handle_external_request (const char *request)
 	return ret;
 }
 
+#ifndef _WIN32
+static int dcxo_to_eeprom(void)
+{
+	const char *eeprom_path = find_eeprom(NULL);
+	char cmd[256];
+	FILE *fp = NULL, *cmdfp = NULL;
+	const char *failure_msg = NULL;
+	double current_freq, target_freq;
+	int ret = 0;
+
+	if (!eeprom_path) {
+		failure_msg = "Can't find EEPROM file in the sysfs";
+		goto cleanup;
+	}
+
+	if (!strcmp(iio_context_get_name(ctx), "network")) {
+		target_freq = REFCLK_RATE;
+	} else if (!strcmp(iio_context_get_name(ctx), "local")) {
+		fp = fopen("/sys/kernel/debug/clk/ad9361_ext_refclk/clk_rate", "r");
+		if (fscanf(fp, "%lf", &target_freq) != 1) {
+			failure_msg = "Unable to read AD9361 reference clock rate from debugfs.";
+			goto cleanup;
+		}
+		if (fp) {
+			fclose(fp);
+		}
+	} else {
+		failure_msg = "AD9361 Reference clock rate missing from debugfs.";
+		goto cleanup;
+	}
+
+	if (scpi_connect_counter() != 0) {
+		failure_msg = "Failed to connect to Programmable Counter device.";
+		goto cleanup;
+	}
+
+	if (scpi_counter_get_freq(&current_freq, &target_freq) != 0) {
+		failure_msg = "Error retrieving counter frequency. "
+			"Make sure the counter has the correct input attached.";
+		goto cleanup;
+	}
+
+	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %x 2>&1", eeprom_path,
+			eeprom_path, (unsigned int)current_freq);
+	cmdfp = popen(cmd, "r");
+
+	fprintf(stderr, "Running fru-dump: %s\n", cmd);
+	if (!cmdfp || pclose(cmdfp) != 0) {
+		failure_msg = "Error running fru-dump to write to EEPROM";
+		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
+	}
+
+cleanup:
+	if (failure_msg) {
+		fprintf(stderr, "SCPI failed: %s\n", failure_msg);
+		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms5_panel);
+		if (!gtk_widget_is_toplevel(toplevel))
+			toplevel = NULL;
+		GtkWidget *dcxo_to_eeprom_fail = gtk_message_dialog_new(
+			GTK_WINDOW(toplevel),
+			GTK_DIALOG_MODAL,
+			GTK_MESSAGE_ERROR,
+			GTK_BUTTONS_CLOSE,
+			"%s", failure_msg);
+		gtk_window_set_title(GTK_WINDOW(dcxo_to_eeprom_fail), "Save to EEPROM");
+		if (gtk_dialog_run(GTK_DIALOG(dcxo_to_eeprom_fail)))
+			gtk_widget_destroy(dcxo_to_eeprom_fail);
+		ret = -1;
+	}
+
+	g_free((void *)eeprom_path);
+
+	return ret;
+}
+#endif /* _WIN32 */
+
 static int fmcomms5_handle_driver(const char *attrib, const char *value)
 {
+	int ret = 0;
+
 	if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value[0]) {
 			load_fir_filter(value, dev1, dev2, fmcomms5_panel,
@@ -929,11 +1011,21 @@ static int fmcomms5_handle_driver(const char *attrib, const char *value)
 	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
 		if (can_update_widgets)
 			reload_button_clicked(NULL, NULL);
+#ifndef _WIN32
+	} else if (MATCH_ATTRIB("dcxo_to_eeprom")) {
+		if (scpi_connect_functions()) {
+			fprintf(stderr, "SCPI: Saving current clock rate to EEPROM.\n");
+			ret = dcxo_to_eeprom();
+		} else {
+			fprintf(stderr, "SCPI plugin not loaded, can't query frequency.\n");
+			ret = -1;
+		}
+#endif /* _WIN32 */
 	} else {
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int fmcomms5_handle(int line, const char *attrib, const char *value)

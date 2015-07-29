@@ -832,7 +832,7 @@ int scpi_connect_counter()
 
 
 /* Retrieve the current frequency from supported frequency counter devices. */
-int scpi_counter_get_freq(double *freq, double target_freq)
+int scpi_counter_get_freq(double *freq, double *target_freq)
 {
 	int ret = -1;
 	double scale = 1.0;
@@ -861,7 +861,10 @@ int scpi_counter_get_freq(double *freq, double target_freq)
 		g_strfreev(freq_tokens);
 	} else if (strstr(current_instrument->model, AGILENT_53131A)) {
 		/* Output is in scientific E notation, Hz scale by default. */
-		ret = scpi_fprintf(current_instrument, ":MEASURE:FREQ? %E HZ, 1 HZ\r\n", target_freq);
+		if (target_freq)
+			ret = scpi_fprintf(current_instrument, ":MEASURE:FREQ? %E HZ, 1 HZ\r\n", *target_freq);
+		else
+			ret = scpi_fprintf(current_instrument, ":MEASURE:FREQ?\r\n");
 		if (ret < 0)
 			return ret;
 
