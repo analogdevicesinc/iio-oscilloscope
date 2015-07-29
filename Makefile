@@ -67,6 +67,7 @@ PLUGINS=\
 	plugins/fmcomms2_adv.$(SO) \
 	plugins/ad6676.$(SO) \
 	plugins/pr_config.$(SO) \
+	plugins/fmcadc3.$(SO) \
 	plugins/daq2.$(SO) \
 	plugins/AD5628_1.$(SO) \
 	plugins/AD7303.$(SO) \
