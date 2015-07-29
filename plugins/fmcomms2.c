@@ -1004,7 +1004,8 @@ dcxo_cleanup:
 
 	auto_calibrate = 1;
 
-	g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
+	if (tuning_elems)
+		g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
 
 	return ret;
 }
