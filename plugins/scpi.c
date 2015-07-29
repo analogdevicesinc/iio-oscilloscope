@@ -797,7 +797,9 @@ int scpi_connect_counter()
 	/* Iterate over tty dev nodes, trying to connect to a supported device. */
 	for (tty_node = 0; tty_node <= 9; tty_node++) {
 		current_instrument->tty_path[strlen(current_instrument->tty_path)-1] = (char)(tty_node + '0');
-		if (scpi_connect(current_instrument) == 0 && scpi_counter_connected()) {
+		if (access(current_instrument->tty_path, R_OK | W_OK) != -1 &&
+				scpi_connect(current_instrument) == 0 &&
+				scpi_counter_connected()) {
 			if (strstr(current_instrument->model, HAMEG_HM8123)) {
 				/* Select the correct input. */
 				do {
