@@ -332,12 +332,11 @@ static gboolean dmm_update(void)
 				if (iio_channel_find_attr(chn, "scale"))
 					value *= read_double_attr(chn,
 							"scale");
-				value /= 1000.0;
 
 				if (!strncmp(channel, "voltage", 7))
-					sprintf(tmp, "%s = %f Volts\n", name, value);
+					sprintf(tmp, "%s = %f Volts\n", name, value / 1000);
 				else if (!strncmp(channel, "temp", 4))
-					sprintf(tmp, "%s = %3.2f °C\n", name, value);
+					sprintf(tmp, "%s = %3.2f °C\n", name, value / 1000);
 				else
 					sprintf(tmp, "%s = %f\n", name, value);
 
