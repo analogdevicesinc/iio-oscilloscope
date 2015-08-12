@@ -921,7 +921,6 @@ display_call_ret:
 	/* free the buffers */
 	if (cooked_data || markers)
 		plugin_data_capture_of_plot(fft_plot, NULL, &cooked_data, &markers);
-
 	kill_thread = 1;
 	g_thread_exit(NULL);
 }
@@ -1327,6 +1326,11 @@ static void cal_dialog(GtkButton *btn, Dialogs *data)
 		 ret != GTK_RESPONSE_DELETE_EVENT);	/* Clicked on the close icon */
 
 	kill_thread = 1;
+	/* Stop capturing in order to unlock the buffer_full mutex otherwise
+	 this thread will suspend the capture while waiting for the display_cal
+	 to die which won't die until it will get one last batch of data. */
+	if (calib_plot_exists)
+		osc_plot_draw_stop(plot_fft_2ch);
 	g_source_remove_by_user_data(data);
 
 	if (thid_rx)
@@ -1335,7 +1339,6 @@ static void cal_dialog(GtkButton *btn, Dialogs *data)
 	if (filename)
 		g_free(filename);
 	if (calib_plot_exists) {
-		osc_plot_draw_stop(plot_fft_2ch);
 		osc_plot_destroy(plot_fft_2ch);
 	}
 
