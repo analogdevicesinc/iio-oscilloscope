@@ -39,7 +39,7 @@ struct _OscPlotClass
 };
 
 GType         osc_plot_get_type         (void);
-GtkWidget*    osc_plot_new              (void);
+GtkWidget*    osc_plot_new              (struct iio_context *ctx);
 void          osc_plot_destroy          (OscPlot *plot);
 void          osc_plot_set_visible      (OscPlot *plot, bool visible);
 struct iio_buffer * osc_plot_get_buffer (OscPlot *plot);
@@ -69,6 +69,10 @@ void          osc_plot_set_quit_callback(OscPlot *plot, void (*qcallback)(void *
 void          osc_plot_reset_numbering  (void);
 int           osc_plot_get_id           (OscPlot *plot);
 void          osc_plot_set_id           (OscPlot *plot, int id);
+void          osc_plot_spect_mode       (OscPlot *plot, bool enable);
+void          osc_plot_spect_set_start_f(OscPlot *plot, double freq_mhz);
+void          osc_plot_spect_set_len    (OscPlot *plot, unsigned fft_count);
+void          osc_plot_spect_set_filter_bw(OscPlot *plot, double bw);
 
 G_END_DECLS
 

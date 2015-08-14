@@ -83,6 +83,7 @@ enum marker_types {
 #define FFT_PLOT 1
 #define XY_PLOT 2
 #define XCORR_PLOT 3
+#define SPECTRUM_PLOT 4
 
 #define USE_INTERN_SAMPLING_FREQ -1.0
 

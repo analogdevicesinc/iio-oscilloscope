@@ -35,6 +35,7 @@ enum {
 	CONSTELLATION_TRANSFORM,
 	COMPLEX_FFT_TRANSFORM,
 	CROSS_CORRELATION_TRANSFORM,
+	FREQ_SPECTRUM_TRANSFORM,
 	TRANSFORMS_TYPES_COUNT
 };
 
@@ -104,7 +105,7 @@ struct _transform {
 	GdkColor *graph_color;
 	bool has_the_marker;
 	void *settings;
-	void (*transform_function)(Transform *tr, gboolean init_transform);
+	bool (*transform_function)(Transform *tr, gboolean init_transform);
 };
 
 struct _tr_list {
@@ -160,6 +161,32 @@ struct _cross_correlation_settings {
 	enum marker_types *marker_type;
 };
 
+struct _freq_spectrum_settings {
+	gfloat *real_source;
+	gfloat *imag_source;
+	gfloat *freq_axis_source;
+	gfloat *magn_axis_source;
+	unsigned freq_axis_size;
+	unsigned magn_axis_size;
+	unsigned fft_index;
+	unsigned fft_count;
+	double freq_sweep_start;
+	double filter_bandwidth;
+	unsigned int fft_size;
+	unsigned int fft_avg;
+	gfloat fft_pwr_off;
+	unsigned fft_lower_clipping_limit;
+	unsigned fft_upper_clipping_limit;
+	struct _fft_alg_data *ffts_alg_data;
+	gfloat fft_corr;
+	unsigned int *maxXaxis;
+	gfloat *maxYaxis;
+	struct marker_type *markers;
+	struct marker_type **markers_copy;
+	GMutex *marker_lock;
+	enum marker_types *marker_type;
+};
+
 Transform* Transform_new(int tr_type);
 void Transform_destroy(Transform *tr);
 void Transform_resize_x_axis(Transform *tr, int new_size);
@@ -167,9 +194,9 @@ void Transform_resize_y_axis(Transform *tr, int new_size);
 gfloat* Transform_get_x_axis_ref(Transform *tr);
 gfloat* Transform_get_y_axis_ref(Transform *tr);
 void Transform_attach_settings(Transform *tr, void *settings);
-void Transform_attach_function(Transform *tr, void (*f)(Transform *tr , gboolean init_transform));
+void Transform_attach_function(Transform *tr, bool (*f)(Transform *tr , gboolean init_transform));
 void Transform_setup(Transform *tr);
-void Transform_update_output(Transform *tr);
+bool Transform_update_output(Transform *tr);
 
 TrList* TrList_new(void);
 void TrList_destroy(TrList *list);
