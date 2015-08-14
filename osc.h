@@ -27,6 +27,7 @@
 extern GtkWidget *capture_graph;
 extern gint capture_function;
 extern bool str_endswith(const char *str, const char *needle);
+extern void math_expression_objects_clean(void);
 
 /* Max 1 Meg (2^20) */
 #define MAX_SAMPLES 1048576
@@ -45,10 +46,16 @@ extern bool str_endswith(const char *str, const char *needle);
 #define REMOVE_MRK "Remove Marker"
 
 #ifndef timespeccmp
-#define timespeccmp(tsp, usp, cmp)			\
-	(((tsp)->tv_sec == (usp)->tv_sec) ?		\
-		((tsp)->tv_nsec cmp (usp)->tv_nsec) :	\
+#define timespeccmp(tsp, usp, cmp) \
+	(((tsp)->tv_sec == (usp)->tv_sec) ? \
+		((tsp)->tv_nsec cmp (usp)->tv_nsec) : \
 		((tsp)->tv_sec cmp (usp)->tv_sec))
+#endif
+
+#ifdef DEBUG
+#define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
+#else
+#define DBG(D...)
 #endif
 
 struct marker_type {
@@ -88,6 +95,8 @@ void trigger_dialog_init(GtkBuilder *builder);
 void trigger_settings_for_device(GtkBuilder *builder, const char *device);
 void application_quit (void);
 
+bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
+unsigned global_enabled_channels_mask(struct iio_device *dev);
 void add_ch_setup_check_fct(char *device_name, void *fp);
 void *find_setup_check_fct_by_devname(const char *dev_name);
 bool is_input_device(const struct iio_device *dev);
@@ -105,6 +114,9 @@ enum marker_types plugin_get_plot_marker_type(OscPlot *plot, const char *device)
 void plugin_set_plot_marker_type(OscPlot *plot, const char *device, enum marker_types type);
 gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device);
 OscPlot * plugin_get_new_plot(void);
+void plugin_osc_stop_capture(void);
+void plugin_osc_start_capture(void);
+bool plugin_osc_running_state(void);
 
 void save_complete_profile(const char *filename);
 void load_complete_profile(const char *filename);

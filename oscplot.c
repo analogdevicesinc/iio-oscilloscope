@@ -40,7 +40,6 @@ typedef size_t mat_dim;
 #endif
 
 extern void *find_setup_check_fct_by_devname(const char *dev_name);
-extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
 static int (*plugin_setup_validation_fct)(struct iio_device *, const char **) = NULL;
 static unsigned object_count = 0;
@@ -1969,25 +1968,6 @@ static void set_may_be_enabled_bit(GtkTreeModel *model,
 			CHANNEL_ACTIVE, &enabled, -1);
 	info = iio_channel_get_data(chn);
 	info->may_be_enabled = enabled;
-}
-
-static unsigned global_enabled_channels_mask(struct iio_device *dev)
-{
-	unsigned mask = 0;
-	int scan_i = 0;
-	unsigned int i = 0;
-
-	for (; i < iio_device_get_channels_count(dev); i++) {
-		struct iio_channel *chn = iio_device_get_channel(dev, i);
-
-		if (iio_channel_is_scan_element(chn)) {
-			if (iio_channel_is_enabled(chn))
-				mask |= 1 << scan_i;
-			scan_i++;
-		}
-	}
-
-	return mask;
 }
 
 static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
@@ -4160,7 +4140,7 @@ static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
 static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 {
 	osc_plot_draw_stop(plot);
-	g_slist_free_full(plot->priv->ch_settings_list, *free);
+	g_slist_free_full(plot->priv->ch_settings_list, (GDestroyNotify)g_free);
 	g_mutex_trylock(&plot->priv->g_marker_copy_lock);
 	g_mutex_unlock(&plot->priv->g_marker_copy_lock);
 
@@ -4336,6 +4316,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 	int d;
 	unsigned int nb_channels, i, j;
 	const char *dev_name;
+	unsigned int dev_sample_count;
 
 	name = malloc(strlen(filename) + 5);
 	switch(type) {
@@ -4376,8 +4357,12 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			fprintf(fp, "FreqValidMin\t-%e\n", freq / 2);
 			fprintf(fp, "Y\n");
 
+			dev_sample_count = dev_info->sample_count;
+			if (dev_info->channel_trigger_enabled)
+				dev_sample_count /= 2;
+
 			/* Start writing the samples */
-			for (i = 0; i < dev_info->sample_count / 2; i++) {
+			for (i = 0; i < dev_sample_count; i++) {
 				for (j = 0; j < nb_channels; j++) {
 					struct extra_info *info = iio_channel_get_data(iio_device_get_channel(dev, j));
 					if (save_channels_mask[j] == 1)
@@ -4414,7 +4399,11 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				/* Find which channel need to be saved */
 				save_channels_mask = get_user_saveas_channel_selection(plot, nb_channels);
 
-				for (i = 0; i < dev_info->sample_count / 2; i++) {
+				dev_sample_count = dev_info->sample_count;
+				if (dev_info->channel_trigger_enabled)
+					dev_sample_count /= 2;
+
+				for (i = 0; i < dev_sample_count; i++) {
 					for (j = 0; j < nb_channels; j++) {
 						struct extra_info *info = iio_channel_get_data(iio_device_get_channel(dev, j));
 						if (save_channels_mask[j] == 1)
@@ -4474,7 +4463,11 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 			/* Find which channel need to be saved */
 			save_channels_mask = get_user_saveas_channel_selection(plot, nb_channels);
 
-			dims[0] = dev_info->sample_count / 2;
+			dev_sample_count = dev_info->sample_count;
+			if (dev_info->channel_trigger_enabled)
+				dev_sample_count /= 2;
+
+			dims[0] = dev_sample_count;
 			for (i = 0; i < nb_channels; i++) {
 				struct iio_channel *chn = iio_device_get_channel(dev, i);
 				const char *ch_name = iio_channel_get_name(chn) ?:
@@ -4492,12 +4485,12 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 					gdouble *tmp_data;
 					double k;
 
-					tmp_data = g_new(gdouble, dev_info->sample_count / 2);
+					tmp_data = g_new(gdouble, dev_sample_count);
 					if (format->is_signed)
 						k = format->bits - 1;
 					else
 						k = format->bits;
-					for (j = 0; j < dev_info->sample_count / 2; j++) {
+					for (j = 0; j < dev_sample_count; j++) {
 						tmp_data[j] = (gdouble)info->data_ref[j] /
 									(pow(2.0, k));
 					}
@@ -5042,6 +5035,8 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 				gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button), atoi(value));
 				priv->profile_loaded_scale = FALSE;
 				osc_plot_set_visible(plot, true);
+			} else if (MATCH_NAME("destroy_plot")) {
+				osc_plot_destroy(plot);
 			} else if (MATCH_NAME("domain")) {
 				if (!strcmp(value, "time"))
 					gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_domain), TIME_PLOT);

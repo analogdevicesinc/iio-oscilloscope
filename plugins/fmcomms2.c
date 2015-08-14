@@ -29,8 +29,11 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../eeprom.h"
-#include "./block_diagram.h"
+#include "../fru.h"
+#include "block_diagram.h"
 #include "dac_data_manager.h"
+#include "fir_filter.h"
+#include "scpi.h"
 
 #define HANNING_ENBW 1.50
 
@@ -44,6 +47,8 @@
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 #define MHZ_TO_HZ(x) ((x) * 1000000ul)
+
+#define REFCLK_RATE 40000000
 
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
@@ -61,7 +66,15 @@ static const gdouble inv_scale = -1.0;
 
 static const char *freq_name;
 
+static volatile int auto_calibrate = 0;
 static unsigned int dcxo_coarse_num, dcxo_fine_num;
+struct tuning_param
+{
+	double frequency;
+	int coarse;
+	int fine;
+};
+
 static struct iio_widget widgets[100];
 static struct iio_widget *glb_widgets, *tx_widgets, *rx_widgets;
 static unsigned int rx1_gain, rx2_gain;
@@ -93,6 +106,9 @@ static GtkWidget *trx_rate_governor;
 static GtkWidget *trx_rate_governor_available;
 static GtkWidget *filter_fir_config;
 static GtkWidget *up_down_converter;
+static GtkWidget *dcxo_cal_progressbar;
+static GtkWidget *dcxo_cal_type;
+static GtkWidget *dcxo_cal;
 
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control_rx1;
@@ -134,6 +150,8 @@ static const char *fmcomms2_sr_attribs[] = {
 	PHY_DEVICE".in_voltage_quadrature_tracking_en",
 	PHY_DEVICE".in_voltage_rf_dc_offset_tracking_en",
 	PHY_DEVICE".out_voltage0_rf_port_select",
+	PHY_DEVICE".out_altvoltage0_RX_LO_external",
+	PHY_DEVICE".out_altvoltage1_TX_LO_external",
 	PHY_DEVICE".out_altvoltage0_RX_LO_frequency",
 	PHY_DEVICE".out_altvoltage1_TX_LO_frequency",
 	PHY_DEVICE".out_voltage0_hardwaregain",
@@ -522,7 +540,7 @@ static void rx_phase_rotation_update()
 	}
 }
 
-static void dxco_widgets_update(void)
+static void dcxo_widgets_update(void)
 {
 	char val[64];
 	int ret;
@@ -541,10 +559,10 @@ static void update_widgets(void)
 	if (dds)
 		iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dds);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
-	dxco_widgets_update();
+	dcxo_widgets_update();
 }
 
-void filter_fir_update(void)
+static void filter_fir_update(void)
 {
 	bool rx = false, tx = false, rxtx = false;
 	struct iio_channel *chn;
@@ -568,7 +586,7 @@ void filter_fir_update(void)
 	}
 }
 
-void filter_fir_enable(GtkToggleButton *button, gpointer data)
+static void filter_fir_enable(GtkToggleButton *button, gpointer data)
 {
 	bool rx, tx, rxtx, disable;
 
@@ -608,6 +626,11 @@ void filter_fir_enable(GtkToggleButton *button, gpointer data)
 		}
 	}
 
+	if (plugin_osc_running_state() == true) {
+		plugin_osc_stop_capture();
+		plugin_osc_start_capture();
+	}
+
 	filter_fir_update();
 	glb_settings_update_labels();
 	update_widgets();
@@ -623,6 +646,367 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	glb_settings_update_labels();
 	rssi_update_labels();
 	rx_phase_rotation_update();
+}
+
+#ifndef _WIN32
+static int dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
+{
+	unsigned coarse, fine;
+	char cmd[256];
+	const char *eeprom_path = find_eeprom(NULL);
+	FILE *fp = NULL;
+	const char *failure_msg = NULL;
+	int ret = 0;
+
+	if (!eeprom_path) {
+		failure_msg = "Can't find EEPROM file in the sysfs";
+		goto cleanup;
+	}
+
+	coarse = gtk_spin_button_get_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_coarse_num].widget));
+	fine = gtk_spin_button_get_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_fine_num].widget));
+	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %.02x%.04x 2>&1", eeprom_path,
+			eeprom_path, coarse, fine);
+	fp = popen(cmd, "r");
+
+	if (!fp || pclose(fp) != 0) {
+		failure_msg = "Error running fru-dump to write to EEPROM";
+		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
+		goto cleanup;
+	}
+
+cleanup:
+	if (failure_msg) {
+		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms2_panel);
+		if (!gtk_widget_is_toplevel(toplevel))
+			toplevel = NULL;
+		GtkWidget *dcxo_cal_eeprom_fail = gtk_message_dialog_new(
+			GTK_WINDOW(toplevel),
+			GTK_DIALOG_MODAL,
+			GTK_MESSAGE_ERROR,
+			GTK_BUTTONS_CLOSE,
+			"%s", failure_msg);
+		gtk_window_set_title(GTK_WINDOW(dcxo_cal_eeprom_fail), "Save to EEPROM");
+		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_eeprom_fail)))
+			gtk_widget_destroy(dcxo_cal_eeprom_fail);
+		ret = -1;
+	}
+
+	g_free((void *)eeprom_path);
+
+	return ret;
+}
+
+static int dcxo_cal_from_eeprom_clicked(GtkButton *btn, gpointer data)
+{
+	const char *eeprom_path = find_eeprom(NULL);
+	unsigned char *raw_eeprom = NULL;
+	struct FRU_DATA *fru = NULL;
+	FILE *fp;
+	size_t bytes;
+	const char *failure_msg = NULL;
+	char coarse_str[3], fine_str[5];
+	int coarse, fine, ret = 0;
+
+	if (!eeprom_path) {
+		failure_msg = "Can't find EEPROM file in the sysfs";
+		goto cleanup;
+	}
+
+	fp = fopen(eeprom_path, "rb");
+	if (!fp) {
+		failure_msg = "Can't open EEPROM file";
+		goto cleanup;
+	}
+
+	raw_eeprom = g_malloc(FAB_SIZE_FRU_EEPROM);
+	bytes = fread(raw_eeprom, 1, FAB_SIZE_FRU_EEPROM, fp);
+
+	/* FRU format specifies a 256 byte file size. */
+	if (ferror(fp) || bytes != FAB_SIZE_FRU_EEPROM) {
+		failure_msg = "Failed to read EEPROM file";
+		fclose(fp);
+		goto cleanup;
+	}
+	fclose(fp);
+
+	fru = parse_FRU(raw_eeprom);
+	if (!fru) {
+		failure_msg = "Failed to parse EEPROM";
+		goto cleanup;
+	}
+
+	/* The tuning parameters are stored as a single, concatenated hex string,
+	 * with the first two characters being the coarse value and the last four
+	 * characters being the fine value.
+	 *
+	 * Note that there are two header bytes that must be skipped first.
+	 */
+	memcpy(coarse_str, &fru->Board_Area->custom[4][2], 2);
+	coarse_str[2] = '\0';
+	memcpy(fine_str, &fru->Board_Area->custom[4][4], 4);
+	fine_str[4] = '\0';
+
+	coarse = strtol(coarse_str, NULL, 16);
+	fine = strtol(fine_str, NULL, 16);
+	if (errno == ERANGE || errno == EINVAL) {
+		failure_msg = "Failed parsing coarse and/or fine values from EEPROM";
+		goto cleanup;
+	}
+
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(
+		glb_widgets[dcxo_coarse_num].widget), coarse);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(
+		glb_widgets[dcxo_fine_num].widget), fine);
+
+cleanup:
+	if (failure_msg) {
+		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms2_panel);
+		if (!gtk_widget_is_toplevel(toplevel))
+			toplevel = NULL;
+		GtkWidget *dcxo_cal_eeprom_fail = gtk_message_dialog_new(
+			GTK_WINDOW(toplevel),
+			GTK_DIALOG_MODAL,
+			GTK_MESSAGE_ERROR,
+			GTK_BUTTONS_CLOSE,
+			"%s", failure_msg);
+		gtk_window_set_title(GTK_WINDOW(dcxo_cal_eeprom_fail), "Load from EEPROM");
+		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_eeprom_fail)))
+			gtk_widget_destroy(dcxo_cal_eeprom_fail);
+		ret = -1;
+	}
+
+	g_free((void *)eeprom_path);
+	g_free(raw_eeprom);
+	g_free(fru);
+
+	return ret;
+}
+#endif /* _WIN32 */
+
+static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
+{
+	double current_freq, target_freq = 0, diff = 0, orig_diff = 0, prev_diff = 0;
+	int coarse = 0, fine = 4095, tune_step = 1, direction = 0, ret = 0;
+	GQueue *tuning_elems = NULL;
+	struct tuning_param *tuning_elem = NULL;
+	bool fine_tune = false;
+	char *failure_msg = NULL;
+
+	FILE *fp;
+
+	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)))
+		goto dcxo_cleanup;
+
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dcxo_cal_type))) {
+		case 0: /* REFCLK */
+			/* Force the correct clock output mode. */
+			iio_device_debug_attr_write_longlong(dev, "adi,clk-output-mode-select", 1);
+			iio_device_debug_attr_write_longlong(dev, "initialize", 1);
+
+			if (!strcmp(iio_context_get_name(ctx), "network")) {
+				target_freq = REFCLK_RATE;
+			} else if (!strcmp(iio_context_get_name(ctx), "local")) {
+				fp = fopen("/sys/kernel/debug/clk/ad9361_ext_refclk/clk_rate", "r");
+				if (fscanf(fp, "%lf", &target_freq) != 1) {
+					failure_msg = "Unable to read AD9361 reference clock rate from debugfs.";
+					goto dcxo_cleanup;
+				}
+				if (fp)
+					fclose(fp);
+			} else {
+				failure_msg = "AD9361 Reference clock rate missing from debugfs.";
+				goto dcxo_cleanup;
+			}
+			break;
+		case 1: /* RF Output */
+			target_freq = mhz_scale * (
+				gtk_spin_button_get_value(GTK_SPIN_BUTTON(tx_widgets[tx_lo].widget)) +
+				gtk_spin_button_get_value(GTK_SPIN_BUTTON(
+					dac_data_manager_get_widget(dac_tx_manager, TX1_T1_I, WIDGET_FREQUENCY))));
+			break;
+		case 2: /* RF Input */
+			failure_msg = "RF Input is not supported yet for DCXO calibration.";
+			goto dcxo_cleanup;
+			break;
+		default:
+			failure_msg = "Unsupported calibration method selected.";
+			goto dcxo_cleanup;
+	}
+
+	if (scpi_connect_counter() != 0) {
+		failure_msg = "Failed to connect to Programmable Counter device.";
+		goto dcxo_cleanup;
+	}
+
+	/* Alter toggle button text on start and disable user input for certain
+	 * widgets during calibration.
+	 */
+	gtk_button_set_label(btn, "Stop calibration");
+	gtk_widget_set_sensitive(dcxo_cal_type, FALSE);
+	gtk_widget_set_sensitive(glb_widgets[dcxo_coarse_num].widget, FALSE);
+	gtk_widget_set_sensitive(glb_widgets[dcxo_fine_num].widget, FALSE);
+
+	tuning_elems = g_queue_new();
+	target_freq = roundf(target_freq);
+
+	while (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn))) {
+		gtk_widget_show(dcxo_cal_progressbar);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_coarse_num].widget), coarse);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_fine_num].widget), fine);
+		dcxo_widgets_update();
+		while (gtk_events_pending())
+			gtk_main_iteration();
+
+		/* Querying frequency counters via SCPI too quickly leads to failures. */
+		sleep(1);
+
+		if (scpi_counter_get_freq(&current_freq, &target_freq) != 0) {
+			failure_msg = "Error retrieving counter frequency. "
+				"Make sure the counter has the correct input attached.";
+			goto dcxo_cleanup;
+		}
+
+		/* Sometimes the frequency counter returns entirely wrong values that
+		 * are orders of magnitude off. In those cases we trigger a new
+		 * measurement request and hope the device returns the correct value
+		 * this time.
+		 */
+		if (prev_diff != 0 && fabs(target_freq - current_freq) > 10 * fabs(prev_diff)) {
+			fprintf(stderr, "Skipping likely erroneous response from SCPI device. "
+				"Previous difference to target frequency was %lf Hz, possible bad value's "
+				"difference is %lf Hz.\n", prev_diff, (target_freq - current_freq));
+			continue;
+		}
+
+		prev_diff = diff;
+		diff = target_freq - current_freq;
+
+		/* Show progress towards the target frequency in relation to the
+		 * original frequency measurement.
+		 */
+		if (orig_diff == 0) {
+			orig_diff = fabs(diff);
+			direction = (int)fabs(diff)/diff;
+		} else {
+			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(
+				dcxo_cal_progressbar), (orig_diff-fabs(diff))/orig_diff);
+		}
+
+		/* Store the past ten tuning value pairs and related frequencies. This
+		 * is used to determine the final values that are the closest to the
+		 * target frequency.
+		 */
+		if (g_queue_get_length(tuning_elems) >= 10)
+			g_queue_pop_head(tuning_elems);
+		tuning_elem = g_new(struct tuning_param, 1);
+		tuning_elem->frequency = current_freq;
+		tuning_elem->coarse = coarse;
+		tuning_elem->fine = fine;
+		g_queue_push_tail(tuning_elems, tuning_elem);
+
+		if (fine_tune) {
+			/* Stop once we go past our target frequency. */
+			if (diff != 0) {
+				if (direction < 0 && current_freq < target_freq)
+					break;
+				else if (direction > 0 && current_freq > target_freq)
+					break;
+			}
+
+			tune_step = (int)roundf(-1 * (diff / 2));
+
+			/* Force the next tuning step to be at least positive or negative 1. */
+			if (tune_step == 0)
+				tune_step = -1 * direction;
+
+			fine += tune_step;
+		} else {
+			/* Do a binary search for the closest approaching coarse tune value
+			 * in relation to the target frequency. When the difference to the
+			 * target frequency is below another coarse tune step, switch to
+			 * fine tuning.
+			 */
+			if (tune_step != 0) {
+				if (prev_diff != 0)
+					tune_step = (int)nearbyintf(-1 * ((tune_step * diff) / fabs(diff - prev_diff)) / 2);
+				coarse += tune_step;
+			} else {
+				fine_tune = true;
+			}
+		}
+
+		if (coarse < 0 || coarse > 63 || fine < 0 || fine > 8191) {
+			failure_msg = "Outside of tuning bounds. Make sure you have the "
+				"correct calibration method selected.\n";
+			goto dcxo_cleanup;
+		}
+	}
+
+	/* Determine the median tuning value from the list of acceptable values.
+	 * Values are first removed from the beginning of the queue if they have a
+	 * higher difference to the target frequency in comparison to the last
+	 * added element.
+	 */
+	if (g_queue_get_length(tuning_elems) > 1) {
+		tuning_elem = g_queue_peek_tail(tuning_elems);
+		diff = fabs(tuning_elem->frequency - target_freq);
+
+		while (g_queue_get_length(tuning_elems) > 1) {
+			tuning_elem = g_queue_peek_head(tuning_elems);
+			if (fabs(tuning_elem->frequency - target_freq) > diff)
+				g_queue_pop_head(tuning_elems);
+			else
+				break;
+		}
+
+		/* Set final tuning values using the median value of the remaining
+		 * range.
+		 */
+		tuning_elem = g_queue_peek_nth(
+			tuning_elems, ceil(g_queue_get_length(tuning_elems)/2));
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(
+			glb_widgets[dcxo_coarse_num].widget), tuning_elem->coarse);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(
+			glb_widgets[dcxo_fine_num].widget), tuning_elem->fine);
+	}
+
+dcxo_cleanup:
+	if (failure_msg) {
+		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms2_panel);
+		if (!gtk_widget_is_toplevel(toplevel))
+			toplevel = NULL;
+		GtkWidget *dcxo_cal_dialog_done = gtk_message_dialog_new(
+			GTK_WINDOW(toplevel),
+			GTK_DIALOG_MODAL,
+			GTK_MESSAGE_ERROR,
+			GTK_BUTTONS_CLOSE,
+			"%s", failure_msg);
+		gtk_window_set_title(GTK_WINDOW(dcxo_cal_dialog_done), "DCXO calibration");
+		if (gtk_dialog_run(GTK_DIALOG(dcxo_cal_dialog_done)))
+			gtk_widget_destroy(dcxo_cal_dialog_done);
+		ret = -1;
+	}
+
+	gtk_widget_hide(dcxo_cal_progressbar);
+
+	/* reset calibration buttons */
+	gtk_button_set_label(btn, "Calibrate DCXO");
+	g_signal_handlers_block_by_func(btn, G_CALLBACK(dcxo_cal_clicked), NULL);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), FALSE);
+	g_signal_handlers_unblock_by_func(btn, G_CALLBACK(dcxo_cal_clicked), NULL);
+
+	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(dcxo_cal_progressbar), 0);
+	gtk_widget_set_sensitive(dcxo_cal_type, TRUE);
+	gtk_widget_set_sensitive(glb_widgets[dcxo_coarse_num].widget, TRUE);
+	gtk_widget_set_sensitive(glb_widgets[dcxo_fine_num].widget, TRUE);
+
+	auto_calibrate = 1;
+
+	if (tuning_elems)
+		g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
+
+	return ret;
 }
 
 static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
@@ -678,88 +1062,14 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 	}
 }
 
-static int load_fir_filter(const char *file_name)
-{
-	bool rx = false, tx = false;
-	int ret = -1;
-	FILE *f = fopen(file_name, "r");
-	if (f) {
-		char *buf;
-		ssize_t len;
-		char line[80];
-
-		while (fgets(line, 80, f) != NULL && line[0] == '#');
-		if (!strncmp(line, "RX", strlen("RX")))
-			rx = true;
-		else if (!strncmp(line, "TX", strlen("TX")))
-			tx = true;
-		if (fgets(line, 80, f) != NULL) {
-			if (!strncmp(line, "TX", strlen("TX")))
-				tx = true;
-			else if (!strncmp(line, "RX", strlen("RX")))
-				rx = true;
-		}
-
-		fseek(f, 0, SEEK_END);
-		len = ftell(f);
-		buf = malloc(len);
-		fseek(f, 0, SEEK_SET);
-		len = fread(buf, 1, len, f);
-		fclose(f);
-
-		ret = iio_device_attr_write_raw(dev,
-				"filter_fir_config", buf, len);
-		free(buf);
-	}
-
-	if (ret < 0) {
-		fprintf(stderr, "FIR filter config failed\n");
-		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms2_panel);
-		if (!gtk_widget_is_toplevel(toplevel))
-			toplevel = NULL;
-
-		GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(toplevel),
-						GTK_DIALOG_MODAL,
-						GTK_MESSAGE_ERROR,
-						GTK_BUTTONS_CLOSE,
-						"\nFailed to configure the FIR filter using the selected file.");
-		gtk_window_set_title(GTK_WINDOW(dialog), "FIR Filter Configuration Failed");
-		if (gtk_dialog_run(GTK_DIALOG(dialog)))
-			gtk_widget_destroy(dialog);
-
-	} else {
-		strcpy(last_fir_filter, file_name);
-
-		gtk_widget_hide(fir_filter_en_tx);
-		gtk_widget_hide(enable_fir_filter_rx);
-		gtk_widget_hide(enable_fir_filter_rx_tx);
-		gtk_widget_show(disable_all_fir_filters);
-
-		if (rx && tx)
-			gtk_widget_show(enable_fir_filter_rx_tx);
-		else if (rx)
-			gtk_widget_show(enable_fir_filter_rx);
-		else if (tx)
-			gtk_widget_show(fir_filter_en_tx);
-		else
-			gtk_widget_hide(disable_all_fir_filters);
-		gtk_toggle_button_set_active(
-			GTK_TOGGLE_BUTTON (disable_all_fir_filters), true);
-	}
-
-	return ret;
-}
-
-void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+static void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 {
 	char *file_name = gtk_file_chooser_get_filename(chooser);
 
-	if (load_fir_filter(file_name) < 0) {
-		if (strlen(last_fir_filter) == 0)
-			gtk_file_chooser_set_filename(chooser, "(None)");
-		else
-			gtk_file_chooser_set_filename(chooser, last_fir_filter);
-	}
+	load_fir_filter(file_name, dev, NULL, fmcomms2_panel, chooser,
+			fir_filter_en_tx, enable_fir_filter_rx,
+			enable_fir_filter_rx_tx, disable_all_fir_filters,
+			last_fir_filter);
 }
 
 static int compare_gain(const char *a, const char *b) __attribute__((unused));
@@ -828,7 +1138,7 @@ static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
  * Return 1 if the channel combination is valid
  * Return 0 if the combination is not valid
  */
-int channel_combination_check(struct iio_device *dev, const char **ch_names)
+static int channel_combination_check(struct iio_device *dev, const char **ch_names)
 {
 	bool consecutive_ch = FALSE;
 	unsigned int i, k, nb_channels = iio_device_get_channels_count(dev);
@@ -891,7 +1201,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-int handle_external_request (const char *request)
+static int handle_external_request (const char *request)
 {
 	int ret = 0;
 
@@ -905,12 +1215,16 @@ int handle_external_request (const char *request)
 
 static int fmcomms2_handle_driver(const char *attrib, const char *value)
 {
+	int ret = 0;
+
 	if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value[0]) {
-			load_fir_filter(value);
-			gtk_file_chooser_set_filename(
+			load_fir_filter(value, dev, NULL, fmcomms2_panel,
 					GTK_FILE_CHOOSER(filter_fir_config),
-					value);
+					fir_filter_en_tx, enable_fir_filter_rx,
+					enable_fir_filter_rx_tx,
+					disable_all_fir_filters,
+					last_fir_filter);
 		}
 	} else if (MATCH_ATTRIB("dds_mode_tx1")) {
 		dac_data_manager_set_dds_mode(dac_tx_manager,
@@ -945,6 +1259,20 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 	} else if (MATCH_ATTRIB("dac_buf_filename")) {
 		dac_data_manager_set_buffer_chooser_filename(
 				dac_tx_manager, value);
+#ifndef _WIN32
+	} else if (MATCH_ATTRIB("dcxo_calibrate")) {
+		/* calibration button needs to be active for the function to run */
+		g_signal_handlers_block_by_func(
+			GTK_TOGGLE_BUTTON(dcxo_cal), G_CALLBACK(dcxo_cal_clicked), NULL);
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dcxo_cal), TRUE);
+		g_signal_handlers_unblock_by_func(
+			GTK_TOGGLE_BUTTON(dcxo_cal), G_CALLBACK(dcxo_cal_clicked), NULL);
+		ret = dcxo_cal_clicked(GTK_BUTTON(dcxo_cal), NULL);
+		while (!auto_calibrate)
+			gtk_main_iteration();
+	} else if (MATCH_ATTRIB("dcxo_to_eeprom")) {
+		ret = dcxo_cal_to_eeprom_clicked(NULL, NULL);
+#endif /* _WIN32 */
 	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
 		if (can_update_widgets)
 			reload_button_clicked(NULL, NULL);
@@ -952,7 +1280,7 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int fmcomms2_handle(int line, const char *attrib, const char *value)
@@ -963,6 +1291,8 @@ static int fmcomms2_handle(int line, const char *attrib, const char *value)
 
 static void load_profile(const char *ini_fn)
 {
+	struct iio_channel *ch;
+	char *value;
 	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(fmcomms2_driver_attribs); i++) {
@@ -974,6 +1304,21 @@ static void load_profile(const char *ini_fn)
 			free(value);
 		}
 	}
+
+	/* The gain_control_mode iio attribute should be set prior to setting
+	 * hardwaregain iio attribute. This is neccessary due to the fact that
+	 * some control modes change the hardwaregain automatically. */
+	ch = iio_device_find_channel(dev, "voltage0", false);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				PHY_DEVICE".in_voltage0_gain_control_mode");
+	if (value)
+		iio_channel_attr_write(ch, "gain_control_mode", value);
+
+	ch = iio_device_find_channel(dev, "voltage1", false);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				PHY_DEVICE".in_voltage1_gain_control_mode");
+	if (value)
+		iio_channel_attr_write(ch, "gain_control_mode", value);
 
 	update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
 			ARRAY_SIZE(fmcomms2_sr_attribs));
@@ -1040,6 +1385,20 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	fmcomms2_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms2_panel"));
 
+	/* Hide DCXO calibration support if the scpi plugin isn't loaded. */
+	if (!scpi_connect_functions())
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_grid")));
+
+#ifndef _WIN32
+	/* Disable EEPROM functionality if not running locally or as root. */
+	if (getuid() != 0 || strcmp(iio_context_get_name(ctx), "local") != 0) {
+		gtk_widget_set_sensitive(GTK_WIDGET(
+			gtk_builder_get_object(builder, "dcxo_cal_to_eeprom")), FALSE);
+		gtk_widget_set_sensitive(GTK_WIDGET(
+			gtk_builder_get_object(builder, "dcxo_cal_from_eeprom")), FALSE);
+	}
+#endif
+
 	/* Global settings */
 
 	ensm_mode = GTK_WIDGET(gtk_builder_get_object(builder, "ensm_mode"));
@@ -1056,6 +1415,9 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	enable_fir_filter_rx_tx = GTK_WIDGET(gtk_builder_get_object(builder, "enable_fir_filter_tx_rx"));
 	disable_all_fir_filters = GTK_WIDGET(gtk_builder_get_object(builder, "disable_all_fir_filters"));
 	up_down_converter = GTK_WIDGET(gtk_builder_get_object(builder, "checkbox_up_down_converter"));
+	dcxo_cal_progressbar = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_progressbar"));
+	dcxo_cal_type = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_type"));
+	dcxo_cal = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal"));
 
 	section_toggle[SECTION_GLOBAL] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "global_settings_toggle"));
 	section_setting[SECTION_GLOBAL] = GTK_WIDGET(gtk_builder_get_object(builder, "global_settings"));
@@ -1100,6 +1462,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rf_port_select_tx), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_fastlock_profile), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(tx_fastlock_profile), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(dcxo_cal_type), 0);
 
 	/* Set FMCOMMS2/3 max sampling freq -> 61.44MHz and FMCOMMS4 -> 122.88 */
 	GtkWidget *sfreq = GTK_WIDGET(gtk_builder_get_object(builder, "sampling_freq_tx"));
@@ -1187,6 +1550,10 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev, ch1, "external", builder,
+		"rx_lo_external", 0);
+
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
 		dev, ch0, "quadrature_tracking_en", builder,
 		"quad", 0);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
@@ -1259,7 +1626,29 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		dev, ch1, freq_name, builder, "tx_lo_freq", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
+	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+		dev, ch1, "external", builder,
+		"tx_lo_external", 0);
+
 	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
+
+	/* Widgets bindings */
+	g_builder_bind_property(builder, "rssi_tx1", "visible",
+		"label_rssi_tx1", "sensitive", G_BINDING_DEFAULT);
+	g_builder_bind_property(builder, "rssi_tx2", "visible",
+		"label_rssi_tx2", "sensitive", G_BINDING_DEFAULT);
+	g_builder_bind_property(builder, "rx_lo_external", "active",
+		"rx_fastlock_profile", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external", "active",
+		"rx_fastlock_label", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external", "active",
+		"rx_fastlock_actions", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external", "active",
+		"tx_fastlock_profile", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external", "active",
+		"tx_fastlock_label", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external", "active",
+		"tx_fastlock_actions", "visible", G_BINDING_INVERT_BOOLEAN);
 
 	if (ini_fn)
 		load_profile(ini_fn);
@@ -1276,12 +1665,6 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	dac_data_manager_freq_widgets_range_update(dac_tx_manager,
 		get_gui_tx_sampling_freq() / 2.0);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
-
-	/* Widgets bindings */
-	g_builder_bind_property(builder, "rssi_tx1", "visible",
-		"label_rssi_tx1", "sensitive", G_BINDING_DEFAULT);
-	g_builder_bind_property(builder, "rssi_tx2", "visible",
-		"label_rssi_tx2", "sensitive", G_BINDING_DEFAULT);
 
 	/* Connect signals */
 
@@ -1308,6 +1691,15 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 
 	g_builder_connect_signal(builder, "filter_fir_config", "file-set",
 		G_CALLBACK(filter_fir_config_file_set_cb), NULL);
+
+	g_builder_connect_signal(builder, "dcxo_cal", "clicked",
+		G_CALLBACK(dcxo_cal_clicked), NULL);
+#ifndef _WIN32
+	g_builder_connect_signal(builder, "dcxo_cal_to_eeprom", "clicked",
+		G_CALLBACK(dcxo_cal_to_eeprom_clicked), NULL);
+	g_builder_connect_signal(builder, "dcxo_cal_from_eeprom", "clicked",
+		G_CALLBACK(dcxo_cal_from_eeprom_clicked), NULL);
+#endif
 
 	g_builder_connect_signal(builder, "rx_fastlock_store", "clicked",
 		G_CALLBACK(fastlock_clicked), (gpointer) 1);

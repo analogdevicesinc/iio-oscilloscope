@@ -173,6 +173,7 @@ static void combo_box_text_add_default_text(GtkComboBoxText *box,
 static void debug_register_section_init(struct iio_device *iio_dev);
 static void reg_map_chooser_init(struct iio_device *dev);
 static bool xml_file_exists(const char *filename);
+static bool pcore_get_version(const char *dev_name, int *major);
 
 /******************************************************************************/
 /******************************** Callbacks ***********************************/
@@ -571,7 +572,7 @@ static void spin_or_combo_changed_cb(GtkSpinButton *spinbutton,
 	gtk_label_set_text((GtkLabel *)label_reg_hex_value, buf);
 }
 
-void detailed_regmap_toggled_cb(GtkToggleButton *btn, gpointer data)
+static void detailed_regmap_toggled_cb(GtkToggleButton *btn, gpointer data)
 {
 	char *current_device;
 
@@ -592,7 +593,7 @@ static void reg_map_type_changed_cb(GtkComboBox box, gpointer data)
 	detailed_regmap_toggled_cb(GTK_TOGGLE_BUTTON(toggle_detailed_regmap), NULL);
 }
 
-void debug_panel_destroy_cb(GObject *object, gpointer user_data)
+static void debug_panel_destroy_cb(GObject *object, gpointer user_data)
 {
 	destroy_device_context();
 }
@@ -1290,11 +1291,26 @@ static void device_xml_file_selection(const char *device_name, char *filename)
 		/* Find the device corresponding xml file */
 		find_device_xml_file(xmls_folder_path, (char *)device_name, filename);
 	} else if (gtk_combo_box_get_active(GTK_COMBO_BOX(reg_map_type)) == REG_MAP_AXI_CORE) {
+		char *adc_regmap_name, *dac_regmap_name;
+		int pcore_major;
+
+		if (pcore_get_version(device_name, &pcore_major) && pcore_major > 8) {
+			adc_regmap_name = g_strdup_printf("adi_regmap_adc_v%d.xml", pcore_major);
+			dac_regmap_name = g_strdup_printf("adi_regmap_dac_v%d.xml", pcore_major);
+		} else {
+			adc_regmap_name = g_strdup("adi_regmap_adc.xml");
+			dac_regmap_name = g_strdup("adi_regmap_dac.xml");
+		}
 		/* Attempt to associate AXI Core ADC xml or AXI Core DAC xml to the device */
-		if (is_input_device(iio_dev) && xml_file_exists("adi_regmap_adc.xml"))
-			sprintf(filename, "adi_regmap_adc.xml");
-		else if (is_output_device(iio_dev) && xml_file_exists("adi_regmap_dac.xml"))
-			sprintf(filename, "adi_regmap_dac.xml");
+		if (is_input_device(iio_dev) && xml_file_exists(adc_regmap_name))
+			sprintf(filename, "%s", adc_regmap_name);
+		else if (is_output_device(iio_dev) && xml_file_exists(dac_regmap_name))
+			sprintf(filename, "%s", dac_regmap_name);
+
+		if (adc_regmap_name)
+			g_free(adc_regmap_name);
+		if (dac_regmap_name)
+			g_free(dac_regmap_name);
 	} else {
 		filename[0] = '\0';
 	}
@@ -1448,6 +1464,44 @@ static void destroy_regmap_widgets(void)
 	/* Remove all widgets (and their children) that create regmap */
 	if (context_created == 1)
 		gtk_widget_destroy(hbox_bits_container);
+}
+
+#define PCORE_VERSION_MAJOR(version) (version >> 16)
+
+/*
+ * Find the PCORE major version.
+ * Return true on success and false otherwise.
+ */
+static bool pcore_get_version(const char *dev_name, int *major)
+{
+	struct iio_device *dev;
+	int ret;
+
+	if (!ctx) {
+		fprintf(stderr, "Invalid context in %s\n", __func__);
+		goto fail;
+	}
+
+	dev = iio_context_find_device(ctx, dev_name);
+	if (!dev) {
+		fprintf(stderr, "Could not invalid device %s in %s\n",
+			dev_name, __func__);
+		goto fail;
+	}
+
+	uint32_t value, address = 0x80000000;
+
+	ret = iio_device_reg_read(dev, address, &value);
+	if (ret < 0) {
+		fprintf(stderr, "%s in %s", strerror(ret), __func__);
+		goto fail;
+	}
+	*major = (int)PCORE_VERSION_MAJOR(value);
+
+	return true;
+
+fail:
+	return false;
 }
 
 /*

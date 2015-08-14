@@ -143,7 +143,7 @@ static void tx_update_values(void)
 	iio_update_widgets(tx_widgets, num_tx);
 }
 
-void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
+static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
 	iio_w->save(iio_w);
 }
@@ -337,7 +337,7 @@ static void resolver_resolution_changed_cb(GtkComboBoxText *box,
 	}
 }
 
-void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder,
+static void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder,
 		enum pid_no i)
 {
 	struct iio_device *pid_dev = pid_devs[i];
@@ -367,7 +367,7 @@ void create_iio_bindings_for_pid_ctrl(GtkBuilder *builder,
 	pwm_pid[i] = tx_widgets[num_tx - 1].widget;
 }
 
-void create_iio_bindings_for_advanced_ctrl(GtkBuilder *builder)
+static void create_iio_bindings_for_advanced_ctrl(GtkBuilder *builder)
 {
 	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
 		adv_dev, NULL, "mc_adv_ctrl_run",

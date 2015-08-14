@@ -846,11 +846,13 @@ static GtkWidget *gui_dds_mode_chooser_create(struct dds_tx *tx)
 	GtkWidget *box;
 	GtkWidget *dds_mode_lbl;
 	GtkComboBoxText *dds_mode;
+	bool no_buffer_support = !strcmp(tx->parent->name, "axi-ad9739a-hpc");
 
 	box = gtk_hbox_new(FALSE, 10);
 	dds_mode_lbl = gtk_label_new("DDS Mode:");
 	dds_mode = GTK_COMBO_BOX_TEXT(gtk_combo_box_text_new());
-	gtk_combo_box_text_prepend_text(dds_mode, "DAC Buffer Output");
+	if (no_buffer_support == false)
+		gtk_combo_box_text_prepend_text(dds_mode, "DAC Buffer Output");
 	gtk_combo_box_text_prepend_text(dds_mode, "Independent I/Q Control");
 	gtk_combo_box_text_prepend_text(dds_mode, "Two CW Tones");
 	gtk_combo_box_text_prepend_text(dds_mode, "One CW Tone");
@@ -972,12 +974,14 @@ static GtkWidget *gui_tx_create(struct dds_tx *tx)
 	gtk_table_attach(GTK_TABLE(txmodule_table),
 			gui_dds_mode_chooser_create(tx),
 			0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
+
 	gtk_table_attach(GTK_TABLE(txmodule_table),
 			gui_channel_create(&tx->ch_i),
 			0, 1, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
-	gtk_table_attach(GTK_TABLE(txmodule_table),
-			gui_channel_create(&tx->ch_q),
-			0, 1, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
+	if (tx->ch_q.type != CHAR_MAX)
+		gtk_table_attach(GTK_TABLE(txmodule_table),
+				gui_channel_create(&tx->ch_q),
+				0, 1, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
 
 	gtk_widget_show(txmodule_frm);
 
@@ -1348,6 +1352,9 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, struct dds_tx *tx)
 {
 	struct dds_tone **tones = tx->dds_tones;
 
+	if (tx->parent->tones_count == 2) /* No I-Q available */
+		return;
+
 	gdouble phase1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(tones[TX_T1_I]->phase));
 	gdouble phase2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(tones[TX_T2_I]->phase));
 
@@ -1389,6 +1396,9 @@ static void dds_locked_freq_cb(GtkToggleButton *btn, struct dds_tx *tx)
 {
 	struct dds_tone **tones = tx->dds_tones;
 
+		if (tx->parent->tones_count == 2) /* No I-Q available */
+			return;
+
 	gdouble freq1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(tones[TX_T1_I]->freq));
 	gdouble freq2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(tones[TX_T2_I]->freq));
 
@@ -1413,6 +1423,9 @@ static void dds_locked_scale_cb(GtkWidget *scale, struct dds_tx *tx)
 {
 	struct dds_tone **tones = tx->dds_tones;
 
+	if (tx->parent->tones_count == 2) /* No I-Q available */
+		return;
+
 	gdouble scale1 = dds_scale_get_value(tones[TX_T1_I]->scale);
 	gdouble scale2 = dds_scale_get_value(tones[TX_T2_I]->scale);
 
@@ -1435,12 +1448,16 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 	guint active;
 	double min_scale;
 	bool scale_available_mode;
+	bool q_tone_exists;
+	int tones_count;
 	int i;
 
 	if (!box)
 		return;
 
 	manager = tx->parent->parent;
+	tones_count = manager->dac1.tones_count;
+	q_tone_exists = (tones_count > 2);
 	min_scale = manager->lowest_scale_point;
 	scale_available_mode = manager->scale_available_mode;
 
@@ -1481,6 +1498,8 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 	switch (active) {
 	case DDS_DISABLED:
 		for (i = TX_T1_I; i <= TX_T2_Q; i++) {
+			if (i >= tones_count)
+				break;
 			struct dds_tone *tone = tones[i];
 			GtkWidget *scale_w = tone->scale;
 
@@ -1509,7 +1528,8 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 		enable_dds(manager, start_dds);
 
 		gtk_widget_hide(tx->ch_i.frame);
-		gtk_widget_hide(tx->ch_q.frame);
+		if (q_tone_exists)
+			gtk_widget_hide(tx->ch_q.frame);
 		gtk_widget_hide(manager->dac_buffer_module.frame);
 		break;
 	case DDS_ONE_TONE:
@@ -1518,19 +1538,23 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 				"<b>Single Tone</b>");
 		gtk_widget_show_all(tx->ch_i.frame);
 		gtk_widget_hide(tx->ch_i.t2.frame);
-		gtk_widget_hide(tx->ch_q.frame);
+		if (q_tone_exists)
+			gtk_widget_hide(tx->ch_q.frame);
 		gtk_widget_hide(manager->dac_buffer_module.frame);
 
 		if (dds_scale_get_value(tones[TX_T1_I]->scale) == min_scale) {
 			dds_scale_set_value(tones[TX_T1_I]->scale, tones[TX_T1_I]->scale_state);
-			dds_scale_set_value(tones[TX_T1_Q]->scale, tones[TX_T1_Q]->scale_state);
+			if (q_tone_exists)
+				dds_scale_set_value(tones[TX_T1_Q]->scale, tones[TX_T1_Q]->scale_state);
 		}
 
 		if (dds_scale_get_value(tones[TX_T2_I]->scale) != min_scale) {
 			tones[TX_T2_I]->scale_state = dds_scale_get_value(tones[TX_T2_I]->scale);
 			dds_scale_set_value(tones[TX_T2_I]->scale, min_scale);
-			tones[TX_T2_Q]->scale_state = dds_scale_get_value(tones[TX_T2_Q]->scale);
-			dds_scale_set_value(tones[TX_T2_Q]->scale, min_scale);
+			if (q_tone_exists) {
+				tones[TX_T2_Q]->scale_state = dds_scale_get_value(tones[TX_T2_Q]->scale);
+				dds_scale_set_value(tones[TX_T2_Q]->scale, min_scale);
+			}
 		}
 
 		/* Connect the widgets that are showing */
@@ -1577,16 +1601,21 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 		gtk_label_set_markup(GTK_LABEL(gtk_frame_get_label_widget(GTK_FRAME(tx->ch_i.frame))),
 				"<b>Two Tones</b>");
 		gtk_widget_show_all(tx->ch_i.frame);
-		gtk_widget_hide(tx->ch_q.frame);
+		if (q_tone_exists)
+			gtk_widget_hide(tx->ch_q.frame);
 		gtk_widget_hide(manager->dac_buffer_module.frame);
 
 		for (i = TX_T1_I; i <= TX_T2_Q; i++) {
+			if (i >= tones_count)
+				break;
 			if (dds_scale_get_value(tones[i]->scale) == min_scale) {
 				dds_scale_set_value(tones[i]->scale, tones[i]->scale_state);
 			}
 		}
 
 		for (i = TX_T1_I; i <= TX_T2_Q; i++) {
+			if (i >= tones_count)
+				break;
 			if (!tones[i]->dds_scale_hid) {
 				if (scale_available_mode) {
 					tones[i]->dds_scale_hid = g_signal_connect(tones[i]->scale, IIO_COMBO_SIGNAL,
@@ -1616,10 +1645,13 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 		gtk_label_set_markup(GTK_LABEL(gtk_frame_get_label_widget(GTK_FRAME(tx->ch_i.frame))),
 				"<b>Channel I</b>");
 		gtk_widget_show_all(tx->ch_i.frame);
-		gtk_widget_show_all(tx->ch_q.frame);
+		if (q_tone_exists)
+			gtk_widget_show_all(tx->ch_q.frame);
 		gtk_widget_hide(manager->dac_buffer_module.frame);
 
 		for (i = TX_T1_I; i <= TX_T2_Q; i++) {
+			if (i >= tones_count)
+				break;
 			if (dds_scale_get_value(tones[i]->scale) == min_scale)
 				 dds_scale_set_value(tones[i]->scale, tones[i]->scale_state);
 
@@ -1643,7 +1675,8 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 		}
 
 		gtk_widget_hide(tx->ch_i.frame);
-		gtk_widget_hide(tx->ch_q.frame);
+		if (q_tone_exists)
+			gtk_widget_hide(tx->ch_q.frame);
 		gtk_widget_show(manager->dac_buffer_module.frame);
 
 		gtk_combo_box_set_active(GTK_COMBO_BOX(tx1), DDS_BUFFER);
@@ -1773,6 +1806,32 @@ static void dds_tx_init(struct dds_dac *ddac, struct dds_tx *tx, unsigned dds_in
 	ddac->tx_count++;
 }
 
+static void dds_non_iq_tx_init(struct dds_dac *ddac, struct dds_tx *tx, unsigned dds_index)
+{
+	tx->index = dds_index;
+	tx->ch_i.type = I_CHANNEL;
+	tx->ch_i.t1.number = 1;
+	tx->ch_i.t2.number = 2;
+	tx->ch_q.type = CHAR_MAX;
+	tx->ch_q.t1.number = 0;
+	tx->ch_q.t2.number = 0;
+
+	tx->parent = ddac;
+	tx->ch_i.parent = tx;
+	tx->ch_q.parent = NULL;
+	tx->ch_i.t1.parent = &tx->ch_i;
+	tx->ch_i.t2.parent = &tx->ch_i;
+	tx->ch_q.t1.parent = NULL;
+	tx->ch_q.t2.parent = NULL;
+
+	tx->dds_tones[0] = &tx->ch_i.t1;
+	tx->dds_tones[1] = &tx->ch_i.t2;
+	tx->dds_tones[2] = NULL;
+	tx->dds_tones[3] = NULL;
+
+	ddac->tx_count++;
+}
+
 static int dds_dac_init(struct dac_data_manager *manager,
 	struct dds_dac *ddac, struct iio_device *iio_dac)
 {
@@ -1785,7 +1844,9 @@ static int dds_dac_init(struct dac_data_manager *manager,
 	ddac->iio_dac = iio_dac;
 	ddac->name = iio_device_get_name(iio_dac);
 	ddac->tones_count = get_iio_tones_count(iio_dac);
-	if (ddac->tones_count == 4) {
+	if (ddac->tones_count == 2) {
+		dds_non_iq_tx_init(ddac, &ddac->tx1, 1);
+	} else if (ddac->tones_count == 4) {
 		dds_tx_init(ddac, &ddac->tx1, 1);
 	} else if (ddac->tones_count == 8) {
 		dds_tx_init(ddac, &ddac->tx1, 1);

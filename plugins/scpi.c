@@ -71,7 +71,8 @@ struct scpi_instrument {
 	bool         serial;
 	bool         network;
 	char        *id_regex;
-	char	    *response;
+	char        *model;
+	char        *response;
 
 	/* network based instrument */
 	char        *ip_address;
@@ -97,12 +98,23 @@ struct mag_seek {
 
 static struct scpi_instrument signal_generator;
 static struct scpi_instrument spectrum_analyzer;
+static struct scpi_instrument prog_counter;;
+static struct scpi_instrument *current_instrument = NULL;
 
 static char *supported_spectrum_analyzers[] = {
 	"Rohde&Schwarz,FSEA 20,839161/004,3.40.2",
 	"Rohde&Schwarz,FSEA 30,827765/004,3.30",
 	NULL
-	};
+};
+
+#define HAMEG_HM8123 "HAMEG Instruments,HM8123,5.12"
+#define AGILENT_53131A "HEWLETT-PACKARD,53131A,0,3944"
+
+static char *supported_counters[] = {
+	HAMEG_HM8123,
+	AGILENT_53131A,
+	NULL
+};
 
 #define SOCKETS_BUFFER_SIZE  1024
 #define SOCKETS_TIMEOUT      2
@@ -137,18 +149,18 @@ static int network_waitfordata(int MySocket)
 	FD_ZERO(&MyFDSet);
 
 	/* Add socket to "watch list" */
-	FD_SET(MySocket,&MyFDSet);
+	FD_SET(MySocket, &MyFDSet);
 
 	/* Set Timeout */
-	tv.tv_sec=SOCKETS_TIMEOUT;
-	tv.tv_usec=0;
+	tv.tv_sec = SOCKETS_TIMEOUT;
+	tv.tv_usec = 0;
 
 	/* Wait for change */
-	retval=select(MySocket+1,&MyFDSet,NULL,NULL,&tv);
+	retval = select(MySocket+1, &MyFDSet, NULL, NULL, &tv);
 
 	/* Interpret return value */
-	if(retval==-1) {
-		printf("Error: Problem with select (%i)...\n",errno);
+	if(retval == -1) {
+		printf("Error: Problem with select (%i)...\n", errno);
 		perror(__func__);
 		exit(1);
 	}
@@ -172,7 +184,7 @@ static int scpi_network_read(struct scpi_instrument *scpi)
 	actual = recv(scpi->control_socket, scpi->response,
 			SOCKETS_BUFFER_SIZE, 0);
 	if (actual == -1) {
-		printf("Error: Unable to receive data (%i)...\n",errno);
+		printf("Error: Unable to receive data (%i)...\n", errno);
 		perror(__func__);
 		exit(1);
 	} else {
@@ -192,7 +204,7 @@ static void network_setnodelay(int MySocket)
 			(void *)&StateNODELAY, sizeof StateNODELAY);
 
 	if (ret == -1) {
-		printf("Error: Unable to set NODELAY option (%i)...\n",errno);
+		printf("Error: Unable to set NODELAY option (%i)...\n", errno);
 		perror("sockets");
 		exit(1);
 	}
@@ -214,7 +226,7 @@ network_connect(struct scpi_instrument *scpi)
 	scpi->main_socket = socket(PF_INET, SOCK_STREAM, 0);
 
 	if (scpi->main_socket == -1) {
-		printf("Error: Unable to create socket (%i)...\n",errno);
+		printf("Error: Unable to create socket (%i)...\n", errno);
 		return -1;
 	}
 
@@ -228,7 +240,7 @@ network_connect(struct scpi_instrument *scpi)
 		perror("setsockopt failed\n");
 
 	/* Establish TCP connection */
-	memset(&MyAddress,0,sizeof(struct sockaddr_in));
+	memset(&MyAddress, 0, sizeof(struct sockaddr_in));
 	MyAddress.sin_family = PF_INET;
 	MyAddress.sin_port = htons(scpi->main_port);
 	MyAddress.sin_addr.s_addr = inet_addr(scpi->ip_address);
@@ -286,24 +298,48 @@ network_connect(struct scpi_instrument *scpi)
 static int tty_read(struct scpi_instrument *scpi)
 {
 #ifdef TTY_RAW_MODE
-	int n, end = 0, i;
-	int bc = 0;
+	int n, i, end = 0;
+	int byte_count = 0;
+
+	/* Number of seconds before signaling a tty read timeout. */
+	struct timespec ts_current, ts_end;
+	unsigned long long nsecs;
+	clock_gettime(CLOCK_MONOTONIC, &ts_current);
+	nsecs = ts_current.tv_nsec + (SOCKETS_TIMEOUT * pow(10.0, 9));
+	ts_end.tv_sec = ts_current.tv_sec + (nsecs / pow(10.0, 9));
+	ts_end.tv_nsec = nsecs % (unsigned long long) pow(10.0, 9);
+	ts_end.tv_nsec = ts_current.tv_nsec;
 
 	do {
-		n = read(scpi->ttyfd, (char *)scpi->response + bc,
-				SOCKETS_BUFFER_SIZE - bc);
-		if (n > 0) {
-			bc += n;
-			for (i = 0; i < bc; i++)
-				/* Handle LineFeeds */
-				if (scpi->response[i] == 0x0A) {
+		n = read(scpi->ttyfd, (char *)scpi->response + byte_count,
+				SOCKETS_BUFFER_SIZE - byte_count);
+		if (n >= 0) {
+			byte_count += n;
+			for (i = 0; i < byte_count; i++)
+				/* Handle line feeds or carriage returns */
+				if (scpi->response[i] == 0x0A || scpi->response[i] == 0x0D) {
 					end = 1;
 					scpi->response[i + 1] = 0;
 				}
+		} else {
+			/* Raw mode does non-blocking I/O by default so try to read data
+			 * until some exists.
+			 */
+			if (errno == EAGAIN) {
+				if (timespeccmp(&ts_current, &ts_end, >) != 0) {
+					fprintf(stderr, "SCPI: reading from TTY timed out\n");
+					return -ETIMEDOUT;
+				}
+				clock_gettime(CLOCK_MONOTONIC, &ts_current);
+				continue;
+			} else {
+				print_output_sys(stderr, "%s: Can't read from TTY device: %s %s (%d)\n",
+					__func__, scpi->tty_path, strerror(errno), errno);
+			}
 		}
-	} while (bc < SOCKETS_BUFFER_SIZE && (end == 0));
+	} while (byte_count < SOCKETS_BUFFER_SIZE && (end == 0));
 
-	return bc;
+	return byte_count;
 #else
 	int ret = read(scpi->ttyfd, (char *)scpi->response,
 			SOCKETS_BUFFER_SIZE);
@@ -407,7 +443,7 @@ static int tty_connect(struct scpi_instrument *scpi)
  * writes count bytes from the buffer (buf) to the
  * scpi instrument referred to by the descriptor *scpi.
  *
- * On  success, the number of bytes written is returned
+ * On success, the number of bytes written is returned
  * (zero indicates nothing was written).
  * On error, -1 is returned
  */
@@ -433,12 +469,14 @@ static ssize_t scpi_write(struct scpi_instrument *scpi, const void *buf, size_t 
 	else if (scpi->serial) {
 		retval  = write(scpi->ttyfd, buf, count);
 		if (retval == (ssize_t)count) {
-			if (memchr(buf, '?', count)) {
+			if (memrchr(buf, '?', count)) {
 				memset(scpi->response, 0, SOCKETS_BUFFER_SIZE);
-				tty_read(scpi);
+				retval = tty_read(scpi);
 			}
-		} else
+		} else {
 			fprintf(stderr, "SCPI:%s tty didn't write the entire buffer\n", __func__);
+			return -EIO;
+		}
 
 		tcflush(scpi->ttyfd, TCIOFLUSH);
 	}
@@ -506,18 +544,18 @@ static int scpi_connect(struct scpi_instrument *scpi)
 		return -1;
 	}
 
-	scpi_fprintf(scpi, "*CLS\n");
-	scpi_fprintf(scpi, "*RST\n");
-	scpi_fprintf(scpi, "*IDN?\n");
-	if (!strstr(scpi->response, scpi->id_regex)) {
+	ret = scpi_fprintf(current_instrument, "*CLS;*RST;*IDN?\r\n");
+	scpi->model = strdup(scpi->response);
+	if (!strstr(scpi->model, scpi->id_regex)) {
 		printf("instrument doesn't match regex\n");
 		printf("\twanted   : '%s'\n", scpi->id_regex);
 		printf("\treceived : '%s'\n", scpi->response);
 		return -1;
 	}
-	printf("Instrument ID: %s\n", scpi->response);
+	if (ret > 0)
+		printf("Instrument ID: %s\n", scpi->model);
 
-	return 0;
+	return ret < 0 ? ret : 0;
 }
 
 /* Spectrum Analyzer commands */
@@ -632,16 +670,19 @@ static int tx_freq_set_Hz(struct scpi_instrument *scpi, unsigned long long freq)
 	return scpi_fprintf(scpi, ":FREQ:CW %llu;*WAI\n", freq);
 }
 
+/* Enable a signal generator's output. */
 static int tx_output_set(struct scpi_instrument *scpi, unsigned on)
 {
 	return scpi_fprintf(scpi, ":OUTPut %s;*WAI\n", on ? "ON" : "OFF");
 }
 
+/* Set the power level for an instrument in dBm. */
 static int tx_mag_set_dBm(struct scpi_instrument *scpi, double lvl)
 {
 	return scpi_fprintf(scpi, ":POW %f DBM;*WAI\n", lvl);
 }
 
+/* Retrieve the current power level for an instrument in dBm. */
 static int tx_mag_get_dBm(struct scpi_instrument *scpi, double *lvl)
 {
 	int ret = 0;
@@ -656,6 +697,7 @@ static int tx_mag_get_dBm(struct scpi_instrument *scpi, double *lvl)
 }
 
 #if 0
+/* Query a given instrument for errors. */
 static int scpi_query_errors(struct scpi_instrument *scpi)
 {
 	int ret = 0;
@@ -673,6 +715,7 @@ static int scpi_query_errors(struct scpi_instrument *scpi)
 }
 #endif
 
+/* Retrieve the plot markers related to a certain device. */
 static int get_markers(const char *device_ref, struct marker_type *markers)
 {
 	OscPlot *fft_plot = plugin_find_plot_with_domain(FFT_PLOT);
@@ -684,6 +727,9 @@ static int get_markers(const char *device_ref, struct marker_type *markers)
 	return ret;
 }
 
+/* Perform a binary search for a given magnitude in dBm when driving an input
+ * signal into the AD9625.
+ */
 static int tx_mag_seek_dBm(struct mag_seek *mag_seek)
 {
 	int ret = 0;
@@ -712,11 +758,140 @@ static int tx_mag_seek_dBm(struct mag_seek *mag_seek)
 	return ret;
 }
 
+/* Programmable Counter functions */
+static bool scpi_counter_connected()
+{
+	int i;
+
+	if (current_instrument && strlen(current_instrument->model)) {
+		for (i = 0; supported_counters[i] != NULL; i++) {
+			if (supported_counters[i] &&
+						strstr(current_instrument->model, supported_counters[i])) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+/* Connect to a supported programmable counter device.
+ * Returns 0 when able to connect to a supported device, otherwise -1.
+ */
+int scpi_connect_counter()
+{
+	int i = 0, ret = -1;
+	unsigned int tty_node;
+
+	static char *hameg_inputs[] = {
+		"FRA",
+		"FRB",
+		"FRC",
+		NULL
+	};
+
+	current_instrument = &prog_counter;
+	current_instrument->serial = true;
+	current_instrument->id_regex = "";
+	current_instrument->response[0] = 0;
+
+	/* Iterate over tty dev nodes, trying to connect to a supported device. */
+	for (tty_node = 0; tty_node <= 9; tty_node++) {
+		current_instrument->tty_path[strlen(current_instrument->tty_path)-1] = (char)(tty_node + '0');
+		if (access(current_instrument->tty_path, R_OK | W_OK) != -1 &&
+				scpi_connect(current_instrument) == 0 &&
+				scpi_counter_connected()) {
+			if (strstr(current_instrument->model, HAMEG_HM8123)) {
+				/* Select the correct input. */
+				do {
+					if (hameg_inputs[i] == NULL)
+						break;
+					scpi_fprintf(current_instrument, "%s\r\n", hameg_inputs[i++]);
+					sleep(1);
+					scpi_fprintf(current_instrument, "XMT?\r\n");
+					sleep(1);
+				} while (strstr(current_instrument->response, "Not Available"));
+			} else if (strstr(current_instrument->model, AGILENT_53131A)) {
+				/* reset the counter */
+				scpi_fprintf(current_instrument, "*RST\r\n");
+				scpi_fprintf(current_instrument, "*CLS\r\n");
+				scpi_fprintf(current_instrument, "*SRE 0\r\n");
+				scpi_fprintf(current_instrument, "*ESE 0\r\n");
+				scpi_fprintf(current_instrument, ":STAT:PRES\r\n");
+				scpi_fprintf(current_instrument, ":DISP:CALC:MATH:STAT OFF\r\n");
+				scpi_fprintf(current_instrument, ":TRAC SCALE, 1.000000\r\n");
+				/* perform queries on channel 1 and return ascii formatted data */
+				scpi_fprintf(current_instrument, ":FUNC 'FREQ 1'\r\n");
+				scpi_fprintf(current_instrument, ":FORM:DATA ASCII\r\n");
+			}
+			ret = 0;
+			break;
+		}
+	}
+
+	return ret;
+}
+
+
+/* Retrieve the current frequency from supported frequency counter devices. */
+int scpi_counter_get_freq(double *freq, double *target_freq)
+{
+	int ret = -1;
+	double scale = 1.0;
+	gchar **freq_tokens = NULL;
+	gchar *freq_str = NULL;
+
+	/* Query instrument for the current measured frequency. */
+	if (strstr(current_instrument->model, HAMEG_HM8123)) {
+		ret = scpi_fprintf(current_instrument, "XMT?\r\n");
+		if (ret < 0)
+			return ret;
+
+		/* Output is usually of the form "value scale" where scale is often "GHz". */
+		freq_tokens = g_strsplit(current_instrument->response, " ", 2);
+		if (freq_tokens[0] != NULL)
+			freq_str = strdup(freq_tokens[0]);
+
+		/* Scale the value returned from the device to Hz */
+		if (strstr(freq_tokens[1], "GHz"))
+			scale = pow(10.0, 9);
+		else if (strstr(freq_tokens[1], "MHz"))
+			scale = pow(10.0, 6);
+		else if (strstr(freq_tokens[1], "KHz"))
+			scale = pow(10.0, 3);
+
+		g_strfreev(freq_tokens);
+	} else if (strstr(current_instrument->model, AGILENT_53131A)) {
+		/* Output is in scientific E notation, Hz scale by default. */
+		if (target_freq)
+			ret = scpi_fprintf(current_instrument, ":MEASURE:FREQ? %E HZ, 1 HZ\r\n", *target_freq);
+		else
+			ret = scpi_fprintf(current_instrument, ":MEASURE:FREQ?\r\n");
+		if (ret < 0)
+			return ret;
+
+		freq_str = strdup(current_instrument->response);
+		/* Re-enable continuous output otherwise we leave the display in a
+		 * stopped state.
+		 */
+		scpi_fprintf(current_instrument, ":INIT:CONT ON\r\n");
+	} else {
+		/* No supported device attached */
+		return -ENODEV;
+	}
+
+	ret = sscanf(freq_str, "%lf", freq);
+
+	g_free(freq_str);
+
+	if (ret == 1)
+		*freq *= scale;
+		return 0;
+	return -1;
+}
+
 /*
  * Save/Restore stuff
  */
-
-static struct scpi_instrument *current_instrument;
 
 static int mag_input_seek(const char *value)
 {
@@ -746,8 +921,6 @@ static int mag_input_seek(const char *value)
 
 static int scpi_handle(int line, const char *attrib, const char *value)
 {
-	current_instrument = NULL;
-
 	if (!strncmp(attrib, "rx.", sizeof("rx.") - 1))
 		current_instrument = &spectrum_analyzer;
 	else if (!strncmp(attrib, "tx.", sizeof("tx.") - 1))
@@ -975,7 +1148,7 @@ static void scpi_text_entry_cb (GtkEntry *box, int data)
 			if (current_instrument->tty_path)
 				free(current_instrument->tty_path);
 
-			current_instrument->tty_path = strdup (gtk_entry_get_text(box));
+			current_instrument->tty_path = strdup(gtk_entry_get_text(box));
 			break;
 		case 2:
 			current_instrument->gpib_addr = atoi(gtk_entry_get_text(box));
@@ -984,7 +1157,7 @@ static void scpi_text_entry_cb (GtkEntry *box, int data)
 			if (current_instrument->id_regex)
 				free(current_instrument->id_regex);
 
-			current_instrument->id_regex = strdup (gtk_entry_get_text(box));
+			current_instrument->id_regex = strdup(gtk_entry_get_text(box));
 
 			if (strstr(gtk_label_get_text(GTK_LABEL(scpi_id)), current_instrument->id_regex))
 				gtk_widget_modify_text(GTK_WIDGET(box), GTK_STATE_NORMAL, &green);
@@ -994,7 +1167,7 @@ static void scpi_text_entry_cb (GtkEntry *box, int data)
 		case 4:
 			if (cmd_to_send)
 				free(cmd_to_send);
-			cmd_to_send = strdup (gtk_entry_get_text(box));
+			cmd_to_send = strdup(gtk_entry_get_text(box));
 			break;
 		default:
 			printf("Unknown selection in %s:%s: %i\n",
@@ -1035,13 +1208,11 @@ static void connect_clicked_cb(void)
 	}
 
 	if (ret == 0) {
-		scpi_fprintf(current_instrument, "*IDN?\n");
+		scpi_fprintf(current_instrument, "*CLS;*RST;*IDN?\r\n");
 		if (strlen(current_instrument->response)) {
+			current_instrument->model = current_instrument->response;
 			gtk_label_set_text(GTK_LABEL(scpi_id), current_instrument->response);
 			for (i = 0; supported_spectrum_analyzers[i] != NULL; i++) {
-printf("%i\n", i);
-printf("%s\n", current_instrument->response);
-printf("%s\n", supported_spectrum_analyzers[i]);
 				if (supported_spectrum_analyzers[i] &&
 							!strcmp(supported_spectrum_analyzers[i], current_instrument->response)) {
 					gtk_label_set_text(GTK_LABEL(scpi_regex), current_instrument->response);
@@ -1103,11 +1274,11 @@ static void scpi_cmd_cb (GtkButton *button, GtkEntry *box)
 		return;
 
 	current_instrument->response[0] = 0;
-	scpi_fprintf(current_instrument, "%s\n", buf);
+	scpi_fprintf(current_instrument, "%s\r\n", buf);
 
-	printf("send '%s',\n", buf);
+	printf("sent: '%s'\n", buf);
 	if (current_instrument->response)
-		printf("received '%s'\n", current_instrument->response);
+		printf("received: '%s'\n", current_instrument->response);
 }
 
 /*
@@ -1124,6 +1295,7 @@ static GtkWidget * scpi_init(GtkWidget *notebook, const char *ini_fn)
 
 	init_scpi_device(&signal_generator);
 	init_scpi_device(&spectrum_analyzer);
+	init_scpi_device(&prog_counter);
 
 	builder = gtk_builder_new();
 	if (!gtk_builder_add_from_file(builder, "scpi.glade", NULL))
@@ -1233,6 +1405,21 @@ static void scpi_save_profile(const char *ini_fn)
 	fclose(f);
 }
 
+static void scpi_destroy(const char *ini_fn)
+{
+	if (ini_fn)
+		scpi_save_profile(ini_fn);
+
+	if (current_instrument) {
+		if (current_instrument->model)
+			free(current_instrument->model);
+		if (current_instrument->ip_address)
+			free(current_instrument->ip_address);
+		if (current_instrument->tty_path)
+			free(current_instrument->tty_path);
+	}
+}
+
 /* This is normally used for test, and the GUI is used for
  * setting up the test infrastructure
  */
@@ -1252,4 +1439,5 @@ struct osc_plugin plugin = {
 	.init = scpi_init,
 	.handle_item = scpi_handle,
 	.save_profile = scpi_save_profile,
+	.destroy = scpi_destroy,
 };

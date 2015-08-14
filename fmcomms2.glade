@@ -95,7 +95,8 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_dcxo_coarse_tune">
-    <property name="upper">31</property>
+    <property name="upper">63</property>
+    <property name="lower">0</property>
     <property name="value">8</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
@@ -206,21 +207,6 @@
                                         <property name="n_columns">7</property>
                                         <property name="column_spacing">5</property>
                                         <property name="row_spacing">5</property>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
                                         <child>
                                           <placeholder/>
                                         </child>
@@ -536,7 +522,7 @@ configuration:</property>
                                                 </child>
                                               </object>
                                               <packing>
-                                                <property name="expand">True</property>
+                                                <property name="expand">False</property>
                                                 <property name="fill">True</property>
                                                 <property name="position">0</property>
                                               </packing>
@@ -572,7 +558,7 @@ configuration:</property>
                                                 </child>
                                               </object>
                                               <packing>
-                                                <property name="expand">True</property>
+                                                <property name="expand">False</property>
                                                 <property name="fill">True</property>
                                                 <property name="position">1</property>
                                               </packing>
@@ -659,6 +645,105 @@ configuration:</property>
                                             <property name="right_attach">6</property>
                                             <property name="top_attach">3</property>
                                             <property name="bottom_attach">4</property>
+                                            <property name="x_options">GTK_FILL</property>
+                                            <property name="y_options">GTK_FILL</property>
+                                            <property name="y_padding">5</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkTable" id="dcxo_cal_grid">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="n_rows">2</property>
+                                            <property name="n_columns">5</property>
+                                            <property name="column_spacing">5</property>
+                                            <property name="row_spacing">5</property>
+                                            <child>
+                                              <object class="GtkProgressBar" id="dcxo_cal_progressbar">
+                                                <property name="can_focus">False</property>
+                                                <property name="show_text">True</property>
+                                                <property name="text" translatable="yes">Calibrating DCXO...</property>
+                                              </object>
+                                              <packing>
+                                                <property name="right_attach">5</property>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label23">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="label" translatable="yes">DCXO Calibration method:</property>
+                                              </object>
+                                              <packing>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options">GTK_FILL</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkComboBoxText" id="dcxo_cal_type">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <items>
+                                                  <item translatable="yes">REFCLK</item>
+                                                  <item translatable="yes">RF Output</item>
+                                                </items>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkToggleButton" id="dcxo_cal">
+                                                <property name="label" translatable="yes">Calibrate DCXO</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkButton" id="dcxo_cal_to_eeprom">
+                                                <property name="label" translatable="yes">Save to EEPROM</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">True</property>
+                                                <property name="tooltip_text" translatable="yes">Write coarse and fine tune params to board's EEPROM</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="x_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkButton" id="dcxo_cal_from_eeprom">
+                                                <property name="label" translatable="yes">Load from EEPROM</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">True</property>
+                                                <property name="tooltip_text" translatable="yes">Load coarse and fine tune params from board's EEPROM</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">4</property>
+                                                <property name="right_attach">5</property>
+                                                <property name="x_options"/>
+                                              </packing>
+                                            </child>
+                                          </object>
+                                          <packing>
+                                            <property name="right_attach">5</property>
+                                            <property name="top_attach">4</property>
+                                            <property name="bottom_attach">6</property>
+                                            <property name="x_options">GTK_FILL</property>
+                                            <property name="y_options">GTK_FILL</property>
                                             <property name="y_padding">5</property>
                                           </packing>
                                         </child>
@@ -672,8 +757,12 @@ configuration:</property>
                                             <property name="draw_indicator">True</property>
                                           </object>
                                           <packing>
+                                            <property name="left_attach">6</property>
+                                            <property name="right_attach">7</property>
                                             <property name="top_attach">4</property>
                                             <property name="bottom_attach">5</property>
+                                            <property name="x_options">GTK_FILL</property>
+                                            <property name="y_options">GTK_FILL</property>
                                           </packing>
                                         </child>
                                       </object>
@@ -693,8 +782,10 @@ configuration:</property>
                                 <property name="can_focus">False</property>
                                 <child>
                                   <object class="GtkToggleToolButton" id="global_settings_toggle">
+                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="use_action_appearance">False</property>
                                     <property name="label" translatable="yes">Zoom In</property>
                                     <property name="use_underline">True</property>
                                     <property name="stock_id">gtk-go-down</property>
@@ -754,10 +845,7 @@ configuration:</property>
                                             <property name="can_focus">False</property>
                                             <property name="n_rows">3</property>
                                             <property name="n_columns">5</property>
-                                            <property name="column_spacing">5</property>
-                                            <child>
-                                              <placeholder/>
-                                            </child>
+                                            <property name="column_spacing">10</property>
                                             <child>
                                               <placeholder/>
                                             </child>
@@ -879,7 +967,7 @@ configuration:</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkLabel" id="label36">
+                                              <object class="GtkLabel" id="rx_fastlock_label">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Fastlock Profile:</property>
@@ -913,7 +1001,7 @@ configuration:</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkTable" id="grid10">
+                                              <object class="GtkTable" id="rx_fastlock_actions">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <child>
@@ -945,6 +1033,26 @@ configuration:</property>
                                                 <property name="right_attach">5</property>
                                                 <property name="top_attach">2</property>
                                                 <property name="bottom_attach">3</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkCheckButton" id="rx_lo_external">
+                                                <property name="label" translatable="yes">External RX LO</property>
+                                                <property name="use_action_appearance">False</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="use_action_appearance">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="top_attach">2</property>
+                                                <property name="bottom_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options">GTK_FILL</property>
                                               </packing>
                                             </child>
                                           </object>
@@ -1439,10 +1547,7 @@ configuration:</property>
                                         <property name="can_focus">False</property>
                                         <property name="n_rows">3</property>
                                         <property name="n_columns">5</property>
-                                        <property name="column_spacing">15</property>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
+                                        <property name="column_spacing">10</property>
                                         <child>
                                           <placeholder/>
                                         </child>
@@ -1456,7 +1561,6 @@ configuration:</property>
                                           <object class="GtkLabel" id="label16">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
                                             <property name="label" translatable="yes">RF Bandwidth(MHz):</property>
                                           </object>
                                           <packing>
@@ -1488,7 +1592,6 @@ configuration:</property>
                                           <object class="GtkLabel" id="label19">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
                                             <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
                                           </object>
                                           <packing>
@@ -1524,7 +1627,6 @@ configuration:</property>
                                           <object class="GtkLabel" id="label20">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
                                             <property name="label" translatable="yes">TX LO Frequency(MHz):</property>
                                           </object>
                                           <packing>
@@ -1585,7 +1687,7 @@ configuration:</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkLabel" id="label38">
+                                          <object class="GtkLabel" id="tx_fastlock_label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="label" translatable="yes">Fastlock Profile:</property>
@@ -1623,7 +1725,7 @@ configuration:</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkTable" id="grid11">
+                                          <object class="GtkTable" id="tx_fastlock_actions">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <child>
@@ -1651,6 +1753,26 @@ configuration:</property>
                                           <packing>
                                             <property name="left_attach">4</property>
                                             <property name="right_attach">5</property>
+                                            <property name="top_attach">2</property>
+                                            <property name="bottom_attach">3</property>
+                                            <property name="x_options">GTK_FILL</property>
+                                            <property name="y_options">GTK_FILL</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkCheckButton" id="tx_lo_external">
+                                            <property name="label" translatable="yes">External TX LO</property>
+                                            <property name="use_action_appearance">False</property>
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">True</property>
+                                            <property name="receives_default">False</property>
+                                            <property name="use_action_appearance">False</property>
+                                            <property name="xalign">0</property>
+                                            <property name="draw_indicator">True</property>
+                                          </object>
+                                          <packing>
+                                            <property name="left_attach">2</property>
+                                            <property name="right_attach">3</property>
                                             <property name="top_attach">2</property>
                                             <property name="bottom_attach">3</property>
                                             <property name="x_options">GTK_FILL</property>

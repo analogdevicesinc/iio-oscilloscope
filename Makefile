@@ -29,7 +29,7 @@ DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0
 
 LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 	$(if $(WITH_MINGW),-lwinpthread) \
-	-L$(SYSROOT)/usr/lib -lmatio -lz -lm
+	-L$(SYSROOT)/usr/lib -lmatio -lz -lm -lad9361
 
 ifeq ($(WITH_MINGW),y)
 	LDFLAGS += -Wl,--subsystem,windows
@@ -46,8 +46,12 @@ CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\" \
 	-D_POSIX_C_SOURCE=200809L
 
-#CFLAGS+=-DDEBUG
-#CFLAGS += -DNOFFTW
+DEBUG ?= 0
+ifeq ($(DEBUG),1)
+	CFLAGS += -DDEBUG
+else
+	CFLAGS += -DNDEBUG
+endif
 
 SO := $(if $(WITH_MINGW),dll,so)
 EXE := $(if $(WITH_MINGW),.exe)
@@ -63,7 +67,9 @@ PLUGINS=\
 	plugins/fmcomms2_adv.$(SO) \
 	plugins/ad6676.$(SO) \
 	plugins/pr_config.$(SO) \
+	plugins/fmcadc3.$(SO) \
 	plugins/daq2.$(SO) \
+	plugins/ad9739a.$(SO) \
 	plugins/AD5628_1.$(SO) \
 	plugins/AD7303.$(SO) \
 	plugins/cn0357.$(SO) \
@@ -83,7 +89,8 @@ endif
 
 OSC_OBJS := osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o \
 	trigger_dialog.o xml_utils.o libini/libini.o libini2.o phone_home.o \
-	plugins/dac_data_manager.o
+	plugins/dac_data_manager.o plugins/fir_filter.o \
+	$(if $(WITH_MINGW),,eeprom.o)
 
 all: $(OSC) $(PLUGINS)
 
@@ -122,6 +129,7 @@ trigger_dialog.o: fru.h osc.h iio_widget.h
 xml_utils.o: xml_utils.h
 phone_home.o: phone_home.h
 plugins/dac_data_manager.o: plugins/dac_data_manager.h
+plugins/ad9361_multichip_sync.o: plugins/ad9361_multichip_sync.h
 
 install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/bin

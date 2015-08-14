@@ -33,8 +33,6 @@
 #include "config.h"
 #include "osc_plugin.h"
 
-extern void math_expression_objects_clean(void);
-
 GSList *plugin_list = NULL;
 
 gint capture_function = 0;
@@ -62,6 +60,9 @@ static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
 static void capture_profile_save(const char *filename);
 static void load_profile(const char *filename, bool load_plugins);
+static int capture_setup(void);
+static void capture_start(void);
+static void stop_sampling(void);
 
 static char * dma_devices[] = {
 	"ad9122",
@@ -135,6 +136,25 @@ bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_cou
 	}
 
 	return ret;
+}
+
+unsigned global_enabled_channels_mask(struct iio_device *dev)
+{
+	unsigned mask = 0;
+	int scan_i = 0;
+	unsigned int i = 0;
+
+	for (; i < iio_device_get_channels_count(dev); i++) {
+		struct iio_channel *chn = iio_device_get_channel(dev, i);
+
+		if (iio_channel_is_scan_element(chn)) {
+			if (iio_channel_is_enabled(chn))
+				mask |= 1 << scan_i;
+			scan_i++;
+		}
+	}
+
+	return mask;
 }
 
 /* Couple helper functions from fru parsing */
@@ -676,6 +696,22 @@ capture_malloc_fail:
 OscPlot * plugin_get_new_plot(void)
 {
 	return OSC_PLOT(new_plot_cb(NULL, NULL));
+}
+
+void plugin_osc_stop_capture(void)
+{
+	stop_sampling();
+}
+
+void plugin_osc_start_capture(void)
+{
+	capture_setup();
+	capture_start();
+}
+
+bool plugin_osc_running_state(void)
+{
+	return !!capture_function;
 }
 
 static bool force_plugin(const char *name)
@@ -1987,10 +2023,12 @@ static void load_profile_sequential(const char *filename)
 
 	printf("Loading profile sequentially from %s\n", new_filename);
 	ret = foreach_in_ini(new_filename, load_profile_sequential_handler);
-	if (ret < 0)
+	if (ret < 0) {
 		fprintf(stderr, "Sequential loading of profile aborted.\n");
-	else
+		application_quit();
+	} else {
 		fprintf(stderr, "Sequential loading completed.\n");
+	}
 
 err_unlink:
 	unlink(new_filename);

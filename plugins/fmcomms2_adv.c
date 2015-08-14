@@ -20,8 +20,10 @@
 #include <malloc.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
+#include <ad9361.h>
 #include <iio.h>
 
 #include "../libini2.h"
@@ -29,6 +31,7 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../iio_widget.h"
+#include "../datatypes.h"
 
 #define PHY_DEVICE	"ad9361-phy"
 #define PHY_SLAVE_DEVICE	"ad9361-phy-B"
@@ -54,6 +57,7 @@ struct iio_device *cf_ad9361_lpc, *cf_ad9361_hpc;
 static struct iio_channel *dds_out[2][8];
 OscPlot *plot_xcorr_4ch;
 static volatile int auto_calibrate = 0;
+static bool cap_device_channels_enabled;
 
 static bool can_update_widgets;
 
@@ -66,14 +70,6 @@ static GtkBuilder *builder;
 #define CAL_TONE	1000000
 #define CAL_SCALE	0.12500
 #define MARKER_AVG	3
-
-//#define DEBUG
-
-#ifdef DEBUG
-#define DBG(fmt, arg...)  printf("DEBUG: %s: " fmt "\n" , __FUNCTION__ , ## arg)
-#else
-#define DBG(D...)
-#endif
 
 enum fmcomms2adv_wtype {
 	CHECKBOX,
@@ -125,6 +121,7 @@ static struct w_info attrs[] = {
 	{CHECKBOX, "adi,elna-rx1-gpo0-control-enable"},
 	{CHECKBOX, "adi,elna-rx2-gpo1-control-enable"},
 	{SPINBUTTON, "adi,elna-settling-delay-ns"},
+	{CHECKBOX, "adi,elna-gaintable-all-index-enable"},
 	{CHECKBOX, "adi,ensm-enable-pin-pulse-mode-enable"},
 	{CHECKBOX, "adi,ensm-enable-txnrx-control-enable"},
 	{CHECKBOX, "adi,external-rx-lo-enable"},
@@ -280,6 +277,7 @@ static const char *fmcomms2_adv_sr_attribs[] = {
 	"debug.ad9361-phy.adi,elna-rx1-gpo0-control-enable",
 	"debug.ad9361-phy.adi,elna-rx2-gpo1-control-enable",
 	"debug.ad9361-phy.adi,elna-settling-delay-ns",
+	"debug.ad9361-phy.adi,elna-gaintable-all-index-enable",
 	"debug.ad9361-phy.adi,ensm-enable-pin-pulse-mode-enable",
 	"debug.ad9361-phy.adi,ensm-enable-txnrx-control-enable",
 	"debug.ad9361-phy.adi,external-rx-lo-enable",
@@ -410,7 +408,7 @@ static void reload_settings(void)
 	}
 }
 
-void signal_handler_cb (GtkWidget *widget, gpointer data)
+static void signal_handler_cb (GtkWidget *widget, gpointer data)
 {
 	struct w_info *item = data;
 	unsigned val;
@@ -439,6 +437,21 @@ void signal_handler_cb (GtkWidget *widget, gpointer data)
 
 	if (!strcmp(item->name, "initialize")) {
 		reload_settings();
+	}
+}
+
+static void iio_channels_change_shadow_of_enabled(struct iio_device *dev, bool increment)
+{
+	struct iio_channel *chn;
+	struct extra_info *info;
+	unsigned i;
+	for (i = 0; i < iio_device_get_channels_count(dev); i++) {
+		chn = iio_device_get_channel(dev, i);
+		info = iio_channel_get_data(chn);
+		if (increment)
+			info->shadow_of_enabled++;
+		else
+			info->shadow_of_enabled--;
 	}
 }
 
@@ -688,54 +701,8 @@ static void cal_switch_ports_enable_cb (GtkWidget *widget, gpointer data)
 
 static void mcs_cb (GtkWidget *widget, gpointer data)
 {
-	unsigned step;
-	struct iio_channel *tx_sample_master, *tx_sample_slave;
-	long long tx_sample_master_freq, tx_sample_slave_freq;
-	char temp[40], ensm_mode[40];
-	unsigned tmp;
-	static int fix_slave_tune = 1;
-
-	tx_sample_master = iio_device_find_channel(dev, "voltage0", true);
-	tx_sample_slave = iio_device_find_channel(dev_slave, "voltage0", true);
-
-	iio_channel_attr_read_longlong(tx_sample_master, "sampling_frequency", &tx_sample_master_freq);
-	iio_channel_attr_read_longlong(tx_sample_slave, "sampling_frequency", &tx_sample_slave_freq);
-
-	if (tx_sample_master_freq != tx_sample_slave_freq) {
-		printf("tx_sample_master_freq != tx_sample_slave_freq\nUpdating...\n");
-		iio_channel_attr_write_longlong(tx_sample_slave, "sampling_frequency", tx_sample_master_freq);
-	}
-
-	if (fix_slave_tune) {
-		iio_device_reg_read(dev, 0x6, &tmp);
-		iio_device_reg_write(dev_slave, 0x6, tmp);
-		iio_device_reg_read(dev, 0x7, &tmp);
-		iio_device_reg_write(dev_slave, 0x7, tmp);
-		fix_slave_tune = 0;
-	}
-
-	iio_device_attr_read(dev, "ensm_mode", ensm_mode, sizeof(ensm_mode));
-
-	/* Move the parts int ALERT for MCS */
-	iio_device_attr_write(dev, "ensm_mode", "alert");
-	iio_device_attr_write(dev_slave, "ensm_mode", "alert");
-
-	for (step = 1; step <= 5; step++) {
-		sprintf(temp, "%d", step);
-		/* Don't change the order here - the master controls the SYNC GPIO */
-		iio_device_debug_attr_write(dev_slave, "multichip_sync", temp);
-		iio_device_debug_attr_write(dev, "multichip_sync", temp);
-		sleep(0.1);
-	}
-
-	iio_device_attr_write(dev, "ensm_mode", ensm_mode);
-	iio_device_attr_write(dev_slave, "ensm_mode", ensm_mode);
-
-#if 0
-	iio_device_debug_attr_write(dev, "multichip_sync", "6");
-	iio_device_debug_attr_write(dev_slave, "multichip_sync", "6");
-#endif
-
+	ad9361_multichip_sync(dev, &dev_slave, 1,
+			FIXUP_INTERFACE_TIMING | CHECK_SAMPLE_RATES);
 }
 
 static double tune_trx_phase_offset(struct iio_device *ldev, int *ret,
@@ -823,7 +790,7 @@ static void set_calibration_progress(GtkProgressBar *pbar, float fraction)
 
 static void calibrate (gpointer button)
 {
-	GtkProgressBar *calib_progress;
+	GtkProgressBar *calib_progress = NULL;
 	double rx_phase_lpc, rx_phase_hpc, tx_phase_hpc;
 	struct iio_channel *in0 = NULL, *in0_slave = NULL;
 	long long cal_tone, cal_freq;
@@ -834,21 +801,18 @@ static void calibrate (gpointer button)
 	if (!in0 || !in0_slave) {
 		printf("could not find channels\n");
 		ret = -ENODEV;
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
 	if (!cf_ad9361_lpc || !cf_ad9361_hpc) {
 		printf("could not find capture cores\n");
 		ret = -ENODEV;
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
 	if (!dev_dds_master || !dev_dds_slave) {
 		printf("could not find dds cores\n");
 		ret = -ENODEV;
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
@@ -864,7 +828,6 @@ static void calibrate (gpointer button)
 	ret = default_dds(get_cal_tone(), CAL_SCALE);
 	if (ret < 0) {
 		printf("could not set dds cores\n");
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 
@@ -898,7 +861,6 @@ static void calibrate (gpointer button)
 	rx_phase_hpc = tune_trx_phase_offset(cf_ad9361_hpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.40);
@@ -915,7 +877,6 @@ static void calibrate (gpointer button)
 	rx_phase_lpc = tune_trx_phase_offset(cf_ad9361_lpc, &ret, cal_freq, cal_tone, 1.0, 0.01, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.64);
@@ -934,7 +895,6 @@ static void calibrate (gpointer button)
 	tx_phase_hpc = tune_trx_phase_offset(dev_dds_slave, &ret, cal_freq, cal_tone, -1.0 , 0.001, trx_phase_rotation);
 	if (ret < 0) {
 		printf("Failed to tune phase : %s:%i\n", __func__, __LINE__);
-		auto_calibrate = -1;
 		goto calibrate_fail;
 	}
 	set_calibration_progress(calib_progress, 0.88);
@@ -961,21 +921,39 @@ calibrate_fail:
 	gdk_threads_enter();
 	reload_settings();
 
-	create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
-			"FMCOMMS5", "Calibration finished %s",
-			ret ? "with Error" : "Successfully");
-	auto_calibrate = 1;
+	if (ret) {
+		create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
+			"FMCOMMS5", "Calibration failed");
+		auto_calibrate = -1;
+	} else {
+		/* set completed flag for testing */
+		auto_calibrate = 1;
+	}
 
 	osc_plot_destroy(plot_xcorr_4ch);
 	if (button)
 		gtk_widget_show(GTK_WIDGET(button));
 	gdk_threads_leave();
 
+	/* reset progress bar */
+	gtk_progress_bar_set_fraction(calib_progress, 0.0);
+	gtk_progress_bar_set_text(calib_progress, "Calibration Progress");
+
+	/* Disable the channels that were enabled at the beginning of the calibration */
+	struct iio_device *iio_dev;
+	iio_dev = iio_context_find_device(get_context_from_osc(), CAP_DEVICE_ALT);
+	if (iio_dev && cap_device_channels_enabled) {
+		iio_channels_change_shadow_of_enabled(iio_dev, false);
+		cap_device_channels_enabled = false;
+	}
+
 	g_thread_exit(NULL);
 }
 
-void do_calibration (GtkWidget *widget, gpointer data)
+static void do_calibration (GtkWidget *widget, gpointer data)
 {
+	struct iio_device *iio_dev;
+	unsigned num_chs, enabled_chs_mask;
 	GtkToggleButton *silent_calib;
 
 	plot_xcorr_4ch = plugin_get_new_plot();
@@ -983,6 +961,21 @@ void do_calibration (GtkWidget *widget, gpointer data)
 	silent_calib = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder, "silent_calibration"));
 	if (gtk_toggle_button_get_active(silent_calib)) {
 		osc_plot_set_visible(plot_xcorr_4ch, false);
+	}
+
+	/* If channel selection of the plot used in the calibration combined
+	 * with the channel selections of other existing plots is invalid then
+	 * enable all channels. NOTE: remove this implementation once the dma
+	 * starts working with any combination of channels.
+	 */
+	iio_dev = iio_context_find_device(get_context_from_osc(), CAP_DEVICE_ALT);
+	if (iio_dev) {
+		num_chs = iio_device_get_channels_count(iio_dev);
+		enabled_chs_mask = global_enabled_channels_mask(iio_dev);
+		if (!dma_valid_selection(CAP_DEVICE_ALT, enabled_chs_mask | 0x33, num_chs)) {
+			cap_device_channels_enabled = true;
+			iio_channels_change_shadow_of_enabled(iio_dev, true);
+		}
 	}
 
 	if (plot_xcorr_4ch) {
@@ -1001,7 +994,7 @@ void do_calibration (GtkWidget *widget, gpointer data)
 	g_thread_new("Calibrate_thread", (void *) &calibrate, data);
 }
 
-void undo_calibration (GtkWidget *widget, gpointer data)
+static void undo_calibration (GtkWidget *widget, gpointer data)
 {
 	struct osc_plugin *plugin;
 	GSList *node;
@@ -1022,7 +1015,7 @@ void undo_calibration (GtkWidget *widget, gpointer data)
 	}
 }
 
-void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
+static void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 {
 	double value = gtk_range_get_value(hscale1);
 
@@ -1033,7 +1026,7 @@ void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 
 }
 
-void bist_tone_cb (GtkWidget *widget, gpointer data)
+static void bist_tone_cb (GtkWidget *widget, gpointer data)
 {
 	GtkBuilder *builder = data;
 	unsigned mode, level, freq, c2i, c2q, c1i, c1q;
@@ -1143,7 +1136,7 @@ static int update_widgets(GtkBuilder *builder)
 	return iio_device_debug_attr_read_all(dev, __update_widget, builder);
 }
 
-void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
+static void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		     guint page_num, gpointer user_data)
 {
 	GtkWidget *tohide = user_data;
@@ -1154,7 +1147,7 @@ void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
-int handle_external_request (const char *request)
+static int handle_external_request (const char *request)
 {
 	int ret = 0;
 
@@ -1171,11 +1164,33 @@ int handle_external_request (const char *request)
 
 static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 {
-	if (MATCH_ATTRIB("calibrate")) {
-		do_calibration(NULL, NULL);
+	int ret = 0;
 
-		while (!auto_calibrate)
+	if (MATCH_ATTRIB("calibrate")) {
+		/* Set a timer for 20 seconds that calibration should succeed within. */
+		struct timespec ts_current, ts_end;
+		unsigned long long nsecs;
+		clock_gettime(CLOCK_MONOTONIC, &ts_current);
+		nsecs = ts_current.tv_nsec + (20000 * pow(10.0, 6));
+		ts_end.tv_sec = ts_current.tv_sec + (nsecs / pow(10.0, 9));
+		ts_end.tv_nsec = nsecs % (unsigned long long) pow(10.0, 9);
+
+		do_calibration(NULL, NULL);
+		while (!auto_calibrate && (timespeccmp(&ts_current, &ts_end, >) == 0)) {
 			gtk_main_iteration();
+			clock_gettime(CLOCK_MONOTONIC, &ts_current);
+		}
+
+		/* Calibration timed out or failed, probably running an old board
+		 * without an ADF5355 on it.
+		 */
+		if (auto_calibrate < 0) {
+			fprintf(stderr, "FMCOMMS5 calibration failed.\n");
+			ret = -1;
+		}
+
+		/* reset calibration completion flag */
+		auto_calibrate = 0;
 	} else if (MATCH_ATTRIB("SYNC_RELOAD") && atoi(value)) {
 		if (can_update_widgets)
 			update_widgets(builder);
@@ -1186,7 +1201,7 @@ static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int fmcomms2adv_handle(int line, const char *attrib, const char *value)

@@ -31,12 +31,17 @@
 #include "../libini2.h"
 #include "./block_diagram.h"
 #include "dac_data_manager.h"
+#include "fir_filter.h"
+#ifndef _WIN32
+#include "scpi.h"
+#endif
 
 #define THIS_DRIVER "FMComms5"
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 #define HANNING_ENBW 1.50
+#define REFCLK_RATE 40000000
 
 #define PHY_DEVICE1 "ad9361-phy"
 #define DDS_DEVICE1 "cf-ad9361-dds-core-lpc" /* can be hpc as well */
@@ -129,6 +134,8 @@ static const char *fmcomms5_sr_attribs[] = {
 	PHY_DEVICE1".in_voltage_quadrature_tracking_en",
 	PHY_DEVICE1".in_voltage_rf_dc_offset_tracking_en",
 	PHY_DEVICE1".out_voltage0_rf_port_select",
+	PHY_DEVICE1".out_altvoltage0_RX_LO_external",
+	PHY_DEVICE1".out_altvoltage1_TX_LO_external",
 	PHY_DEVICE1".out_altvoltage0_RX_LO_frequency",
 	PHY_DEVICE1".out_altvoltage1_TX_LO_frequency",
 	PHY_DEVICE1".out_voltage0_hardwaregain",
@@ -151,6 +158,8 @@ static const char *fmcomms5_sr_attribs[] = {
 	PHY_DEVICE2".out_voltage0_rf_port_select",
 	PHY_DEVICE2".out_altvoltage0_RX_LO_frequency",
 	PHY_DEVICE2".out_altvoltage1_TX_LO_frequency",
+	PHY_DEVICE2".out_altvoltage0_RX_LO_external",
+	PHY_DEVICE2".out_altvoltage1_TX_LO_external",
 	PHY_DEVICE2".out_voltage0_hardwaregain",
 	PHY_DEVICE2".out_voltage1_hardwaregain",
 	PHY_DEVICE2".out_voltage_sampling_frequency",
@@ -521,7 +530,7 @@ static gboolean update_display(void)
 	return TRUE;
 }
 
-void filter_fir_update(void)
+static void filter_fir_update(void)
 {
 	bool rx = false, tx = false, rxtx = false;
 	struct iio_channel *chn;
@@ -546,7 +555,7 @@ void filter_fir_update(void)
 	glb_settings_update_labels();
 }
 
-void filter_fir_enable(GtkToggleButton *button, gpointer data)
+static void filter_fir_enable(GtkToggleButton *button, gpointer data)
 {
 	bool rx, tx, rxtx, disable;
 
@@ -582,6 +591,11 @@ void filter_fir_enable(GtkToggleButton *button, gpointer data)
 
 	filter_fir_update();
 	trigger_mcs_button();
+
+	if (plugin_osc_running_state() == true) {
+		plugin_osc_stop_capture();
+		plugin_osc_start_capture();
+	}
 }
 
 static void rx_phase_rotation_update()
@@ -735,92 +749,14 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 	}
 }
 
-static int load_fir_filter(const char *file_name)
-{
-	bool rx = false, tx = false;
-	int ret = -1;
-	FILE *f = fopen(file_name, "r");
-	if (f) {
-		char *buf;
-		ssize_t len;
-		char line[80];
-		int ret1, ret2;
-
-		while (fgets(line, 80, f) != NULL && line[0] == '#');
-		if (!strncmp(line, "RX", strlen("RX")))
-			rx = true;
-		else if (!strncmp(line, "TX", strlen("TX")))
-			tx = true;
-		if (fgets(line, 80, f) != NULL) {
-			if (!strncmp(line, "TX", strlen("TX")))
-				tx = true;
-			else if (!strncmp(line, "RX", strlen("RX")))
-				rx = true;
-		}
-
-		fseek(f, 0, SEEK_END);
-		len = ftell(f);
-		buf = malloc(len);
-		fseek(f, 0, SEEK_SET);
-		len = fread(buf, 1, len, f);
-		fclose(f);
-
-		ret1 = iio_device_attr_write_raw(dev1,
-				"filter_fir_config", buf, len);
-		ret2 = iio_device_attr_write_raw(dev2,
-				"filter_fir_config", buf, len);
-		ret = (ret1 > ret2) ? ret2 : ret1;
-		free(buf);
-	}
-
-	if (ret < 0) {
-		fprintf(stderr, "FIR filter config failed\n");
-		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms5_panel);
-		if (!gtk_widget_is_toplevel(toplevel))
-			toplevel = NULL;
-
-		GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(toplevel),
-						GTK_DIALOG_MODAL,
-						GTK_MESSAGE_ERROR,
-						GTK_BUTTONS_CLOSE,
-						"\nFailed to configure the FIR filter using the selected file.");
-		gtk_window_set_title(GTK_WINDOW(dialog), "FIR Filter Configuration Failed");
-		if (gtk_dialog_run(GTK_DIALOG(dialog)))
-			gtk_widget_destroy(dialog);
-
-	} else {
-		strcpy(last_fir_filter, file_name);
-
-		gtk_widget_hide(fir_filter_en_tx);
-		gtk_widget_hide(enable_fir_filter_rx);
-		gtk_widget_hide(enable_fir_filter_rx_tx);
-		gtk_widget_show(disable_all_fir_filters);
-
-		if (rx && tx)
-			gtk_widget_show(enable_fir_filter_rx_tx);
-		else if (rx)
-			gtk_widget_show(enable_fir_filter_rx);
-		else if (tx)
-			gtk_widget_show(fir_filter_en_tx);
-		else
-			gtk_widget_hide(disable_all_fir_filters);
-		gtk_toggle_button_set_active(
-			GTK_TOGGLE_BUTTON (disable_all_fir_filters), true);
-	}
-
-	return ret;
-}
-
-void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
+static void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 {
 	char *file_name = gtk_file_chooser_get_filename(chooser);
 
-	if (load_fir_filter(file_name) < 0) {
-		if (strlen(last_fir_filter) == 0)
-			gtk_file_chooser_set_filename(chooser, "(None)");
-		else
-			gtk_file_chooser_set_filename(chooser, last_fir_filter);
-	}
+	load_fir_filter(file_name, dev1, dev2, fmcomms5_panel, chooser,
+			fir_filter_en_tx, enable_fir_filter_rx,
+			enable_fir_filter_rx_tx, disable_all_fir_filters,
+			last_fir_filter);
 }
 
 static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data)
@@ -874,7 +810,7 @@ static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
  * Return 1 if the channel combination is valid
  * Return 0 if the combination is not valid
  */
-int channel_combination_check(struct iio_device *dev, const char **ch_names)
+static int channel_combination_check(struct iio_device *dev, const char **ch_names)
 {
 	bool consecutive_ch = FALSE;
 	unsigned int i, k, nb_channels = iio_device_get_channels_count(dev);
@@ -937,7 +873,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-int handle_external_request (const char *request)
+static int handle_external_request(const char *request)
 {
 	int ret = 0;
 
@@ -949,14 +885,94 @@ int handle_external_request (const char *request)
 	return ret;
 }
 
+#ifndef _WIN32
+static int dcxo_to_eeprom(void)
+{
+	const char *eeprom_path = find_eeprom(NULL);
+	char cmd[256];
+	FILE *fp = NULL, *cmdfp = NULL;
+	const char *failure_msg = NULL;
+	double current_freq, target_freq;
+	int ret = 0;
+
+	if (!eeprom_path) {
+		failure_msg = "Can't find EEPROM file in the sysfs";
+		goto cleanup;
+	}
+
+	if (!strcmp(iio_context_get_name(ctx), "network")) {
+		target_freq = REFCLK_RATE;
+	} else if (!strcmp(iio_context_get_name(ctx), "local")) {
+		fp = fopen("/sys/kernel/debug/clk/ad9361_ext_refclk/clk_rate", "r");
+		if (fscanf(fp, "%lf", &target_freq) != 1) {
+			failure_msg = "Unable to read AD9361 reference clock rate from debugfs.";
+			goto cleanup;
+		}
+		if (fp) {
+			fclose(fp);
+		}
+	} else {
+		failure_msg = "AD9361 Reference clock rate missing from debugfs.";
+		goto cleanup;
+	}
+
+	if (scpi_connect_counter() != 0) {
+		failure_msg = "Failed to connect to Programmable Counter device.";
+		goto cleanup;
+	}
+
+	if (scpi_counter_get_freq(&current_freq, &target_freq) != 0) {
+		failure_msg = "Error retrieving counter frequency. "
+			"Make sure the counter has the correct input attached.";
+		goto cleanup;
+	}
+
+	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %x 2>&1", eeprom_path,
+			eeprom_path, (unsigned int)current_freq);
+	cmdfp = popen(cmd, "r");
+
+	if (!cmdfp || pclose(cmdfp) != 0) {
+		failure_msg = "Error running fru-dump to write to EEPROM";
+		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
+		goto cleanup;
+	}
+
+cleanup:
+	if (failure_msg) {
+		fprintf(stderr, "SCPI failed: %s\n", failure_msg);
+		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms5_panel);
+		if (!gtk_widget_is_toplevel(toplevel))
+			toplevel = NULL;
+		GtkWidget *dcxo_to_eeprom_fail = gtk_message_dialog_new(
+			GTK_WINDOW(toplevel),
+			GTK_DIALOG_MODAL,
+			GTK_MESSAGE_ERROR,
+			GTK_BUTTONS_CLOSE,
+			"%s", failure_msg);
+		gtk_window_set_title(GTK_WINDOW(dcxo_to_eeprom_fail), "Save to EEPROM");
+		if (gtk_dialog_run(GTK_DIALOG(dcxo_to_eeprom_fail)))
+			gtk_widget_destroy(dcxo_to_eeprom_fail);
+		ret = -1;
+	}
+
+	g_free((void *)eeprom_path);
+
+	return ret;
+}
+#endif /* _WIN32 */
+
 static int fmcomms5_handle_driver(const char *attrib, const char *value)
 {
+	int ret = 0;
+
 	if (MATCH_ATTRIB("load_fir_filter_file")) {
 		if (value[0]) {
-			load_fir_filter(value);
-			gtk_file_chooser_set_filename(
+			load_fir_filter(value, dev1, dev2, fmcomms5_panel,
 					GTK_FILE_CHOOSER(filter_fir_config),
-					value);
+					fir_filter_en_tx, enable_fir_filter_rx,
+					enable_fir_filter_rx_tx,
+					disable_all_fir_filters,
+					last_fir_filter);
 		}
 	} else if (MATCH_ATTRIB("global_settings_show")) {
 		gtk_toggle_tool_button_set_active(
@@ -987,7 +1003,7 @@ static int fmcomms5_handle_driver(const char *attrib, const char *value)
 		int tx = atoi(attrib + sizeof("dds_mode_tx") - 1);
 		dac_data_manager_set_dds_mode(dac_tx_manager,
 				tx <= 2 ? DDS_DEVICE1 : DDS_DEVICE2,
-				tx, atoi(value));
+				tx <= 2 ? tx : tx % 2, atoi(value));
 	} else if (!strncmp(attrib, "tx_channel_", sizeof("tx_channel_") - 1)) {
 		int tx = atoi(attrib + sizeof("tx_channel_") - 1);
 		dac_data_manager_set_tx_channel_state(
@@ -995,11 +1011,21 @@ static int fmcomms5_handle_driver(const char *attrib, const char *value)
 	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
 		if (can_update_widgets)
 			reload_button_clicked(NULL, NULL);
+#ifndef _WIN32
+	} else if (MATCH_ATTRIB("dcxo_to_eeprom")) {
+		if (scpi_connect_functions()) {
+			fprintf(stderr, "SCPI: Saving current clock rate to EEPROM.\n");
+			ret = dcxo_to_eeprom();
+		} else {
+			fprintf(stderr, "SCPI plugin not loaded, can't query frequency.\n");
+			ret = -1;
+		}
+#endif /* _WIN32 */
 	} else {
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int fmcomms5_handle(int line, const char *attrib, const char *value)
@@ -1010,6 +1036,8 @@ static int fmcomms5_handle(int line, const char *attrib, const char *value)
 
 static void load_profile(const char *ini_fn)
 {
+	struct iio_channel *ch;
+	char *value;
 	unsigned i;
 
 	for (i = 0; i < ARRAY_SIZE(fmcomms5_driver_attribs); i++) {
@@ -1021,6 +1049,33 @@ static void load_profile(const char *ini_fn)
 			free(value);
 		}
 	}
+
+	/* The gain_control_mode iio attribute should be set prior to setting
+	 * hardwaregain iio attribute. This is neccessary due to the fact that
+	 * some control modes change the hardwaregain automatically. */
+	ch = iio_device_find_channel(dev1, "voltage0", false);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				PHY_DEVICE1".in_voltage0_gain_control_mode");
+	if (value)
+		iio_channel_attr_write(ch, "gain_control_mode", value);
+
+	ch = iio_device_find_channel(dev1, "voltage1", false);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				PHY_DEVICE1".in_voltage1_gain_control_mode");
+	if (value)
+		iio_channel_attr_write(ch, "gain_control_mode", value);
+
+	ch = iio_device_find_channel(dev2, "voltage0", false);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				PHY_DEVICE2".in_voltage0_gain_control_mode");
+	if (value)
+		iio_channel_attr_write(ch, "gain_control_mode", value);
+
+	ch = iio_device_find_channel(dev2, "voltage1", false);
+	value = read_token_from_ini(ini_fn, THIS_DRIVER,
+				PHY_DEVICE2".in_voltage1_gain_control_mode");
+	if (value)
+		iio_channel_attr_write(ch, "gain_control_mode", value);
 
 	update_from_ini(ini_fn, THIS_DRIVER, dev1, fmcomms5_sr_attribs,
 			ARRAY_SIZE(fmcomms5_sr_attribs));
@@ -1284,6 +1339,11 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev1, d1_ch1, "external", builder, "rx_lo_external1", 0);
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+		dev2, d2_ch1, "external", builder, "rx_lo_external2", 0);
+
+	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
 		dev1, d1_ch0, "quadrature_tracking_en", builder,
 		"quad", 0);
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
@@ -1390,6 +1450,11 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 		dev2, d2_ch1, freq_name, builder, "tx_lo_freq2", &mhz_scale);
 	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
+	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+		dev1, d1_ch1, "external", builder, "tx_lo_external1", 0);
+	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+		dev2, d2_ch1, "external", builder, "tx_lo_external2", 0);
+
 	d1_ch1 = iio_device_find_channel(dev1, "altvoltage1", true);
 
 	if (iio_channel_find_attr(d1_ch1, "fastlock_store"))
@@ -1410,6 +1475,31 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 		"label_rssi_tx3", "sensitive", G_BINDING_DEFAULT);
 	g_builder_bind_property(builder, "rssi_tx4", "visible",
 		"label_rssi_tx4", "sensitive", G_BINDING_DEFAULT);
+
+	g_builder_bind_property(builder, "rx_lo_external1", "active",
+		"rx_fastlock_profile1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external1", "active",
+		"rx_fastlock_label1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external1", "active",
+		"rx_fastlock_actions1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external2", "active",
+		"rx_fastlock_profile2", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external2", "active",
+		"rx_fastlock_label2", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "rx_lo_external2", "active",
+		"rx_fastlock_actions2", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external1", "active",
+		"tx_fastlock_profile1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external1", "active",
+		"tx_fastlock_label1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external1", "active",
+		"tx_fastlock_actions1", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external2", "active",
+		"tx_fastlock_profile2", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external2", "active",
+		"tx_fastlock_label2", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "tx_lo_external2", "active",
+		"tx_fastlock_actions2", "visible", G_BINDING_INVERT_BOOLEAN);
 
 	if (ini_fn)
 		load_profile(ini_fn);
@@ -1583,8 +1673,8 @@ static void save_widgets_to_ini(FILE *f)
 			last_fir_filter,
 			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 1),
 			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE1, 2),
-			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 3),
-			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 4),
+			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 1),
+			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE2, 2),
 			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 0),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 1),

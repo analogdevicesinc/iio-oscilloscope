@@ -109,7 +109,7 @@ static size_t write_fru(char *eeprom)
 	}
 
 	store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(fru_file_list)));
-	gtk_list_store_clear (store);
+	gtk_list_store_clear(store);
 
 	for (j = 0; j < n; j++) {
 		if (namelist[j]->d_type == DT_REG && str_endswith(namelist[j]->d_name, ".bin"))
@@ -492,7 +492,7 @@ G_MODULE_EXPORT gint cb_connect(GtkButton *button, Dialogs *data)
 
 gint fru_connect(void)
 {
-	return cb_connect(NULL, &dialogs);
+	return fru_connect_dialog(&dialogs, false);
 }
 
 gint connect_dialog(bool load_profile)

@@ -343,7 +343,7 @@ static void tx_sample_rate_changed(void *data)
 	}
 }
 
-struct fmcomms1_calib_data_v1 *find_entry(struct fmcomms1_calib_data_v1 *data,
+static struct fmcomms1_calib_data_v1 *find_entry(struct fmcomms1_calib_data_v1 *data,
 					 struct fmcomms1_calib_header_v1 *header,
 					 unsigned f)
 {
@@ -365,7 +365,7 @@ struct fmcomms1_calib_data_v1 *find_entry(struct fmcomms1_calib_data_v1 *data,
 	return &data[gindex];
 }
 
-void store_entry_hw(struct fmcomms1_calib_data_v1 *data, unsigned tx, unsigned rx)
+static void store_entry_hw(struct fmcomms1_calib_data_v1 *data, unsigned tx, unsigned rx)
 {
 	if (!data)
 		return;
@@ -921,13 +921,12 @@ display_call_ret:
 	/* free the buffers */
 	if (cooked_data || markers)
 		plugin_data_capture_of_plot(fft_plot, NULL, &cooked_data, &markers);
-
 	kill_thread = 1;
 	g_thread_exit(NULL);
 }
 
 
-char * get_filename(char *name, bool load)
+static char * get_filename(char *name, bool load)
 {
 	gint ret;
 	char *filename, buf[256];
@@ -1112,7 +1111,7 @@ static int parse_cal_handler(int line, const char* section,
 	return 0;
 }
 
-void load_cal(char * resfile)
+static void load_cal(char * resfile)
 {
 	foreach_in_ini(resfile, parse_cal_handler);
 }
@@ -1165,7 +1164,7 @@ static int cal_save_to_eeprom(struct s_cal_eeprom_v1 *eeprom)
 	return 0;
 }
 
-void save_cal(char * resfile)
+static void save_cal(char * resfile)
 {
 	FILE* file;
 	time_t clock = time(NULL);
@@ -1244,7 +1243,7 @@ static void calib_plot_destroyed_cb(OscPlot *plot)
 	g_signal_emit_by_name(GTK_DIALOG(dialogs.calibrate), "response", -7);
 }
 
-G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
+static void cal_dialog(GtkButton *btn, Dialogs *data)
 {
 	gint ret;
 	char *filename = NULL;
@@ -1327,6 +1326,11 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 		 ret != GTK_RESPONSE_DELETE_EVENT);	/* Clicked on the close icon */
 
 	kill_thread = 1;
+	/* Stop capturing in order to unlock the buffer_full mutex otherwise
+	 this thread will suspend the capture while waiting for the display_cal
+	 to die which won't die until it will get one last batch of data. */
+	if (calib_plot_exists)
+		osc_plot_draw_stop(plot_fft_2ch);
 	g_source_remove_by_user_data(data);
 
 	if (thid_rx)
@@ -1335,7 +1339,6 @@ G_MODULE_EXPORT void cal_dialog(GtkButton *btn, Dialogs *data)
 	if (filename)
 		g_free(filename);
 	if (calib_plot_exists) {
-		osc_plot_draw_stop(plot_fft_2ch);
 		osc_plot_destroy(plot_fft_2ch);
 	}
 
