@@ -69,6 +69,7 @@ PLUGINS=\
 	plugins/pr_config.$(SO) \
 	plugins/fmcadc3.$(SO) \
 	plugins/daq2.$(SO) \
+	plugins/ad9739a.$(SO) \
 	plugins/AD5628_1.$(SO) \
 	plugins/AD7303.$(SO) \
 	plugins/cn0357.$(SO) \

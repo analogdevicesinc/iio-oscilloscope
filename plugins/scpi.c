@@ -544,9 +544,7 @@ static int scpi_connect(struct scpi_instrument *scpi)
 		return -1;
 	}
 
-	scpi_fprintf(scpi, "*CLS\r\n");
-	scpi_fprintf(scpi, "*RST\r\n");
-	scpi_fprintf(scpi, "*IDN?\r\n");
+	ret = scpi_fprintf(current_instrument, "*CLS;*RST;*IDN?\r\n");
 	scpi->model = strdup(scpi->response);
 	if (!strstr(scpi->model, scpi->id_regex)) {
 		printf("instrument doesn't match regex\n");
@@ -554,9 +552,10 @@ static int scpi_connect(struct scpi_instrument *scpi)
 		printf("\treceived : '%s'\n", scpi->response);
 		return -1;
 	}
-	printf("Instrument ID: %s\n", scpi->model);
+	if (ret > 0)
+		printf("Instrument ID: %s\n", scpi->model);
 
-	return 0;
+	return ret < 0 ? ret : 0;
 }
 
 /* Spectrum Analyzer commands */
@@ -798,7 +797,9 @@ int scpi_connect_counter()
 	/* Iterate over tty dev nodes, trying to connect to a supported device. */
 	for (tty_node = 0; tty_node <= 9; tty_node++) {
 		current_instrument->tty_path[strlen(current_instrument->tty_path)-1] = (char)(tty_node + '0');
-		if (scpi_connect(current_instrument) == 0 && scpi_counter_connected()) {
+		if (access(current_instrument->tty_path, R_OK | W_OK) != -1 &&
+				scpi_connect(current_instrument) == 0 &&
+				scpi_counter_connected()) {
 			if (strstr(current_instrument->model, HAMEG_HM8123)) {
 				/* Select the correct input. */
 				do {

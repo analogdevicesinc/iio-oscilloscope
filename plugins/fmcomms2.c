@@ -671,6 +671,7 @@ static int dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 
 	if (!fp || pclose(fp) != 0) {
 		failure_msg = "Error running fru-dump to write to EEPROM";
+		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
 		goto cleanup;
 	}
 
@@ -794,17 +795,8 @@ static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
 
 	FILE *fp;
 
-	/* Alter toggle button text on start and stop. */
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn))) {
-		gtk_button_set_label(btn, "Stop calibration");
-		gtk_widget_set_sensitive(dcxo_cal_type, FALSE);
-		gtk_widget_set_sensitive(glb_widgets[dcxo_coarse_num].widget, FALSE);
-		gtk_widget_set_sensitive(glb_widgets[dcxo_fine_num].widget, FALSE);
-		while (gtk_events_pending())
-			gtk_main_iteration();
-	} else {
+	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)))
 		goto dcxo_cleanup;
-	}
 
 	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(dcxo_cal_type))) {
 		case 0: /* REFCLK */
@@ -846,6 +838,14 @@ static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
 		failure_msg = "Failed to connect to Programmable Counter device.";
 		goto dcxo_cleanup;
 	}
+
+	/* Alter toggle button text on start and disable user input for certain
+	 * widgets during calibration.
+	 */
+	gtk_button_set_label(btn, "Stop calibration");
+	gtk_widget_set_sensitive(dcxo_cal_type, FALSE);
+	gtk_widget_set_sensitive(glb_widgets[dcxo_coarse_num].widget, FALSE);
+	gtk_widget_set_sensitive(glb_widgets[dcxo_fine_num].widget, FALSE);
 
 	tuning_elems = g_queue_new();
 	target_freq = roundf(target_freq);
@@ -1003,7 +1003,8 @@ dcxo_cleanup:
 
 	auto_calibrate = 1;
 
-	g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
+	if (tuning_elems)
+		g_queue_free_full(tuning_elems, (GDestroyNotify)g_free);
 
 	return ret;
 }
