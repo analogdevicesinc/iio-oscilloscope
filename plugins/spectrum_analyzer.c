@@ -114,8 +114,6 @@ static GtkNotebook *nbook;
 static GtkWidget *analyzer_panel;
 static gboolean plugin_detached;
 
-#define DEBUG 1
-
 #if DEBUG
 GTimer *gtimer;
 double loop_durations_sum;
@@ -206,6 +204,7 @@ static void comboboxtext_rbw_fill(GtkComboBoxText *box, double sampling_freq)
 	}
 }
 
+#if DEBUG
 static void log_before_sweep_starts(plugin_setup *setup)
 {
 	FILE *fp;
@@ -229,6 +228,7 @@ static void log_before_sweep_starts(plugin_setup *setup)
 
 	fclose(fp);
 }
+#endif
 
 static void init_device_list(struct iio_context *ctx)
 {
@@ -334,7 +334,9 @@ static void build_profiles_for_entire_sweep(plugin_setup *setup)
 	}
 	setup->rx_profiles = g_slist_reverse(setup->rx_profiles);
 	setup->profile_count = g_slist_length(setup->rx_profiles);
+	#if DEBUG
 	log_before_sweep_starts(setup);
+	#endif
 }
 
 static void configure_spectrum_window(plugin_setup *setup)
