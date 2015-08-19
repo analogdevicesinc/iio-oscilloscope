@@ -1209,7 +1209,7 @@
     <property name="border_width">5</property>
     <property name="spacing">5</property>
     <child>
-      <object class="GtkFrame" id="frame5">
+      <object class="GtkFrame" id="rx_chain_frame">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="label_xalign">0</property>
@@ -1220,7 +1220,7 @@
             <property name="can_focus">False</property>
             <property name="spacing">12</property>
             <child>
-              <object class="GtkFrame" id="frame6">
+              <object class="GtkFrame" id="adc_frame">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label_xalign">0</property>
@@ -1286,7 +1286,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkFrame" id="frame7">
+              <object class="GtkFrame" id="vga_frame">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label_xalign">0</property>
@@ -1407,7 +1407,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkFrame" id="frame8">
+              <object class="GtkFrame" id="rx_lo_frame">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label_xalign">0</property>
@@ -1561,7 +1561,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkFrame" id="frame1">
+      <object class="GtkFrame" id="tx_chain_frame">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="label_xalign">0</property>
@@ -1597,7 +1597,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkFrame" id="frame10">
+              <object class="GtkFrame" id="dac_frame">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label_xalign">0</property>
@@ -1737,7 +1737,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkVBox" id="box4">
+              <object class="GtkVBox" id="tx_lo_box">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>

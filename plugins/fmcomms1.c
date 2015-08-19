@@ -285,6 +285,9 @@ static void rx_freq_info_update(void)
 {
 	double lo_freq;
 
+	if (!adc)
+		return;
+
 	rx_update_device_sampling_freq("cf-ad9643-core-lpc",
 		USE_INTERN_SAMPLING_FREQ);
 	lo_freq = mhz_scale * gtk_spin_button_get_value(
@@ -1639,8 +1642,9 @@ static void load_profile(const char *ini_fn)
 
 	update_from_ini(ini_fn, THIS_DRIVER, dac, fmcomms1_sr_attribs,
 			ARRAY_SIZE(fmcomms1_sr_attribs));
-	update_from_ini(ini_fn, THIS_DRIVER, adc, fmcomms1_sr_attribs,
-			ARRAY_SIZE(fmcomms1_sr_attribs));
+	if (adc)
+		update_from_ini(ini_fn, THIS_DRIVER, adc, fmcomms1_sr_attribs,
+				ARRAY_SIZE(fmcomms1_sr_attribs));
 	if (txpll)
 		update_from_ini(ini_fn, THIS_DRIVER, txpll,
 				fmcomms1_sr_attribs,
@@ -1758,6 +1762,19 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	dac_interpolation = GTK_WIDGET(gtk_builder_get_object(builder, "dac_interpolation_clock"));
 	dac_shift = GTK_WIDGET(gtk_builder_get_object(builder, "dac_fcenter_shift"));
 
+	if (!adc) {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "adc_frame")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "calibrate_dialog")));
+	}
+	if (!vga)
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "vga_frame")));
+	if (!rxpll)
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "rx_lo_frame")));
+	if (!adc && !vga && !rxpll)
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "rx_chain_frame")));
+	if (!txpll)
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "tx_lo_box")));
+
 	if (ini_fn)
 		load_profile(ini_fn);
 
@@ -1777,6 +1794,8 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	dds4_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_Q, WIDGET_PHASE);
 
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
+	if (!adc)
+		goto dac_freq_attribs;
 	ch1 = iio_device_find_channel(adc, "voltage0", false);
 	if (iio_channel_find_attr(ch1, "sampling_frequency")) {
 		adc_freq_device = adc;
@@ -1788,6 +1807,7 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 		adc_freq_file = "ADC_CLK_frequency";
 	}
 
+dac_freq_attribs:
 	dac_sampling_freq_file = iio_channel_find_attr(ch0,
 			"1A_sampling_frequency") ?: "sampling_frequency";
 
@@ -1812,6 +1832,8 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 
 	num_tx_pll = num_tx;
 
+	if (!txpll)
+		goto dac_calib_attribs;
 	ch0 = iio_device_find_channel(txpll, "altvoltage0", true);
 
 	iio_spin_button_int_init(&tx_widgets[num_tx++],
@@ -1825,6 +1847,7 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 			txpll, ch0, "frequency_resolution", builder, "tx_lo_spacing", NULL);
 
+dac_calib_attribs:
 	/* Calibration */
 	ch0 = iio_device_find_channel(dac, "voltage0", true);
 	ch1 = iio_device_find_channel(dac, "voltage1", true);
@@ -1854,6 +1877,8 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	g_signal_connect(Q_dac_pha_adj, "value-changed",
 			G_CALLBACK(dac_cal_spin1), "phase");
 
+	if (!adc)
+		goto rx_attribs;
 	ch0 = iio_device_find_channel(adc, "voltage0", false);
 	ch1 = iio_device_find_channel(adc, "voltage1", false);
 	iio_spin_button_s64_init(&cal_widgets[num_cal++],
@@ -1882,7 +1907,10 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	g_signal_connect(Q_adc_phase_adj , "value-changed",
 			G_CALLBACK(adc_cal_spin1), "calibphase");
 
+rx_attribs:
 	/* Rx Widgets */
+	if (!rxpll)
+		goto adc_freq_attribs;
 	ch0 = iio_device_find_channel(rxpll, "altvoltage0", true);
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			txpll, ch0, "frequency_resolution",
@@ -1896,11 +1924,18 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
 			txpll, ch0, "powerdown", builder, "rx_lo_powerdown", 1);
 	num_adc_freq = num_rx;
+
+adc_freq_attribs:
+	if (!adc)
+		goto vga_attribs;
 	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
 			adc_freq_device, adc_freq_channel, adc_freq_file,
 			builder, "adc_freq", &mhz_scale);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
+vga_attribs:
+	if (!vga)
+		goto calib_dialog;
 	ch0 = iio_device_find_channel(vga, "voltage0", true);
 	ch1 = iio_device_find_channel(vga, "voltage1", true);
 
@@ -1911,6 +1946,7 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 			vga, ch1, "hardwaregain", vga_gain1, NULL);
 	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
+calib_dialog:
 	g_builder_connect_signal(builder, "calibrate_dialog", "clicked",
 		G_CALLBACK(cal_dialog), NULL);
 
@@ -1929,11 +1965,20 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
-	iio_spin_button_set_on_complete_function(&tx_widgets[num_tx_pll], rf_out_update_on_complete, NULL);
-	iio_spin_button_set_on_complete_function(&rx_widgets[num_rx_pll], rx_update_labels_on_complete, NULL);
-	iio_spin_button_set_on_complete_function(&rx_widgets[num_adc_freq], rx_update_labels_on_complete, NULL);
-	iio_spin_button_set_on_complete_function(&tx_widgets[num_dac_freq], tx_sample_rate_changed, NULL);
+	if (txpll)
+		iio_spin_button_set_on_complete_function(&tx_widgets[num_tx_pll],
+			rf_out_update_on_complete, NULL);
+	if (rxpll)
+		iio_spin_button_set_on_complete_function(&rx_widgets[num_rx_pll],
+			rx_update_labels_on_complete, NULL);
+	if (adc)
+		iio_spin_button_set_on_complete_function(&rx_widgets[num_adc_freq],
+			rx_update_labels_on_complete, NULL);
+	iio_spin_button_set_on_complete_function(&tx_widgets[num_dac_freq],
+			tx_sample_rate_changed, NULL);
 
+	if (!rxpll)
+		goto update_widgets;
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_I, "visible", 0);
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", avg_Q, "visible", 0);
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", span_I, "visible", 0);
@@ -1941,6 +1986,7 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", radius_IQ, "visible", 0);
 	g_object_bind_property(GTK_TOGGLE_BUTTON(rx_widgets[rx_lo_powerdown].widget), "active", angle_IQ, "visible", 0);
 
+update_widgets:
 	fmcomms1_cal_eeprom();
 	tx_update_values();
 	rx_update_values();
@@ -1979,8 +2025,9 @@ static void save_profile(const char *ini_fn)
 		/* Write the section header */
 		save_to_ini(f, THIS_DRIVER, dac, fmcomms1_sr_attribs,
 				ARRAY_SIZE(fmcomms1_sr_attribs));
-		save_to_ini(f, NULL, adc, fmcomms1_sr_attribs,
-				ARRAY_SIZE(fmcomms1_sr_attribs));
+		if (adc)
+			save_to_ini(f, NULL, adc, fmcomms1_sr_attribs,
+					ARRAY_SIZE(fmcomms1_sr_attribs));
 		if (txpll)
 			save_to_ini(f, NULL, txpll, fmcomms1_sr_attribs,
 					ARRAY_SIZE(fmcomms1_sr_attribs));
@@ -2011,8 +2058,7 @@ static bool fmcomms1_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	return !!iio_context_find_device(osc_ctx, "cf-ad9122-core-lpc") &&
-		!!iio_context_find_device(osc_ctx, "cf-ad9643-core-lpc");
+	return !!iio_context_find_device(osc_ctx, "cf-ad9122-core-lpc");
 }
 
 struct osc_plugin plugin = {
