@@ -385,7 +385,19 @@ static bool configure_data_capture(plugin_setup *setup)
 	dev_info = iio_device_get_data(cap);
 	dev_info->sample_count = setup->fft_size;
 	dev_info->adc_freq = device_get_rx_sampling_freq(cap);
-	if (HZ_TO_MHZ(dev_info->adc_freq) != sampling_rate) {
+	if (dev_info->adc_freq >= 1000000) {
+		dev_info->adc_scale = 'M';
+		dev_info->adc_freq /= 1000000.0;
+	} else if (dev_info->adc_freq >= 1000) {
+		dev_info->adc_scale = 'k';
+		dev_info->adc_freq /= 1000.0;
+	} else if (dev_info->adc_freq >= 0) {
+		dev_info->adc_scale = ' ';
+	} else {
+		dev_info->adc_scale = '?';
+		dev_info->adc_freq = 0.0;
+	}
+	if (dev_info->adc_freq != sampling_rate) {
 		fprintf(stderr, "Failed to set the rx sampling rate to %f"
 			"in %s\n", sampling_rate, __func__);
 		return false;

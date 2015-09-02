@@ -504,7 +504,9 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 	if (priv->redraw_function <= 0 && !force_update)
 		return;
 
-	if (priv->active_transform_type == FFT_TRANSFORM || priv->active_transform_type == COMPLEX_FFT_TRANSFORM) {
+	if (priv->active_transform_type == FFT_TRANSFORM ||
+		priv->active_transform_type == COMPLEX_FFT_TRANSFORM ||
+		priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM) {
 
 		/* In FFT mode we need to scale the x-axis according to the selected sampling frequency */
 		for (i = 0; i < tr_list->size; i++)
