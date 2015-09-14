@@ -73,6 +73,24 @@ static GtkWidget * gui_connection_infobar_new(GtkWidget **out_infobar_close,
 	return infobar;
 }
 
+static void vcheck_dont_show_cb(GtkToggleButton *btn, gpointer data);
+
+static void versioncheck_en_cb(GtkCheckMenuItem *item, gpointer data)
+{
+	g_signal_handlers_block_by_func(data, vcheck_dont_show_cb, data);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data),
+		!gtk_check_menu_item_get_active(item));
+	g_signal_handlers_unblock_by_func(data, vcheck_dont_show_cb, data);
+}
+
+static void vcheck_dont_show_cb(GtkToggleButton *btn, gpointer data)
+{
+	g_signal_handlers_block_by_func(data, versioncheck_en_cb, data);
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(data),
+		!gtk_toggle_button_get_active(btn));
+	g_signal_handlers_unblock_by_func(data, versioncheck_en_cb, data);
+}
+
 static void init_application ()
 {
 	GtkBuilder *builder = NULL;
@@ -80,6 +98,7 @@ static void init_application ()
 	GtkWidget  *btn_capture;
 	GtkWidget  *infobar_close, *infobar_reconnect;
 	GtkWidget  *infobar_box;
+	GtkWidget  *vcheck_dont_show;
 	GtkAboutDialog *about = NULL;
 
 	builder = gtk_builder_new();
@@ -114,6 +133,7 @@ static void init_application ()
 	btn_capture = GTK_WIDGET(gtk_builder_get_object(builder, "new_capture_plot"));
 	tooltips_en = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_tooltips_en"));
 	versioncheck_en = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_vcheck_startup"));
+	vcheck_dont_show = GTK_WIDGET(gtk_builder_get_object(builder, "version_check_dont_show_again"));
 	infobar_box = GTK_WIDGET(gtk_builder_get_object(builder, "connect_infobar_container"));
 	infobar = gui_connection_infobar_new(&infobar_close, &infobar_reconnect);
 	gtk_box_pack_start(GTK_BOX(infobar_box), infobar, FALSE, TRUE, 0);
@@ -123,6 +143,8 @@ static void init_application ()
 	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
 	g_signal_connect(G_OBJECT(btn_capture), "activate", G_CALLBACK(new_plot_cb), NULL);
 	g_signal_connect(G_OBJECT(tooltips_en), "toggled", G_CALLBACK(tooltips_enable_cb), NULL);
+	g_signal_connect(G_OBJECT(versioncheck_en), "toggled", G_CALLBACK(versioncheck_en_cb), vcheck_dont_show);
+	g_signal_connect(G_OBJECT(vcheck_dont_show), "toggled", G_CALLBACK(vcheck_dont_show_cb), versioncheck_en);
 
 	g_signal_connect(G_OBJECT(infobar_close), "clicked", G_CALLBACK(infobar_hide_cb), NULL);
 	g_signal_connect(G_OBJECT(infobar_reconnect), "clicked", G_CALLBACK(infobar_reconnect_cb), NULL);

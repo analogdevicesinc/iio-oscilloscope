@@ -536,11 +536,6 @@ A GUI for Linux IIO devices</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkImage" id="image2">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="stock">gtk-add</property>
-  </object>
   <object class="GtkDialog" id="connect_dialog">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -886,6 +881,11 @@ Installed/Found IIO devices on this platform</property>
     <property name="yalign">0.46000000834465027</property>
     <property name="stock">gtk-save-as</property>
   </object>
+  <object class="GtkImage" id="image2">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-add</property>
+  </object>
   <object class="GtkMessageDialog" id="latest_version_popup">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -1003,6 +1003,30 @@ Installed/Found IIO devices on this platform</property>
             <property name="fill">True</property>
             <property name="padding">5</property>
             <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkAlignment" id="alignment11">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="top_padding">15</property>
+            <child>
+              <object class="GtkCheckButton" id="version_check_dont_show_again">
+                <property name="label" translatable="yes">Don't show this again.</property>
+                <property name="use_action_appearance">False</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_action_appearance">False</property>
+                <property name="xalign">0</property>
+                <property name="draw_indicator">True</property>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">3</property>
           </packing>
         </child>
       </object>

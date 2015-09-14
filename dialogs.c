@@ -713,6 +713,10 @@ static gboolean version_info_show(gpointer data)
 	release_dispose(release);
 	release = NULL;
 
+
+	gtk_widget_set_visible(GTK_WIDGET(gtk_builder_get_object(builder,
+		"version_check_dont_show_again")), !data);
+
 	gtk_dialog_run(GTK_DIALOG(_dialogs->latest_version));
 	gtk_widget_hide(_dialogs->latest_version);
 
