@@ -651,6 +651,10 @@ static gboolean version_info_show(gpointer data)
 	GtkWidget *internal_vbox;
 	gchar *buf;
 
+	/* don't bother showing the dialog if version check failed (applies only at startup) */
+	if (!release && !data)
+		return false;
+
 	gdk_threads_enter();
 	internal_vbox = GTK_WIDGET(gtk_builder_get_object(builder,
 				"msg_dialog_vbox"));
