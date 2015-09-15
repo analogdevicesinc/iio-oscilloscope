@@ -205,6 +205,7 @@ static const char * fmcomms2_driver_attribs[] = {
 	"tx_show",
 	"rx_show",
 	"fpga_show",
+	"up_down_converter",
 	"tx_channel_0",
 	"tx_channel_1",
 	"tx_channel_2",
@@ -1255,6 +1256,9 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 				section_toggle[SECTION_FPGA], !!atoi(value));
 		hide_section_cb(section_toggle[SECTION_FPGA],
 				section_setting[SECTION_FPGA]);
+	} else if (MATCH_ATTRIB("up_down_converter")) {
+		gtk_toggle_button_set_active(
+				(GtkToggleButton *)up_down_converter, !!atoi(value));
 	} else if (!strncmp(attrib, "tx_channel_", sizeof("tx_channel_") - 1)) {
 		int tx = atoi(attrib + sizeof("tx_channel_") - 1);
 		dac_data_manager_set_tx_channel_state(
@@ -1837,6 +1841,7 @@ static void save_widgets_to_ini(FILE *f)
 			"tx_channel_1 = %i\n"
 			"tx_channel_2 = %i\n"
 			"tx_channel_3 = %i\n"
+			"up_down_converter = %i\n"
 			"global_settings_show = %i\n"
 			"tx_show = %i\n"
 			"rx_show = %i\n"
@@ -1849,6 +1854,7 @@ static void save_widgets_to_ini(FILE *f)
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 1),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 2),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 3),
+			!!gtk_toggle_button_get_active((GtkToggleButton *)up_down_converter),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_RX]),
