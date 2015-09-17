@@ -440,6 +440,9 @@ static void updn_converter_lo_freq_changed_cb(GtkSpinButton *button, int data)
 	rx_freq_info_update();
 }
 
+#define UPDN_LO_FREQ_MIN 1   /* MHz */
+#define UPDN_LO_FREQ_MAX 120 /* MHz */
+
 static void up_down_converter_toggled_cb(GtkToggleButton *button, gpointer data)
 {
 	static gint rx_updn_hid, tx_updn_hid;
@@ -455,8 +458,8 @@ static void up_down_converter_toggled_cb(GtkToggleButton *button, gpointer data)
 		tx_updn_hid = g_signal_connect(tx_widgets[tx_lo].widget, "value-changed",
 			G_CALLBACK(updn_converter_lo_freq_changed_cb), (gpointer)UPDN_TX);
 		gtk_spin_button_get_range(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget), &lo_min, &lo_max);
-		gtk_spin_button_set_range(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget), 1, 100);
-		gtk_spin_button_set_range(GTK_SPIN_BUTTON(tx_widgets[tx_lo].widget), 1, 100);
+		gtk_spin_button_set_range(GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget), UPDN_LO_FREQ_MIN, UPDN_LO_FREQ_MAX);
+		gtk_spin_button_set_range(GTK_SPIN_BUTTON(tx_widgets[tx_lo].widget), UPDN_LO_FREQ_MIN, UPDN_LO_FREQ_MAX);
 		rx_lo_update_value = rx_widgets[rx_lo].update_value;
 		tx_lo_update_value = tx_widgets[tx_lo].update_value;
 		rx_widgets[rx_lo].update_value = NULL;
