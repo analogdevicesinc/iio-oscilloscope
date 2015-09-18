@@ -478,7 +478,7 @@ void iio_toggle_button_init_from_builder(struct iio_widget *widget,
  * @timeoutID: Handler ID of callback that increases progress step by step
  * @value_changed_hid: Handler ID of callback for a "value-changed" event of the
  *                     progress spinbutton
- * @skip_widget_save: Allows widget to don't write its value to the
+ * @skip_widget_save: Allows widget to skip writing its value to the
  *                    driver attrbiute when the progress bar completes
  * @on_complete_data: Data to be passed to the on_complete() function
  * @on_complete: Function to be called when progress reaches 1.0.
