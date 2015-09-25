@@ -65,6 +65,8 @@ static int sr_attribs_array_size;
 
 static const char *daq2_sr_attribs[] = {
 	ADC_DEVICE".in_voltage_sampling_frequency",
+	ADC_DEVICE".in_voltage0_test_mode",
+	ADC_DEVICE".in_voltage1_test_mode",
 	DAQ2_DAC_DEVICE".out_altvoltage_sampling_frequency",
 	DAQ2_DAC_DEVICE".out_altvoltage0_1A_frequency",
 	DAQ2_DAC_DEVICE".out_altvoltage2_2A_frequency",
@@ -82,6 +84,8 @@ static const char *daq2_sr_attribs[] = {
 
 static const char *daq3_sr_attribs[] = {
 	ADC_DEVICE".in_voltage_sampling_frequency",
+	ADC_DEVICE".in_voltage0_test_mode",
+	ADC_DEVICE".in_voltage1_test_mode",
 	DAQ3_DAC_DEVICE".out_altvoltage_sampling_frequency",
 	DAQ3_DAC_DEVICE".out_altvoltage0_1A_frequency",
 	DAQ3_DAC_DEVICE".out_altvoltage2_2A_frequency",
@@ -227,7 +231,7 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	GtkWidget *daq2_panel;
 	GtkWidget *dds_container;
 	GtkTextBuffer *adc_buff, *dac_buff;
-	struct iio_channel *ch0;
+	struct iio_channel *ch0, *ch1;
 
 	ctx = osc_create_context();
 	if (!ctx)
@@ -264,6 +268,7 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	/* Rx Widgets */
 
 	ch0 = iio_device_find_channel(adc, "voltage0", false);
+	ch1 = iio_device_find_channel(adc, "voltage1", false);
 
 	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
 		snprintf(attr_val, sizeof(attr_val), "%.2f", (double)(val / 1000000ul));
@@ -273,6 +278,13 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	adc_buff = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_set_text(adc_buff, attr_val, -1);
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view_adc_freq")), adc_buff);
+
+	iio_combo_box_init_from_builder(&rx_widgets[num_rx++],
+		adc, ch0, "test_mode", "test_mode_available", builder,
+		"ch0_test_mode", NULL);
+	iio_combo_box_init_from_builder(&rx_widgets[num_rx++],
+		adc, ch1, "test_mode", "test_mode_available", builder,
+		"ch1_test_mode", NULL);
 
 	/* Tx Widgets */
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
