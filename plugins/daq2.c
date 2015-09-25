@@ -32,14 +32,18 @@
 #include "./block_diagram.h"
 #include "dac_data_manager.h"
 
-#define THIS_DRIVER "DAQ2"
+#define THIS_DRIVER "DAQ2/3"
 
 #define SYNC_RELOAD "SYNC_RELOAD"
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 #define ADC_DEVICE "axi-ad9680-hpc"
-#define DAC_DEVICE "axi-ad9144-hpc"
+static const char *DAC_DEVICE;
+
+#define DAQ2_DAC_DEVICE "axi-ad9144-hpc"
+#define DAQ3_DAC_DEVICE "axi-ad9152-hpc"
+
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble khz_scale = 1000.0;
@@ -55,25 +59,42 @@ static unsigned int num_tx, num_rx;
 
 static bool can_update_widgets;
 
+static int daq_board;
+static const char **daq_sr_attribs;
+static int sr_attribs_array_size;
+
 static const char *daq2_sr_attribs[] = {
 	ADC_DEVICE".in_voltage_sampling_frequency",
-	DAC_DEVICE".out_altvoltage_sampling_frequency",
-	"dds_mode",
-	"dac_buf_filename",
-	"tx_channel_0",
-	"tx_channel_1",
-	DAC_DEVICE".out_altvoltage0_1A_frequency",
-	DAC_DEVICE".out_altvoltage2_2A_frequency",
-	DAC_DEVICE".out_altvoltage1_1B_frequency",
-	DAC_DEVICE".out_altvoltage3_2B_frequency",
-	DAC_DEVICE".out_altvoltage0_1A_scale",
-	DAC_DEVICE".out_altvoltage2_2A_scale",
-	DAC_DEVICE".out_altvoltage1_1B_scale",
-	DAC_DEVICE".out_altvoltage3_2B_scale",
-	DAC_DEVICE".out_altvoltage0_1A_phase",
-	DAC_DEVICE".out_altvoltage1_1B_phase",
-	DAC_DEVICE".out_altvoltage2_2A_phase",
-	DAC_DEVICE".out_altvoltage3_2B_phase",
+	DAQ2_DAC_DEVICE".out_altvoltage_sampling_frequency",
+	DAQ2_DAC_DEVICE".out_altvoltage0_1A_frequency",
+	DAQ2_DAC_DEVICE".out_altvoltage2_2A_frequency",
+	DAQ2_DAC_DEVICE".out_altvoltage1_1B_frequency",
+	DAQ2_DAC_DEVICE".out_altvoltage3_2B_frequency",
+	DAQ2_DAC_DEVICE".out_altvoltage0_1A_scale",
+	DAQ2_DAC_DEVICE".out_altvoltage2_2A_scale",
+	DAQ2_DAC_DEVICE".out_altvoltage1_1B_scale",
+	DAQ2_DAC_DEVICE".out_altvoltage3_2B_scale",
+	DAQ2_DAC_DEVICE".out_altvoltage0_1A_phase",
+	DAQ2_DAC_DEVICE".out_altvoltage1_1B_phase",
+	DAQ2_DAC_DEVICE".out_altvoltage2_2A_phase",
+	DAQ2_DAC_DEVICE".out_altvoltage3_2B_phase",
+};
+
+static const char *daq3_sr_attribs[] = {
+	ADC_DEVICE".in_voltage_sampling_frequency",
+	DAQ3_DAC_DEVICE".out_altvoltage_sampling_frequency",
+	DAQ3_DAC_DEVICE".out_altvoltage0_1A_frequency",
+	DAQ3_DAC_DEVICE".out_altvoltage2_2A_frequency",
+	DAQ3_DAC_DEVICE".out_altvoltage1_1B_frequency",
+	DAQ3_DAC_DEVICE".out_altvoltage3_2B_frequency",
+	DAQ3_DAC_DEVICE".out_altvoltage0_1A_scale",
+	DAQ3_DAC_DEVICE".out_altvoltage2_2A_scale",
+	DAQ3_DAC_DEVICE".out_altvoltage1_1B_scale",
+	DAQ3_DAC_DEVICE".out_altvoltage3_2B_scale",
+	DAQ3_DAC_DEVICE".out_altvoltage0_1A_phase",
+	DAQ3_DAC_DEVICE".out_altvoltage1_1B_phase",
+	DAQ3_DAC_DEVICE".out_altvoltage2_2A_phase",
+	DAQ3_DAC_DEVICE".out_altvoltage3_2B_phase",
 };
 
 static const char * daq2_driver_attribs[] = {
@@ -188,10 +209,10 @@ static void load_profile(const char *ini_fn)
 		}
 	}
 
-	update_from_ini(ini_fn, THIS_DRIVER, dac, daq2_sr_attribs,
-			ARRAY_SIZE(daq2_sr_attribs));
-	update_from_ini(ini_fn, THIS_DRIVER, adc, daq2_sr_attribs,
-			ARRAY_SIZE(daq2_sr_attribs));
+	update_from_ini(ini_fn, THIS_DRIVER, dac, daq_sr_attribs,
+			sr_attribs_array_size);
+	update_from_ini(ini_fn, THIS_DRIVER, adc, daq_sr_attribs,
+			sr_attribs_array_size);
 
 	if (can_update_widgets) {
 		rx_update_values();
@@ -308,10 +329,10 @@ static void save_profile(const char *ini_fn)
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
 		/* Write the section header */
-		save_to_ini(f, THIS_DRIVER, dac, daq2_sr_attribs,
-				ARRAY_SIZE(daq2_sr_attribs));
-		save_to_ini(f, NULL, adc, daq2_sr_attribs,
-				ARRAY_SIZE(daq2_sr_attribs));
+		save_to_ini(f, THIS_DRIVER, dac, daq_sr_attribs,
+				sr_attribs_array_size);
+		save_to_ini(f, NULL, adc, daq_sr_attribs,
+				sr_attribs_array_size);
 		save_widgets_to_ini(f);
 		fclose(f);
 	}
@@ -333,6 +354,21 @@ static bool daq2_identify(void)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
+
+	if (iio_context_find_device(osc_ctx, DAQ2_DAC_DEVICE)) {
+		daq_board = 2;
+		DAC_DEVICE = DAQ2_DAC_DEVICE;
+		daq_sr_attribs = daq2_sr_attribs;
+		sr_attribs_array_size = ARRAY_SIZE(daq2_sr_attribs);
+	} else if (iio_context_find_device(osc_ctx, DAQ3_DAC_DEVICE)) {
+		daq_board = 3;
+		DAC_DEVICE = DAQ3_DAC_DEVICE;
+		daq_sr_attribs = daq3_sr_attribs;
+		sr_attribs_array_size = ARRAY_SIZE(daq3_sr_attribs);
+	} else {
+		DAC_DEVICE = "";
+	}
+
 	return !!iio_context_find_device(osc_ctx, DAC_DEVICE) &&
 		!!iio_context_find_device(osc_ctx, ADC_DEVICE);
 }
