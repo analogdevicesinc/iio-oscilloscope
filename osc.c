@@ -43,6 +43,7 @@ static gboolean stop_capture;
 static struct plugin_check_fct *setup_check_functions = NULL;
 static int num_check_fcts = 0;
 static GSList *dplugin_list = NULL;
+static struct osc_plugin *spect_analyzer_plugin = NULL;
 GtkWidget *notebook;
 GtkWidget *infobar;
 GtkWidget *tooltips_en;
@@ -714,6 +715,11 @@ bool plugin_osc_running_state(void)
 	return !!capture_function;
 }
 
+void plugin_osc_stop_all_plots(void)
+{
+	close_all_plots();
+}
+
 static bool force_plugin(const char *name)
 {
 	const char *force_plugin = getenv("OSC_FORCE_PLUGIN");
@@ -1320,6 +1326,11 @@ static void start(OscPlot *plot, gboolean start_event)
 
 		G_TRYLOCK(buffer_full);
 
+		/* Make sure the capture process in the Spectrum Analyzer plugin
+		 * is not running */
+		if (spect_analyzer_plugin)
+			spect_analyzer_plugin->handle_external_request("Stop");
+
 		/* Start the capture process */
 		capture_setup();
 		capture_start();
@@ -1800,6 +1811,8 @@ void do_init(struct iio_context *new_ctx)
 		g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 1000,
 				idle_timeout_check, new_ctx, NULL);
 	}
+
+	spect_analyzer_plugin = get_plugin_from_name("Spectrum Analyzer");
 }
 
 OscPlot * osc_find_plot_by_id(int id)

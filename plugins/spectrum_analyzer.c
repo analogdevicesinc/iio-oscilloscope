@@ -696,6 +696,12 @@ static void start_sweep_clicked(GtkButton *btn, gpointer data)
 	loop_durations_sum = 0;
 	loop_count = 0;
 #endif
+
+	/* This capture process and the capture process from osc.c are designed
+	 * to access the same iio devices but they do it from different threads,
+	 * thus should not run simultaneously. */
+	plugin_osc_stop_all_plots();
+
 	if (plugin_gather_user_setup(&psetup))
 		build_profiles_for_entire_sweep(&psetup);
 	if (!configure_data_capture(&psetup))
@@ -767,6 +773,18 @@ static void spectrum_window_destroyed_cb(OscPlot *plot)
 {
 	stop_sweep_clicked(GTK_BUTTON(stop_button), NULL);
 	spectrum_window = NULL;
+}
+
+static int handle_external_request (const char *request)
+{
+	int ret = 0;
+
+	if (!strcmp(request, "Stop")) {
+		gtk_button_clicked(GTK_BUTTON(stop_button));
+		ret = 1;
+	}
+
+	return ret;
 }
 
 static GtkWidget * analyzer_init(GtkWidget *notebook, const char *ini_fn)
@@ -888,6 +906,7 @@ struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = analyzer_identify,
 	.init = analyzer_init,
+	.handle_external_request = handle_external_request,
 	.update_active_page = update_active_page,
 	.get_preferred_size = analyzer_get_preferred_size,
 	.destroy = context_destroy,

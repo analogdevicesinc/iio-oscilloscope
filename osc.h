@@ -117,6 +117,7 @@ OscPlot * plugin_get_new_plot(void);
 void plugin_osc_stop_capture(void);
 void plugin_osc_start_capture(void);
 bool plugin_osc_running_state(void);
+void plugin_osc_stop_all_plots(void);
 
 void save_complete_profile(const char *filename);
 void load_complete_profile(const char *filename);
