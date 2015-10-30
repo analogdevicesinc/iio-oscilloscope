@@ -304,10 +304,9 @@ static void build_profiles_for_entire_sweep(plugin_setup *setup)
 
 	start = setup->start_freq + sweep_freq_step / 2;
 	stop = setup->stop_freq;
-
 	step = sweep_freq_step;
 
-	for (f = start; f <= stop; f += step) {
+	for (f = start; (f - sweep_freq_step / 2) < stop; f += step) {
 		iio_channel_attr_write_longlong(alt_ch0, "frequency",
 				(long long)MHZ_TO_HZ(f));
 		iio_channel_attr_write_longlong(alt_ch0,
@@ -522,6 +521,8 @@ static gpointer profile_load_thread_func(plugin_setup *setup)
 		ret = iio_channel_attr_write_longlong(alt_ch0,
 			"fastlock_recall", setup->profile_slot);
 		setup->profile_slot = (setup->profile_slot + 1) % 2;
+		if (setup->profile_count == 1)
+			setup->profile_slot = 0;
 		if (ret < 0)
 		fprintf(stderr, "Could not write to fastlock_recall"
 			"attribute in %s\n", __func__);
@@ -597,6 +598,7 @@ static bool setup_before_sweep_start(plugin_setup *setup)
 	GSList *node;
 	fastlock_profile *profile;
 	ssize_t ret;
+	int i;
 
 	g_return_val_if_fail(setup, false);
 
@@ -637,30 +639,19 @@ static bool setup_before_sweep_start(plugin_setup *setup)
 			"in %s. %s\n", __func__, strerror(ret));
 		goto fail;
 	}
+	/* Fill fastlock slots 0 and 1 */
+	for (i = 0, node = setup->rx_profiles; i < 2 && node;
+					i++, node = g_slist_next(node)) {
+		profile = node->data;
+		profile->data[0] = '0' + i;
 
-	/* Fill fastlock slot 0 */
-	node = setup->rx_profiles;
-	profile = node->data;
-	profile->data[0] = '0';
-
-	ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
-			profile->data);
-	if (ret < 0) {
-		fprintf(stderr, "Could not write to fastlock_load"
-			"attribute in %s. %s\n", __func__, strerror(ret));
-		goto fail;
-	}
-
-	/* Fill fastlock slot 1 */
-	node = g_slist_next(node);
-	profile = node->data;
-	profile->data[0] = '1';
-	ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
-			profile->data);
-	if (ret < 0) {
-		fprintf(stderr, "Could not write to fastlock_load"
-			"attribute in %s. %s\n", __func__, strerror(ret));
-		goto fail;
+		ret = iio_channel_attr_write(alt_ch0, "fastlock_load",
+				profile->data);
+		if (ret < 0) {
+			fprintf(stderr, "Could not write to fastlock_load"
+				"attribute in %s. %s\n", __func__, strerror(ret));
+			goto fail;
+		}
 	}
 
 	/* Recall profile at slot 0 */
@@ -843,6 +834,10 @@ static GtkWidget * analyzer_init(GtkWidget *notebook, const char *ini_fn)
 				"stop_sweep_btn"));
 
 	/* Widgets initialization */
+	gtk_spin_button_set_range(GTK_SPIN_BUTTON(center_freq),
+		70 + sweep_freq_step / 2, 6000 - sweep_freq_step / 2);
+	gtk_adjustment_set_lower(gtk_spin_button_get_adjustment(
+		GTK_SPIN_BUTTON(freq_bw)), sweep_freq_step);
 	comboboxtext_rbw_fill(GTK_COMBO_BOX_TEXT(available_RBWs),
 				sampling_rate);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(available_RBWs), 6);
