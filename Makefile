@@ -138,6 +138,7 @@ install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/xmls
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/filters
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/waveforms
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/waveforms/qpsk
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/profiles
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/block_diagrams
 	install ./$(OSC) $(DESTDIR)$(PREFIX)/bin/
@@ -152,7 +153,8 @@ install-common-files: $(OSC) $(PLUGINS)
 	install $(PLUGINS) $(PLIB)
 	install ./xmls/* $(PLIB)/xmls
 	install ./filters/* $(PLIB)/filters
-	install ./waveforms/* $(PLIB)/waveforms
+	install ./waveforms/*.* $(PLIB)/waveforms
+	install ./waveforms/qpsk/* $(PLIB)/waveforms/qpsk
 	install ./profiles/* $(PLIB)/profiles
 	install ./block_diagrams/* $(PLIB)/block_diagrams
 
