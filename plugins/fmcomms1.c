@@ -410,13 +410,15 @@ static gdouble pll_get_freq(struct iio_widget *widget)
 
 static void gain_amp_locked_cb(GtkToggleButton *btn, gpointer data)
 {
+	gdouble tmp;
 
 	if(gtk_toggle_button_get_active(btn)) {
-		gdouble tmp;
 		tmp = gtk_spin_button_get_value(GTK_SPIN_BUTTON(vga_gain0));
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(vga_gain1), tmp);
 		gtk_spin_button_set_adjustment(GTK_SPIN_BUTTON(vga_gain1), adj_gain0);
 	} else {
+		tmp = gtk_spin_button_get_value(GTK_SPIN_BUTTON(vga_gain0));
+		gtk_adjustment_set_value(adj_gain1, tmp);
 		gtk_spin_button_set_adjustment(GTK_SPIN_BUTTON(vga_gain1), adj_gain1);
 	}
 }
