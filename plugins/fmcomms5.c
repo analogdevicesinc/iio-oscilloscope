@@ -1056,25 +1056,25 @@ static void load_profile(const char *ini_fn)
 	ch = iio_device_find_channel(dev1, "voltage0", false);
 	value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				PHY_DEVICE1".in_voltage0_gain_control_mode");
-	if (value)
+	if (ch && value)
 		iio_channel_attr_write(ch, "gain_control_mode", value);
 
 	ch = iio_device_find_channel(dev1, "voltage1", false);
 	value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				PHY_DEVICE1".in_voltage1_gain_control_mode");
-	if (value)
+	if (ch && value)
 		iio_channel_attr_write(ch, "gain_control_mode", value);
 
 	ch = iio_device_find_channel(dev2, "voltage0", false);
 	value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				PHY_DEVICE2".in_voltage0_gain_control_mode");
-	if (value)
+	if (ch && value)
 		iio_channel_attr_write(ch, "gain_control_mode", value);
 
 	ch = iio_device_find_channel(dev2, "voltage1", false);
 	value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				PHY_DEVICE2".in_voltage1_gain_control_mode");
-	if (value)
+	if (ch && value)
 		iio_channel_attr_write(ch, "gain_control_mode", value);
 
 	update_from_ini(ini_fn, THIS_DRIVER, dev1, fmcomms5_sr_attribs,

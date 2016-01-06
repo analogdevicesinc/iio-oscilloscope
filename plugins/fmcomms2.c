@@ -1314,13 +1314,13 @@ static void load_profile(const char *ini_fn)
 	ch = iio_device_find_channel(dev, "voltage0", false);
 	value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				PHY_DEVICE".in_voltage0_gain_control_mode");
-	if (value)
+	if (ch && value)
 		iio_channel_attr_write(ch, "gain_control_mode", value);
 
 	ch = iio_device_find_channel(dev, "voltage1", false);
 	value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				PHY_DEVICE".in_voltage1_gain_control_mode");
-	if (value)
+	if (ch && value)
 		iio_channel_attr_write(ch, "gain_control_mode", value);
 
 	update_from_ini(ini_fn, THIS_DRIVER, dev, fmcomms2_sr_attribs,
