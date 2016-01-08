@@ -195,6 +195,9 @@ static const char *fmcomms2_sr_attribs[] = {
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_phase",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
+
+	UDC_RX_DEVICE".out_altvoltage0_frequency",
+	UDC_TX_DEVICE".out_altvoltage0_frequency",
 };
 
 static const char * fmcomms2_driver_attribs[] = {
@@ -1336,6 +1339,12 @@ static void load_profile(const char *ini_fn)
 	if (dds)
 		update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
 				ARRAY_SIZE(fmcomms2_sr_attribs));
+	if (udc_rx)
+		update_from_ini(ini_fn, THIS_DRIVER, udc_rx, fmcomms2_sr_attribs,
+				ARRAY_SIZE(fmcomms2_sr_attribs));
+	if (udc_tx)
+		update_from_ini(ini_fn, THIS_DRIVER, udc_tx, fmcomms2_sr_attribs,
+				ARRAY_SIZE(fmcomms2_sr_attribs));
 
 	if (can_update_widgets)
 		reload_button_clicked(NULL, NULL);
@@ -1870,6 +1879,12 @@ static void save_profile(const char *ini_fn)
 				ARRAY_SIZE(fmcomms2_sr_attribs));
 		if (dds)
 			save_to_ini(f, NULL, dds, fmcomms2_sr_attribs,
+					ARRAY_SIZE(fmcomms2_sr_attribs));
+		if (udc_rx)
+			save_to_ini(f, NULL, udc_rx, fmcomms2_sr_attribs,
+					ARRAY_SIZE(fmcomms2_sr_attribs));
+		if (udc_tx)
+			save_to_ini(f, NULL, udc_tx, fmcomms2_sr_attribs,
 					ARRAY_SIZE(fmcomms2_sr_attribs));
 		save_widgets_to_ini(f);
 		fclose(f);
