@@ -5397,7 +5397,7 @@ static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type
 		priv->marker_type = MARKER_ONE_TONE;
 		marker_set(plot, 0, "Fund", TRUE);
 		marker_set(plot, 1, "DC", TRUE);
-		for (i = 2; i < MAX_MARKERS; i++) {
+		for (i = 2; i <= MAX_MARKERS; i++) {
 			sprintf(tmp, "%iH", i);
 			marker_set(plot, i, tmp, FALSE);
 		}
