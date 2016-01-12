@@ -337,6 +337,8 @@ static gboolean dmm_update(void)
 					sprintf(tmp, "%s = %f Volts\n", name, value / 1000);
 				else if (!strncmp(channel, "temp", 4))
 					sprintf(tmp, "%s = %3.2f °C\n", name, value / 1000);
+				else if (!strncmp(channel, "current", 4))
+					sprintf(tmp, "%s = %f Milliampere\n", name, value);
 				else if (!strncmp(channel, "accel", 5))
 					sprintf(tmp, "%s = %f m/s²\n", name, value);
 				else if (!strncmp(channel, "anglvel", 7))
