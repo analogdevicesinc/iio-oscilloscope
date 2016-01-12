@@ -2039,7 +2039,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	const struct iio_device *trigger;
 	if (iio_device_get_trigger(dev, &trigger) == -EIO && num_enabled > 0) {
 		snprintf(warning_text, sizeof(warning_text),
-				"Device %s needs a trigger", name);
+				"Device %s needs an impulse generator", name);
 		gtk_widget_set_tooltip_text(priv->capture_button, warning_text);
 		return false;
 	}
