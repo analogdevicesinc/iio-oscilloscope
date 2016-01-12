@@ -41,6 +41,25 @@ static gboolean plugin_detached;
 
 static struct iio_context *ctx;
 
+static bool is_valid_dmm_channel(struct iio_channel *chn)
+{
+	const char *id;
+
+	if (iio_channel_is_output(chn))
+		return false;
+	if (!iio_channel_find_attr(chn, "raw"))
+		return false;
+
+	/* find the name */
+	id = iio_channel_get_id(chn);
+
+	/* Must have 'scale', or be a temperature, which doesn't need scale */
+	if (!strstr(id, "temp") && !iio_channel_find_attr(chn, "scale"))
+		return false;
+
+	return true;
+}
+
 static struct iio_device * get_device(const char *id)
 {
 	unsigned int i, nb = iio_context_get_devices_count(ctx);
@@ -134,10 +153,9 @@ static void build_channel_list(void)
 				struct iio_channel *chn =
 					iio_device_get_channel(dev, i);
 				const char *name, *id, *devid;
-				char buf[1024], *scale;
 
 				/* Must be input */
-				if (iio_channel_is_output(chn))
+				if (!is_valid_dmm_channel(chn))
 					continue;
 
 				/* find the name */
@@ -146,11 +164,6 @@ static void build_channel_list(void)
 				id = iio_channel_get_id(chn);
 				if (!name)
 					name = id;
-
-				/* Must have 'scale', or be a temperature, which doesn't need scale */
-				if (!strstr(name, "temp") &&
-						iio_channel_attr_read(chn, "scale", buf, sizeof(buf)) < 0)
-					continue;
 
 				if (iter3_valid) {
 					if (first) {
@@ -255,16 +268,15 @@ static void init_device_list(void)
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		unsigned int j, nch = iio_device_get_channels_count(dev);
 		const char *id;
-		bool input = false;
+		bool found_valid_chan = false;
 
-		for (j = 0; !input && j < nch; j++) {
+		for (j = 0; !found_valid_chan && j < nch; j++) {
 			struct iio_channel *chn =
 				iio_device_get_channel(dev, j);
-			input = !iio_channel_is_output(chn) &&
-				iio_channel_find_attr(chn, "raw");
+			found_valid_chan = is_valid_dmm_channel(chn);
 		}
 
-		if (!input)
+		if (!found_valid_chan)
 			continue;
 
 		id = iio_device_get_name(dev);
@@ -517,7 +529,7 @@ static bool dmm_identify(void)
 		for (j = 0; !ret && j < nch; j++) {
 			struct iio_channel *chn =
 				iio_device_get_channel(dev, j);
-			if (!iio_channel_is_output(chn))
+			if (is_valid_dmm_channel(chn))
 				ret = true;
 		}
 	}
