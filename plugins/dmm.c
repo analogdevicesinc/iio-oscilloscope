@@ -165,8 +165,6 @@ static void build_channel_list(void)
 					iter3_valid = TRUE;
 				}
 
-				scale = strdup(buf);
-
 				snprintf(dev_ch, sizeof(dev_ch), "%s:%s", 
 					device, name);
 				
@@ -175,7 +173,6 @@ static void build_channel_list(void)
 						1, 0,		/* On/Off */
 						2, devid,	/* device ID */
 						3, id,		/* channel ID */
-						4, scale,	/* scale */
 							-1);
 				iter3 = iter2;
 			}
@@ -288,7 +285,7 @@ static gboolean dmm_update(void)
 {
 
 	GtkTreeIter tree_iter;
-	char *name, *device, *channel, *scale, tmp[128];
+	char *name, *device, *channel, tmp[128];
 	gboolean loop, enabled;
 	double value;
 
@@ -307,7 +304,6 @@ static gboolean dmm_update(void)
 					1, &enabled,
 					2, &device,
 					3, &channel,
-					4, &scale,
 					-1);
 			if (enabled) {
 				struct iio_device *dev =
