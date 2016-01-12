@@ -2037,7 +2037,10 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 
 	/* Check if devices that need a trigger have one and it's configured */
 	const struct iio_device *trigger;
-	if (iio_device_get_trigger(dev, &trigger) == -EIO && num_enabled > 0) {
+	int ret;
+
+	ret = iio_device_get_trigger(dev, &trigger);
+	if (ret == 0 && trigger == NULL && num_enabled > 0) {
 		snprintf(warning_text, sizeof(warning_text),
 				"Device %s needs an impulse generator", name);
 		gtk_widget_set_tooltip_text(priv->capture_button, warning_text);
@@ -6436,13 +6439,8 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 		bool has_trigger;
 		int ret;
 
-		ret = iio_device_get_trigger(dev, &trigger);
-		/*
-		 * There is a bug in libiio that lets it return -EIO if no trigger is
-		 * assigned, assume that EIO means there is a trigger, but none
-		 * assigned. Drop since once libiio has been fixed for a while.
-		 */
-		if (ret == -EIO || ret == 0)
+		ret = osc_iio_device_get_trigger(dev, &trigger);
+		if (ret == 0)
 			has_trigger = true;
 		else
 			has_trigger = false;

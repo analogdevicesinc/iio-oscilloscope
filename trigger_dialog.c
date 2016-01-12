@@ -91,11 +91,11 @@ static void trigger_load_settings(GtkBuilder *builder, const char *device)
 	if (!dev)
 		return;
 
-	ret = iio_device_get_trigger(dev, &trigger);
-	if (ret < 0) {
-		pos = 0;
+	ret = osc_iio_device_get_trigger(dev, &trigger);
+	if (ret < 0)
 		trigger = NULL;
-	}
+
+	pos = 0;
 
 	nb_devices = iio_context_get_devices_count(ctx);
 	for (i = 0, t_cnt = 0; i < nb_devices; i++) {

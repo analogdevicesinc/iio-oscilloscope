@@ -1229,8 +1229,8 @@ static double read_sampling_frequency(const struct iio_device *dev)
 				buf, sizeof(buf));
 	if (ret < 0) {
 		const struct iio_device *trigger;
-		ret = iio_device_get_trigger(dev, &trigger);
-		if (!ret) {
+		ret = osc_iio_device_get_trigger(dev, &trigger);
+		if (ret == 0 && trigger) {
 			attr = iio_device_find_attr(trigger, "sampling_frequency");
 			if (!attr)
 				attr = iio_device_find_attr(trigger, "frequency");

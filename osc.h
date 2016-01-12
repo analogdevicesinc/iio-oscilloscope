@@ -155,4 +155,23 @@ extern void create_default_plot(void);
 extern GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
 extern bool check_inifile(const char *filepath);
 
+/*
+ * There is a bug in libiio that lets it return -EIO if no trigger is
+ * assigned. Assume that EIO means there is a trigger, but none
+ * assigned. Drop since once libiio has been fixed for a while.
+ */
+static inline int osc_iio_device_get_trigger(const struct iio_device *dev,
+	const struct iio_device **trigger)
+{
+	int ret;
+
+	ret = iio_device_get_trigger(dev, trigger);
+	if (ret == -EIO) {
+		ret = 0;
+		*trigger = NULL;
+	}
+
+	return ret;
+}
+
 #endif
