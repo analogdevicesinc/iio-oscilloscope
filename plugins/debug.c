@@ -22,6 +22,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include <iio.h>
 
@@ -866,6 +867,57 @@ static void gtk_combo_box_text_remove_all (GtkWidget *combo_box)
 }
 
 /*
+ * Sort strings naturally
+ *
+ * This function will sort strings naturally, this means when a number is
+ * encountered in both strings at the same offset it is compared as a number
+ * rather than comparing the individual digits.
+ *
+ * This makes sure that e.g. in_voltage9 is placed before in_voltage10
+ */
+static gint combo_box_sort_natural(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data)
+{
+	gchar *s1, *s2;
+	unsigned int n1, n2;
+	unsigned int i1, i2;
+
+	gtk_tree_model_get(model, a, 0, &s1, -1);
+	gtk_tree_model_get(model, b, 0, &s2, -1);
+
+	i1 = 0;
+	i2 = 0;
+
+	while (s1[i1] && s2[i2]) {
+		if (isdigit(s1[i1]) && isdigit(s2[i2])) {
+			n1 = 0;
+			do {
+				n1 = n1 * 10 + s1[i1] - '0';
+				i1++;
+			} while (isdigit(s1[i1]));
+
+			n2 = 0;
+			do {
+				n2 = n2 * 10 + s2[i2] - '0';
+				i2++;
+			} while (isdigit(s2[i2]));
+
+			if (n1 != n2)
+				return n1 - n2;
+		} else {
+			if (s1[i1] != s2[i2])
+				return s1[i1] - s2[i2];
+			i1++;
+			i2++;
+		}
+	}
+
+	g_free(s1);
+	g_free(s2);
+
+	return 0;
+}
+
+/*
  * Sort all elements of a GtkComboBoxText column in GTK_SORT_ASCENDING order or
  * GTK_SORT_DESCENDING order.
  */
@@ -876,6 +928,7 @@ static void combo_box_text_sort(GtkComboBoxText *box, int column, int order)
 	sortable = GTK_TREE_SORTABLE(gtk_combo_box_get_model(GTK_COMBO_BOX(box)));
 
 	gtk_tree_sortable_set_sort_column_id(sortable, column, GTK_SORT_ASCENDING);
+	gtk_tree_sortable_set_sort_func(sortable, column, combo_box_sort_natural, NULL, NULL);
 }
 /*
  * Set the active text of a GtkComboBoxText to the one desired by the user.
