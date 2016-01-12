@@ -1208,6 +1208,7 @@ static double read_sampling_frequency(const struct iio_device *dev)
 	double freq = 400.0;
 	int ret = -1;
 	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
+	const char *attr;
 	char buf[1024];
 
 	for (i = 0; i < nb_channels; i++) {
@@ -1229,9 +1230,16 @@ static double read_sampling_frequency(const struct iio_device *dev)
 	if (ret < 0) {
 		const struct iio_device *trigger;
 		ret = iio_device_get_trigger(dev, &trigger);
-		if (!ret)
-			ret = iio_device_attr_read(trigger, "frequency",
-					buf, sizeof(buf));
+		if (!ret) {
+			attr = iio_device_find_attr(trigger, "sampling_frequency");
+			if (!attr)
+				attr = iio_device_find_attr(trigger, "frequency");
+			if (attr)
+				ret = iio_device_attr_read(trigger, attr, buf,
+					sizeof(buf));
+			else
+				ret = -ENOENT;
+		}
 	}
 
 	if (ret > 0)
