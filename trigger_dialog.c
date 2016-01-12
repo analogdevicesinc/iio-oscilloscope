@@ -133,13 +133,13 @@ static void trigger_save_settings(GtkBuilder *builder, const char *device)
 			iio_device_attr_write_longlong(trigger, "frequency",
 				(long long)gtk_spin_button_get_value(spinbtn_freq));
 			iio_device_set_trigger(dev, trigger);
-			dev_name = iio_device_get_name(dev) ?:
-					iio_device_get_id(dev);
-			rx_update_device_sampling_freq(dev_name,
-				USE_INTERN_SAMPLING_FREQ);
 		} else {
 			iio_device_set_trigger(dev, NULL);
 		}
+		dev_name = iio_device_get_name(dev) ?:
+				iio_device_get_id(dev);
+		rx_update_device_sampling_freq(dev_name,
+			USE_INTERN_SAMPLING_FREQ);
 	}
 
 abort:
