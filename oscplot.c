@@ -6433,7 +6433,19 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 		/* Check if device needs a trigger */
 		struct iio_device *dev = ref;
 		const struct iio_device *trigger;
-		bool has_trigger = !iio_device_get_trigger(dev, &trigger);
+		bool has_trigger;
+		int ret;
+
+		ret = iio_device_get_trigger(dev, &trigger);
+		/*
+		 * There is a bug in libiio that lets it return -EIO if no trigger is
+		 * assigned, assume that EIO means there is a trigger, but none
+		 * assigned. Drop since once libiio has been fixed for a while.
+		 */
+		if (ret == -EIO || ret == 0)
+			has_trigger = true;
+		else
+			has_trigger = false;
 
 		gtk_widget_set_sensitive(priv->device_trigger_menuitem,
 				has_trigger);
