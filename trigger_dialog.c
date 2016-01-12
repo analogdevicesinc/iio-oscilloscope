@@ -25,7 +25,7 @@ static void trigger_change_trigger(GtkComboBox *box, GtkBuilder *builder)
 	GtkSpinButton *spinbtn_freq;
 	GtkLabel *label_freq;
 	gchar *current_trigger;
-	gboolean has_frequency;
+	gboolean has_frequency = false;
 
 	trigger_combobox = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(builder,
 			"comboboxtext_triggers"));
@@ -34,15 +34,8 @@ static void trigger_change_trigger(GtkComboBox *box, GtkBuilder *builder)
 	label_freq = GTK_LABEL(gtk_builder_get_object(builder,
 			"trigger_frequency_label"));
 	current_trigger = gtk_combo_box_text_get_active_text(trigger_combobox);
-	if (current_trigger && strcmp(current_trigger, "None"))
-		has_frequency = true;
-	else
-		has_frequency = false;
 
-	gtk_widget_set_sensitive(GTK_WIDGET(spinbtn_freq), has_frequency);
-	gtk_widget_set_sensitive(GTK_WIDGET(label_freq), has_frequency);
-
-	if (has_frequency) {
+	if (current_trigger && strcmp(current_trigger, "None")) {
 		ctx = get_context_from_osc();
 		if (!ctx)
 			goto abort;
@@ -52,15 +45,16 @@ static void trigger_change_trigger(GtkComboBox *box, GtkBuilder *builder)
 		if (iio_device_attr_read_longlong(trigger, "frequency",
 				&trigger_freq))
 			goto abort;
-		gtk_spin_button_set_value(spinbtn_freq, trigger_freq);
-	} else {
-		goto abort;
+		has_frequency = true;
 	}
 
-	return;
-
 abort:
-	gtk_spin_button_set_value(spinbtn_freq, 0);
+	if (!has_frequency)
+		trigger_freq = 0;
+
+	gtk_widget_set_sensitive(GTK_WIDGET(spinbtn_freq), has_frequency);
+	gtk_widget_set_sensitive(GTK_WIDGET(label_freq), has_frequency);
+	gtk_spin_button_set_value(spinbtn_freq, trigger_freq);
 }
 
 static void trigger_load_settings(GtkBuilder *builder, const char *device)
