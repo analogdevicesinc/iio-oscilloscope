@@ -374,7 +374,7 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 
 			if (iio_channel_get_name(ch))
 				sprintf(tmp, "%s %s (%s)",
-						iio_channel_is_output(ch) ? "output" : "intput",
+						iio_channel_is_output(ch) ? "output" : "input",
 						iio_channel_get_id(ch), iio_channel_get_name(ch));
 			else
 				sprintf(tmp, "%s %s",
