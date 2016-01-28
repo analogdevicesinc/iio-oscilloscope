@@ -2037,9 +2037,12 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 
 	/* Check if devices that need a trigger have one and it's configured */
 	const struct iio_device *trigger;
-	if (iio_device_get_trigger(dev, &trigger) == -EIO && num_enabled > 0) {
+	int ret;
+
+	ret = osc_iio_device_get_trigger(dev, &trigger);
+	if (ret == 0 && trigger == NULL && num_enabled > 0) {
 		snprintf(warning_text, sizeof(warning_text),
-				"Device %s needs a trigger", name);
+				"Device %s needs an impulse generator", name);
 		gtk_widget_set_tooltip_text(priv->capture_button, warning_text);
 		return false;
 	}
@@ -5397,7 +5400,7 @@ static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type
 		priv->marker_type = MARKER_ONE_TONE;
 		marker_set(plot, 0, "Fund", TRUE);
 		marker_set(plot, 1, "DC", TRUE);
-		for (i = 2; i < MAX_MARKERS; i++) {
+		for (i = 2; i <= MAX_MARKERS; i++) {
 			sprintf(tmp, "%iH", i);
 			marker_set(plot, i, tmp, FALSE);
 		}
@@ -6433,7 +6436,14 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 		/* Check if device needs a trigger */
 		struct iio_device *dev = ref;
 		const struct iio_device *trigger;
-		bool has_trigger = !iio_device_get_trigger(dev, &trigger);
+		bool has_trigger;
+		int ret;
+
+		ret = osc_iio_device_get_trigger(dev, &trigger);
+		if (ret == 0)
+			has_trigger = true;
+		else
+			has_trigger = false;
 
 		gtk_widget_set_sensitive(priv->device_trigger_menuitem,
 				has_trigger);
