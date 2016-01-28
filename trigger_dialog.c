@@ -25,7 +25,8 @@ static void trigger_change_trigger(GtkComboBox *box, GtkBuilder *builder)
 	GtkSpinButton *spinbtn_freq;
 	GtkLabel *label_freq;
 	gchar *current_trigger;
-	gboolean has_frequency;
+	gboolean has_frequency = false;
+	const char *attr;
 
 	trigger_combobox = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(builder,
 			"comboboxtext_triggers"));
@@ -34,33 +35,36 @@ static void trigger_change_trigger(GtkComboBox *box, GtkBuilder *builder)
 	label_freq = GTK_LABEL(gtk_builder_get_object(builder,
 			"trigger_frequency_label"));
 	current_trigger = gtk_combo_box_text_get_active_text(trigger_combobox);
-	if (current_trigger && strcmp(current_trigger, "None"))
-		has_frequency = true;
-	else
-		has_frequency = false;
 
-	gtk_widget_set_sensitive(GTK_WIDGET(spinbtn_freq), has_frequency);
-	gtk_widget_set_sensitive(GTK_WIDGET(label_freq), has_frequency);
-
-	if (has_frequency) {
+	if (current_trigger && strcmp(current_trigger, "None")) {
 		ctx = get_context_from_osc();
 		if (!ctx)
 			goto abort;
 		trigger = iio_context_find_device(ctx, current_trigger);
 		if (!trigger)
 			goto abort;
-		if (iio_device_attr_read_longlong(trigger, "frequency",
-				&trigger_freq))
+		attr = iio_device_find_attr(trigger, "sampling_frequency");
+
+		/* "frequency" was used for the sampling frequency by some non ABI
+		 * compliant drivers. Drop this at some point */
+		if (!attr)
+			attr = iio_device_find_attr(trigger, "frequency");
+		if (!attr)
 			goto abort;
-		gtk_spin_button_set_value(spinbtn_freq, trigger_freq);
-	} else {
-		goto abort;
+
+		if (iio_device_attr_read_longlong(trigger, attr, &trigger_freq))
+			goto abort;
+
+		has_frequency = true;
 	}
 
-	return;
-
 abort:
-	gtk_spin_button_set_value(spinbtn_freq, 0);
+	if (!has_frequency)
+		trigger_freq = 0;
+
+	gtk_widget_set_sensitive(GTK_WIDGET(spinbtn_freq), has_frequency);
+	gtk_widget_set_sensitive(GTK_WIDGET(label_freq), has_frequency);
+	gtk_spin_button_set_value(spinbtn_freq, trigger_freq);
 }
 
 static void trigger_load_settings(GtkBuilder *builder, const char *device)
@@ -87,11 +91,11 @@ static void trigger_load_settings(GtkBuilder *builder, const char *device)
 	if (!dev)
 		return;
 
-	ret = iio_device_get_trigger(dev, &trigger);
-	if (ret < 0) {
-		pos = 0;
+	ret = osc_iio_device_get_trigger(dev, &trigger);
+	if (ret < 0)
 		trigger = NULL;
-	}
+
+	pos = 0;
 
 	nb_devices = iio_context_get_devices_count(ctx);
 	for (i = 0, t_cnt = 0; i < nb_devices; i++) {
@@ -118,6 +122,7 @@ static void trigger_save_settings(GtkBuilder *builder, const char *device)
 	GtkSpinButton *spinbtn_freq;
 	gchar *current_trigger;
 	const char *dev_name;
+	const char *attr;
 
 	trigger_combobox = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(builder,
 			"comboboxtext_triggers"));
@@ -136,16 +141,24 @@ static void trigger_save_settings(GtkBuilder *builder, const char *device)
 			trigger = iio_context_find_device(ctx, current_trigger);
 			if (!trigger)
 				goto abort;
-			iio_device_attr_write_longlong(trigger, "frequency",
-				(long long)gtk_spin_button_get_value(spinbtn_freq));
+
+			attr = iio_device_find_attr(trigger, "sampling_frequency");
+			if (!attr)
+				attr = iio_device_find_attr(trigger, "frequency");
+
+			if (attr) {
+				iio_device_attr_write_longlong(trigger, attr,
+					(long long)gtk_spin_button_get_value(spinbtn_freq));
+			}
+
 			iio_device_set_trigger(dev, trigger);
-			dev_name = iio_device_get_name(dev) ?:
-					iio_device_get_id(dev);
-			rx_update_device_sampling_freq(dev_name,
-				USE_INTERN_SAMPLING_FREQ);
 		} else {
 			iio_device_set_trigger(dev, NULL);
 		}
+		dev_name = iio_device_get_name(dev) ?:
+				iio_device_get_id(dev);
+		rx_update_device_sampling_freq(dev_name,
+			USE_INTERN_SAMPLING_FREQ);
 	}
 
 abort:
