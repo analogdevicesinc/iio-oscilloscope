@@ -2039,7 +2039,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	const struct iio_device *trigger;
 	int ret;
 
-	ret = iio_device_get_trigger(dev, &trigger);
+	ret = osc_iio_device_get_trigger(dev, &trigger);
 	if (ret == 0 && trigger == NULL && num_enabled > 0) {
 		snprintf(warning_text, sizeof(warning_text),
 				"Device %s needs an impulse generator", name);
