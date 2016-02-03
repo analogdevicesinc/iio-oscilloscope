@@ -1845,11 +1845,11 @@ static void save_widgets_to_ini(FILE *f)
 	snprintf(buf, sizeof(buf), "load_fir_filter_file = %s\n"
 			"dds_mode_tx1 = %i\n"
 			"dds_mode_tx2 = %i\n"
-			"dac_buf_filename = %s\n"
 			"tx_channel_0 = %i\n"
 			"tx_channel_1 = %i\n"
 			"tx_channel_2 = %i\n"
 			"tx_channel_3 = %i\n"
+			"dac_buf_filename = %s\n"
 			"up_down_converter = %i\n"
 			"global_settings_show = %i\n"
 			"tx_show = %i\n"
@@ -1858,11 +1858,11 @@ static void save_widgets_to_ini(FILE *f)
 			last_fir_filter,
 			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 1),
 			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 2),
-			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 0),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 1),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 2),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 3),
+			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			!!gtk_toggle_button_get_active((GtkToggleButton *)up_down_converter),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]),
