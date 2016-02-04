@@ -351,6 +351,10 @@ static gboolean dmm_update(void)
 					sprintf(tmp, "%s = %f m/s²\n", name, value);
 				else if (!strncmp(channel, "anglvel", 7))
 					sprintf(tmp, "%s = %f rad/s\n", name, value);
+				else if (!strncmp(channel, "pressure", 8))
+					sprintf(tmp, "%s = %f kPa\n", name, value);
+				else if (!strncmp(channel, "magn", 4))
+					sprintf(tmp, "%s = %f Gauss\n", name, value);
 				else
 					sprintf(tmp, "%s = %f\n", name, value);
 
