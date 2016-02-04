@@ -1035,6 +1035,7 @@ Installed/Found IIO devices on this platform</property>
   <object class="GtkFileChooserDialog" id="load_save_profile">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
+    <property name="title" translatable="yes">Load/Save Profile</property>
     <property name="role">GtkFileChooserDialog</property>
     <property name="modal">True</property>
     <property name="type_hint">dnd</property>
