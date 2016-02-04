@@ -1068,11 +1068,12 @@ Installed/Found IIO devices on this platform</property>
             </child>
             <child>
               <object class="GtkButton" id="save_profile">
-                <property name="label" translatable="yes">Save Profile</property>
+                <property name="label" translatable="yes">gtk-save</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -1082,11 +1083,12 @@ Installed/Found IIO devices on this platform</property>
             </child>
             <child>
               <object class="GtkButton" id="load_profile">
-                <property name="label" translatable="yes">Load Profile</property>
+                <property name="label" translatable="yes">gtk-open</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
