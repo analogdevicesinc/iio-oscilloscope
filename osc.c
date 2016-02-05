@@ -1970,6 +1970,7 @@ static int handle_osc_param(int line, const char *name, const char *value)
 	} else if (!strcmp(name, "startup_version_check")) {
 		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(versioncheck_en),
 				!!atoi(value));
+		return 0;
 	}
 
 	if (!strcmp(name, "test") || !strcmp(name, "window_x_pos") ||

@@ -195,6 +195,9 @@ static const char *fmcomms2_sr_attribs[] = {
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_phase",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
+
+	UDC_RX_DEVICE".out_altvoltage0_frequency",
+	UDC_TX_DEVICE".out_altvoltage0_frequency",
 };
 
 static const char * fmcomms2_driver_attribs[] = {
@@ -205,6 +208,7 @@ static const char * fmcomms2_driver_attribs[] = {
 	"tx_show",
 	"rx_show",
 	"fpga_show",
+	"up_down_converter",
 	"tx_channel_0",
 	"tx_channel_1",
 	"tx_channel_2",
@@ -1255,6 +1259,9 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 				section_toggle[SECTION_FPGA], !!atoi(value));
 		hide_section_cb(section_toggle[SECTION_FPGA],
 				section_setting[SECTION_FPGA]);
+	} else if (MATCH_ATTRIB("up_down_converter")) {
+		gtk_toggle_button_set_active(
+				(GtkToggleButton *)up_down_converter, !!atoi(value));
 	} else if (!strncmp(attrib, "tx_channel_", sizeof("tx_channel_") - 1)) {
 		int tx = atoi(attrib + sizeof("tx_channel_") - 1);
 		dac_data_manager_set_tx_channel_state(
@@ -1331,6 +1338,12 @@ static void load_profile(const char *ini_fn)
 			ARRAY_SIZE(fmcomms2_sr_attribs));
 	if (dds)
 		update_from_ini(ini_fn, THIS_DRIVER, dds, fmcomms2_sr_attribs,
+				ARRAY_SIZE(fmcomms2_sr_attribs));
+	if (udc_rx)
+		update_from_ini(ini_fn, THIS_DRIVER, udc_rx, fmcomms2_sr_attribs,
+				ARRAY_SIZE(fmcomms2_sr_attribs));
+	if (udc_tx)
+		update_from_ini(ini_fn, THIS_DRIVER, udc_tx, fmcomms2_sr_attribs,
 				ARRAY_SIZE(fmcomms2_sr_attribs));
 
 	if (can_update_widgets)
@@ -1832,11 +1845,12 @@ static void save_widgets_to_ini(FILE *f)
 	snprintf(buf, sizeof(buf), "load_fir_filter_file = %s\n"
 			"dds_mode_tx1 = %i\n"
 			"dds_mode_tx2 = %i\n"
-			"dac_buf_filename = %s\n"
 			"tx_channel_0 = %i\n"
 			"tx_channel_1 = %i\n"
 			"tx_channel_2 = %i\n"
 			"tx_channel_3 = %i\n"
+			"dac_buf_filename = %s\n"
+			"up_down_converter = %i\n"
 			"global_settings_show = %i\n"
 			"tx_show = %i\n"
 			"rx_show = %i\n"
@@ -1844,11 +1858,12 @@ static void save_widgets_to_ini(FILE *f)
 			last_fir_filter,
 			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 1),
 			dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 2),
-			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 0),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 1),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 2),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 3),
+			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
+			!!gtk_toggle_button_get_active((GtkToggleButton *)up_down_converter),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_RX]),
@@ -1864,6 +1879,12 @@ static void save_profile(const char *ini_fn)
 				ARRAY_SIZE(fmcomms2_sr_attribs));
 		if (dds)
 			save_to_ini(f, NULL, dds, fmcomms2_sr_attribs,
+					ARRAY_SIZE(fmcomms2_sr_attribs));
+		if (udc_rx)
+			save_to_ini(f, NULL, udc_rx, fmcomms2_sr_attribs,
+					ARRAY_SIZE(fmcomms2_sr_attribs));
+		if (udc_tx)
+			save_to_ini(f, NULL, udc_tx, fmcomms2_sr_attribs,
 					ARRAY_SIZE(fmcomms2_sr_attribs));
 		save_widgets_to_ini(f);
 		fclose(f);

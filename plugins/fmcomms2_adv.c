@@ -1020,7 +1020,7 @@ static void do_calibration (GtkWidget *widget, gpointer data)
 		osc_plot_set_channel_state(plot_xcorr_4ch, CAP_DEVICE_ALT, 5, true);
 
 		osc_plot_set_domain(plot_xcorr_4ch, XCORR_PLOT);
-		osc_plot_set_marker_type(plot_xcorr_4ch,  MARKER_PEAK);
+		osc_plot_set_marker_type(plot_xcorr_4ch, MARKER_PEAK);
 	} else
 		return;
 
