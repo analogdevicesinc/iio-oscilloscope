@@ -8,7 +8,7 @@
     <property name="type_hint">dialog</property>
     <property name="program_name">Analog Devices Inc. Industrial I/O Oscilloscope</property>
     <property name="version">0.8</property>
-    <property name="copyright" translatable="yes">Copyright Analog Devices, 2015</property>
+    <property name="copyright" translatable="yes">Copyright Analog Devices, 2012-2016</property>
     <property name="website">http://wiki.analog.com/resources/tools-software/linux-software/iio_oscilloscope</property>
     <property name="website_label" translatable="yes">Homepage</property>
     <property name="license" translatable="yes">http://www.gnu.org/licenses/gpl-2.0.html
@@ -1035,6 +1035,7 @@ Installed/Found IIO devices on this platform</property>
   <object class="GtkFileChooserDialog" id="load_save_profile">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
+    <property name="title" translatable="yes">Load/Save Profile</property>
     <property name="role">GtkFileChooserDialog</property>
     <property name="modal">True</property>
     <property name="type_hint">dnd</property>
@@ -1057,7 +1058,6 @@ Installed/Found IIO devices on this platform</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="use_action_appearance">False</property>
                 <property name="use_stock">True</property>
               </object>
               <packing>
@@ -1068,12 +1068,12 @@ Installed/Found IIO devices on this platform</property>
             </child>
             <child>
               <object class="GtkButton" id="save_profile">
-                <property name="label" translatable="yes">Save Profile</property>
+                <property name="label" translatable="yes">gtk-save</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -1083,12 +1083,12 @@ Installed/Found IIO devices on this platform</property>
             </child>
             <child>
               <object class="GtkButton" id="load_profile">
-                <property name="label" translatable="yes">Load Profile</property>
+                <property name="label" translatable="yes">gtk-open</property>
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="use_action_appearance">False</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>

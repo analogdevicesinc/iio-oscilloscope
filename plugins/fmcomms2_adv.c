@@ -76,6 +76,7 @@ enum fmcomms2adv_wtype {
 	SPINBUTTON,
 	COMBOBOX,
 	BUTTON,
+	CHECKBOX_MASK,
 };
 
 struct w_info {
@@ -234,6 +235,11 @@ static struct w_info attrs[] = {
 	{CHECKBOX, "adi,gpo3-slave-tx-enable"},
 	{SPINBUTTON, "adi,gpo3-rx-delay-us"},
 	{SPINBUTTON, "adi,gpo3-tx-delay-us"},
+	{CHECKBOX, "adi,gpo-manual-mode-enable"},
+	{CHECKBOX_MASK, "adi,gpo-manual-mode-enable-mask#0"},
+	{CHECKBOX_MASK, "adi,gpo-manual-mode-enable-mask#1"},
+	{CHECKBOX_MASK, "adi,gpo-manual-mode-enable-mask#2"},
+	{CHECKBOX_MASK, "adi,gpo-manual-mode-enable-mask#3"},
 	{COMBOBOX, "bist_prbs"},
 	{COMBOBOX, "loopback"},
 	{BUTTON, "initialize"},
@@ -369,26 +375,28 @@ static const char *fmcomms2_adv_sr_attribs[] = {
 	"debug.ad9361-phy.adi,txmon-low-high-thresh",
 	"debug.ad9361-phy.adi,txmon-one-shot-mode-enable",
 	"debug.ad9361-phy.adi,qec-tracking-slow-mode-enable",
-	"debug.adi,gpo0-inactive-state-high-enable",
-	"debug.adi,gpo0-slave-rx-enable",
-	"debug.adi,gpo0-slave-tx-enable",
-	"debug.adi,gpo0-rx-delay-us",
-	"debug.adi,gpo0-tx-delay-us",
-	"debug.adi,gpo1-inactive-state-high-enable",
-	"debug.adi,gpo1-slave-rx-enable",
-	"debug.adi,gpo1-slave-tx-enable",
-	"debug.adi,gpo1-rx-delay-us",
-	"debug.adi,gpo1-tx-delay-us",
-	"debug.adi,gpo2-inactive-state-high-enable",
-	"debug.adi,gpo2-slave-rx-enable",
-	"debug.adi,gpo2-slave-tx-enable",
-	"debug.adi,gpo2-rx-delay-us",
-	"debug.adi,gpo2-tx-delay-us",
-	"debug.adi,gpo3-inactive-state-high-enable",
-	"debug.adi,gpo3-slave-rx-enable",
-	"debug.adi,gpo3-slave-tx-enable",
-	"debug.adi,gpo3-rx-delay-us",
-	"debug.adi,gpo3-tx-delay-us",
+	"debug.ad9361-phy.adi,gpo0-inactive-state-high-enable",
+	"debug.ad9361-phy.adi,gpo0-slave-rx-enable",
+	"debug.ad9361-phy.adi,gpo0-slave-tx-enable",
+	"debug.ad9361-phy.adi,gpo0-rx-delay-us",
+	"debug.ad9361-phy.adi,gpo0-tx-delay-us",
+	"debug.ad9361-phy.adi,gpo1-inactive-state-high-enable",
+	"debug.ad9361-phy.adi,gpo1-slave-rx-enable",
+	"debug.ad9361-phy.adi,gpo1-slave-tx-enable",
+	"debug.ad9361-phy.adi,gpo1-rx-delay-us",
+	"debug.ad9361-phy.adi,gpo1-tx-delay-us",
+	"debug.ad9361-phy.adi,gpo2-inactive-state-high-enable",
+	"debug.ad9361-phy.adi,gpo2-slave-rx-enable",
+	"debug.ad9361-phy.adi,gpo2-slave-tx-enable",
+	"debug.ad9361-phy.adi,gpo2-rx-delay-us",
+	"debug.ad9361-phy.adi,gpo2-tx-delay-us",
+	"debug.ad9361-phy.adi,gpo3-inactive-state-high-enable",
+	"debug.ad9361-phy.adi,gpo3-slave-rx-enable",
+	"debug.ad9361-phy.adi,gpo3-slave-tx-enable",
+	"debug.ad9361-phy.adi,gpo3-rx-delay-us",
+	"debug.ad9361-phy.adi,gpo3-tx-delay-us",
+	"debug.ad9361-phy.adi,gpo-manual-mode-enable",
+	"debug.ad9361-phy.adi,gpo-manual-mode-enable-mask",
 };
 
 static void reload_settings(void)
@@ -412,6 +420,9 @@ static void signal_handler_cb (GtkWidget *widget, gpointer data)
 {
 	struct w_info *item = data;
 	unsigned val;
+	char str[80];
+	int bit, ret;
+	long long mask;
 
 	switch (item->type) {
 		case CHECKBOX:
@@ -426,6 +437,30 @@ static void signal_handler_cb (GtkWidget *widget, gpointer data)
 		case COMBOBOX:
 			val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
 			break;
+		case CHECKBOX_MASK:
+
+			/* Format is: adi,gpo-manual-mode-enable-mask#2
+			 * # separates item name from bit number
+			 */
+			val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (widget));
+
+			ret = sscanf(item->name, "%[^'#']#%d", str, &bit);
+			if (ret != 2)
+				return;
+
+			iio_device_debug_attr_read_longlong(dev, str, &mask);
+
+			if (val) {
+				mask |= (1 << bit);
+			} else {
+				mask &= ~(1 << bit);
+			}
+
+			iio_device_debug_attr_write_longlong(dev, str, mask);
+
+			if (dev_slave)
+				iio_device_debug_attr_write_longlong(dev_slave, str, mask);
+			return;
 		default:
 			return;
 	}
@@ -1059,6 +1094,9 @@ static void bist_tone_cb (GtkWidget *widget, gpointer data)
 
 static char * set_widget_value(GtkWidget *widget, struct w_info *item, int val)
 {
+	char str[80];
+	int bit, ret;
+
 	switch (item->type) {
 		case CHECKBOX:
 			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), !!val);
@@ -1071,6 +1109,13 @@ static char * set_widget_value(GtkWidget *widget, struct w_info *item, int val)
 		case COMBOBOX:
 			gtk_combo_box_set_active(GTK_COMBO_BOX(widget), val);
 			return "changed";
+		case CHECKBOX_MASK:
+			ret = sscanf(item->name, "%[^'#']#%d", str, &bit);
+			if (ret != 2)
+				break;
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), !!(val & (1 << bit)));
+			return "toggled";
+
 	}
 
 	return NULL;
@@ -1079,7 +1124,6 @@ static void connect_widget(GtkBuilder *builder, struct w_info *item, int val)
 {
 	char *signal = NULL;
 	GtkWidget *widget;
-
 	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
 	signal = set_widget_value(widget, item, val);
 	g_builder_connect_signal(builder, item->name, signal,
@@ -1099,11 +1143,15 @@ static int __connect_widget(struct iio_device *dev, const char *attr,
 {
 	unsigned int i, nb_items = ARRAY_SIZE(attrs);
 	GtkBuilder *builder = (GtkBuilder *) d;
+	char str[80];
+	int bit, ret;
 
 	for (i = 0; i < nb_items; i++) {
-		if (!strcmp(attrs[i].name, attr)) {
+		ret = sscanf(attrs[i].name, "%[^'#']#%d", str, &bit);
+		if (!strcmp(str, attr)) {
 			connect_widget(builder, &attrs[i], atoi(value));
-			return 0;
+			if (ret == 1)
+				return 0;
 		}
 	}
 
@@ -1115,11 +1163,16 @@ static int __update_widget(struct iio_device *dev, const char *attr,
 {
 	unsigned int i, nb_items = ARRAY_SIZE(attrs);
 	GtkBuilder *builder = (GtkBuilder *) d;
+	char str[80];
+	int bit, ret;
 
 	for (i = 0; i < nb_items; i++) {
-		if (!strcmp(attrs[i].name, attr)) {
+
+		ret = sscanf(attrs[i].name, "%[^'#']#%d", str, &bit);
+		if (!strcmp(str, attr)) {
 			update_widget(builder, &attrs[i], atoi(value));
-			return 0;
+			if (ret == 1)
+				return 0;
 		}
 	}
 

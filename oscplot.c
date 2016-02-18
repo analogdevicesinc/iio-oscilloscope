@@ -4821,6 +4821,15 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 				ELEMENT_NAME, &name,
 				DEVICE_ACTIVE, &device_active,
 				-1);
+		/* TO DO: Remove this hack (the if-branch) that skips saving to
+		 * .ini file all settings of the Math device including its math
+		 * expressions. Implement a way to save and also load math
+		 * expressions. */
+		if (!strncmp(name, "Math", strlen("Math"))) {
+			g_free(name);
+			next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
+			continue;
+		}
 
 		expanded = gtk_tree_view_row_expanded(tree, gtk_tree_model_get_path(model, &dev_iter));
 		fprintf(fp, "%s.expanded=%d\n", name, (expanded) ? 1 : 0);
@@ -5194,7 +5203,12 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 					goto unhandled;
 				}
 			}
-
+			/* TO DO: Remove this hack (the if-branch) that skips
+			 * loading the settings of a math device and implement a way
+			 * to load and save a math expression. */
+			if (strncmp(dev_name, "Math", 4) == 0) {
+				break;
+			}
 
 			if (strncmp(dev_name, "Math", 4) == 0) {
 				dev_info = NULL;
@@ -5272,6 +5286,12 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 				}
 				break;
 			}
+
+			/* TO DO: Remove this hack (the if-branch) that skips
+			 * loading settings of channels of a math device and
+			 * implement a way to load and save a math expression. */
+			if (strncmp(dev_name, "Math", 4) == 0)
+				break;
 
 			dev = device_find_by_name(ctx, dev_name);
 			if (dev == -1)
