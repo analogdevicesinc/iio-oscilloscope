@@ -6046,6 +6046,8 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 		if (ret != GTK_RESPONSE_OK)
 			break;
 
+		active_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->math_device_select));
+
 		channel_name = gtk_entry_get_text(GTK_ENTRY(priv->math_channel_name_entry));
 		if (plot_channel_check_name_exists(plot, channel_name, PLOT_CHN(pmc)))
 			channel_name = NULL;
