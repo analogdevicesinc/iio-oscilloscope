@@ -1362,7 +1362,7 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 			adc_info->plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
 	}
 
-	block_diagram_init(builder, 2, "AD9371.svg", "AD9271-EVB.jpg");
+	block_diagram_init(builder, 2, "AD9371.svg", "ADRV9371-N_PCBZ.jpg");
 
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(profile_config), OSC_FILTER_FILE_PATH);
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
