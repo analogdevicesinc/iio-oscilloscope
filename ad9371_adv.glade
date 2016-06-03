@@ -1117,8 +1117,6 @@
                       <object class="GtkFrame" id="frame20">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="halign">start</property>
-                        <property name="valign">start</property>
                         <property name="label_xalign">0</property>
                         <property name="shadow_type">in</property>
                         <child>
@@ -10341,8 +10339,6 @@ DETECT ENABLE</property>
                       <object class="GtkFrame" id="frame17">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="halign">start</property>
-                        <property name="valign">start</property>
                         <property name="label_xalign">0</property>
                         <property name="shadow_type">in</property>
                         <child>
@@ -10540,7 +10536,6 @@ DETECT ENABLE</property>
                                   <object class="GtkFrame" id="frame27">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="margin_right">5</property>
                                     <property name="label_xalign">0</property>
                                     <property name="shadow_type">in</property>
                                     <child>

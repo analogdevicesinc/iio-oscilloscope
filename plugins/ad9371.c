@@ -78,7 +78,7 @@ static struct iio_widget *glb_widgets, *tx_widgets, *rx_widgets, *obsrx_widgets;
 static unsigned int rx1_gain, rx2_gain, obs_gain;
 static unsigned int num_glb, num_tx, num_rx, num_obsrx;
 static unsigned int rx_lo, tx_lo, sn_lo;
-static unsigned int rx_sample_freq, tx_sample_freq, obs_sample_freq;
+static unsigned int rx_sample_freq, tx_sample_freq;
 static double updn_freq_span;
 static double updn_freq_mix_sign;
 static char last_profile[PATH_MAX];
@@ -842,7 +842,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 		else if (GTK_IS_COMBO_BOX_TEXT(widgets[i].widget))
 			sprintf(signal_name, "%s", "changed");
 		else
-			printf("unhandled widget type, attribute: %s\n", widgets[i].attr_name);
+			printf("unhandled widget type, attribute: %s (%d)\n", widgets[i].attr_name, i);
 
 		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
 			widgets[i].priv_progress != NULL) {
@@ -1032,6 +1032,8 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 
 	/* Global settings */
 
+	profile_config = GTK_WIDGET(gtk_builder_get_object(builder, "profile_config"));
+
 	ensm_mode = GTK_WIDGET(gtk_builder_get_object(builder, "ensm_mode"));
 	ensm_mode_available = GTK_WIDGET(gtk_builder_get_object(builder, "ensm_mode_available"));
 	up_down_converter = GTK_WIDGET(gtk_builder_get_object(builder, "checkbox_up_down_converter"));
@@ -1156,12 +1158,10 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 // 		dev, ch1, "external", builder,
 // 		"rx_lo_external", 0);
 
-
-
-	iio_spin_button_init_from_builder(&rx_widgets[num_rx],
-		dev, ch1, "calibphase",
-		builder, "rx1_phase_rotation", NULL);
-	iio_spin_button_add_progress(&rx_widgets[num_rx++]);
+// 	iio_spin_button_init_from_builder(&rx_widgets[num_rx],
+// 		dev, ch1, "calibphase",
+// 		builder, "rx1_phase_rotation", NULL);
+// 	iio_spin_button_add_progress(&rx_widgets[num_rx++]);
 
 	/* Observation Receiver Chain */
 
@@ -1177,7 +1177,7 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 		"rf_port_select_available",
 		obs_port_select, NULL);
 
-	iio_spin_button_init_from_builder(&rx_widgets[num_obsrx++],
+	iio_spin_button_init_from_builder(&obsrx_widgets[num_obsrx++],
 		dev, ch2, "temp_comp_gain", builder,
 		"temp_comp_gain_obs", NULL);
 
@@ -1185,13 +1185,6 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_init_from_builder(&obsrx_widgets[num_obsrx++],
 		dev, ch2, "hardwaregain", builder,
 		"hardware_gain_obs", NULL);
-
-
-	obs_sample_freq = num_obsrx;
-	iio_spin_button_int_init_from_builder(&obsrx_widgets[num_obsrx++],
-		dev, ch2, "sampling_frequency", builder,
-		"sampling_freq_obs", &mhz_scale);
-	iio_spin_button_add_progress(&obsrx_widgets[num_obsrx - 1]);
 
 	iio_toggle_button_init_from_builder(&obsrx_widgets[num_obsrx++],
 		dev, ch2, "quadrature_tracking_en", builder,
