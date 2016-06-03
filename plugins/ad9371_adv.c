@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 Analog Devices, Inc.
+ * Copyright (C) 2016 Analog Devices, Inc.
  *
  * Licensed under the GPL-2.
  *
@@ -228,9 +228,6 @@ static struct w_info attrs[] = {
 	{SPINBUTTON, "adi,rx-agc-conf-agc-rx1-min-gain-index", NULL, 0},
 	{SPINBUTTON, "adi,rx-agc-conf-agc-rx2-max-gain-index", NULL, 0},
 	{SPINBUTTON, "adi,rx-agc-conf-agc-rx2-min-gain-index", NULL, 0},
-// 	{SPINBUTTON, "adi,rx-agc-conf-agc-obs-rx-max-gain-index", NULL, 0},
-// 	{SPINBUTTON, "adi,rx-agc-conf-agc-obs-rx-min-gain-index", NULL, 0},
-//	{CHECKBOX, "adi,rx-agc-conf-agc-obs-rx-select", NULL, 0},
 	{CHECKBOX, "adi,rx-agc-conf-agc-peak-threshold-mode", NULL, 0},
 	{CHECKBOX, "adi,rx-agc-conf-agc-low-ths-prevent-gain-increase", NULL, 0},
 	{SPINBUTTON, "adi,rx-agc-conf-agc-gain-update-counter", NULL, 0},
@@ -239,10 +236,6 @@ static struct w_info attrs[] = {
 	{CHECKBOX, "adi,rx-agc-conf-agc-reset-on-rx-enable", NULL, 0},
 	{CHECKBOX, "adi,rx-agc-conf-agc-enable-sync-pulse-for-gain-counter", NULL, 0},
 
-// 	{SPINBUTTON, "adi,obs-agc-conf-agc-rx1-max-gain-index", NULL, 0},
-// 	{SPINBUTTON, "adi,obs-agc-conf-agc-rx1-min-gain-index", NULL, 0},
-// 	{SPINBUTTON, "adi,obs-agc-conf-agc-rx2-max-gain-index", NULL, 0},
-// 	{SPINBUTTON, "adi,obs-agc-conf-agc-rx2-min-gain-index", NULL, 0},
 	{SPINBUTTON, "adi,obs-agc-conf-agc-obs-rx-max-gain-index", NULL, 0},
 	{SPINBUTTON, "adi,obs-agc-conf-agc-obs-rx-min-gain-index", NULL, 0},
 	{CHECKBOX, "adi,obs-agc-conf-agc-obs-rx-select", NULL, 0},
@@ -433,8 +426,10 @@ static struct w_info attrs[] = {
 	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#8", NULL, 0},
 
 
-//	{COMBOBOX, "bist_prbs", NULL, 0},
-//	{COMBOBOX, "loopback", NULL, 0},
+	{COMBOBOX, "bist_prbs_rx", (unsigned char[]){0, 1, 2, 3}, 4},
+	{COMBOBOX, "bist_prbs_obs", (unsigned char[]){0, 1, 2, 3}, 4},
+	{CHECKBOX, "loopback_tx_rx", NULL, 0},
+	{CHECKBOX, "loopback_tx_obs", NULL, 0},
 	{BUTTON, "initialize", NULL, 0},
 };
 
@@ -581,9 +576,6 @@ static const char *ad9371_adv_sr_attribs[] = {
 	"debug.ad9371-phy.adi,rx-agc-conf-agc-rx1-min-gain-index",
 	"debug.ad9371-phy.adi,rx-agc-conf-agc-rx2-max-gain-index",
 	"debug.ad9371-phy.adi,rx-agc-conf-agc-rx2-min-gain-index",
-// 	"debug.ad9371-phy.adi,rx-agc-conf-agc-obs-rx-max-gain-index",
-// 	"debug.ad9371-phy.adi,rx-agc-conf-agc-obs-rx-min-gain-index",
-//	"debug.ad9371-phy.adi,rx-agc-conf-agc-obs-rx-select",
 	"debug.ad9371-phy.adi,rx-agc-conf-agc-peak-threshold-mode",
 	"debug.ad9371-phy.adi,rx-agc-conf-agc-low-ths-prevent-gain-increase",
 	"debug.ad9371-phy.adi,rx-agc-conf-agc-gain-update-counter",
@@ -592,10 +584,6 @@ static const char *ad9371_adv_sr_attribs[] = {
 	"debug.ad9371-phy.adi,rx-agc-conf-agc-reset-on-rx-enable",
 	"debug.ad9371-phy.adi,rx-agc-conf-agc-enable-sync-pulse-for-gain-counter",
 
-// 	"debug.ad9371-phy.adi,obs-agc-conf-agc-rx1-max-gain-index",
-// 	"debug.ad9371-phy.adi,obs-agc-conf-agc-rx1-min-gain-index",
-// 	"debug.ad9371-phy.adi,obs-agc-conf-agc-rx2-max-gain-index",
-// 	"debug.ad9371-phy.adi,obs-agc-conf-agc-rx2-min-gain-index",
 	"debug.ad9371-phy.adi,obs-agc-conf-agc-obs-rx-max-gain-index",
 	"debug.ad9371-phy.adi,obs-agc-conf-agc-obs-rx-min-gain-index",
 	"debug.ad9371-phy.adi,obs-agc-conf-agc-obs-rx-select",
@@ -729,7 +717,7 @@ static const char *ad9371_adv_sr_attribs[] = {
 	"debug.ad9371-phy.adi,aux-dac-value9",
 	"debug.ad9371-phy.adi,aux-dac-slope9",
 	"debug.ad9371-phy.adi,aux-dac-vref9",
-	
+
 	"debug.adi,default-initial-calibrations-mask",
 };
 
@@ -767,14 +755,13 @@ static void signal_handler_cb (GtkWidget *widget, gpointer data)
 			break;
 		case SPINBUTTON:
 			val = (long long) gtk_spin_button_get_value(GTK_SPIN_BUTTON (widget));
-//			printf("%s:%d val %lld\n",__func__, __LINE__, val);
+
 			if (item->lut_len) {
 				iio_device_debug_attr_read_longlong(dev, item->name, &mask);
 				mask &= ~((1 << item->lut_len) - 1);
 				mask |= val & ((1 << item->lut_len) - 1);
 				val = mask;
 			}
-//			printf("%s:%d val %lld\n",__func__, __LINE__, val);
 			break;
 		case COMBOBOX:
 			val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
@@ -786,7 +773,6 @@ static void signal_handler_cb (GtkWidget *widget, gpointer data)
 			 * # separates item name from bit number
 			 */
 			val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (widget));
-//			printf("%s:%d val %lld\n",__func__, __LINE__, val);
 			ret = sscanf(item->name, "%[^'#']#%d", str, &bit);
 			if (ret != 2)
 				return;
@@ -798,7 +784,6 @@ static void signal_handler_cb (GtkWidget *widget, gpointer data)
 			} else {
 				mask &= ~(1 << bit);
 			}
-//			printf("%s:%d val %lld\n",__func__, __LINE__, mask);
 			iio_device_debug_attr_write_longlong(dev, str, mask);
 
 			return;
@@ -806,65 +791,32 @@ static void signal_handler_cb (GtkWidget *widget, gpointer data)
 			return;
 	}
 
-//	printf("%s:%d %s val %lld\n",__func__, __LINE__, item->name, val);
 	iio_device_debug_attr_write_longlong(dev, item->name, val);
-
 
 	if (!strcmp(item->name, "initialize")) {
 		reload_settings();
 	}
 }
 
-// static void near_end_loopback_ctrl(unsigned channel, bool enable)
-// {
-//
-// 	unsigned tmp;
-// 	struct iio_device *dev = (channel > 3) ?
-// 		cf_ad9361_lpc : cf_ad9361_hpc;
-// 	if (!dev)
-// 		return;
-//
-// 	if (channel > 3)
-// 		channel -= 4;
-//
-// 	if (iio_device_reg_read(dev, 0x80000418 + channel * 0x40, &tmp))
-// 		return;
-//
-// 	if (enable)
-// 		tmp |= 0x1;
-// 	else
-// 		tmp &= ~0xF;
-//
-// 	iio_device_reg_write(dev, 0x80000418 + channel * 0x40, tmp);
-//
-// }
+static void bist_tone_cb (GtkWidget *widget, gpointer data)
+{
+	GtkBuilder *builder = data;
+	unsigned enable, tx1_freq, tx2_freq;
+	char temp[40];
 
-// static void bist_tone_cb (GtkWidget *widget, gpointer data)
-// {
-// 	GtkBuilder *builder = data;
-// 	unsigned mode, level, freq, c2i, c2q, c1i, c1q;
-// 	char temp[40];
-//
-// 	mode = gtk_combo_box_get_active(GTK_COMBO_BOX(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "bist_tone"))));
-// 	level = gtk_combo_box_get_active(GTK_COMBO_BOX(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "tone_level"))));
-// 	freq = gtk_combo_box_get_active(GTK_COMBO_BOX(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "bist_tone_frequency"))));
-// 	c2i = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "c2i"))));
-// 	c2q = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "c2q"))));
-// 	c1i = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "c1i"))));
-// 	c1q = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "c1q"))));
-//
-// 	sprintf(temp, "%d %d %d %d", mode, freq, level * 6,
-// 		(c2q << 3) | (c2i << 2) | (c1q << 1) | c1i);
-//
-// 	iio_device_debug_attr_write(dev, "bist_tone", temp);
-// }
+	tx1_freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON(
+		gtk_builder_get_object(builder, "tx1_nco_freq"))) * 1000;
+	tx2_freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON(
+		gtk_builder_get_object(builder, "tx2_nco_freq"))) * 1000;
+
+	enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
+		GTK_WIDGET(gtk_builder_get_object(builder, "tx_nco_enable"))));
+
+	sprintf(temp, "%d %d %d", enable, tx1_freq, tx2_freq);
+
+	iio_device_debug_attr_write(dev, "bist_tone", "0 0 0");
+	iio_device_debug_attr_write(dev, "bist_tone", temp);
+}
 
 static char * set_widget_value(GtkWidget *widget, struct w_info *item, long long val)
 {
@@ -878,11 +830,10 @@ static char * set_widget_value(GtkWidget *widget, struct w_info *item, long long
 		case BUTTON:
 			return "clicked";
 		case SPINBUTTON:
-//			printf("%s:%d val %lld\n",__func__, __LINE__, val);
 			if (item->lut_len) {
 				val &= ((1 << item->lut_len) - 1);
 			}
-//			printf("%s:%d val %lld\n",__func__, __LINE__, val);
+
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), val);
 			return "value-changed";
 		case COMBOBOX:
@@ -891,7 +842,6 @@ static char * set_widget_value(GtkWidget *widget, struct w_info *item, long long
 					gtk_combo_box_set_active(GTK_COMBO_BOX(widget), i);
 			return "changed";
 		case CHECKBOX_MASK:
-//			printf("%s:%d val %lld\n",__func__, __LINE__, val);
 			ret = sscanf(item->name, "%[^'#']#%d", str, &bit);
 			if (ret != 2)
 				break;
@@ -975,16 +925,16 @@ static int update_widgets(GtkBuilder *builder)
 	return iio_device_debug_attr_read_all(dev, __update_widget, builder);
 }
 
-// static void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
-// 		     guint page_num, gpointer user_data)
-// {
-// 	GtkWidget *tohide = user_data;
-//
-// 	if (page_num == 7)
-// 		gtk_widget_hide(tohide); /* Hide Init button in BIST Tab */
-// 	else
-// 		gtk_widget_show(tohide);
-// }
+static void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
+		     guint page_num, gpointer user_data)
+{
+	GtkWidget *tohide = user_data;
+
+	if (page_num == 12)
+		gtk_widget_hide(tohide); /* Hide Init button in BIST Tab */
+	else
+		gtk_widget_show(tohide);
+}
 
 static int handle_external_request (const char *request)
 {
@@ -1026,6 +976,7 @@ static int ad9371adv_handle(int line, const char *attrib, const char *value)
 
 static void load_profile(const char *ini_fn)
 {
+
 	update_from_ini(ini_fn, THIS_DRIVER, dev,
 			ad9371_adv_sr_attribs,
 			ARRAY_SIZE(ad9371_adv_sr_attribs));
@@ -1057,42 +1008,18 @@ static GtkWidget * ad9371adv_init(GtkWidget *notebook, const char *ini_fn)
 
 	connect_widgets(builder);
 
-// 	gtk_combo_box_set_active(GTK_COMBO_BOX(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "bist_tone"))), 0);
-// 	gtk_combo_box_set_active(GTK_COMBO_BOX(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "bist_tone_frequency"))), 0);
-// 	gtk_combo_box_set_active(GTK_COMBO_BOX(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "tone_level"))), 0);
-// 	gtk_combo_box_set_active(GTK_COMBO_BOX(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "bist_prbs"))), 0);
-// 	gtk_combo_box_set_active(GTK_COMBO_BOX(
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "loopback"))), 0);
-//
-// 	g_builder_connect_signal(builder, "bist_tone", "changed",
-// 		G_CALLBACK(bist_tone_cb), builder);
-//
-// 	g_builder_connect_signal(builder, "bist_tone_frequency", "changed",
-// 		G_CALLBACK(bist_tone_cb), builder);
-//
-// 	g_builder_connect_signal(builder, "tone_level", "changed",
-// 		G_CALLBACK(bist_tone_cb), builder);
-//
-// 	g_builder_connect_signal(builder, "c2q", "toggled",
-// 		G_CALLBACK(bist_tone_cb), builder);
-//
-// 	g_builder_connect_signal(builder, "c1q", "toggled",
-// 		G_CALLBACK(bist_tone_cb), builder);
-//
-// 	g_builder_connect_signal(builder, "c2i", "toggled",
-// 		G_CALLBACK(bist_tone_cb), builder);
-//
-// 	g_builder_connect_signal(builder, "c1i", "toggled",
-// 		G_CALLBACK(bist_tone_cb), builder);
-//
-//
-// 	g_builder_connect_signal(builder, "notebook1", "switch-page",
-// 		G_CALLBACK(change_page_cb),
-// 		GTK_WIDGET(gtk_builder_get_object(builder, "initialize")));
+	g_builder_connect_signal(builder, "tx1_nco_freq", "value-changed",
+		G_CALLBACK(bist_tone_cb), builder);
+
+	g_builder_connect_signal(builder, "tx2_nco_freq", "value-changed",
+		G_CALLBACK(bist_tone_cb), builder);
+
+	g_builder_connect_signal(builder, "tx_nco_enable", "toggled",
+		G_CALLBACK(bist_tone_cb), builder);
+
+	g_builder_connect_signal(builder, "notebook1", "switch-page",
+		G_CALLBACK(change_page_cb),
+		GTK_WIDGET(gtk_builder_get_object(builder, "initialize")));
 
 	can_update_widgets = true;
 
