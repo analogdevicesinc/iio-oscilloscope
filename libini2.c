@@ -125,7 +125,7 @@ void update_from_ini(const char *ini_file,
 {
 	bool found = false;
 	const char *name;
-	size_t nlen;
+	size_t nlen, dlen;
 	unsigned int i;
 	struct INI *ini = ini_open(ini_file);
 	struct load_store_params params = {
@@ -141,8 +141,13 @@ void update_from_ini(const char *ini_file,
 		return;
 	}
 
-	while (!found && ini_next_section(ini, &name, &nlen) > 0)
-		found = !strncmp(name, driver_name, nlen);
+	dlen = strlen(driver_name);
+
+	while (!found && ini_next_section(ini, &name, &nlen) > 0) {
+		if (nlen == dlen)
+			found = !strncmp(name, driver_name, nlen);
+	}
+
 	if (!found) {
 		fprintf(stderr, "error parsing %s file: Could not find %s\n",
 				ini_file, driver_name);
@@ -155,6 +160,7 @@ void update_from_ini(const char *ini_file,
 	for (i = 0; i < iio_device_get_channels_count(dev); i++)
 		iio_channel_attr_write_all(iio_device_get_channel(dev, i),
 				update_from_ini_chn_cb, &params);
+
 	if (iio_device_get_attrs_count(dev))
 		iio_device_attr_write_all(dev, update_from_ini_dev_cb, &params);
 
