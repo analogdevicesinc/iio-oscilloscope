@@ -40,6 +40,99 @@
 
 extern bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
 
+struct dds_tone {
+	struct dds_channel *parent;
+
+	unsigned number;
+	struct iio_device *iio_dac;
+	struct iio_channel *iio_ch;
+
+	struct iio_widget iio_freq;
+	struct iio_widget iio_scale;
+	struct iio_widget iio_phase;
+
+	double scale_state;
+
+	gint dds_freq_hid;
+	gint dds_scale_hid;
+	gint dds_phase_hid;
+
+	GtkWidget *freq;
+	GtkWidget *scale;
+	GtkWidget *phase;
+	GtkWidget *frame;
+};
+
+struct dds_channel {
+	struct dds_tx *parent;
+
+	char type;
+	struct dds_tone t1;
+	struct dds_tone t2;
+
+	GtkWidget *frame;
+};
+
+struct dds_tx {
+	struct dds_dac *parent;
+
+	unsigned index;
+	struct dds_channel ch_i;
+	struct dds_channel ch_q;
+	struct dds_tone *dds_tones[4];
+
+	GtkWidget *frame;
+	GtkWidget *dds_mode_widget;
+};
+
+struct dds_dac {
+	struct dac_data_manager *parent;
+
+	unsigned index;
+	const char *name;
+	struct iio_device *iio_dac;
+	unsigned tx_count;
+	struct dds_tx tx1;
+	struct dds_tx tx2;
+	int dds_mode;
+	unsigned tones_count;
+
+	GtkWidget *frame;
+};
+
+struct dac_buffer {
+	struct dac_data_manager *parent;
+
+	char *dac_buf_filename;
+	int scan_elements_count;
+	struct iio_device *dac_with_scanelems;
+
+	GtkWidget *frame;
+	GtkWidget *buffer_fchooser_btn;
+	GtkWidget *tx_channels_view;
+	GtkTextBuffer *load_status_buf;
+};
+
+struct dac_data_manager {
+	struct dds_dac dac1;
+	struct dds_dac dac2;
+	struct dac_buffer dac_buffer_module;
+
+	struct iio_context *ctx;
+	unsigned dacs_count;
+	unsigned tones_count;
+	unsigned alignment;
+	GSList *dds_tones;
+	bool scale_available_mode;
+	double lowest_scale_point;
+	bool dds_activated;
+	bool dds_disabled;
+	struct iio_buffer *dds_buffer;
+	bool is_local;
+
+	GtkWidget *container;
+};
+
 static bool tx_channels_check_valid_setup(struct dac_buffer *dbuf);
 
 static const gdouble abs_mhz_scale = -1000000.0;
@@ -2021,6 +2114,14 @@ void dac_data_manager_set_buffer_chooser_filename(struct dac_data_manager *manag
 	gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(fchooser), filename);
 	g_signal_emit_by_name(fchooser, "file-set", NULL);
 	waveform_load_button_clicked_cb(NULL, &manager->dac_buffer_module);
+}
+
+void dac_data_manager_set_buffer_size_alignment(struct dac_data_manager *manager, unsigned align)
+{
+	if (!manager)
+		return;
+
+	manager->alignment = align;
 }
 
 char *dac_data_manager_get_buffer_chooser_filename(struct dac_data_manager *manager)

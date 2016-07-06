@@ -998,8 +998,7 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 
 	dac_tx_manager = dac_data_manager_new(dds, NULL, ctx);
 
-	if (dac_tx_manager)
-		dac_tx_manager->alignment = 16; /* 128-bit */
+	dac_data_manager_set_buffer_size_alignment(dac_tx_manager, 16);
 
 	const char *env_freq_span = getenv("OSC_UPDN_FREQ_SPAN");
 	const char *env_freq_mix_sign = getenv("OSC_UPDN_FREQ_MIX_SIGN");
