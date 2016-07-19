@@ -40,7 +40,8 @@
 #define THIS_DRIVER "AD9371"
 #define PHY_DEVICE "ad9371-phy"
 #define DDS_DEVICE "axi-ad9371-tx-hpc"
-#define CAP_DEVICE "axi-ad371-rx-hpc"
+#define CAP_DEVICE "axi-ad9371-rx-hpc"
+#define CAP_DEVICE_2 "axi-ad9371-rx-obs-hpc"
 #define UDC_RX_DEVICE "adf4351-udc-rx-pmod"
 #define UDC_TX_DEVICE "adf4351-udc-tx-pmod"
 
@@ -84,7 +85,7 @@ static double updn_freq_mix_sign;
 static char last_profile[PATH_MAX];
 
 static struct iio_context *ctx;
-static struct iio_device *dev, *dds, *cap, *udc_rx, *udc_tx;
+static struct iio_device *dev, *dds, *cap, *udc_rx, *udc_tx, *cap_obs;
 
 enum {
 	SECTION_GLOBAL,
@@ -209,6 +210,8 @@ static const char * ad9371_driver_attribs[] = {
 	"dac_buf_filename",
 };
 
+static void profile_update(void);
+
 static void update_lable_from(GtkWidget *label, const char *channel,
 			      const char *attribute, bool output, const char *unit)
 {
@@ -309,7 +312,7 @@ int load_myk_profile(const char *file_name,
 
 	}
 
-	profile_update_labels();
+	profile_update();
 
 	printf("Profile loaded: %s (ret = %i)\n", path, ret);
 	if (ret >= 0)
@@ -377,13 +380,34 @@ static void rx_freq_info_update(void)
 {
 	double lo_freq;
 
-	if (cap)
+	if (cap) {
 		rx_update_device_sampling_freq(CAP_DEVICE,
 						USE_INTERN_SAMPLING_FREQ);
-	lo_freq = mhz_scale * gtk_spin_button_get_value(
+		lo_freq = mhz_scale * gtk_spin_button_get_value(
 			GTK_SPIN_BUTTON(rx_widgets[rx_lo].widget));
-	if (cap)
+
 		rx_update_channel_lo_freq(CAP_DEVICE, "all", lo_freq);
+
+	}
+
+	if (cap_obs) {
+		const char *source;
+
+		rx_update_device_sampling_freq(CAP_DEVICE_2,
+						USE_INTERN_SAMPLING_FREQ);
+
+		source = gtk_combo_box_get_active_text(GTK_COMBO_BOX(obs_port_select));
+
+		if (source && strstr(source, "TX")) {
+			lo_freq = mhz_scale * gtk_spin_button_get_value(
+				GTK_SPIN_BUTTON(tx_widgets[tx_lo].widget));
+		} else {
+			lo_freq = mhz_scale * gtk_spin_button_get_value(
+				GTK_SPIN_BUTTON(obsrx_widgets[sn_lo].widget));
+		}
+		rx_update_channel_lo_freq(CAP_DEVICE_2, "all", lo_freq);
+
+	}
 }
 
 static void sample_frequency_changed_cb(void *data)
@@ -613,80 +637,15 @@ static void update_widgets(void)
 
 static void profile_update(void)
 {
-// 	bool rx = false, tx = false, rxtx = false;
-// 	struct iio_channel *chn;
-//
-// 	iio_device_attr_read_bool(dev, "in_out_voltage_filter_fir_en", &rxtx);
-//
-// 	chn = iio_device_find_channel(dev, "voltage0", false);
-// 	if (chn)
-// 		iio_channel_attr_read_bool(chn, "filter_fir_en", &rx);
-// 	chn = iio_device_find_channel(dev, "voltage0", true);
-// 	if (chn)
-// 		iio_channel_attr_read_bool(chn, "filter_fir_en", &tx);
-//
-// 	if (rxtx) {
-// 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx), rxtx);
-// 	} else if (!rx && !tx) {
-// 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters), true);
-// 	} else {
-// 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx), rx);
-// 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx), tx);
-// 	}
-}
-
-#if 0
-static void profile_enable(GtkToggleButton *button, gpointer data)
-{
-//	bool rx, tx, rxtx, disable;
-
-	if (gtk_toggle_button_get_active(button))
-		return;
-
-// 	rx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx));
-// 	tx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (fir_filter_en_tx));
-// 	rxtx = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx));
-// 	disable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters));
-//
-// 	if (rxtx || disable) {
-// 		iio_device_attr_write_bool(dev,
-// 				"in_out_voltage_filter_fir_en", rxtx);
-// 	} else {
-// 		struct iio_channel *chn;
-// 		if (rx) {
-// 			chn = iio_device_find_channel(dev, "voltage0", true);
-// 			if (chn)
-// 				iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
-//
-// 			chn = iio_device_find_channel(dev, "voltage0", false);
-// 			if (chn)
-// 				iio_channel_attr_write_bool(chn, "filter_fir_en", rx);
-//
-// 		}
-//
-// 		if (tx) {
-// 			chn = iio_device_find_channel(dev, "voltage0", false);
-// 			if (chn)
-// 				iio_channel_attr_write_bool(chn, "filter_fir_en", rx);
-//
-// 			chn = iio_device_find_channel(dev, "voltage0", true);
-// 			if (chn)
-// 				iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
-//
-// 		}
-// 	}
-
 	if (plugin_osc_running_state() == true) {
 		plugin_osc_stop_capture();
 		plugin_osc_start_capture();
 	}
 
-	profile_update();
 	glb_settings_update_labels();
 	update_widgets();
 	rx_freq_info_update();
 }
-#endif
 
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
@@ -988,6 +947,7 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
 	dds = iio_context_find_device(ctx, DDS_DEVICE);
 	cap = iio_context_find_device(ctx, CAP_DEVICE);
+	cap_obs = iio_context_find_device(ctx, CAP_DEVICE_2);
 	udc_rx = iio_context_find_device(ctx, UDC_RX_DEVICE);
 	udc_tx = iio_context_find_device(ctx, UDC_TX_DEVICE);
 	has_udc_driver = (udc_rx && udc_tx);
@@ -1342,6 +1302,8 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo],
 		sample_frequency_changed_cb, NULL);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
+		sample_frequency_changed_cb, NULL);
+	iio_spin_button_set_on_complete_function(&obsrx_widgets[sn_lo],
 		sample_frequency_changed_cb, NULL);
 
 	add_ch_setup_check_fct(CAP_DEVICE, channel_combination_check);
