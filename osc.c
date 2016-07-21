@@ -71,7 +71,8 @@ static char * dma_devices[] = {
 	"ad9250",
 	"ad9361",
 	"ad9643",
-	"ad9680"
+	"ad9680",
+	"ad9371"
 };
 
 #define DMA_DEVICES_COUNT (sizeof(dma_devices) / sizeof(dma_devices[0]))

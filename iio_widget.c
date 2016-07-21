@@ -342,6 +342,9 @@ void iio_combo_box_init(struct iio_widget *widget, struct iio_device *dev,
 	iio_widget_init(widget, dev, chn, attr_name, attr_name_avail, combo_box,
 		(void *)compare, iio_combo_box_update,
 		iio_combo_box_update_value, iio_combo_box_save);
+
+	gtk_combo_box_set_entry_text_column(GTK_COMBO_BOX(widget->widget), 0);
+
 }
 
 void iio_widget_update(struct iio_widget *widget)

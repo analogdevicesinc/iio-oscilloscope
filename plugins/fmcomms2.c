@@ -1419,12 +1419,18 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_grid")));
 
 #ifndef _WIN32
-	/* Disable EEPROM functionality if not running locally or as root. */
-	if (getuid() != 0 || strcmp(iio_context_get_name(ctx), "local") != 0) {
+	/* Disable EEPROM functionality if not running locally. */
+	if (strcmp(iio_context_get_name(ctx), "local") != 0) {
 		gtk_widget_set_sensitive(GTK_WIDGET(
 			gtk_builder_get_object(builder, "dcxo_cal_to_eeprom")), FALSE);
 		gtk_widget_set_sensitive(GTK_WIDGET(
 			gtk_builder_get_object(builder, "dcxo_cal_from_eeprom")), FALSE);
+	}
+
+	/* Disable saving to EEPROM if not running as root. */
+	if (getuid() != 0) {
+		gtk_widget_set_sensitive(GTK_WIDGET(
+			gtk_builder_get_object(builder, "dcxo_cal_to_eeprom")), FALSE);
 	}
 #endif
 

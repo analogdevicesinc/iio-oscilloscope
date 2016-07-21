@@ -121,6 +121,7 @@ struct dac_data_manager {
 	struct iio_context *ctx;
 	unsigned dacs_count;
 	unsigned tones_count;
+	unsigned alignment;
 	GSList *dds_tones;
 	bool scale_available_mode;
 	double lowest_scale_point;
@@ -294,7 +295,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			if (max > 32752.0)
 				fprintf(stderr, "ERROR: DAC Waveform Samples > +/- 2047.0\n");
 
-			while ((size % 8) != 0)
+			while ((size % manager->alignment) != 0)
 				size *= 2;
 
 			*buf = malloc(size);
@@ -358,10 +359,10 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			/* When we are in 1 TX mode it is possible that the number of bytes
 			 * is not a multiple of 8, but only a multiple of 4. In this case
 			 * we'll send the same buffer twice to make sure that it becomes a
-			 * multiple of 8.
+			 * multiple of 8. (default manager->alignment)
 			 */
 
-			while ((size % 8) != 0) {
+			while ((size % manager->alignment) != 0) {
 				memcpy(*buf + size, *buf, size);
 				size += size;
 			}
@@ -1915,6 +1916,7 @@ static int dac_manager_init(struct dac_data_manager *manager,
 
 	manager->is_local = strcmp(iio_context_get_name(ctx), "network") ? true : false;
 	manager->ctx = ctx;
+	manager->alignment = 8;
 
 	return ret;
 }
@@ -2112,6 +2114,14 @@ void dac_data_manager_set_buffer_chooser_filename(struct dac_data_manager *manag
 	gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(fchooser), filename);
 	g_signal_emit_by_name(fchooser, "file-set", NULL);
 	waveform_load_button_clicked_cb(NULL, &manager->dac_buffer_module);
+}
+
+void dac_data_manager_set_buffer_size_alignment(struct dac_data_manager *manager, unsigned align)
+{
+	if (!manager)
+		return;
+
+	manager->alignment = align;
 }
 
 char *dac_data_manager_get_buffer_chooser_filename(struct dac_data_manager *manager)

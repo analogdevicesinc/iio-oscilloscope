@@ -69,5 +69,7 @@ GtkWidget *dac_data_manager_get_widget(struct dac_data_manager *manager,
 struct iio_widget *dac_data_manager_get_iio_widget(struct dac_data_manager *manager,
 		enum dds_tone_type tone, enum dds_widget_type type);
 GtkWidget *dac_data_manager_get_gui_container(struct dac_data_manager *manager);
+void dac_data_manager_set_buffer_size_alignment(struct dac_data_manager *manager,
+		unsigned align);
 
 #endif /* __DAC_DATA_MANAGER__ */

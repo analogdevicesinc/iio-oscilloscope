@@ -5196,7 +5196,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 				break;
 			} else if (MATCH(elems[0], "test")) {
 				if (MATCH(elems[1], "message")) {
-					create_blocking_popup(GTK_MESSAGE_QUESTION, GTK_BUTTONS_CLOSE,
+					create_blocking_popup(GTK_MESSAGE_QUESTION, GTK_BUTTONS_OK,
 						"Profile status", value);
 					break;
 				} else {
