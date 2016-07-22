@@ -32,15 +32,22 @@
 #include "./block_diagram.h"
 #include "dac_data_manager.h"
 
-#define THIS_DRIVER "DAQ2/3"
+#define THIS_DRIVER "DAQ1/2/3"
 
 #define SYNC_RELOAD "SYNC_RELOAD"
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
-#define ADC_DEVICE "axi-ad9680-hpc"
+static const char *ADC_DEVICE;
 static const char *DAC_DEVICE;
 
+
+#define DAQ1_ADC_DEVICE "axi-ad9684-lpc"
+#define DAQ2_ADC_DEVICE "axi-ad9680-hpc"
+#define DAQ3_ADC_DEVICE "axi-ad9680-hpc"
+
+
+#define DAQ1_DAC_DEVICE "axi-ad9122-lpc"
 #define DAQ2_DAC_DEVICE "axi-ad9144-hpc"
 #define DAQ3_DAC_DEVICE "axi-ad9152-hpc"
 
@@ -63,10 +70,30 @@ static int daq_board;
 static const char **daq_sr_attribs;
 static int sr_attribs_array_size;
 
+
+static const char *daq1_sr_attribs[] = {
+	DAQ1_ADC_DEVICE".in_voltage_sampling_frequency",
+	DAQ1_ADC_DEVICE".in_voltage0_test_mode",
+	DAQ1_ADC_DEVICE".in_voltage1_test_mode",
+	DAQ1_DAC_DEVICE".out_altvoltage_sampling_frequency",
+	DAQ1_DAC_DEVICE".out_altvoltage0_1A_frequency",
+	DAQ1_DAC_DEVICE".out_altvoltage2_2A_frequency",
+	DAQ1_DAC_DEVICE".out_altvoltage1_1B_frequency",
+	DAQ1_DAC_DEVICE".out_altvoltage3_2B_frequency",
+	DAQ1_DAC_DEVICE".out_altvoltage0_1A_scale",
+	DAQ1_DAC_DEVICE".out_altvoltage2_2A_scale",
+	DAQ1_DAC_DEVICE".out_altvoltage1_1B_scale",
+	DAQ1_DAC_DEVICE".out_altvoltage3_2B_scale",
+	DAQ1_DAC_DEVICE".out_altvoltage0_1A_phase",
+	DAQ1_DAC_DEVICE".out_altvoltage1_1B_phase",
+	DAQ1_DAC_DEVICE".out_altvoltage2_2A_phase",
+	DAQ1_DAC_DEVICE".out_altvoltage3_2B_phase",
+};
+
 static const char *daq2_sr_attribs[] = {
-	ADC_DEVICE".in_voltage_sampling_frequency",
-	ADC_DEVICE".in_voltage0_test_mode",
-	ADC_DEVICE".in_voltage1_test_mode",
+	DAQ2_ADC_DEVICE".in_voltage_sampling_frequency",
+	DAQ2_ADC_DEVICE".in_voltage0_test_mode",
+	DAQ2_ADC_DEVICE".in_voltage1_test_mode",
 	DAQ2_DAC_DEVICE".out_altvoltage_sampling_frequency",
 	DAQ2_DAC_DEVICE".out_altvoltage0_1A_frequency",
 	DAQ2_DAC_DEVICE".out_altvoltage2_2A_frequency",
@@ -83,9 +110,9 @@ static const char *daq2_sr_attribs[] = {
 };
 
 static const char *daq3_sr_attribs[] = {
-	ADC_DEVICE".in_voltage_sampling_frequency",
-	ADC_DEVICE".in_voltage0_test_mode",
-	ADC_DEVICE".in_voltage1_test_mode",
+	DAQ3_ADC_DEVICE".in_voltage_sampling_frequency",
+	DAQ3_ADC_DEVICE".in_voltage0_test_mode",
+	DAQ3_ADC_DEVICE".in_voltage1_test_mode",
 	DAQ3_DAC_DEVICE".out_altvoltage_sampling_frequency",
 	DAQ3_DAC_DEVICE".out_altvoltage0_1A_frequency",
 	DAQ3_DAC_DEVICE".out_altvoltage2_2A_frequency",
@@ -367,17 +394,26 @@ static bool daq2_identify(void)
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
 
-	if (iio_context_find_device(osc_ctx, DAQ2_DAC_DEVICE)) {
+	if (iio_context_find_device(osc_ctx, DAQ1_DAC_DEVICE)) {
+		daq_board = 1;
+		ADC_DEVICE = DAQ1_ADC_DEVICE;
+		DAC_DEVICE = DAQ1_DAC_DEVICE;
+		daq_sr_attribs = daq1_sr_attribs;
+		sr_attribs_array_size = ARRAY_SIZE(daq1_sr_attribs);
+	} else if (iio_context_find_device(osc_ctx, DAQ2_DAC_DEVICE)) {
 		daq_board = 2;
+		ADC_DEVICE = DAQ2_ADC_DEVICE;
 		DAC_DEVICE = DAQ2_DAC_DEVICE;
 		daq_sr_attribs = daq2_sr_attribs;
 		sr_attribs_array_size = ARRAY_SIZE(daq2_sr_attribs);
 	} else if (iio_context_find_device(osc_ctx, DAQ3_DAC_DEVICE)) {
 		daq_board = 3;
+		ADC_DEVICE = DAQ3_ADC_DEVICE;
 		DAC_DEVICE = DAQ3_DAC_DEVICE;
 		daq_sr_attribs = daq3_sr_attribs;
 		sr_attribs_array_size = ARRAY_SIZE(daq3_sr_attribs);
 	} else {
+		ADC_DEVICE = "";
 		DAC_DEVICE = "";
 	}
 
