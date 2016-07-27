@@ -5142,6 +5142,13 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 				}
 			} else if (MATCH_NAME("save_png")) {
 				save_as(plot, value, SAVE_PNG);
+				i = 0;
+				while (gtk_events_pending() && i < 1000) {
+					gtk_main_iteration();
+					i++;
+				}
+				screenshot_saveas_png(plot);
+				priv->save_as_png = false;
 			} else if (MATCH_NAME("cycle")) {
 				unsigned int msecs;
 				sscanf(value, "%u", &msecs);
