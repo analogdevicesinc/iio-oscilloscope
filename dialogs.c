@@ -599,7 +599,7 @@ gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 {
 	GtkWidget *dialog;
 	va_list args;
-	char buf[1024];
+	char buf[1024], *newline;
 	int len;
 	gint run;
 
@@ -609,6 +609,13 @@ gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 
 	if (len < 0)
 		return -1;
+
+	/* replace the str "\n" with the actual newline char */
+	while ( (newline = strstr(buf, "\\n")) ) {
+		*newline = '\n';
+		/* strlen + 1 to get the termination char */
+		memmove(newline+1, newline+2, (strlen(newline+2)) + 1);
+	}
 
 	dialog = gtk_message_dialog_new(NULL,
 			GTK_DIALOG_MODAL,
