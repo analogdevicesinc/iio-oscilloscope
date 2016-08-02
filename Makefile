@@ -78,6 +78,7 @@ PLUGINS=\
 	plugins/motor_control.$(SO) \
 	plugins/dmm.$(SO) \
 	plugins/debug.$(SO) \
+	plugins/m2k_dac.$(SO) \
 	$(if $(WITH_MINGW),,plugins/spectrum_analyzer.so) \
 	$(if $(WITH_MINGW),,plugins/scpi.so)
 
