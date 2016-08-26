@@ -60,7 +60,7 @@ static void plugin_restore_ini_state(const char *plugin_name,
 static void plot_init(GtkWidget *plot);
 static void plot_destroyed_cb(OscPlot *plot);
 static void capture_profile_save(const char *filename);
-static void load_profile(const char *filename, bool load_plugins);
+static int load_profile(const char *filename, bool load_plugins);
 static int capture_setup(void);
 static void capture_start(void);
 static void stop_sampling(void);
@@ -1748,24 +1748,26 @@ bool check_inifile(const char *filepath)
 
 int load_default_profile(char *filename, bool load_plugins)
 {
+	int ret = 0;
+
 	/* Don't load anything */
 	if (filename && !strcmp(filename, "-"))
 		return 0;
 
 	if (filename && check_inifile(filename)) {
-		load_profile(filename, load_plugins);
+		ret = load_profile(filename, load_plugins);
 	} else {
 		gchar *path = get_default_profile_name();
 
 		/* if this is bad, we don't load anything and
 		 * return success, so we still run */
 		if (check_inifile(path))
-			load_profile(path, load_plugins);
+			ret = load_profile(path, load_plugins);
 
 		g_free(path);
 	}
 
-	return 0;
+	return ret;
 }
 
 static void plugins_get_preferred_size(GSList *plist, int *width, int *height)
@@ -2029,11 +2031,11 @@ static int load_profile_sequential_handler(int line, const char *section,
 	return 1;
 }
 
-static void load_profile_sequential(const char *filename)
+static int load_profile_sequential(const char *filename)
 {
 	gchar *new_filename;
 	char buf[32];
-	int ret;
+	int ret = 0;
 
 	snprintf(buf, sizeof(buf), "osc_%u.ini", getpid());
 
@@ -2061,10 +2063,13 @@ static void load_profile_sequential(const char *filename)
 err_unlink:
 	unlink(new_filename);
 	g_free(new_filename);
+
+	return ret;
 }
 
-static void load_profile(const char *filename, bool load_plugins)
+static int load_profile(const char *filename, bool load_plugins)
 {
+	int ret = 0;
 	GSList *node;
 	gint x_pos = 0, y_pos = 0;
 	char *value;
@@ -2085,8 +2090,8 @@ static void load_profile(const char *filename, bool load_plugins)
 	value = read_token_from_ini(filename, OSC_INI_SECTION, "test");
 	if (value) {
 		free(value);
-		load_profile_sequential(filename);
-		return;
+		ret = load_profile_sequential(filename);
+		return ret;
 	}
 
 	value = read_token_from_ini(filename,
@@ -2136,6 +2141,8 @@ static void load_profile(const char *filename, bool load_plugins)
 		plugin_restore_ini_state(plugin->name, "detached", !!atoi(value));
 		free(value);
 	}
+
+	return ret;
 }
 
 void load_complete_profile(const char *filename)
@@ -2266,13 +2273,15 @@ int osc_test_value(struct iio_context *ctx, int line,
 		goto cleanup;
 	}
 
-	if (ret < 0)
+	if (ret < 0) {
 		fprintf(stderr, "Unable to test \"%s\": %s\n",
 				attribute, strerror(-ret));
-	else if (ret == 0)
+	} else if (ret == 0) {
+		ret = -1;
 		fprintf(stderr, "*** Test failed! ***\n");
-	else
+	} else {
 		fprintf(stderr, "Test passed.\n");
+	}
 
 	g_strfreev(elems);
 	return ret;
