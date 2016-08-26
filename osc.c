@@ -1898,6 +1898,11 @@ static void capture_profile_save(const char *filename)
 		gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(tooltips_en)));
 	fprintf(fp, "startup_version_check=%d\n",
 		gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(versioncheck_en)));
+	if (ctx && !strcmp(iio_context_get_name(ctx), "network")) {
+		char *ip_addr = (char *) iio_context_get_description(ctx);
+		ip_addr = strtok(ip_addr, " ");
+		fprintf(fp, "remote_ip_addr=%s\n", ip_addr);
+	}
 
 	fclose(fp);
 
