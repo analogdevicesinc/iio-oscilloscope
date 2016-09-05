@@ -77,6 +77,7 @@ enum fmcomms2adv_wtype {
 	COMBOBOX,
 	BUTTON,
 	CHECKBOX_MASK,
+	SPINBUTTON_S8,
 };
 
 struct w_info {
@@ -155,7 +156,7 @@ static struct w_info attrs[] = {
 	{CHECKBOX, "adi,tdd-use-fdd-vco-tables-enable"},
 	{SPINBUTTON, "adi,temp-sense-decimation"},
 	{SPINBUTTON, "adi,temp-sense-measurement-interval-ms"},
-	{SPINBUTTON, "adi,temp-sense-offset-signed"},
+	{SPINBUTTON_S8, "adi,temp-sense-offset-signed"},
 	{CHECKBOX, "adi,temp-sense-periodic-measurement-enable"},
 	{COMBOBOX, "adi,tx-rf-port-input-select"},
 	{CHECKBOX, "adi,update-tx-gain-in-alert-enable"},
@@ -432,6 +433,7 @@ static void signal_handler_cb (GtkWidget *widget, gpointer data)
 			val = 1;
 			break;
 		case SPINBUTTON:
+		case SPINBUTTON_S8:
 			val = (unsigned) gtk_spin_button_get_value(GTK_SPIN_BUTTON (widget));
 			break;
 		case COMBOBOX:
@@ -1105,6 +1107,9 @@ static char * set_widget_value(GtkWidget *widget, struct w_info *item, int val)
 			return "clicked";
 		case SPINBUTTON:
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), val);
+			return "value-changed";
+		case SPINBUTTON_S8:
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), (char) val);
 			return "value-changed";
 		case COMBOBOX:
 			gtk_combo_box_set_active(GTK_COMBO_BOX(widget), val);
