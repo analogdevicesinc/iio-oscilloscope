@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 #include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -787,6 +788,22 @@ void version_check_start(Dialogs *_dialogs)
 		gtk_widget_show(_dialogs->ver_progress_window);
 }
 
+/*
+ * If someone hits tab, or return, virtually click on the apply button
+ */
+static gboolean connect_key_press_cb (GtkWidget *w, GdkEvent *ev, GtkWidget *dialog)
+{
+	GdkEventKey *key = (GdkEventKey*)ev;
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_net)) && (key)) {
+		if ((key->keyval == GDK_Tab) ||
+		    (key->keyval == GDK_Return))
+			   gtk_dialog_response(GTK_DIALOG(dialog), GTK_RESPONSE_APPLY);
+	}
+
+	return FALSE;
+}
+
 G_MODULE_EXPORT void cb_check_for_updates(GtkCheckMenuItem *item, Dialogs *_dialogs)
 {
 	version_check_start(_dialogs);
@@ -840,4 +857,8 @@ void dialogs_init(GtkBuilder *builder)
 					GTK_TOGGLE_BUTTON(dialogs.connect_net), true);
 		}
 	}
+
+	g_signal_connect(dialogs.net_ip, "key-press-event",
+			(GCallback) connect_key_press_cb, dialogs.connect);
+
 }
