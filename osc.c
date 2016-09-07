@@ -2348,8 +2348,17 @@ static int osc_read_nonenclosed_value(struct iio_context *ctx,
 	struct iio_device *dev;
 	struct iio_channel *chn;
 	const char *attr;
+	char *pend;
 	bool debug;
 	int ret = osc_identify_attrib(ctx, value, &dev, &chn, &attr, &debug);
+
+	if (ret == -EINVAL) {
+		*out = strtoll(value, &pend, 10);
+		/* if we are pointing to the end of the string, we are fine */
+		if ((strlen(value) + value) == pend) {
+			return 0;
+		}
+	}
 	if (ret < 0)
 		return ret;
 
