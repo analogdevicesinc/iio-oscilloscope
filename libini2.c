@@ -640,6 +640,13 @@ int ini_unroll(const char *input, const char *output)
 			fprintf(out, "%s", buf);
 			continue;
 		}
+		if (!strcmp(loop_name, "COMMENT")) {
+			while (fgets(buf, sizeof(buf), in) != NULL) {
+				if (!strncmp(buf, "</COMMENT>", strlen("</COMMENT>")))
+					break;
+			}
+			continue;
+		}
 
 		ret = loop_expand(&loops_params, buf, loop_name);
 		if (ret < 0) {
