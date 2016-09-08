@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "osc.h"
+#include "backtrace.h"
 
 extern GtkWidget *notebook;
 extern GtkWidget *infobar;
@@ -186,6 +187,8 @@ gint main (int argc, char **argv)
 	int c;
 
 	char *profile = NULL;
+
+	init_signal_handlers(argv[0]);
 
 	opterr = 0;
 	while ((c = getopt (argc, argv, "c:p:")) != -1)

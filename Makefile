@@ -29,7 +29,7 @@ DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0
 
 LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 	$(if $(WITH_MINGW),-lwinpthread) \
-	-L$(SYSROOT)/usr/lib -lmatio -lz -lm -lad9361
+	-L$(SYSROOT)/usr/lib -lmatio -lz -lm -lad9361 -rdynamic
 
 ifeq ($(WITH_MINGW),y)
 	LDFLAGS += -Wl,--subsystem,windows
