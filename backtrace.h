@@ -40,6 +40,7 @@ void obtainBacktrace(int signum, siginfo_t *siginfo, void *uctx)
 	size_t size;
 	struct crash_report creport;
 	struct timespec timestamp;
+	ssize_t ret;
 
 	/* Get a minimal status of the program */
 	clock_gettime(CLOCK_REALTIME, &timestamp);
@@ -53,9 +54,14 @@ void obtainBacktrace(int signum, siginfo_t *siginfo, void *uctx)
 
 	/* Send everything to the child process */
 	close(fd[0]);
-	write(fd[1], (const void *)&creport,
+	ret = write(fd[1], (const void *)&creport,
 			sizeof(struct crash_report));
+	if (ret != sizeof(struct crash_report)) {
+		goto end;
+	}
 	backtrace_symbols_fd(backtrace_buffer, size, fd[1]);
+
+end:
 	close(fd[1]);
 
 	/* Wait child process to finish the crash report */
@@ -152,11 +158,19 @@ void init_signal_handlers(char *program_name)
 #ifndef _WIN32
 	glbProgramName = program_name;
 	struct sigaction osc_backtrace;
+	int ret;
 
 	/* Prepare a child process to receive crash data the handler sends */
 	pid_t stackParserPID;
 
-	pipe(fd);
+	ret = pipe(fd);
+	if (ret != 0) {
+	fprintf(stderr, "Failed to create pipe. Error: %s. "
+		"File: %s Func: %s Line: %d\n",
+		strerror(errno),
+		__FILE__, __func__, __LINE__);
+		return;
+	}
 	stackParserPID = fork();
 
 	if (stackParserPID == 0) {
