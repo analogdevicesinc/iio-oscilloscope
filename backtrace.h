@@ -96,6 +96,10 @@ void handle_crash_data()
 		total_bytes += nbytes;
 	}
 
+	/* Osc ran normally and no bytes were sent by the parent proc */
+	if (total_bytes == 0)
+		return;
+
 	/* First received data contains a crash_report struct */
 	char *creport_buf;
 	struct crash_report *creport;
