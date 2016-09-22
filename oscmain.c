@@ -168,7 +168,7 @@ static void usage(char *program)
 
 	/* please keep this list sorted in alphabetical order */
 	printf( "Command line options:\n"
-		"\t-p\tload specific profile\n"
+		"\t-p\tload specific profile (to skip profile loading use \"-\")\n"
 		"\t-c\tIP address of device to connect to\n");
 
 	printf("\nEnvironmental variables:\n"
