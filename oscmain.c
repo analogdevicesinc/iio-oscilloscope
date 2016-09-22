@@ -172,7 +172,7 @@ static void usage(char *program)
 		"\t-c\tIP address of device to connect to\n");
 
 	printf("\nEnvironmental variables:\n"
-		"\tOSC_FORCE_PLUGIN\tforce loading of a specfic plugin\n");
+		"\tOSC_FORCE_PLUGIN\tforce loading of a specific plugin\n");
 
 	exit(-1);
 }
