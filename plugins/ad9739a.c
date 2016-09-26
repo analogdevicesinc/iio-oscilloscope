@@ -39,9 +39,6 @@
 
 #define DAC_DEVICE "axi-ad9739a-hpc"
 
-static const gdouble mhz_scale = 1000000.0;
-static const gdouble khz_scale = 1000.0;
-
 static struct dac_data_manager *dac_tx_manager;
 
 static struct iio_context *ctx;

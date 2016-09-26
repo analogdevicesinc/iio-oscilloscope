@@ -60,8 +60,6 @@ static bool has_udc_driver;
 static bool can_update_widgets;
 
 static const gdouble mhz_scale = 1000000.0;
-static const gdouble abs_mhz_scale = -1000000.0;
-static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
 
 static const char *freq_name;
