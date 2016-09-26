@@ -1113,7 +1113,7 @@ static void reveal_reg_map(void)
 		label_str = gtk_label_get_text((GtkLabel *)bit_descrip_list[i]);
 		if (!xmlStrcmp((xmlChar *)label_str, (xmlChar *)"Reserved"))
 			gtk_widget_show(bit_comboboxes[i]);
-			gtk_widget_hide(bit_no_read_lbl[i]);
+		gtk_widget_hide(bit_no_read_lbl[i]);
 	}
 }
 
