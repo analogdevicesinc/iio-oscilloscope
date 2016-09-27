@@ -883,9 +883,10 @@ int scpi_counter_get_freq(double *freq, double *target_freq)
 
 	g_free(freq_str);
 
-	if (ret == 1)
+	if (ret == 1) {
 		*freq *= scale;
 		return 0;
+	}
 	return -1;
 }
 

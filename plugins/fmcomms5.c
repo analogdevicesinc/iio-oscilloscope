@@ -61,8 +61,6 @@ static bool can_update_widgets;
 static bool tx_rssi_available;
 
 static const gdouble mhz_scale = 1000000.0;
-static const gdouble abs_mhz_scale = -1000000.0;
-static const gdouble khz_scale = 1000.0;
 static const gdouble inv_scale = -1.0;
 
 static struct iio_widget glb_widgets[50];

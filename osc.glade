@@ -687,7 +687,7 @@ A GUI for Linux IIO devices</property>
                                             <property name="visible">True</property>
                                             <property name="sensitive">False</property>
                                             <property name="can_focus">False</property>
-                                            <property name="label" translatable="yes">IP addr:port</property>
+                                            <property name="label" translatable="yes">Hostname</property>
                                           </object>
                                           <packing>
                                             <property name="expand">True</property>

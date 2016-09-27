@@ -36,9 +36,6 @@
 #define PLL_DEVICE "adf4351-rx-lpc"
 
 static const gdouble mhz_scale = 1000000.0;
-static const gdouble abs_mhz_scale = -1000000.0;
-static const gdouble khz_scale = 1000.0;
-static const gdouble inv_scale = -1.0;
 
 static struct iio_widget rx_widgets[5];
 static struct iio_widget cal_widgets[20];

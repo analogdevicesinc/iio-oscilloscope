@@ -3574,18 +3574,11 @@ static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color)
 static bool show_channel(struct iio_channel *chn)
 {
 	const char *id = iio_channel_get_id(chn);
-	unsigned int i, nb_attrs = iio_channel_get_attrs_count(chn);
 
 	if (iio_channel_is_output(chn) || !strcmp(id, "timestamp"))
 		return false;
-
-	for (i = 0; i < nb_attrs; i++) {
-		const char *attr = iio_channel_get_attr(chn, i);
-		if (!strcmp(attr, "en"))
-			return true;
-	}
-
-	return false;
+	else
+		return iio_channel_is_scan_element(chn);
 }
 
 static void plot_channels_add_device(OscPlot *plot, const char *dev_name)

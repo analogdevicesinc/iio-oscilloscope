@@ -40,7 +40,6 @@
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 static const gdouble mhz_scale = 1000000.0;
-static const gdouble khz_scale = 1000.0;
 
 static OscPlot *plot_fft_2ch;
 static struct dac_data_manager *dac_tx_manager;

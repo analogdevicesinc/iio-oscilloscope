@@ -29,7 +29,7 @@ DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0
 
 LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
 	$(if $(WITH_MINGW),-lwinpthread) \
-	-L$(SYSROOT)/usr/lib -lmatio -lz -lm -lad9361
+	-L$(SYSROOT)/usr/lib -lmatio -lz -lm -lad9361 -rdynamic
 
 ifeq ($(WITH_MINGW),y)
 	LDFLAGS += -Wl,--subsystem,windows
@@ -40,7 +40,8 @@ CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
 	-Wall -Wclobbered -Wempty-body -Wignored-qualifiers -Wmissing-field-initializers \
 	-Wmissing-parameter-type -Wold-style-declaration -Woverride-init \
 	-Wsign-compare -Wtype-limits -Wuninitialized -Wunused-but-set-parameter \
-	-Werror -g -std=gnu90 -D_GNU_SOURCE -O2 -DPREFIX='"$(PREFIX)"' \
+	-Werror -g -std=gnu90 -D_GNU_SOURCE -O2 -funwind-tables \
+	-DPREFIX='"$(PREFIX)"' \
 	-DFRU_FILES=\"$(FRU_FILES)\" -DGIT_VERSION=\"$(GIT_VERSION)\" \
 	-DGIT_COMMIT_TIMESTAMP='"$(GIT_COMMIT_TIMESTAMP)"' \
 	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\" \
