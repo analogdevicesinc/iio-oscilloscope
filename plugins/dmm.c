@@ -47,11 +47,13 @@ static bool is_valid_dmm_channel(struct iio_channel *chn)
 
 	if (iio_channel_is_output(chn))
 		return false;
-	if (!iio_channel_find_attr(chn, "raw"))
-		return false;
 
 	/* find the name */
 	id = iio_channel_get_id(chn);
+
+	/* some temps don't have 'raw' */
+	if (!strstr(id, "temp") && !iio_channel_find_attr(chn, "raw"))
+		return false;
 
 	/* Must have 'scale', or be a temperature, which doesn't need scale */
 	if (!strstr(id, "temp") && !iio_channel_find_attr(chn, "scale"))
