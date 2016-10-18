@@ -138,6 +138,7 @@ static const char *fmcomms2_sr_attribs[] = {
 	PHY_DEVICE".trx_rate_governor",
 	PHY_DEVICE".dcxo_tune_coarse",
 	PHY_DEVICE".dcxo_tune_fine",
+	PHY_DEVICE".xo_correction",
 	PHY_DEVICE".ensm_mode",
 	PHY_DEVICE".in_voltage0_rf_port_select",
 	PHY_DEVICE".in_voltage0_gain_control_mode",
@@ -1528,6 +1529,10 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	dcxo_fine_num = num_glb;
 	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
 		dev, NULL, "dcxo_tune_fine", builder, "dcxo_fine_tune",
+		0);
+
+	iio_spin_button_int_init_from_builder(&glb_widgets[num_glb++],
+		dev, NULL, "xo_correction", builder, "xo_correction",
 		0);
 
 	rx_widgets = &glb_widgets[num_glb];

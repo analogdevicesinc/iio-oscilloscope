@@ -671,6 +671,38 @@ configuration:</property>
                                                 <property name="x_options"/>
                                               </packing>
                                             </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label24">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">XO Correction</property>
+                                                <property name="xalign">0</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">6</property>
+                                                <property name="right_attach">7</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options">GTK_FILL</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkSpinButton" id="xo_correction">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">•</property>
+                                                <property name="text" translatable="yes">10000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">adjustment_xo_correction</property>
+                                                <property name="value">10000000</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">7</property>
+                                                <property name="right_attach">8</property>
+                                                <property name="x_options">GTK_SHRINK | GTK_FILL</property>
+                                                <property name="y_options">GTK_SHRINK | GTK_FILL</property>
+                                              </packing>
+                                            </child>
                                           </object>
                                           <packing>
                                             <property name="right_attach">6</property>
@@ -751,6 +783,18 @@ configuration:</property>
                                           </packing>
                                         </child>
                                         <child>
+                                          <placeholder/>
+                                        </child>
+                                        <child>
+                                          <placeholder/>
+                                        </child>
+                                        <child>
+                                          <placeholder/>
+                                        </child>
+                                        <child>
+                                          <placeholder/>
+                                        </child>
+                                        <child>
                                           <object class="GtkCheckButton" id="checkbox_up_down_converter">
                                             <property name="label" translatable="yes">FMComms3 with AD-FREQCVT1-EBZ</property>
                                             <property name="visible">True</property>
@@ -767,6 +811,12 @@ configuration:</property>
                                             <property name="x_options">GTK_FILL</property>
                                             <property name="y_options">GTK_FILL</property>
                                           </packing>
+                                        </child>
+                                        <child>
+                                          <placeholder/>
+                                        </child>
+                                        <child>
+                                          <placeholder/>
                                         </child>
                                       </object>
                                       <packing>
@@ -2518,6 +2568,12 @@ configuration:</property>
         <property name="position">0</property>
       </packing>
     </child>
+  </object>
+  <object class="GtkAdjustment" id="adjustment_xo_correction">
+    <property name="lower">10000000</property>
+    <property name="upper">80000000</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="dds_tone_I1_tx1_scale_adj">
     <property name="lower">-91</property>
