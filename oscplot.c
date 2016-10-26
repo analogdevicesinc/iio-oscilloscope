@@ -414,7 +414,7 @@ static void osc_plot_class_init(OscPlotClass *klass)
 			G_STRUCT_OFFSET (OscPlotClass, capture_event),
 			NULL,
 			NULL,
-			g_cclosure_marshal_VOID__VOID,
+			g_cclosure_marshal_VOID__BOOLEAN,
 			G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 
 	oscplot_signals[DESTROY_EVENT_SIGNAL] = g_signal_new("osc-destroy-event",
@@ -432,7 +432,7 @@ static void osc_plot_class_init(OscPlotClass *klass)
 			G_STRUCT_OFFSET (OscPlotClass, newplot_event),
 			NULL,
 			NULL,
-			g_cclosure_marshal_VOID__VOID,
+			g_cclosure_marshal_VOID__POINTER,
 			G_TYPE_NONE, 1, G_TYPE_POINTER);
 
 	g_type_class_add_private (gobject_class, sizeof (OscPlotPrivate));
