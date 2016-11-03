@@ -2083,10 +2083,15 @@ static int load_profile(const char *filename, bool load_plugins)
 	 */
 	if (value && !(ctx && !strcmp(iio_context_get_name(ctx), "network"))) {
 		struct iio_context *new_ctx = iio_create_network_context(value);
-		if (new_ctx)
+		if (new_ctx) {
 			application_reload(new_ctx, false);
-		else
+		} else {
 			fprintf(stderr, "Failed connecting to remote device: %s\n", value);
+			/* Abort parsing the rest of the profile as there is
+			 * probably a lot of device specific stuff in it.
+			 */
+			return 0;
+		}
 		free(value);
 	}
 
