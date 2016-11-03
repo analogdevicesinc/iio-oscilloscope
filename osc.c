@@ -2078,7 +2078,10 @@ static int load_profile(const char *filename, bool load_plugins)
 	destroy_all_plots();
 
 	value = read_token_from_ini(filename, OSC_INI_SECTION, "remote_ip_addr");
-	if (value) {
+	/* IP addresses specified on the command line via the -c option
+	 * override profile settings.
+	 */
+	if (value && !(ctx && !strcmp(iio_context_get_name(ctx), "network"))) {
 		struct iio_context *new_ctx = iio_create_network_context(value);
 		if (new_ctx)
 			application_reload(new_ctx, false);
