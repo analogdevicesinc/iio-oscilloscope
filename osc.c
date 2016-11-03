@@ -1501,7 +1501,7 @@ static void do_quit(bool reload)
 	close_plugins(path);
 	g_free(path);
 
-	if (ctx) {
+	if (!reload && ctx) {
 		iio_context_destroy(ctx);
 		ctx = NULL;
 		ctx_destroyed_by_do_quit = true;
