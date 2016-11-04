@@ -2207,7 +2207,7 @@
                         <property name="left_padding">15</property>
                         <child>
                           <object class="GtkScrolledWindow" id="scrolledwindow1">
-                            <property name="height_request">320</property>
+                            <property name="height_request">120</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="shadow_type">in</property>
@@ -2495,7 +2495,7 @@
                             <child>
                               <object class="GtkScrolledWindow" id="scrolledwindow2">
                                 <property name="width_request">225</property>
-                                <property name="height_request">175</property>
+                                <property name="height_request">75</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="shadow_type">in</property>
@@ -2508,6 +2508,9 @@
                                   </object>
                                 </child>
                               </object>
+                              <packing>
+                                <property name="tab_expand">True</property>
+                              </packing>
                             </child>
                             <child type="tab">
                               <object class="GtkLabel" id="label12">
@@ -2535,6 +2538,7 @@
                               </object>
                               <packing>
                                 <property name="position">1</property>
+                                <property name="tab_expand">True</property>
                               </packing>
                             </child>
                             <child type="tab">
@@ -2564,6 +2568,7 @@
                               </object>
                               <packing>
                                 <property name="position">2</property>
+                                <property name="tab_expand">True</property>
                               </packing>
                             </child>
                             <child type="tab">
@@ -2591,7 +2596,7 @@
                     </child>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
+                    <property name="expand">True</property>
                     <property name="fill">True</property>
                     <property name="position">3</property>
                   </packing>
@@ -2602,11 +2607,11 @@
                     <property name="can_focus">True</property>
                     <property name="has_focus">True</property>
                     <property name="yalign">1</property>
-                    <property name="ypad">50</property>
+                    <property name="ypad">10</property>
                     <property name="pixbuf">ADIlogo.png</property>
                   </object>
                   <packing>
-                    <property name="expand">True</property>
+                    <property name="expand">False</property>
                     <property name="fill">True</property>
                     <property name="position">4</property>
                   </packing>
