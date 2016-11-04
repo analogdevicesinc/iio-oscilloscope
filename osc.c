@@ -2090,6 +2090,7 @@ static int load_profile(const char *filename, bool load_plugins)
 			/* Abort parsing the rest of the profile as there is
 			 * probably a lot of device specific stuff in it.
 			 */
+			free(value);
 			return 0;
 		}
 		free(value);
