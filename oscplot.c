@@ -414,7 +414,7 @@ static void osc_plot_class_init(OscPlotClass *klass)
 			G_STRUCT_OFFSET (OscPlotClass, capture_event),
 			NULL,
 			NULL,
-			g_cclosure_marshal_VOID__VOID,
+			g_cclosure_marshal_VOID__BOOLEAN,
 			G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 
 	oscplot_signals[DESTROY_EVENT_SIGNAL] = g_signal_new("osc-destroy-event",
@@ -432,7 +432,7 @@ static void osc_plot_class_init(OscPlotClass *klass)
 			G_STRUCT_OFFSET (OscPlotClass, newplot_event),
 			NULL,
 			NULL,
-			g_cclosure_marshal_VOID__VOID,
+			g_cclosure_marshal_VOID__POINTER,
 			G_TYPE_NONE, 1, G_TYPE_POINTER);
 
 	g_type_class_add_private (gobject_class, sizeof (OscPlotPrivate));
@@ -4550,14 +4550,20 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
 static void enable_auto_scale_cb(GtkToggleButton *button, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
+	gfloat left, right, top, bottom;
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale))) {
 		priv->do_a_rescale_flag = 1;
 		gtk_widget_set_sensitive(plot->priv->y_axis_max, FALSE);
 		gtk_widget_set_sensitive(plot->priv->y_axis_min, FALSE);
-	} else
-	{
+	} else {
+		gtk_databox_get_visible_limits(GTK_DATABOX(plot->priv->databox),
+			&left, &right, &top, &bottom);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(plot->priv->y_axis_max),
+			top);
 		gtk_widget_set_sensitive(plot->priv->y_axis_max, TRUE);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(plot->priv->y_axis_min),
+			bottom);
 		gtk_widget_set_sensitive(plot->priv->y_axis_min, TRUE);
 	}
 }
@@ -5073,9 +5079,15 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 					goto unhandled;
 			} else if (MATCH_NAME("show_grid"))
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(priv->show_grid), atoi(value));
-			else if (MATCH_NAME("enable_auto_scale"))
+			else if (MATCH_NAME("enable_auto_scale")) {
 				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale), atoi(value));
-			else if (MATCH_NAME("user_y_axis_max"))
+				if (atoi(value)) {
+					gtk_widget_hide(priv->y_axis_max);
+					gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "labelYMax")));
+					gtk_widget_hide(priv->y_axis_min);
+					gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "labelYMin")));
+				} 
+			} else if (MATCH_NAME("user_y_axis_max"))
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_max), atof(value));
 			else if (MATCH_NAME("user_y_axis_min"))
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_min), atof(value));
@@ -6912,6 +6924,16 @@ static void create_plot(OscPlot *plot)
 		"sample_count", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
 		"plot_units_container", "sensitive", G_BINDING_INVERT_BOOLEAN);
+
+	/* in autoscale mode, don't display the scales */
+	g_builder_bind_property(builder, "auto_scale", "active",
+		"labelYMax", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "auto_scale", "active",
+		"spin_Y_max", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "auto_scale", "active",
+		"labelYMin", "visible", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "auto_scale", "active",
+		"spin_Y_min", "visible", G_BINDING_INVERT_BOOLEAN);
 
 	/* Bind the plot domain to the sensitivity of the sample count and
 	 * FFT size widgets */
