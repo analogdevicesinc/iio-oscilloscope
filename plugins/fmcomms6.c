@@ -226,7 +226,7 @@ static void save_profile(const char *ini_fn)
 static void context_destroy(const char *ini_fn)
 {
 	save_profile(ini_fn);
-	iio_context_destroy(ctx);
+	osc_destroy_context(ctx);
 }
 
 static bool fmcomms6_identify(void)

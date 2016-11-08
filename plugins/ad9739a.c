@@ -187,7 +187,7 @@ static GtkWidget * ad9739a_init(GtkWidget *notebook, const char *ini_fn)
 	dac = iio_context_find_device(ctx, DAC_DEVICE);
 	dac_tx_manager = dac_data_manager_new(dac, NULL, ctx);
 	if (!dac_tx_manager) {
-		iio_context_destroy(ctx);
+		osc_destroy_context(ctx);
 		return NULL;
 	}
 
@@ -265,7 +265,7 @@ static void context_destroy(const char *ini_fn)
 		dac_tx_manager = NULL;
 	}
 
-	iio_context_destroy(ctx);
+	osc_destroy_context(ctx);
 }
 
 static bool ad9739a_identify(void)

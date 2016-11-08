@@ -132,6 +132,7 @@ gint connect_dialog(bool load_profile);
 void application_reload(struct iio_context *ctx, bool load_profile);
 
 struct iio_context * osc_create_context(void);
+void osc_destroy_context(struct iio_context *ctx);
 
 void osc_process_gtk_events(unsigned int msecs);
 int osc_test_value(struct iio_context *ctx,

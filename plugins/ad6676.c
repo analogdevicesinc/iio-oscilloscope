@@ -241,7 +241,7 @@ static GtkWidget * ad6676_init(GtkWidget *notebook, const char *ini_fn)
 
 init_abort:
 	if (ctx)
-		iio_context_destroy(ctx);
+		osc_destroy_context(ctx);
 
 	return NULL;
 }
@@ -275,7 +275,7 @@ static void context_destroy(const char *ini_fn)
 	if (ini_fn)
 		save_profile(ini_fn);
 
-	iio_context_destroy(ctx);
+	osc_destroy_context(ctx);
 }
 
 struct osc_plugin plugin;
