@@ -160,7 +160,7 @@ static GtkWidget * AD5628_1_init(GtkWidget *notebook, const char *ini_fn)
 
 static void context_destroy(const char *ini_fn)
 {
-	iio_context_destroy(ctx);
+	osc_destroy_context(ctx);
 }
 
 static bool AD5628_1_identify(void)

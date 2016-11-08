@@ -393,7 +393,7 @@ static void save_profile(const char *ini_fn)
 static void context_destroy(const char *ini_fn)
 {
 	save_profile(ini_fn);
-	iio_context_destroy(ctx);
+	osc_destroy_context(ctx);
 }
 
 struct osc_plugin plugin;
@@ -430,7 +430,7 @@ static bool pr_config_identify(void)
 	if (phy && !iio_device_get_debug_attrs_count(phy))
 		init = false;
 	if (!init)
-		iio_context_destroy(ctx);
+		osc_destroy_context(ctx);
 
 	return init;
 }

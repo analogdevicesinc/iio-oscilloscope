@@ -517,7 +517,7 @@ static void update_active_page(gint active_page, gboolean is_detached)
 static void context_destroy(const char *ini_fn)
 {
 	g_source_remove_by_user_data(ctx);
-	iio_context_destroy(ctx);
+	osc_destroy_context(ctx);
 }
 
 static bool dmm_identify(void)

@@ -1731,7 +1731,7 @@ static void context_destroy(const char *ini_fn)
 		dac_tx_manager = NULL;
 	}
 
-	iio_context_destroy(ctx);
+	osc_destroy_context(ctx);
 }
 
 struct osc_plugin plugin;

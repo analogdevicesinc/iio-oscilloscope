@@ -386,8 +386,9 @@ static void context_destroy(const char *ini_fn)
 		iio_buffer_destroy(dac_buff);
 		dac_buff = NULL;
 	}
-	iio_context_destroy(ctx);
-	iio_context_destroy(thread_ctx);
+
+	osc_destroy_context(ctx);
+	osc_destroy_context(thread_ctx);
 }
 
 static bool AD7303_identify(void)

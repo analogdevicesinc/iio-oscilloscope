@@ -2164,7 +2164,13 @@ struct iio_context * osc_create_context(void)
 	if (!ctx)
 		return iio_create_default_context();
 	else
-		return iio_context_clone(ctx);
+		return iio_context_clone(ctx) ?: ctx;
+}
+
+void osc_destroy_context(struct iio_context *_ctx)
+{
+	if (_ctx != ctx)
+		iio_context_destroy(_ctx);
 }
 
 /* Wait while processing GTK events for a given number of milliseconds. Used

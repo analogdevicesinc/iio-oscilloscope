@@ -792,7 +792,7 @@ static void context_destroy(const char *ini_fn)
 	if (ini_fn)
 		save_profile(ini_fn);
 
-	iio_context_destroy(ctx);
+	osc_destroy_context(ctx);
 }
 
 static bool motor_control_identify(void)

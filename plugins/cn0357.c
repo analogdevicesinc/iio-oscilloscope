@@ -357,7 +357,7 @@ static void cn0357_get_preferred_size(int *width, int *height)
 static void context_destroy(const char *ini_fn)
 {
 	g_source_remove_by_user_data(ctx);
-	iio_context_destroy(ctx);
+	osc_destroy_context(ctx);
 }
 
 struct osc_plugin plugin;
