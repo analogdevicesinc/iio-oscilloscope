@@ -164,7 +164,7 @@ static void iio_spin_button_savedbl(struct iio_widget *widget)
 	return spin_button_save(widget, true);
 }
 
-static void iio_spin_button_save(struct iio_widget *widget)
+void iio_spin_button_save(struct iio_widget *widget)
 {
 	return spin_button_save(widget, false);
 }

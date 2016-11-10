@@ -22,6 +22,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <ad9361.h>
+#include <iio.h>
+
 #include "../datatypes.h"
 #include "../osc.h"
 #include "../iio_widget.h"
@@ -107,6 +110,7 @@ static GtkWidget *up_down_converter;
 static GtkWidget *dcxo_cal_progressbar;
 static GtkWidget *dcxo_cal_type;
 static GtkWidget *dcxo_cal;
+static GtkWidget *enable_auto_filter;
 
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control_rx1;
@@ -329,6 +333,39 @@ static void sample_frequency_changed_cb(void *data)
 {
 	glb_settings_update_labels();
 	rx_freq_info_update();
+}
+
+static double get_gui_tx_sampling_freq(void)
+{
+	return gtk_spin_button_get_value(GTK_SPIN_BUTTON(tx_widgets[tx_sample_freq].widget));
+}
+
+static void filter_fir_update(void); /* forwrad declaration */
+
+static void tx_sample_frequency_changed_cb(void *data)
+{
+	double rate;
+	bool auto_fir;
+
+	/* Skip rx_sample_freq changed, since RX and TX rates are always the same */
+	if (!data)
+		return;
+
+	auto_fir = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (enable_auto_filter));
+	rate = get_gui_tx_sampling_freq();
+
+	if (auto_fir) {
+		ad9361_set_bb_rate (dev, (unsigned long) (rate * 1000000));
+		gtk_widget_show(enable_fir_filter_rx_tx);
+		gtk_widget_show(disable_all_fir_filters);
+		filter_fir_update();
+		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(filter_fir_config), "(None)");
+	} else {
+		iio_spin_button_save(&tx_widgets[tx_sample_freq]);
+	}
+
+	dac_data_manager_freq_widgets_range_update(dac_tx_manager, rate / 2.0);
+	sample_frequency_changed_cb(NULL);
 }
 
 static void rssi_update_label(GtkWidget *label, const char *chn,  bool is_tx)
@@ -1079,12 +1116,16 @@ static void fastlock_clicked(GtkButton *btn, gpointer data)
 
 static void filter_fir_config_file_set_cb (GtkFileChooser *chooser, gpointer data)
 {
+	int ret;
 	char *file_name = gtk_file_chooser_get_filename(chooser);
 
-	load_fir_filter(file_name, dev, NULL, fmcomms2_panel, chooser,
+	ret = load_fir_filter(file_name, dev, NULL, fmcomms2_panel, chooser,
 			fir_filter_en_tx, enable_fir_filter_rx,
 			enable_fir_filter_rx_tx, disable_all_fir_filters,
 			last_fir_filter);
+
+	if (ret >= 0)
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_auto_filter), FALSE);
 }
 
 static int compare_gain(const char *a, const char *b) __attribute__((unused));
@@ -1100,19 +1141,6 @@ static int compare_gain(const char *a, const char *b)
 		return 1;
 	else
 		return 0;
-}
-
-static double get_gui_tx_sampling_freq(void)
-{
-	return gtk_spin_button_get_value(GTK_SPIN_BUTTON(tx_widgets[tx_sample_freq].widget));
-}
-
-static void tx_sample_rate_changed(GtkSpinButton *spinbutton, gpointer user_data)
-{
-	gdouble rate;
-
-	rate = gtk_spin_button_get_value(spinbutton) / 2.0;
-	dac_data_manager_freq_widgets_range_update(dac_tx_manager, rate);
 }
 
 static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
@@ -1452,6 +1480,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	dcxo_cal_progressbar = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_progressbar"));
 	dcxo_cal_type = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_type"));
 	dcxo_cal = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal"));
+	enable_auto_filter = GTK_WIDGET(gtk_builder_get_object(builder, "enable_auto_filter"));
 
 	section_toggle[SECTION_GLOBAL] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "global_settings_toggle"));
 	section_setting[SECTION_GLOBAL] = GTK_WIDGET(gtk_builder_get_object(builder, "global_settings"));
@@ -1712,9 +1741,6 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	g_builder_connect_signal(builder, "rx2_phase_rotation", "value-changed",
 			G_CALLBACK(rx_phase_rotation_set), (gpointer *)2);
 
-	g_builder_connect_signal(builder, "sampling_freq_tx", "value-changed",
-			G_CALLBACK(tx_sample_rate_changed), NULL);
-
 	g_builder_connect_signal(builder, "fmcomms2_settings_reload", "clicked",
 		G_CALLBACK(reload_button_clicked), NULL);
 
@@ -1786,13 +1812,17 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
-		sample_frequency_changed_cb, NULL);
+		tx_sample_frequency_changed_cb, (void *) FALSE);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
-		sample_frequency_changed_cb, NULL);
+		tx_sample_frequency_changed_cb, (void *) TRUE);
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_lo],
 		sample_frequency_changed_cb, NULL);
 	iio_spin_button_set_on_complete_function(&tx_widgets[tx_lo],
 		sample_frequency_changed_cb, NULL);
+
+	/* Things are saved in tx_sample_frequency_changed_cb() */
+	iio_spin_button_skip_save_on_complete(&tx_widgets[rx_sample_freq], TRUE);
+	iio_spin_button_skip_save_on_complete(&tx_widgets[tx_sample_freq], TRUE);
 
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
 

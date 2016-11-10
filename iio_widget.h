@@ -86,4 +86,5 @@ void iio_spin_button_remove_progress(struct iio_widget *iio_w);
 void iio_spin_button_set_convert_function(struct iio_widget *iio_w,
 		double (*convert)(double, bool inverse));
 
+void iio_spin_button_save(struct iio_widget *widget);
 #endif
