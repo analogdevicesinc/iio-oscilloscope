@@ -609,13 +609,10 @@ static void filter_fir_update(void)
 {
 	bool rx = false, tx = false, rxtx = false;
 	struct iio_channel *chn;
-	int ret;
+	int stat;
 
-	ret = iio_device_attr_read_bool(dev, "in_out_voltage_filter_fir_en", &rxtx);
-
-	if (ret < 0)
-		iio_channel_attr_read_bool(iio_device_find_channel(dev, "out", false),
-					 "voltage_filter_fir_en", &rxtx);
+	ad9361_get_trx_fir_enable(dev, &stat);
+	rxtx = !!stat;
 
 	chn = iio_device_find_channel(dev, "voltage0", false);
 	if (chn)
@@ -637,7 +634,6 @@ static void filter_fir_update(void)
 static void filter_fir_enable(GtkToggleButton *button, gpointer data)
 {
 	bool rx, tx, rxtx, disable;
-	int ret;
 
 	if (gtk_toggle_button_get_active(button))
 		return;
@@ -648,11 +644,7 @@ static void filter_fir_enable(GtkToggleButton *button, gpointer data)
 	disable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters));
 
 	if (rxtx || disable) {
-		ret = iio_device_attr_write_bool(dev,
-				"in_out_voltage_filter_fir_en", rxtx);
-		if (ret < 0)
-			iio_channel_attr_write_bool(iio_device_find_channel(dev, "out", false),
-					 "voltage_filter_fir_en", rxtx);
+		ad9361_set_trx_fir_enable(dev, rxtx);
 	} else {
 		struct iio_channel *chn;
 		if (rx) {
