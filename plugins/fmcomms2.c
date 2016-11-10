@@ -111,6 +111,7 @@ static GtkWidget *dcxo_cal_progressbar;
 static GtkWidget *dcxo_cal_type;
 static GtkWidget *dcxo_cal;
 static GtkWidget *enable_auto_filter;
+static GtkWidget *dcxo_cal_tab;
 
 /* Widgets for Receive Settings */
 static GtkWidget *rx_gain_control_rx1;
@@ -589,11 +590,11 @@ static void dcxo_widgets_update(void)
 	int ret;
 
 	ret = iio_device_attr_read(dev, "dcxo_tune_coarse", val, sizeof(val));
-	if (ret > 0)
-		gtk_widget_show(glb_widgets[dcxo_coarse_num].widget);
-	ret = iio_device_attr_read(dev, "dcxo_tune_fine", val, sizeof(val));
-	if (ret > 0)
-		gtk_widget_show(glb_widgets[dcxo_fine_num].widget);
+
+	if (ret < 0)
+		gtk_widget_hide(dcxo_cal_tab);
+	else
+		gtk_widget_show(dcxo_cal_tab);
 }
 
 static void update_widgets(void)
@@ -1473,6 +1474,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	dcxo_cal_type = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal_type"));
 	dcxo_cal = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_cal"));
 	enable_auto_filter = GTK_WIDGET(gtk_builder_get_object(builder, "enable_auto_filter"));
+	dcxo_cal_tab = GTK_WIDGET(gtk_builder_get_object(builder, "dcxo_tab"));
 
 	section_toggle[SECTION_GLOBAL] = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(builder, "global_settings_toggle"));
 	section_setting[SECTION_GLOBAL] = GTK_WIDGET(gtk_builder_get_object(builder, "global_settings"));
