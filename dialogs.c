@@ -446,14 +446,24 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 	struct iio_context *ctx;
 	const char *name = NULL;
 	bool has_context = false;
+	gchar *ip_addr;
 
 	/* Preload the device list and FRU info only if we can use the local
 	 * backend */
 	ctx = get_context_from_osc();
 	if (ctx)
 		name = iio_context_get_name(ctx);
+
 	if (name && !strcmp(name, "local"))
 		has_context = connect_fillin(data);
+
+	if (name && !strcmp(name, "network")) {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_net), true);
+		ip_addr = (char *) iio_context_get_description(ctx);
+		ip_addr = strtok(ip_addr, " ");
+		gtk_entry_set_text(GTK_ENTRY(dialogs.net_ip), ip_addr);
+		has_context = connect_fillin(data);
+	}
 
 	while (true) {
 		gtk_widget_set_sensitive(data->ok_btn, has_context);
