@@ -132,7 +132,6 @@ trigger_dialog.o: fru.h osc.h iio_widget.h
 xml_utils.o: xml_utils.h
 phone_home.o: phone_home.h
 plugins/dac_data_manager.o: plugins/dac_data_manager.h
-plugins/ad9361_multichip_sync.o: plugins/ad9361_multichip_sync.h
 
 install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/bin
