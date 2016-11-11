@@ -35,7 +35,7 @@
 
 #define PHY_DEVICE "ad9371-phy"
 #define DDS_DEVICE "axi-ad9371-tx-hpc"
-#define CAP_DEVICE "axi-ad371-rx-hpc"
+#define CAP_DEVICE "axi-ad9371-rx-hpc"
 #define THIS_DRIVER "AD9371 Advanced"
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
