@@ -41,6 +41,8 @@ struct _Dialogs
 	GtkWidget *load_save_profile;
 	GtkWidget *connect_net;
 	GtkWidget *net_ip;
+	GtkWidget *connect_usb;
+	GtkWidget *connect_usbd;
 	GtkWidget *ok_btn;
 	GtkWidget *latest_version;
 	GtkWidget *ver_progress_window;
@@ -310,9 +312,101 @@ static struct iio_context * get_context(Dialogs *data)
 			hostname = NULL;
 
 		return iio_create_network_context(hostname);
+	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb))) {
+		gchar *uri = gtk_combo_box_get_active_text(
+				GTK_COMBO_BOX(dialogs.connect_usbd));
+		gchar *uri2 = uri + strlen(uri);
+
+		while(*uri2 != '[')
+			uri2--;
+
+		/* take off the [] */
+		uri2++;
+		uri2[strlen(uri2)-1] = 0;
+
+		return iio_create_context_from_uri(uri2);
 	} else {
 		return iio_create_local_context();
 	}
+}
+
+static void refresh_usb()
+{
+	struct iio_scan_context *ctxs;
+	struct iio_context_info **info;
+	GtkListStore *liststore;
+	ssize_t ret;
+	unsigned int i = 0;
+	gint index;
+	gchar *buf, *cur=NULL;
+
+	/* find the current setting */
+	index = gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd));
+	if (index != -1)
+		cur = gtk_combo_box_get_active_text(GTK_COMBO_BOX(dialogs.connect_usbd));
+
+	/* clear everything, and scan again */
+	liststore = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(dialogs.connect_usbd)));
+	gtk_list_store_clear(liststore);
+
+	ctxs = iio_create_scan_context(NULL, 0);
+	if (!ctxs)
+		goto nope;
+
+	ret = iio_scan_context_get_info_list(ctxs, &info);
+	if (ret < 0)
+		goto err_free_ctxs;
+	if (!ret)
+		goto err_free_info_list;
+
+	for (i = 0; i < (size_t) ret; i++) {
+		buf = malloc(strlen(iio_context_info_get_uri(info[i])) +
+				strlen(iio_context_info_get_description(info[i])) + 5);
+		sprintf(buf, "%s [%s]", iio_context_info_get_description(info[i]),
+				iio_context_info_get_uri(info[i]));
+		if (index != -1 && !strcmp(buf, cur))
+			index = i;
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), buf);
+		free(buf);
+	}
+
+err_free_info_list:
+	iio_context_info_list_free(info);
+err_free_ctxs:
+	iio_scan_context_destroy(ctxs);
+nope:
+	if (!i) {
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), "None");
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd),0);
+		gtk_widget_set_sensitive(dialogs.connect_usbd, false);
+		gtk_widget_set_sensitive(dialogs.connect_usb, false);
+		return;
+	}
+
+	gtk_widget_set_sensitive(dialogs.connect_usb, true);
+	gtk_widget_set_sensitive(dialogs.connect_usbd,true);
+
+	if (index == -1)
+		index = 0;
+	gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd), index);
+}
+
+
+static bool connect_clear(GtkToggleButton *button)
+{
+	GtkTextBuffer *buf;
+	GtkTextIter iter;
+	gchar tmp[2] = " ";
+
+	buf = gtk_text_buffer_new(NULL);
+	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
+	gtk_text_buffer_insert(buf, &iter, tmp, -1);
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(dialogs.connect_fru), buf);
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(dialogs.connect_iio), buf);
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(dialogs.ctx_info), buf);
+	g_object_unref(buf);
+
+	return true;
 }
 
 static bool connect_fillin(Dialogs *data)
@@ -465,6 +559,11 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 		has_context = connect_fillin(data);
 	}
 
+	if (name && !strcmp(name, "usb")) {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb), true);
+		/* TODO : missing code to set the correct USB device */
+	}
+
 	while (true) {
 		gtk_widget_set_sensitive(data->ok_btn, has_context);
 
@@ -474,6 +573,7 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 			widget_set_cursor(data->connect, GDK_WATCH);
 			has_context = connect_fillin(data);
 			widget_use_parent_cursor(data->connect);
+			refresh_usb();
 			continue;
 		case GTK_RESPONSE_OK:
 			ctx = get_context(data);
@@ -482,7 +582,7 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 			if (!ctx)
 				continue;
 
-			application_reload(ctx, load_profile);
+			application_reload(ctx, false);
 			break;
 		default:
 			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
@@ -836,6 +936,8 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
 	dialogs.connect_net = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
 	dialogs.net_ip = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
+	dialogs.connect_usb = GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb"));
+	dialogs.connect_usbd = GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_devices"));
 	dialogs.ok_btn = GTK_WIDGET(gtk_builder_get_object(builder, "button3"));
 	dialogs.latest_version = GTK_WIDGET(gtk_builder_get_object(builder, "latest_version_popup"));
 	dialogs.ver_progress_window = GTK_WIDGET(gtk_builder_get_object(builder, "progress_window"));
@@ -850,6 +952,16 @@ void dialogs_init(GtkBuilder *builder)
 
 	g_object_bind_property(dialogs.connect_net, "active", tmp, "sensitive", 0);
 	g_object_bind_property(dialogs.connect_net, "active", dialogs.net_ip, "sensitive", 0);
+
+	g_object_bind_property(dialogs.connect_usb, "active",
+		       GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")), "sensitive", 0);
+	g_object_bind_property(dialogs.connect_usb, "active", dialogs.connect_usbd, "sensitive", 0);
+	gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")),
+			false);
+	g_signal_connect(G_OBJECT(dialogs.connect_usb), "toggled",
+			(GCallback) connect_clear, NULL);
+	gtk_widget_set_sensitive(dialogs.connect_usbd, false);
+
 
 	/* Grey out the "local context" option if it is not available */
 	ctx = get_context_from_osc();
@@ -867,6 +979,8 @@ void dialogs_init(GtkBuilder *builder)
 					GTK_TOGGLE_BUTTON(dialogs.connect_net), true);
 		}
 	}
+
+	refresh_usb();
 
 	g_signal_connect(dialogs.net_ip, "key-press-event",
 			(GCallback) connect_key_press_cb, dialogs.connect);
