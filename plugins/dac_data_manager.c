@@ -692,19 +692,12 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(manager->dac_buffer_module.tx_channels_view), NULL);
 	}
 
-	ret = analyse_wavefile(manager, file_name, &buf, &size, buffer_channels);
-	if (ret < 0) {
-		if (stat_msg)
-			*stat_msg = g_strdup_printf("Error while parsing file: %s.", strerror(-ret));
-		return ret;
-	} else if (ret > 0) {
-		if (stat_msg)
-			*stat_msg = g_strdup_printf("Invalid data format");
-		return -EINVAL;
-	}
 
-/*
-	if (ret == -1 || buf == NULL) {
+	if (g_str_has_suffix(file_name, ".bin")) {
+		FILE *infile;
+		struct stat st;
+
+		/* Assume Binary format */
 		stat(file_name, &st);
 		buf = malloc(st.st_size);
 		if (buf == NULL) {
@@ -715,8 +708,21 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		infile = fopen(file_name, "r");
 		size = fread(buf, 1, st.st_size, infile);
 		fclose(infile);
+	} else {
+		ret = analyse_wavefile(manager, file_name, &buf, &size, buffer_channels);
+		if (ret < 0) {
+			if (stat_msg)
+				*stat_msg = g_strdup_printf("Error while parsing file: %s.", strerror(-ret));
+			return ret;
+		} else if (ret > 0) {
+			if (stat_msg)
+				*stat_msg = g_strdup_printf("Invalid data format");
+			return -EINVAL;
+		}
 	}
-*/
+
+	usleep(1000); /* FIXME: Temp Workaround needs some investigation */
+
 	enable_dds(manager, false);
 	enable_dds_channels(&manager->dac_buffer_module);
 
@@ -727,6 +733,14 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		fprintf(stderr, "Unable to create buffer due to sample size");
 		if (stat_msg)
 			*stat_msg = g_strdup_printf("Unable to create buffer due to sample size");
+		free(buf);
+		return -EINVAL;
+	}
+
+	if (size % manager->alignment != 0 || size % s_size != 0) {
+		fprintf(stderr, "Unable to create buffer due to sample size and number of samples");
+		if (stat_msg)
+			*stat_msg = g_strdup_printf("Unable to create buffer due to sample size and number of samples");
 		free(buf);
 		return -EINVAL;
 	}
@@ -747,9 +761,11 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 	free(buf);
 
 	tmp = strdup(file_name);
+
 	if (manager->dac_buffer_module.dac_buf_filename)
 		free(manager->dac_buffer_module.dac_buf_filename);
-	 manager->dac_buffer_module.dac_buf_filename = tmp;
+
+	manager->dac_buffer_module.dac_buf_filename = tmp;
 
 	if (stat_msg)
 		*stat_msg = g_strdup_printf("Waveform loaded successfully.");
@@ -801,8 +817,8 @@ static void waveform_load_button_clicked_cb (GtkButton *btn, struct dac_buffer *
 
 	if (!filename || g_str_has_suffix(filename, "(null)")) {
 		status_msg = g_strdup_printf("No file selected.");
-	} else if (!g_str_has_suffix(filename, ".txt") && !g_str_has_suffix(filename, ".mat")) {
-		status_msg = g_strdup_printf("Invalid file type. Please select a .txt or .mat file.");
+	} else if (!g_str_has_suffix(filename, ".txt") && !g_str_has_suffix(filename, ".mat") && !g_str_has_suffix(filename, ".bin")) {
+		status_msg = g_strdup_printf("Invalid file type. Please select a .txt, .bin or .mat file.");
 	} else if (!tx_channels_check_valid_setup(dbuf)) {
 		status_msg = g_strdup_printf("Invalid channel selection.");
 	} else {
