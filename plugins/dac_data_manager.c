@@ -9,6 +9,7 @@
 #include <sys/utsname.h>
 #endif
 #include <matio.h>
+#include <unistd.h>
 
 #include "dac_data_manager.h"
 #include "../iio_widget.h"
