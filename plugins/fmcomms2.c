@@ -1815,7 +1815,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		sample_frequency_changed_cb, NULL);
 
 	/* Things are saved in tx_sample_frequency_changed_cb() */
-	iio_spin_button_skip_save_on_complete(&tx_widgets[rx_sample_freq], TRUE);
+	iio_spin_button_skip_save_on_complete(&rx_widgets[rx_sample_freq], TRUE);
 	iio_spin_button_skip_save_on_complete(&tx_widgets[tx_sample_freq], TRUE);
 
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
