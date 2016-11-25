@@ -77,9 +77,9 @@ struct tuning_param
 };
 
 static struct iio_widget widgets[100];
-static struct iio_widget *glb_widgets, *tx_widgets, *rx_widgets;
+static struct iio_widget *glb_widgets, *tx_widgets, *rx_widgets, *fpga_widgets;
 static unsigned int rx1_gain, rx2_gain;
-static unsigned int num_glb, num_tx, num_rx;
+static unsigned int num_glb, num_tx, num_rx, num_fpga;
 static unsigned int rx_lo, tx_lo;
 static unsigned int rx_sample_freq, tx_sample_freq;
 static double updn_freq_span;
@@ -133,6 +133,12 @@ static GtkWidget *rf_port_select_tx;
 static GtkWidget *rx_fastlock_profile;
 static GtkWidget *tx_fastlock_profile;
 static GtkWidget *rx_phase_rotation[2];
+
+static GtkWidget *fpga_tx_frequency_available;
+static GtkWidget *fpga_rx_frequency_available;
+
+static GtkWidget *sampling_freq_rx_decim;
+static GtkWidget *sampling_freq_tx_inter;
 
 static gint this_page;
 static GtkNotebook *nbook;
@@ -199,6 +205,9 @@ static const char *fmcomms2_sr_attribs[] = {
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_phase",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
 	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
+	DDS_DEVICE".out_voltage_sampling_frequency",
+
+	CAP_DEVICE".in_voltage_sampling_frequency",
 
 	UDC_RX_DEVICE".out_altvoltage0_frequency",
 	UDC_TX_DEVICE".out_altvoltage0_frequency",
@@ -330,10 +339,26 @@ static void rx_freq_info_update(void)
 		rx_update_channel_lo_freq(CAP_DEVICE, "all", lo_freq);
 }
 
+static void int_dec_freq_update(void)
+{
+	struct iio_channel *ch;
+	double freq;
+
+	ch = iio_device_find_channel(cap, "voltage0", false);
+	iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(sampling_freq_rx_decim), freq / mhz_scale);
+
+	ch = iio_device_find_channel(dds, "voltage0", true);
+	iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(sampling_freq_tx_inter), freq / mhz_scale);
+}
+
 static void sample_frequency_changed_cb(void *data)
 {
 	glb_settings_update_labels();
 	rx_freq_info_update();
+	iio_update_widgets(fpga_widgets, num_fpga);
+	int_dec_freq_update();
 }
 
 static double get_gui_tx_sampling_freq(void)
@@ -597,11 +622,39 @@ static void dcxo_widgets_update(void)
 		gtk_widget_show(dcxo_cal_tab);
 }
 
+static void int_dec_update_cb(GtkComboBox *cmb, gpointer data)
+{
+	if (gtk_combo_box_get_active(cmb) > 0)
+		gtk_widget_show(GTK_WIDGET(data));
+	else
+		gtk_widget_hide(GTK_WIDGET(data));
+
+	int_dec_freq_update();
+	rx_freq_info_update();
+}
+
+static void int_dec_spin_update_cb(GtkSpinButton *spin, gpointer data)
+{
+	struct iio_channel *chn = data;
+	double fpga, freq, trx;
+
+	freq = mhz_scale * gtk_spin_button_get_value(spin);
+	iio_channel_attr_read_double(chn, "sampling_frequency", &fpga);
+	trx = mhz_scale * gtk_spin_button_get_value(
+		GTK_SPIN_BUTTON(tx_widgets[tx_sample_freq].widget));
+
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(tx_widgets[tx_sample_freq].widget),
+		 (trx/fpga * freq) / mhz_scale);
+
+}
+
 static void update_widgets(void)
 {
 	iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dev);
 	if (dds)
-		iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dds);
+		iio_update_widgets_of_device(fpga_widgets, num_fpga, dds);
+	if (cap)
+		iio_update_widgets_of_device(fpga_widgets, num_fpga, cap);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 	dcxo_widgets_update();
 }
@@ -1495,6 +1548,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	rx1_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx1"));
 	rx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx2"));
 	rx_fastlock_profile = GTK_WIDGET(gtk_builder_get_object(builder, "rx_fastlock_profile"));
+	fpga_rx_frequency_available = GTK_WIDGET(gtk_builder_get_object(builder, "fpga_rx_frequency_available"));
+	sampling_freq_rx_decim = GTK_WIDGET(gtk_builder_get_object(builder, "sampling_freq_rx_decim"));
 
 	/* Transmit Chain */
 
@@ -1502,7 +1557,11 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	tx_fastlock_profile = GTK_WIDGET(gtk_builder_get_object(builder, "tx_fastlock_profile"));
 	tx1_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx1"));
 	tx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx2"));
+	fpga_tx_frequency_available = GTK_WIDGET(gtk_builder_get_object(builder, "fpga_tx_frequency_available"));
+	sampling_freq_tx_inter = GTK_WIDGET(gtk_builder_get_object(builder, "sampling_freq_tx_inter"));
+
 	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));
+
 	if (dac_tx_manager)
 		gtk_container_add(GTK_CONTAINER(dds_container),
 			dac_data_manager_get_gui_container(dac_tx_manager));
@@ -1520,6 +1579,8 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(rx_fastlock_profile), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(tx_fastlock_profile), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dcxo_cal_type), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(fpga_rx_frequency_available), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(fpga_tx_frequency_available), 0);
 
 	/* Bind the IIO device files to the GUI widgets */
 
@@ -1682,6 +1743,44 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		dev, ch1, "external", builder,
 		"tx_lo_external", 0);
 
+	/* FPGA widgets */
+	fpga_widgets = &tx_widgets[num_tx];
+
+	ch0 = iio_device_find_channel(dds, "voltage0", true);
+	if (iio_channel_find_attr(ch0, "sampling_frequency_available")) {
+		iio_combo_box_init(&fpga_widgets[num_fpga++],
+				dds, ch0, "sampling_frequency",
+			"sampling_frequency_available",
+			fpga_tx_frequency_available, NULL);
+
+		g_signal_connect_after(sampling_freq_tx_inter, "value-changed",
+				       G_CALLBACK(int_dec_spin_update_cb), ch0);
+
+
+	} else {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
+				"transmit_frame_dma_buf")));
+
+		gtk_widget_hide(sampling_freq_tx_inter);
+	}
+
+	ch0 = iio_device_find_channel(cap, "voltage0", false);
+	if (iio_channel_find_attr(ch0, "sampling_frequency_available")) {
+		iio_combo_box_init(&fpga_widgets[num_fpga++],
+				cap, ch0, "sampling_frequency",
+			"sampling_frequency_available",
+			fpga_rx_frequency_available, NULL);
+
+		g_signal_connect_after(sampling_freq_rx_decim, "value-changed",
+				       G_CALLBACK(int_dec_spin_update_cb), ch0);
+
+	} else {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
+				"receive_frame_dma_buf")));
+		gtk_widget_hide(sampling_freq_rx_decim);
+
+	}
+
 	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
 
 	/* Widgets bindings */
@@ -1708,7 +1807,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	/* Update all widgets with current values */
 	printf("Updating widgets...\n");
 	update_widgets();
-	rx_freq_info_update();
+	sample_frequency_changed_cb(NULL);
 	printf("Updating FIR filter...\n");
 	filter_fir_update();
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_all_fir_filters), true);
@@ -1728,6 +1827,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		tx_fastlock_recall_name = "fastlock_recall";
 	else
 		tx_fastlock_recall_name = "TX_LO_fastlock_recall";
+
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
 			G_CALLBACK(rx_phase_rotation_set), (gpointer *)0);
@@ -1785,6 +1885,13 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	g_signal_connect_after(rx_gain_control_modes_rx2, "changed",
 		G_CALLBACK(glb_settings_update_labels), NULL);
 
+	g_signal_connect_after(fpga_rx_frequency_available, "changed",
+			       G_CALLBACK(int_dec_update_cb), sampling_freq_rx_decim);
+
+	g_signal_connect_after(fpga_tx_frequency_available, "changed",
+			       G_CALLBACK(int_dec_update_cb), sampling_freq_tx_inter);
+
+
 	if (tx_rssi_available)
 		g_signal_connect(rf_port_select_rx, "changed",
 			G_CALLBACK(rf_port_select_rx_changed_cb), NULL);
@@ -1804,6 +1911,7 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 	make_widget_update_signal_based(glb_widgets, num_glb);
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
+	make_widget_update_signal_based(fpga_widgets, num_fpga);
 
 	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
 		tx_sample_frequency_changed_cb, (void *) FALSE);
