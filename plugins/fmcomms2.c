@@ -1676,11 +1676,6 @@ static GtkWidget * fmcomms2_init(GtkWidget *notebook, const char *ini_fn)
 		dev, ch0, "bb_dc_offset_tracking_en", builder,
 		"bbdc", 0);
 
-	iio_spin_button_init_from_builder(&rx_widgets[num_rx],
-		dev, ch1, "calibphase",
-		builder, "rx1_phase_rotation", NULL);
-	iio_spin_button_add_progress(&rx_widgets[num_rx++]);
-
 	ch0 = iio_device_find_channel(dev, "altvoltage0", true);
 
 	if (iio_channel_find_attr(ch0, "fastlock_store"))
