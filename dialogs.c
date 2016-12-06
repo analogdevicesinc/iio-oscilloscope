@@ -56,6 +56,9 @@ static GtkWidget *fru_file_list;
 static volatile bool ver_check_done;
 static Release *release;
 
+static gchar *usb_pids[128];
+static int active_pid = -1;
+
 #ifdef FRU_FILES
 static time_t mins_since_jan_1_1996(void)
 {
@@ -323,6 +326,7 @@ static struct iio_context * get_context(Dialogs *data)
 		/* take off the [] */
 		uri2++;
 		uri2[strlen(uri2)-1] = 0;
+		active_pid = gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd));
 
 		return iio_create_context_from_uri(uri2);
 	} else {
@@ -337,18 +341,26 @@ static void refresh_usb()
 	GtkListStore *liststore;
 	ssize_t ret;
 	unsigned int i = 0;
-	gint index;
-	gchar *buf, *cur=NULL;
+	gint index = 0;
+	gchar *tmp, *tmp1, *pid, *buf;
+	char *current = NULL;
 
-	/* find the current setting */
-	index = gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd));
-	if (index != -1)
-		cur = gtk_combo_box_get_active_text(GTK_COMBO_BOX(dialogs.connect_usbd));
+	/* get the active setting (if there is one) */
+	if(active_pid != -1)
+		current = strdup(usb_pids[active_pid]);
+
+	for(i = 0; i < 127 ; i++) {
+		if (usb_pids[i]) {
+			free(usb_pids[i]);
+			usb_pids[i] = NULL;
+		}
+	}
 
 	/* clear everything, and scan again */
 	liststore = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(dialogs.connect_usbd)));
 	gtk_list_store_clear(liststore);
 
+	i = 0;
 	ctxs = iio_create_scan_context(NULL, 0);
 	if (!ctxs)
 		goto nope;
@@ -360,14 +372,36 @@ static void refresh_usb()
 		goto err_free_info_list;
 
 	for (i = 0; i < (size_t) ret; i++) {
-		buf = malloc(strlen(iio_context_info_get_uri(info[i])) +
-				strlen(iio_context_info_get_description(info[i])) + 5);
-		sprintf(buf, "%s [%s]", iio_context_info_get_description(info[i]),
-				iio_context_info_get_uri(info[i]));
-		if (index != -1 && !strcmp(buf, cur))
+		tmp = strdup(iio_context_info_get_description(info[i]));
+		pid = strdup(iio_context_info_get_description(info[i]));
+
+		/* skip the PID/VID : xxxx:xxxx */
+		tmp1 = strchr(tmp, '(');
+		if (tmp1 && strstr(tmp1, ")), serial=")) {
+			/* skip the '(' char */
+			tmp1++;
+			/* find the serial number */
+			if (strstr(tmp1, ")), serial=")) {
+				tmp1[strstr(tmp1, ")), serial=") - tmp1 + 1] = 0;
+				memmove(pid + strlen("xxxx:xxxx "),
+					strstr(pid, ")), serial=") + strlen(")), serial="),
+					strlen(pid) - (strstr(pid, ")), serial=") - pid -
+						strlen(")), serial=")));
+			}
+		}
+		if (active_pid != -1 && !strcmp(pid, current)) {
 			index = i;
+		}
+		usb_pids[i]=pid;
+
+		buf = malloc(strlen(iio_context_info_get_uri(info[i])) +
+				strlen(tmp1) + 5);
+		sprintf(buf, "%s [%s]", tmp1,
+				iio_context_info_get_uri(info[i]));
+
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), buf);
 		free(buf);
+		free(tmp);
 	}
 
 err_free_info_list:
@@ -375,6 +409,7 @@ err_free_info_list:
 err_free_ctxs:
 	iio_scan_context_destroy(ctxs);
 nope:
+
 	if (!i) {
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), "None");
 		gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd),0);
@@ -386,9 +421,31 @@ nope:
 	gtk_widget_set_sensitive(dialogs.connect_usb, true);
 	gtk_widget_set_sensitive(dialogs.connect_usbd,true);
 
-	if (index == -1)
-		index = 0;
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd), index);
+}
+
+char * usb_get_serialnumber(struct iio_context *context)
+{
+	const char *name = iio_context_get_name(context);
+
+	if (name && !strcmp(name, "usb") && active_pid >= 0)
+		return usb_pids[active_pid];
+
+	return NULL;
+}
+
+void usb_set_serialnumber(char * value)
+{
+	int i;
+
+	for(i = 1; i < 127; i++) {
+		if (usb_pids[i] && strstr(usb_pids[i], value)) {
+			active_pid = i;
+			break;
+		}
+	}
+
+	refresh_usb();
 }
 
 
@@ -502,6 +559,13 @@ static bool connect_fillin(Dialogs *data)
 #endif
 
 	ctx = get_context(data);
+	if (!ctx) {
+		char buf[1024];
+		printf("error getting context\n");
+		iio_strerror(errno, buf, sizeof(buf));
+		printf("error : %s\n", buf);
+	}
+
 	desc = ctx ? iio_context_get_description(ctx) : "";
 
 	buf = gtk_text_buffer_new(NULL);
@@ -561,7 +625,8 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 
 	if (name && !strcmp(name, "usb")) {
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb), true);
-		/* TODO : missing code to set the correct USB device */
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb), true);
+		has_context = connect_fillin(data);
 	}
 
 	while (true) {
@@ -962,6 +1027,18 @@ void dialogs_init(GtkBuilder *builder)
 			(GCallback) connect_clear, NULL);
 	gtk_widget_set_sensitive(dialogs.connect_usbd, false);
 
+	/* test USB backend & hide if it's not supported */
+	ctx = iio_create_context_from_uri("usb:expected_error");
+	if (errno == ENOSYS) {
+		gtk_widget_hide(dialogs.connect_usbd);
+		gtk_widget_hide(dialogs.connect_usb);
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")));
+	} else if (errno != EINVAL) {
+		char buf[1024];
+		iio_strerror(errno, buf, sizeof(buf));
+		fprintf(stderr, "libiio issue - expecting 'EINVAL' (%i), and got '%s' (%i)\n",
+				EINVAL, buf, errno);
+	}
 
 	/* Grey out the "local context" option if it is not available */
 	ctx = get_context_from_osc();

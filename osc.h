@@ -91,6 +91,8 @@ bool rx_update_device_sampling_freq(const char *device, double freq);
 bool rx_update_channel_lo_freq(const char *device, const char *channel,
 	double lo_freq);
 void dialogs_init(GtkBuilder *builder);
+char * usb_get_serialnumber(struct iio_context *context);
+void usb_set_serialnumber(char *);
 void trigger_dialog_init(GtkBuilder *builder);
 void trigger_settings_for_device(GtkBuilder *builder, const char *device);
 void application_quit (void);

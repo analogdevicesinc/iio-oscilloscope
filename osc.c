@@ -1900,10 +1900,18 @@ static void capture_profile_save(const char *filename)
 		gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(tooltips_en)));
 	fprintf(fp, "startup_version_check=%d\n",
 		gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(versioncheck_en)));
-	if (ctx && !strcmp(iio_context_get_name(ctx), "network")) {
-		char *ip_addr = (char *) iio_context_get_description(ctx);
-		ip_addr = strtok(ip_addr, " ");
-		fprintf(fp, "remote_ip_addr=%s\n", ip_addr);
+	if (ctx) {
+		if (!strcmp(iio_context_get_name(ctx), "network")) {
+			char *ip_addr = (char *) iio_context_get_description(ctx);
+			ip_addr = strtok(ip_addr, " ");
+			fprintf(fp, "remote_ip_addr=%s\n", ip_addr);
+		} else if (!strcmp(iio_context_get_name(ctx), "usb")) {
+			if (usb_get_serialnumber(ctx))
+				fprintf(fp, "uri=%s\n", usb_get_serialnumber(ctx));
+		} else {
+			fprintf(stderr, "%s: unknown context %s\n",
+				__func__, iio_context_get_name(ctx));
+		}
 	}
 
 	fclose(fp);
@@ -2093,6 +2101,59 @@ static int load_profile(const char *filename, bool load_plugins)
 			free(value);
 			return 0;
 		}
+		free(value);
+	}
+
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "uri");
+	/* URI addresses specified on the command line via the -u option
+	 * override profile settings
+	 */
+	if (value && !(ctx && (!strcmp(iio_context_get_name(ctx), "uri")))) {
+		struct iio_context *new_ctx;
+		struct iio_scan_context *ctxs = iio_create_scan_context(NULL, 0);
+		struct iio_context_info **info;
+		char *pid_vid = value;
+		char *serial = strchr(value, ' ');
+		const char *tmp;
+		int i;
+
+		if (!serial)
+			goto nope;
+		usb_set_serialnumber(value);
+
+		pid_vid[serial - pid_vid] = 0;
+
+		if (!ctxs)
+			goto nope;
+		ret = iio_scan_context_get_info_list(ctxs, &info);
+		if (ret < 0)
+			goto nope_ctxs;
+		if (!ret)
+			goto nope_list;
+
+		for (i = 0; i < ret; i++) {
+			tmp = iio_context_info_get_description(info[i]);
+			/* find the correct PID/VID plus serial number*/
+			if (strstr(tmp, pid_vid) && strstr(tmp, serial)) {
+				new_ctx = iio_create_context_from_uri(
+						iio_context_info_get_uri(info[i]));
+				if (new_ctx) {
+					application_reload(new_ctx, false);
+					ret = 0;
+					break;
+				} else {
+					fprintf(stderr, "Failed connecting to uri: %s\n", value);
+					free(value);
+					return 0;
+				}
+			}
+
+		}
+nope_list:
+		iio_context_info_list_free(info);
+nope_ctxs:
+		iio_scan_context_destroy(ctxs);
+nope:
 		free(value);
 	}
 

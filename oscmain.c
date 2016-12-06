@@ -169,7 +169,8 @@ static void usage(char *program)
 	/* please keep this list sorted in alphabetical order */
 	printf( "Command line options:\n"
 		"\t-p\tload specific profile (to skip profile loading use \"-\")\n"
-		"\t-c\tIP address of device to connect to\n");
+		"\t-c\tIP address of device to connect to (192.168.2.1)\n"
+		"\t-u\tUniform Resource Identifer (URI) of device to connect to ('usb:3.2.5')\n");
 
 	printf("\nEnvironmental variables:\n"
 		"\tOSC_FORCE_PLUGIN\tforce loading of a specific plugin\n");
@@ -191,10 +192,17 @@ gint main (int argc, char **argv)
 	init_signal_handlers(argv[0]);
 
 	opterr = 0;
-	while ((c = getopt (argc, argv, "c:p:")) != -1)
+	while ((c = getopt (argc, argv, "c:p:u:")) != -1)
 		switch (c) {
 			case 'c':
 				ctx = iio_create_network_context(optarg);
+				if (!ctx) {
+					printf("Failed connecting to remote device: %s\n", optarg);
+					exit(-1);
+				}
+				break;
+			case 'u':
+				ctx = iio_create_context_from_uri(optarg);
 				if (!ctx) {
 					printf("Failed connecting to remote device: %s\n", optarg);
 					exit(-1);
@@ -229,6 +237,9 @@ gint main (int argc, char **argv)
 	init_application();
 	c = load_default_profile(profile, true);
 	if (!ctx_destroyed_by_do_quit) {
+		if (!ctx)
+			connect_dialog(false);
+
 		create_default_plot();
 		if (c == 0) {
 			if (gtk_check_menu_item_get_active(

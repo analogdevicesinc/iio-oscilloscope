@@ -721,7 +721,7 @@ A GUI for Linux IIO devices</property>
                                 </child>
                                 <child>
                                   <object class="GtkRadioButton" id="connect_usb">
-                                    <property name="label" translatable="yes">Local USB Device</property>
+                                    <property name="label" translatable="yes">USB Device</property>
                                     <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
@@ -749,7 +749,7 @@ A GUI for Linux IIO devices</property>
                                             <property name="visible">True</property>
                                             <property name="sensitive">False</property>
                                             <property name="can_focus">False</property>
-                                            <property name="label" translatable="yes">USB Device</property>
+                                            <property name="label" translatable="yes">Devices</property>
                                           </object>
                                           <packing>
                                             <property name="expand">True</property>
