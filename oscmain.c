@@ -101,6 +101,10 @@ static void init_application ()
 	GtkWidget  *infobar_box;
 	GtkWidget  *vcheck_dont_show;
 	GtkAboutDialog *about = NULL;
+	unsigned int major, minor;
+	char patch[9];
+	const gchar *tmp;
+	gchar tmp2[1024];
 
 	builder = gtk_builder_new();
 
@@ -128,6 +132,11 @@ static void init_application ()
 	if (!about)
 		about = GTK_ABOUT_DIALOG(gtk_builder_get_object(builder, "About_dialog"));
 	gtk_about_dialog_set_version(about, OSC_VERSION);
+	iio_library_get_version(&major, &minor, patch);
+	tmp = gtk_label_get_label(GTK_LABEL(gtk_builder_get_object(builder, "libiio_title")));
+	sprintf(tmp2, "%s\nlibiio version : %i.%i-%s\n", tmp, major, minor, patch);
+	gtk_label_set_label(GTK_LABEL(gtk_builder_get_object(builder, "libiio_title")),
+			tmp2);
 
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "main_menu"));
 	notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook"));
