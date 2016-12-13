@@ -50,7 +50,7 @@ GtkWidget *tooltips_en;
 GtkWidget *versioncheck_en;
 GtkWidget *main_window;
 
-struct iio_context *ctx;
+struct iio_context *ctx = NULL;
 static unsigned int num_devices = 0;
 bool ctx_destroyed_by_do_quit;
 
@@ -1562,14 +1562,14 @@ bool is_output_device(const struct iio_device *dev)
 	return device_type_get(dev, 0);
 }
 
-static void init_device_list(struct iio_context *ctx)
+static void init_device_list(struct iio_context *_ctx)
 {
 	unsigned int i, j;
 
-	num_devices = iio_context_get_devices_count(ctx);
+	num_devices = iio_context_get_devices_count(_ctx);
 
 	for (i = 0; i < num_devices; i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
+		struct iio_device *dev = iio_context_get_device(_ctx, i);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		struct extra_dev_info *dev_info = calloc(1, sizeof(*dev_info));
 		iio_device_set_data(dev, dev_info);
@@ -2255,7 +2255,7 @@ void osc_process_gtk_events(unsigned int msecs)
 /* Test something, according to:
  * test.device.attribute.type = min max
  */
-int osc_test_value(struct iio_context *ctx, int line,
+int osc_test_value(struct iio_context *_ctx, int line,
 		const char *attribute, const char *value)
 {
 	struct iio_device *dev;
@@ -2277,7 +2277,7 @@ int osc_test_value(struct iio_context *ctx, int line,
 		if (!elems[i])
 			goto cleanup;
 
-	dev = iio_context_find_device(ctx, elems[1]);
+	dev = iio_context_find_device(_ctx, elems[1]);
 	if (!dev) {
 		ret = -ENODEV;
 		goto cleanup;
@@ -2374,7 +2374,7 @@ err_popup:
 	return ret;
 }
 
-int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
+int osc_identify_attrib(struct iio_context *_ctx, const char *attrib,
 		struct iio_device **dev, struct iio_channel **chn,
 		const char **attr, bool *debug)
 {
@@ -2401,7 +2401,7 @@ int osc_identify_attrib(struct iio_context *ctx, const char *attrib,
 		filename = elems[1];
 	}
 
-	device = iio_context_find_device(ctx, dev_name);
+	device = iio_context_find_device(_ctx, dev_name);
 	if (!device) {
 		ret = -ENODEV;
 		goto cleanup;
@@ -2418,7 +2418,7 @@ cleanup:
 	return ret;
 }
 
-static int osc_read_nonenclosed_value(struct iio_context *ctx,
+static int osc_read_nonenclosed_value(struct iio_context *_ctx,
 		const char *value, long long *out)
 {
 	struct iio_device *dev;
@@ -2426,7 +2426,7 @@ static int osc_read_nonenclosed_value(struct iio_context *ctx,
 	const char *attr;
 	char *pend;
 	bool debug;
-	int ret = osc_identify_attrib(ctx, value, &dev, &chn, &attr, &debug);
+	int ret = osc_identify_attrib(_ctx, value, &dev, &chn, &attr, &debug);
 
 	if (ret == -EINVAL) {
 		*out = strtoll(value, &pend, 10);
@@ -2447,7 +2447,7 @@ static int osc_read_nonenclosed_value(struct iio_context *ctx,
 	return ret < 0 ? ret : 0;
 }
 
-static int osc_read_enclosed_value(struct iio_context *ctx,
+static int osc_read_enclosed_value(struct iio_context *_ctx,
 		const char *value, long long *out)
 {
 	const char *plus = strstr(value, " + "),
@@ -2462,7 +2462,7 @@ static int osc_read_enclosed_value(struct iio_context *ctx,
 
 	if (!plus && !minus) {
 		ptr = g_strndup(value + 1, len - 2);
-		ret = osc_read_nonenclosed_value(ctx, ptr, out);
+		ret = osc_read_nonenclosed_value(_ctx, ptr, out);
 		g_free(ptr);
 		return ret;
 	}
@@ -2472,7 +2472,7 @@ static int osc_read_enclosed_value(struct iio_context *ctx,
 		return -EINVAL;
 
 	val = g_strndup(value + 2, ptr - value - 2);
-	ret = osc_read_nonenclosed_value(ctx, val, &val_left);
+	ret = osc_read_nonenclosed_value(_ctx, val, &val_left);
 	g_free(val);
 	if (ret < 0)
 		return ret;
@@ -2482,7 +2482,7 @@ static int osc_read_enclosed_value(struct iio_context *ctx,
 		return -EINVAL;
 
 	val = g_strndup(ptr + 1, value + len - ptr - 3);
-	ret = osc_read_nonenclosed_value(ctx, val, &val_right);
+	ret = osc_read_nonenclosed_value(_ctx, val, &val_right);
 	g_free(val);
 	if (ret < 0)
 		return ret;
@@ -2494,11 +2494,11 @@ static int osc_read_enclosed_value(struct iio_context *ctx,
 	return 0;
 }
 
-int osc_read_value(struct iio_context *ctx,
+int osc_read_value(struct iio_context *_ctx,
 		const char *value, long long *out)
 {
 	if (value[0] == '{') {
-		return osc_read_enclosed_value(ctx, value, out);
+		return osc_read_enclosed_value(_ctx, value, out);
 	} else {
 		char *end;
 		long long result = strtoll(value, &end, 10);
@@ -2530,7 +2530,7 @@ FILE * osc_get_log_file(const char *path)
 /* Log the value of a parameter in a text file:
  * log.device.filename = output_file
  */
-int osc_log_value(struct iio_context *ctx,
+int osc_log_value(struct iio_context *_ctx,
 		const char *attribute, const char *value)
 {
 	int ret;
@@ -2546,7 +2546,7 @@ int osc_log_value(struct iio_context *ctx,
 		goto err_ret;
 	}
 
-	ret = osc_identify_attrib(ctx,
+	ret = osc_identify_attrib(_ctx,
 			attribute + sizeof("log.") - 1,
 			&dev, &chn, &attr, &debug);
 	if (ret < 0)
@@ -2577,7 +2577,7 @@ err_ret:
 	return ret;
 }
 
-int osc_plugin_default_handle(struct iio_context *ctx,
+int osc_plugin_default_handle(struct iio_context *_ctx,
 		int line, const char *attrib, const char *value,
 		int (*driver_handle)(const char *, const char *))
 {
@@ -2588,14 +2588,14 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 	int ret;
 
 	if (!strncmp(attrib, "test.", sizeof("test.") - 1)) {
-		ret = osc_test_value(ctx, line, attrib, value);
+		ret = osc_test_value(_ctx, line, attrib, value);
 		return ret < 1 ? -1 : 0;
 	}
 
 	if (!strncmp(attrib, "log.", sizeof("log.") - 1))
-		return osc_log_value(ctx, attrib, value);
+		return osc_log_value(_ctx, attrib, value);
 
-	ret = osc_identify_attrib(ctx, attrib, &dev, &chn, &attr, &debug);
+	ret = osc_identify_attrib(_ctx, attrib, &dev, &chn, &attr, &debug);
 	if (ret < 0) {
 		if (driver_handle)
 			return driver_handle(attrib, value);
@@ -2608,7 +2608,7 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 
 	if (value[0] == '{') {
 		long long lval;
-		ret = osc_read_value(ctx, value, &lval);
+		ret = osc_read_value(_ctx, value, &lval);
 		if (ret < 0) {
 			fprintf(stderr, "Unable to read value: %s\n", value);
 			return ret;
