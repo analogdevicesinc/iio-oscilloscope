@@ -1518,6 +1518,9 @@ void application_reload(struct iio_context *new_ctx, bool load_profile)
 	}
 
 	do_quit(true);
+	if (ctx)
+		iio_context_destroy(ctx);
+
 	ctx = new_ctx;
 	do_init(new_ctx);
 	if (load_profile)
@@ -2122,6 +2125,7 @@ static int load_profile(const char *filename, bool load_plugins)
 		usb_set_serialnumber(value);
 
 		pid_vid[serial - pid_vid] = 0;
+		serial++;
 
 		if (!ctxs)
 			goto nope;
@@ -2139,7 +2143,6 @@ static int load_profile(const char *filename, bool load_plugins)
 						iio_context_info_get_uri(info[i]));
 				if (new_ctx) {
 					application_reload(new_ctx, false);
-					ret = 0;
 					break;
 				} else {
 					fprintf(stderr, "Failed connecting to uri: %s\n", value);
@@ -2155,6 +2158,7 @@ nope_ctxs:
 		iio_scan_context_destroy(ctxs);
 nope:
 		free(value);
+		ret = 0;
 	}
 
 	value = read_token_from_ini(filename, OSC_INI_SECTION, "test");

@@ -316,6 +316,7 @@ static struct iio_context * get_context(Dialogs *data)
 
 		return iio_create_network_context(hostname);
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb))) {
+		struct iio_context *ctx;
 		gchar *uri = gtk_combo_box_get_active_text(
 				GTK_COMBO_BOX(dialogs.connect_usbd));
 		gchar *uri2 = uri + strlen(uri);
@@ -326,9 +327,17 @@ static struct iio_context * get_context(Dialogs *data)
 		/* take off the [] */
 		uri2++;
 		uri2[strlen(uri2)-1] = 0;
+
 		active_pid = gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd));
 
-		return iio_create_context_from_uri(uri2);
+		/* try to open, if fail & busy, it's likely we are the same */
+
+		ctx = iio_create_context_from_uri(uri2);
+		if (!ctx && errno == EBUSY &&
+				!strcmp("usb", iio_context_get_name(get_context_from_osc()))) {
+			return get_context_from_osc();
+		}
+		return ctx;
 	} else {
 		return iio_create_local_context();
 	}
@@ -438,13 +447,18 @@ void usb_set_serialnumber(char * value)
 {
 	int i;
 
-	for(i = 1; i < 127; i++) {
+	/* make sure to fill out usb_pids list */
+	if (active_pid == -1)
+		refresh_usb();
+
+	for(i = 0; i < 127; i++) {
 		if (usb_pids[i] && strstr(usb_pids[i], value)) {
 			active_pid = i;
 			break;
 		}
 	}
 
+	/* select the right one in the list */
 	refresh_usb();
 }
 
@@ -561,7 +575,7 @@ static bool connect_fillin(Dialogs *data)
 	ctx = get_context(data);
 	if (!ctx) {
 		char buf[1024];
-		printf("error getting context\n");
+		printf("%s:%s():%i error getting context\n", __FILE__, __func__, __LINE__);
 		iio_strerror(errno, buf, sizeof(buf));
 		printf("error : %s\n", buf);
 	}
@@ -592,9 +606,17 @@ static bool connect_fillin(Dialogs *data)
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_iio), buf);
 	g_object_unref(buf);
 
-	if (ctx)
+	if (ctx && ctx != get_context_from_osc())
 		iio_context_destroy(ctx);
+
 	return !!ctx;
+}
+
+static bool hide_ok_btn()
+{
+	gtk_widget_set_sensitive(dialogs.ok_btn, false);
+
+	return true;
 }
 
 static gint fru_connect_dialog(Dialogs *data, bool load_profile)
@@ -636,6 +658,7 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 		switch (ret) {
 		case GTK_RESPONSE_APPLY:
 			widget_set_cursor(data->connect, GDK_WATCH);
+			connect_clear(NULL);
 			has_context = connect_fillin(data);
 			widget_use_parent_cursor(data->connect);
 			refresh_usb();
@@ -647,7 +670,9 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 			if (!ctx)
 				continue;
 
-			application_reload(ctx, false);
+			if (ctx != get_context_from_osc()) {
+				application_reload(ctx, false);
+			}
 			break;
 		default:
 			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
@@ -1021,6 +1046,10 @@ void dialogs_init(GtkBuilder *builder)
 	g_object_bind_property(dialogs.connect_usb, "active",
 		       GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")), "sensitive", 0);
 	g_object_bind_property(dialogs.connect_usb, "active", dialogs.connect_usbd, "sensitive", 0);
+
+	g_signal_connect(G_OBJECT(dialogs.connect_usbd), "changed",
+			(GCallback) hide_ok_btn, NULL);
+
 	gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")),
 			false);
 	g_signal_connect(G_OBJECT(dialogs.connect_usb), "toggled",
