@@ -1931,7 +1931,7 @@ static int dac_manager_init(struct dac_data_manager *manager,
 	else
 		manager->scale_available_mode = false;
 
-	manager->is_local = strcmp(iio_context_get_name(ctx), "network") ? true : false;
+	manager->is_local = strcmp(iio_context_get_name(ctx), "local") ? false : true;
 	manager->ctx = ctx;
 	manager->alignment = 8;
 
