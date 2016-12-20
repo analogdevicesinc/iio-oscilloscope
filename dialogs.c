@@ -403,10 +403,13 @@ static void refresh_usb()
 		}
 		usb_pids[i]=pid;
 
+		if (!tmp1)
+			tmp1 = tmp;
 		buf = malloc(strlen(iio_context_info_get_uri(info[i])) +
 				strlen(tmp1) + 5);
 		sprintf(buf, "%s [%s]", tmp1,
 				iio_context_info_get_uri(info[i]));
+		tmp1 = NULL;
 
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), buf);
 		free(buf);
