@@ -370,7 +370,7 @@ static void refresh_usb()
 	gtk_list_store_clear(liststore);
 
 	i = 0;
-	ctxs = iio_create_scan_context(NULL, 0);
+	ctxs = iio_create_scan_context("usb", 0);
 	if (!ctxs)
 		goto nope;
 
