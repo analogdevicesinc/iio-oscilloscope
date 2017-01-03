@@ -355,7 +355,7 @@ static void refresh_usb()
 	char *current = NULL;
 
 	/* get the active setting (if there is one) */
-	if(active_pid != -1)
+	if(active_pid != -1 && usb_pids[active_pid])
 		current = strdup(usb_pids[active_pid]);
 
 	for(i = 0; i < 127 ; i++) {
