@@ -678,19 +678,22 @@ A GUI for Linux IIO devices</property>
                                   <object class="GtkAlignment" id="alignment8">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="left_padding">12</property>
                                     <child>
                                       <object class="GtkHBox" id="box10">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="spacing">5</property>
                                         <child>
                                           <object class="GtkLabel" id="connect_net_label">
                                             <property name="visible">True</property>
                                             <property name="sensitive">False</property>
                                             <property name="can_focus">False</property>
+                                            <property name="xalign">0</property>
                                             <property name="label" translatable="yes">Hostname</property>
                                           </object>
                                           <packing>
-                                            <property name="expand">True</property>
+                                            <property name="expand">False</property>
                                             <property name="fill">True</property>
                                             <property name="position">0</property>
                                           </packing>
@@ -740,19 +743,22 @@ A GUI for Linux IIO devices</property>
                                   <object class="GtkAlignment" id="alignment12">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="left_padding">12</property>
                                     <child>
                                       <object class="GtkHBox" id="box1">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="spacing">5</property>
                                         <child>
                                           <object class="GtkLabel" id="connect_usb_label">
                                             <property name="visible">True</property>
                                             <property name="sensitive">False</property>
                                             <property name="can_focus">False</property>
-                                            <property name="label" translatable="yes">Devices</property>
+                                            <property name="xalign">0</property>
+                                            <property name="label" translatable="yes">Device</property>
                                           </object>
                                           <packing>
-                                            <property name="expand">True</property>
+                                            <property name="expand">False</property>
                                             <property name="fill">True</property>
                                             <property name="position">0</property>
                                           </packing>
@@ -928,6 +934,12 @@ Installed/Found IIO devices on this platform</property>
       <action-widget response="-6">button2</action-widget>
       <action-widget response="-5">button3</action-widget>
     </action-widgets>
+  </object>
+  <object class="GtkSizeGroup" id="connect_label_sizegroup">
+    <widgets>
+      <widget name="connect_usb_label"/>
+      <widget name="connect_net_label"/>
+    </widgets>
   </object>
   <object class="GtkListStore" id="device_list">
     <columns>
