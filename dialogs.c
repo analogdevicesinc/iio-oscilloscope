@@ -273,7 +273,7 @@ static int is_eeprom_fru(char *eeprom_file, GtkTextBuffer *buf, GtkTextIter *ite
 }
 #endif /* FRU_FILES */
 
-bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
+static bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
 {
 	GdkCursor *watchCursor;
 	GdkWindow *gdkWindow;
@@ -293,7 +293,7 @@ bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
 	return true;
 }
 
-bool widget_use_parent_cursor(GtkWidget *widget)
+static bool widget_use_parent_cursor(GtkWidget *widget)
 {
 	GdkWindow *gdkWindow;
 
@@ -343,7 +343,7 @@ static struct iio_context * get_context(Dialogs *data)
 	}
 }
 
-static void refresh_usb()
+static void refresh_usb(void)
 {
 	struct iio_scan_context *ctxs;
 	struct iio_context_info **info;
@@ -833,7 +833,7 @@ gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 	return run;
 }
 
-glong date_compare_against_build_date(const char *iso8601_date)
+static glong date_compare_against_build_date(const char *iso8601_date)
 {
 	GTimeVal time;
 	glong build_time = atol(GIT_COMMIT_TIMESTAMP);
