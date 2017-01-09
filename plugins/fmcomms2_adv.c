@@ -881,8 +881,8 @@ static void calibrate (gpointer button)
 	gdk_threads_leave();
 
 	/* Turn off quadrature tracking while the sync is going on */
-	iio_channel_attr_write(in0, "in_voltage_quadrature_tracking_en", "0");
-	iio_channel_attr_write(in0_slave, "in_voltage_quadrature_tracking_en", "0");
+	iio_channel_attr_write(in0, "quadrature_tracking_en", "0");
+	iio_channel_attr_write(in0_slave, "quadrature_tracking_en", "0");
 
 	/* reset any Tx rotation to zero */
 	trx_phase_rotation(cf_ad9361_lpc, 0.0);
@@ -951,8 +951,8 @@ calibrate_fail:
 	__cal_switch_ports_enable_cb(0);
 
 	if (in0 && in0_slave) {
-		iio_channel_attr_write(in0, "in_voltage_quadrature_tracking_en", "1");
-		iio_channel_attr_write(in0_slave, "in_voltage_quadrature_tracking_en", "1");
+		iio_channel_attr_write(in0, "quadrature_tracking_en", "1");
+		iio_channel_attr_write(in0_slave, "quadrature_tracking_en", "1");
 	}
 
 	gdk_threads_enter();
