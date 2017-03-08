@@ -105,28 +105,28 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_obs">
-    <property name="upper">50</property>
+    <property name="upper">52.00</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_rx1">
-    <property name="upper">100</property>
+    <property name="upper">30.00</property>
     <property name="step_increment">0.5</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_rx2">
-    <property name="upper">100.005</property>
-    <property name="step_increment">1</property>
+    <property name="upper">30.00</property>
+    <property name="step_increment">0.5</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_tx1">
-    <property name="upper">41.950000000000003</property>
-    <property name="step_increment">0.25</property>
+    <property name="upper">41.95</property>
+    <property name="step_increment">0.05</property>
     <property name="page_increment">1</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_tx2">
-    <property name="upper">89.75</property>
-    <property name="step_increment">0.10000000000000001</property>
+    <property name="upper">41.95</property>
+    <property name="step_increment">0.05</property>
     <property name="page_increment">1</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_rf_bw_obs">
