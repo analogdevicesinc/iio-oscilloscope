@@ -117,7 +117,7 @@ static char * c_file_create(const char *user_expression, GSList *basenames)
 
 	old_expr = g_strdup(user_expression);
 	for (node = basenames; node; node = g_slist_next(node)) {
-		buf = g_strdup_printf("%s[0-9]+", (char *)node->data);
+		buf = g_strdup_printf("(%s[0-9]+)(\\w*)", (char *)node->data);
 		new_expr = string_replace(old_expr, buf, NULL, eval);
 		g_free(buf);
 		g_free(old_expr);
