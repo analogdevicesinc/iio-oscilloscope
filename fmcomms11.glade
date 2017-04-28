@@ -2,7 +2,7 @@
 <!-- Generated with glade 3.18.3 -->
 <interface>
   <object class="GtkAdjustment" id="adj_out_altvoltage2_frequency_nco">
-    <property name="upper">2500</property>
+    <property name="upper">6000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -176,7 +176,6 @@
                                       <object class="GtkTable" id="grid2">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="halign">end</property>
                                         <property name="border_width">5</property>
                                         <property name="resize_mode">queue</property>
                                         <property name="n_rows">2</property>
