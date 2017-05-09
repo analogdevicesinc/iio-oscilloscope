@@ -426,6 +426,10 @@ static struct w_info attrs[] = {
 	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#10", NULL, 0},
 	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#9", NULL, 0},
 	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#8", NULL, 0},
+	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#15", NULL, 0},
+	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#16", NULL, 0},
+	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#17", NULL, 0},
+
 
 	{SPINBUTTON, "adi,dpd-damping", NULL, 0},
 	{SPINBUTTON, "adi,dpd-num-weights", NULL, 0},
