@@ -341,6 +341,25 @@ static void update_lable_from(GtkWidget *label, const char *channel,
 
 }
 
+static void update_lable_from_prms(GtkWidget *label, const char *channel,
+			      const char *attribute, bool output, const char *unit, int scale)
+{
+	char buf[80];
+	long long val = 0;
+
+	int ret = iio_channel_attr_read_longlong(
+		iio_device_find_channel(dev, channel, output),
+						 attribute, &val);
+
+	snprintf(buf, sizeof(buf), "%.2f %s", (float)val / scale + 21, unit);
+
+	if (ret >= 0)
+		gtk_label_set_text(GTK_LABEL(label), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(label), "<error>");
+
+}
+
 static void update_dpd_status_from(GtkWidget *label, const char *channel,
 			      const char *attribute)
 {
@@ -450,13 +469,13 @@ static void vswr_update_labels(void)
 		update_lable_from(tx1_vswr_forward_gain, "voltage0", "vswr_forward_gain", true, "dB", 100);
 		update_lable_from(tx1_vswr_forward_gain_imag, "voltage0", "vswr_forward_gain_imag", true, "dB", 100);
 		update_lable_from(tx1_vswr_forward_gain_real, "voltage0", "vswr_forward_gain_real", true, "dB", 100);
-		update_lable_from(tx1_vswr_forward_orx, "voltage0", "vswr_forward_orx", true, "dB", 100);
-		update_lable_from(tx1_vswr_forward_tx, "voltage0", "vswr_forward_tx", true, "dB", 100);
+		update_lable_from_prms(tx1_vswr_forward_orx, "voltage0", "vswr_forward_orx", true, "dB", 100);
+		update_lable_from_prms(tx1_vswr_forward_tx, "voltage0", "vswr_forward_tx", true, "dB", 100);
 		update_lable_from(tx1_vswr_reflected_gain, "voltage0", "vswr_reflected_gain", true, "dB", 100);
 		update_lable_from(tx1_vswr_reflected_gain_imag, "voltage0", "vswr_reflected_gain_imag", true, "dB", 100);
 		update_lable_from(tx1_vswr_reflected_gain_real, "voltage0", "vswr_reflected_gain_real", true, "dB", 100);
-		update_lable_from(tx1_vswr_reflected_orx, "voltage0", "vswr_reflected_orx", true, "dB", 100);
-		update_lable_from(tx1_vswr_reflected_tx, "voltage0", "vswr_reflected_tx", true, "dB", 100);
+		update_lable_from_prms(tx1_vswr_reflected_orx, "voltage0", "vswr_reflected_orx", true, "dB", 100);
+		update_lable_from_prms(tx1_vswr_reflected_tx, "voltage0", "vswr_reflected_tx", true, "dB", 100);
 	}
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(tx_widgets[tx2_vswr].widget))) {
@@ -465,13 +484,13 @@ static void vswr_update_labels(void)
 		update_lable_from(tx2_vswr_forward_gain, "voltage1", "vswr_forward_gain", true, "dB", 100);
 		update_lable_from(tx2_vswr_forward_gain_imag, "voltage1", "vswr_forward_gain_imag", true, "dB", 100);
 		update_lable_from(tx2_vswr_forward_gain_real, "voltage1", "vswr_forward_gain_real", true, "dB", 100);
-		update_lable_from(tx2_vswr_forward_orx, "voltage1", "vswr_forward_orx", true, "dB", 100);
-		update_lable_from(tx2_vswr_forward_tx, "voltage1", "vswr_forward_tx", true, "dB", 100);
+		update_lable_from_prms(tx2_vswr_forward_orx, "voltage1", "vswr_forward_orx", true, "dB", 100);
+		update_lable_from_prms(tx2_vswr_forward_tx, "voltage1", "vswr_forward_tx", true, "dB", 100);
 		update_lable_from(tx2_vswr_reflected_gain, "voltage1", "vswr_reflected_gain", true, "dB", 100);
 		update_lable_from(tx2_vswr_reflected_gain_imag, "voltage1", "vswr_reflected_gain_imag", true, "dB", 100);
 		update_lable_from(tx2_vswr_reflected_gain_real, "voltage1", "vswr_reflected_gain_real", true, "dB", 100);
-		update_lable_from(tx2_vswr_reflected_orx, "voltage1", "vswr_reflected_orx", true, "dB", 100);
-		update_lable_from(tx2_vswr_reflected_tx, "voltage1", "vswr_reflected_tx", true, "dB", 100);
+		update_lable_from_prms(tx2_vswr_reflected_orx, "voltage1", "vswr_reflected_orx", true, "dB", 100);
+		update_lable_from_prms(tx2_vswr_reflected_tx, "voltage1", "vswr_reflected_tx", true, "dB", 100);
 	}
 }
 
