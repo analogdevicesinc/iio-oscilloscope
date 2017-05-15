@@ -1543,14 +1543,14 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 					"out_voltage1_clgc_tracking_en", 0);
 
 		tx1_clgc_desired_gain = num_tx;
-		iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+		iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 						dev, ch0, "clgc_desired_gain", builder,
 					"out_voltage0_clgc_desired_gain", &scale100);
 
 		tx2_clgc_desired_gain = num_tx;
-		iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+		iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 						dev, ch1, "clgc_desired_gain", builder,
-					"out_voltage1_clgc_desired_gain", &scale100);
+				    "out_voltage1_clgc_desired_gain", &scale100);
 
 		tx1_clgc_track_count = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_clgc_track_count"));
 		tx1_clgc_status = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_clgc_status"));
