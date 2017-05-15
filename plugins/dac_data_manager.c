@@ -245,8 +245,8 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 {
 	int ret, rep;
 	unsigned int size, j, i = 0;
-	double max = 0.0, val[4], scale = 0.0;
-	double i1, q1, i2, q2;
+	double max = 0.0, val[8], scale = 0.0;
+	double i1, q1, i2, q2, i3, q3, i4, q4;
 	double offset;
 	char line[80];
 	mat_t *matfp;
@@ -272,13 +272,13 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			}
 			size = 0;
 			while (fgets(line, 80, infile)) {
-				ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
-						&val[0], &val[1], &val[2], &val[3]);
-				if (!(ret == 4 || ret == 2)) {
+				ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
+					     &val[0], &val[1], &val[2], &val[3], &val[4], &val[5], &val[6], &val[7]);
+				if (!(ret == 4 || ret == 2 || ret == 8)) {
 					if (line_is_empty(line))
 						continue;
 					fclose(infile);
-					fprintf(stderr, "ERROR: No 2 or 4 columns of data inside the text file\n");
+					fprintf(stderr, "ERROR: No 2, 4 or 8 columns of data inside the text file\n");
 					return WAVEFORM_TXT_INVALID_FORMAT;
 				}
 
@@ -314,13 +314,24 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 					size = 0;
 					i = 0;
 					while (fgets(line, 80, infile)) {
-						ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
-								&i1, &q1, &i2, &q2);
+						ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
+							     &i1, &q1, &i2, &q2, &i3, &q3, &i4, &q4);
 						if ((ret != 2 && ret != 4) && line_is_empty(line))
 							continue;
 
 						for (j = 0; j < (unsigned int) rep; j++) {
-							if (ret == 4 && tx_channels >= 4) {
+							if (ret == 8 && tx_channels == 8) {
+								sample[i++] = ((unsigned long long) convert(scale, q2, offset) << 48) |
+								((unsigned long long) convert(scale, i2, offset) << 32) |
+								((unsigned long long) convert(scale, q1, offset) << 16) |
+								((unsigned long long) convert(scale, i1, offset) << 0);
+
+								sample[i++] = ((unsigned long long) convert(scale, q4, offset) << 48) |
+								((unsigned long long) convert(scale, i4, offset) << 32) |
+								((unsigned long long) convert(scale, q3, offset) << 16) |
+								((unsigned long long) convert(scale, i3, offset) << 0);
+
+							} else if (ret == 4 && tx_channels >= 4) {
 								sample[i++] = ((unsigned long long) convert(scale, q2, offset) << 48) |
 								    ((unsigned long long) convert(scale, i2, offset) << 32) |
 								    ((unsigned long long) convert(scale, q1, offset) << 16) |
