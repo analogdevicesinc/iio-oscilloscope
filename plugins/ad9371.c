@@ -235,6 +235,13 @@ const char *vswr_status_strings[] = {
 
 static const char *ad9371_sr_attribs[] = {
 	PHY_DEVICE".ensm_mode",
+	PHY_DEVICE".calibrate_dpd_en",
+	PHY_DEVICE".calibrate_clgc_en",
+	PHY_DEVICE".calibrate_rx_qec_en",
+	PHY_DEVICE".calibrate_tx_qec_en",
+	PHY_DEVICE".calibrate_tx_lol_en",
+	PHY_DEVICE".calibrate_tx_lol_ext_en",
+	PHY_DEVICE".calibrate_vswr_en",
 	PHY_DEVICE".in_voltage0_gain_control_mode",
 	PHY_DEVICE".in_voltage0_hardwaregain",
 	PHY_DEVICE".in_voltage0_quadrature_tracking_en",
@@ -884,7 +891,6 @@ static void profile_update(void)
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
 	update_widgets();
-
 	profile_update();
 	rx_freq_info_update();
 	glb_settings_update_labels();
@@ -1288,6 +1294,38 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 	iio_combo_box_init(&glb_widgets[num_glb++],
 		dev, NULL, "ensm_mode", "ensm_mode_available",
 		ensm_mode_available, NULL);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_dpd_en", builder,
+				     "calibrate_dpd_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_clgc_en", builder,
+				     "calibrate_clgc_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_vswr_en", builder,
+				     "calibrate_vswr_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_rx_qec_en", builder,
+				     "calibrate_rx_qec_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_tx_qec_en", builder,
+				     "calibrate_tx_qec_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_tx_lol_en", builder,
+				     "calibrate_tx_lol_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_tx_lol_ext_en", builder,
+				     "calibrate_tx_lol_ext_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate", builder,
+				     "calibrate", 0);
 
 	rx_widgets = &glb_widgets[num_glb];
 

@@ -303,172 +303,230 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
-                                      <object class="GtkTable" id="table6">
+                                      <placeholder/>
+                                    </child>
+                                    <child>
+                                      <object class="GtkTable" id="grid10">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="n_rows">3</property>
-                                        <property name="n_columns">7</property>
                                         <property name="column_spacing">5</property>
                                         <property name="row_spacing">5</property>
                                         <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <placeholder/>
-                                        </child>
-                                        <child>
-                                          <object class="GtkLabel" id="label2">
+                                          <object class="GtkVBox" id="box24">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="label" translatable="yes">Active ENSM:</property>
-                                            <property name="xalign">0</property>
+                                            <child>
+                                              <object class="GtkLabel" id="label_filter_fir_sel">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">Load Profile</property>
+                                                <property name="xalign">0</property>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">False</property>
+                                                <property name="fill">True</property>
+                                                <property name="position">0</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkFileChooserButton" id="profile_config">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="width_chars">12</property>
+                                                <signal name="file-set" handler="filter_fir_config_file_set_cb" swapped="no"/>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">False</property>
+                                                <property name="fill">True</property>
+                                                <property name="position">1</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkCheckButton" id="checkbox_up_down_converter">
+                                                <property name="label" translatable="yes">ad9371 with AD-FREQCVT2-EBZ</property>
+                                                <property name="use_action_appearance">False</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">False</property>
+                                                <property name="fill">True</property>
+                                                <property name="position">2</property>
+                                              </packing>
+                                            </child>
                                           </object>
                                           <packing>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options">GTK_FILL</property>
+                                            <property name="left_attach">2</property>
+                                            <property name="x_padding">5</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkLabel" id="label4">
+                                          <object class="GtkTable" id="grid11">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="label" translatable="yes">ENSM Modes:</property>
-                                            <property name="xalign">0</property>
+                                            <child>
+                                              <object class="GtkLabel" id="label100">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">Active ENSM:</property>
+                                                <property name="xalign">0</property>
+                                              </object>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label4">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">ENSM Modes:</property>
+                                                <property name="xalign">0</property>
+                                              </object>
+                                              <packing>
+                                                <property name="top_attach">1</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="ensm_mode">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="xalign">0</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkComboBoxText" id="ensm_mode_available">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="top_attach">1</property>
+                                              </packing>
+                                            </child>
                                           </object>
                                           <packing>
-                                            <property name="top_attach">1</property>
-                                            <property name="bottom_attach">2</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options">GTK_FILL</property>
+                                            <property name="x_padding">5</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkLabel" id="ensm_mode">
+                                          <object class="GtkTable" id="grid12">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
+                                            <child>
+                                              <object class="GtkCheckButton" id="calibrate_rx_qec_en">
+                                                <property name="label" translatable="yes">CAL RX QEC</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="draw_indicator">True</property>
+                                              </object>
+                                            </child>
+                                            <child>
+                                              <object class="GtkCheckButton" id="calibrate_tx_lol_en">
+                                                <property name="label" translatable="yes">CAL TX LOL</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkCheckButton" id="calibrate_tx_qec_en">
+                                                <property name="label" translatable="yes">CAL TX QEC</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkCheckButton" id="calibrate_tx_lol_ext_en">
+                                                <property name="label" translatable="yes">CAL TX LOL Ext.</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkCheckButton" id="calibrate_dpd_en">
+                                                <property name="label" translatable="yes">CAL DPD</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="top_attach">1</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkCheckButton" id="calibrate_clgc_en">
+                                                <property name="label" translatable="yes">CAL CLGC</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="top_attach">1</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkCheckButton" id="calibrate_vswr_en">
+                                                <property name="label" translatable="yes">CAL VSWR</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="top_attach">1</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkButton" id="calibrate">
+                                                <property name="label" translatable="yes">CALIBRATE</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="top_attach">1</property>
+                                              </packing>
+                                            </child>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
-                                            <property name="right_attach">2</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options">GTK_FILL</property>
-                                          </packing>
-                                        </child>
-                                        <child>
-                                          <object class="GtkComboBoxText" id="ensm_mode_available">
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">False</property>
-                                          </object>
-                                          <packing>
-                                            <property name="left_attach">1</property>
-                                            <property name="right_attach">2</property>
-                                            <property name="top_attach">1</property>
-                                            <property name="bottom_attach">2</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options">GTK_FILL</property>
-                                          </packing>
-                                        </child>
-                                        <child>
-                                          <object class="GtkLabel" id="calib_mode">
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
-                                          </object>
-                                          <packing>
-                                            <property name="left_attach">3</property>
-                                            <property name="right_attach">4</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options">GTK_FILL</property>
-                                          </packing>
-                                        </child>
-                                        <child>
-                                          <object class="GtkLabel" id="label_filter_fir_sel">
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">False</property>
-                                            <property name="label" translatable="yes">Load Profile</property>
-                                            <property name="xalign">0</property>
-                                          </object>
-                                          <packing>
-                                            <property name="left_attach">6</property>
-                                            <property name="right_attach">7</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options">GTK_FILL</property>
-                                          </packing>
-                                        </child>
-                                        <child>
-                                          <object class="GtkFileChooserButton" id="profile_config">
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">False</property>
-                                            <property name="width_chars">12</property>
-                                            <signal name="file-set" handler="filter_fir_config_file_set_cb" swapped="no"/>
-                                          </object>
-                                          <packing>
-                                            <property name="left_attach">6</property>
-                                            <property name="right_attach">7</property>
-                                            <property name="top_attach">1</property>
-                                            <property name="bottom_attach">2</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options"/>
-                                          </packing>
-                                        </child>
-                                        <child>
-                                          <object class="GtkCheckButton" id="checkbox_up_down_converter">
-                                            <property name="label" translatable="yes">ad9371 with AD-FREQCVT2-EBZ</property>
-                                            <property name="use_action_appearance">False</property>
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">True</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="xalign">0</property>
-                                            <property name="draw_indicator">True</property>
-                                          </object>
-                                          <packing>
-                                            <property name="left_attach">6</property>
-                                            <property name="right_attach">7</property>
-                                            <property name="top_attach">2</property>
-                                            <property name="bottom_attach">3</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options">GTK_FILL</property>
                                           </packing>
                                         </child>
                                       </object>
                                       <packing>
-                                        <property name="expand">False</property>
+                                        <property name="expand">True</property>
                                         <property name="fill">True</property>
-                                        <property name="position">0</property>
+                                        <property name="position">1</property>
                                       </packing>
                                     </child>
                                   </object>
@@ -1244,6 +1302,12 @@
                                           <object class="GtkTable" id="tx_fastlock_actions">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <child>
+                                              <placeholder/>
+                                            </child>
+                                            <child>
+                                              <placeholder/>
+                                            </child>
                                             <child>
                                               <placeholder/>
                                             </child>
