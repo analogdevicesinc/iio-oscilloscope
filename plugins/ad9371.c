@@ -235,7 +235,6 @@ const char *vswr_status_strings[] = {
 
 static const char *ad9371_sr_attribs[] = {
 	PHY_DEVICE".ensm_mode",
-	PHY_DEVICE".ensm_mode_available",
 	PHY_DEVICE".in_voltage0_gain_control_mode",
 	PHY_DEVICE".in_voltage0_hardwaregain",
 	PHY_DEVICE".in_voltage0_quadrature_tracking_en",
@@ -244,11 +243,9 @@ static const char *ad9371_sr_attribs[] = {
 	PHY_DEVICE".in_voltage1_hardwaregain",
 	PHY_DEVICE".in_voltage1_temp_comp_gain",
 	PHY_DEVICE".in_voltage1_quadrature_tracking_en",
-//	PHY_DEVICE".in_voltage2_gain_control_mode",
 	PHY_DEVICE".in_voltage2_hardwaregain",
 	PHY_DEVICE".in_voltage2_rf_port_select",
 	PHY_DEVICE".in_voltage2_temp_comp_gain",
-	PHY_DEVICE".in_voltage_gain_control_mode_available",
 	PHY_DEVICE".in_voltage_rf_port_select_available",
 	PHY_DEVICE".out_altvoltage0_RX_LO_frequency",
 	PHY_DEVICE".out_altvoltage1_TX_LO_frequency",
@@ -1301,13 +1298,6 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 		"gain_control_mode_available",
 		rx_gain_control_modes_rx1, NULL);
 
-// 	if (is_2rx_2tx)
-// 		iio_combo_box_init(&rx_widgets[num_rx++],
-// 			dev, ch1, "gain_control_mode",
-// 			"gain_control_mode_available",
-// 			rx_gain_control_modes_rx2, NULL);
-
-
 	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
 		dev, ch0, "temp_comp_gain", builder,
 		"temp_comp_gain_rx1", NULL);
@@ -1637,8 +1627,7 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 
 	g_signal_connect_after(rx_gain_control_modes_rx1, "changed",
 		G_CALLBACK(glb_settings_update_labels), NULL);
-// 	g_signal_connect_after(rx_gain_control_modes_rx2, "changed",
-// 		G_CALLBACK(glb_settings_update_labels), NULL);
+
 	g_signal_connect_after(obs_gain_control_modes, "changed",
 		G_CALLBACK(glb_settings_update_labels), NULL);
 
