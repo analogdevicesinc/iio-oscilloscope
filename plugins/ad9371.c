@@ -1605,7 +1605,10 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 	} else {
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_dpd")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_clgc")));
-		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "table_vswr")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_vswr")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "calibrate_dpd_en")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "calibrate_clgc_en")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "calibrate_vswr_en")));
 	}
 
 	tx_lo = num_tx;

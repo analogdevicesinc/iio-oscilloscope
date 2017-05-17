@@ -1108,6 +1108,9 @@ static GtkWidget * ad9371adv_init(GtkWidget *notebook, const char *ini_fn)
 		gtk_widget_hide(gtk_notebook_get_nth_page(nbook, 3));
 		gtk_widget_hide(gtk_notebook_get_nth_page(nbook, 4));
 		gtk_widget_hide(gtk_notebook_get_nth_page(nbook, 5));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "adi,default-initial-calibrations-mask#15")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "adi,default-initial-calibrations-mask#16")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "adi,default-initial-calibrations-mask#17")));
 	}
 
 	connect_widgets(builder);
