@@ -444,9 +444,9 @@ static void clgc_update_labels(void)
 		update_clgc_status_from(tx1_clgc_status, "voltage0", "clgc_status");
 		update_lable_from(tx1_clgc_track_count, "voltage0", "clgc_track_count", true, "", 1);
 		update_lable_from(tx1_clgc_current_gain, "voltage0", "clgc_current_gain", true, "dB", 100);
-		update_lable_from(tx1_clgc_orx_gain, "voltage0", "clgc_orx_rms", true, "dB", 100);
+		update_lable_from(tx1_clgc_orx_gain, "voltage0", "clgc_orx_rms", true, "dBFS", 100);
 		update_lable_from(tx1_clgc_tx_gain, "voltage0", "clgc_tx_gain", true, "dB", 20);
-		update_lable_from(tx1_clgc_tx_rms, "voltage0", "clgc_tx_rms", true, "dB", 100);
+		update_lable_from(tx1_clgc_tx_rms, "voltage0", "clgc_tx_rms", true, "dBFS", 100);
 	}
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(tx_widgets[tx2_clgc].widget))) {
@@ -454,9 +454,9 @@ static void clgc_update_labels(void)
 		update_clgc_status_from(tx2_clgc_status, "voltage1", "clgc_status");
 		update_lable_from(tx2_clgc_track_count, "voltage1", "clgc_track_count", true, "", 1);
 		update_lable_from(tx2_clgc_current_gain, "voltage1", "clgc_current_gain", true, "dB", 100);
-		update_lable_from(tx2_clgc_orx_gain, "voltage1", "clgc_orx_rms", true, "dB", 100);
+		update_lable_from(tx2_clgc_orx_gain, "voltage1", "clgc_orx_rms", true, "dBFS", 100);
 		update_lable_from(tx2_clgc_tx_gain, "voltage1", "clgc_tx_gain", true, "dB", 20);
-		update_lable_from(tx2_clgc_tx_rms, "voltage1", "clgc_tx_rms", true, "dB", 100);
+		update_lable_from(tx2_clgc_tx_rms, "voltage1", "clgc_tx_rms", true, "dBFS", 100);
 	}
 }
 
@@ -469,13 +469,13 @@ static void vswr_update_labels(void)
 		update_lable_from(tx1_vswr_forward_gain, "voltage0", "vswr_forward_gain", true, "dB", 100);
 		update_lable_from(tx1_vswr_forward_gain_imag, "voltage0", "vswr_forward_gain_imag", true, "dB", 100);
 		update_lable_from(tx1_vswr_forward_gain_real, "voltage0", "vswr_forward_gain_real", true, "dB", 100);
-		update_lable_from_prms(tx1_vswr_forward_orx, "voltage0", "vswr_forward_orx", true, "dB", 100);
-		update_lable_from_prms(tx1_vswr_forward_tx, "voltage0", "vswr_forward_tx", true, "dB", 100);
+		update_lable_from_prms(tx1_vswr_forward_orx, "voltage0", "vswr_forward_orx", true, "dBFS", 100);
+		update_lable_from_prms(tx1_vswr_forward_tx, "voltage0", "vswr_forward_tx", true, "dBFS", 100);
 		update_lable_from(tx1_vswr_reflected_gain, "voltage0", "vswr_reflected_gain", true, "dB", 100);
 		update_lable_from(tx1_vswr_reflected_gain_imag, "voltage0", "vswr_reflected_gain_imag", true, "dB", 100);
 		update_lable_from(tx1_vswr_reflected_gain_real, "voltage0", "vswr_reflected_gain_real", true, "dB", 100);
-		update_lable_from_prms(tx1_vswr_reflected_orx, "voltage0", "vswr_reflected_orx", true, "dB", 100);
-		update_lable_from_prms(tx1_vswr_reflected_tx, "voltage0", "vswr_reflected_tx", true, "dB", 100);
+		update_lable_from_prms(tx1_vswr_reflected_orx, "voltage0", "vswr_reflected_orx", true, "dBFS", 100);
+		update_lable_from_prms(tx1_vswr_reflected_tx, "voltage0", "vswr_reflected_tx", true, "dBFS", 100);
 	}
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(tx_widgets[tx2_vswr].widget))) {
@@ -484,13 +484,13 @@ static void vswr_update_labels(void)
 		update_lable_from(tx2_vswr_forward_gain, "voltage1", "vswr_forward_gain", true, "dB", 100);
 		update_lable_from(tx2_vswr_forward_gain_imag, "voltage1", "vswr_forward_gain_imag", true, "dB", 100);
 		update_lable_from(tx2_vswr_forward_gain_real, "voltage1", "vswr_forward_gain_real", true, "dB", 100);
-		update_lable_from_prms(tx2_vswr_forward_orx, "voltage1", "vswr_forward_orx", true, "dB", 100);
-		update_lable_from_prms(tx2_vswr_forward_tx, "voltage1", "vswr_forward_tx", true, "dB", 100);
+		update_lable_from_prms(tx2_vswr_forward_orx, "voltage1", "vswr_forward_orx", true, "dBFS", 100);
+		update_lable_from_prms(tx2_vswr_forward_tx, "voltage1", "vswr_forward_tx", true, "dBFS", 100);
 		update_lable_from(tx2_vswr_reflected_gain, "voltage1", "vswr_reflected_gain", true, "dB", 100);
 		update_lable_from(tx2_vswr_reflected_gain_imag, "voltage1", "vswr_reflected_gain_imag", true, "dB", 100);
 		update_lable_from(tx2_vswr_reflected_gain_real, "voltage1", "vswr_reflected_gain_real", true, "dB", 100);
-		update_lable_from_prms(tx2_vswr_reflected_orx, "voltage1", "vswr_reflected_orx", true, "dB", 100);
-		update_lable_from_prms(tx2_vswr_reflected_tx, "voltage1", "vswr_reflected_tx", true, "dB", 100);
+		update_lable_from_prms(tx2_vswr_reflected_orx, "voltage1", "vswr_reflected_orx", true, "dBFS", 100);
+		update_lable_from_prms(tx2_vswr_reflected_tx, "voltage1", "vswr_reflected_tx", true, "dBFS", 100);
 	}
 }
 
