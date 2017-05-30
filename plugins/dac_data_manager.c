@@ -111,6 +111,7 @@ struct dac_buffer {
 	GtkWidget *frame;
 	GtkWidget *buffer_fchooser_btn;
 	GtkWidget *tx_channels_view;
+	GtkWidget *scale;
 	GtkTextBuffer *load_status_buf;
 };
 
@@ -241,16 +242,17 @@ static unsigned short convert(double scale, float val, double offset)
 }
 
 static int analyse_wavefile(struct dac_data_manager *manager,
-		const char *file_name, char **buf, int *count, int tx_channels)
+		const char *file_name, char **buf, int *count, int tx_channels, double full_scale)
 {
 	int ret, rep;
 	unsigned int size, j, i = 0;
-	double max = 0.0, val[4], scale = 0.0;
-	double i1, q1, i2, q2;
+	double max = 0.0, val[8], scale = 0.0;
+	double i1, q1, i2, q2, i3, q3, i4, q4;
 	double offset;
 	char line[80];
 	mat_t *matfp;
 	matvar_t **matvars;
+
 
 	FILE *infile = fopen(file_name, "r");
 
@@ -272,13 +274,13 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			}
 			size = 0;
 			while (fgets(line, 80, infile)) {
-				ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
-						&val[0], &val[1], &val[2], &val[3]);
-				if (!(ret == 4 || ret == 2)) {
+				ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
+					     &val[0], &val[1], &val[2], &val[3], &val[4], &val[5], &val[6], &val[7]);
+				if (!(ret == 4 || ret == 2 || ret == 8)) {
 					if (line_is_empty(line))
 						continue;
 					fclose(infile);
-					fprintf(stderr, "ERROR: No 2 or 4 columns of data inside the text file\n");
+					fprintf(stderr, "ERROR: No 2, 4 or 8 columns of data inside the text file\n");
 					return WAVEFORM_TXT_INVALID_FORMAT;
 				}
 
@@ -291,10 +293,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 
 			size *= rep;
 			if (scale == 0.0)
-				scale = 32752.0 / max;
-
-			if (max > 32752.0)
-				fprintf(stderr, "ERROR: DAC Waveform Samples > +/- 2047.0\n");
+				scale = 32767.0 * full_scale / max;
 
 			while ((size % manager->alignment) != 0)
 				size *= 2;
@@ -314,13 +313,24 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 					size = 0;
 					i = 0;
 					while (fgets(line, 80, infile)) {
-						ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
-								&i1, &q1, &i2, &q2);
+						ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
+							     &i1, &q1, &i2, &q2, &i3, &q3, &i4, &q4);
 						if ((ret != 2 && ret != 4) && line_is_empty(line))
 							continue;
 
 						for (j = 0; j < (unsigned int) rep; j++) {
-							if (ret == 4 && tx_channels >= 4) {
+							if (ret == 8 && tx_channels == 8) {
+								sample[i++] = ((unsigned long long) convert(scale, q2, offset) << 48) |
+								((unsigned long long) convert(scale, i2, offset) << 32) |
+								((unsigned long long) convert(scale, q1, offset) << 16) |
+								((unsigned long long) convert(scale, i1, offset) << 0);
+
+								sample[i++] = ((unsigned long long) convert(scale, q4, offset) << 48) |
+								((unsigned long long) convert(scale, i4, offset) << 32) |
+								((unsigned long long) convert(scale, q3, offset) << 16) |
+								((unsigned long long) convert(scale, i3, offset) << 0);
+
+							} else if (ret == 4 && tx_channels >= 4) {
 								sample[i++] = ((unsigned long long) convert(scale, q2, offset) << 48) |
 								    ((unsigned long long) convert(scale, i2, offset) << 32) |
 								    ((unsigned long long) convert(scale, q1, offset) << 16) |
@@ -448,11 +458,8 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 
 			if (max <= 1.0)
 				max = 1.0;
-			scale = 32752.0 / max;
 
-			if (max > 32752.0) {
-				fprintf(stderr, "ERROR: DAC Waveform Samples > +/- 2047.0\n");
-			}
+			scale = 32767.0 * full_scale / max;
 
 			size = matvars[0]->dims[0];
 
@@ -554,12 +561,13 @@ static gboolean scale_spin_button_output_cb(GtkSpinButton *spin, gpointer data)
 {
 	GtkAdjustment *adj;
 	gchar *text;
-	int value;
+	float value;
 
 	adj = gtk_spin_button_get_adjustment(spin);
-	value = (int)gtk_adjustment_get_value(adj);
+	value = gtk_adjustment_get_value(adj);
 	if (value > gtk_adjustment_get_lower(adj))
-		text = g_strdup_printf("%d dB", value);
+		text = data ? g_strdup_printf("%1.1f dB", value) :
+			g_strdup_printf("%d dB", (int) value);
 	else
 		text = g_strdup_printf("-Inf dB");
 	gtk_entry_set_text(GTK_ENTRY(spin), text);
@@ -657,6 +665,7 @@ static void enable_dds(struct dac_data_manager *manager, bool on_off)
 static int process_dac_buffer_file (struct dac_data_manager *manager, const char *file_name, char **stat_msg)
 {
 	int ret, size = 0, s_size;
+	double scale;
 	/*
 	struct stat st;
 	*/
@@ -710,7 +719,9 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		size = fread(buf, 1, st.st_size, infile);
 		fclose(infile);
 	} else {
-		ret = analyse_wavefile(manager, file_name, &buf, &size, buffer_channels);
+
+		scale = db_full_scale_convert(gtk_spin_button_get_value(GTK_SPIN_BUTTON(manager->dac_buffer_module.scale)), false);
+		ret = analyse_wavefile(manager, file_name, &buf, &size, buffer_channels, scale);
 		if (ret < 0) {
 			if (stat_msg)
 				*stat_msg = g_strdup_printf("Error while parsing file: %s.", strerror(-ret));
@@ -1104,6 +1115,7 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	GtkWidget *fchooser_btn;
 	GtkWidget *fileload_btn;
 	GtkWidget *load_status_txt;
+	GtkWidget *scale;
 	GtkWidget *tx_channels_frame;
 	GtkTextBuffer *load_status_tb;
 
@@ -1118,12 +1130,18 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 
 	gtk_alignment_set_padding(GTK_ALIGNMENT(dacbuf_align), 5, 5, 5, 5);
 
-	fchooser_frame = frame_with_table_create("<b>File Selection</b>", 2, 2);
+	fchooser_frame = frame_with_table_create("<b>File Selection</b>", 3, 2);
 	tx_channels_frame = frame_with_table_create("<b>DAC Channels</b>", 1, 1);
 
 	gtk_text_view_set_editable(GTK_TEXT_VIEW(load_status_txt), false);
 
 	GtkWidget *align, *table;
+
+	d_buffer->scale = spin_button_create(-91.0, 0.0, 1.0, 2);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(d_buffer->scale), 0);
+	scale = gtk_label_new("Scale(dBFS):");
+	gtk_misc_set_alignment(GTK_MISC(scale), 0.0, 0.5);
+	gtk_spin_button_set_numeric(GTK_SPIN_BUTTON(d_buffer->scale), FALSE);
 
 	align = gtk_bin_get_child(GTK_BIN(fchooser_frame));
 	table = gtk_bin_get_child(GTK_BIN(align));
@@ -1136,6 +1154,11 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 		1, 2, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(table), load_status_txt,
 		0, 2, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
+
+	gtk_table_attach(GTK_TABLE(table), d_buffer->scale,
+			 1, 2, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
+	gtk_table_attach(GTK_TABLE(table), scale,
+			 0, 2, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
 
 	align = gtk_bin_get_child(GTK_BIN(tx_channels_frame));
 	table = gtk_bin_get_child(GTK_BIN(align));
@@ -1161,6 +1184,8 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 		G_CALLBACK(dac_buffer_config_file_set_cb), d_buffer);
 	g_signal_connect(fileload_btn, "clicked",
 		G_CALLBACK(waveform_load_button_clicked_cb), d_buffer);
+	g_signal_connect(d_buffer->scale, "output",
+			 G_CALLBACK(scale_spin_button_output_cb), (void*) 1);
 
 	gtk_widget_show(dacbuf_frame);
 

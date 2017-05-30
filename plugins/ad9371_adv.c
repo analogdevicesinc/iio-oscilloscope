@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016 Analog Devices, Inc.
+ * Copyright (C) 2016-2017 Analog Devices, Inc.
  *
  * Licensed under the GPL-2.
  *
@@ -59,6 +59,8 @@ enum ad9371adv_wtype {
 	COMBOBOX,
 	BUTTON,
 	CHECKBOX_MASK,
+	SPINBUTTON_S8,
+	SPINBUTTON_S16,
 };
 
 struct w_info {
@@ -424,7 +426,51 @@ static struct w_info attrs[] = {
 	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#10", NULL, 0},
 	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#9", NULL, 0},
 	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#8", NULL, 0},
+	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#15", NULL, 0},
+	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#16", NULL, 0},
+	{CHECKBOX_MASK, "adi,default-initial-calibrations-mask#17", NULL, 0},
 
+
+	{SPINBUTTON, "adi,dpd-damping", NULL, 0},
+	{SPINBUTTON, "adi,dpd-num-weights", NULL, 0},
+	{SPINBUTTON, "adi,dpd-model-version", NULL, 0},
+	{CHECKBOX, "adi,dpd-high-power-model-update", NULL, 0},
+	{SPINBUTTON, "adi,dpd-model-prior-weight", NULL, 0},
+	{CHECKBOX, "adi,dpd-robust-modeling", NULL, 0},
+	{SPINBUTTON, "adi,dpd-samples", NULL, 0},
+	{SPINBUTTON, "adi,dpd-outlier-threshold", NULL, 0},
+	{SPINBUTTON, "adi,dpd-additional-delay-offset", NULL, 0},
+	{SPINBUTTON, "adi,dpd-path-delay-pn-seq-level", NULL, 0},
+	{SPINBUTTON_S8, "adi,dpd-weights0-real", NULL, 0},
+	{SPINBUTTON_S8, "adi,dpd-weights0-imag", NULL, 0},
+	{SPINBUTTON_S8, "adi,dpd-weights1-real", NULL, 0},
+	{SPINBUTTON_S8, "adi,dpd-weights1-imag", NULL, 0},
+	{SPINBUTTON_S8, "adi,dpd-weights2-real", NULL, 0},
+	{SPINBUTTON_S8, "adi,dpd-weights2-imag", NULL, 0},
+
+	{SPINBUTTON_S16, "adi,clgc-tx1-desired-gain", NULL, 0},
+	{SPINBUTTON_S16, "adi,clgc-tx2-desired-gain", NULL, 0},
+	{SPINBUTTON, "adi,clgc-tx1-atten-limit", NULL, 0},
+	{SPINBUTTON, "adi,clgc-tx2-atten-limit", NULL, 0},
+	{SPINBUTTON, "adi,clgc-tx1-control-ratio", NULL, 0},
+	{SPINBUTTON, "adi,clgc-tx2-control-ratio", NULL, 0},
+	{CHECKBOX, "adi,clgc-allow-tx1-atten-updates", NULL, 0},
+	{CHECKBOX, "adi,clgc-allow-tx2-atten-updates", NULL, 0},
+	{SPINBUTTON_S16, "adi,clgc-additional-delay-offset", NULL, 0},
+	{SPINBUTTON, "adi,clgc-path-delay-pn-seq-level", NULL, 0},
+	{SPINBUTTON, "adi,clgc-tx1-rel-threshold", NULL, 0},
+	{SPINBUTTON, "adi,clgc-tx2-rel-threshold", NULL, 0},
+	{CHECKBOX, "adi,clgc-tx1-rel-threshold-en", NULL, 0},
+	{CHECKBOX, "adi,clgc-tx2-rel-threshold-en", NULL, 0},
+
+	{SPINBUTTON_S16, "adi,vswr-additional-delay-offset", NULL, 0},
+	{SPINBUTTON, "adi,vswr-path-delay-pn-seq-level", NULL, 0},
+	{SPINBUTTON, "adi,vswr-tx1-vswr-switch-gpio3p3-pin", NULL, 0},
+	{SPINBUTTON, "adi,vswr-tx2-vswr-switch-gpio3p3-pin", NULL, 0},
+	{CHECKBOX, "adi,vswr-tx1-vswr-switch-polarity", NULL, 0},
+	{CHECKBOX, "adi,vswr-tx2-vswr-switch-polarity", NULL, 0},
+	{SPINBUTTON, "adi,vswr-tx1-vswr-switch-delay_us", NULL, 0},
+	{SPINBUTTON, "adi,vswr-tx2-vswr-switch-delay_us", NULL, 0},
 
 	{COMBOBOX, "bist_prbs_rx", (unsigned char[]){0, 1, 2, 3}, 4},
 	{COMBOBOX, "bist_prbs_obs", (unsigned char[]){0, 1, 2, 3}, 4},
@@ -719,6 +765,47 @@ static const char *ad9371_adv_sr_attribs[] = {
 	"debug.ad9371-phy.adi,aux-dac-vref9",
 
 	"debug.adi,default-initial-calibrations-mask",
+
+	"debug.ad9371-phy.adi,dpd-damping",
+	"debug.ad9371-phy.adi,dpd-num-weights",
+	"debug.ad9371-phy.adi,dpd-model-version",
+	"debug.ad9371-phy.adi,dpd-high-power-model-update",
+	"debug.ad9371-phy.adi,dpd-model-prior-weight",
+	"debug.ad9371-phy.adi,dpd-robust-modeling",
+	"debug.ad9371-phy.adi,dpd-samples",
+	"debug.ad9371-phy.adi,dpd-outlier-threshold",
+	"debug.ad9371-phy.adi,dpd-additional-delay-offset",
+	"debug.ad9371-phy.adi,dpd-path-delay-pn-seq-level",
+	"debug.ad9371-phy.adi,dpd-weights0-real",
+	"debug.ad9371-phy.adi,dpd-weights0-imag",
+	"debug.ad9371-phy.adi,dpd-weights1-real",
+	"debug.ad9371-phy.adi,dpd-weights1-imag",
+	"debug.ad9371-phy.adi,dpd-weights2-real",
+	"debug.ad9371-phy.adi,dpd-weights2-imag",
+
+	"debug.ad9371-phy.adi,clgc-tx1-desired-gain",
+	"debug.ad9371-phy.adi,clgc-tx2-desired-gain",
+	"debug.ad9371-phy.adi,clgc-tx1-atten-limit",
+	"debug.ad9371-phy.adi,clgc-tx2-atten-limit",
+	"debug.ad9371-phy.adi,clgc-tx1-control-ratio",
+	"debug.ad9371-phy.adi,clgc-tx2-control-ratio",
+	"debug.ad9371-phy.adi,clgc-allow-tx1-atten-updates",
+	"debug.ad9371-phy.adi,clgc-allow-tx2-atten-updates",
+	"debug.ad9371-phy.adi,clgc-additional-delay-offset",
+	"debug.ad9371-phy.adi,clgc-path-delay-pn-seq-level",
+	"debug.ad9371-phy.adi,clgc-tx1-rel-threshold",
+	"debug.ad9371-phy.adi,clgc-tx2-rel-threshold",
+	"debug.ad9371-phy.adi,clgc-tx1-rel-threshold-en",
+	"debug.ad9371-phy.adi,clgc-tx2-rel-threshold-en",
+
+	"debug.ad9371-phy.adi,vswr-additional-delay-offset",
+	"debug.ad9371-phy.adi,vswr-path-delay-pn-seq-level",
+	"debug.ad9371-phy.adi,vswr-tx1-vswr-switch-gpio3p3-pin",
+	"debug.ad9371-phy.adi,vswr-tx2-vswr-switch-gpio3p3-pin",
+	"debug.ad9371-phy.adi,vswr-tx1-vswr-switch-polarity",
+	"debug.ad9371-phy.adi,vswr-tx2-vswr-switch-polarity",
+	"debug.ad9371-phy.adi,vswr-tx1-vswr-switch-delay_us",
+	"debug.ad9371-phy.adi,vswr-tx2-vswr-switch-delay_us",
 };
 
 
@@ -822,6 +909,8 @@ static char * set_widget_value(GtkWidget *widget, struct w_info *item, long long
 {
 	char str[80];
 	int bit, ret, i;
+	short val_s16;
+	char val_s8;
 
 	switch (item->type) {
 		case CHECKBOX:
@@ -835,6 +924,14 @@ static char * set_widget_value(GtkWidget *widget, struct w_info *item, long long
 			}
 
 			gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), val);
+			return "value-changed";
+		case SPINBUTTON_S8:
+			val_s8 = (char)val;
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), val_s8);
+			return "value-changed";
+		case SPINBUTTON_S16:
+			val_s16 = (short)val;
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), val_s16);
 			return "value-changed";
 		case COMBOBOX:
 			for (i = 0; i < item->lut_len; i++)
@@ -999,12 +1096,22 @@ static GtkWidget * ad9371adv_init(GtkWidget *notebook, const char *ini_fn)
 		load_profile(ini_fn);
 
 	builder = gtk_builder_new();
-	nbook = GTK_NOTEBOOK(notebook);
 
 	if (!gtk_builder_add_from_file(builder, "ad9371_adv.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "ad9371_adv.glade", NULL);
 
 	ad9371adv_panel = GTK_WIDGET(gtk_builder_get_object(builder, "ad9371adv_panel"));
+	nbook = GTK_NOTEBOOK(gtk_builder_get_object(builder, "notebook"));
+
+	/* DPD, CLGC and VSWR is AD9375 only */
+	if (iio_device_find_debug_attr(dev, "adi,dpd-model-version") == NULL) {
+		gtk_widget_hide(gtk_notebook_get_nth_page(nbook, 3));
+		gtk_widget_hide(gtk_notebook_get_nth_page(nbook, 4));
+		gtk_widget_hide(gtk_notebook_get_nth_page(nbook, 5));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "adi,default-initial-calibrations-mask#15")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "adi,default-initial-calibrations-mask#16")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "adi,default-initial-calibrations-mask#17")));
+	}
 
 	connect_widgets(builder);
 

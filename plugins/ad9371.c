@@ -58,9 +58,11 @@ static struct dac_data_manager *dac_tx_manager;
 static bool is_2rx_2tx;
 static bool has_udc_driver;
 static bool can_update_widgets;
+static bool has_dpd;
 
 static const gdouble mhz_scale = 1000000.0;
 static const gdouble inv_scale = -1.0;
+static const gdouble scale100 = 100.0;
 
 static const char *freq_name;
 
@@ -72,12 +74,13 @@ struct tuning_param
 	int fine;
 };
 
-static struct iio_widget widgets[100];
+static struct iio_widget widgets[200];
 static struct iio_widget *glb_widgets, *tx_widgets, *rx_widgets, *obsrx_widgets;
-static unsigned int rx1_gain, rx2_gain, obs_gain;
+static unsigned int rx1_gain, rx2_gain, obs_gain, tx1_clgc_desired_gain, tx2_clgc_desired_gain;
 static unsigned int num_glb, num_tx, num_rx, num_obsrx;
 static unsigned int rx_lo, tx_lo, sn_lo;
 static unsigned int rx_sample_freq, tx_sample_freq;
+static unsigned int tx1_dpd, tx2_dpd, tx1_clgc, tx2_clgc, tx1_vswr, tx2_vswr;;
 static double updn_freq_span;
 static double updn_freq_mix_sign;
 static char last_profile[PATH_MAX];
@@ -132,9 +135,113 @@ static GtkNotebook *nbook;
 static GtkWidget *ad9371_panel;
 static gboolean plugin_detached;
 
+static GtkWidget *tx1_dpd_track_count;
+static GtkWidget *tx1_dpd_model_error;
+static GtkWidget *tx1_dpd_external_path_delay;
+static GtkWidget *tx1_dpd_status;
+
+static GtkWidget *tx2_dpd_track_count;
+static GtkWidget *tx2_dpd_model_error;
+static GtkWidget *tx2_dpd_external_path_delay;
+static GtkWidget *tx2_dpd_status;
+
+static GtkWidget *tx1_clgc_track_count;
+static GtkWidget *tx1_clgc_status;
+static GtkWidget *tx1_clgc_current_gain;
+static GtkWidget *tx1_clgc_orx_gain;
+static GtkWidget *tx1_clgc_tx_gain;
+static GtkWidget *tx1_clgc_tx_rms;
+
+static GtkWidget *tx2_clgc_track_count;
+static GtkWidget *tx2_clgc_status;
+static GtkWidget *tx2_clgc_current_gain;
+static GtkWidget *tx2_clgc_orx_gain;
+static GtkWidget *tx2_clgc_tx_gain;
+static GtkWidget *tx2_clgc_tx_rms;
+
+static GtkWidget *tx1_vswr_track_count;
+static GtkWidget *tx1_vswr_status;
+static GtkWidget *tx1_vswr_forward_gain;
+static GtkWidget *tx1_vswr_forward_gain_imag;
+static GtkWidget *tx1_vswr_forward_gain_real;
+static GtkWidget *tx1_vswr_forward_orx;
+static GtkWidget *tx1_vswr_forward_tx;
+static GtkWidget *tx1_vswr_reflected_gain;
+static GtkWidget *tx1_vswr_reflected_gain_imag;
+static GtkWidget *tx1_vswr_reflected_gain_real;
+static GtkWidget *tx1_vswr_reflected_orx;
+static GtkWidget *tx1_vswr_reflected_tx;
+
+static GtkWidget *tx2_vswr_track_count;
+static GtkWidget *tx2_vswr_status;
+static GtkWidget *tx2_vswr_forward_gain;
+static GtkWidget *tx2_vswr_forward_gain_imag;
+static GtkWidget *tx2_vswr_forward_gain_real;
+static GtkWidget *tx2_vswr_forward_orx;
+static GtkWidget *tx2_vswr_forward_tx;
+static GtkWidget *tx2_vswr_reflected_gain;
+static GtkWidget *tx2_vswr_reflected_gain_imag;
+static GtkWidget *tx2_vswr_reflected_gain_real;
+static GtkWidget *tx2_vswr_reflected_orx;
+static GtkWidget *tx2_vswr_reflected_tx;
+
+
+const char *clgc_status_strings[] = {
+	"No Error",
+	"Error: TX is disabled",
+	"Error: ORx is disabled",
+	"Error: Loopback switch is closed",
+	"Error: Data measurement aborted during capture",
+	"Error: No initial calibration was done",
+	"Error: Path delay not setup",
+	"Error: No apply control is possible",
+	"Error: ontrol value is out of range",
+	"Error: CLGC feature is disabled",
+	"Error: TX attenuation is capped",
+	"Error: Gain measurement",
+	"Error: No GPIO configured in single ORx configuration",
+	"Error: Tx is not observable with any of the ORx Channels",
+};
+
+const char *dpd_status_strings[] = {
+	"No Error",
+	"Error: ORx disabled",
+	"Error: Tx disabled",
+	"Error: DPD initialization not run",
+	"Error: Path delay not setup",
+	"Error: ORx signal too low",
+	"Error: ORx signal saturated",
+	"Error: Tx signal too low",
+	"Error: Tx signal saturated",
+	"Error: Model error high",
+	"Error: AM AM outliers",
+	"Error: Invalid Tx profile",
+	"Error: ORx QEC Disabled",
+};
+
+const char *vswr_status_strings[] = {
+	"No Error",
+	"Error: TX disabled",
+	"Error: ORx disabled",
+	"Error: Loopback switch is closed",
+	"Error: No initial calibration was done",
+	"Error: Path delay not setup",
+	"Error: Data capture aborted",
+	"Error: VSWR is disabled",
+	"Error: Entering Cal",
+	"Error: No GPIO configured in single ORx configuration",
+	"Error: Tx is not observable with any of the ORx Channels",
+};
+
 static const char *ad9371_sr_attribs[] = {
 	PHY_DEVICE".ensm_mode",
-	PHY_DEVICE".ensm_mode_available",
+	PHY_DEVICE".calibrate_dpd_en",
+	PHY_DEVICE".calibrate_clgc_en",
+	PHY_DEVICE".calibrate_rx_qec_en",
+	PHY_DEVICE".calibrate_tx_qec_en",
+	PHY_DEVICE".calibrate_tx_lol_en",
+	PHY_DEVICE".calibrate_tx_lol_ext_en",
+	PHY_DEVICE".calibrate_vswr_en",
 	PHY_DEVICE".in_voltage0_gain_control_mode",
 	PHY_DEVICE".in_voltage0_hardwaregain",
 	PHY_DEVICE".in_voltage0_quadrature_tracking_en",
@@ -143,11 +250,9 @@ static const char *ad9371_sr_attribs[] = {
 	PHY_DEVICE".in_voltage1_hardwaregain",
 	PHY_DEVICE".in_voltage1_temp_comp_gain",
 	PHY_DEVICE".in_voltage1_quadrature_tracking_en",
-//	PHY_DEVICE".in_voltage2_gain_control_mode",
 	PHY_DEVICE".in_voltage2_hardwaregain",
 	PHY_DEVICE".in_voltage2_rf_port_select",
 	PHY_DEVICE".in_voltage2_temp_comp_gain",
-	PHY_DEVICE".in_voltage_gain_control_mode_available",
 	PHY_DEVICE".in_voltage_rf_port_select_available",
 	PHY_DEVICE".out_altvoltage0_RX_LO_frequency",
 	PHY_DEVICE".out_altvoltage1_TX_LO_frequency",
@@ -210,8 +315,26 @@ static const char * ad9371_driver_attribs[] = {
 
 static void profile_update(void);
 
+static void fixup_label(GtkLabel *label, const char *search, const char *replace)
+{
+	const char *text = gtk_label_get_label(label);
+	char *line, *new;
+
+	if (text == NULL)
+		return;
+
+	line = g_strdup(text);
+
+	new = g_strstr_len(line, strlen(line), search);
+
+	new[0] = replace[0];
+
+	gtk_label_set_markup(label, line);
+	g_free(line);
+}
+
 static void update_lable_from(GtkWidget *label, const char *channel,
-			      const char *attribute, bool output, const char *unit)
+			      const char *attribute, bool output, const char *unit, int scale)
 {
 	char buf[80];
 	long long val = 0;
@@ -220,7 +343,14 @@ static void update_lable_from(GtkWidget *label, const char *channel,
 			iio_device_find_channel(dev, channel, output),
 			attribute, &val);
 
-	snprintf(buf, sizeof(buf), "%.3f %s", (float)val / 1000000, unit);
+	if (scale == 1)
+		snprintf(buf, sizeof(buf), "%lld %s", val, unit);
+	else if (scale > 0 && scale <= 10)
+		snprintf(buf, sizeof(buf), "%.1f %s", (float)val / scale, unit);
+	else if (scale > 10)
+		snprintf(buf, sizeof(buf), "%.2f %s", (float)val / scale, unit);
+	else if (scale > 100)
+		snprintf(buf, sizeof(buf), "%.3f %s", (float)val / scale, unit);
 
 	if (ret >= 0)
 		gtk_label_set_text(GTK_LABEL(label), buf);
@@ -229,15 +359,157 @@ static void update_lable_from(GtkWidget *label, const char *channel,
 
 }
 
+static void update_lable_from_prms(GtkWidget *label, const char *channel,
+			      const char *attribute, bool output, const char *unit, int scale)
+{
+	char buf[80];
+	long long val = 0;
+
+	int ret = iio_channel_attr_read_longlong(
+		iio_device_find_channel(dev, channel, output),
+						 attribute, &val);
+
+	snprintf(buf, sizeof(buf), "%.2f %s", (float)val / scale + 21, unit);
+
+	if (ret >= 0)
+		gtk_label_set_text(GTK_LABEL(label), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(label), "<error>");
+
+}
+
+static void update_dpd_status_from(GtkWidget *label, const char *channel,
+			      const char *attribute)
+{
+	long long val = 0;
+
+	int ret = iio_channel_attr_read_longlong(
+		iio_device_find_channel(dev, channel, true),
+						 attribute, &val);
+
+	if (ret >= 0)
+		gtk_label_set_text(GTK_LABEL(label), dpd_status_strings[val]);
+	else
+		gtk_label_set_text(GTK_LABEL(label), "<error>");
+
+}
+
+static void update_vswr_status_from(GtkWidget *label, const char *channel,
+				   const char *attribute)
+{
+	long long val = 0;
+
+	int ret = iio_channel_attr_read_longlong(
+		iio_device_find_channel(dev, channel, true),
+						 attribute, &val);
+
+	if (ret >= 0)
+		gtk_label_set_text(GTK_LABEL(label), vswr_status_strings[val]);
+	else
+		gtk_label_set_text(GTK_LABEL(label), "<error>");
+
+}
+
+static void update_clgc_status_from(GtkWidget *label, const char *channel,
+				    const char *attribute)
+{
+	long long val = 0;
+
+	int ret = iio_channel_attr_read_longlong(
+		iio_device_find_channel(dev, channel, true),
+						 attribute, &val);
+
+	if (ret >= 0)
+		gtk_label_set_text(GTK_LABEL(label), clgc_status_strings[val]);
+	else
+		gtk_label_set_text(GTK_LABEL(label), "<error>");
+
+}
+
 static void profile_update_labels(void)
 {
-	update_lable_from(label_rf_bandwidth_rx, "voltage0", "rf_bandwidth", false, "MHz");
-	update_lable_from(label_rf_bandwidth_obs, "voltage2", "rf_bandwidth", false, "MHz");
-	update_lable_from(label_rf_bandwidth_tx, "voltage0", "rf_bandwidth", true, "MHz");
+	update_lable_from(label_rf_bandwidth_rx, "voltage0", "rf_bandwidth", false, "MHz", 1000000);
+	update_lable_from(label_rf_bandwidth_obs, "voltage2", "rf_bandwidth", false, "MHz", 1000000);
+	update_lable_from(label_rf_bandwidth_tx, "voltage0", "rf_bandwidth", true, "MHz", 1000000);
 
-	update_lable_from(label_sampling_freq_rx, "voltage0", "sampling_frequency", false, "MSPS");
-	update_lable_from(label_sampling_freq_obs, "voltage2", "sampling_frequency", false, "MSPS");
-	update_lable_from(label_sampling_freq_tx, "voltage0", "sampling_frequency", true, "MSPS");
+	update_lable_from(label_sampling_freq_rx, "voltage0", "sampling_frequency", false, "MSPS", 1000000);
+	update_lable_from(label_sampling_freq_obs, "voltage2", "sampling_frequency", false, "MSPS", 1000000);
+	update_lable_from(label_sampling_freq_tx, "voltage0", "sampling_frequency", true, "MSPS", 1000000);
+}
+
+static void dpd_update_labels(void)
+{
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(tx_widgets[tx1_dpd].widget))) {
+		update_lable_from(tx1_dpd_track_count, "voltage0", "dpd_track_count", true, "", 1);
+		update_lable_from(tx1_dpd_model_error, "voltage0", "dpd_model_error", true, "%", 10);
+		update_lable_from(tx1_dpd_external_path_delay, "voltage0", "dpd_external_path_delay", true, "", 16);
+		update_dpd_status_from(tx1_dpd_status, "voltage0", "dpd_status");
+	}
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(tx_widgets[tx2_dpd].widget))) {
+		update_lable_from(tx2_dpd_track_count, "voltage1", "dpd_track_count", true, "", 1);
+		update_lable_from(tx2_dpd_model_error, "voltage1", "dpd_model_error", true, "%", 10);
+		update_lable_from(tx2_dpd_external_path_delay, "voltage1", "dpd_external_path_delay", true, "", 16);
+		update_dpd_status_from(tx2_dpd_status, "voltage1", "dpd_status");
+	}
+}
+
+static void clgc_update_labels(void)
+{
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(tx_widgets[tx1_clgc].widget))) {
+		iio_widget_update(&tx_widgets[tx1_clgc_desired_gain]);
+		update_clgc_status_from(tx1_clgc_status, "voltage0", "clgc_status");
+		update_lable_from(tx1_clgc_track_count, "voltage0", "clgc_track_count", true, "", 1);
+		update_lable_from(tx1_clgc_current_gain, "voltage0", "clgc_current_gain", true, "dB", 100);
+		update_lable_from(tx1_clgc_orx_gain, "voltage0", "clgc_orx_rms", true, "dBFS", 100);
+		update_lable_from(tx1_clgc_tx_gain, "voltage0", "clgc_tx_gain", true, "dB", 20);
+		update_lable_from(tx1_clgc_tx_rms, "voltage0", "clgc_tx_rms", true, "dBFS", 100);
+	}
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(tx_widgets[tx2_clgc].widget))) {
+		iio_widget_update(&tx_widgets[tx2_clgc_desired_gain]);
+		update_clgc_status_from(tx2_clgc_status, "voltage1", "clgc_status");
+		update_lable_from(tx2_clgc_track_count, "voltage1", "clgc_track_count", true, "", 1);
+		update_lable_from(tx2_clgc_current_gain, "voltage1", "clgc_current_gain", true, "dB", 100);
+		update_lable_from(tx2_clgc_orx_gain, "voltage1", "clgc_orx_rms", true, "dBFS", 100);
+		update_lable_from(tx2_clgc_tx_gain, "voltage1", "clgc_tx_gain", true, "dB", 20);
+		update_lable_from(tx2_clgc_tx_rms, "voltage1", "clgc_tx_rms", true, "dBFS", 100);
+	}
+}
+
+static void vswr_update_labels(void)
+{
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(tx_widgets[tx1_vswr].widget))) {
+		update_vswr_status_from(tx1_vswr_status, "voltage0", "vswr_status");
+		update_lable_from(tx1_vswr_track_count, "voltage0", "vswr_track_count", true, "", 1);
+		update_lable_from(tx1_vswr_forward_gain, "voltage0", "vswr_forward_gain", true, "dB", 100);
+		update_lable_from(tx1_vswr_forward_gain_imag, "voltage0", "vswr_forward_gain_imag", true, "dB", 100);
+		update_lable_from(tx1_vswr_forward_gain_real, "voltage0", "vswr_forward_gain_real", true, "dB", 100);
+		update_lable_from_prms(tx1_vswr_forward_orx, "voltage0", "vswr_forward_orx", true, "dBFS", 100);
+		update_lable_from_prms(tx1_vswr_forward_tx, "voltage0", "vswr_forward_tx", true, "dBFS", 100);
+		update_lable_from(tx1_vswr_reflected_gain, "voltage0", "vswr_reflected_gain", true, "dB", 100);
+		update_lable_from(tx1_vswr_reflected_gain_imag, "voltage0", "vswr_reflected_gain_imag", true, "dB", 100);
+		update_lable_from(tx1_vswr_reflected_gain_real, "voltage0", "vswr_reflected_gain_real", true, "dB", 100);
+		update_lable_from_prms(tx1_vswr_reflected_orx, "voltage0", "vswr_reflected_orx", true, "dBFS", 100);
+		update_lable_from_prms(tx1_vswr_reflected_tx, "voltage0", "vswr_reflected_tx", true, "dBFS", 100);
+	}
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(tx_widgets[tx2_vswr].widget))) {
+		update_vswr_status_from(tx2_vswr_status, "voltage1", "vswr_status");
+		update_lable_from(tx2_vswr_track_count, "voltage1", "vswr_track_count", true, "", 1);
+		update_lable_from(tx2_vswr_forward_gain, "voltage1", "vswr_forward_gain", true, "dB", 100);
+		update_lable_from(tx2_vswr_forward_gain_imag, "voltage1", "vswr_forward_gain_imag", true, "dB", 100);
+		update_lable_from(tx2_vswr_forward_gain_real, "voltage1", "vswr_forward_gain_real", true, "dB", 100);
+		update_lable_from_prms(tx2_vswr_forward_orx, "voltage1", "vswr_forward_orx", true, "dBFS", 100);
+		update_lable_from_prms(tx2_vswr_forward_tx, "voltage1", "vswr_forward_tx", true, "dBFS", 100);
+		update_lable_from(tx2_vswr_reflected_gain, "voltage1", "vswr_reflected_gain", true, "dB", 100);
+		update_lable_from(tx2_vswr_reflected_gain_imag, "voltage1", "vswr_reflected_gain_imag", true, "dB", 100);
+		update_lable_from(tx2_vswr_reflected_gain_real, "voltage1", "vswr_reflected_gain_real", true, "dB", 100);
+		update_lable_from_prms(tx2_vswr_reflected_orx, "voltage1", "vswr_reflected_orx", true, "dBFS", 100);
+		update_lable_from_prms(tx2_vswr_reflected_tx, "voltage1", "vswr_reflected_tx", true, "dBFS", 100);
+	}
 }
 
 int load_myk_profile(const char *file_name,
@@ -439,6 +711,8 @@ static void rssi_update_labels(void)
 	if (is_2rx_2tx) {
 		rssi_update_label(rx2_rssi, "voltage1", false);
 	}
+
+	rssi_update_label(obs_rssi, "voltage2", false);
 }
 
 static gboolean update_display(void)
@@ -452,6 +726,12 @@ static gboolean update_display(void)
 			iio_widget_update(&rx_widgets[rx1_gain]);
 			if (is_2rx_2tx)
 				iio_widget_update(&rx_widgets[rx2_gain]);
+		}
+
+		if (has_dpd) {
+			dpd_update_labels();
+			clgc_update_labels();
+			vswr_update_labels();
 		}
 	}
 
@@ -648,7 +928,6 @@ static void profile_update(void)
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
 	update_widgets();
-
 	profile_update();
 	rx_freq_info_update();
 	glb_settings_update_labels();
@@ -1053,6 +1332,38 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 		dev, NULL, "ensm_mode", "ensm_mode_available",
 		ensm_mode_available, NULL);
 
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_dpd_en", builder,
+				     "calibrate_dpd_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_clgc_en", builder,
+				     "calibrate_clgc_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_vswr_en", builder,
+				     "calibrate_vswr_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_rx_qec_en", builder,
+				     "calibrate_rx_qec_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_tx_qec_en", builder,
+				     "calibrate_tx_qec_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_tx_lol_en", builder,
+				     "calibrate_tx_lol_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate_tx_lol_ext_en", builder,
+				     "calibrate_tx_lol_ext_en", 0);
+
+	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+					    dev, NULL, "calibrate", builder,
+				     "calibrate", 0);
+
 	rx_widgets = &glb_widgets[num_glb];
 
 	/* Receive Chain */
@@ -1061,13 +1372,6 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 		dev, ch0, "gain_control_mode",
 		"gain_control_mode_available",
 		rx_gain_control_modes_rx1, NULL);
-
-// 	if (is_2rx_2tx)
-// 		iio_combo_box_init(&rx_widgets[num_rx++],
-// 			dev, ch1, "gain_control_mode",
-// 			"gain_control_mode_available",
-// 			rx_gain_control_modes_rx2, NULL);
-
 
 	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
 		dev, ch0, "temp_comp_gain", builder,
@@ -1204,6 +1508,132 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 			"tx2_lo_leakage_tracking_en", 0);
 	}
 
+	has_dpd = !!iio_channel_find_attr(ch0, "dpd_tracking_en");
+
+	if (has_dpd) {
+		/* DPD */
+		tx1_dpd = num_tx;
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "dpd_tracking_en", builder,
+					"out_voltage0_dpd_tracking_en", 0);
+
+		tx2_dpd = num_tx;
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "dpd_tracking_en", builder,
+					"out_voltage1_dpd_tracking_en", 0);
+
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "dpd_actuator_en", builder,
+					"out_voltage0_dpd_actuator_en", 0);
+
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "dpd_actuator_en", builder,
+					"out_voltage1_dpd_actuator_en", 0);
+
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "dpd_reset_en", builder,
+					"out_voltage0_dpd_reset_en", 0);
+
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "dpd_reset_en", builder,
+					"out_voltage1_dpd_reset_en", 0);
+
+		tx1_dpd_track_count = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_dpd_track_count"));
+		tx1_dpd_model_error = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_dpd_model_error"));
+		tx1_dpd_external_path_delay = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_dpd_external_path_delay"));
+		tx1_dpd_status = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_dpd_status"));
+
+		tx2_dpd_track_count = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_dpd_track_count"));
+		tx2_dpd_model_error = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_dpd_model_error"));
+		tx2_dpd_external_path_delay = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_dpd_external_path_delay"));
+		tx2_dpd_status = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_dpd_status"));
+
+
+		/* CLGC */
+
+		tx1_clgc = num_tx;
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "clgc_tracking_en", builder,
+					"out_voltage0_clgc_tracking_en", 0);
+		tx2_clgc = num_tx;
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "clgc_tracking_en", builder,
+					"out_voltage1_clgc_tracking_en", 0);
+
+		tx1_clgc_desired_gain = num_tx;
+		iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "clgc_desired_gain", builder,
+					"out_voltage0_clgc_desired_gain", &scale100);
+
+		tx2_clgc_desired_gain = num_tx;
+		iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "clgc_desired_gain", builder,
+				    "out_voltage1_clgc_desired_gain", &scale100);
+
+		tx1_clgc_track_count = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_clgc_track_count"));
+		tx1_clgc_status = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_clgc_status"));
+		tx1_clgc_current_gain = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_clgc_current_gain"));
+		tx1_clgc_orx_gain = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_clgc_orx_rms"));
+		tx1_clgc_tx_gain = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_clgc_tx_gain"));
+		tx1_clgc_tx_rms = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_clgc_tx_rms"));
+
+		tx2_clgc_track_count = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_clgc_track_count"));
+		tx2_clgc_status = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_clgc_status"));
+		tx2_clgc_current_gain = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_clgc_current_gain"));
+		tx2_clgc_orx_gain = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_clgc_orx_rms"));
+		tx2_clgc_tx_gain = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_clgc_tx_gain"));
+		tx2_clgc_tx_rms = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_clgc_tx_rms"));
+
+		/* VSWR */
+		tx1_vswr = num_tx;
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "vswr_tracking_en", builder,
+					"out_voltage0_vswr_tracking_en", 0);
+
+		tx2_vswr = num_tx;
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "vswr_tracking_en", builder,
+					"out_voltage1_vswr_tracking_en", 0);
+
+		tx1_vswr_track_count = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_track_count"));
+		tx1_vswr_status = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_status"));
+		tx1_vswr_forward_gain = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_forward_gain"));
+		tx1_vswr_forward_gain_imag = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_forward_gain_imag"));
+		tx1_vswr_forward_gain_real = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_forward_gain_real"));
+		tx1_vswr_forward_orx = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_forward_orx"));
+		tx1_vswr_forward_tx = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_forward_tx"));
+		tx1_vswr_reflected_gain = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_reflected_gain"));
+		tx1_vswr_reflected_gain_imag = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_reflected_gain_imag"));
+		tx1_vswr_reflected_gain_real = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_reflected_gain_real"));
+		tx1_vswr_reflected_orx = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_reflected_orx"));
+		tx1_vswr_reflected_tx = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_vswr_reflected_tx"));
+
+		tx2_vswr_track_count = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_track_count"));
+		tx2_vswr_status = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_status"));
+		tx2_vswr_forward_gain = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_forward_gain"));
+		tx2_vswr_forward_gain_imag = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_forward_gain_imag"));
+		tx2_vswr_forward_gain_real = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_forward_gain_real"));
+		tx2_vswr_forward_orx = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_forward_orx"));
+		tx2_vswr_forward_tx = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_forward_tx"));
+		tx2_vswr_reflected_gain = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_reflected_gain"));
+		tx2_vswr_reflected_gain_imag = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_reflected_gain_imag"));
+		tx2_vswr_reflected_gain_real = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_reflected_gain_real"));
+		tx2_vswr_reflected_orx = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_reflected_orx"));
+		tx2_vswr_reflected_tx = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_reflected_tx"));
+
+		fixup_label(GTK_LABEL(gtk_builder_get_object(builder, "label_global_settings")), "1", "5");
+		fixup_label(GTK_LABEL(gtk_builder_get_object(builder, "label_receive_chain")), "1", "5");
+		fixup_label(GTK_LABEL(gtk_builder_get_object(builder, "label_transmit_chain")), "1", "5");
+		fixup_label(GTK_LABEL(gtk_builder_get_object(builder, "label_obs_chain")), "1", "5");
+	} else {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_dpd")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_clgc")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_vswr")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "calibrate_dpd_en")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "calibrate_clgc_en")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "calibrate_vswr_en")));
+	}
+
 	tx_lo = num_tx;
 	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
 
@@ -1280,8 +1710,7 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 
 	g_signal_connect_after(rx_gain_control_modes_rx1, "changed",
 		G_CALLBACK(glb_settings_update_labels), NULL);
-// 	g_signal_connect_after(rx_gain_control_modes_rx2, "changed",
-// 		G_CALLBACK(glb_settings_update_labels), NULL);
+
 	g_signal_connect_after(obs_gain_control_modes, "changed",
 		G_CALLBACK(glb_settings_update_labels), NULL);
 
