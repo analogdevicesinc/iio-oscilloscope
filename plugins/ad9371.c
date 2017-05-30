@@ -315,6 +315,24 @@ static const char * ad9371_driver_attribs[] = {
 
 static void profile_update(void);
 
+static void fixup_label(GtkLabel *label, const char *search, const char *replace)
+{
+	const char *text = gtk_label_get_label(label);
+	char *line, *new;
+
+	if (text == NULL)
+		return;
+
+	line = g_strdup(text);
+
+	new = g_strstr_len(line, strlen(line), search);
+
+	new[0] = replace[0];
+
+	gtk_label_set_markup(label, line);
+	g_free(line);
+}
+
 static void update_lable_from(GtkWidget *label, const char *channel,
 			      const char *attribute, bool output, const char *unit, int scale)
 {
@@ -1602,6 +1620,11 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 		tx2_vswr_reflected_gain_real = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_reflected_gain_real"));
 		tx2_vswr_reflected_orx = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_reflected_orx"));
 		tx2_vswr_reflected_tx = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage1_vswr_reflected_tx"));
+
+		fixup_label(GTK_LABEL(gtk_builder_get_object(builder, "label_global_settings")), "1", "5");
+		fixup_label(GTK_LABEL(gtk_builder_get_object(builder, "label_receive_chain")), "1", "5");
+		fixup_label(GTK_LABEL(gtk_builder_get_object(builder, "label_transmit_chain")), "1", "5");
+		fixup_label(GTK_LABEL(gtk_builder_get_object(builder, "label_obs_chain")), "1", "5");
 	} else {
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_dpd")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_clgc")));

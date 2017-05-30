@@ -554,7 +554,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label3">
+                                  <object class="GtkLabel" id="label_global_settings">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">&lt;b&gt;AD9371 Global Settings&lt;/b&gt;</property>
@@ -1175,7 +1175,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label9">
+                                  <object class="GtkLabel" id="label_receive_chain">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">&lt;b&gt;AD9371 Receive Chain&lt;/b&gt;</property>
@@ -1302,6 +1302,9 @@
                                           <object class="GtkTable" id="tx_fastlock_actions">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <child>
+                                              <placeholder/>
+                                            </child>
                                             <child>
                                               <placeholder/>
                                             </child>
@@ -3301,7 +3304,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label40">
+                                  <object class="GtkLabel" id="label_transmit_chain">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">&lt;b&gt;AD9371 Transmit Chain&lt;/b&gt;</property>
@@ -3746,7 +3749,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label57">
+                                  <object class="GtkLabel" id="label_obs_chain">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">&lt;b&gt;AD9371 Observation/Sniffer Receive Chain&lt;/b&gt;</property>
