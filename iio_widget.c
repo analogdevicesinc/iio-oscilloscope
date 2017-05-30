@@ -248,6 +248,36 @@ static void iio_toggle_button_init(struct iio_widget *widget,
 		iio_toggle_button_update_value, iio_toggle_button_save);
 }
 
+static void iio_button_save(struct iio_widget *widget)
+{
+	if (widget->chn)
+		iio_channel_attr_write_bool(widget->chn,
+					    widget->attr_name, 1);
+	else
+		iio_device_attr_write_bool(widget->dev,
+						   widget->attr_name, 1);
+}
+
+static void iio_button_update_value(struct iio_widget *widget,
+				    const char *src, size_t len)
+{
+
+}
+
+static void iio_button_update(struct iio_widget *widget)
+{
+
+}
+
+static void iio_button_init(struct iio_widget *widget,
+			    struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
+			    GtkWidget *button)
+{
+	iio_widget_init(widget, dev, chn, attr_name, NULL, button,
+			NULL, iio_button_update,
+			iio_button_update_value, iio_button_save);
+}
+
 static void iio_combo_box_save(struct iio_widget *widget)
 {
 	const char *text;
@@ -471,6 +501,14 @@ void iio_toggle_button_init_from_builder(struct iio_widget *widget,
 {
 	iio_toggle_button_init(widget, dev, chn, attr_name,
 		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)), invert);
+}
+
+void iio_button_init_from_builder(struct iio_widget *widget,
+	 struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
+	GtkBuilder *builder, const char *widget_name)
+{
+	iio_button_init(widget, dev, chn, attr_name,
+	       GTK_WIDGET(gtk_builder_get_object(builder, widget_name)));
 }
 
 /*

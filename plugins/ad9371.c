@@ -1076,6 +1076,8 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 			sprintf(signal_name, "%s", "value-changed");
 		else if (GTK_IS_COMBO_BOX_TEXT(widgets[i].widget))
 			sprintf(signal_name, "%s", "changed");
+		else if (GTK_IS_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "clicked");
 		else
 			printf("unhandled widget type, attribute: %s (%d)\n", widgets[i].attr_name, i);
 
@@ -1360,9 +1362,9 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 					    dev, NULL, "calibrate_tx_lol_ext_en", builder,
 				     "calibrate_tx_lol_ext_en", 0);
 
-	iio_toggle_button_init_from_builder(&glb_widgets[num_glb++],
+	iio_button_init_from_builder(&glb_widgets[num_glb++],
 					    dev, NULL, "calibrate", builder,
-				     "calibrate", 0);
+				     "calibrate");
 
 	rx_widgets = &glb_widgets[num_glb];
 
@@ -1530,13 +1532,13 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 						dev, ch1, "dpd_actuator_en", builder,
 					"out_voltage1_dpd_actuator_en", 0);
 
-		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+		iio_button_init_from_builder(&tx_widgets[num_tx++],
 						dev, ch0, "dpd_reset_en", builder,
-					"out_voltage0_dpd_reset_en", 0);
+					"out_voltage0_dpd_reset_en");
 
-		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+		iio_button_init_from_builder(&tx_widgets[num_tx++],
 						dev, ch1, "dpd_reset_en", builder,
-					"out_voltage1_dpd_reset_en", 0);
+					"out_voltage1_dpd_reset_en");
 
 		tx1_dpd_track_count = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_dpd_track_count"));
 		tx1_dpd_model_error = GTK_WIDGET(gtk_builder_get_object(builder, "out_voltage0_dpd_model_error"));
