@@ -23,6 +23,8 @@
 #include <unistd.h>
 #include <time.h>
 
+#include <ad9361.h>
+
 #include "../datatypes.h"
 #include "../osc.h"
 #include "../iio_widget.h"
@@ -632,14 +634,7 @@ static bool setup_before_sweep_start(plugin_setup *setup)
 	}
 	free(buf);
 
-	ret = iio_device_attr_write_bool(dev,
-		"in_out_voltage_filter_fir_en", true);
-	if (ret == -ENOENT) { /* new libiio versions use the "out" channel */
-		struct iio_channel *chn = iio_device_find_channel(dev, "out",
-			false);
-		ret = iio_channel_attr_write_bool(chn, "voltage_filter_fir_en",
-			true);
-	}
+	ret = ad9361_set_trx_fir_enable(dev, true);
 	if (ret < 0) {
 		fprintf(stderr, "a write to in_out_voltage_filter_fir_en failed"
 			"in %s. %s\n", __func__, strerror(ret));
