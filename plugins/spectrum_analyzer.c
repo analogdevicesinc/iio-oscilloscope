@@ -634,6 +634,12 @@ static bool setup_before_sweep_start(plugin_setup *setup)
 
 	ret = iio_device_attr_write_bool(dev,
 		"in_out_voltage_filter_fir_en", true);
+	if (ret == -ENOENT) { /* new libiio versions use the "out" channel */
+		struct iio_channel *chn = iio_device_find_channel(dev, "out",
+			false);
+		ret = iio_channel_attr_write_bool(chn, "voltage_filter_fir_en",
+			true);
+	}
 	if (ret < 0) {
 		fprintf(stderr, "a write to in_out_voltage_filter_fir_en failed"
 			"in %s. %s\n", __func__, strerror(ret));
