@@ -929,7 +929,7 @@ static int scpi_handle(int line, const char *attrib, const char *value)
 	else
 		return -EINVAL;
 
-	attrib += sizeof("rx.");
+	attrib += sizeof("rx.") - 1;
 
 	if (MATCH_ATTRIB("serial")) {
 		current_instrument->serial = !!atoi(value);
