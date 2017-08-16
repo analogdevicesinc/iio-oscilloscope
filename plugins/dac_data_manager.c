@@ -2032,6 +2032,22 @@ void dac_data_manager_freq_widgets_range_update(struct dac_data_manager *manager
 
 }
 
+void dac_data_manager_dac_freq_changed(struct dac_data_manager *manager,
+		double tx_sample_rate)
+{
+	struct dds_tone *tone;
+	GSList *node;
+
+	if (!manager)
+		return;
+
+	dac_data_manager_freq_widgets_range_update(manager, tx_sample_rate / 2);
+	for (node = manager->dds_tones; node; node = g_slist_next(node)) {
+		tone = node->data;
+		tone->iio_freq.update(&tone->iio_freq);
+	}
+}
+
 static void dds_tone_iio_widgets_update(struct dds_tone *tone)
 {
 	tone->iio_freq.update(&tone->iio_freq);

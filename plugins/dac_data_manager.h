@@ -51,6 +51,8 @@ void dac_data_manager_free(struct dac_data_manager *manager);
 void dac_data_manager_freq_widgets_range_update(struct dac_data_manager *manager,
 		double tx_sample_rate);
 void dac_data_manager_update_iio_widgets(struct dac_data_manager *manager);
+void dac_data_manager_dac_freq_changed(struct dac_data_manager *manager,
+		double tx_sample_rate);
 int  dac_data_manager_set_dds_mode(struct dac_data_manager *manager,
 		const char *dac_name, unsigned tx_index, int mode);
 int  dac_data_manager_get_dds_mode(struct dac_data_manager *manager,
