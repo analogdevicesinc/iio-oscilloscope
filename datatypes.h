@@ -9,6 +9,7 @@
 
 #include <glib.h>
 #include <gtk/gtk.h>
+#include <gtkdatabox.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <fftw3.h>
@@ -93,6 +94,7 @@ struct _fft_alg_data{
 };
 
 struct _transform {
+	GtkDataboxGraph *graph;
 	int type_id;
 	GSList *plot_channels;
 	int plot_channels_type;
