@@ -55,6 +55,9 @@ void iio_combo_box_init_from_builder(struct iio_widget *widget,
 	const char *attr_name_avail,
 	GtkBuilder *builder, const char *widget_name,
 	int (*compare)(const char *a, const char *b));
+void iio_combo_box_set_convert_function(struct iio_widget *iio_w,
+		void (*convert)(const char* src, char *dest, size_t dest_size,
+			bool inverse));
 
 void iio_toggle_button_init_from_builder(struct iio_widget *widget,
 	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,

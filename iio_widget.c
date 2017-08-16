@@ -281,10 +281,17 @@ static void iio_button_init(struct iio_widget *widget,
 static void iio_combo_box_save(struct iio_widget *widget)
 {
 	const char *text;
+	char text2[1024];
 
 	text = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->widget));
 	if (text == NULL)
 		return;
+
+	if (widget->priv_convert_function) {
+		((void *(*)(const char *, char *, size_t, bool))widget->priv_convert_function)(
+				text, text2, sizeof(text2), true);
+		text = text2;
+	}
 
 	if (widget->chn)
 		iio_channel_attr_write(widget->chn, widget->attr_name, text);
@@ -324,8 +331,14 @@ static void iio_combo_box_update_value(struct iio_widget *widget,
 		for (; NULL != *items_avail; items_avail++) {
 			if (*items_avail[0] == '\0')
 				continue;
-			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(widget->widget),
-				*items_avail);
+			if (widget->priv_convert_function) {
+				((void *(*)(const char *, char *, size_t, bool))widget->priv_convert_function)(
+					*items_avail, text2, sizeof(text2), false);
+					item = text2;
+			} else {
+				item = *items_avail;
+			}
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(widget->widget), item);
 		}
 
 		if (saveditems_avail)
@@ -336,6 +349,12 @@ static void iio_combo_box_update_value(struct iio_widget *widget,
 		compare = widget->priv;
 	else
 		compare = strcmp;
+
+	if (widget->priv_convert_function) {
+		((void *(*)(const char *, char *, size_t, bool))widget->priv_convert_function)(
+				src, text2, sizeof(text2), false);
+		src = text2;
+	}
 
 	has_iter = gtk_tree_model_get_iter_first(model, &iter);
 	while (has_iter) {
@@ -375,6 +394,13 @@ void iio_combo_box_init(struct iio_widget *widget, struct iio_device *dev,
 
 	gtk_combo_box_set_entry_text_column(GTK_COMBO_BOX(widget->widget), 0);
 
+}
+
+void iio_combo_box_set_convert_function(struct iio_widget *iio_w,
+		void (*convert)(const char* src, char *dest, size_t dest_size,
+			bool inverse))
+{
+	iio_w->priv_convert_function = convert;
 }
 
 void iio_widget_update(struct iio_widget *widget)
