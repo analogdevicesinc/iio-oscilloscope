@@ -509,8 +509,10 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 		priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM) {
 
 		/* In FFT mode we need to scale the x-axis according to the selected sampling frequency */
-		for (i = 0; i < tr_list->size; i++)
+		for (i = 0; i < tr_list->size; i++) {
 			Transform_setup(tr_list->transforms[i]);
+			gtk_databox_graph_set_hide(tr_list->transforms[i]->graph, TRUE);
+		}
 
 		dev_info = iio_device_get_data(transform_get_device_parent(tr_list->transforms[i - 1]));
 		sprintf(buf, "%cHz", dev_info->adc_scale);
@@ -2851,6 +2853,7 @@ static bool call_all_transform_functions(OscPlotPrivate *priv)
 	TrList *tr_list = priv->transform_list;
 	Transform *tr;
 	bool valid = true;
+	bool tr_valid;
 	int i = 0;
 
 	if (priv->redraw_function <= 0)
@@ -2858,7 +2861,10 @@ static bool call_all_transform_functions(OscPlotPrivate *priv)
 
 	for (; i < tr_list->size; i++) {
 		tr = tr_list->transforms[i];
-		valid = valid && Transform_update_output(tr);
+		tr_valid = Transform_update_output(tr);
+		if (tr_valid)
+			gtk_databox_graph_set_hide(tr->graph, FALSE);
+		valid &= tr_valid;
 	}
 
 	return valid;
@@ -3169,8 +3175,6 @@ static void plot_setup(OscPlot *plot)
 
 	gtk_databox_graph_remove_all(GTK_DATABOX(priv->databox));
 	markers_init(plot);
-	osc_plot_update_rx_lbl(plot, FORCE_UPDATE);
-
 	for (i = 0; i < tr_list->size; i++) {
 		transform = tr_list->transforms[i];
 		Transform_setup(transform);
@@ -3189,6 +3193,8 @@ static void plot_setup(OscPlot *plot)
 		}
 		g_free(plot_type_str);
 
+		transform->graph = graph;
+
 		if (transform->x_axis_size > max_x_axis)
 			max_x_axis = transform->x_axis_size;
 
@@ -3202,6 +3208,7 @@ static void plot_setup(OscPlot *plot)
 				transform_add_own_markers(plot, transform);
 		}
 
+		gtk_databox_graph_set_hide(graph, TRUE);
 		gtk_databox_graph_add(GTK_DATABOX(priv->databox), graph);
 	}
 	if (!priv->profile_loaded_scale) {
@@ -3221,6 +3228,8 @@ static void plot_setup(OscPlot *plot)
 				0.0, -100.0);
 		}
 	}
+
+	osc_plot_update_rx_lbl(plot, FORCE_UPDATE);
 
 	bool show_phase_info = false;
 	if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM &&
