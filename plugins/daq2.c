@@ -162,6 +162,26 @@ static int compare_gain(const char *a, const char *b)
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
 	iio_w->save(iio_w);
+
+	if (strcmp(iio_w->attr_name, "sampling_frequency") == 0) {
+		if (iio_w->dev == adc) {
+			rx_update_device_sampling_freq(ADC_DEVICE,
+				USE_INTERN_SAMPLING_FREQ);
+		} else if (iio_w->dev == dac) {
+			gdouble tx_sampling_freq;
+			struct iio_channel *ch0;
+			long long val;
+
+			ch0 = iio_device_find_channel(dac, "altvoltage0", true);
+
+			if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
+				tx_sampling_freq = (double)(val / 1000000ul);
+			else
+				tx_sampling_freq = 0;
+
+			dac_data_manager_dac_freq_changed(dac_tx_manager, tx_sampling_freq);
+		}
+	}
 }
 
 static void make_widget_update_signal_based(struct iio_widget *widgets,
@@ -249,6 +269,17 @@ static void load_profile(const char *ini_fn)
 	}
 }
 
+static void daq2_sample_rate_convert_to_mhz(const char *src, char *dest,
+	size_t dest_size, bool inverse)
+{
+	if (inverse)
+		g_ascii_formatd(dest, dest_size, "%.0f",
+			g_ascii_strtod(src, NULL) * 1000000.0);
+	else
+		g_ascii_formatd(dest, dest_size, "%.2f",
+			g_ascii_strtod(src, NULL) / 1000000.0);
+}
+
 static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
@@ -294,14 +325,23 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	ch0 = iio_device_find_channel(adc, "voltage0", false);
 	ch1 = iio_device_find_channel(adc, "voltage1", false);
 
-	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
-		snprintf(attr_val, sizeof(attr_val), "%.2f", (double)(val / 1000000ul));
-	else
-		snprintf(attr_val, sizeof(attr_val), "%s", "error");
+	if (!iio_channel_find_attr(ch0, "sampling_frequency_available")) {
+		if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
+			snprintf(attr_val, sizeof(attr_val), "%.2f", (double)(val / 1000000ul));
+		else
+			snprintf(attr_val, sizeof(attr_val), "%s", "error");
 
-	adc_buff = gtk_text_buffer_new(NULL);
-	gtk_text_buffer_set_text(adc_buff, attr_val, -1);
-	gtk_text_view_set_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view_adc_freq")), adc_buff);
+		adc_buff = gtk_text_buffer_new(NULL);
+		gtk_text_buffer_set_text(adc_buff, attr_val, -1);
+		gtk_text_view_set_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view_adc_freq")), adc_buff);
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "adc_freq_combobox")));
+	} else {
+		iio_combo_box_init_from_builder(&rx_widgets[num_rx++],
+			adc, ch0, "sampling_frequency", "sampling_frequency_available", builder,
+			"adc_freq_combobox", NULL);
+		iio_combo_box_set_convert_function(&rx_widgets[num_rx-1], daq2_sample_rate_convert_to_mhz);
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "text_view_adc_freq")));
+	}
 
 	iio_combo_box_init_from_builder(&rx_widgets[num_rx++],
 		adc, ch0, "test_mode", "test_mode_available", builder,
@@ -313,17 +353,27 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	/* Tx Widgets */
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
 
-	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0) {
+	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
 		tx_sampling_freq = (double)(val / 1000000ul);
-		snprintf(attr_val, sizeof(attr_val), "%.2f", tx_sampling_freq);
-	} else {
-		snprintf(attr_val, sizeof(attr_val), "%s", "error");
+	else
 		tx_sampling_freq = 0;
-	}
 
-	dac_buff = gtk_text_buffer_new(NULL);
-	gtk_text_buffer_set_text(dac_buff, attr_val, -1);
-	gtk_text_view_set_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view_dac_freq")), dac_buff);
+	if (!iio_channel_find_attr(ch0, "sampling_frequency_available")) {
+		if (tx_sampling_freq != 0)
+			snprintf(attr_val, sizeof(attr_val), "%.2f", tx_sampling_freq);
+		else
+			snprintf(attr_val, sizeof(attr_val), "%s", "error");
+		dac_buff = gtk_text_buffer_new(NULL);
+		gtk_text_buffer_set_text(dac_buff, attr_val, -1);
+		gtk_text_view_set_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view_dac_freq")), dac_buff);
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "dac_freq_combobox")));
+	} else {
+		iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
+			dac, ch0, "sampling_frequency", "sampling_frequency_available", builder,
+			"dac_freq_combobox", NULL);
+		iio_combo_box_set_convert_function(&tx_widgets[num_tx-1], daq2_sample_rate_convert_to_mhz);
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "text_view_dac_freq")));
+	}
 
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
