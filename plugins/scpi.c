@@ -109,10 +109,12 @@ static char *supported_spectrum_analyzers[] = {
 
 #define HAMEG_HM8123 "HAMEG Instruments,HM8123,5.12"
 #define AGILENT_53131A "HEWLETT-PACKARD,53131A,0,3944"
+#define FLUKE_PM6681 "PHILIPS, PM6681, 0, MAIN V1.09  26 JAN 2001 / GPIB V1.13  26 JAN 2001"
 
 static char *supported_counters[] = {
 	HAMEG_HM8123,
 	AGILENT_53131A,
+	FLUKE_PM6681,
 	NULL
 };
 
@@ -860,7 +862,8 @@ int scpi_counter_get_freq(double *freq, double *target_freq)
 			scale = pow(10.0, 3);
 
 		g_strfreev(freq_tokens);
-	} else if (strstr(current_instrument->model, AGILENT_53131A)) {
+	} else if (strstr(current_instrument->model, AGILENT_53131A) ||
+		strstr(current_instrument->model, FLUKE_PM6681)) {
 		/* Output is in scientific E notation, Hz scale by default. */
 		if (target_freq)
 			ret = scpi_fprintf(current_instrument, ":MEASURE:FREQ? %E HZ, 1 HZ\r\n", *target_freq);
