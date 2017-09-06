@@ -869,6 +869,81 @@ cleanup:
 
 	return ret;
 }
+
+static int xo_freq_to_eeprom(void)
+{
+	const char *eeprom_path = find_eeprom(NULL);
+	char cmd[256];
+	FILE *fp = NULL, *cmdfp = NULL;
+	const char *failure_msg = NULL;
+	double current_freq, target_freq;
+	int ret = 0;
+
+	if (!eeprom_path) {
+		failure_msg = "Can't find EEPROM file in the sysfs";
+		goto cleanup;
+	}
+
+	if (!strcmp(iio_context_get_name(ctx), "network")) {
+		target_freq = REFCLK_RATE;
+	} else if (!strcmp(iio_context_get_name(ctx), "local")) {
+		fp = fopen("/sys/kernel/debug/clk/ad9361_ext_refclk/clk_rate", "r");
+		if (fscanf(fp, "%lf", &target_freq) != 1) {
+			failure_msg = "Unable to read AD9361 reference clock rate from debugfs.";
+			goto cleanup;
+		}
+		if (fp) {
+			fclose(fp);
+		}
+	} else {
+		failure_msg = "AD9361 Reference clock rate missing from debugfs.";
+		goto cleanup;
+	}
+
+	if (scpi_connect_counter() != 0) {
+		failure_msg = "Failed to connect to Programmable Counter device.";
+		goto cleanup;
+	}
+
+	if (scpi_counter_get_freq(&current_freq, &target_freq) != 0) {
+		failure_msg = "Error retrieving counter frequency. "
+		"Make sure the counter has the correct input attached.";
+		goto cleanup;
+	}
+
+	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %x 2>&1", eeprom_path,
+		eeprom_path, (unsigned int)current_freq);
+	cmdfp = popen(cmd, "r");
+
+	if (!cmdfp || pclose(cmdfp) != 0) {
+		failure_msg = "Error running fru-dump to write to EEPROM";
+		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
+		goto cleanup;
+	}
+
+	cleanup:
+	if (failure_msg) {
+		fprintf(stderr, "SCPI failed: %s\n", failure_msg);
+		GtkWidget *toplevel = gtk_widget_get_toplevel(fmcomms2_panel);
+		if (!gtk_widget_is_toplevel(toplevel))
+			toplevel = NULL;
+		GtkWidget *dcxo_to_eeprom_fail = gtk_message_dialog_new(
+			GTK_WINDOW(toplevel),
+									GTK_DIALOG_MODAL,
+							  GTK_MESSAGE_ERROR,
+							  GTK_BUTTONS_CLOSE,
+							  "%s", failure_msg);
+		gtk_window_set_title(GTK_WINDOW(dcxo_to_eeprom_fail), "Save to EEPROM");
+		if (gtk_dialog_run(GTK_DIALOG(dcxo_to_eeprom_fail)))
+			gtk_widget_destroy(dcxo_to_eeprom_fail);
+		ret = -1;
+	}
+
+	g_free((void *)eeprom_path);
+
+	return ret;
+}
+
 #endif /* _WIN32 */
 
 static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
@@ -1353,6 +1428,8 @@ static int fmcomms2_handle_driver(const char *attrib, const char *value)
 			gtk_main_iteration();
 	} else if (MATCH_ATTRIB("dcxo_to_eeprom")) {
 		ret = dcxo_cal_to_eeprom_clicked(NULL, NULL);
+	} else if (MATCH_ATTRIB("xo_freq_to_eeprom")) {
+		ret = xo_freq_to_eeprom();
 #endif /* _WIN32 */
 	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
 		if (can_update_widgets)
