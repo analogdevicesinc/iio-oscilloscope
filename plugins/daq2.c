@@ -254,7 +254,7 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	GtkBuilder *builder;
 	GtkWidget *daq2_panel;
 	GtkWidget *dds_container;
-	GtkTextBuffer *adc_buff, *dac_buff;
+	GtkLabel *adc_freq_label, *dac_freq_label;
 	struct iio_channel *ch0, *ch1;
 
 	ctx = osc_create_context();
@@ -299,9 +299,8 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	else
 		snprintf(attr_val, sizeof(attr_val), "%s", "error");
 
-	adc_buff = gtk_text_buffer_new(NULL);
-	gtk_text_buffer_set_text(adc_buff, attr_val, -1);
-	gtk_text_view_set_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view_adc_freq")), adc_buff);
+	adc_freq_label = GTK_LABEL(gtk_builder_get_object(builder, "adc_frequency_label"));
+	gtk_label_set_text(adc_freq_label, attr_val);
 
 	iio_combo_box_init_from_builder(&rx_widgets[num_rx++],
 		adc, ch0, "test_mode", "test_mode_available", builder,
@@ -321,9 +320,8 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 		tx_sampling_freq = 0;
 	}
 
-	dac_buff = gtk_text_buffer_new(NULL);
-	gtk_text_buffer_set_text(dac_buff, attr_val, -1);
-	gtk_text_view_set_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view_dac_freq")), dac_buff);
+	dac_freq_label = GTK_LABEL(gtk_builder_get_object(builder, "dac_frequency_label"));
+	gtk_label_set_text(dac_freq_label, attr_val);
 
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(tx_widgets, num_tx);

@@ -229,25 +229,12 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkHBox" id="box7">
+                                          <object class="GtkLabel" id="adc_frequency_label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="border_width">5</property>
-                                            <property name="spacing">12</property>
-                                            <child>
-                                              <object class="GtkTextView" id="text_view_adc_freq">
-                                                <property name="width_request">64</property>
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="editable">False</property>
-                                                <property name="cursor_visible">False</property>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">True</property>
-                                                <property name="fill">True</property>
-                                                <property name="position">1</property>
-                                              </packing>
-                                            </child>
+                                            <property name="label" translatable="yes">NA</property>
+                                            <property name="selectable">True</property>
+                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -460,25 +447,12 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkHBox" id="box6">
+                                              <object class="GtkLabel" id="dac_frequency_label">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="border_width">5</property>
-                                                <property name="spacing">12</property>
-                                                <child>
-                                                  <object class="GtkTextView" id="text_view_dac_freq">
-                                                    <property name="width_request">64</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">True</property>
-                                                    <property name="editable">False</property>
-                                                    <property name="cursor_visible">False</property>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">1</property>
-                                                  </packing>
-                                                </child>
+                                                <property name="label" translatable="yes">NA</property>
+                                                <property name="selectable">True</property>
+                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
