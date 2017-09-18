@@ -33,15 +33,8 @@ static void next_image_cb (GtkButton *btn, gpointer data)
 {
 	block_num += (uintptr_t) data;
 
-	if (block_filename[block_num + 1] == NULL)
-		gtk_widget_hide(next_pict);
-	else
-		gtk_widget_show(next_pict);
-
-	if (block_num == 0)
-		gtk_widget_hide(previous_pict);
-	else
-		gtk_widget_show(previous_pict);
+	gtk_widget_set_sensitive(next_pict, block_filename[block_num + 1] != NULL);
+	gtk_widget_set_sensitive(previous_pict, block_num != 0);
 
 	scale_block = 1;
 	redraw_block = 1;
@@ -209,6 +202,12 @@ static int block_diagram_init(GtkBuilder *builder, int count, ...)
 	g_builder_connect_signal(builder, "block_diagram_events", "button_press_event", G_CALLBACK(zoom_image_press_cb), NULL);
 	g_builder_connect_signal(builder, "next_pict", "clicked", G_CALLBACK(next_image_cb), (gpointer *)1);
 	g_builder_connect_signal(builder, "previous_pict", "clicked", G_CALLBACK(next_image_cb), (gpointer *)-1);
+
+	if (count == 1) {
+		gtk_widget_hide(next_pict);
+		gtk_widget_hide(previous_pict);
+	}
+
 	next_image_cb(NULL, NULL);
 
 	return 0;
