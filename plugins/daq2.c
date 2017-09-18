@@ -295,7 +295,7 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	ch1 = iio_device_find_channel(adc, "voltage1", false);
 
 	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
-		snprintf(attr_val, sizeof(attr_val), "%.2f", (double)(val / 1000000ul));
+		snprintf(attr_val, sizeof(attr_val), "%.3f", (double)val / 1000000.0);
 	else
 		snprintf(attr_val, sizeof(attr_val), "%s", "error");
 
@@ -314,8 +314,8 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
 
 	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0) {
-		tx_sampling_freq = (double)(val / 1000000ul);
-		snprintf(attr_val, sizeof(attr_val), "%.2f", tx_sampling_freq);
+		tx_sampling_freq = (double)val / 1000000.0;
+		snprintf(attr_val, sizeof(attr_val), "%.3f", tx_sampling_freq);
 	} else {
 		snprintf(attr_val, sizeof(attr_val), "%s", "error");
 		tx_sampling_freq = 0;
