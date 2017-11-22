@@ -148,20 +148,20 @@ install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/block_diagrams
 	install ./$(OSC) $(DESTDIR)$(PREFIX)/bin/
 	install ./$(LIBOSC) $(DESTDIR)$(PREFIX)/$(if $(WITH_MINGW),bin,lib)/
-	install ./*.glade $(PSHARE)
-	install ./icons/ADIlogo.png $(PSHARE)
-	install ./icons/IIOlogo.png $(PSHARE)
-	install ./icons/osc128.png $(PSHARE)
-	install ./icons/osc_capture.png $(PSHARE)
-	install ./icons/osc_generator.png $(PSHARE)
-	install ./icons/ch_color_icon.png $(PSHARE)
+	install -m 644 ./*.glade $(PSHARE)
+	install -m 644 ./icons/ADIlogo.png $(PSHARE)
+	install -m 644 ./icons/IIOlogo.png $(PSHARE)
+	install -m 644 ./icons/osc128.png $(PSHARE)
+	install -m 644 ./icons/osc_capture.png $(PSHARE)
+	install -m 644 ./icons/osc_generator.png $(PSHARE)
+	install -m 644 ./icons/ch_color_icon.png $(PSHARE)
 	install $(PLUGINS) $(PLIB)
-	install ./xmls/* $(PLIB)/xmls
-	install ./filters/* $(PLIB)/filters
-	install ./waveforms/*.* $(PLIB)/waveforms
-	install ./waveforms/qpsk/* $(PLIB)/waveforms/qpsk
-	install ./profiles/* $(PLIB)/profiles
-	install ./block_diagrams/* $(PLIB)/block_diagrams
+	install -m 644 ./xmls/* $(PLIB)/xmls
+	install -m 644 ./filters/* $(PLIB)/filters
+	install -m 644 ./waveforms/*.* $(PLIB)/waveforms
+	install -m 644 ./waveforms/qpsk/* $(PLIB)/waveforms/qpsk
+	install -m 644 ./profiles/* $(PLIB)/profiles
+	install -m 644 ./block_diagrams/* $(PLIB)/block_diagrams
 
 install-all: install-common-files
 	xdg-icon-resource install --noupdate --size 16 ./icons/osc16.png adi-osc
