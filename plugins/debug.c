@@ -1150,7 +1150,7 @@ static void hide_reg_map(void)
  */
 static void create_reg_map(void)
 {
-	gchar str_bit_field[7];
+	gchar str_bit_field[10];
 	short i;
 
 	gtk_label_set_line_wrap((GtkLabel *)label_reg_descrip, TRUE);
@@ -1172,7 +1172,7 @@ static void create_reg_map(void)
 		hboxes[i] = gtk_hbox_new(FALSE, 0);
 		gtk_box_pack_start((GtkBox *)vboxes[i], hboxes[i], FALSE,
 								FALSE, 0);
-		snprintf(str_bit_field, 7, "Bit %d", i);
+		snprintf(str_bit_field, 10, "Bit %d", i);
 		lbl_bits[i] = gtk_label_new((gchar *)str_bit_field);
 		gtk_widget_set_size_request(lbl_bits[i], 50, -1);
 		gtk_box_pack_start((GtkBox *)hboxes[i], lbl_bits[i], TRUE, FALSE,
