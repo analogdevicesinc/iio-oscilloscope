@@ -274,7 +274,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			}
 			size = 0;
 			while (fgets(line, 80, infile)) {
-				ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
+				ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
 					     &val[0], &val[1], &val[2], &val[3], &val[4], &val[5], &val[6], &val[7]);
 				if (!(ret == 4 || ret == 2 || ret == 8)) {
 					if (line_is_empty(line))
@@ -313,7 +313,7 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 					size = 0;
 					i = 0;
 					while (fgets(line, 80, infile)) {
-						ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
+						ret = sscanf(line, "%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf%*[, \t]%lf",
 							     &i1, &q1, &i2, &q2, &i3, &q3, &i4, &q4);
 						if ((ret != 2 && ret != 4) && line_is_empty(line))
 							continue;
