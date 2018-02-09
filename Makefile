@@ -27,7 +27,16 @@ PKG_CONFIG := env PKG_CONFIG_SYSROOT_DIR="$(SYSROOT)" \
 
 DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0 libcurl jansson
 
-LDFLAGS := $(shell $(PKG_CONFIG) --libs $(DEPENDENCIES)) \
+DEP_CFLAGS=
+DEP_LDFLAGS=
+define dep_flags
+DEP_CFLAGS+=$(shell $(PKG_CONFIG) --cflags $(1))
+DEP_LDFLAGS+=$(shell $(PKG_CONFIG) --libs $(1))
+endef
+
+$(foreach dep,$(DEPENDENCIES),$(eval $(call dep_flags,$(dep))))
+
+LDFLAGS := $(DEP_LDFLAGS) \
 	$(if $(WITH_MINGW),-lwinpthread) \
 	-L$(SYSROOT)/usr/lib -lmatio -lz -lm -lad9361
 
@@ -37,7 +46,7 @@ else
 	LDFLAGS += -rdynamic
 endif
 
-CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DEPENDENCIES)) \
+CFLAGS := $(DEP_CFLAGS) \
 	-I$(SYSROOT)/usr/include $(if $(WITH_MINGW),-mwindows,-fPIC) \
 	-Wall -Wclobbered -Wempty-body -Wignored-qualifiers -Wmissing-field-initializers \
 	-Wmissing-parameter-type -Wold-style-declaration -Woverride-init \
