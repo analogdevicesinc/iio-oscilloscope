@@ -259,16 +259,24 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 			iio_device_attr_read(dev, options_attr, options_attr_val,
 						sizeof(options_attr_val));
 
-		gtk_combo_box_text_remove_all(scanel_options);
-		elems = g_strsplit(options_attr_val, " ", -1);
-		elem = elems[0];
-		while (elem) {
-			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scanel_options), elem);
-			elem = elems[++i];
+		if (options_attr_val[0] == '[') {
+			/* Don't treat [min step max] as combobox items */
+			attribute_has_options = false;
+			gtk_widget_show(scanel_value);
+			gtk_widget_hide(scanel_options);
+		} else {
+
+			gtk_combo_box_text_remove_all(scanel_options);
+			elems = g_strsplit(options_attr_val, " ", -1);
+			elem = elems[0];
+			while (elem) {
+				gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(scanel_options), elem);
+				elem = elems[++i];
+			}
+			g_strfreev(elems);
+			gtk_widget_show(scanel_options);
+			gtk_widget_hide(scanel_value);
 		}
-		g_strfreev(elems);
-		gtk_widget_show(scanel_options);
-		gtk_widget_hide(scanel_value);
 	} else {
 		attribute_has_options = false;
 		gtk_widget_show(scanel_value);
