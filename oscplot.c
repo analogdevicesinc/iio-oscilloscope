@@ -490,6 +490,13 @@ void osc_plot_data_update (OscPlot *plot)
 	}
 }
 
+static bool is_frequency_transform(OscPlotPrivate *priv)
+{
+	return priv->active_transform_type == FFT_TRANSFORM ||
+	       priv->active_transform_type == COMPLEX_FFT_TRANSFORM ||
+	       priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM;
+}
+
 void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -505,9 +512,7 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 	if (priv->redraw_function <= 0 && !force_update)
 		return;
 
-	if (priv->active_transform_type == FFT_TRANSFORM ||
-		priv->active_transform_type == COMPLEX_FFT_TRANSFORM ||
-		priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM) {
+	if (is_frequency_transform(priv)) {
 		gfloat top, bottom, left, right;
 		gfloat padding;
 
@@ -3205,10 +3210,8 @@ static void plot_setup(OscPlot *plot)
 		if (transform->x_axis_size > max_x_axis)
 			max_x_axis = transform->x_axis_size;
 
-		if (priv->active_transform_type == FFT_TRANSFORM ||
-			priv->active_transform_type == COMPLEX_FFT_TRANSFORM ||
-			priv->active_transform_type == CROSS_CORRELATION_TRANSFORM ||
-			priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM) {
+		if (is_frequency_transform(priv) ||
+			priv->active_transform_type == CROSS_CORRELATION_TRANSFORM) {
 			if (i == 0)
 				transform_add_plot_markers(plot, transform);
 			else
@@ -5549,10 +5552,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	bool full = TRUE, empty = TRUE;
 
 	/* FFT? */
-	if (priv->active_transform_type != FFT_TRANSFORM &&
-		priv->active_transform_type != COMPLEX_FFT_TRANSFORM &&
-		priv->active_transform_type != CROSS_CORRELATION_TRANSFORM &&
-		priv->active_transform_type != FREQ_SPECTRUM_TRANSFORM)
+	if (!is_frequency_transform(priv) &&
+		priv->active_transform_type != CROSS_CORRELATION_TRANSFORM)
 	return FALSE;
 
 	/* Right button */
