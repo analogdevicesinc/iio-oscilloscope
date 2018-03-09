@@ -3194,7 +3194,8 @@ static void plot_setup(OscPlot *plot)
 		transform_y_axis = Transform_get_y_axis_ref(transform);
 
 		gchar *plot_type_str = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->plot_type));
-		if (strcmp(plot_type_str, "Lines")) {
+		if (strcmp(plot_type_str, "Lines") &&
+			!is_frequency_transform(priv)) {
 			graph = gtk_databox_points_new(transform->y_axis_size,
 					transform_x_axis, transform_y_axis,
 					transform->graph_color, 3);
