@@ -107,51 +107,53 @@ OSC_OBJS := osc.o oscplot.o datatypes.o int_fft.o iio_widget.o fru.o dialogs.o \
 	plugins/dac_data_manager.o plugins/fir_filter.o \
 	$(if $(WITH_MINGW),,eeprom.o)
 
-all: check_deps $(OSC) $(PLUGINS)
+all: $(OSC) $(PLUGINS)
 
-check_deps:
+define check_deps
 	@for dep in $(DEPENDENCIES) ; do \
 		$(PKG_CONFIG) $$dep || { \
 			printf "\033[1;31mYou need to install the development version of '$$dep'\033[m\n"; \
 			exit 1 ; \
 		} ; \
 	done
+endef
 
-analyze: $(OSC_OBJS:%.o=%.c) $(PLUGINS:%.so=%.c) oscmain.c | check_deps
+analyze: $(OSC_OBJS:%.o=%.c) $(PLUGINS:%.so=%.c) oscmain.c
 	clang --analyze $(CFLAGS) $^
 
-$(LIBOSC): $(OSC_OBJS) | check_deps
+$(LIBOSC): $(OSC_OBJS)
 	$(SUM) "  LD      $@"
 	$(CMD)$(CC) $+ $(CFLAGS) $(LDFLAGS) -ldl -shared -o $@ $(EXPORT_SYMBOLS)
 
-$(OSC): oscmain.o $(if $(WITH_MINGW),oscicon.o) $(LIBOSC) | check_deps
+$(OSC): oscmain.o $(if $(WITH_MINGW),oscicon.o) $(LIBOSC)
 	$(SUM) "  LD      $@"
 	$(CMD)$(CC) $^ $(LDFLAGS) -L. -losc -o $@
 
-oscicon.o: oscicon.rc | check_deps
+oscicon.o: oscicon.rc
 	$(SUM) "  GEN     $@"
 	$(CMD)$(CROSS_COMPILE)windres $< $@
 
-%.o: %.c | check_deps
+%.o: %.c
+	$(call check_deps)
 	$(SUM) "  CC      $@"
 	$(CMD)$(CC) $(CFLAGS) $< -c -o $@
 
-%.$(SO): %.c $(LIBOSC) | check_deps
+%.$(SO): %.c $(LIBOSC)
 	$(SUM) "  LD      $@"
 	$(CMD)$(CC) $(CFLAGS) $< $(LDFLAGS) -L. -losc -shared -o $@
 
 # Dependencies
-osc.o: check_deps iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
-oscmain.o: check_deps config.h osc.h
-oscplot.o: check_deps oscplot.h osc.h datatypes.h iio_widget.h libini2.h
-datatypes.o: check_deps datatypes.h
-iio_widget.o: check_deps iio_widget.h
-fru.o: check_deps fru.h
-dialogs.o: check_deps fru.h osc.h
-trigger_dialog.o: check_deps fru.h osc.h iio_widget.h
-xml_utils.o: check_deps xml_utils.h
-phone_home.o: check_deps phone_home.h
-plugins/dac_data_manager.o: check_deps plugins/dac_data_manager.h
+osc.o: iio_widget.h int_fft.h osc_plugin.h osc.h libini2.h
+oscmain.o: config.h osc.h
+oscplot.o: oscplot.h osc.h datatypes.h iio_widget.h libini2.h
+datatypes.o: datatypes.h
+iio_widget.o: iio_widget.h
+fru.o: fru.h
+dialogs.o: fru.h osc.h
+trigger_dialog.o: fru.h osc.h iio_widget.h
+xml_utils.o: xml_utils.h
+phone_home.o: phone_home.h
+plugins/dac_data_manager.o: plugins/dac_data_manager.h
 
 install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/bin
