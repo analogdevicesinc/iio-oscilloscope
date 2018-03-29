@@ -54,6 +54,7 @@ CFLAGS := $(DEP_CFLAGS) \
 	-Wall -Wclobbered -Wempty-body -Wignored-qualifiers -Wmissing-field-initializers \
 	-Wmissing-parameter-type -Wold-style-declaration -Woverride-init \
 	-Wsign-compare -Wtype-limits -Wuninitialized -Wunused-but-set-parameter \
+	-Wextra -Wno-unused-parameter \
 	-Werror -g -std=gnu90 -D_GNU_SOURCE -O2 -funwind-tables \
 	-DPREFIX='"$(PREFIX)"' \
 	-DFRU_FILES=\"$(FRU_FILES)\" -DGIT_VERSION=\"$(GIT_VERSION)\" \
