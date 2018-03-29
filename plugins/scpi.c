@@ -562,12 +562,12 @@ static int scpi_connect(struct scpi_instrument *scpi)
 
 /* Spectrum Analyzer commands */
 
-bool scpi_rx_connected()
+bool scpi_rx_connected(void)
 {
 	return (spectrum_analyzer.ttyfd != 0 || spectrum_analyzer.control_port != 0);
 }
 
-void scpi_rx_trigger_sweep()
+void scpi_rx_trigger_sweep(void)
 {
 	scpi_fprintf(&spectrum_analyzer, "INIT:IMM;*WAI\n");
 }
@@ -598,7 +598,7 @@ void scpi_rx_set_bandwith_auto(double ratio)
 
 }
 
-void scpi_rx_setup()
+void scpi_rx_setup(void)
 {
 	static time_t rx_cal_time = 0;
 
@@ -761,7 +761,7 @@ static int tx_mag_seek_dBm(struct mag_seek *mag_seek)
 }
 
 /* Programmable Counter functions */
-static bool scpi_counter_connected()
+static bool scpi_counter_connected(void)
 {
 	int i;
 
@@ -779,7 +779,7 @@ static bool scpi_counter_connected()
 /* Connect to a supported programmable counter device.
  * Returns 0 when able to connect to a supported device, otherwise -1.
  */
-int scpi_connect_counter()
+int scpi_connect_counter(void)
 {
 	int i = 0, ret = -1;
 	unsigned int tty_node;
