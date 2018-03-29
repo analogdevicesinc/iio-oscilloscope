@@ -9,18 +9,18 @@
 #define __OSC_SCPI_H__
 
 static bool scpi_rx_connected_flag = false;
-bool (*scpi_rx_connected)() = NULL;
-void (*scpi_rx_trigger_sweep)() = NULL;
+bool (*scpi_rx_connected)(void) = NULL;
+void (*scpi_rx_trigger_sweep)(void) = NULL;
 void (*scpi_rx_set_center_frequency)(unsigned long long) = NULL;
 void (*scpi_rx_set_span_frequency)(unsigned long long) = NULL;
 void (*scpi_rx_set_bandwith)(unsigned int, unsigned int) = NULL;
 void (*scpi_rx_set_bandwith_auto)(double) = NULL;
-void (*scpi_rx_setup)() = NULL;
+void (*scpi_rx_setup)(void) = NULL;
 void (*scpi_rx_set_averaging)(int average) = NULL;
 int (*scpi_rx_set_marker_freq)(unsigned int, unsigned long long) = NULL;
 int (*scpi_rx_get_marker_level)(unsigned int, bool, double *) = NULL;
 int (*scpi_rx_get_marker_freq)(unsigned int, bool, double *) = NULL;
-int (*scpi_connect_counter)() = NULL;
+int (*scpi_connect_counter)(void) = NULL;
 int (*scpi_counter_get_freq)(double *freq, double *target_freq) = NULL;
 
 
