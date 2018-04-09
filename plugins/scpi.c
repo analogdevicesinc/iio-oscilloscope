@@ -981,7 +981,7 @@ static int scpi_handle(int line, const char *attrib, const char *value)
 		}
 	} else { /* current_instrument == &spectrum_analyzer */
 		if (MATCH_ATTRIB("setup")) {
-			scpi_rx_setup(current_instrument);
+			scpi_rx_setup();
 		} else if (MATCH_ATTRIB("center")) {
 			scpi_rx_set_center_frequency(atoll(value));
 		} else if (MATCH_ATTRIB("span")) {
