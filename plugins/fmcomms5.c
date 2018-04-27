@@ -1632,7 +1632,9 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	block_diagram_init(builder, 2, "AD9361.svg", "AD_FMCOMMS5_EBZ.jpg");
 
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER(filter_fir_config), OSC_FILTER_FILE_PATH);
+
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
+	dac_data_manager_set_buffer_size_alignment(dac_tx_manager, 16);
 
 	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 	can_update_widgets = true;
