@@ -83,6 +83,7 @@ PLUGINS=\
 	plugins/fmcomms11.$(SO) \
 	plugins/ad9371.$(SO) \
 	plugins/adrv9009.$(SO) \
+	plugins/adrv9009_adv.$(SO) \
 	plugins/fmcomms2_adv.$(SO) \
 	plugins/ad9371_adv.$(SO) \
 	plugins/ad6676.$(SO) \
