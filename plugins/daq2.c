@@ -332,6 +332,7 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	rx_update_values();
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
 
+	dac_data_manager_set_buffer_size_alignment(dac_tx_manager, 16);
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
 
 	block_diagram_init(builder, 4,
