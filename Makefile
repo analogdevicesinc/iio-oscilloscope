@@ -167,6 +167,7 @@ install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/xmls
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/filters
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/filters/adrv9009
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/waveforms
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/waveforms/qpsk
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/profiles
@@ -182,7 +183,8 @@ install-common-files: $(OSC) $(PLUGINS)
 	install -m 644 ./icons/ch_color_icon.png $(PSHARE)
 	install $(PLUGINS) $(PLIB)
 	install -m 644 ./xmls/* $(PLIB)/xmls
-	install -m 644 ./filters/* $(PLIB)/filters
+	install -m 644 ./filters/*.* $(PLIB)/filters
+	install -m 644 ./filters/adrv9009/* $(PLIB)/filters/adrv9009
 	install -m 644 ./waveforms/*.* $(PLIB)/waveforms
 	install -m 644 ./waveforms/qpsk/* $(PLIB)/waveforms/qpsk
 	install -m 644 ./profiles/* $(PLIB)/profiles
