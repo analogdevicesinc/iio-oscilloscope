@@ -1467,22 +1467,26 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,rxagc-peak-apd-high-thresh">
-    <property name="upper">63</property>
+    <property name="lower">7</property>
+    <property name="upper">49</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,rxagc-peak-apd-low-gain-mode-high-thresh">
-    <property name="upper">63</property>
+    <property name="lower">7</property>
+    <property name="upper">49</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,rxagc-peak-apd-low-gain-mode-low-thresh">
-    <property name="upper">63</property>
+    <property name="lower">7</property>
+    <property name="upper">49</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,rxagc-peak-apd-low-thresh">
-    <property name="upper">63</property>
+    <property name="lower">7</property>
+    <property name="upper">49</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -11242,7 +11246,7 @@
                                           <object class="GtkSpinButton" id="adi,rxagc-peak-apd-low-gain-mode-low-thresh">
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
-                                            <property name="tooltip_text" translatable="yes">AGC APD low threshold in low gain mode. Valid range is 0 to 63. Recommended to be 3dB above apdLowThresh</property>
+                                            <property name="tooltip_text" translatable="yes">AGC APD low threshold in low gain mode. Valid range is 7 to 49. Recommended to be 3dB above apdLowThresh</property>
                                             <property name="adjustment">adjustment_adi,rxagc-peak-apd-low-gain-mode-low-thresh</property>
                                           </object>
                                           <packing>
@@ -11271,7 +11275,7 @@
                                           <object class="GtkSpinButton" id="adi,rxagc-peak-apd-low-thresh">
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
-                                            <property name="tooltip_text" translatable="yes">AGC APD low threshold. Valid range is 0 to 63. Recommended to be 3dB below apdHighThresh</property>
+                                            <property name="tooltip_text" translatable="yes">AGC APD low threshold. Valid range is 7 to 49. Recommended to be 3dB below apdHighThresh</property>
                                             <property name="adjustment">adjustment_adi,rxagc-peak-apd-low-thresh</property>
                                           </object>
                                           <packing>
@@ -11300,7 +11304,7 @@
                                           <object class="GtkSpinButton" id="adi,rxagc-peak-apd-low-gain-mode-high-thresh">
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
-                                            <property name="tooltip_text" translatable="yes">AGC APD high threshold in low gain mode. Valid range is 0 to 63. Recommended to be 3dB above apdHighThresh</property>
+                                            <property name="tooltip_text" translatable="yes">AGC APD high threshold in low gain mode. Valid range is 7 to 49. Recommended to be 3dB above apdHighThresh</property>
                                             <property name="adjustment">adjustment_adi,rxagc-peak-apd-low-gain-mode-high-thresh</property>
                                           </object>
                                           <packing>
@@ -11329,7 +11333,7 @@
                                           <object class="GtkSpinButton" id="adi,rxagc-peak-apd-high-thresh">
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
-                                            <property name="tooltip_text" translatable="yes">AGC APD high threshold. Valid range is 0 to 63</property>
+                                            <property name="tooltip_text" translatable="yes">AGC APD high threshold. Valid range is 7 to 49</property>
                                             <property name="adjustment">adjustment_adi,rxagc-peak-apd-high-thresh</property>
                                           </object>
                                           <packing>
