@@ -87,8 +87,8 @@ static GtkWidget *profile_config;
 static GtkWidget *rx_gain_control_rx1;
 static GtkWidget *rx_gain_control_modes_rx1;
 static GtkWidget *rx_gain_control_rx2;
-// static GtkWidget *rx1_rssi;
-// static GtkWidget *rx2_rssi;
+static GtkWidget *rx1_rssi;
+static GtkWidget *rx2_rssi;
 static GtkWidget *label_rf_bandwidth_rx;
 static GtkWidget *label_sampling_freq_rx;
 
@@ -435,39 +435,37 @@ static void sample_frequency_changed_cb(void *data)
 	rx_freq_info_update();
 }
 
-// static void rssi_update_label(GtkWidget *label, const char *chn,  bool is_tx)
-// {
-// 	char buf[1024];
-// 	int ret;
-//
-// 	/* don't update if it is hidden (to quiet down SPI) */
-// 	if (!gtk_widget_is_drawable(GTK_WIDGET(label)))
-// 		return;
-//
-// 	ret = iio_channel_attr_read(
-// 			iio_device_find_channel(dev, chn, is_tx),
-// 			"rssi", buf, sizeof(buf));
-// 	if (ret > 0)
-// 		gtk_label_set_text(GTK_LABEL(label), buf);
-// 	else
-// 		gtk_label_set_text(GTK_LABEL(label), "<error>");
-// }
-//
-// static void rssi_update_labels(void)
-// {
-// 	rssi_update_label(rx1_rssi, "voltage0", false);
-//
-//
-// 	rssi_update_label(rx2_rssi, "voltage1", false);
-// 	rssi_update_label(obs_rssi, "voltage2", false);
-// }
+static void rssi_update_label(GtkWidget *label, const char *chn,  bool is_tx)
+{
+	char buf[1024];
+	int ret;
+
+	/* don't update if it is hidden (to quiet down SPI) */
+	if (!gtk_widget_is_drawable(GTK_WIDGET(label)))
+		return;
+
+	ret = iio_channel_attr_read(
+			iio_device_find_channel(dev, chn, is_tx),
+			"rssi", buf, sizeof(buf));
+	if (ret > 0)
+		gtk_label_set_text(GTK_LABEL(label), buf);
+	else
+		gtk_label_set_text(GTK_LABEL(label), "<error>");
+}
+
+static void rssi_update_labels(void)
+{
+	rssi_update_label(rx1_rssi, "voltage0", false);
+	rssi_update_label(rx2_rssi, "voltage1", false);
+	/*rssi_update_label(obs_rssi, "voltage2", false);*/
+}
 
 static gboolean update_display(void)
 {
 	if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
 		const char *gain_mode;
 
-		//rssi_update_labels();
+		rssi_update_labels();
 		gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes_rx1));
 
 		if (gain_mode && strcmp(gain_mode, "manual")) {
@@ -572,7 +570,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	profile_update();
 	rx_freq_info_update();
 	glb_settings_update_labels();
-	//rssi_update_labels();
+	rssi_update_labels();
 	rx_phase_rotation_update();
 }
 
@@ -929,6 +927,8 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 	rx_gain_control_rx2 = GTK_WIDGET(gtk_builder_get_object(builder, "gain_control_mode_rx2"));
 	rx_gain_control_modes_rx1 = GTK_WIDGET(gtk_builder_get_object(builder,
 	                                       "gain_control_mode_available_rx1"));
+	rx1_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx1"));
+	rx2_rssi = GTK_WIDGET(gtk_builder_get_object(builder, "rssi_rx2"));
 
 
 	/* Observation Receive Chain */
@@ -1193,7 +1193,7 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 	printf("Updating FIR filter...\n");
 	profile_update();
 	glb_settings_update_labels();
-	//rssi_update_labels();
+	rssi_update_labels();
 	dac_data_manager_freq_widgets_range_update(dac_tx_manager,
 	                get_gui_tx_sampling_freq() / 2.0);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
