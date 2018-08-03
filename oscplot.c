@@ -1040,17 +1040,15 @@ static void do_fft(Transform *tr)
 					/* where should the spurs be? */
 					i++;
 					if (tr->type_id == COMPLEX_FFT_TRANSFORM) {
-						markers[j].bin = (markers[0].bin - (m / 2)) * i + (m / 2);
-						if (markers[j].bin > m)
-							markers[j].bin -= 2 * (markers[j].bin - m);
-						if (markers[j].bin < ( m/2 ))
-							markers[j].bin += 2 * ((m / 2) - markers[j].bin);
-					} else {
 						markers[j].bin = markers[0].bin * i;
-						if (markers[j].bin > (m))
-							markers[j].bin -= 2 * (markers[j].bin - (m));
-						if (markers[j].bin < 0)
-							markers[j].bin += -markers[j].bin;
+						if (i % 2 == 0)
+							markers[j].bin += m / 2;
+						markers[j].bin %= m;
+					} else {
+						markers[j].bin = (markers[0].bin * i) % (2 * m);
+						/* Mirror the even Nyquist zones */
+						if (markers[j].bin > m)
+							markers[j].bin = 2 * m - markers[j].bin;
 					}
 				}
 				/* make sure we don't need to nudge things one way or the other */
