@@ -167,6 +167,7 @@ install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/xmls
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/filters
+	install -d $(DESTDIR)$(PREFIX)/lib/osc/filters/ad9371_5
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/filters/adrv9009
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/waveforms
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/waveforms/qpsk
@@ -184,6 +185,7 @@ install-common-files: $(OSC) $(PLUGINS)
 	install $(PLUGINS) $(PLIB)
 	install -m 644 ./xmls/* $(PLIB)/xmls
 	install -m 644 ./filters/*.* $(PLIB)/filters
+	install -m 644 ./filters/ad9371_5/* $(PLIB)/filters/ad9371_5
 	install -m 644 ./filters/adrv9009/* $(PLIB)/filters/adrv9009
 	install -m 644 ./waveforms/*.* $(PLIB)/waveforms
 	install -m 644 ./waveforms/qpsk/* $(PLIB)/waveforms/qpsk
