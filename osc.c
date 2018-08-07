@@ -1068,7 +1068,7 @@ static bool device_is_oneshot(struct iio_device *dev)
 	return false;
 }
 
-static gboolean capture_process(void)
+static gboolean capture_process(void *data)
 {
 	unsigned int i;
 
@@ -1322,7 +1322,7 @@ static void capture_start(void)
 	}
 	else {
 		stop_capture = FALSE;
-		capture_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, (GSourceFunc) capture_process, NULL, NULL);
+		capture_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, capture_process, NULL, NULL);
 	}
 }
 
