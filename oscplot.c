@@ -5430,9 +5430,9 @@ static inline void marker_set(OscPlot *plot, int i, char *buf, bool force)
 		priv->markers[i].active = TRUE;
 
 	if (priv->markers[i].graph) {
-		strncpy(priv->markers[i].label, buf, 6);
+		snprintf(priv->markers[i].label, sizeof(priv->markers[i].label), buf, i);
 		gtk_databox_markers_set_label(GTK_DATABOX_MARKERS(priv->markers[i].graph), 0,
-			GTK_DATABOX_MARKERS_TEXT_N, buf, FALSE);
+			GTK_DATABOX_MARKERS_TEXT_N, priv->markers[i].label, FALSE);
 		gtk_databox_graph_set_hide(priv->markers[i].graph, !priv->markers[i].active);
 	}
 }
@@ -5440,7 +5440,6 @@ static inline void marker_set(OscPlot *plot, int i, char *buf, bool force)
 static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type)
 {
 	OscPlotPrivate *priv = plot->priv;
-	char tmp[128];
 	int i;
 
 	if (!MAX_MARKERS)
@@ -5448,26 +5447,20 @@ static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type
 
 	if ((buf && !strcmp(buf, PEAK_MRK)) || type == MARKER_PEAK) {
 		priv->marker_type = MARKER_PEAK;
-		for (i = 0; i <= MAX_MARKERS; i++) {
-			sprintf(tmp, "P%i", i);
-			marker_set(plot, i, tmp, FALSE);
-		}
+		for (i = 0; i <= MAX_MARKERS; i++)
+			marker_set(plot, i, "P%i", FALSE);
 		return;
 	} else if ((buf && !strcmp(buf, FIX_MRK)) || type == MARKER_FIXED) {
 		priv->marker_type = MARKER_FIXED;
-		for (i = 0; i <= MAX_MARKERS; i++) {
-			sprintf(tmp, "F%i", i);
-			marker_set(plot, i, tmp, FALSE);
-		}
+		for (i = 0; i <= MAX_MARKERS; i++)
+			marker_set(plot, i, "F%i", FALSE);
 		return;
 	} else if ((buf && !strcmp(buf, SINGLE_MRK)) || type == MARKER_ONE_TONE) {
 		priv->marker_type = MARKER_ONE_TONE;
 		marker_set(plot, 0, "Fund", TRUE);
 		marker_set(plot, 1, "DC", TRUE);
-		for (i = 2; i <= MAX_MARKERS; i++) {
-			sprintf(tmp, "%iH", i);
-			marker_set(plot, i, tmp, FALSE);
-		}
+		for (i = 2; i <= MAX_MARKERS; i++)
+			marker_set(plot, i, "%iH", FALSE);
 		return;
 	} else if ((buf && !strcmp(buf, DUAL_MRK)) || type == MARKER_TWO_TONE) {
 		priv->marker_type = MARKER_TWO_TONE;
