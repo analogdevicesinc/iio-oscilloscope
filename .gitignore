@@ -6,3 +6,4 @@ core
 *.plist
 *.o
 *~
+*.swp
