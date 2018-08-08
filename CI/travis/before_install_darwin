@@ -1,0 +1,37 @@
+#!/bin/bash
+set -e
+
+source ./CI/travis/lib.sh
+source ./CI/travis/before_install_lib.sh
+
+
+PACKAGES="cmake fftw libmatio libxml2 pkg-config libusb gtk+ gtkdatabox jansson glib curl openssl@1.1 flex bison gettext"
+
+brew update
+
+brew_install_or_upgrade() {
+	brew install $1 || \
+		brew upgrade $1 || \
+		brew ls --versions $1 # check if installed last-ly
+}
+
+for pak in $PACKAGES ; do
+	brew_install_or_upgrade $pak
+done
+
+for pkg in gcc bison gettext ; do
+	brew link --overwrite --force $pkg
+done
+
+
+if [ "$TRAVIS" == "true" ] ; then
+	for pkg in libiio libad9361-iio ; do
+		wget http://swdownloads.analog.com/cse/travis_builds/master_latest_${pkg}${LDIST}.pkg
+		sudo installer -pkg master_latest_${pkg}${LDIST}.pkg -target /
+	done
+else
+	cmake_build_git "libiio" "https://github.com/analogdevicesinc/libiio" "" "-DINSTALL_UDEV_RULE:BOOL=OFF"
+
+	cmake_build_git "libad9361-iio" "https://github.com/analogdevicesinc/libad9361-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.dylib"
+fi
+

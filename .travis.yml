@@ -1,0 +1,30 @@
+language: c
+sudo: required
+
+matrix:
+  fast_finish: true
+  include:
+    - compiler: gcc
+      os: osx
+      osx_image: xcode8.3
+      env: LDIST=-osx_10.12
+    - compiler: gcc
+      os: linux
+      dist: trusty
+      env: LDIST=-trusty
+    - compiler: gcc
+      os: linux
+      dist: xenial
+      env: LDIST=-xenial
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./CI/travis/before_install_linux ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./CI/travis/before_install_darwin ; fi
+
+script:
+  - ${TRAVIS_BUILD_DIR}/CI/travis/make
+
+notifications:
+  email:
+    on_success: change
+    on_failure: always
