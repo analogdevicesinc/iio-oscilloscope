@@ -8,3 +8,4 @@ core
 *~
 *.swp
 build
+deps
