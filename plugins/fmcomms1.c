@@ -357,7 +357,10 @@ static struct fmcomms1_calib_data_v1 *find_entry(struct fmcomms1_calib_data_v1 *
 		return NULL;
 
 	for (ind = 0; ind < header->num_entries; ind++) {
-			delta = abs(f - data->cal_frequency_MHz);
+			if (f > data->cal_frequency_MHz)
+				delta = f - data->cal_frequency_MHz;
+			else
+				delta = data->cal_frequency_MHz - f;
 			if (delta < min_delta) {
 				gindex = ind;
 				min_delta = delta;
