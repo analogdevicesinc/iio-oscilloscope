@@ -108,7 +108,7 @@ static void init_application ()
 
 	builder = gtk_builder_new();
 
-	if (!gtk_builder_add_from_file(builder, "./osc.glade", NULL)) {
+	if (!gtk_builder_add_from_file(builder, "./glade/osc.glade", NULL)) {
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "osc.glade", NULL);
 	} else {
 		GtkImage *logo;

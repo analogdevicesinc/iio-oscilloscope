@@ -144,8 +144,8 @@ static GtkWidget * fmcomms6_init(GtkWidget *notebook, const char *ini_fn)
 	if (ini_fn)
 		load_profile(ini_fn);
 
-	if (!gtk_builder_add_from_file(builder, "fmcomms6.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms6.glade", NULL);
+	if (osc_load_glade_file(builder, "fmcomms6") < 0)
+		return NULL;
 
 	fmcomms6_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms6_panel"));
 

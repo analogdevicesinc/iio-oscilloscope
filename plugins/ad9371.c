@@ -1263,8 +1263,8 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
-	if (!gtk_builder_add_from_file(builder, "ad9371.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "ad9371.glade", NULL);
+	if (osc_load_glade_file(builder, "ad9371") < 0)
+		return NULL;
 
 	is_2rx_2tx = ch1 && iio_channel_find_attr(ch1, "hardwaregain");
 

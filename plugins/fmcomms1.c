@@ -1703,8 +1703,8 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 
 	builder = gtk_builder_new();
 
-	if (!gtk_builder_add_from_file(builder, "fmcomms1.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms1.glade", NULL);
+	if (osc_load_glade_file(builder, "fmcomms1") < 0)
+		return NULL;
 
 	rx_lo_freq = GTK_WIDGET(gtk_builder_get_object(builder, "rx_lo_freq"));
 	tx_lo_freq = GTK_WIDGET(gtk_builder_get_object(builder, "tx_lo_freq"));

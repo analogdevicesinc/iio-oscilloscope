@@ -272,8 +272,8 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 
 	builder = gtk_builder_new();
 
-	if (!gtk_builder_add_from_file(builder, "daq2.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "daq2.glade", NULL);
+	if (osc_load_glade_file(builder, "daq2") < 0)
+		return NULL;
 
 	daq2_panel = GTK_WIDGET(gtk_builder_get_object(builder, "daq2_panel"));
 	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));

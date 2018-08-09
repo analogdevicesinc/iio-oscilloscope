@@ -628,8 +628,8 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	nbook = GTK_NOTEBOOK(notebook);
 	builder = gtk_builder_new();
 
-	if (!gtk_builder_add_from_file(builder, "motor_control.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "motor_control.glade", NULL);
+	if (osc_load_glade_file(builder, "motor_control") < 0)
+		return NULL;
 
 	motor_control_panel = GTK_WIDGET(gtk_builder_get_object(builder, "tablePanelMotor_Control"));
 	controllers_notebook = GTK_WIDGET(gtk_builder_get_object(builder, "notebook_controllers"));

@@ -2639,3 +2639,16 @@ int osc_plugin_default_handle(struct iio_context *_ctx,
 
 	return ret < 0 ? ret : 0;
 }
+
+int osc_load_glade_file(GtkBuilder *builder, const char *fname)
+{
+	char path[256];
+	snprintf(path, sizeof(path), "glade/%s.glade", fname);
+	if (gtk_builder_add_from_file(builder, path, NULL))
+		return 0;
+	snprintf(path, sizeof(path), OSC_GLADE_FILE_PATH "%s.glade", fname);
+	if (gtk_builder_add_from_file(builder, path, NULL))
+		return 0;
+	fprintf(stderr, "Could not find '%s.glade' file", fname);
+	return -1;
+}

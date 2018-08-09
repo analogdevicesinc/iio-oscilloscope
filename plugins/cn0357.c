@@ -288,8 +288,8 @@ static GtkWidget* cn0357_init(GtkWidget *notebook, const char *ini_fn)
 
 	adc = iio_context_find_device(ctx, ADC_DEVICE);
 
-	if (!gtk_builder_add_from_file(builder, "cn0357.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "cn0357.glade", NULL);
+	if (osc_load_glade_file(builder, "cn0357") < 0)
+		return NULL;
 
 	cn0357_panel = GTK_WIDGET(gtk_builder_get_object(builder, "cn0357_panel"));
 	update_rates = GTK_WIDGET(gtk_builder_get_object(builder, "comboboxtext_update_rates"));

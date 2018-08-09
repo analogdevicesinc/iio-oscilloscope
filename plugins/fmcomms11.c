@@ -241,8 +241,8 @@ static GtkWidget * fmcomms11_init(GtkWidget *notebook, const char *ini_fn)
 
 	builder = gtk_builder_new();
 
-	if (!gtk_builder_add_from_file(builder, "fmcomms11.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms11.glade", NULL);
+	if (osc_load_glade_file(builder, "fmcomms11") < 0)
+		return NULL;
 
 	fmcomms11_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms11_panel"));
 	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));

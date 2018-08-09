@@ -192,8 +192,8 @@ static GtkWidget * ad9739a_init(GtkWidget *notebook, const char *ini_fn)
 	}
 
 	builder = gtk_builder_new();
-	if (!gtk_builder_add_from_file(builder, "ad9739a.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "ad9739a.glade", NULL);
+	if (osc_load_glade_file(builder, "ad9739a") < 0)
+		return NULL;
 
 	ad9739a_panel = GTK_WIDGET(gtk_builder_get_object(builder, "ad9739a_panel"));
 	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));

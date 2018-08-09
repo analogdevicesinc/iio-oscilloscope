@@ -316,8 +316,8 @@ static GtkWidget * AD7303_init(GtkWidget *notebook, const char *ini_fn)
 
 	builder = gtk_builder_new();
 
-	if (!gtk_builder_add_from_file(builder, "AD7303.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "AD7303.glade", NULL);
+	if (osc_load_glade_file(builder, "AD7303") < 0)
+		return NULL;
 
 	AD7303_panel = GTK_WIDGET(gtk_builder_get_object(builder, "tablePanelAD7303"));
 	btn_sine = GTK_WIDGET(gtk_builder_get_object(builder, "togBtnSine"));

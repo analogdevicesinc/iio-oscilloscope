@@ -406,8 +406,8 @@ static GtkWidget * dmm_init(GtkWidget *notebook, const char *ini_fn)
 	if (!ctx)
 		return NULL;
 
-	if (!gtk_builder_add_from_file(builder, "dmm.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "dmm.glade", NULL);
+	if (osc_load_glade_file(builder, "dmm") < 0)
+		return NULL;
 
 	dmm_panel = GTK_WIDGET(gtk_builder_get_object(builder, "dmm_panel"));
 	device_list_widget = GTK_WIDGET(gtk_builder_get_object(builder, "device_list_view"));

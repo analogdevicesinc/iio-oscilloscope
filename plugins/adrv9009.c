@@ -897,9 +897,9 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
-	if (!gtk_builder_add_from_file(builder, "adrv9009.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "adrv9009.glade", NULL);
-
+	if (osc_load_glade_file(builder, "adrv9009") < 0)
+		return NULL;
+	
 	adrv9009_panel = GTK_WIDGET(gtk_builder_get_object(builder, "adrv9009_panel"));
 
 	/* Global settings */

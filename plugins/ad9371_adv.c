@@ -1097,8 +1097,8 @@ static GtkWidget * ad9371adv_init(GtkWidget *notebook, const char *ini_fn)
 
 	builder = gtk_builder_new();
 
-	if (!gtk_builder_add_from_file(builder, "ad9371_adv.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "ad9371_adv.glade", NULL);
+	if (osc_load_glade_file(builder, "ad9371_adv") < 0)
+		return NULL;
 
 	ad9371adv_panel = GTK_WIDGET(gtk_builder_get_object(builder, "ad9371adv_panel"));
 	nbook = GTK_NOTEBOOK(gtk_builder_get_object(builder, "notebook"));
