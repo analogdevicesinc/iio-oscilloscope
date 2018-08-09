@@ -53,6 +53,13 @@
 
 #include "fru.h"
 
+#if __BYTE_ORDER == __BIG_ENDIAN
+#ifndef __bswap_32
+#define __bswap_32(x) ((unsigned int)__builtin_bswap32(x))
+#endif
+#endif
+
+
 /*
  * This code is based from:
  * Platform Management FRU Information
