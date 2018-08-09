@@ -16,7 +16,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 #include "../osc.h"
 #include "../iio_widget.h"

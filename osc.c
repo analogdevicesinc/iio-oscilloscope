@@ -15,7 +15,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/stat.h>

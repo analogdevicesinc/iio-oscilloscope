@@ -4,7 +4,7 @@
  * Licensed under the GPL-2.
  *
  **/
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 #include "datatypes.h"
 

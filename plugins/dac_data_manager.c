@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdbool.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <math.h>
 #include <ctype.h>
