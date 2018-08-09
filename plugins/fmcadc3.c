@@ -115,8 +115,8 @@ static GtkWidget * fmcadc3_init(GtkWidget *notebook, const char *ini_fn)
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
-	if (!gtk_builder_add_from_file(builder, "fmcadc3.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcadc3.glade", NULL);
+	if (osc_load_glade_file(builder, "fmcadc3") < 0)
+		return NULL;
 
 	fmcadc3_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcadc3_panel"));
 	gain = GTK_WIDGET(gtk_builder_get_object(builder, "gain"));

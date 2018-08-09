@@ -1302,8 +1302,9 @@ static GtkWidget * scpi_init(GtkWidget *notebook, const char *ini_fn)
 	init_scpi_device(&prog_counter);
 
 	builder = gtk_builder_new();
-	if (!gtk_builder_add_from_file(builder, "scpi.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "scpi.glade", NULL);
+
+	if (osc_load_glade_file(builder, "scpi") < 0)
+		return NULL;
 
 	scpi_panel = GTK_WIDGET(gtk_builder_get_object(builder, "scpi_panel"));
 	network_conf = GTK_WIDGET(gtk_builder_get_object(builder, "scpi_network_conf"));

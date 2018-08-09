@@ -1336,8 +1336,8 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
-	if (!gtk_builder_add_from_file(builder, "fmcomms2_adv.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms2_adv.glade", NULL);
+	if (osc_load_glade_file(builder, "fmcomms2_adv") < 0)
+		return NULL;
 
 	fmcomms2adv_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms2adv_panel"));
 

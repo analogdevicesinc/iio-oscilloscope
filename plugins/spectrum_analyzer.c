@@ -815,9 +815,8 @@ static GtkWidget * analyzer_init(GtkWidget *notebook, const char *ini_fn)
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
-	if (!gtk_builder_add_from_file(builder, "spectrum_analyzer.glade", NULL))
-		gtk_builder_add_from_file(builder,
-			OSC_GLADE_FILE_PATH "spectrum_analyzer.glade", NULL);
+	if (osc_load_glade_file(builder, "spectrum_analyzer") < 0)
+		return NULL;
 
 	analyzer_panel = GTK_WIDGET(gtk_builder_get_object(builder,
 				"spectrum_analyzer_panel"));

@@ -175,7 +175,7 @@ install-common-files: $(OSC) $(PLUGINS)
 	install -d $(DESTDIR)$(PREFIX)/lib/osc/block_diagrams
 	install ./$(OSC) $(DESTDIR)$(PREFIX)/bin/
 	install ./$(LIBOSC) $(DESTDIR)$(PREFIX)/$(if $(WITH_MINGW),bin,lib)/
-	install -m 644 ./*.glade $(PSHARE)
+	install -m 644 ./glade/*.glade $(PSHARE)
 	install -m 644 ./icons/ADIlogo.png $(PSHARE)
 	install -m 644 ./icons/IIOlogo.png $(PSHARE)
 	install -m 644 ./icons/osc128.png $(PSHARE)

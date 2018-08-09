@@ -6628,7 +6628,7 @@ static void create_plot(OscPlot *plot)
 
 	/* Get the GUI from a glade file. */
 	builder = gtk_builder_new();
-	if (!gtk_builder_add_from_file(builder, "./oscplot.glade", NULL))
+	if (!gtk_builder_add_from_file(builder, "./glade/oscplot.glade", NULL))
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "oscplot.glade", NULL);
 	else {
 		GtkImage *logo;

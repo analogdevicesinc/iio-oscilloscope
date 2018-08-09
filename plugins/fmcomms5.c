@@ -1129,8 +1129,8 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 		return 0;
 	}
 
-	if (!gtk_builder_add_from_file(builder, "fmcomms5.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "fmcomms5.glade", NULL);
+	if (osc_load_glade_file(builder, "fmcomms5") < 0)
+		return NULL;
 
 	fmcomms5_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms5_panel"));
 

@@ -1590,8 +1590,8 @@ static GtkWidget * debug_init(GtkWidget *notebook, const char *ini_fn)
 	}
 
 	builder = gtk_builder_new();
-	if (!gtk_builder_add_from_file(builder, "debug.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "debug.glade", NULL);
+	if (osc_load_glade_file(builder, "debug") < 0)
+		return NULL;
 
 	debug_panel = GTK_WIDGET(gtk_builder_get_object(builder, "reg_debug_panel"));
 	vbox_device_list = GTK_WIDGET(gtk_builder_get_object(builder, "device_list_container"));

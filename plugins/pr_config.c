@@ -327,8 +327,8 @@ static GtkWidget * pr_config_init(GtkWidget *notebook, const char *ini_fn)
 
 	builder = gtk_builder_new();
 
-	if (!gtk_builder_add_from_file(builder, "pr_config.glade", NULL))
-		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "pr_config.glade", NULL);
+	if (osc_load_glade_file(builder, "pr_config") < 0)
+		return NULL;
 
 	pr_config_panel = GTK_WIDGET(gtk_builder_get_object(builder, "pr_config_panel"));
 	reconf_chooser = GTK_WIDGET(gtk_builder_get_object(builder, "filechooserbutton_reconf"));
