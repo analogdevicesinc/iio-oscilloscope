@@ -13,7 +13,7 @@
 #include <gtkdatabox_markers.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <math.h>
 #include <matio.h>
 #include <string.h>
