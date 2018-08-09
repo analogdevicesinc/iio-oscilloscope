@@ -2265,7 +2265,7 @@ int osc_test_value(struct iio_context *_ctx, int line,
 	struct iio_device *dev;
 	struct iio_channel *chn;
 	const char *attr;
-	long long min_i, max_i, val_i;
+	long long min_i = -1, max_i = -1, val_i;
 	double min_d, max_d, val_d;
 	unsigned int i;
 	int ret = -EINVAL;
