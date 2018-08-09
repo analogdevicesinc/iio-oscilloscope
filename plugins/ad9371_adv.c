@@ -44,7 +44,6 @@ static struct iio_context *ctx;
 static struct iio_device *dev;
 
 OscPlot *plot_xcorr_4ch;
-static volatile int auto_calibrate = 0;
 
 static bool can_update_widgets;
 
