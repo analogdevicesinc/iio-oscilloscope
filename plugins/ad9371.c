@@ -66,7 +66,6 @@ static const gdouble scale100 = 100.0;
 
 static const char *freq_name;
 
-static volatile int auto_calibrate = 0;
 struct tuning_param
 {
 	double frequency;
