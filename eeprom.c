@@ -10,21 +10,26 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
 
 #include "eeprom.h"
 
-static const char *eeprom_path = NULL;
+static char *eeprom_path = NULL;
 
 /* Test if a given file is a valid XCOMM EEPROM file. */
 static int is_eeprom(const char *fpath, const struct stat *sb,
 		int typeflag, struct FTW *ftwbuf)
 {
-	if (typeflag == FTW_F && !strcmp(basename(fpath), "eeprom") \
+	int ret = 0;
+	char *fpath_s = strdup(fpath);
+	if (typeflag == FTW_F && !strcmp(basename(fpath_s), "eeprom") \
 			&& sb->st_size == FAB_SIZE_FRU_EEPROM) {
+		free(eeprom_path);
 		eeprom_path = strdup(fpath);
-		return 1;
+		ret = 1;
 	}
-	return 0;
+	free(fpath_s);
+	return ret;
 }
 
 /* Recursively search a given path (defaulting to /sys) for an XCOMM compatible
