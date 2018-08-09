@@ -646,7 +646,7 @@ static void get_markers(double *offset, double *mag)
 			do {
 				ret = plugin_data_capture_of_plot(plot_xcorr_4ch,
 						device_ref, NULL, &markers);
-			} while ((ret == -EBUSY));
+			} while (ret == -EBUSY);
 		}
 
 		if (markers) {
