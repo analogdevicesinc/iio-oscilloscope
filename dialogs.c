@@ -24,6 +24,10 @@
 #include "config.h"
 #include "phone_home.h"
 
+#ifdef SERIAL_BACKEND
+#include <libserialport.h> /* cross platform serial port lib */
+#endif
+
 #if defined(FRU_FILES) && !defined(__linux__)
 #undef FRU_FILES
 #endif
@@ -43,6 +47,9 @@ struct _Dialogs
 	GtkWidget *net_ip;
 	GtkWidget *connect_usb;
 	GtkWidget *connect_usbd;
+	GtkWidget *connect_serial;
+	GtkWidget *connect_seriald;
+	GtkWidget *connect_serialbr;
 	GtkWidget *ok_btn;
 	GtkWidget *latest_version;
 	GtkWidget *ver_progress_window;
@@ -338,6 +345,27 @@ static struct iio_context * get_context(Dialogs *data)
 			return get_context_from_osc();
 		}
 		return ctx;
+#ifdef SERIAL_BACKEND
+	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial))) {
+		struct iio_context *ctx;
+		gchar *port = gtk_combo_box_get_active_text(
+				GTK_COMBO_BOX(dialogs.connect_seriald));
+		gchar *baud_rate = gtk_combo_box_get_active_text(
+				GTK_COMBO_BOX(dialogs.connect_serialbr));
+
+		/* Size is +3: for ':', ',' and '\0' */
+		int buf_size = sizeof("serial:") + strlen(port) + strlen(baud_rate) + 3;
+		gchar *result = malloc(buf_size);
+		snprintf(result, buf_size, "serial:%s,%s", port, baud_rate);
+
+		ctx = iio_create_context_from_uri(result);
+		free(result);
+		if (!ctx && errno == EBUSY &&
+				!strcmp("serial", iio_context_get_name(get_context_from_osc()))) {
+			return get_context_from_osc();
+		}
+		return ctx;
+#endif
 	} else {
 		return iio_create_local_context();
 	}
@@ -435,6 +463,32 @@ nope:
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd), index);
 }
+
+#ifdef SERIAL_BACKEND
+static void refresh_serial(void) {
+	GtkListStore *liststore;
+	struct sp_port **ports;
+	int i;
+
+	/* clear everything, and scan again */
+	liststore = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(dialogs.connect_seriald)));
+	gtk_list_store_clear(liststore);
+
+	/*get serial ports*/
+	enum sp_return error = sp_list_ports(&ports);
+	if (error == SP_OK) {
+	for (i = 0; ports[i]; i++) {
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_seriald), sp_get_port_name(ports[i]));
+	}
+		sp_free_port_list(ports);
+	} else {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_seriald),0);
+		gtk_widget_set_sensitive(dialogs.connect_seriald, false);
+		gtk_widget_set_sensitive(dialogs.connect_serialbr, false);
+		gtk_widget_set_sensitive(dialogs.connect_serial, false);
+	}
+}
+#endif
 
 char * usb_get_serialnumber(struct iio_context *context)
 {
@@ -653,6 +707,11 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb), true);
 		has_context = connect_fillin(data);
 	}
+
+#ifdef SERIAL_BACKEND
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial), true);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial), true);
+#endif
 
 	while (true) {
 		gtk_widget_set_sensitive(data->ok_btn, has_context);
@@ -1031,6 +1090,9 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.net_ip = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
 	dialogs.connect_usb = GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb"));
 	dialogs.connect_usbd = GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_devices"));
+	dialogs.connect_serial = GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial"));
+	dialogs.connect_seriald = GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_devices"));
+	dialogs.connect_serialbr = GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_baudrate"));
 	dialogs.ok_btn = GTK_WIDGET(gtk_builder_get_object(builder, "button3"));
 	dialogs.latest_version = GTK_WIDGET(gtk_builder_get_object(builder, "latest_version_popup"));
 	dialogs.ver_progress_window = GTK_WIDGET(gtk_builder_get_object(builder, "progress_window"));
@@ -1050,14 +1112,29 @@ void dialogs_init(GtkBuilder *builder)
 		       GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")), "sensitive", 0);
 	g_object_bind_property(dialogs.connect_usb, "active", dialogs.connect_usbd, "sensitive", 0);
 
+	g_object_bind_property(dialogs.connect_serial, "active",
+		       GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_label")), "sensitive", 0);
+	g_object_bind_property(dialogs.connect_serial, "active", dialogs.connect_seriald, "sensitive", 0);
+	g_object_bind_property(dialogs.connect_serial, "active", dialogs.connect_serialbr, "sensitive", 0);
+
 	g_signal_connect(G_OBJECT(dialogs.connect_usbd), "changed",
+			(GCallback) hide_ok_btn, NULL);
+
+	g_signal_connect(G_OBJECT(dialogs.connect_seriald), "changed",
 			(GCallback) hide_ok_btn, NULL);
 
 	gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")),
 			false);
+	gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_label")),
+			false);
 	g_signal_connect(G_OBJECT(dialogs.connect_usb), "toggled",
 			(GCallback) connect_clear, NULL);
 	gtk_widget_set_sensitive(dialogs.connect_usbd, false);
+
+	g_signal_connect(G_OBJECT(dialogs.connect_serial), "toggled",
+			(GCallback) connect_clear, NULL);
+	gtk_widget_set_sensitive(dialogs.connect_seriald, false);
+	gtk_widget_set_sensitive(dialogs.connect_serialbr, false);
 
 	/* test USB backend & hide if it's not supported */
 	ctx = iio_create_context_from_uri("usb:expected_error");
@@ -1089,7 +1166,19 @@ void dialogs_init(GtkBuilder *builder)
 		}
 	}
 
+	/* Serial Backend - hide if not supported */
+#ifndef SERIAL_BACKEND
+	gtk_widget_hide(dialogs.connect_seriald);
+	gtk_widget_hide(dialogs.connect_serial);
+	gtk_widget_hide(dialogs.connect_serialbr);
+	gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_label")));
+#endif
+
 	refresh_usb();
+	
+#ifdef SERIAL_BACKEND
+	refresh_serial();
+#endif
 
 	g_signal_connect(dialogs.net_ip, "key-press-event",
 			(GCallback) connect_key_press_cb, dialogs.connect);
