@@ -5,7 +5,7 @@ source ./CI/travis/lib.sh
 source ./CI/travis/before_install_lib.sh
 
 
-PACKAGES="cmake fftw libmatio libxml2 pkg-config libusb gtk+ gtkdatabox jansson glib curl openssl@1.1 flex bison gettext"
+PACKAGES="cmake fftw libmatio libxml2 pkg-config libusb gtk+ gtkdatabox jansson glib curl openssl@1.1 flex bison gettext libserialport"
 
 brew update
 
