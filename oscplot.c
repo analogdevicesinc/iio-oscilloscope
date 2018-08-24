@@ -5519,7 +5519,7 @@ static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type
 		return;
 	}
 
-	fprintf(stderr, "unhandled event at %s : %s\n", __func__, buf);
+	fprintf(stderr, "unhandled event at %s : %s\n", __func__, buf ? buf : "<null>");
 }
 
 static void marker_menu (struct string_and_plot *string_data)
