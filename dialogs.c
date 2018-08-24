@@ -463,7 +463,8 @@ nope:
 }
 
 #ifdef SERIAL_BACKEND
-static void refresh_serial(void) {
+static void refresh_serial(GtkBuilder *builder)
+{
 	GtkListStore *liststore;
 	struct sp_port **ports;
 	int i;
@@ -485,6 +486,15 @@ static void refresh_serial(void) {
 		gtk_widget_set_sensitive(dialogs.connect_serialbr, false);
 		gtk_widget_set_sensitive(dialogs.connect_serial, false);
 	}
+}
+#else
+static void refresh_serial(GtkBuilder *builder)
+{
+	/* Serial Backend - hide if not supported */
+	gtk_widget_hide(dialogs.connect_seriald);
+	gtk_widget_hide(dialogs.connect_serial);
+	gtk_widget_hide(dialogs.connect_serialbr);
+	gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_label")));
 }
 #endif
 
@@ -1164,19 +1174,8 @@ void dialogs_init(GtkBuilder *builder)
 		}
 	}
 
-	/* Serial Backend - hide if not supported */
-#ifndef SERIAL_BACKEND
-	gtk_widget_hide(dialogs.connect_seriald);
-	gtk_widget_hide(dialogs.connect_serial);
-	gtk_widget_hide(dialogs.connect_serialbr);
-	gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_label")));
-#endif
-
 	refresh_usb();
-	
-#ifdef SERIAL_BACKEND
-	refresh_serial();
-#endif
+	refresh_serial(builder);
 
 	g_signal_connect(dialogs.net_ip, "key-press-event",
 			(GCallback) connect_key_press_cb, dialogs.connect);
