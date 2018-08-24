@@ -39,7 +39,6 @@ void Transform_destroy(Transform *tr)
 			tr->plot_channels = NULL;
 		}
 		free(tr);
-		tr = NULL;
 	}
 }
 
