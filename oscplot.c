@@ -712,15 +712,23 @@ double osc_plot_get_sample_count (OscPlot *plot) {
 
 void osc_plot_set_channel_state(OscPlot *plot, const char *dev, unsigned int channel, bool state)
 {
-	OscPlotPrivate *priv = plot->priv;
-	struct iio_context *ctx = priv->ctx;
+	OscPlotPrivate *priv;
+	struct iio_context *ctx;
 	struct iio_device *iio_dev;
 	struct iio_channel *iio_ch;
 
-	if (gtk_toggle_tool_button_get_active((GtkToggleToolButton *)priv->capture_button))
+	if (!plot || !dev)
 		return;
 
-	if (!plot || !dev)
+	priv = plot->priv;
+	if (!priv)
+		return;
+
+	ctx = priv->ctx;
+	if (!ctx)
+		return;
+
+	if (gtk_toggle_tool_button_get_active((GtkToggleToolButton *)priv->capture_button))
 		return;
 
 	iio_dev = iio_context_find_device(ctx, dev);
@@ -2170,14 +2178,22 @@ static bool plot_channel_check_name_exists(OscPlot *plot, const char *name,
 
 static int plot_get_sample_count_of_device(OscPlot *plot, const char *device)
 {
-	OscPlotPrivate *priv = plot->priv;
-	struct iio_context *ctx = priv->ctx;
+	OscPlotPrivate *priv;
+	struct iio_context *ctx;
 	struct iio_device *iio_dev;
 	struct extra_dev_info *dev_info;
 	gdouble freq;
 	int count = -1;
 
 	if (!plot || !device)
+		return count;
+
+	priv = plot->priv;
+	if (!priv)
+		return count;
+
+	ctx = priv->ctx;
+	if (!ctx)
 		return count;
 
 	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(priv->hor_units))) {
