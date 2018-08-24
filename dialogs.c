@@ -354,12 +354,10 @@ static struct iio_context * get_context(Dialogs *data)
 				GTK_COMBO_BOX(dialogs.connect_serialbr));
 
 		/* Size is +3: for ':', ',' and '\0' */
-		int buf_size = sizeof("serial:") + strlen(port) + strlen(baud_rate) + 3;
-		gchar *result = malloc(buf_size);
-		snprintf(result, buf_size, "serial:%s,%s", port, baud_rate);
+		gchar *result = g_strdup_printf("serial:%s,%s", port, baud_rate);
 
 		ctx = iio_create_context_from_uri(result);
-		free(result);
+		g_free(result);
 		if (!ctx && errno == EBUSY &&
 				!strcmp("serial", iio_context_get_name(get_context_from_osc()))) {
 			return get_context_from_osc();
