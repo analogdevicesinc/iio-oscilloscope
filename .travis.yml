@@ -1,6 +1,11 @@
 language: c
 sudo: required
 
+addons:
+  apt:
+    packages:
+      - cppcheck
+
 matrix:
   fast_finish: true
   include:
@@ -23,6 +28,7 @@ before_install:
 
 script:
   - ${TRAVIS_BUILD_DIR}/CI/travis/make
+  - ${TRAVIS_BUILD_DIR}/CI/travis/post_build_checks
 
 notifications:
   email:
