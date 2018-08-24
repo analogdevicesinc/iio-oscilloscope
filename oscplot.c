@@ -2683,7 +2683,7 @@ static void markers_phase_diff_show(OscPlotPrivate *priv)
 		filter = 1.0 / filter;
 
 		if (MAX_MARKERS && priv->marker_type != MARKER_OFF) {
-			for (m = 0; m <= MAX_MARKERS &&
+			for (m = 0; m < MAX_MARKERS &&
 						trA_markers[m].active; m++) {
 
 				/* find out the quadrant
@@ -2737,7 +2737,7 @@ static void markers_phase_diff_show(OscPlotPrivate *priv)
 					angle,
 					/* lo_freq / markers_scale */ trA_markers[m].x,
 					/*dev_info->adc_scale */ 'M',
-					m != MAX_MARKERS ? '\n' : '\0');
+					m != (MAX_MARKERS - 1) ? '\n' : '\0');
 
 				gtk_text_buffer_insert(priv->phase_buf,
 						&iter, text, -1);
