@@ -88,7 +88,7 @@ char **get_xml_list(char * buf_dir_name, int *list_size)
 		return NULL;
 	}
 
-	while (ent = readdir(d), ent != NULL) {
+	while ((ent = readdir(d))) {
 		bool is_regular_file;
 #ifdef _DIRENT_HAVE_D_TYPE
 		is_regular_file = ent->d_type == DT_REG;
