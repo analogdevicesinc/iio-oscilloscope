@@ -902,8 +902,10 @@ static int dcxo_to_eeprom(void)
 		target_freq = REFCLK_RATE;
 	} else if (!strcmp(iio_context_get_name(ctx), "local")) {
 		fp = fopen("/sys/kernel/debug/clk/ad9361_ext_refclk/clk_rate", "r");
-		if (fscanf(fp, "%lf", &target_freq) != 1) {
+		if (!fp || fscanf(fp, "%lf", &target_freq) != 1) {
 			failure_msg = "Unable to read AD9361 reference clock rate from debugfs.";
+			if (fp)
+				fclose(fp);
 			goto cleanup;
 		}
 		if (fp) {

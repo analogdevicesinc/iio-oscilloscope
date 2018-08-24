@@ -260,10 +260,10 @@ Release * release_get_latest(void)
 
 	/* Get the release SHA commit */
 	json_t *j_tags, *tag, *name, *commit;
-	char *tag_name;
+	const char *tag_name;
 	size_t i;
 
-	tag_name = strdup(json_string_value(json_object_get(j_release, "tag_name")));
+	tag_name = json_string_value(json_object_get(j_release, "tag_name"));
 	j_tags = decode_url_feedback("https://api.github.com/repos/analogdevicesinc/iio-oscilloscope/tags");
 	if (!j_tags) {
 		printf("Could not decode data about git tags\n");
@@ -278,7 +278,7 @@ Release * release_get_latest(void)
 		name = json_object_get(tag, "name");
 		if (!json_is_string(name))
 			break;
-		if (!strcmp(json_string_value(name), tag_name)) {
+		if (tag_name && !strcmp(json_string_value(name), tag_name)) {
 			commit = json_object_get(tag, "commit");
 			if (!json_is_object(commit))
 				break;

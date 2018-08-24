@@ -742,10 +742,12 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		if (ret < 0) {
 			if (stat_msg)
 				*stat_msg = g_strdup_printf("Error while parsing file: %s.", strerror(-ret));
+			free(buf);
 			return ret;
 		} else if (ret > 0) {
 			if (stat_msg)
 				*stat_msg = g_strdup_printf("Invalid data format");
+			free(buf);
 			return -EINVAL;
 		}
 	}
