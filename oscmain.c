@@ -94,7 +94,7 @@ static void vcheck_dont_show_cb(GtkToggleButton *btn, gpointer data)
 
 static void init_application ()
 {
-	GtkBuilder *builder = NULL;
+	GtkBuilder *builder;
 	GtkWidget  *window;
 	GtkWidget  *btn_capture;
 	GtkWidget  *infobar_close, *infobar_reconnect;

@@ -634,7 +634,7 @@ static void get_markers(double *offset, double *mag)
 {
 	int ret, sum = MARKER_AVG;
 	struct marker_type *markers = NULL;
-	const char *device_ref = NULL;
+	const char *device_ref;
 
 	device_ref = plugin_get_device_by_reference(CAP_DEVICE_ALT);
 
@@ -831,7 +831,7 @@ static void calibrate (gpointer button)
 {
 	GtkProgressBar *calib_progress = NULL;
 	double rx_phase_lpc, rx_phase_hpc, tx_phase_hpc;
-	struct iio_channel *in0 = NULL, *in0_slave = NULL;
+	struct iio_channel *in0, *in0_slave;
 	long long cal_tone, cal_freq;
 	int ret, samples;
 
@@ -1129,7 +1129,7 @@ static char * set_widget_value(GtkWidget *widget, struct w_info *item, int val)
 }
 static void connect_widget(GtkBuilder *builder, struct w_info *item, int val)
 {
-	char *signal = NULL;
+	char *signal;
 	GtkWidget *widget;
 	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
 	signal = set_widget_value(widget, item, val);

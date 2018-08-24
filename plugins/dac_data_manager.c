@@ -1240,7 +1240,7 @@ static void gui_manager_create(struct dac_data_manager *manager)
 
 static const char * get_tone_name(struct iio_channel *ch)
 {
-	const char *name = NULL;
+	const char *name;
 	char tone_index;
 
 	name = iio_channel_get_name(ch);
@@ -1523,7 +1523,7 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 	min_scale = manager->lowest_scale_point;
 	scale_available_mode = manager->scale_available_mode;
 
-	GtkWidget *tx1 = NULL, *tx2 = NULL, *tx3 = NULL, *tx4 = NULL;
+	GtkWidget *tx1, *tx2 = NULL, *tx3 = NULL, *tx4 = NULL;
 
 	tx1 = manager->dac1.tx1.dds_mode_widget;
 	if (manager->dac1.tx_count == 2)
