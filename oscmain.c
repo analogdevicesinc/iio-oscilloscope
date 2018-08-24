@@ -134,7 +134,7 @@ static void init_application ()
 	gtk_about_dialog_set_version(about, OSC_VERSION);
 	iio_library_get_version(&major, &minor, patch);
 	tmp = gtk_label_get_label(GTK_LABEL(gtk_builder_get_object(builder, "libiio_title")));
-	sprintf(tmp2, "%s\nlibiio version : %i.%i-%s\n", tmp, major, minor, patch);
+	sprintf(tmp2, "%s\nlibiio version : %u.%u-%s\n", tmp, major, minor, patch);
 	gtk_label_set_label(GTK_LABEL(gtk_builder_get_object(builder, "libiio_title")),
 			tmp2);
 

@@ -314,7 +314,7 @@ static void resolver_resolution_update_val(GtkBuilder *builder)
 			gtk_combo_box_set_active(box,
 				(resolution / 2) - 5);
 	} else {
-		printf("read to <bits> attribute failed:%zu\n", ret);
+		printf("read to <bits> attribute failed:%zd\n", ret);
 	}
 }
 
@@ -331,8 +331,7 @@ static void resolver_resolution_changed_cb(GtkComboBoxText *box,
 	if (buf) {
 		ret = iio_device_attr_write(resolver_dev, "bits", buf);
 		if (ret < 0)
-			printf("write to <bits> attribute failed:%zu\n",
-				ret);
+			printf("write to <bits> attribute failed:%zd\n", ret);
 		g_free(buf);
 	}
 }
@@ -667,7 +666,7 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	/* Signal connections for GPOs */
 	char widget_name[25];
 	for (i = 0; i < sizeof(gpo)/sizeof(gpo[0]); i++) {
-		sprintf(widget_name, "checkbutton_gpo%zd", i+1);
+		sprintf(widget_name, "checkbutton_gpo%zu", i+1);
 		gpo_id[i] = i;
 		gpo[i] = GTK_WIDGET(gtk_builder_get_object(builder, widget_name));
 		g_signal_connect(G_OBJECT(gpo[i]), "toggled", G_CALLBACK(gpo_toggled_cb), &gpo_id[i]);

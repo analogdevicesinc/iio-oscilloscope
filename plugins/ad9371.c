@@ -1078,7 +1078,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 		else if (GTK_IS_BUTTON(widgets[i].widget))
 			sprintf(signal_name, "%s", "clicked");
 		else
-			printf("unhandled widget type, attribute: %s (%d)\n", widgets[i].attr_name, i);
+			printf("unhandled widget type, attribute: %s (%u)\n", widgets[i].attr_name, i);
 
 		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
 			widgets[i].priv_progress != NULL) {

@@ -830,7 +830,7 @@ static void bist_tone_cb(GtkWidget *widget, gpointer data)
 	enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
 	                GTK_WIDGET(gtk_builder_get_object(builder, "tx_nco_enable"))));
 
-	sprintf(temp, "%d %d %d", enable, tx1_freq, tx2_freq);
+	sprintf(temp, "%u %u %u", enable, tx1_freq, tx2_freq);
 
 	iio_device_debug_attr_write(dev, "bist_tone", "0 0 0");
 	iio_device_debug_attr_write(dev, "bist_tone", temp);

@@ -223,7 +223,7 @@ static void log_before_sweep_starts(plugin_setup *setup)
 	fprintf(fp, "Profile count: %d\n", g_slist_length(setup->rx_profiles));
 	for (node = setup->rx_profiles; node; node = g_slist_next(node)) {
 		fastlock_profile *profile = node->data;
-		fprintf(fp, "Index: %d\n", profile->index);
+		fprintf(fp, "Index: %u\n", profile->index);
 		fprintf(fp, "Frequency: %lld\n", profile->frequency);
 		fprintf(fp, "Raw Data: %s\n", profile->data);
 	}

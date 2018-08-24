@@ -928,7 +928,7 @@ static GtkWidget *gui_tone_create(struct dds_tone *tone)
 	char tone_label[16];
 
 	combobox_scales = tone->parent->parent->parent->parent->scale_available_mode;
-	snprintf(tone_label, sizeof(tone_label), "<b>Tone %d</b>", tone->number);
+	snprintf(tone_label, sizeof(tone_label), "<b>Tone %u</b>", tone->number);
 
 	tone_frm = frame_with_table_create(tone_label, 3, 2);
 	tone_align = gtk_bin_get_child(GTK_BIN(tone_frm));
@@ -1010,9 +1010,9 @@ static GtkWidget *gui_tx_create(struct dds_tx *tx)
 	GtkWidget *txmodule_align;
 	GtkWidget *txmodule_table;
 	char txmodule_label[16];
-	int dac_index = (tx->parent->index - 1) * (tx->parent->tones_count / 4);
+	unsigned int dac_index = (tx->parent->index - 1) * (tx->parent->tones_count / 4);
 
-	snprintf(txmodule_label, sizeof(txmodule_label), "<b>TX %d</b>", dac_index + tx->index);
+	snprintf(txmodule_label, sizeof(txmodule_label), "<b>TX %u</b>", dac_index + tx->index);
 
 	txmodule_frm = frame_with_table_create(txmodule_label, 3, 1);
 	txmodule_align = gtk_bin_get_child(GTK_BIN(txmodule_frm));

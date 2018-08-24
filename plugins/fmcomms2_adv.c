@@ -875,7 +875,7 @@ static void calibrate (gpointer button)
 
 	samples = get_cal_samples(cal_tone, cal_freq);
 
-	DBG("cal_tone %llu cal_freq %llu samples %d", cal_tone, cal_freq, samples);
+	DBG("cal_tone %lld cal_freq %lld samples %d", cal_tone, cal_freq, samples);
 
 	gdk_threads_enter();
 	osc_plot_set_sample_count(plot_xcorr_4ch, samples);
@@ -1068,7 +1068,7 @@ static void tx_phase_hscale_value_changed (GtkRange *hscale1, gpointer data)
 static void bist_tone_cb (GtkWidget *widget, gpointer data)
 {
 	GtkBuilder *builder = data;
-	unsigned mode, level, freq, c2i, c2q, c1i, c1q;
+	unsigned int mode, level, freq, c2i, c2q, c1i, c1q;
 	char temp[40];
 
 	mode = gtk_combo_box_get_active(GTK_COMBO_BOX(
@@ -1086,7 +1086,7 @@ static void bist_tone_cb (GtkWidget *widget, gpointer data)
 	c1q = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
 		GTK_WIDGET(gtk_builder_get_object(builder, "c1q"))));
 
-	sprintf(temp, "%d %d %d %d", mode, freq, level * 6,
+	sprintf(temp, "%u %u %u %u", mode, freq, level * 6,
 		(c2q << 3) | (c2i << 2) | (c1q << 1) | c1i);
 
 	iio_device_debug_attr_write(dev, "bist_tone", temp);
