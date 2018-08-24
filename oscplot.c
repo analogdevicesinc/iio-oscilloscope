@@ -4285,7 +4285,7 @@ static void channel_selection_set_default(OscPlot *plot)
 static int * get_user_saveas_channel_selection(OscPlot *plot, unsigned int nb_channels)
 {
 	OscPlotPrivate *priv = plot->priv;
-	GList *ch_checkbtns = NULL;
+	GList *ch_checkbtns;
 	GList *node;
 	GtkToggleButton *btn;
 	int *mask;
@@ -5829,7 +5829,7 @@ static gboolean tree_get_selected_row_iter(GtkTreeView *treeview, GtkTreeIter *i
 {
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
-	GList *row = NULL;
+	GList *row;
 
 	selection = gtk_tree_view_get_selection(treeview);
 	model = gtk_tree_view_get_model(treeview);
@@ -6633,7 +6633,7 @@ static void create_plot(OscPlot *plot)
 
 	GtkWidget *table;
 	GtkWidget *tmp;
-	GtkBuilder *builder = NULL;
+	GtkBuilder *builder;
 	GtkTreeSelection *tree_selection;
 	GtkDataboxRuler *ruler_y;
 	GtkTreeStore *tree_store;

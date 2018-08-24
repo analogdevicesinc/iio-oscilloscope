@@ -311,9 +311,9 @@ static void attach_plugin(GtkWidget *window, struct detachable_plugin *d_plugin)
 	const struct osc_plugin *plugin = d_plugin->plugin;
 	gint plugin_page_index;
 
-	GtkWidget *hbox = NULL;
-	GList *hbox_elems = NULL;
-	GList *first = NULL;
+	GtkWidget *hbox;
+	GList *hbox_elems;
+	GList *first;
 
 	hbox = gtk_bin_get_child(GTK_BIN(window));
 	hbox_elems = gtk_container_get_children(GTK_CONTAINER(hbox));

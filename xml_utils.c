@@ -203,7 +203,7 @@ char* read_string_element(xmlDocPtr doc, xmlNodePtr node, char *element)
  */
 int read_integer_element(xmlDocPtr doc, xmlNodePtr node, char *element)
 {
-	char *text = NULL;
+	char *text;
 	int result;
 	int ret;
 

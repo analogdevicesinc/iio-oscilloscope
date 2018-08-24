@@ -891,7 +891,7 @@ static char *set_widget_value(GtkWidget *widget, struct w_info *item, long long 
 }
 static void connect_widget(GtkBuilder *builder, struct w_info *item, long long val)
 {
-	char *signal = NULL;
+	char *signal;
 	GtkWidget *widget;
 	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
 	signal = set_widget_value(widget, item, val);

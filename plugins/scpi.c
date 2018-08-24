@@ -737,8 +737,8 @@ static int tx_mag_seek_dBm(struct mag_seek *mag_seek)
 	int ret = 0;
 	double dBm = 0;
 	double difference = 1;
-	struct marker_type *markers = NULL;
-	const char *device_ref = NULL;
+	struct marker_type *markers;
+	const char *device_ref;
 
 	device_ref = plugin_get_device_by_reference("axi-ad9625-hpc");
 	markers = g_malloc(sizeof(struct marker_type) * (MAX_MARKERS + 2));

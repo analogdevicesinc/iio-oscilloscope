@@ -525,7 +525,7 @@ static int loop_expand(struct loops_parse_params *parse_params,
 	fpos_t pos;
 	long long i, first, inc, last;
 	int ret = 0;
-	struct ini_loop *iniloop = NULL;
+	struct ini_loop *iniloop;
 	bool unclosed_loop = true;
 
 	iniloop = ini_loop_new(buf_with_loop, loop_name);

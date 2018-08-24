@@ -650,7 +650,7 @@ static void update_widgets(void)
 
 static void filter_fir_update(void)
 {
-	bool rx = false, tx = false, rxtx = false;
+	bool rx = false, tx = false, rxtx;
 	struct iio_channel *chn;
 	int stat;
 
