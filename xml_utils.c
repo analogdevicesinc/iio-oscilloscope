@@ -77,7 +77,7 @@ char **get_xml_list(char * buf_dir_name, int *list_size)
 {
 	const struct dirent *ent;
 	DIR *d;
-	char **list = NULL;
+	char **list = NULL, **list1 = NULL;
 	char *extension_ptr;
 	int cnt = 0;
 	int n = 0;
@@ -99,7 +99,14 @@ char **get_xml_list(char * buf_dir_name, int *list_size)
 			extension_ptr = strstr(ent->d_name, ".xml");
 			if (extension_ptr != NULL) { /* if the entry has a ".xml" extension */
 				cnt++;
-				list = (char **)realloc(list, sizeof(char *) * cnt);
+				list1 = (char **)realloc(list, sizeof(char *) * cnt);
+				if (!list1) {
+					printf("Memory allocation failed\n");
+					free(list);
+					closedir(d);
+					return NULL;
+				}
+				list = list1;
 				n = extension_ptr - ent->d_name;
 				n += 1; /* 1 is for the termination character */
 				list[cnt - 1] = (char *)malloc(sizeof(char) * n);
@@ -108,6 +115,7 @@ char **get_xml_list(char * buf_dir_name, int *list_size)
 					for (; cnt >= 2; cnt--)
 						free(list[cnt - 2]);
 					free(list);
+					closedir(d);
 					return NULL;
 				}
 				snprintf(list[cnt - 1], n,  "%s", ent->d_name);
@@ -272,7 +280,7 @@ xmlNodePtr get_child_by_name(xmlNodePtr parent_node, char* tag_name)
  */
 xmlNodePtr* get_children_by_name(xmlNodePtr parent_node, char* tag_name, int *children_cnt)
 {
-	xmlNodePtr *children_list = NULL;
+	xmlNodePtr *children_list = NULL, *new_lst;
 	xmlNodePtr child_node;
 	int n = 0;
 
@@ -282,7 +290,13 @@ xmlNodePtr* get_children_by_name(xmlNodePtr parent_node, char* tag_name, int *ch
 	while (child_node != NULL){
 		if (!xmlStrcmp(child_node->name, (xmlChar *)tag_name)){
 			n++;
-			children_list = (xmlNodePtr *)realloc(children_list, sizeof(xmlNodePtr) * n);
+			new_lst = (xmlNodePtr *)realloc(children_list, sizeof(xmlNodePtr) * n);
+			if (!new_lst) {
+				printf("Memory allocation failed\n");
+				free(children_list);
+				return NULL;
+			}
+			children_list = new_lst;
 			children_list[n - 1] = child_node;
 		}
 		child_node = child_node->next;
