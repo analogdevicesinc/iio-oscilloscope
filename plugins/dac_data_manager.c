@@ -2302,35 +2302,6 @@ GtkWidget *dac_data_manager_get_widget(struct dac_data_manager *manager,
 	return widget;
 }
 
-struct iio_widget *dac_data_manager_get_iio_widget(struct dac_data_manager *manager,
-		enum dds_tone_type tone, enum dds_widget_type type)
-{
-	if (!manager)
-		return NULL;
-
-	struct iio_widget *iio_w = NULL;
-	struct dds_tone *tn;
-
-	tn = dds_tone_find(manager, tone);
-	if (!tn)
-		return NULL;
-
-	switch(type) {
-	case WIDGET_FREQUENCY:
-		iio_w = &tn->iio_freq;
-		break;
-	case WIDGET_SCALE:
-		iio_w = &tn->iio_scale;
-		break;
-	case WIDGET_PHASE:
-		iio_w = &tn->iio_scale;
-		break;
-	}
-
-	return iio_w;
-
-}
-
 GtkWidget *dac_data_manager_get_gui_container(struct dac_data_manager *manager)
 {
 	if (!manager)
