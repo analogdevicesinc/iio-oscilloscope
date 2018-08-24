@@ -631,7 +631,7 @@ static gboolean display_temp(void *ptr)
 		iio_channel_attr_read_double(chn, "calibbias", &tmp);
 		/* This will eventually be stored in the EEPROM */
 		temp_calibbias = (unsigned short) tmp;
-		printf("AD9122 temp cal value : %hi\n", temp_calibbias);
+		printf("AD9122 temp cal value : %hu\n", temp_calibbias);
 	} else {
 		char buf[25];
 		sprintf(buf, "%2.1f", temp/1000);

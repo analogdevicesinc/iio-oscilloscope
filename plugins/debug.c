@@ -468,7 +468,7 @@ static void reg_address_value_changed_cb(GtkSpinButton *spinbutton,
 
 	if (!xml_file_opened) {
 		reg_addr = gtk_spin_button_get_value(spinbutton);
-		snprintf(buf, sizeof(buf), "%u", reg_addr);
+		snprintf(buf, sizeof(buf), "%d", reg_addr);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_addr), buf);
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_btn_reg_value), (gdouble)0);
 		gtk_label_set_text(GTK_LABEL(label_reg_hex_value), "<unknown>");
@@ -514,7 +514,7 @@ updt_addr:
 	hide_reg_map();
 	reg_addr = (int)gtk_spin_button_get_value(spinbutton);
 	prev_addr = reg_addr;
-	snprintf(buf, sizeof(buf), "%u", reg_addr);
+	snprintf(buf, sizeof(buf), "%d", reg_addr);
 	gtk_label_set_text((GtkLabel *)label_reg_hex_addr, buf);
 restore_widget:
 	gtk_widget_set_sensitive(spin_btn_reg_addr, TRUE);
@@ -577,7 +577,7 @@ static void spin_or_combo_changed_cb(GtkSpinButton *spinbutton,
 	g_signal_handler_block(spin_btn_reg_value, reg_val_hid);
 	gtk_spin_button_set_value((GtkSpinButton *)spin_btn_reg_value, spin_val);
 	g_signal_handler_unblock(spin_btn_reg_value, reg_val_hid);
-	snprintf(buf, sizeof(buf), "%u", spin_val);
+	snprintf(buf, sizeof(buf), "%d", spin_val);
 	gtk_label_set_text((GtkLabel *)label_reg_hex_value, buf);
 }
 
