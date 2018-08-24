@@ -953,6 +953,7 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 			load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
 		}
 	}
+	closedir(d);
 
 	if (!load_in_parallel)
 		return;
