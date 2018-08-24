@@ -1224,11 +1224,9 @@ static void do_fft_for_spectrum(Transform *tr)
 						 (!((*(out_data + k - 2) < *(out_data + k - 1)) &&
 						 (*(out_data + k - 1) < *(out_data + k)))))) {
 
-						if (marker_type == MARKER_PEAK) {
-							for (m = MAX_MARKERS; m > j; m--) {
-								maxY[m] = maxY[m - 1];
-								maxX[m] = maxX[m - 1];
-							}
+						for (m = MAX_MARKERS; m > j; m--) {
+							maxY[m] = maxY[m - 1];
+							maxX[m] = maxX[m - 1];
 						}
 						maxY[j] = *(out_data + k - 1);
 						maxX[j] = k + (settings->fft_index * fft_clip_size) - 1;
