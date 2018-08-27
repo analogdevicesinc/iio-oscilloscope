@@ -1,10 +1,10 @@
 #!/bin/bash
 
-NUM_JOBS=4
-WORKDIR="${PWD}/deps"
+export NUM_JOBS=4
+export WORKDIR="${PWD}/deps"
 mkdir -p "$WORKDIR"
 if [ "$TRAVIS" == "true" ] ; then
-	STAGINGDIR=/usr/local
+	export STAGINGDIR=/usr/local
 else
-	STAGINGDIR="${WORKDIR}/staging"
+	export STAGINGDIR="${WORKDIR}/staging"
 fi
