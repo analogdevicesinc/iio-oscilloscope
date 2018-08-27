@@ -1407,7 +1407,7 @@ static int fmcomms1_cal_eeprom(void)
 {
 	char eprom_names[512];
 	FILE *efp, *fp;
-	int num, tmp;
+	int tmp;
 
 	/* flushes all open output streams */
 	fflush(NULL);
@@ -1426,10 +1426,7 @@ static int fmcomms1_cal_eeprom(void)
 		return -errno;
 	}
 
-	num = 0;
-
 	while(fgets(eprom_names, sizeof(eprom_names), fp) != NULL){
-		num++;
 		/* strip trailing new lines */
 		if (eprom_names[strlen(eprom_names) - 1] == '\n')
 			eprom_names[strlen(eprom_names) - 1] = '\0';
