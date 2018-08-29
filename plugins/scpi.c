@@ -305,11 +305,8 @@ static int tty_read(struct scpi_instrument *scpi)
 
 	/* Number of seconds before signaling a tty read timeout. */
 	struct timespec ts_current, ts_end;
-	unsigned long long nsecs;
 	clock_gettime(CLOCK_MONOTONIC, &ts_current);
-	nsecs = ts_current.tv_nsec + (SOCKETS_TIMEOUT * pow(10.0, 9));
-	ts_end.tv_sec = ts_current.tv_sec + (nsecs / pow(10.0, 9));
-	ts_end.tv_nsec = nsecs % (unsigned long long) pow(10.0, 9);
+	ts_end.tv_sec = ts_current.tv_sec + SOCKETS_TIMEOUT;
 	ts_end.tv_nsec = ts_current.tv_nsec;
 
 	do {
