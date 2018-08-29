@@ -1643,8 +1643,6 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 // 		dev, ch1, "external", builder,
 // 		"tx_lo_external", 0);
 
-	ch1 = iio_device_find_channel(dev, "altvoltage1", true);
-
 	if (ini_fn)
 		load_profile(ini_fn);
 
