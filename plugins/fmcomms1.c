@@ -1465,11 +1465,6 @@ static int fmcomms1_cal_eeprom(void)
 	return -ENODEV;
 }
 
-struct attr_params {
-	struct iio_channel *chn;
-	const char *attr;
-};
-
 static void dac_cal_spin_helper(GtkRange *range,
 		struct iio_channel *chn, const char *attr)
 {
