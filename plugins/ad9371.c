@@ -66,13 +66,6 @@ static const gdouble scale100 = 100.0;
 
 static const char *freq_name;
 
-struct tuning_param
-{
-	double frequency;
-	int coarse;
-	int fine;
-};
-
 static struct iio_widget widgets[200];
 static struct iio_widget *glb_widgets, *tx_widgets, *rx_widgets, *obsrx_widgets;
 static unsigned int rx1_gain, rx2_gain, obs_gain, tx1_clgc_desired_gain, tx2_clgc_desired_gain;
