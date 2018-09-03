@@ -400,7 +400,7 @@ struct _OscPlotPrivate
 	void *qcb_user_data;
 };
 
-G_DEFINE_TYPE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
+G_DEFINE_TYPE_WITH_PRIVATE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
 
 static void osc_plot_class_init(OscPlotClass *klass)
 {
@@ -435,13 +435,11 @@ static void osc_plot_class_init(OscPlotClass *klass)
 			NULL,
 			g_cclosure_marshal_VOID__POINTER,
 			G_TYPE_NONE, 1, G_TYPE_POINTER);
-
-	g_type_class_add_private (gobject_class, sizeof (OscPlotPrivate));
 }
 
 static void osc_plot_init(OscPlot *plot)
 {
-	plot->priv = G_TYPE_INSTANCE_GET_PRIVATE (plot, OSC_PLOT_TYPE, OscPlotPrivate);
+	plot->priv = osc_plot_get_instance_private (plot);
 }
 
 GtkWidget *osc_plot_new(struct iio_context *ctx)
