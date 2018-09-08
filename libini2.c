@@ -482,7 +482,9 @@ static struct ini_loop * ini_loop_new(char *buf_with_loop, char *loop_name)
 	loop->first = first;
 	loop->inc = inc;
 	loop->last = last;
-	snprintf(loop->var, sizeof(loop->var), "<%s>", var);
+	if (snprintf(loop->var, sizeof(loop->var), "<%s>", var) == sizeof(loop->var))
+		goto err_close;
+
 	snprintf(loop->end_loop, sizeof(loop->end_loop), "</%s>", loop_name);
 	loop->for_values = for_values;
 
