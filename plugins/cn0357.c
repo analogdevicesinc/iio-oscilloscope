@@ -233,7 +233,7 @@ static void program_rdac_clicked_cb(GtkButton *btn, gpointer data)
 	iio_channel_attr_write(rdac_ch, "raw", gtk_entry_get_text(GTK_ENTRY(rdac_val)));
 }
 
-static gboolean update_display(void)
+static gboolean update_display(gpointer foo)
 {
 	if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
 		cn0357_read_status = cn0357_get_data(&cn0357_data);
