@@ -295,7 +295,7 @@ static void init_device_list(void)
 
 static gboolean dmm_update_loop_running;
 
-static gboolean dmm_update(void)
+static gboolean dmm_update(gpointer foo)
 {
 
 	GtkTreeIter tree_iter;
