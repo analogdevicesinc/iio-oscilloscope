@@ -148,7 +148,7 @@ static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 	iio_w->save(iio_w);
 }
 
-static gboolean update_display(void)
+static gboolean update_display(gpointer foo)
 {
 	if (this_page != gtk_notebook_get_current_page(nbook) &&
 			!plugin_detached)
