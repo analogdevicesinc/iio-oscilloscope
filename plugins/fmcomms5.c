@@ -452,7 +452,7 @@ static void sample_frequency_changed_cb(void *data)
 	rx_freq_info_update();
 }
 
-static bool delayed_mcs_trigger(void)
+static gboolean delayed_mcs_trigger(void *data)
 {
 	trigger_mcs_button();
 
