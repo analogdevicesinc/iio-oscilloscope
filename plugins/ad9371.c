@@ -707,7 +707,7 @@ static void rssi_update_labels(void)
 	rssi_update_label(obs_rssi, "voltage2", false);
 }
 
-static gboolean update_display(void)
+static gboolean update_display(gpointer foo)
 {
 	if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
 		const char *gain_mode;
