@@ -1996,7 +1996,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	int num_enabled;
 	struct iio_device *dev;
 	unsigned int nb_channels = num_of_channels_of_device(treeview, name);
-	unsigned enabled_channels_mask;
+	unsigned enabled_channels_mask = 0;
 
 	GtkTreeModel *model;
 	GtkTreeIter iter;
