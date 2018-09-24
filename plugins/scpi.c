@@ -1372,12 +1372,11 @@ static GtkWidget * scpi_init(GtkWidget *notebook, const char *ini_fn)
 
 static void scpi_save_profile(const char *ini_fn)
 {
-	char buf[0x1000];
 	FILE *f = fopen(ini_fn, "a");
 	if (!f)
 		return;
 
-	snprintf(buf, sizeof(buf),
+	fprintf(f,
 			"\n[" THIS_DRIVER "]\n"
 			"tx.serial = %i\n"
 			"tx.network = %i\n"
@@ -1403,7 +1402,6 @@ static void scpi_save_profile(const char *ini_fn)
 			spectrum_analyzer.ip_address,
 			spectrum_analyzer.tty_path,
 			spectrum_analyzer.gpib_addr);
-	fwrite(buf, 1, strlen(buf), f);
 	fclose(f);
 }
 

@@ -233,15 +233,12 @@ static GtkWidget * ad9739a_init(GtkWidget *notebook, const char *ini_fn)
 
 static void save_widgets_to_ini(FILE *f)
 {
-	char buf[0x1000];
-
-	snprintf(buf, sizeof(buf), "dds_mode = %i\n"
+	fprintf(f, "dds_mode = %i\n"
 			"dac_buf_filename = %s\n"
 			"tx_channel_0 = %i\n",
 			dac_data_manager_get_dds_mode(dac_tx_manager, DAC_DEVICE, 1),
 			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 0));
-	fwrite(buf, 1, strlen(buf), f);
 }
 
 static void save_profile(const char *ini_fn)
