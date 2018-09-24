@@ -736,9 +736,7 @@ static void update_active_page(gint active_page, gboolean is_detached)
 
 static void save_widgets_to_ini(FILE *f)
 {
-	char buf[0x1000];
-
-	snprintf(buf, sizeof(buf), "pwm = %s\n"
+	fprintf(f, "pwm = %s\n"
 			"gpo.1 = %i\n"
 			"gpo.2 = %i\n"
 			"gpo.3 = %i\n"
@@ -762,7 +760,6 @@ static void save_widgets_to_ini(FILE *f)
 			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[8])),
 			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[9])),
 			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[10])));
-	fwrite(buf, 1, strlen(buf), f);
 }
 
 static void save_profile(const char *ini_fn)

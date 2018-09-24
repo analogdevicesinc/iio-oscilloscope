@@ -372,13 +372,10 @@ static void pr_config_get_preferred_size(int *width, int *height)
 
 static void save_widgets_to_ini(FILE *f)
 {
-	char buf[0x1000];
-
-	snprintf(buf, sizeof(buf), "config_file = %s\n"
+	fprintf(f, "config_file = %s\n"
 			"adc_active = %i\n",
 			config_file_path,
 			gtk_combo_box_get_active(GTK_COMBO_BOX(regmap_select)) == ADC_REGMAP);
-	fwrite(buf, 1, strlen(buf), f);
 }
 
 static void save_profile(const char *ini_fn)

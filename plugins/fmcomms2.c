@@ -2046,9 +2046,7 @@ static void fmcomms2_get_preferred_size(int *width, int *height)
 
 static void save_widgets_to_ini(FILE *f)
 {
-	char buf[0x1000];
-
-	snprintf(buf, sizeof(buf), "load_fir_filter_file = %s\n"
+	fprintf(f, "load_fir_filter_file = %s\n"
 			"dds_mode_tx1 = %i\n"
 			"dds_mode_tx2 = %i\n"
 			"tx_channel_0 = %i\n"
@@ -2074,7 +2072,6 @@ static void save_widgets_to_ini(FILE *f)
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_RX]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_FPGA]));
-	fwrite(buf, 1, strlen(buf), f);
 }
 
 static void save_profile(const char *ini_fn)
