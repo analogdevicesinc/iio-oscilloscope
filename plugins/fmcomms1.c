@@ -673,18 +673,14 @@ static void display_cal(void *ptr)
 	}
 
 	while (!kill_thread) {
-		if (kill_thread) {
-			size = 0;
-			break;
-		} else {
-			size = plugin_data_capture_size(device_ref);
-			channels = plugin_data_capture_num_active_channels(device_ref);
-			i = plugin_data_capture_bytes_per_sample(device_ref);
-			if (i)
-				num_samples = size / i;
-			else
-				num_samples = 0;
-		}
+		size = plugin_data_capture_size(device_ref);
+		channels = plugin_data_capture_num_active_channels(device_ref);
+		i = plugin_data_capture_bytes_per_sample(device_ref);
+		if (i)
+			num_samples = size / i;
+		else
+			num_samples = 0;
+
 		fft_plot = plot_fft_2ch;
 
 		if (size != 0 && channels == 2) {
