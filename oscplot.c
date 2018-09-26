@@ -2904,13 +2904,15 @@ static int enabled_channels_of_device(GtkTreeView *treeview, const char *name, u
 
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
 	gboolean next_iter = gtk_tree_model_get_iter_first(model, &iter);
+
+	if (enabled_mask)
+		*enabled_mask = 0;
+
 	while (next_iter) {
 		if (!gtk_tree_model_iter_children(model, &child_iter, &iter)) {
 			next_iter = gtk_tree_model_iter_next(model, &iter);
 			continue;
 		}
-		if (enabled_mask)
-			*enabled_mask = 0;
 		gtk_tree_model_get(model, &iter, ELEMENT_NAME, &str_device, -1);
 		if (!strcmp(name, str_device)) {
 			next_child_iter = true;
