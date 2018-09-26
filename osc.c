@@ -292,7 +292,7 @@ static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detach
 
 static void plugin_make_detachable(struct detachable_plugin *d_plugin)
 {
-	GtkWidget *page = NULL;
+	GtkWidget *page;
 	int num_pages = 0;
 
 	num_pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
@@ -339,8 +339,8 @@ static void debug_window_delete_cb(GtkWidget *w, GdkEvent *e, gpointer data)
 
 static GtkWidget * extract_label_from_box(GtkWidget *box)
 {
-	GList *children = NULL;
-	GList *first = NULL;
+	GList *children;
+	GList *first;
 	GtkWidget *label;
 
 	children = gtk_container_get_children(GTK_CONTAINER(box));
