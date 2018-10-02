@@ -28,7 +28,7 @@ endif()
 
 # Get the GIT hash of the latest commit
 include(FindGit OPTIONAL)
-if (GIT_FOUND)
+if (GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 	execute_process(
 		COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -58,9 +58,9 @@ if (GIT_FOUND)
 		)
 
 	set(OSC_VERSION "${GIT_BRANCH}-g${GIT_HASH}")
+	set(GIT_VERSION "-DGIT_VERSION=\"${GIT_VERSION}\"")
+	set(GIT_COMMIT_TIMESTAMP "-DGIT_COMMIT_TIMESTAMP=${GIT_COMMIT_TIMESTAMP}")
 else()
-	set(GIT_VERSION "")
-	set(GIT_COMMIT_TIMESTAMP 0)
 	set(OSC_VERSION v${PROJECT_VERSION})
 endif()
 
@@ -70,8 +70,8 @@ link_directories(${CMAKE_PREFIX_PATH}/lib)
 
 add_definitions(-Dlinux -D_GNU_SOURCE 
 	-DOSC_VERSION="${OSC_VERSION}"
-	-DGIT_VERSION="${GIT_VERSION}"
-	-DGIT_COMMIT_TIMESTAMP=${GIT_COMMIT_TIMESTAMP}
+	${GIT_VERSION}
+	${GIT_COMMIT_TIMESTAMP}
 	-Wall -Werror
 )
 
