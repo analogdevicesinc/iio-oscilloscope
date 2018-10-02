@@ -12,10 +12,15 @@ CC := $(CROSS_COMPILE)gcc
 SYSROOT := $(shell $(CC) -print-sysroot)
 MULTIARCH := $(shell $(CC) -print-multiarch)
 
+ifneq ($(wildcard .git/*),)
 GIT_BRANCH := $(shell git name-rev --name-only HEAD | sed 's:.*/::')
 GIT_HASH := $(shell git describe --abbrev=7 --dirty --always)
-GIT_VERSION := $(shell git rev-parse --short HEAD)
-GIT_COMMIT_TIMESTAMP := $(shell git show -s --pretty=format:"%ct" HEAD)
+GIT_VERSION := -DGIT_VERSION=\"$(shell git rev-parse --short HEAD)\"
+GIT_COMMIT_TIMESTAMP := -DGIT_COMMIT_TIMESTAMP='"$(shell git show -s --pretty=format:"%ct" HEAD)"'
+OSC_VERSION=$(GIT_BRANCH)-g$(GIT_HASH)
+else
+OSC_VERSION=0.99
+endif
 
 WITH_MINGW := $(if $(shell echo | $(CC) -dM -E - |grep __MINGW32__),y)
 EXPORT_SYMBOLS := -Wl,--export-all-symbols
@@ -57,9 +62,9 @@ CFLAGS := $(DEP_CFLAGS) \
 	-Wextra -Wno-unused-parameter \
 	-Werror -g -std=gnu90 -D_GNU_SOURCE -O2 -funwind-tables \
 	-DPREFIX='"$(PREFIX)"' \
-	-DFRU_FILES=\"$(FRU_FILES)\" -DGIT_VERSION=\"$(GIT_VERSION)\" \
-	-DGIT_COMMIT_TIMESTAMP='"$(GIT_COMMIT_TIMESTAMP)"' \
-	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\" \
+	-DFRU_FILES=\"$(FRU_FILES)\" $(GIT_VERSION) \
+	$(GIT_COMMIT_TIMESTAMP) \
+	-DOSC_VERSION=\"$(OSC_VERSION)\" \
 	-D_POSIX_C_SOURCE=200809L \
 	-DSERIAL_BACKEND
 
