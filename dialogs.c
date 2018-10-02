@@ -24,6 +24,10 @@
 #include "config.h"
 #include "phone_home.h"
 
+#ifndef GIT_VERSION
+#define GIT_VERSION	""
+#endif
+
 #ifdef SERIAL_BACKEND
 #include <libserialport.h> /* cross platform serial port lib */
 #endif
@@ -902,6 +906,7 @@ gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 
 static glong date_compare_against_build_date(const char *iso8601_date)
 {
+#ifdef GIT_COMMIT_TIMESTAMP
 	GTimeVal time;
 	glong build_time = atol(GIT_COMMIT_TIMESTAMP);
 	gboolean parsed;
@@ -915,6 +920,9 @@ static glong date_compare_against_build_date(const char *iso8601_date)
 	}
 
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 /*
