@@ -9,6 +9,12 @@ addons:
 matrix:
   fast_finish: true
   include:
+    - compile: gcc
+      os: linux
+      dist: trusty
+      env:
+        - LDIST=-trusty
+        - TEST_NON_GIT_REPO=1
     - compiler: gcc
       os: osx
       osx_image: xcode8.3
