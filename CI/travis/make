@@ -8,6 +8,11 @@ if command -v brew ; then
 	export PATH="${QT_PATH}:$PATH"
 fi
 
+# Remove .git repo and see how it performs
+if [ "$TEST_NON_GIT_REPO" == "1" ] ; then
+	rm -rf .git
+fi
+
 mkdir -p build
 
 pushd build
