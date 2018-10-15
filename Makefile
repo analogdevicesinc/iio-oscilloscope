@@ -41,7 +41,7 @@ LDFLAGS := $(DEP_LDFLAGS) \
 	-L$(SYSROOT)/usr/lib64 \
 	-L$(SYSROOT)/usr/lib \
 	-L$(SYSROOT)/usr/lib32 \
-	-lmatio -lz -lm -lad9361 -lserialport
+	-lmatio -lz -lm -lad9361
 
 ifeq ($(WITH_MINGW),y)
 	LDFLAGS += -Wl,--subsystem,windows
@@ -61,7 +61,6 @@ CFLAGS := $(DEP_CFLAGS) \
 	-DGIT_COMMIT_TIMESTAMP='"$(GIT_COMMIT_TIMESTAMP)"' \
 	-DOSC_VERSION=\"$(GIT_BRANCH)-g$(GIT_HASH)\" \
 	-D_POSIX_C_SOURCE=200809L \
-	-DSERIAL_BACKEND
 
 DEBUG ?= 0
 ifeq ($(DEBUG),1)
