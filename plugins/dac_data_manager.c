@@ -124,6 +124,7 @@ struct dac_data_manager {
 	unsigned dacs_count;
 	unsigned tones_count;
 	unsigned alignment;
+	bool hw_reported_alignment;
 	GSList *dds_tones;
 	bool scale_available_mode;
 	double lowest_scale_point;
@@ -1957,6 +1958,7 @@ static void dac_buffer_init(struct dac_data_manager *manager, struct dac_buffer 
 static int dac_manager_init(struct dac_data_manager *manager,
 		struct iio_device *dac, struct iio_device *second_dac, struct iio_context *ctx)
 {
+	long long alignment;
 	int ret = 0;
 
 	ret = dds_dac_init(manager, &manager->dac1, dac);
@@ -1977,7 +1979,16 @@ static int dac_manager_init(struct dac_data_manager *manager,
 
 	manager->is_local = strcmp(iio_context_get_name(ctx), "local") ? false : true;
 	manager->ctx = ctx;
-	manager->alignment = 8;
+
+	if (iio_device_buffer_attr_read_longlong(manager->dac_buffer_module.dac_with_scanelems,
+						 "length_align_bytes",
+						 &alignment) == 0) {
+		manager->alignment = alignment;
+		manager->hw_reported_alignment = true;
+	 } else {
+		manager->alignment = 8;
+		manager->hw_reported_alignment = false;
+	}
 
 	return ret;
 }
@@ -2182,7 +2193,13 @@ void dac_data_manager_set_buffer_size_alignment(struct dac_data_manager *manager
 	if (!manager)
 		return;
 
-	manager->alignment = align;
+	/*
+	 * This is just a backup in case the alignment was not reported by the
+	 * hardware itself. If it was reported by the hardware ignore this
+	 * value.
+	 */
+	if (!manager->hw_reported_alignment)
+		manager->alignment = align;
 }
 
 char *dac_data_manager_get_buffer_chooser_filename(struct dac_data_manager *manager)
