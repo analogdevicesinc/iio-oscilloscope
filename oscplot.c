@@ -2028,7 +2028,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 			return false;
 		}
 	} else if (plot_type == TIME_PLOT) {
-		if (num_enabled == 0) {
+		if (enabled_channels_count(plot) == 0) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
 				"Time Domain needs at least one channel");
 			return false;
@@ -2038,7 +2038,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 			return false;
 		}
 	} else if (plot_type == XCORR_PLOT) {
-		if (num_enabled != 4) {
+		if (enabled_channels_count(plot) != 4) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
 				"Correlation requires 2 or 4 channels");
 			return false;
