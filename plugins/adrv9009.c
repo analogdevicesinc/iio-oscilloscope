@@ -209,19 +209,22 @@ static void update_lable_from(GtkWidget *label, const char *channel,
 {
 	char buf[80];
 	long long val = 0;
+	struct iio_channel *ch;
+	int ret = -1;
 
-	int ret = iio_channel_attr_read_longlong(
-	                  iio_device_find_channel(dev, channel, output),
-	                  attribute, &val);
+	ch = iio_device_find_channel(dev, channel, output);
+	if (ch) {
+		ret = iio_channel_attr_read_longlong(ch, attribute, &val);
 
-	if (scale == 1)
-		snprintf(buf, sizeof(buf), "%lld %s", val, unit);
-	else if (scale > 0 && scale <= 10)
-		snprintf(buf, sizeof(buf), "%.1f %s", (float)val / scale, unit);
-	else if (scale > 10)
-		snprintf(buf, sizeof(buf), "%.2f %s", (float)val / scale, unit);
-	else if (scale > 100)
-		snprintf(buf, sizeof(buf), "%.3f %s", (float)val / scale, unit);
+		if (scale == 1)
+			snprintf(buf, sizeof(buf), "%lld %s", val, unit);
+		else if (scale > 0 && scale <= 10)
+			snprintf(buf, sizeof(buf), "%.1f %s", (float)val / scale, unit);
+		else if (scale > 10)
+			snprintf(buf, sizeof(buf), "%.2f %s", (float)val / scale, unit);
+		else if (scale > 100)
+			snprintf(buf, sizeof(buf), "%.3f %s", (float)val / scale, unit);
+	}
 
 	if (ret >= 0)
 		gtk_label_set_text(GTK_LABEL(label), buf);
@@ -237,8 +240,7 @@ static void profile_update_labels(void)
 	update_lable_from(label_rf_bandwidth_tx, "voltage0", "rf_bandwidth", true, "MHz", 1000000);
 
 	update_lable_from(label_sampling_freq_rx, "voltage0", "sampling_frequency", false, "MSPS", 1000000);
-	update_lable_from(label_sampling_freq_obs, "voltage2", "sampling_frequency", false, "MSPS",
-	                  1000000);
+	update_lable_from(label_sampling_freq_obs, "voltage2", "sampling_frequency", false, "MSPS", 1000000);
 	update_lable_from(label_sampling_freq_tx, "voltage0", "sampling_frequency", true, "MSPS", 1000000);
 }
 
@@ -359,6 +361,7 @@ static void glb_settings_update_labels(void)
 {
 	char buf[1024];
 	ssize_t ret;
+	struct iio_channel *ch;
 
 	ret = iio_device_attr_read(dev, "ensm_mode", buf, sizeof(buf));
 
@@ -367,19 +370,24 @@ static void glb_settings_update_labels(void)
 	else
 		gtk_label_set_text(GTK_LABEL(ensm_mode), "<error>");
 
-	ret = iio_channel_attr_read(
-	              iio_device_find_channel(dev, "voltage0", false),
-	              "gain_control_mode", buf, sizeof(buf));
+	ch = iio_device_find_channel(dev, "voltage0", false);
+	if (ch) {
+		ret = iio_channel_attr_read(ch, "gain_control_mode", buf, sizeof(buf));
+	} else {
+		ret = 0;
+	}
 
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx1), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx1), "<error>");
 
-
-	ret = iio_channel_attr_read(
-	              iio_device_find_channel(dev, "voltage1", false),
-	              "gain_control_mode", buf, sizeof(buf));
+	ch = iio_device_find_channel(dev, "voltage1", false);
+	if (ch) {
+		ret = iio_channel_attr_read(ch, "gain_control_mode", buf, sizeof(buf));
+	} else {
+		ret = 0;
+	}
 
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(rx_gain_control_rx2), buf);
@@ -388,10 +396,17 @@ static void glb_settings_update_labels(void)
 
 	profile_update_labels();
 
-	iio_widget_update(&rx_widgets[rx1_gain]);
-	iio_widget_update(&rx_widgets[rx2_gain]);
+	if (rx1_gain) {
+		iio_widget_update(&rx_widgets[rx1_gain]);
+	}
 
-	iio_widget_update(&obsrx_widgets[obs_gain]);
+	if (rx2_gain) {
+		iio_widget_update(&rx_widgets[rx2_gain]);
+	}
+
+	if (obs_gain) {
+		iio_widget_update(&obsrx_widgets[obs_gain]);
+	}
 }
 
 static void rx_freq_info_update(void)
@@ -439,14 +454,19 @@ static void rssi_update_label(GtkWidget *label, const char *chn,  bool is_tx)
 {
 	char buf[1024];
 	int ret;
+	struct iio_channel *ch;
 
 	/* don't update if it is hidden (to quiet down SPI) */
 	if (!gtk_widget_is_drawable(GTK_WIDGET(label)))
 		return;
 
-	ret = iio_channel_attr_read(
-			iio_device_find_channel(dev, chn, is_tx),
-			"rssi", buf, sizeof(buf));
+	ch = iio_device_find_channel(dev, chn, is_tx);
+	if (ch) {
+		ret = iio_channel_attr_read(ch, "rssi", buf, sizeof(buf));
+	} else {
+		ret = -1;
+	}
+
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(label), buf);
 	else
@@ -881,18 +901,13 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 	ch2 = iio_device_find_channel(dev, "voltage2", false); /* OBS-RX1 */
 	ch3 = iio_device_find_channel(dev, "voltage3", false); /* OBS-RX1 */
 
-	if (!ch0 || !ch1 || !ch2 || !ch3)
-		return NULL;
-
 	alt_ch0 = iio_device_find_channel(dev, "altvoltage0", true);
 	alt_ch1 = iio_device_find_channel(dev, "altvoltage1", true);
 
-	if (!alt_ch0 || !alt_ch1)
-		return NULL;
-
-	dac_tx_manager = dac_data_manager_new(dds, NULL, ctx);
-
-	dac_data_manager_set_buffer_size_alignment(dac_tx_manager, 16);
+	if (dds) {
+		dac_tx_manager = dac_data_manager_new(dds, NULL, ctx);
+		dac_data_manager_set_buffer_size_alignment(dac_tx_manager, 16);
+	}
 
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
@@ -1014,108 +1029,115 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 
 	/* Receive Chain */
 
-	iio_combo_box_init(&rx_widgets[num_rx++],
-	                   dev, ch0, "gain_control_mode",
-	                   "gain_control_mode_available",
-	                   rx_gain_control_modes_rx1, NULL);
+	if (ch0 && ch1) {
+		iio_combo_box_init(&rx_widgets[num_rx++],
+				dev, ch0, "gain_control_mode",
+				"gain_control_mode_available",
+				rx_gain_control_modes_rx1, NULL);
 
-	rx1_gain = num_rx;
-	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
-	                                  dev, ch0, "hardwaregain", builder,
-	                                  "hardware_gain_rx1", NULL);
+		rx1_gain = num_rx;
+		iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch0, "hardwaregain", builder,
+						"hardware_gain_rx1", NULL);
 
 
-	rx2_gain = num_rx;
-	iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
-	                                  dev, ch1, "hardwaregain", builder,
-	                                  "hardware_gain_rx2", NULL);
+		rx2_gain = num_rx;
+		iio_spin_button_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch1, "hardwaregain", builder,
+						"hardware_gain_rx2", NULL);
 
-	rx_sample_freq = num_rx;
-	iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
-	                                      dev, ch0, "sampling_frequency", builder,
-	                                      "sampling_freq_rx", &mhz_scale);
-	iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
+		rx_sample_freq = num_rx;
+		iio_spin_button_int_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch0, "sampling_frequency", builder,
+						"sampling_freq_rx", &mhz_scale);
+		iio_spin_button_add_progress(&rx_widgets[num_rx - 1]);
 
-	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	                                    dev, ch0, "quadrature_tracking_en", builder,
-	                                    "rx1_quadrature_tracking_en", 0);
+		iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch0, "quadrature_tracking_en", builder,
+						"rx1_quadrature_tracking_en", 0);
 
-	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	                                    dev, ch1, "quadrature_tracking_en", builder,
-	                                    "rx2_quadrature_tracking_en", 0);
+		iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch1, "quadrature_tracking_en", builder,
+						"rx2_quadrature_tracking_en", 0);
 
-	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	                                    dev, ch0, "hd2_tracking_en", builder,
-	                                    "rx1_hd2_tracking_en", 0);
+		iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch0, "hd2_tracking_en", builder,
+						"rx1_hd2_tracking_en", 0);
 
-	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	                                    dev, ch1, "hd2_tracking_en", builder,
-	                                    "rx2_hd2_tracking_en", 0);
+		iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch1, "hd2_tracking_en", builder,
+						"rx2_hd2_tracking_en", 0);
 
-	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	                                    dev, ch0, "gain_control_pin_mode_en", builder,
-	                                    "rx1_gain_control_pin_mode_en", 0);
+		iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch0, "gain_control_pin_mode_en", builder,
+						"rx1_gain_control_pin_mode_en", 0);
 
-	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	                                    dev, ch1, "gain_control_pin_mode_en", builder,
-	                                    "rx2_gain_control_pin_mode_en", 0);
+		iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch1, "gain_control_pin_mode_en", builder,
+						"rx2_gain_control_pin_mode_en", 0);
 
-	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	                                    dev, ch0, "powerdown", builder,
-	                                    "rx1_powerdown_en", 0);
+		iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch0, "powerdown", builder,
+						"rx1_powerdown_en", 0);
 
-	iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
-	                                    dev, ch1, "powerdown", builder,
-	                                    "rx2_powerdown_en", 0);
+		iio_toggle_button_init_from_builder(&rx_widgets[num_rx++],
+						dev, ch1, "powerdown", builder,
+						"rx2_powerdown_en", 0);
 
+	}else {
+		gtk_widget_hide(gtk_widget_get_parent(section_setting[SECTION_RX]));
+	}
 	/* Observation Receiver Chain */
 
 	obsrx_widgets = &rx_widgets[num_rx];
 
-	iio_combo_box_init(&obsrx_widgets[num_obsrx++],
-	                   dev, ch2, "rf_port_select",
-	                   "rf_port_select_available",
-	                   obs_port_select, NULL);
+	if (ch2) {
+		iio_combo_box_init(&obsrx_widgets[num_obsrx++],
+				dev, ch2, "rf_port_select",
+				"rf_port_select_available",
+				obs_port_select, NULL);
 
-	obs_gain = num_obsrx;
-	iio_spin_button_init_from_builder(&obsrx_widgets[num_obsrx++],
-	                                  dev, ch2, "hardwaregain", builder,
-	                                  "hardware_gain_obs1", NULL);
-
-	iio_toggle_button_init_from_builder(&obsrx_widgets[num_obsrx++],
-	                                    dev, ch2, "quadrature_tracking_en", builder,
-	                                    "obs1_quadrature_tracking_en", 0);
-
-	iio_toggle_button_init_from_builder(&obsrx_widgets[num_obsrx++],
-	                                    dev, ch2, "powerdown", builder,
-	                                    "obs1_powerdown_en", 0);
-
-	if (ch3) {
+		obs_gain = num_obsrx;
 		iio_spin_button_init_from_builder(&obsrx_widgets[num_obsrx++],
-						dev, ch3, "hardwaregain", builder,
-						"hardware_gain_obs2", NULL);
+						dev, ch2, "hardwaregain", builder,
+						"hardware_gain_obs1", NULL);
 
 		iio_toggle_button_init_from_builder(&obsrx_widgets[num_obsrx++],
-						dev, ch3, "quadrature_tracking_en", builder,
-						"obs2_quadrature_tracking_en", 0);
+						dev, ch2, "quadrature_tracking_en", builder,
+						"obs1_quadrature_tracking_en", 0);
 
 		iio_toggle_button_init_from_builder(&obsrx_widgets[num_obsrx++],
-						dev, ch3, "powerdown", builder,
-						"obs2_powerdown_en", 0);
+						dev, ch2, "powerdown", builder,
+						"obs1_powerdown_en", 0);
+
+		if (ch3) {
+			iio_spin_button_init_from_builder(&obsrx_widgets[num_obsrx++],
+							dev, ch3, "hardwaregain", builder,
+							"hardware_gain_obs2", NULL);
+
+			iio_toggle_button_init_from_builder(&obsrx_widgets[num_obsrx++],
+							dev, ch3, "quadrature_tracking_en", builder,
+							"obs2_quadrature_tracking_en", 0);
+
+			iio_toggle_button_init_from_builder(&obsrx_widgets[num_obsrx++],
+							dev, ch3, "powerdown", builder,
+							"obs2_powerdown_en", 0);
+		}
+
+		aux_lo = num_obsrx;
+
+		if (iio_channel_find_attr(alt_ch1, "frequency"))
+			freq_name = "frequency";
+		else
+			freq_name = "AUX_OBS_RX_LO_frequency";
+
+		iio_spin_button_s64_init_from_builder(&obsrx_widgets[num_obsrx++],
+						dev, alt_ch1, freq_name, builder,
+						"sn_lo_freq", &mhz_scale);
+		iio_spin_button_add_progress(&obsrx_widgets[num_obsrx - 1]);
+	} else {
+		gtk_widget_hide(gtk_widget_get_parent(section_setting[SECTION_OBS]));
 	}
-
-	aux_lo = num_obsrx;
-
-	if (iio_channel_find_attr(alt_ch1, "frequency"))
-		freq_name = "frequency";
-	else
-		freq_name = "AUX_OBS_RX_LO_frequency";
-
-	iio_spin_button_s64_init_from_builder(&obsrx_widgets[num_obsrx++],
-					      dev, alt_ch1, freq_name, builder,
-	                                      "sn_lo_freq", &mhz_scale);
-	iio_spin_button_add_progress(&obsrx_widgets[num_obsrx - 1]);
-
 	/* Transmit Chain */
 
 	tx_widgets = &obsrx_widgets[num_obsrx];
@@ -1123,57 +1145,62 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 	ch0 = iio_device_find_channel(dev, "voltage0", true);
 	ch1 = iio_device_find_channel(dev, "voltage1", true);
 
-	if (!ch0 || !ch1)
-		return NULL;
+	if (ch0 && ch1) {
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "pa_protection_en", builder,
+						"pa_protection", 0);
 
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-	                                    dev, ch0, "pa_protection_en", builder,
-	                                    "pa_protection", 0);
+		iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "hardwaregain", builder,
+						"hardware_gain_tx1", &inv_scale);
 
-	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-	                                  dev, ch0, "hardwaregain", builder,
-	                                  "hardware_gain_tx1", &inv_scale);
+		iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "hardwaregain", builder,
+						"hardware_gain_tx2", &inv_scale);
+		tx_sample_freq = num_tx;
+		iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "sampling_frequency", builder,
+						"sampling_freq_tx", &mhz_scale);
+		iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
 
-	iio_spin_button_init_from_builder(&tx_widgets[num_tx++],
-	                                  dev, ch1, "hardwaregain", builder,
-	                                  "hardware_gain_tx2", &inv_scale);
-	tx_sample_freq = num_tx;
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-	                                      dev, ch0, "sampling_frequency", builder,
-	                                      "sampling_freq_tx", &mhz_scale);
-	iio_spin_button_add_progress(&tx_widgets[num_tx - 1]);
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "quadrature_tracking_en", builder,
+						"tx1_quadrature_tracking_en", 0);
 
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-	                                    dev, ch0, "quadrature_tracking_en", builder,
-	                                    "tx1_quadrature_tracking_en", 0);
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "quadrature_tracking_en", builder,
+						"tx2_quadrature_tracking_en", 0);
 
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-	                                    dev, ch1, "quadrature_tracking_en", builder,
-	                                    "tx2_quadrature_tracking_en", 0);
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "lo_leakage_tracking_en", builder,
+						"tx1_lo_leakage_tracking_en", 0);
 
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-	                                    dev, ch0, "lo_leakage_tracking_en", builder,
-	                                    "tx1_lo_leakage_tracking_en", 0);
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "lo_leakage_tracking_en", builder,
+						"tx2_lo_leakage_tracking_en", 0);
 
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-	                                    dev, ch1, "lo_leakage_tracking_en", builder,
-	                                    "tx2_lo_leakage_tracking_en", 0);
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "atten_control_pin_mode_en", builder,
+						"tx1_atten_control_pin_mode_en", 0);
 
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-	                                    dev, ch0, "atten_control_pin_mode_en", builder,
-	                                    "tx1_atten_control_pin_mode_en", 0);
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "atten_control_pin_mode_en", builder,
+						"tx2_atten_control_pin_mode_en", 0);
 
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-	                                    dev, ch1, "atten_control_pin_mode_en", builder,
-	                                    "tx2_atten_control_pin_mode_en", 0);
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch0, "powerdown", builder,
+						"tx1_powerdown_en", 0);
 
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-	                                    dev, ch0, "powerdown", builder,
-	                                    "tx1_powerdown_en", 0);
+		iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
+						dev, ch1, "powerdown", builder,
+						"tx2_powerdown_en", 0);
 
-	iio_toggle_button_init_from_builder(&tx_widgets[num_tx++],
-	                                    dev, ch1, "powerdown", builder,
-	                                    "tx2_powerdown_en", 0);
+	} else {
+		gtk_widget_hide(gtk_widget_get_parent(section_setting[SECTION_TX]));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "calibrate_tx_qec_en")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "calibrate_tx_lol_en")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "calibrate_tx_lol_ext_en")));
+	}
 
 	if (ini_fn)
 		load_profile(ini_fn);
@@ -1194,10 +1221,11 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 	profile_update();
 	glb_settings_update_labels();
 	rssi_update_labels();
-	dac_data_manager_freq_widgets_range_update(dac_tx_manager,
-	                get_gui_tx_sampling_freq() / 2.0);
-	dac_data_manager_update_iio_widgets(dac_tx_manager);
-
+	if (dds) {
+		dac_data_manager_freq_widgets_range_update(dac_tx_manager,
+				get_gui_tx_sampling_freq() / 2.0);
+		dac_data_manager_update_iio_widgets(dac_tx_manager);
+	}
 	/* Connect signals */
 
 	g_builder_connect_signal(builder, "rx1_phase_rotation", "value-changed",
@@ -1235,23 +1263,29 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 
 	g_signal_connect_after(rx_gain_control_modes_rx1, "changed",
 	                       G_CALLBACK(glb_settings_update_labels), NULL);
-
 	make_widget_update_signal_based(glb_widgets, num_glb);
 	make_widget_update_signal_based(rx_widgets, num_rx);
 	make_widget_update_signal_based(obsrx_widgets, num_obsrx);
 	make_widget_update_signal_based(tx_widgets, num_tx);
 
-	iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
-	                sample_frequency_changed_cb, NULL);
-	iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
-	                sample_frequency_changed_cb, NULL);
-	iio_spin_button_set_on_complete_function(&glb_widgets[trx_lo],
-	                sample_frequency_changed_cb, NULL);
-	iio_spin_button_set_on_complete_function(&obsrx_widgets[aux_lo],
-	                sample_frequency_changed_cb, NULL);
+	if (rx_sample_freq) {
+		iio_spin_button_set_on_complete_function(&rx_widgets[rx_sample_freq],
+				sample_frequency_changed_cb, NULL);
+	}
+	if (tx_sample_freq) {
+		iio_spin_button_set_on_complete_function(&tx_widgets[tx_sample_freq],
+				sample_frequency_changed_cb, NULL);
+	}
+	if (trx_lo) {
+		iio_spin_button_set_on_complete_function(&glb_widgets[trx_lo],
+				sample_frequency_changed_cb, NULL);
+	}
+	if (aux_lo) {
+		iio_spin_button_set_on_complete_function(&obsrx_widgets[aux_lo],
+				sample_frequency_changed_cb, NULL);
+	}
 
 	add_ch_setup_check_fct(CAP_DEVICE, channel_combination_check);
-
 	struct iio_device *adc_dev;
 	struct extra_dev_info *adc_info;
 
@@ -1267,12 +1301,15 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 	/* FIXME: Add later
 	 * block_diagram_init(builder, 2, "ADRV9009.svg", "ADRV9009-N_PCBZ.jpg");
 	 */
-
 	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(profile_config), OSC_FILTER_FILE_PATH);
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
 
 	if (!dac_tx_manager)
 		gtk_widget_hide(gtk_widget_get_parent(section_setting[SECTION_FPGA]));
+
+	if (!cap)
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_rx")));
+
 
 	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 	can_update_widgets = true;
