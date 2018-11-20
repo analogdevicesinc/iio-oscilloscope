@@ -423,6 +423,9 @@
                                             <child>
                                               <placeholder/>
                                             </child>
+                                            <child>
+                                              <placeholder/>
+                                            </child>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -1479,6 +1482,9 @@ Hopping Mode</property>
                                           <object class="GtkTable" id="tx_fastlock_actions">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <child>
+                                              <placeholder/>
+                                            </child>
                                             <child>
                                               <placeholder/>
                                             </child>
@@ -2747,7 +2753,7 @@ Hopping Mode</property>
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkFrame" id="frame11">
+                                      <object class="GtkFrame" id="frame_fpga_rx">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="label_xalign">0</property>
