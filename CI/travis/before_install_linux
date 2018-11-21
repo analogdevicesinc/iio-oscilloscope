@@ -9,11 +9,8 @@ sudo apt-get install -y build-essential libxml2-dev libcurl4-openssl-dev \
 	libmatio-dev libglib2.0-dev libfftw3-dev libusb-dev libjansson-dev \
 	cmake libgtk2.0-dev libgtkdatabox-dev bison flex doxygen
 
-if [ "${LDIST}" == "-xenial" ] ; then
-	sudo apt-get install libserialport-dev 
-	echo "LIBSERIALPORT found"
-else
-	echo "LIBSERIALPORT not available"
+if [ "$(sudo apt-cache search libserialport-dev | wc -l)" -gt 0 ] ; then
+	sudo apt-get install -y libserialport-dev
 fi
 
 if [ "$TRAVIS" == "true" ] ; then
