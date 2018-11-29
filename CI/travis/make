@@ -3,11 +3,6 @@ set -e
 
 source ./CI/travis/lib.sh
 
-if command -v brew ; then
-	QT_PATH="$(brew --prefix qt)/bin"
-	export PATH="${QT_PATH}:$PATH"
-fi
-
 # Remove .git repo and see how it performs
 if [ "$TEST_NON_GIT_REPO" == "1" ] ; then
 	rm -rf .git
