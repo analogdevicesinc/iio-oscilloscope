@@ -909,6 +909,9 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 #ifdef __MINGW32__
 		if (!str_endswith(ent->d_name, ".dll"))
 			continue;
+#elif __APPLE__
+		 if (!str_endswith(ent->d_name, ".dylib"))
+			continue;
 #else
 		if (!str_endswith(ent->d_name, ".so"))
 			continue;
