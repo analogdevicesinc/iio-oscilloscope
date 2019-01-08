@@ -6,27 +6,55 @@ addons:
     packages:
       - cppcheck
 
+services:
+  - docker
+
 matrix:
-  fast_finish: true
   include:
-    - compile: gcc
+    - compiler: clang
       os: linux
       dist: trusty
       env:
-        - LDIST=-trusty
         - TEST_NON_GIT_REPO=1
-    - compiler: gcc
-      os: osx
-      osx_image: xcode8.3
-      env: LDIST=-osx_10.12
+        - LDIST=DO_NOT_DEPLOY
     - compiler: gcc
       os: linux
       dist: trusty
-      env: LDIST=-trusty
     - compiler: gcc
       os: linux
       dist: xenial
-      env: LDIST=-xenial
+      env:
+        - EXTRA_SSH=-oHostKeyAlgorithms=+ssh-dss
+    - os: linux
+      env:
+        - OS_TYPE=centos_docker
+        - OS_VERSION=6
+    - os: linux
+      env:
+        - OS_TYPE=centos_docker
+        - OS_VERSION=7
+    - os: linux
+      env:
+        - OS_TYPE=ubuntu_docker
+        - OS_VERSION=bionic
+    - compiler: "gcc"
+      os: osx
+      osx_image: xcode8
+    - compiler: "gcc"
+      os: osx
+      osx_image: xcode9.2
+      env:
+        - EXTRA_SSH=-oHostKeyAlgorithms=+ssh-dss
+    - compiler: "gcc"
+      os: osx
+      osx_image: xcode10.1
+      env:
+        - EXTRA_SSH=-oHostKeyAlgorithms=+ssh-dss
+
+addons:
+  artifacts: true
+  ssh_known_hosts:
+    secure: "HzU57pX/0iwRgPCnrP7QQ92XkrySsx/jjCLEqNAyWuQBYTMl2vVXnys7dclUp841CWRHv3TQXT0Jem9mZ9oZbzMR8Nxo2mjJyiH06BMcBYmTiaGxzSOh0XjiYTm3ZZvH+SQYdiXNBbPIY7B1ekC6Vw/ZQ8N4U1SiMh5W38+jXgqTYefB2h8GjmYB8f3DP0WE97ITaLG0/dUF+vLkuyJaLHND2j0e+cjjir8ah8eioK67+iX1dnDnN4U6su7tdVcqHGdgS3sSjvFl8+q9R9IFuT2RuQLd05Fu5gehV5ruJP0GzjJ8eU1fhkFSiWPenBGgkDRsv7ORmtL9ZmZKjtXIxhIlgVBdH8Rb9qtDCbKf6tSSrOU14TkN1FR8uPw68xhlnptS31AwB+OisWw1ULRJBEWRTABw+avUloDhgFMgUtFnSukjMlst16Qwq5bGKn5yQ6KBJU8BP/uX6ptGQemTokEe92TWJq6TS6kNpb8rA537gaMp8VQ2zk8Nhw6LovA5LbuKB73rcjuQsOto2/DF2GhJkBQ0peVzu1vsAFD5WmMTPzQziTLiTyI+gQktYJSoV8ERAvxqeDptqUYMrRMg7VtuV5fNEQ2Q5fVMrcqB9NGkeUjfIo7GHP0tBEzLCNjaRNYrMxEqKYW8OQSfINA3b3gLZuwLepHW71j2xqnFlpQ="
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./CI/travis/before_install_linux "$OS_TYPE" "$OS_VERSION" ; fi
