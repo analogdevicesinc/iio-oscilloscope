@@ -1,28 +1,16 @@
-#!/bin/bash
-set -e
+#!/bin/sh -xe
 
-source ./CI/travis/lib.sh
-source ./CI/travis/before_install_lib.sh
+. CI/travis/lib.sh
+. CI/travis/before_install_lib.sh
 
-
-PACKAGES="cmake fftw libmatio libxml2 pkg-config libusb gtk+ gtkdatabox jansson glib curl openssl@1.1 flex bison gettext libserialport"
-
-brew update
-
-brew_install_or_upgrade() {
-	brew install $1 || \
-		brew upgrade $1 || \
-		brew ls --versions $1 # check if installed last-ly
-}
-
-for pak in $PACKAGES ; do
-	brew_install_or_upgrade $pak
-done
+brew_install_or_upgrade cmake fftw libmatio \
+	libxml2 pkg-config libusb gtk+ gtkdatabox \
+	jansson glib curl openssl@1.1 flex bison \
+	gettext libserialport
 
 for pkg in gcc bison gettext ; do
 	brew link --overwrite --force $pkg
 done
-
 
 if [ "$TRAVIS" == "true" ] ; then
 	for pkg in libiio libad9361-iio ; do
