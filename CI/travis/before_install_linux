@@ -1,26 +1,60 @@
-#!/bin/bash
-set -e
+#!/bin/sh -xe
 
-source ./CI/travis/lib.sh
-source ./CI/travis/before_install_lib.sh
+. CI/travis/lib.sh
+. CI/travis/before_install_lib.sh
 
-sudo apt-get -qq update
-sudo apt-get install -y build-essential libxml2-dev libcurl4-openssl-dev \
-	libmatio-dev libglib2.0-dev libfftw3-dev libusb-dev libjansson-dev \
-	cmake libgtk2.0-dev libgtkdatabox-dev bison flex doxygen
+handle_centos() {
 
-if [ "$(sudo apt-cache search libserialport-dev | wc -l)" -gt 0 ] ; then
-	sudo apt-get install -y libserialport-dev
-fi
+	# First EPEL stuff
+	yum install -y epel-release
 
-if [ "$TRAVIS" == "true" ] ; then
-	for pkg in libiio libad9361-iio ; do
-		wget http://swdownloads.analog.com/cse/travis_builds/master_latest_${pkg}${LDIST}.deb
-		sudo dpkg -i ./master_latest_${pkg}${LDIST}.deb
-	done
-else
-	cmake_build_git "libiio" "https://github.com/analogdevicesinc/libiio" "" "-DINSTALL_UDEV_RULE:BOOL=OFF"
+	# FIXME: see about adding `libserialport-dev` from EPEL ; maybe libusb-1.0.0-devel...
+	yum -y groupinstall 'Development Tools'
+	yum -y install cmake libxml2-devel libcurl-devel glib2-devel \
+		fftw-devel libusb1-devel jansson-devel cmake gtk2-devel \
+		bison flex doxygen matio-devel libaio-devel
 
-	cmake_build_git "libad9361-iio" "https://github.com/analogdevicesinc/libad9361-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
-fi
+	if [ "$TRAVIS" = "true" ] || [ "$INSIDE_DOCKER" = "1" ] ; then
+		for pkg in libiio libad9361-iio ; do
+			wget http://swdownloads.analog.com/cse/travis_builds/${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.rpm
+			sudo yum localinstall -y ./${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.rpm
+		done
+	else
+		cmake_build_git "libiio" "https://github.com/analogdevicesinc/libiio" "" "-DINSTALL_UDEV_RULE:BOOL=OFF"
+		cmake_build_git "libad9361-iio" "https://github.com/analogdevicesinc/libad9361-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
+	fi
+}
 
+handle_centos_docker() {
+	prepare_docker_image "centos:centos${OS_VERSION}"
+}
+
+handle_ubuntu_docker() {
+	prepare_docker_image "ubuntu:${OS_VERSION}"
+}
+
+handle_default() {
+	sudo apt-get -qq update
+	sudo apt-get install -y build-essential libxml2-dev libcurl4-openssl-dev \
+		libmatio-dev libglib2.0-dev libfftw3-dev libusb-1.0-0-dev libjansson-dev \
+		cmake libgtk2.0-dev libgtkdatabox-dev bison flex doxygen libaio-dev
+	if [ `sudo apt-cache search libserialport-dev | wc -l` -gt 0 ] ; then
+		sudo apt-get install -y libserialport-dev
+	fi
+
+	if [ "$TRAVIS" = "true" ] || [ "$INSIDE_DOCKER" = "1" ] ; then
+		for pkg in libiio libad9361-iio ; do
+			wget http://swdownloads.analog.com/cse/travis_builds/${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.deb
+			sudo dpkg -i ./${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.deb
+		done
+	else
+		cmake_build_git "libiio" "https://github.com/analogdevicesinc/libiio" "" "-DINSTALL_UDEV_RULE:BOOL=OFF"
+		cmake_build_git "libad9361-iio" "https://github.com/analogdevicesinc/libad9361-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
+	fi
+}
+
+LIBNAME="iio-oscilloscope"
+OS_TYPE=${1:-default}
+OS_VERSION="$2"
+
+handle_${OS_TYPE}
