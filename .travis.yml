@@ -29,11 +29,11 @@ matrix:
       env: LDIST=-xenial
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./CI/travis/before_install_linux ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./CI/travis/before_install_linux "$OS_TYPE" "$OS_VERSION" ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./CI/travis/before_install_darwin ; fi
 
 script:
-  - ${TRAVIS_BUILD_DIR}/CI/travis/make
+  - ${TRAVIS_BUILD_DIR}/CI/travis/make "$OS_TYPE" "$OS_VERSION"
   - ${TRAVIS_BUILD_DIR}/CI/travis/post_build_checks
 
 notifications:
