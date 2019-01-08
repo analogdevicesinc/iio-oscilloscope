@@ -1,14 +1,13 @@
-#!/bin/bash
-set -e
+#!/bin/sh -xe
 
-source ./CI/travis/lib.sh
+. ./CI/travis/lib.sh
 
 __cmake() {
 	local args="$1"
 	mkdir -p build
-	pushd build # build
+	cd build # build
 
-	if [ "$TRAVIS" == "true" ] ; then
+	if [ "$TRAVIS" = "true" ] || [ "$INSIDE_DOCKER" = "1" ] ; then
 		cmake $args ..
 		make -j${NUM_JOBS}
 		sudo make install
@@ -20,7 +19,7 @@ __cmake() {
 		make install
 	fi
 
-	popd
+	cd ..
 }
 
 __build_common() {
@@ -30,19 +29,19 @@ __build_common() {
 	local subdir="$4"
 	local args="$5"
 
-	pushd "$WORKDIR" # deps dir
+	cd "$WORKDIR" # deps dir
 
 	# if we have this folder, we may not need to download it
 	[ -d "$dir" ] || $getfunc
 
-	pushd "$dir" # this dep dir
-	[ -z "$subdir" ] || pushd "$subdir" # in case there is a build subdir or smth
+	cd "$dir" # this dep dir
+	[ -z "$subdir" ] || cd "$subdir" # in case there is a build subdir or smth
 
 	$buildfunc "$args"
 
-	popd
-	popd
-	[ -z "$subdir" ] || popd
+	cd ..
+	cd ..
+	[ -z "$subdir" ] || cd ..
 }
 
 git_clone() {
