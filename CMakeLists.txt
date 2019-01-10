@@ -15,12 +15,12 @@
 #  the Free Software Foundation, Inc., 51 Franklin Street,
 #  Boston, MA 02110-1301, USA.
 
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 2.8.7)
 
 set(OSC_VERSION_MAJOR 0)
 set(OSC_VERSION_MINOR 8)
-set(VERSION "${OSC_VERSION_MAJOR}.${OSC_VERSION_MINOR}")
-project(iio-oscilloscope LANGUAGES C VERSION ${VERSION})
+set(OSC_VERSION "${OSC_VERSION_MAJOR}.${OSC_VERSION_MINOR}")
+project(iio-oscilloscope C)
 
 if (WIN32)
 	string(TIMESTAMP BUILD_YEAR "%Y")
@@ -153,13 +153,13 @@ set(LIBOSC_LIBS
 add_library(osc ${OSC_SRC})
 target_link_libraries(osc ${LIBOSC_LIBS})
 set_target_properties(osc PROPERTIES
-	VERSION ${VERSION}
+	VERSION ${OSC_VERSION}
 	SOVERSION ${OSC_VERSION_MAJOR}
 )
 
 add_executable(oscmain WIN32 oscmain.c)
 set_target_properties(oscmain PROPERTIES
-	VERSION ${VERSION}
+	VERSION ${OSC_VERSION}
 	OUTPUT_NAME osc
 )
 target_link_libraries(oscmain LINK_PRIVATE ${LIBOSC_LIBS} osc)
