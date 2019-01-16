@@ -114,13 +114,13 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_tx1">
-    <property name="upper">41.950000000000003</property>
-    <property name="step_increment">0.050000000000000003</property>
+    <property name="upper">41.95</property>
+    <property name="step_increment">0.05</property>
     <property name="page_increment">1</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_hw_gain_tx2">
-    <property name="upper">41.950000000000003</property>
-    <property name="step_increment">0.050000000000000003</property>
+    <property name="upper">41.95</property>
+    <property name="step_increment">0.05</property>
     <property name="page_increment">1</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_out_voltage0_clgc_desired_gain">
@@ -369,6 +369,9 @@
                                           <object class="GtkTable" id="grid12">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <child>
+                                              <placeholder/>
+                                            </child>
                                             <child>
                                               <placeholder/>
                                             </child>
@@ -1303,7 +1306,7 @@ Hopping Mode</property>
                                                           <object class="GtkLabel" id="label35">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Gain Control:</property>
+                                                            <property name="label" translatable="yes">RSSI(dB)</property>
                                                             <property name="xalign">1</property>
                                                           </object>
                                                           <packing>
@@ -1482,6 +1485,9 @@ Hopping Mode</property>
                                           <object class="GtkTable" id="tx_fastlock_actions">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <child>
+                                              <placeholder/>
+                                            </child>
                                             <child>
                                               <placeholder/>
                                             </child>
