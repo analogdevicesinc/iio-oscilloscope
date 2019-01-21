@@ -178,5 +178,6 @@ static inline int osc_iio_device_get_trigger(const struct iio_device *dev,
 }
 
 extern int osc_load_glade_file(GtkBuilder *builder, const char *fname);
+extern int osc_load_objects_from_glade_file(GtkBuilder *builder, const char *fname, gchar **object_ids);
 
 #endif

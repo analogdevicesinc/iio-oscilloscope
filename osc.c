@@ -2654,3 +2654,16 @@ int osc_load_glade_file(GtkBuilder *builder, const char *fname)
 	fprintf(stderr, "Could not find '%s.glade' file", fname);
 	return -1;
 }
+
+int osc_load_objects_from_glade_file(GtkBuilder *builder, const char *fname, gchar **object_ids)
+{
+	char path[256];
+	snprintf(path, sizeof(path), "glade/%s.glade", fname);
+	if (gtk_builder_add_objects_from_file(builder, path, object_ids, NULL))
+		return 0;
+	snprintf(path, sizeof(path), OSC_GLADE_FILE_PATH "%s.glade", fname);
+	if (gtk_builder_add_objects_from_file(builder, path, object_ids, NULL))
+		return 0;
+	fprintf(stderr, "Could not find '%s.glade' file", fname);
+	return -1;
+}
