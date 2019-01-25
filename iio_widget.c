@@ -68,6 +68,8 @@ static void iio_widget_init(struct iio_widget *widget,
 		printf("Missing widget for %s/%s\n", name, attr_name);
 	}
 
+	memset(widget, 0, sizeof(*widget));
+
 	widget->dev = dev;
 	widget->chn = chn;
 	widget->attr_name = attr_name;
