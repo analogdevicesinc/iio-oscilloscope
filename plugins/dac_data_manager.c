@@ -1923,7 +1923,7 @@ static int dds_dac_init(struct dac_data_manager *manager,
 	return ret;
 }
 
-static int device_scan_elements_count(struct iio_device *dev)
+int device_scan_elements_count(struct iio_device *dev)
 {
 	unsigned int i;
 	int count;
