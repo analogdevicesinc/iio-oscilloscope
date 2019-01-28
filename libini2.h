@@ -20,4 +20,6 @@ int foreach_in_ini(const char *ini_file,
 
 int ini_unroll(const char *input, const char *output);
 
+void write_driver_name_to_ini(FILE *f, const char *driver_name);
+
 #endif /* __LIBINI2_H__ */
