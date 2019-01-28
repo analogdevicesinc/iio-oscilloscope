@@ -253,11 +253,7 @@ void save_to_ini(FILE *f, const char *driver_name, struct iio_device *dev,
 		.f = f,
 	};
 
-	if (driver_name) {
-		fwrite("\n[", 1, 2, f);
-		fwrite(driver_name, 1, strlen(driver_name), f);
-		fwrite("]\n", 1, 2, f);
-	}
+	write_driver_name_to_ini(f, driver_name);
 
 	for (i = 0; i < iio_device_get_channels_count(dev); i++)
 		iio_channel_attr_read_all(iio_device_get_channel(dev, i),
@@ -664,4 +660,13 @@ int ini_unroll(const char *input, const char *output)
 	fclose(in);
 	fclose(out);
 	return ret;
+}
+
+void write_driver_name_to_ini(FILE *f, const char *driver_name)
+{
+	if (driver_name) {
+		fwrite("\n[", 1, 2, f);
+		fwrite(driver_name, 1, strlen(driver_name), f);
+		fwrite("]\n", 1, 2, f);
+	}
 }
