@@ -70,4 +70,7 @@ GtkWidget *dac_data_manager_get_gui_container(struct dac_data_manager *manager);
 void dac_data_manager_set_buffer_size_alignment(struct dac_data_manager *manager,
 		unsigned align);
 
+/* Helpers */
+int device_scan_elements_count(struct iio_device *dev);
+
 #endif /* __DAC_DATA_MANAGER__ */
