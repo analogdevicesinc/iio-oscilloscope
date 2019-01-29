@@ -12,13 +12,17 @@ handle_centos() {
 	yum -y groupinstall 'Development Tools'
 	yum -y install cmake libxml2-devel libcurl-devel glib2-devel \
 		fftw-devel libusb1-devel jansson-devel cmake gtk2-devel \
-		bison flex doxygen matio-devel libaio-devel
+		bison flex doxygen matio-devel libaio-devel libtool
 
 	if [ "$TRAVIS" = "true" ] || [ "$INSIDE_DOCKER" = "1" ] ; then
 		for pkg in libiio libad9361-iio ; do
 			wget http://swdownloads.analog.com/cse/travis_builds/${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.rpm
 			sudo yum localinstall -y ./${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.rpm
 		done
+
+		LIBDIR="--libdir=/usr/lib64"
+		# XXX: There is no gtkdatabox available in CentOS or EPEL....
+		make_build_wget "gtkdatabox-0.9.3.0" "https://sourceforge.net/projects/gtkdatabox/files/gtkdatabox/0.9.3.0/gtkdatabox-0.9.3.0.tar.gz/download"
 	else
 		cmake_build_git "libiio" "https://github.com/analogdevicesinc/libiio" "" "-DINSTALL_UDEV_RULE:BOOL=OFF"
 		cmake_build_git "libad9361-iio" "https://github.com/analogdevicesinc/libad9361-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
