@@ -10,23 +10,34 @@
 
 #include <gtk/gtk.h>
 
+/* Information needed to create a new plugin */
+struct osc_plugin_context {
+	char *plugin_name;
+	GList *required_devices;
+};
+
+/* The interface of an iio-oscilloscope plugin */
 struct osc_plugin {
 	void *handle;
 	const char *name;
 	GThread *thd;
+	bool dynamically_created;
 
-	bool (*identify)(void);
-	GtkWidget * (*init)(GtkWidget *notebook, const char *ini_fn);
-	int (*handle_item) (int line, const char *attrib, const char *value);
-	int (*handle_external_request) (const char *request);
-	void (*update_active_page)(gint active_page, gboolean is_detached);
-	void (*get_preferred_size)(int *width, int *size);
-	void (*destroy)(const char *ini_fn);
+	bool (*identify)(const struct osc_plugin *plugin);
+	GtkWidget * (*init)(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn);
+	int (*handle_item) (struct osc_plugin *plugin, int line, const char *attrib, const char *value);
+	int (*handle_external_request) (struct osc_plugin *plugin, const char *request);
+	void (*update_active_page)(struct osc_plugin *plugin, gint active_page, gboolean is_detached);
+	void (*get_preferred_size)(const struct osc_plugin *plugin, int *width, int *size);
+	void (*destroy)(struct osc_plugin *plugin, const char *ini_fn);
 
-	void (*save_profile)(const char *ini_fn);
-	void (*load_profile)(const char *ini_fn);
+	void (*save_profile)(const struct osc_plugin *plugin, const char *ini_fn);
+	void (*load_profile)(struct osc_plugin *plugin, const char *ini_fn);
+
+	struct plugin_private *priv;
 };
 
+void osc_plugin_context_free_resources(struct osc_plugin_context *ctx);
 void osc_plugin_register(const struct osc_plugin *plugin);
 void * plugin_dlsym(const char *name, const char *symbol);
 bool plugin_installed(const char *name);
