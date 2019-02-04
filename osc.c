@@ -832,6 +832,14 @@ void * plugin_dlsym(const char *name, const char *symbol)
 	return NULL;
 }
 
+void osc_plugin_context_free_resources(struct osc_plugin_context *ctx)
+{
+	if (ctx->plugin_name)
+		g_free(ctx->plugin_name);
+	if (ctx->required_devices)
+		g_list_free_full(ctx->required_devices, (GDestroyNotify)g_free);
+}
+
 bool str_endswith(const char *str, const char *needle)
 {
 	const char *pos;
