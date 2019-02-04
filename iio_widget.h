@@ -28,6 +28,9 @@ struct iio_widget {
 
 void g_builder_connect_signal(GtkBuilder *builder, const gchar *name,
 	const gchar *signal, GCallback callback, gpointer data);
+void g_builder_connect_signal_data(GtkBuilder *builder, const gchar *name,
+	const gchar *signal, GCallback callback, gpointer data,
+	GClosureNotify destroy_data, GConnectFlags connect_flags);
 void g_builder_bind_property(GtkBuilder *builder,
 	const gchar *source_name, const gchar *source_property,
 	const gchar *target_name, const gchar *target_property,
