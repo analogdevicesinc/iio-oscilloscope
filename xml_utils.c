@@ -13,6 +13,7 @@
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 
+#include "compat.h"
 #include "xml_utils.h"
 
 #define MAX_STR_LEN    512
@@ -89,13 +90,7 @@ char **get_xml_list(char * buf_dir_name, int *list_size)
 	}
 
 	while ((ent = readdir(d))) {
-		bool is_regular_file;
-#ifdef _DIRENT_HAVE_D_TYPE
-		is_regular_file = ent->d_type == DT_REG;
-#else
-		is_regular_file = true;
-#endif
-		if (is_regular_file) {
+		if (is_dirent_reqular_file(ent)) {
 			extension_ptr = strstr(ent->d_name, ".xml");
 			if (extension_ptr != NULL) { /* if the entry has a ".xml" extension */
 				cnt++;

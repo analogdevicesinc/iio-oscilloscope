@@ -26,6 +26,7 @@
 
 #include <iio.h>
 
+#include "compat.h"
 #include "libini2.h"
 #include "osc.h"
 #include "datatypes.h"
@@ -902,10 +903,8 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 			const char *ini_fn;
 		} *params;
 
-#ifdef _DIRENT_HAVE_D_TYPE
-		if (ent->d_type != DT_REG)
+		if (!is_dirent_reqular_file(ent))
 			continue;
-#endif
 #ifdef __MINGW32__
 		if (!str_endswith(ent->d_name, ".dll"))
 			continue;
