@@ -1082,7 +1082,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int handle_external_request (const char *request)
+static int handle_external_request (struct osc_plugin *plugin, const char *request)
 {
 	int ret = 0;
 
@@ -1094,7 +1094,7 @@ static int handle_external_request (const char *request)
 	return ret;
 }
 
-static int ad9371_handle_driver(const char *attrib, const char *value)
+static int ad9371_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	int ret = 0;
 
@@ -1152,13 +1152,13 @@ static int ad9371_handle_driver(const char *attrib, const char *value)
 	return ret;
 }
 
-static int ad9371_handle(int line, const char *attrib, const char *value)
+static int ad9371_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	return osc_plugin_default_handle(ctx, line, attrib, value,
-			ad9371_handle_driver);
+			ad9371_handle_driver, NULL);
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	struct iio_channel *ch;
 	char *value;
@@ -1168,7 +1168,7 @@ static void load_profile(const char *ini_fn)
 		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				ad9371_driver_attribs[i]);
 		if (value) {
-			ad9371_handle_driver(
+			ad9371_handle_driver(NULL,
 					ad9371_driver_attribs[i], value);
 			free(value);
 		}
@@ -1203,7 +1203,7 @@ static void load_profile(const char *ini_fn)
 		reload_button_clicked(NULL, NULL);
 }
 
-static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * ad9371_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *dds_container;
@@ -1644,7 +1644,7 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 // 		"tx_lo_external", 0);
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	label_rf_bandwidth_tx = GTK_WIDGET(gtk_builder_get_object(builder, "label_rf_bandwidth_tx"));
 	label_sampling_freq_tx = GTK_WIDGET(gtk_builder_get_object(builder, "label_sampling_freq_tx"));
@@ -1759,13 +1759,13 @@ static GtkWidget * ad9371_init(GtkWidget *notebook, const char *ini_fn)
 	return ad9371_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void ad9371_get_preferred_size(int *width, int *height)
+static void ad9371_get_preferred_size(const struct osc_plugin *plugin, int *width, int *height)
 {
 	if (width)
 		*width = 1100;
@@ -1803,7 +1803,7 @@ static void save_widgets_to_ini(FILE *f)
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_FPGA]));
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -1817,12 +1817,12 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	g_source_remove_by_user_data(ctx);
 
 	if (ini_fn)
-		save_profile(ini_fn);
+		save_profile(NULL, ini_fn);
 
 	if (dac_tx_manager) {
 		dac_data_manager_free(dac_tx_manager);
@@ -1834,7 +1834,7 @@ static void context_destroy(const char *ini_fn)
 
 struct osc_plugin plugin;
 
-static bool ad9371_identify(void)
+static bool ad9371_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

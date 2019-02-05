@@ -191,7 +191,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int daq2_handle_driver(const char *attrib, const char *value)
+static int daq2_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	if (MATCH_ATTRIB("dds_mode")) {
 		dac_data_manager_set_dds_mode(dac_tx_manager,
@@ -218,13 +218,13 @@ static int daq2_handle_driver(const char *attrib, const char *value)
 	return 0;
 }
 
-static int daq2_handle(int line, const char *attrib, const char *value)
+static int daq2_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	return osc_plugin_default_handle(ctx, line, attrib, value,
-			daq2_handle_driver);
+			daq2_handle_driver, NULL);
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	unsigned i;
 
@@ -232,7 +232,7 @@ static void load_profile(const char *ini_fn)
 		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				daq2_driver_attribs[i]);
 		if (value) {
-			daq2_handle_driver(daq2_driver_attribs[i], value);
+			daq2_handle_driver(NULL, daq2_driver_attribs[i], value);
 			free(value);
 		}
 	}
@@ -249,7 +249,7 @@ static void load_profile(const char *ini_fn)
 	}
 }
 
-static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * daq2_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *daq2_panel;
@@ -281,7 +281,7 @@ static GtkWidget * daq2_init(GtkWidget *notebook, const char *ini_fn)
 	gtk_widget_show_all(dds_container);
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	/* Bind the IIO device files to the GUI widgets */
 
@@ -356,7 +356,7 @@ static void save_widgets_to_ini(FILE *f)
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 1));
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -370,9 +370,9 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	save_profile(ini_fn);
+	save_profile(NULL, ini_fn);
 
 	if (dac_tx_manager) {
 		dac_data_manager_free(dac_tx_manager);
@@ -382,7 +382,7 @@ static void context_destroy(const char *ini_fn)
 	osc_destroy_context(ctx);
 }
 
-static bool daq2_identify(void)
+static bool daq2_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

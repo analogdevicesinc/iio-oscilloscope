@@ -89,7 +89,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	update_from_ini(ini_fn, THIS_DRIVER, dev, fmcadc3_sr_attribs,
 			ARRAY_SIZE(fmcadc3_sr_attribs));
@@ -98,7 +98,7 @@ static void load_profile(const char *ini_fn)
 		reload_button_clicked(NULL, NULL);
 }
 
-static GtkWidget * fmcadc3_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * fmcadc3_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	struct iio_channel *ch0;
@@ -127,7 +127,7 @@ static GtkWidget * fmcadc3_init(GtkWidget *notebook, const char *ini_fn)
 		dev, ch0, "hardwaregain", builder, "gain", NULL);
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	/* Update all widgets with current values */
 	iio_update_widgets_of_device(widgets, num_widgets, dev);
@@ -148,7 +148,7 @@ init_abort:
 	return NULL;
 }
 
-static void fmcadc3_get_preferred_size(int *width, int *height)
+static void fmcadc3_get_preferred_size(const struct osc_plugin *plugin, int *width, int *height)
 {
 	if (width)
 		*width = 640;
@@ -156,7 +156,7 @@ static void fmcadc3_get_preferred_size(int *width, int *height)
 		*height = 480;
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -166,19 +166,19 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	g_source_remove_by_user_data(ctx);
 
 	if (ini_fn)
-		save_profile(ini_fn);
+		save_profile(NULL, ini_fn);
 
 	osc_destroy_context(ctx);
 }
 
 struct osc_plugin plugin;
 
-static bool fmcadc3_identify(void)
+static bool fmcadc3_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

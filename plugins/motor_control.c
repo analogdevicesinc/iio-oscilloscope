@@ -548,7 +548,7 @@ static void resolver_init(GtkBuilder *builder)
 	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 }
 
-static int motor_control_handle_driver(const char *attrib, const char *value)
+static int motor_control_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	if (MATCH_ATTRIB("pwm")) {
 		if (value[0]) {
@@ -574,13 +574,13 @@ static int motor_control_handle_driver(const char *attrib, const char *value)
 	return 0;
 }
 
-static int motor_control_handle(int line, const char *attrib, const char *value)
+static int motor_control_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	return osc_plugin_default_handle(ctx, line, attrib, value,
-			motor_control_handle_driver);
+			motor_control_handle_driver, NULL);
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	unsigned int i;
 
@@ -588,7 +588,7 @@ static void load_profile(const char *ini_fn)
 		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				motor_control_driver_attribs[i]);
 		if (value) {
-			motor_control_handle_driver(
+			motor_control_handle_driver(NULL,
 					motor_control_driver_attribs[i], value);
 			free(value);
 		}
@@ -607,7 +607,7 @@ static void load_profile(const char *ini_fn)
 		tx_update_values();
 }
 
-static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * motor_control_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *pid_page;
@@ -654,7 +654,7 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 		gtk_widget_hide(resolver_page);
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	/* Update all widgets with current values */
 	tx_update_values();
@@ -728,7 +728,7 @@ static GtkWidget * motor_control_init(GtkWidget *notebook, const char *ini_fn)
 	return motor_control_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
@@ -762,7 +762,7 @@ static void save_widgets_to_ini(FILE *f)
 			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gpo[10])));
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -781,17 +781,17 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	g_source_remove_by_user_data(ctx);
 
 	if (ini_fn)
-		save_profile(ini_fn);
+		save_profile(NULL, ini_fn);
 
 	osc_destroy_context(ctx);
 }
 
-static bool motor_control_identify(void)
+static bool motor_control_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

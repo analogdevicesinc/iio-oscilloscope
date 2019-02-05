@@ -283,7 +283,7 @@ static void trigger_mcs_button(void)
 		plugin = node->data;
 		if (plugin && (!strncmp(plugin->name, "FMComms2/3/4/5 Advanced", 23))) {
 			if (plugin->handle_external_request) {
-				plugin->handle_external_request("Trigger MCS");
+				plugin->handle_external_request(NULL, "Trigger MCS");
 			}
 		}
 	}
@@ -871,7 +871,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int handle_external_request(const char *request)
+static int handle_external_request(struct osc_plugin *plugin, const char *request)
 {
 	int ret = 0;
 
@@ -961,7 +961,7 @@ cleanup:
 }
 #endif /* _WIN32 */
 
-static int fmcomms5_handle_driver(const char *attrib, const char *value)
+static int fmcomms5_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	int ret = 0;
 
@@ -1028,13 +1028,13 @@ static int fmcomms5_handle_driver(const char *attrib, const char *value)
 	return ret;
 }
 
-static int fmcomms5_handle(int line, const char *attrib, const char *value)
+static int fmcomms5_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	return osc_plugin_default_handle(ctx, line, attrib, value,
-			fmcomms5_handle_driver);
+			fmcomms5_handle_driver, NULL);
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	struct iio_channel *ch;
 	char *value;
@@ -1044,7 +1044,7 @@ static void load_profile(const char *ini_fn)
 		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				fmcomms5_driver_attribs[i]);
 		if (value) {
-			fmcomms5_handle_driver(
+			fmcomms5_handle_driver(NULL,
 					fmcomms5_driver_attribs[i], value);
 			free(value);
 		}
@@ -1102,7 +1102,7 @@ static void load_profile(const char *ini_fn)
 		reload_button_clicked(NULL, NULL);
 }
 
-static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * fmcomms5_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *dds_container;
@@ -1510,7 +1510,7 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 		"tx_fastlock_actions2", "visible", G_BINDING_INVERT_BOOLEAN);
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	if (tx_rssi_available)
 		g_signal_connect(rf_port_select_rx, "changed",
@@ -1644,13 +1644,13 @@ static GtkWidget * fmcomms5_init(GtkWidget *notebook, const char *ini_fn)
 	return fmcomms5_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void fmcomms5_get_preferred_size(int *width, int *height)
+static void fmcomms5_get_preferred_size(const struct osc_plugin *plugin, int *width, int *height)
 {
 	if (width)
 		*width = 1100;
@@ -1699,7 +1699,7 @@ static void save_widgets_to_ini(FILE *f)
 }
 
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -1720,12 +1720,12 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	g_source_remove_by_user_data(ctx);
 
 	if (ini_fn)
-		save_profile(ini_fn);
+		save_profile(NULL, ini_fn);
 
 	if (dac_tx_manager) {
 		dac_data_manager_free(dac_tx_manager);
@@ -1737,7 +1737,7 @@ static void context_destroy(const char *ini_fn)
 
 struct osc_plugin plugin;
 
-static bool fmcomms5_identify(void)
+static bool fmcomms5_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

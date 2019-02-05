@@ -300,7 +300,7 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 	}
 }
 
-static GtkWidget * AD7303_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * AD7303_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	struct iio_channel *ch0, *ch1;
 	GtkBuilder *builder;
@@ -380,7 +380,7 @@ static GtkWidget * AD7303_init(GtkWidget *notebook, const char *ini_fn)
 	return AD7303_panel;
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	if (dac_buff) {
 		iio_buffer_destroy(dac_buff);
@@ -391,7 +391,7 @@ static void context_destroy(const char *ini_fn)
 	osc_destroy_context(thread_ctx);
 }
 
-static bool AD7303_identify(void)
+static bool AD7303_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
