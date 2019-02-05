@@ -273,7 +273,7 @@ static void trigger_advanced_plugin_reload(void)
 
 		if (plugin && (!strncmp(plugin->name, "ADRV9009 Advanced", 17))) {
 			if (plugin->handle_external_request) {
-				plugin->handle_external_request("RELOAD");
+				plugin->handle_external_request(NULL, "RELOAD");
 			}
 		}
 	}
@@ -836,7 +836,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int handle_external_request(const char *request)
+static int handle_external_request(struct osc_plugin *plugin, const char *request)
 {
 	int ret = 0;
 
@@ -848,7 +848,7 @@ static int handle_external_request(const char *request)
 	return ret;
 }
 
-static int adrv9009_handle_driver(const char *attrib, const char *value)
+static int adrv9009_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	int ret = 0;
 
@@ -910,12 +910,12 @@ static int adrv9009_handle_driver(const char *attrib, const char *value)
 	return ret;
 }
 
-static int adrv9009_handle(int line, const char *attrib, const char *value)
+static int adrv9009_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
-	return osc_plugin_default_handle(ctx, line, attrib, value, adrv9009_handle_driver);
+	return osc_plugin_default_handle(ctx, line, attrib, value, adrv9009_handle_driver, NULL);
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	char *value;
 	unsigned int i;
@@ -924,8 +924,8 @@ static void load_profile(const char *ini_fn)
 		value = read_token_from_ini(ini_fn, THIS_DRIVER, adrv9009_driver_attribs[i]);
 
 		if (value) {
-			adrv9009_handle_driver(
-			        adrv9009_driver_attribs[i], value);
+			adrv9009_handle_driver(NULL,
+				adrv9009_driver_attribs[i], value);
 			free(value);
 		}
 	}
@@ -1002,7 +1002,7 @@ void buildTabsInContainer(GtkBox *container_box, enum plugin_section section, bo
 	gtk_widget_show(GTK_WIDGET(notebook));
 }
 
-static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder = NULL;
 	GtkWidget *dds_container;
@@ -1444,7 +1444,7 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 	}
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	/* Update all widgets with current values */
 	printf("Updating widgets...\n");
@@ -1555,13 +1555,13 @@ static GtkWidget *adrv9009_init(GtkWidget *notebook, const char *ini_fn)
 	return adrv9009_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void adrv9009_get_preferred_size(int *width, int *height)
+static void adrv9009_get_preferred_size(const struct osc_plugin *plugin, int *width, int *height)
 {
 	if (width)
 		*width = 1100;
@@ -1603,7 +1603,7 @@ static void save_widgets_to_ini(FILE *f)
 	}
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 
@@ -1626,12 +1626,12 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	g_source_remove_by_user_data(ctx);
 
 	if (ini_fn)
-		save_profile(ini_fn);
+		save_profile(NULL, ini_fn);
 
 	if (dac_tx_manager) {
 		dac_data_manager_free(dac_tx_manager);
@@ -1654,7 +1654,7 @@ static void context_destroy(const char *ini_fn)
 
 struct osc_plugin plugin;
 
-static bool adrv9009_identify(void)
+static bool adrv9009_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

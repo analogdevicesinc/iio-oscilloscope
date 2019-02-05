@@ -49,7 +49,7 @@ static void save_button_clicked(GtkButton *btn, gpointer data)
 		USE_INTERN_SAMPLING_FREQ);
 }
 
-static GtkWidget * AD5628_1_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * AD5628_1_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *AD5628_1_panel;
@@ -158,12 +158,12 @@ static GtkWidget * AD5628_1_init(GtkWidget *notebook, const char *ini_fn)
 	return AD5628_1_panel;
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	osc_destroy_context(ctx);
 }
 
-static bool AD5628_1_identify(void)
+static bool AD5628_1_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

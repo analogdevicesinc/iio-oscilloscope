@@ -394,7 +394,7 @@ static gboolean dmm_button_icon_transform(GBinding *binding,
 /*
  *  Main function
  */
-static GtkWidget * dmm_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * dmm_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *dmm_panel;
@@ -448,7 +448,7 @@ static GtkWidget * dmm_init(GtkWidget *notebook, const char *ini_fn)
 	return dmm_panel;
 }
 
-static int dmm_handle_driver(const char *attrib, const char *value)
+static int dmm_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	GtkTreeIter iter;
 	char *device, *channel, tmp[256];
@@ -502,25 +502,25 @@ static int dmm_handle_driver(const char *attrib, const char *value)
 	return 0;
 }
 
-static int dmm_handle(int line, const char *attrib, const char *value)
+static int dmm_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	return osc_plugin_default_handle(ctx, line,
-			attrib, value, dmm_handle_driver);
+			attrib, value, dmm_handle_driver, NULL);
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	g_source_remove_by_user_data(ctx);
 	osc_destroy_context(ctx);
 }
 
-static bool dmm_identify(void)
+static bool dmm_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
