@@ -42,6 +42,7 @@ G_LOCK_DEFINE_STATIC(buffer_full);
 static gboolean stop_capture;
 static struct plugin_check_fct *setup_check_functions = NULL;
 static int num_check_fcts = 0;
+static GSList *plugin_lib_list = NULL;
 static GSList *dplugin_list = NULL;
 static struct osc_plugin *spect_analyzer_plugin = NULL;
 GtkWidget *notebook;
@@ -765,10 +766,18 @@ static void close_plugins(const char *ini_fn)
 			printf("Closing plugin: %s\n", plugin->name);
 			if (plugin->destroy)
 				plugin->destroy(plugin, ini_fn);
-			dlclose(plugin->handle);
+
+			if (plugin->dynamically_created)
+				g_free(plugin);
 		}
 
 		g_free(d_plugin);
+	}
+
+	/* Closing the shared library handles after we're done wit the plugins */
+	for (node = plugin_lib_list; node; node = g_slist_next(node)) {
+		void *lib_handle = node->data;
+		dlclose(lib_handle);
 	}
 
 	g_slist_free(dplugin_list);
@@ -776,6 +785,9 @@ static void close_plugins(const char *ini_fn)
 
 	g_slist_free(plugin_list);
 	plugin_list = NULL;
+
+	g_slist_free(plugin_lib_list);
+	plugin_lib_list = NULL;
 }
 
 static struct osc_plugin * get_plugin_from_name(const char *name)
@@ -883,6 +895,9 @@ static void load_plugin_finish(GtkNotebook *notebook,
 
 static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 {
+	typedef GArray* (*get_plugins_info_func)(void);
+	typedef struct osc_plugin* (*create_plugin_func)(struct osc_plugin_context *);
+
 	GSList *node;
 	struct osc_plugin *plugin;
 	struct dirent *ent;
@@ -905,11 +920,6 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 
 	while ((ent = readdir(d))) {
 		void *lib;
-		struct params {
-			struct osc_plugin *plugin;
-			GtkWidget *notebook;
-			const char *ini_fn;
-		} *params;
 
 		if (!is_dirent_reqular_file(ent))
 			continue;
@@ -934,20 +944,62 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 
 		plugin = dlsym(lib, "plugin");
 		if (!plugin) {
-			fprintf(stderr, "Failed to load plugin \"%s\": "
+			/* Try for plugins that, first, return info on how they should be constructed */
+			get_plugins_info_func get_plugins_info =
+				dlsym(lib, "get_data_for_possible_plugin_instances");
+			create_plugin_func create_plugin =
+				dlsym(lib, "create_plugin");
+			if (!get_plugins_info || !create_plugin) {
+				fprintf(stderr, "Failed to load plugin \"%s\": "
 					"Could not find plugin\n", ent->d_name);
-			continue;
+				continue;
+			}
+
+			GArray *plugin_info = get_plugins_info();
+			if (plugin_info->len == 0) {
+				dlclose(lib);
+				continue;
+			}
+
+			/* Use the information retrieved from the plugin to create instances of it */
+			guint i = 0;
+			for (; i < plugin_info->len; i++) {
+				struct osc_plugin_context *plugin_ctx = g_array_index(plugin_info, struct osc_plugin_context *, i);
+				plugin = create_plugin(plugin_ctx);
+				printf("Found plugin: %s\n", plugin->name);
+				plugin->handle = lib;
+				plugin_list = g_slist_append(plugin_list, (gpointer) plugin);
+				plugin_lib_list = g_slist_append(plugin_lib_list, lib);
+
+				osc_plugin_context_free_resources(plugin_ctx);
+				g_free(plugin_ctx);
+			}
+			g_array_free(plugin_info, FALSE);
+
+		} else {
+			printf("Found plugin: %s\n", plugin->name);
+
+			if (!plugin->identify(plugin) && !force_plugin(plugin->name)) {
+				dlclose(lib);
+				continue;
+			}
+
+			plugin->handle = lib;
+			plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
+			plugin_lib_list = g_slist_append(plugin_lib_list, lib);
 		}
+	}
+	closedir(d);
 
-		printf("Found plugin: %s\n", plugin->name);
+	// Initialize all plugins that were previously loaded
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		struct params {
+			struct osc_plugin *plugin;
+			GtkWidget *notebook;
+			const char *ini_fn;
+		} *params;
 
-		if (!plugin->identify(plugin) && !force_plugin(plugin->name)) {
-			dlclose(lib);
-			continue;
-		}
-
-		plugin->handle = lib;
-		plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
+		plugin = node->data;
 
 		params = malloc(sizeof(*params));
 		params->plugin = plugin;
@@ -962,7 +1014,6 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 			load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
 		}
 	}
-	closedir(d);
 
 	if (!load_in_parallel)
 		return;
