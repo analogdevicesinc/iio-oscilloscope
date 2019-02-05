@@ -19,6 +19,7 @@
 
 #include <iio.h>
 
+#include "compat.h"
 #include "fru.h"
 #include "osc.h"
 #include "config.h"
@@ -129,7 +130,7 @@ static size_t write_fru(char *eeprom)
 	gtk_list_store_clear(store);
 
 	for (j = 0; j < n; j++) {
-		if (namelist[j]->d_type == DT_REG && str_endswith(namelist[j]->d_name, ".bin"))
+		if (is_dirent_reqular_file(namelist[j]) && str_endswith(namelist[j]->d_name, ".bin"))
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(fru_file_list), namelist[j]->d_name);
 		free(namelist[j]);
 	}
