@@ -137,7 +137,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	update_from_ini(ini_fn, THIS_DRIVER, dev, ad6676_sr_attribs,
 			ARRAY_SIZE(ad6676_sr_attribs));
@@ -145,7 +145,7 @@ static void load_profile(const char *ini_fn)
 	reload_button_clicked(NULL, NULL);
 }
 
-static GtkWidget * ad6676_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * ad6676_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	struct iio_channel *ch;
@@ -178,7 +178,7 @@ static GtkWidget * ad6676_init(GtkWidget *notebook, const char *ini_fn)
 	adj_bandwidth = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adj_bandwidth"));
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	/* Bind the IIO device files to the GUI widgets */
 
@@ -246,13 +246,13 @@ init_abort:
 	return NULL;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void ad6676_get_preferred_size(int *width, int *height)
+static void ad6676_get_preferred_size(const struct osc_plugin *plugin, int *width, int *height)
 {
 	if (width)
 		*width = 640;
@@ -260,7 +260,7 @@ static void ad6676_get_preferred_size(int *width, int *height)
 		*height = 480;
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -270,17 +270,17 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	if (ini_fn)
-		save_profile(ini_fn);
+		save_profile(NULL, ini_fn);
 
 	osc_destroy_context(ctx);
 }
 
 struct osc_plugin plugin;
 
-static bool ad6676_identify(void)
+static bool ad6676_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

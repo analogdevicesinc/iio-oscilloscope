@@ -920,7 +920,7 @@ static int mag_input_seek(const char *value)
 	return ret;
 }
 
-static int scpi_handle(int line, const char *attrib, const char *value)
+static int scpi_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	if (!strncmp(attrib, "rx.", sizeof("rx.") - 1))
 		current_instrument = &spectrum_analyzer;
@@ -1285,7 +1285,7 @@ static void scpi_cmd_cb (GtkButton *button, GtkEntry *box)
 /*
  *  Main function
  */
-static GtkWidget * scpi_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * scpi_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *scpi_panel;
@@ -1370,7 +1370,7 @@ static GtkWidget * scpi_init(GtkWidget *notebook, const char *ini_fn)
 	return scpi_panel;
 }
 
-static void scpi_save_profile(const char *ini_fn)
+static void scpi_save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (!f)
@@ -1405,10 +1405,10 @@ static void scpi_save_profile(const char *ini_fn)
 	fclose(f);
 }
 
-static void scpi_destroy(const char *ini_fn)
+static void scpi_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	if (ini_fn)
-		scpi_save_profile(ini_fn);
+		scpi_save_profile(NULL, ini_fn);
 
 	if (current_instrument) {
 		if (current_instrument->model)
@@ -1423,7 +1423,7 @@ static void scpi_destroy(const char *ini_fn)
 /* This is normally used for test, and the GUI is used for
  * setting up the test infrastructure
  */
-static bool scpi_identify(void)
+static bool scpi_identify(const struct osc_plugin *plugin)
 {
 	/*
 	 * Always return false

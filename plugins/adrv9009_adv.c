@@ -1041,7 +1041,7 @@ static int adrv9009adv_handle_driver(struct osc_plugin *plugin, const char *attr
 static int adrv9009adv_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	return osc_plugin_default_handle(plugin->priv->ctx, line, attrib, value,
-		adrv9009adv_handle_driver); // TO DO: the first argument of this functor needs to be passed as well
+		adrv9009adv_handle_driver, plugin);
 }
 
 static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
@@ -1120,7 +1120,7 @@ static void update_active_page(struct osc_plugin *plugin, gint active_page, gboo
 	plugin->priv->plugin_detached = is_detached;
 }
 
-static void save_profile(struct osc_plugin *plugin, const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 

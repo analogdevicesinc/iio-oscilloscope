@@ -767,7 +767,7 @@ static void spectrum_window_destroyed_cb(OscPlot *plot)
 	spectrum_window = NULL;
 }
 
-static int handle_external_request (const char *request)
+static int handle_external_request (struct osc_plugin *plugin, const char *request)
 {
 	int ret = 0;
 
@@ -779,7 +779,7 @@ static int handle_external_request (const char *request)
 	return ret;
 }
 
-static GtkWidget * analyzer_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * analyzer_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	struct iio_channel *ch1;
@@ -862,13 +862,13 @@ static GtkWidget * analyzer_init(GtkWidget *notebook, const char *ini_fn)
 	return analyzer_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void analyzer_get_preferred_size(int *width, int *height)
+static void analyzer_get_preferred_size(const struct osc_plugin *plugin, int *width, int *height)
 {
 	if (width)
 		*width = 640;
@@ -876,7 +876,7 @@ static void analyzer_get_preferred_size(int *width, int *height)
 		*height = 480;
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	if (capture_buffer) {
 		iio_buffer_destroy(capture_buffer);
@@ -889,7 +889,7 @@ static void context_destroy(const char *ini_fn)
 
 struct osc_plugin plugin;
 
-static bool analyzer_identify(void)
+static bool analyzer_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

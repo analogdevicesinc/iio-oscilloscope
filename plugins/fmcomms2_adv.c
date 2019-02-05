@@ -413,7 +413,7 @@ static void reload_settings(void)
 			!strncmp(plugin->name, "FMComms5-", 8))) {
 			if (plugin->handle_external_request) {
 				g_usleep(1 * G_USEC_PER_SEC);
-				plugin->handle_external_request("Reload Settings");
+				plugin->handle_external_request(NULL, "Reload Settings");
 			}
 		}
 	}
@@ -1049,7 +1049,7 @@ static void undo_calibration (GtkWidget *widget, gpointer data)
 		plugin = node->data;
 		if (plugin && (!strncmp(plugin->name, "FMComms5", 8))) {
 			if (plugin->handle_external_request)
-				plugin->handle_external_request("Reload Settings");
+				plugin->handle_external_request(NULL, "Reload Settings");
 		}
 	}
 }
@@ -1207,7 +1207,7 @@ static void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
-static int handle_external_request (const char *request)
+static int handle_external_request (struct osc_plugin *plugin, const char *request)
 {
 	int ret = 0;
 
@@ -1222,7 +1222,7 @@ static int handle_external_request (const char *request)
 	return ret;
 }
 
-static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
+static int fmcomms2adv_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	int ret = 0;
 
@@ -1264,13 +1264,13 @@ static int fmcomms2adv_handle_driver(const char *attrib, const char *value)
 	return ret;
 }
 
-static int fmcomms2adv_handle(int line, const char *attrib, const char *value)
+static int fmcomms2adv_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	return osc_plugin_default_handle(ctx, line, attrib, value,
-			fmcomms2adv_handle_driver);
+			fmcomms2adv_handle_driver, NULL);
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	char *value;
 
@@ -1282,7 +1282,7 @@ static void load_profile(const char *ini_fn)
 
 	value = read_token_from_ini(ini_fn, THIS_DRIVER, "calibrate");
 	if (value) {
-		fmcomms2adv_handle_driver("calibrate", value);
+		fmcomms2adv_handle_driver(NULL, "calibrate", value);
 		free(value);
 	}
 }
@@ -1309,7 +1309,7 @@ static int get_dds_channels(void)
 	return 0;
 }
 
-static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * fmcomms2adv_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkWidget *fmcomms2adv_panel;
 
@@ -1331,7 +1331,7 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 	}
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
@@ -1412,13 +1412,13 @@ static GtkWidget * fmcomms2adv_init(GtkWidget *notebook, const char *ini_fn)
 	return fmcomms2adv_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -1428,13 +1428,13 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	save_profile(ini_fn);
+	save_profile(NULL, ini_fn);
 	osc_destroy_context(ctx);
 }
 
-static bool fmcomms2adv_identify(void)
+static bool fmcomms2adv_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
