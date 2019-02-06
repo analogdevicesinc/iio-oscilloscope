@@ -31,6 +31,7 @@
 #include "../config.h"
 #include "../iio_widget.h"
 #include "../datatypes.h"
+#include "../iio_utils.h"
 
 #define PHY_DEVICE "adrv9009-phy"
 #define DDS_DEVICE "axi-adrv9009-tx-hpc"
@@ -39,13 +40,18 @@
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
-static struct iio_context *ctx;
-static struct iio_device *dev;
-static bool can_update_widgets;
-static gint this_page;
-static GtkNotebook *nbook;
-static gboolean plugin_detached;
-static GtkBuilder *builder;
+struct plugin_private {
+	const char *plugin_name;
+	struct iio_context *ctx;
+	struct iio_device *dev;
+	bool can_update_widgets;
+	gint this_page;
+	GtkNotebook *nbook;
+	gboolean plugin_detached;
+	GtkBuilder *builder;
+
+	struct osc_plugin_context plugin_ctx;
+};
 
 enum adrv9009adv_wtype {
 	CHECKBOX,
@@ -62,6 +68,11 @@ struct w_info {
 	const char *const name;
 	const unsigned char *const lut;
 	const unsigned char lut_len;
+};
+
+struct plugin_and_w_info {
+		struct osc_plugin *plugin;
+		struct w_info *item;
 };
 
 static struct w_info attrs[] = {
@@ -731,7 +742,7 @@ static const char *adrv9009_adv_sr_attribs[] = {
 	"debug.adrv9009-phy.adi,default-initial-calibrations-mask",
 };
 
-static void reload_settings(void)
+static void reload_settings()
 {
 	struct osc_plugin *plugin;
 	GSList *node;
@@ -739,10 +750,10 @@ static void reload_settings(void)
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		plugin = node->data;
 
-		if (plugin && !strncmp(plugin->name, "adrv9009", 12)) {
+		if (plugin && !strncmp(plugin->name, "adrv9009", 12)) { // TO DO: How do we know the first plugin we find is not this one?
 			if (plugin->handle_external_request) {
 				g_usleep(1 * G_USEC_PER_SEC);
-				plugin->handle_external_request("Reload Settings");
+				plugin->handle_external_request(plugin, "Reload Settings");
 			}
 		}
 	}
@@ -750,7 +761,9 @@ static void reload_settings(void)
 
 static void signal_handler_cb(GtkWidget *widget, gpointer data)
 {
-	struct w_info *item = data;
+	struct plugin_and_w_info *plugin_and_item = data;
+	struct osc_plugin *plugin = plugin_and_item->plugin;
+	struct w_info *item = plugin_and_item->item;
 	long long val;
 	char str[80];
 	int bit, ret;
@@ -769,7 +782,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 		val = (long long) gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
 
 		if (item->lut_len) {
-			iio_device_debug_attr_read_longlong(dev, item->name, &mask);
+			iio_device_debug_attr_read_longlong(plugin->priv->dev, item->name, &mask);
 			mask &= ~((1 << item->lut_len) - 1);
 			mask |= val & ((1 << item->lut_len) - 1);
 			val = mask;
@@ -793,7 +806,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 		if (ret != 2)
 			return;
 
-		iio_device_debug_attr_read_longlong(dev, str, &mask);
+		iio_device_debug_attr_read_longlong(plugin->priv->dev, str, &mask);
 
 		if (val) {
 			mask |= (1 << bit);
@@ -801,7 +814,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 			mask &= ~(1 << bit);
 		}
 
-		iio_device_debug_attr_write_longlong(dev, str, mask);
+		iio_device_debug_attr_write_longlong(plugin->priv->dev, str, mask);
 
 		return;
 
@@ -809,7 +822,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 		return;
 	}
 
-	iio_device_debug_attr_write_longlong(dev, item->name, val);
+	iio_device_debug_attr_write_longlong(plugin->priv->dev, item->name, val);
 
 	if (!strcmp(item->name, "initialize")) {
 		reload_settings();
@@ -818,22 +831,22 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 
 static void bist_tone_cb(GtkWidget *widget, gpointer data)
 {
-	GtkBuilder *builder = data;
+	struct osc_plugin *plugin = data;
 	unsigned enable, tx1_freq, tx2_freq;
 	char temp[40];
 
 	tx1_freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON(
-	                gtk_builder_get_object(builder, "tx1_nco_freq"))) * 1000;
+	                gtk_builder_get_object(plugin->priv->builder, "tx1_nco_freq"))) * 1000;
 	tx2_freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON(
-	                gtk_builder_get_object(builder, "tx2_nco_freq"))) * 1000;
+	                gtk_builder_get_object(plugin->priv->builder, "tx2_nco_freq"))) * 1000;
 
 	enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-	                GTK_WIDGET(gtk_builder_get_object(builder, "tx_nco_enable"))));
+	                GTK_WIDGET(gtk_builder_get_object(plugin->priv->builder, "tx_nco_enable"))));
 
 	sprintf(temp, "%u %u %u", enable, tx1_freq, tx2_freq);
 
-	iio_device_debug_attr_write(dev, "bist_tone", "0 0 0");
-	iio_device_debug_attr_write(dev, "bist_tone", temp);
+	iio_device_debug_attr_write(plugin->priv->dev, "bist_tone", "0 0 0");
+	iio_device_debug_attr_write(plugin->priv->dev, "bist_tone", temp);
 }
 
 static char *set_widget_value(GtkWidget *widget, struct w_info *item, long long val)
@@ -889,14 +902,17 @@ static char *set_widget_value(GtkWidget *widget, struct w_info *item, long long 
 
 	return NULL;
 }
-static void connect_widget(GtkBuilder *builder, struct w_info *item, long long val)
+static void connect_widget(struct osc_plugin *plugin, struct w_info *item, long long val)
 {
 	char *signal;
 	GtkWidget *widget;
-	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
+	struct plugin_and_w_info *data_to_pass = g_new(struct plugin_and_w_info, 1);
+	data_to_pass->plugin = plugin;
+	data_to_pass->item = item;
+	widget = GTK_WIDGET(gtk_builder_get_object(plugin->priv->builder, item->name));
 	signal = set_widget_value(widget, item, val);
-	g_builder_connect_signal(builder, item->name, signal,
-	                         G_CALLBACK(signal_handler_cb), item);
+	g_builder_connect_signal_data(plugin->priv->builder, item->name, signal,
+	                         G_CALLBACK(signal_handler_cb), data_to_pass, (GClosureNotify)g_free, 0);
 }
 
 static void update_widget(GtkBuilder *builder, struct w_info *item, long long val)
@@ -911,7 +927,7 @@ static int __connect_widget(struct iio_device *dev, const char *attr,
                             const char *value, size_t len, void *d)
 {
 	unsigned int i, nb_items = ARRAY_SIZE(attrs);
-	GtkBuilder *builder = (GtkBuilder *) d;
+	struct osc_plugin *plugin = d;
 	char str[80];
 	int bit, ret;
 
@@ -919,7 +935,7 @@ static int __connect_widget(struct iio_device *dev, const char *attr,
 		ret = sscanf(attrs[i].name, "%[^'#']#%d", str, &bit);
 
 		if (!strcmp(str, attr)) {
-			connect_widget(builder, &attrs[i], atoll(value));
+			connect_widget(plugin, &attrs[i], atoll(value));
 
 			if (ret == 1 && attrs[i].lut_len == 0) {
 				return 0;
@@ -956,14 +972,14 @@ static int __update_widget(struct iio_device *dev, const char *attr,
 	return 0;
 }
 
-static int connect_widgets(GtkBuilder *builder)
+static int connect_widgets(struct osc_plugin *plugin)
 {
-	return iio_device_debug_attr_read_all(dev, __connect_widget, builder);
+	return iio_device_debug_attr_read_all(plugin->priv->dev, __connect_widget, plugin);
 }
 
-static int update_widgets(GtkBuilder *builder)
+static int update_widgets(struct osc_plugin *plugin)
 {
-	return iio_device_debug_attr_read_all(dev, __update_widget, builder);
+	return iio_device_debug_attr_read_all(plugin->priv->dev, __update_widget, plugin->priv->builder);
 }
 
 static void change_page_cb(GtkNotebook *notebook, GtkNotebookPage *page,
@@ -977,31 +993,31 @@ static void change_page_cb(GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
-static int handle_external_request(const char *request)
+static int handle_external_request(struct osc_plugin *plugin, const char *request)
 {
 	int ret = 0;
 
 	if (!strcmp(request, "Trigger MCS")) {
 		GtkWidget *mcs_btn;
 
-		mcs_btn = GTK_WIDGET(gtk_builder_get_object(builder, "mcs_sync"));
+		mcs_btn = GTK_WIDGET(gtk_builder_get_object(plugin->priv->builder, "mcs_sync"));
 		g_signal_emit_by_name(mcs_btn, "clicked", NULL);
 		ret = 1;
 	} else if (!strcmp(request, "RELOAD")) {
-		if (can_update_widgets)
-			update_widgets(builder);
+		if (plugin->priv->can_update_widgets)
+			update_widgets(plugin);
 	}
 
 	return ret;
 }
 
-static int adrv9009adv_handle_driver(const char *attrib, const char *value)
+static int adrv9009adv_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	int ret = 0;
 
 	if (MATCH_ATTRIB("SYNC_RELOAD") && atoi(value)) {
-		if (can_update_widgets)
-			update_widgets(builder);
+		if (plugin->priv->can_update_widgets)
+			update_widgets(plugin);
 
 		reload_settings();
 	} else {
@@ -1013,107 +1029,163 @@ static int adrv9009adv_handle_driver(const char *attrib, const char *value)
 	return ret;
 }
 
-static int adrv9009adv_handle(int line, const char *attrib, const char *value)
+static int adrv9009adv_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
-	return osc_plugin_default_handle(ctx, line, attrib, value,
-	                                 adrv9009adv_handle_driver);
+	return osc_plugin_default_handle(plugin->priv->ctx, line, attrib, value,
+		adrv9009adv_handle_driver); // TO DO: the first argument of this functor needs to be passed as well
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 
-	update_from_ini(ini_fn, THIS_DRIVER, dev,
-	                adrv9009_adv_sr_attribs,
-	                ARRAY_SIZE(adrv9009_adv_sr_attribs));
+	update_from_ini(ini_fn, plugin->priv->plugin_name, plugin->priv->dev,
+	                adrv9009_adv_sr_attribs, ARRAY_SIZE(adrv9009_adv_sr_attribs));
 
-	if (can_update_widgets)
-		update_widgets(builder);
+	if (plugin->priv->can_update_widgets)
+		update_widgets(plugin);
 
 }
 
-static GtkWidget *adrv9009adv_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget *adrv9009adv_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
+	struct plugin_private *priv = plugin->priv;
 	GtkWidget *adrv9009adv_panel;
 
-	ctx = osc_create_context();
+	struct iio_context *ctx = osc_create_context();
 
 	if (!ctx)
 		return NULL;
 
-	dev = iio_context_find_device(ctx, PHY_DEVICE);
+	/* get_data_for_possible_plugin_instances() is responsibile to set the first device name to be of type adrv9009-phy */
+	struct iio_device *dev = iio_context_find_device(ctx, (const char *)g_list_first(priv->plugin_ctx.required_devices)->data);
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(plugin, ini_fn);
 
-	builder = gtk_builder_new();
+	GtkBuilder *builder = gtk_builder_new();
 
 	if (osc_load_glade_file(builder, "adrv9009_adv") < 0)
 		return NULL;
 
-	adrv9009adv_panel = GTK_WIDGET(gtk_builder_get_object(builder, "adrv9009adv_panel"));
-	nbook = GTK_NOTEBOOK(gtk_builder_get_object(builder, "notebook"));
+	/* At this point the function cannot fail - initialize priv */
+	priv->ctx = ctx;
+	priv->dev = dev;
+	priv->builder = builder;
 
-	connect_widgets(builder);
+	adrv9009adv_panel = GTK_WIDGET(gtk_builder_get_object(builder, "adrv9009adv_panel"));
+	priv->nbook = GTK_NOTEBOOK(gtk_builder_get_object(builder, "notebook"));
+
+	connect_widgets(plugin);
 
 	g_builder_connect_signal(builder, "tx1_nco_freq", "value-changed",
-	                         G_CALLBACK(bist_tone_cb), builder);
+	                         G_CALLBACK(bist_tone_cb), plugin);
 
 	g_builder_connect_signal(builder, "tx2_nco_freq", "value-changed",
-	                         G_CALLBACK(bist_tone_cb), builder);
+	                         G_CALLBACK(bist_tone_cb), plugin);
 
 	g_builder_connect_signal(builder, "tx_nco_enable", "toggled",
-	                         G_CALLBACK(bist_tone_cb), builder);
+	                         G_CALLBACK(bist_tone_cb), plugin);
 
 	g_builder_connect_signal(builder, "notebook", "switch-page",
 	                         G_CALLBACK(change_page_cb),
 	                         GTK_WIDGET(gtk_builder_get_object(builder, "initialize")));
 
-	can_update_widgets = true;
+	priv->can_update_widgets = true;
 
 	return adrv9009adv_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
-	this_page = active_page;
-	plugin_detached = is_detached;
+	plugin->priv->this_page = active_page;
+	plugin->priv->plugin_detached = is_detached;
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 
 	if (f) {
-		save_to_ini(f, THIS_DRIVER, dev, adrv9009_adv_sr_attribs,
-		            ARRAY_SIZE(adrv9009_adv_sr_attribs));
+		save_to_ini(f, plugin->priv->plugin_name, plugin->priv->dev,
+			adrv9009_adv_sr_attribs, ARRAY_SIZE(adrv9009_adv_sr_attribs));
 		fclose(f);
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+gpointer copy_gchar_array(gconstpointer src, gpointer data)
 {
-	save_profile(ini_fn);
-	osc_destroy_context(ctx);
+	return (gpointer)g_strdup(src);
 }
 
-static bool adrv9009adv_identify(void)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	/* Use the OSC's IIO context just to detect the devices */
+	save_profile(plugin, ini_fn);
+
+	size_t n = 0;
+	for (; n < plugin->priv->sr_attribs_count; n++) {
+		g_free(plugin->priv->sr_attribs[n]);
+	}
+	g_free(plugin->priv->sr_attribs);
+
+	osc_plugin_context_free_resources(&plugin->priv->plugin_ctx);
+	
+	osc_destroy_context(plugin->priv->ctx);
+	
+	g_free(plugin->priv);
+}
+
+struct osc_plugin * create_plugin(struct osc_plugin_context *plugin_ctx)
+{
+	struct osc_plugin *plugin= g_new0(struct osc_plugin, 1);
+
+	if (!plugin_ctx ) {
+		fprintf(stderr, "Cannot create plugin because an invalid plugin context was provided\n");
+		return NULL;
+	}
+
+	plugin->priv = g_new0(struct plugin_private, 1);
+	plugin->priv->plugin_ctx.plugin_name = g_strdup(plugin_ctx->plugin_name);
+	plugin->priv->plugin_ctx.required_devices = g_list_copy_deep(plugin_ctx->required_devices, (GCopyFunc)copy_gchar_array, NULL);
+
+	plugin->name = plugin->priv->plugin_ctx.plugin_name;
+	plugin->dynamically_created = TRUE;
+	plugin->init = adrv9009adv_init;
+	plugin->handle_item = adrv9009adv_handle;
+	plugin->handle_external_request = handle_external_request;
+	plugin->update_active_page = update_active_page;
+	plugin->save_profile = save_profile;
+	plugin->load_profile = load_profile;
+	plugin->destroy = context_destroy;
+
+	return plugin;
+}
+
+/* Informs how many plugins can be instantiated and gives context for each possible plugin instance */
+GArray* get_data_for_possible_plugin_instances(void)
+{
+	GArray *data = g_array_new(FALSE, TRUE, sizeof(struct osc_plugin_context *));
 	struct iio_context *osc_ctx = get_context_from_osc();
+	GArray *devices = get_iio_devices_starting_with(osc_ctx, PHY_DEVICE);
+	guint i = 0;
 
-	dev = iio_context_find_device(osc_ctx, PHY_DEVICE);
+	for (; i < devices->len; i++) {
+		struct osc_plugin_context *context = g_new(struct osc_plugin_context, 1);
+		struct iio_device *dev = g_array_index(devices, struct iio_device*, i);
 
-	return !!dev && iio_device_get_debug_attrs_count(dev);
+		/* Construct the name of the plugin */
+		char *name;
+		if (devices->len > 1)
+			name = g_strdup_printf("%s-%i", THIS_DRIVER, i);
+		else
+			name = g_strdup(THIS_DRIVER);
+
+		context->required_devices = NULL;
+		context->required_devices = g_list_append(context->required_devices, g_strdup(iio_device_get_name(dev)));
+		context->plugin_name = name;
+		g_array_append_val(data, context);
+	}
+
+	g_array_free(devices, FALSE);
+
+	return data;
 }
-
-struct osc_plugin plugin = {
-	.name = THIS_DRIVER,
-	.identify = adrv9009adv_identify,
-	.init = adrv9009adv_init,
-	.handle_item = adrv9009adv_handle,
-	.handle_external_request = handle_external_request,
-	.update_active_page = update_active_page,
-	.save_profile = save_profile,
-	.load_profile = load_profile,
-	.destroy = context_destroy,
-};
