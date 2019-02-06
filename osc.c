@@ -327,7 +327,7 @@ static void attach_plugin(GtkWidget *window, struct detachable_plugin *d_plugin)
 	detach_btn = plugin_tab_add_detach_btn(plugin_page, d_plugin);
 
 	if (plugin->update_active_page)
-		plugin->update_active_page(plugin_page_index, FALSE);
+		plugin->update_active_page((struct osc_plugin *)plugin, plugin_page_index, FALSE);
 	d_plugin->detached_state = FALSE;
 	d_plugin->detach_attach_button = detach_btn;
 	d_plugin->window = NULL;
@@ -389,7 +389,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	if (plugin->get_preferred_size) {
 		int width = -1, height = -1;
 
-		plugin->get_preferred_size(&width, &height);
+		plugin->get_preferred_size(plugin, &width, &height);
 		gtk_window_set_default_size(GTK_WINDOW(window), width, height);
 	}
 
@@ -403,7 +403,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 			G_CALLBACK(debug_window_delete_cb), (gpointer)d_plugin);
 
 	if (plugin->update_active_page)
-		plugin->update_active_page(-1, TRUE);
+		plugin->update_active_page((struct osc_plugin *)plugin, -1, TRUE);
 	d_plugin->detached_state = TRUE;
 	d_plugin->detach_attach_button = NULL;
 	d_plugin->window = window;
@@ -756,7 +756,7 @@ static void close_plugins(const char *ini_fn)
 
 	for (node = dplugin_list; node; node = g_slist_next(node)) {
 		struct detachable_plugin *d_plugin = node->data;
-		const struct osc_plugin *plugin = d_plugin->plugin;
+		struct osc_plugin *plugin = (struct osc_plugin *)d_plugin->plugin;
 
 		if (d_plugin->window)
 			gtk_widget_destroy(d_plugin->window);
@@ -764,7 +764,7 @@ static void close_plugins(const char *ini_fn)
 		if (plugin) {
 			printf("Closing plugin: %s\n", plugin->name);
 			if (plugin->destroy)
-				plugin->destroy(ini_fn);
+				plugin->destroy(plugin, ini_fn);
 			dlclose(plugin->handle);
 		}
 
@@ -858,7 +858,7 @@ static void * init_plugin(void *data)
 		const char *ini_fn;
 	} *params = data;
 
-	widget = params->plugin->init(params->notebook, params->ini_fn);
+	widget = params->plugin->init(params->plugin, params->notebook, params->ini_fn);
 	free(data);
 	return widget;
 }
@@ -873,7 +873,7 @@ static void load_plugin_finish(GtkNotebook *notebook,
 	gtk_notebook_set_tab_label_text(notebook, widget, plugin->name);
 
 	if (plugin->update_active_page)
-		plugin->update_active_page(page, FALSE);
+		plugin->update_active_page(plugin, page, FALSE);
 
 	d_plugin = malloc(sizeof(*d_plugin));
 	d_plugin->plugin = plugin;
@@ -941,7 +941,7 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 
 		printf("Found plugin: %s\n", plugin->name);
 
-		if (!plugin->identify() && !force_plugin(plugin->name)) {
+		if (!plugin->identify(plugin) && !force_plugin(plugin->name)) {
 			dlclose(lib);
 			continue;
 		}
@@ -1348,7 +1348,7 @@ static void start(OscPlot *plot, gboolean start_event)
 		/* Make sure the capture process in the Spectrum Analyzer plugin
 		 * is not running */
 		if (spect_analyzer_plugin)
-			spect_analyzer_plugin->handle_external_request("Stop");
+			spect_analyzer_plugin->handle_external_request(spect_analyzer_plugin, "Stop");
 
 		/* Start the capture process */
 		capture_setup();
@@ -1792,7 +1792,7 @@ static void plugins_get_preferred_size(GSList *plist, int *width, int *height)
 	for (node = plist; node; node = g_slist_next(node)) {
 		p = node->data;
 		if (p->get_preferred_size) {
-			p->get_preferred_size(&w, &h);
+			p->get_preferred_size(p, &w, &h);
 			if (w > max_w)
 				max_w = w;
 			if (h > max_h)
@@ -1984,7 +1984,7 @@ void save_complete_profile(const char *filename)
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		struct osc_plugin *plugin = node->data;
 		if (plugin->save_profile)
-			plugin->save_profile(filename);
+			plugin->save_profile(plugin, filename);
 	}
 }
 
@@ -2032,7 +2032,7 @@ static int load_profile_sequential_handler(int line, const char *section,
 	struct osc_plugin *plugin = get_plugin_from_name(section);
 	if (plugin) {
 		if (plugin->handle_item)
-			return plugin->handle_item(line, name, value);
+			return plugin->handle_item(plugin, line, name, value);
 		else {
 			fprintf(stderr, "Unknown plugin for %s\n", section);
 			return 1;
@@ -2215,7 +2215,7 @@ nope:
 		char buf[1024];
 
 		if (load_plugins && plugin->load_profile)
-			plugin->load_profile(filename);
+			plugin->load_profile(plugin, filename);
 
 		snprintf(buf, sizeof(buf), "plugin.%s.detached", plugin->name);
 		value = read_token_from_ini(filename, OSC_INI_SECTION, buf);
@@ -2593,7 +2593,8 @@ err_ret:
 
 int osc_plugin_default_handle(struct iio_context *_ctx,
 		int line, const char *attrib, const char *value,
-		int (*driver_handle)(const char *, const char *))
+		int (*driver_handle)(struct osc_plugin *plugin, const char *, const char *),
+		struct osc_plugin *plugin)
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
@@ -2612,7 +2613,7 @@ int osc_plugin_default_handle(struct iio_context *_ctx,
 	ret = osc_identify_attrib(_ctx, attrib, &dev, &chn, &attr, &debug);
 	if (ret < 0) {
 		if (driver_handle)
-			return driver_handle(attrib, value);
+			return driver_handle(plugin, attrib, value);
 		else {
 			fprintf(stderr, "Error parsing ini file; key:'%s' value:'%s'\n",
 					attrib, value);
