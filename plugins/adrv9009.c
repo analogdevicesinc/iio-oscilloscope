@@ -378,14 +378,25 @@ static void glb_settings_update_labels(void)
 	struct iio_channel *ch;
 	guint i = 0;
 
+	/* Get ensm_mode from all devices. Notify user if any of devices has a different mode than the others. */
 	for (; i < phy_devs_count; i++) {
-		// TO DO: print error if ensm_mode is different between devices?
 		ret = iio_device_attr_read(subcomponents[i].iio_dev, "ensm_mode", buf, sizeof(buf));
-		if (ret > 0)
-			gtk_label_set_text(GTK_LABEL(ensm_mode), buf);
-		else
+		if (ret > 0) {
+			if (i > 0) {
+				if (strncmp(buf, gtk_label_get_text(GTK_LABEL(ensm_mode)), sizeof(buf))) {
+					gtk_label_set_text(GTK_LABEL(ensm_mode), "<not synced>");
+					break;
+				}
+			} else {
+				gtk_label_set_text(GTK_LABEL(ensm_mode), buf);
+			}
+		} else {
 			gtk_label_set_text(GTK_LABEL(ensm_mode), "<error>");
+			break;
+		}
+	}
 
+	for (i = 0; i < phy_devs_count; i++) {
 		ch = iio_device_find_channel(subcomponents[i].iio_dev, "voltage0", false);
 		if (ch) {
 			ret = iio_channel_attr_read(ch, "gain_control_mode", buf, sizeof(buf));
