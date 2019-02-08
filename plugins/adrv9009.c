@@ -567,7 +567,7 @@ static void rx_phase_rotation_update()
 	int iq_cnt = 2; /* two channel types: I, Q */
 	int cap_chn_count = 4; /* number of input channel for a single capture device */
 	guint i;
-	ssize_t n;
+	unsigned int n;
 
 	if (!cap)
 		return;
