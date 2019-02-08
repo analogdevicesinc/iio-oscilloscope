@@ -1595,11 +1595,12 @@ static void save_widgets_to_ini(FILE *f)
 		);
 
 	/* Save the state of each TX channel */
-	int i = 0, tx_ch_count = device_scan_elements_count(dds);
-	for (; i < tx_ch_count; i++) {
-		fprintf(f, "tx_channel_%i = %i\n", i, dac_data_manager_get_tx_channel_state(dac_tx_manager, i));
+	if (dds) {
+		int i = 0, tx_ch_count = device_scan_elements_count(dds);
+		for (; i < tx_ch_count; i++) {
+			fprintf(f, "tx_channel_%i = %i\n", i, dac_data_manager_get_tx_channel_state(dac_tx_manager, i));
+		}
 	}
-
 }
 
 static void save_profile(const char *ini_fn)
