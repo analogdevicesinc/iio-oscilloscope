@@ -235,6 +235,37 @@ static const char *adrv9009_driver_attribs[] = {
 
 static void profile_update(void);
 
+static void multichip_sync()
+{
+	struct iio_device *hmc7004_dev = iio_context_find_device(ctx, "hmc7044");
+	
+	if (!hmc7004_dev) {
+		fprintf(stderr, "Multichip sync failed. No hmc7004 device found\n");
+		return;
+	}
+
+	iio_device_reg_write(hmc7004_dev, 0x1, 0);
+	iio_device_reg_write(hmc7004_dev, 0x5a, 0);
+
+	guint i = 0;
+	for (; i <= 8; i++) {
+		printf("Performing MCS step: %i\n", i);
+		
+		if (i == 2) {
+			iio_device_reg_write(hmc7004_dev, 0x1, 4);
+			iio_device_reg_write(hmc7004_dev, 0x1, 0);
+		}
+		if (i == 6) {
+			iio_device_reg_write(hmc7004_dev, 0x1, 4);
+		}
+
+		guint n = 0;
+		for (; n < phy_devs_count; n++) {
+			iio_device_attr_write_longlong(subcomponents[i].iio_dev, "multichip_sync", n);
+		}	
+	}
+}
+
 static void update_label_from(GtkWidget *label, struct iio_device *dev, const char *channel,
                               const char *attribute, bool output, const char *unit, int scale)
 {
@@ -759,6 +790,11 @@ static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
 	}
 }
 
+void mcs_sync_button_clicked(GtkButton *btn, gpointer data)
+{
+	multichip_sync();
+}
+
 /* Check for a valid two channels combination (ch0->ch1, ch2->ch3, ...)
  *
  * struct iio_channel_info *chanels - list of channels of a device
@@ -969,6 +1005,8 @@ static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 
 	if (can_update_widgets)
 		reload_button_clicked(NULL, NULL);
+
+	multichip_sync();
 }
 
 /* Constructs a notebook with a page for each plugin subcomponent
@@ -1473,6 +1511,9 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	g_builder_connect_signal(builder, "adrv9009_settings_reload", "clicked",
 	                         G_CALLBACK(reload_button_clicked), NULL);
 
+	g_builder_connect_signal(builder, "mcs_sync", "clicked",
+	                         G_CALLBACK(mcs_sync_button_clicked), NULL);
+
 	g_builder_connect_signal(builder, "profile_config", "file-set",
 	                         G_CALLBACK(profile_config_file_set_cb), NULL);
 
@@ -1551,6 +1592,8 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 
 	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 	can_update_widgets = true;
+
+	multichip_sync();
 
 	return adrv9009_panel;
 }
