@@ -1013,7 +1013,7 @@ static int handle_external_request(struct osc_plugin *plugin, const char *reques
 		g_signal_emit_by_name(mcs_btn, "clicked", NULL);
 		ret = 1;
 	} else if (!strcmp(request, "RELOAD")) {
-		if (plugin->priv->can_update_widgets)
+		if (plugin && plugin->priv->can_update_widgets)
 			update_widgets(plugin);
 	}
 

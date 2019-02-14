@@ -273,7 +273,7 @@ static void trigger_advanced_plugin_reload(void)
 
 		if (plugin && (!strncmp(plugin->name, "ADRV9009 Advanced", 17))) {
 			if (plugin->handle_external_request) {
-				plugin->handle_external_request(NULL, "RELOAD");
+				plugin->handle_external_request(plugin, "RELOAD");
 			}
 		}
 	}
