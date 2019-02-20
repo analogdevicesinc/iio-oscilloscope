@@ -249,8 +249,6 @@ static void multichip_sync()
 
 	guint i = 0;
 	for (; i <= 8; i++) {
-		printf("Performing MCS step: %i\n", i);
-
 		if (i == 2) {
 			iio_device_reg_write(hmc7004_dev, 0x1, 4);
 			iio_device_reg_write(hmc7004_dev, 0x1, 0);
@@ -261,7 +259,7 @@ static void multichip_sync()
 
 		guint n = 0;
 		for (; n < phy_devs_count; n++) {
-			iio_device_attr_write_longlong(subcomponents[n].iio_dev, "multichip_sync", n);
+			iio_device_attr_write_longlong(subcomponents[n].iio_dev, "multichip_sync", i);
 		}
 	}
 }
