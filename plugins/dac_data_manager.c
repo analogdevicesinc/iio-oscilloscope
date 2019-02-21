@@ -141,16 +141,6 @@ static bool tx_channels_check_valid_setup(struct dac_buffer *dbuf);
 
 static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
-static const char *default_channel_names[8] = { // TO DO: Should generate these automatically if number of TX will be variable
-	"TX1_I_F1",
-	"TX1_I_F2",
-	"TX1_Q_F1",
-	"TX1_Q_F2",
-	"TX2_I_F1",
-	"TX2_I_F2",
-	"TX2_Q_F1",
-	"TX2_Q_F2"
-};
 
 static int compare_gain(const char *a, const char *b)
 {
@@ -1237,23 +1227,46 @@ static void gui_manager_create(struct dac_data_manager *manager)
 	gtk_widget_show(hbox);
 }
 
+/* Uses the "TX*_I|Q_F* name convention to build a name for the channel at the given index.
+ * E.g. TX1_I_F1 - 0 (the index)
+ *      TX1_I_F2 - 1
+ *      TX1_Q_F1 - 2
+ *      TX1_Q_F2 - 3
+ *      TX2_I_F1 - 4
+ *      TX2_I_F2 - 5
+ *      ...
+ * Returns a newlly alocated char array.
+ */
+static char *build_default_channel_name_from_index(guint ch_index)
+{
+	guint tx_index = (ch_index / TX_NB_TONES) + 1; /* TX couting starts from 1 (not 0) */
+	guint tone_index = (ch_index % 2) + 1; /* There are always 2 tones (I/Q). Count starts at 1 */
+	const char i_q_type = (ch_index & 0x02) ? Q_CHANNEL : I_CHANNEL; /* First two indexes are I, next two are Q and so on*/
+
+	return g_strdup_printf("TX%i_%c_F%i", tx_index, i_q_type, tone_index);
+}
+
 #define TONE_ID "altvoltage"
 #define TONE_ID_SIZE (sizeof(TONE_ID) - 1)
 
-static const char * get_tone_name(struct iio_channel *ch)
+/* Returns a newlly allocated tone name for the given channel in case of
+ * success and NULL otherwise.
+ */
+static char * get_tone_name(struct iio_channel *ch)
 {
-	const char *name;
+	char *name;
 	char tone_index;
 
-	name = iio_channel_get_name(ch);
+	name = g_strdup( iio_channel_get_name(ch));
 
 	/* If name convention "TX*_I|Q_F* is missing */
 	if (name && strncmp(name, "TX", 2) != 0) {
-		name = iio_channel_get_id(ch);
+		g_free(name);
+		name = g_strdup(iio_channel_get_id(ch));
 		if (name && !strncmp(name, TONE_ID, TONE_ID_SIZE)) {
 			tone_index = name[TONE_ID_SIZE];
 			if (tone_index && g_ascii_isdigit(tone_index))
-				name = default_channel_names[tone_index - '0'];
+				name = build_default_channel_name_from_index(tone_index - '0');
 			else
 				name = NULL;
 		} else {
@@ -1270,10 +1283,12 @@ static unsigned get_iio_tones_count(struct iio_device *dev)
 
 	for (i = 0, count = 0; i < iio_device_get_channels_count(dev); i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
-		const char *name = get_tone_name(chn);
+		char *name = get_tone_name(chn);
 
 		if (name && strncmp(name, "TX", 2) == 0)
 			count++;
+
+		g_free(name);
 	}
 
 	return count;
@@ -1283,7 +1298,7 @@ static int dac_channels_assign(struct dds_dac *ddac)
 {
 	struct dac_data_manager *manager;
 	struct iio_device *dac = ddac->iio_dac;
-	const char *ch_name;
+	char *ch_name;
 	unsigned int i, processed_ch = 0;
 
 	if (!dac)
@@ -1296,7 +1311,7 @@ static int dac_channels_assign(struct dds_dac *ddac)
 		ch_name = get_tone_name(chn);
 
 		if (!ch_name || strlen(ch_name) == 0)
-			continue;
+			goto err;
 
 		int tx_index;
 		char ch_type;
@@ -1305,7 +1320,7 @@ static int dac_channels_assign(struct dds_dac *ddac)
 		char *s;
 
 		if (!(s = strstr(ch_name, "TX")))
-			continue;
+			goto err;
 		tx_index = s[2] - '0';
 
 		if ((s = strstr(ch_name, "_I_")))
@@ -1313,18 +1328,12 @@ static int dac_channels_assign(struct dds_dac *ddac)
 		else if ((s = strstr(ch_name, "_Q_")))
 			ch_type = Q_CHANNEL;
 		else
-			continue;
+			goto err;
 		if (!(s = strstr(ch_name, "_F")))
-			continue;
+			goto err;
 		tone_index = s[2] - '0';
 
-		struct dds_tx *tx;
-		if (tx_index == 1)
-			tx = &ddac->tx1;
-		else if (tx_index == 2)
-			tx = &ddac->tx2;
-		else
-			continue;
+		struct dds_tx *tx = &ddac->txs[tx_index - 1]; /* Index extracted from name starts from 1 */
 
 		struct dds_tone *matching_tone = NULL;
 		if (ch_type == I_CHANNEL) {
@@ -1340,13 +1349,20 @@ static int dac_channels_assign(struct dds_dac *ddac)
 		}
 
 		if (!matching_tone)
-			continue;
+			goto err;
+
+		g_free(ch_name);
 
 		matching_tone->iio_dac = dac;
 		matching_tone->iio_ch = chn;
 		manager->dds_tones = g_slist_prepend(manager->dds_tones, matching_tone);
 
 		processed_ch++;
+
+		continue;
+err:
+		if (ch_name)
+			g_free(ch_name);
 	}
 
 	if (processed_ch != ddac->tones_count)
