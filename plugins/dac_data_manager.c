@@ -24,6 +24,8 @@
 
 #define SCALE_MINUS_INFINITE -91
 
+#define TX_NB_TONES 4
+
 #define TX_T1_I 0
 #define TX_T2_I 1
 #define TX_T1_Q 2
@@ -93,8 +95,7 @@ struct dds_dac {
 	const char *name;
 	struct iio_device *iio_dac;
 	unsigned tx_count;
-	struct dds_tx tx1;
-	struct dds_tx tx2;
+	struct dds_tx *txs;
 	int dds_mode;
 	unsigned tones_count;
 
@@ -140,7 +141,7 @@ static bool tx_channels_check_valid_setup(struct dac_buffer *dbuf);
 
 static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
-static const char *default_channel_names[8] = {
+static const char *default_channel_names[8] = { // TO DO: Should generate these automatically if number of TX will be variable
 	"TX1_I_F1",
 	"TX1_I_F2",
 	"TX1_Q_F1",
@@ -1907,16 +1908,27 @@ static int dds_dac_init(struct dac_data_manager *manager,
 	ddac->iio_dac = iio_dac;
 	ddac->name = iio_device_get_name(iio_dac);
 	ddac->tones_count = get_iio_tones_count(iio_dac);
-	if (ddac->tones_count == 2) {
-		dds_non_iq_tx_init(ddac, &ddac->tx1, 1);
-	} else if (ddac->tones_count == 4) {
-		dds_tx_init(ddac, &ddac->tx1, 1);
-	} else if (ddac->tones_count == 8) {
-		dds_tx_init(ddac, &ddac->tx1, 1);
-		dds_tx_init(ddac, &ddac->tx2, 2);
-	} else {
-		return -1;
+
+	guint tx_count = ddac->tones_count / TX_NB_TONES;
+	guint extra_tones = ddac->tones_count % TX_NB_TONES;
+	if (tx_count == 0) {
+		/* Some devices don't have the I-Q concept. One use case is: AD9739A eval board */
+		if (extra_tones == 2) {
+			ddac->txs = calloc(1, sizeof(struct dds_tx));
+			dds_non_iq_tx_init(ddac, &ddac->txs[0], 1);
+		} else {
+			fprintf(stderr, "DacDataManager can't handle a device"
+			"with %i number of tones\n", ddac->tones_count);
+			return -1;
+		}
 	}
+
+	ddac->txs = calloc(tx_count, sizeof(struct dds_tx));
+	guint tx = 0;
+	for (; tx < tx_count; tx++) {
+		dds_tx_init(ddac, &ddac->txs[tx], tx + 1);
+	}
+
 	manager->dacs_count++;
 	ddac->index = manager->dacs_count;
 
@@ -2028,6 +2040,8 @@ init_error:
 void dac_data_manager_free(struct dac_data_manager *manager)
 {
 	if (manager) {
+		free(manager->dac1.txs);
+		free(manager->dac2.txs);
 		if (manager->dds_buffer) {
 			iio_buffer_destroy(manager->dds_buffer);
 			manager->dds_buffer = NULL;

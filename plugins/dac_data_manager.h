@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <iio.h>
 
+// TO DO: This will not make sense if the number of TX is variable. Maybe create a function or a MACRO to generate a index based on TX, TX count, T, T count and I/Q
 enum dds_tone_type {
 	TX1_T1_I,
 	TX1_T2_I,
