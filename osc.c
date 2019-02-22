@@ -928,6 +928,28 @@ static void load_plugin_finish(GtkNotebook *notebook,
 	plugin_make_detachable(d_plugin);
 }
 
+static void generic_plugin_handle(struct osc_plugin *generic_plugin, void *generic_lib, const char *ini_fn) {
+	struct params {
+		struct osc_plugin *plugin;
+		GtkWidget *notebook;
+		const char *ini_fn;
+	} *params;
+
+	if (!generic_plugin || !generic_lib)
+		return;
+
+	plugin_list = g_slist_append (plugin_list, (gpointer) generic_plugin);
+	plugin_lib_list = g_slist_append(plugin_lib_list, generic_lib);
+
+	params = malloc(sizeof(*params));
+	params->plugin = generic_plugin;
+	params->notebook = notebook;
+	params->ini_fn = ini_fn;
+
+	GtkWidget *widget = init_plugin(params);
+	load_plugin_finish(GTK_NOTEBOOK(notebook), widget, generic_plugin);
+}
+
 static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 {
 	typedef GArray* (*get_plugins_info_func)(void);
@@ -939,6 +961,8 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 	char *plugin_dir = "plugins";
 	char buf[512];
 	DIR *d;
+	struct osc_plugin *generic_plugin = NULL;
+	void *generic_lib = NULL;
 
 #ifdef __MINGW32__
 	const bool load_in_parallel = false;
@@ -1020,6 +1044,11 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 			}
 
 			plugin->handle = lib;
+			if (!strcmp(plugin->name, "GENERIC_PLUGIN")) {
+				generic_plugin = plugin;
+				generic_lib = lib;
+				continue;
+			}
 			plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
 			plugin_lib_list = g_slist_append(plugin_lib_list, lib);
 		}
@@ -1050,8 +1079,10 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 		}
 	}
 
-	if (!load_in_parallel)
+	if (!load_in_parallel) {
+		generic_plugin_handle(generic_plugin, generic_lib, ini_fn);
 		return;
+	}
 
 	/* Wait for all init functions to finish */
 	for (node = plugin_list; node; node = g_slist_next(node)) {
@@ -1068,6 +1099,7 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 		load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
 		printf("Loaded plugin: %s\n", plugin->name);
 	}
+	generic_plugin_handle(generic_plugin, generic_lib, ini_fn);
 }
 
 static void plugin_state_ini_save(gpointer data, gpointer user_data)

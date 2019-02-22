@@ -393,6 +393,14 @@ static bool fmcomms11_identify(const struct osc_plugin *plugin)
 		!!iio_context_find_device(osc_ctx, ATTN_DEVICE);
 }
 
+GSList* get_dac_dev_names(void) {
+	GSList *list = NULL;
+
+	list = g_slist_append (list, (gpointer) DAC_DEVICE);
+
+	return list;
+}
+
 struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = fmcomms11_identify,
@@ -401,4 +409,5 @@ struct osc_plugin plugin = {
 	.save_profile = save_profile,
 	.load_profile = load_profile,
 	.destroy = context_destroy,
+	.get_dac_dev_names = get_dac_dev_names,
 };
