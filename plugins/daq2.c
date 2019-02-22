@@ -414,6 +414,16 @@ static bool daq2_identify(const struct osc_plugin *plugin)
 		!!iio_context_find_device(osc_ctx, ADC_DEVICE);
 }
 
+GSList* get_dac_dev_names(void) {
+	GSList *list = NULL;
+
+	list = g_slist_append (list, (gpointer) DAQ1_DAC_DEVICE);
+	list = g_slist_append (list, (gpointer) DAQ2_DAC_DEVICE);
+	list = g_slist_append (list, (gpointer) DAQ3_DAC_DEVICE);
+
+	return list;
+}
+
 struct osc_plugin plugin = {
 	.name = THIS_DRIVER,
 	.identify = daq2_identify,
@@ -422,4 +432,5 @@ struct osc_plugin plugin = {
 	.save_profile = save_profile,
 	.load_profile = load_profile,
 	.destroy = context_destroy,
+	.get_dac_dev_names = get_dac_dev_names,
 };
