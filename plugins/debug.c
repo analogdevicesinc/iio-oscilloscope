@@ -1639,8 +1639,10 @@ static GtkWidget * debug_init(struct osc_plugin *plugin, GtkWidget *notebook, co
 
 	for (i = 0; i < nb_devs; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_device_list),
-							(const gchar *)iio_device_get_name(dev));
+		const gchar *dev_name = iio_device_get_name(dev);
+		if (!dev_name)
+			continue;
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_device_list), dev_name);
 	}
 
 	/* Connect signals */
