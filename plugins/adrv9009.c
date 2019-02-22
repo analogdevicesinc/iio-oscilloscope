@@ -184,41 +184,8 @@ static const char *adrv9009_sr_attribs[] = {
 	".out_voltage1_rf_bandwidth",
 };
 
-// TO DO: Make scalable for TX3, TX4,..
-static const char *dds_device_sr_attribs[] = {
-	DDS_DEVICE".out_altvoltage0_TX1_I_F1_frequency",
-	DDS_DEVICE".out_altvoltage0_TX1_I_F1_phase",
-	DDS_DEVICE".out_altvoltage0_TX1_I_F1_raw",
-	DDS_DEVICE".out_altvoltage0_TX1_I_F1_scale",
-	DDS_DEVICE".out_altvoltage1_TX1_I_F2_frequency",
-	DDS_DEVICE".out_altvoltage1_TX1_I_F2_phase",
-	DDS_DEVICE".out_altvoltage1_TX1_I_F2_raw",
-	DDS_DEVICE".out_altvoltage1_TX1_I_F2_scale",
-	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_frequency",
-	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_phase",
-	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_raw",
-	DDS_DEVICE".out_altvoltage2_TX1_Q_F1_scale",
-	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_frequency",
-	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_phase",
-	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_raw",
-	DDS_DEVICE".out_altvoltage3_TX1_Q_F2_scale",
-	DDS_DEVICE".out_altvoltage4_TX2_I_F1_frequency",
-	DDS_DEVICE".out_altvoltage4_TX2_I_F1_phase",
-	DDS_DEVICE".out_altvoltage4_TX2_I_F1_raw",
-	DDS_DEVICE".out_altvoltage4_TX2_I_F1_scale",
-	DDS_DEVICE".out_altvoltage5_TX2_I_F2_frequency",
-	DDS_DEVICE".out_altvoltage5_TX2_I_F2_phase",
-	DDS_DEVICE".out_altvoltage5_TX2_I_F2_raw",
-	DDS_DEVICE".out_altvoltage5_TX2_I_F2_scale",
-	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_frequency",
-	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_phase",
-	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_raw",
-	DDS_DEVICE".out_altvoltage6_TX2_Q_F1_scale",
-	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_frequency",
-	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_phase",
-	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_raw",
-	DDS_DEVICE".out_altvoltage7_TX2_Q_F2_scale",
-};
+static char **dds_device_sr_attribs = NULL;
+static unsigned dds_device_sr_attribs_count = 0;
 
 static const char *adrv9009_driver_attribs[] = {
 	"load_tal_profile_file",
@@ -231,6 +198,40 @@ static const char *adrv9009_driver_attribs[] = {
 };
 
 static void profile_update(void);
+
+static void build_dds_sr_attribs_list(unsigned devices_count)
+{
+	static const unsigned DDS_CHANNEL_COUNT = 8;
+	static const unsigned CHANNEL_ATTRIB_COUNT = 4; /*freq, phase, raw, scale*/
+	unsigned total_dds_chn_count = devices_count * DDS_CHANNEL_COUNT;
+	guint i;
+
+	dds_device_sr_attribs_count = total_dds_chn_count * CHANNEL_ATTRIB_COUNT;
+	dds_device_sr_attribs = g_new(char *, dds_device_sr_attribs_count);
+
+	for (i = 0; i < total_dds_chn_count; i++) {
+		unsigned n = i * CHANNEL_ATTRIB_COUNT;
+
+		char * chn_name = g_strdup_printf(DDS_DEVICE".out_altvoltage%i_TX%i_%c_F%i",
+			i, (i / 4) + 1, (i & 0x02) ? 'Q' : 'I', (i % 2) + 1);
+
+		dds_device_sr_attribs[n + 0] = g_strconcat(chn_name, "_frequency", NULL);
+		dds_device_sr_attribs[n + 1] = g_strconcat(chn_name, "_phase", NULL);
+		dds_device_sr_attribs[n + 2] = g_strconcat(chn_name, "_raw", NULL);
+		dds_device_sr_attribs[n + 3] = g_strconcat(chn_name, "_scale", NULL);
+	}
+}
+
+static void destroy_dds_sr_attribs_list(void)
+{
+	guint i = 0;
+	for (; i < dds_device_sr_attribs_count; i++) {
+		g_free(dds_device_sr_attribs[i]);
+	}
+	g_free(dds_device_sr_attribs);
+	dds_device_sr_attribs = NULL;
+	dds_device_sr_attribs_count = 0;
+}
 
 static void multichip_sync()
 {
@@ -992,8 +993,8 @@ static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 	}
 
 	if (dds)
-		update_from_ini(ini_fn, THIS_DRIVER, dds, dds_device_sr_attribs,
-						ARRAY_SIZE(dds_device_sr_attribs));
+		update_from_ini(ini_fn, THIS_DRIVER, dds, (const char * const*)dds_device_sr_attribs,
+						dds_device_sr_attribs_count);
 
 	if (can_update_widgets)
 		reload_button_clicked(NULL, NULL);
@@ -1057,6 +1058,9 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	GArray *phy_adrv9009_devs = get_iio_devices_starting_with(ctx, PHY_DEVICE);
 	phy_devs_count = phy_adrv9009_devs->len;
 	plugin_single_device_mode = phy_devs_count == 1;
+
+	/* Build list of DDS attributes */
+	build_dds_sr_attribs_list(phy_devs_count);
 
 	/* Make a data structure for each adrv9009-phy device found */
 	subcomponents = g_new(struct plugin_subcomponent, phy_devs_count);
@@ -1657,8 +1661,8 @@ static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 		}
 
 		if (dds)
-			save_to_ini(f, NULL, dds, dds_device_sr_attribs,
-						ARRAY_SIZE(dds_device_sr_attribs));
+			save_to_ini(f, NULL, dds, (const char * const*)dds_device_sr_attribs,
+						dds_device_sr_attribs_count);
 
 		save_widgets_to_ini(f);
 		fclose(f);
@@ -1689,6 +1693,8 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 	g_free(subcomponents);
 
 	osc_destroy_context(ctx);
+
+	destroy_dds_sr_attribs_list();
 }
 
 struct osc_plugin plugin;
