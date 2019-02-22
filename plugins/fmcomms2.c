@@ -989,7 +989,7 @@ static int dcxo_cal_clicked(GtkButton *btn, gpointer data)
 			target_freq = mhz_scale * (
 				gtk_spin_button_get_value(GTK_SPIN_BUTTON(tx_widgets[tx_lo].widget)) +
 				gtk_spin_button_get_value(GTK_SPIN_BUTTON(
-					dac_data_manager_get_widget(dac_tx_manager, TX1_T1_I, WIDGET_FREQUENCY))));
+					dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_I), WIDGET_FREQUENCY))));
 			break;
 		case 2: /* RF Input */
 			failure_msg = "RF Input is not supported yet for DCXO calibration.";

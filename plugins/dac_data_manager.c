@@ -25,6 +25,7 @@
 #define SCALE_MINUS_INFINITE -91
 
 #define TX_NB_TONES 4
+#define CHANNEL_NB_TONES 2
 
 #define TX_T1_I 0
 #define TX_T2_I 1
@@ -2309,4 +2310,13 @@ GtkWidget *dac_data_manager_get_gui_container(struct dac_data_manager *manager)
 		return NULL;
 
 	return manager->container;
+}
+
+/* Returns a DDS tone from the given TX index (0, 1, ..),
+ * tone index (1st or 2nd) and tone type (I or Q).
+ */
+unsigned dac_data_manager_dds_tone(unsigned tx_index,
+	enum dds_tone_index tone_index, enum dds_tone_type tone_type)
+{
+	return ((tx_index * TX_NB_TONES) + (tone_index * CHANNEL_NB_TONES) + tone_type);
 }
