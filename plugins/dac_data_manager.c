@@ -1243,7 +1243,7 @@ static char *build_default_channel_name_from_index(guint ch_index)
 	guint tone_index = (ch_index % 2) + 1; /* There are always 2 tones (I/Q). Count starts at 1 */
 	const char i_q_type = (ch_index & 0x02) ? Q_CHANNEL : I_CHANNEL; /* First two indexes are I, next two are Q and so on*/
 
-	return g_strdup_printf("TX%i_%c_F%i", tx_index, i_q_type, tone_index);
+	return g_strdup_printf("TX%u_%c_F%u", tx_index, i_q_type, tone_index);
 }
 
 #define TONE_ID "altvoltage"
@@ -1914,7 +1914,7 @@ static int dds_dac_init(struct dac_data_manager *manager,
 			dds_non_iq_tx_init(ddac, &ddac->txs[0], 1);
 		} else {
 			fprintf(stderr, "DacDataManager can't handle a device"
-			"with %i number of tones\n", ddac->tones_count);
+			"with %u number of tones\n", ddac->tones_count);
 			return -1;
 		}
 	}
