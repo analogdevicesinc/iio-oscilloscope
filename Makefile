@@ -91,6 +91,7 @@ OSC := osc$(EXE)
 LIBOSC := libosc.$(SO)
 
 PLUGINS=\
+	plugins/generic_plugin.$(SO) \
 	plugins/fmcomms1.$(SO) \
 	plugins/fmcomms2.$(SO) \
 	plugins/fmcomms5.$(SO) \
