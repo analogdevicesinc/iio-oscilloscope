@@ -12,24 +12,14 @@
 #include <stdarg.h>
 #include <iio.h>
 
-// TO DO: This will not make sense if the number of TX is variable. Maybe create a function or a MACRO to generate a index based on TX, TX count, T, T count and I/Q
 enum dds_tone_type {
-	TX1_T1_I,
-	TX1_T2_I,
-	TX1_T1_Q,
-	TX1_T2_Q,
-	TX2_T1_I,
-	TX2_T2_I,
-	TX2_T1_Q,
-	TX2_T2_Q,
-	TX3_T1_I,
-	TX3_T2_I,
-	TX3_T1_Q,
-	TX3_T2_Q,
-	TX4_T1_I,
-	TX4_T2_I,
-	TX4_T1_Q,
-	TX4_T2_Q
+	TONE_I,
+	TONE_Q
+};
+
+enum dds_tone_index {
+	TONE_1,
+	TONE_2
 };
 
 enum dds_widget_type {
@@ -70,6 +60,8 @@ GtkWidget *dac_data_manager_get_widget(struct dac_data_manager *manager,
 GtkWidget *dac_data_manager_get_gui_container(struct dac_data_manager *manager);
 void dac_data_manager_set_buffer_size_alignment(struct dac_data_manager *manager,
 		unsigned align);
+unsigned dac_data_manager_dds_tone(unsigned tx_index,
+	enum dds_tone_index tone_index, enum dds_tone_type tone_type);
 
 /* Helpers */
 int device_scan_elements_count(struct iio_device *dev);
