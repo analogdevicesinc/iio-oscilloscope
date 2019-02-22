@@ -1034,6 +1034,7 @@ static GtkWidget *gui_dac_create(struct dds_dac *ddac)
 	GtkWidget *dac_align;
 	GtkWidget *dac_table;
 	gchar *frm_title;
+	guint i;
 
 	if (!ddac->iio_dac)
 		return NULL;
@@ -1045,11 +1046,9 @@ static GtkWidget *gui_dac_create(struct dds_dac *ddac)
 
 	gtk_alignment_set_padding(GTK_ALIGNMENT(dac_align), 5, 5, 5, 5);
 
-	gtk_table_attach(GTK_TABLE(dac_table), gui_tx_create(&ddac->tx1),
-		0, 1, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
-	if (ddac->tx_count == 2)
-		gtk_table_attach(GTK_TABLE(dac_table), gui_tx_create(&ddac->tx2),
-			1, 2, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
+	for (i = 0; i < ddac->tx_count; i++)
+		gtk_table_attach(GTK_TABLE(dac_table), gui_tx_create(&ddac->txs[i]),
+			0 + i, 1 + i, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
 
 	ddac->frame = dac_frm;
 	gtk_widget_show(dac_frm);
@@ -1529,8 +1528,8 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 	double min_scale;
 	bool scale_available_mode;
 	bool q_tone_exists;
-	int tones_count;
-	int i;
+	unsigned tones_count;
+	unsigned i;
 
 	if (!box)
 		return;
@@ -1541,35 +1540,23 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 	min_scale = manager->lowest_scale_point;
 	scale_available_mode = manager->scale_available_mode;
 
-	GtkWidget *tx1, *tx2 = NULL, *tx3 = NULL, *tx4 = NULL;
-
-	tx1 = manager->dac1.tx1.dds_mode_widget;
-	if (manager->dac1.tx_count == 2)
-		tx2 = manager->dac1.tx2.dds_mode_widget;
-	if (manager->dacs_count == 2) {
-		tx3 = manager->dac2.tx1.dds_mode_widget;
-		if (manager->dac2.tx_count == 2)
-			tx4 = manager->dac2.tx2.dds_mode_widget;
-	}
-
 	active = gtk_combo_box_get_active(box);
-
 	if (active != DDS_BUFFER) {
-		if (gtk_combo_box_get_active(GTK_COMBO_BOX(tx1)) == DDS_BUFFER) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(tx1), active);
-			manage_dds_mode(GTK_COMBO_BOX(tx1), &manager->dac1.tx1);
+		struct dds_tx *txs = manager->dac1.txs;
+		for (i = 0; i < manager->dac1.tx_count; i++) {
+			GtkWidget *widget = txs[i].dds_mode_widget;
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(widget)) == DDS_BUFFER) {
+				gtk_combo_box_set_active(GTK_COMBO_BOX(widget), active);
+				manage_dds_mode(GTK_COMBO_BOX(widget), &txs[i]);
+			}
 		}
-		if (tx2 && gtk_combo_box_get_active(GTK_COMBO_BOX(tx2)) == DDS_BUFFER) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(tx2), active);
-			manage_dds_mode(GTK_COMBO_BOX(tx2), &manager->dac1.tx2);
-		}
-		if (tx3 && gtk_combo_box_get_active(GTK_COMBO_BOX(tx3)) == DDS_BUFFER) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(tx3), active);
-			manage_dds_mode(GTK_COMBO_BOX(tx3), &manager->dac2.tx1);
-		}
-		if (tx4 && gtk_combo_box_get_active(GTK_COMBO_BOX(tx4)) == DDS_BUFFER) {
-			gtk_combo_box_set_active(GTK_COMBO_BOX(tx4), active);
-			manage_dds_mode(GTK_COMBO_BOX(tx4), &manager->dac2.tx2);
+		txs = manager->dac2.txs;
+		for (i = 0; i < manager->dac2.tx_count; i++) {
+			GtkWidget *widget = txs[i].dds_mode_widget;
+			if (gtk_combo_box_get_active(GTK_COMBO_BOX(widget)) == DDS_BUFFER) {
+				gtk_combo_box_set_active(GTK_COMBO_BOX(widget), active);
+				manage_dds_mode(GTK_COMBO_BOX(widget), &txs[i]);
+			}
 		}
 	}
 
@@ -1759,13 +1746,10 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 			gtk_widget_hide(tx->ch_q.frame);
 		gtk_widget_show(manager->dac_buffer_module.frame);
 
-		gtk_combo_box_set_active(GTK_COMBO_BOX(tx1), DDS_BUFFER);
-		if (tx2)
-			gtk_combo_box_set_active(GTK_COMBO_BOX(tx2), DDS_BUFFER);
-		if (tx3)
-			gtk_combo_box_set_active(GTK_COMBO_BOX(tx3), DDS_BUFFER);
-		if (tx4)
-			gtk_combo_box_set_active(GTK_COMBO_BOX(tx4), DDS_BUFFER);
+		for (i = 0; i < manager->dac1.tx_count; i++)
+			gtk_combo_box_set_active(GTK_COMBO_BOX(manager->dac1.txs[i].dds_mode_widget), DDS_BUFFER);
+		for (i = 0; i < manager->dac2.tx_count; i++)
+			gtk_combo_box_set_active(GTK_COMBO_BOX(manager->dac2.txs[i].dds_mode_widget), DDS_BUFFER);
 
 		break;
 	default:
@@ -1816,22 +1800,17 @@ static void tone_setup(struct dds_tone *tone)
 static void manager_iio_setup(struct dac_data_manager *manager)
 {
 	GSList *node;
+	guint i;
 
 	for (node = manager->dds_tones; node; node = g_slist_next(node))
 		tone_setup(node->data);
 
-	g_signal_connect(manager->dac1.tx1.dds_mode_widget, "changed", G_CALLBACK(manage_dds_mode),
-			&manager->dac1.tx1);
-	if (manager->dac1.tx_count == 2)
-		g_signal_connect(manager->dac1.tx2.dds_mode_widget, "changed", G_CALLBACK(manage_dds_mode),
-			&manager->dac1.tx2);
-	if (manager->dacs_count == 2) {
-		g_signal_connect(manager->dac2.tx1.dds_mode_widget, "changed", G_CALLBACK(manage_dds_mode),
-			&manager->dac2.tx1);
-		if (manager->dac2.tx_count == 2)
-			g_signal_connect(manager->dac2.tx2.dds_mode_widget, "changed", G_CALLBACK(manage_dds_mode),
-				&manager->dac2.tx2);
-	}
+	for (i = 0; i < manager->dac1.tx_count; i++)
+		g_signal_connect(manager->dac1.txs[i].dds_mode_widget, "changed", G_CALLBACK(manage_dds_mode),
+			&manager->dac1.txs[i]);
+	for (i = 0; i < manager->dac2.tx_count; i++)
+		g_signal_connect(manager->dac2.txs[i].dds_mode_widget, "changed", G_CALLBACK(manage_dds_mode),
+			&manager->dac2.txs[i]);
 
 	for (node = manager->dds_tones; node; node = g_slist_next(node)) {
 		struct dds_tone *tn = node->data;
@@ -1839,7 +1818,7 @@ static void manager_iio_setup(struct dac_data_manager *manager)
 		tn->scale_state = dds_scale_get_value(tn->scale);
 	}
 
-	struct dds_tone *tone = &manager->dac1.tx1.ch_i.t1;
+	struct dds_tone *tone = &manager->dac1.txs[0].ch_i.t1;
 
 	if (manager->scale_available_mode) {
 		GtkWidget *scale_cmb = tone->scale;
@@ -1854,7 +1833,7 @@ static void manager_iio_setup(struct dac_data_manager *manager)
 		dds_scale_set_value(scale_cmb, tone->scale_state);
 
 	} else {
-		GtkSpinButton *scale_btn = GTK_SPIN_BUTTON(manager->dac1.tx1.ch_i.t1.scale);
+		GtkSpinButton *scale_btn = GTK_SPIN_BUTTON(manager->dac1.txs[0].ch_i.t1.scale);
 
 		manager->lowest_scale_point = gtk_adjustment_get_lower(gtk_spin_button_get_adjustment(scale_btn));
 	}
@@ -2102,6 +2081,7 @@ static void dds_tone_iio_widgets_update(struct dds_tone *tone)
 void dac_data_manager_update_iio_widgets(struct dac_data_manager *manager)
 {
 	GSList *node;
+	unsigned i;
 
 	if (!manager)
 		return;
@@ -2109,24 +2089,19 @@ void dac_data_manager_update_iio_widgets(struct dac_data_manager *manager)
 	for (node = manager->dds_tones; node; node = g_slist_next(node))
 		dds_tone_iio_widgets_update(node->data);
 
-	manage_dds_mode(GTK_COMBO_BOX(manager->dac1.tx1.dds_mode_widget), &manager->dac1.tx1);
-	manage_dds_mode(GTK_COMBO_BOX(manager->dac1.tx2.dds_mode_widget), &manager->dac1.tx2);
-	manage_dds_mode(GTK_COMBO_BOX(manager->dac2.tx1.dds_mode_widget), &manager->dac2.tx1);
-	manage_dds_mode(GTK_COMBO_BOX(manager->dac2.tx2.dds_mode_widget), &manager->dac2.tx2);
+	for (i = 0; i < manager->dac1.tx_count; i++)
+		manage_dds_mode(GTK_COMBO_BOX(manager->dac1.txs[i].dds_mode_widget), &manager->dac1.txs[i]);
+	for (i = 0; i < manager->dac2.tx_count; i++)
+		manage_dds_mode(GTK_COMBO_BOX(manager->dac2.txs[i].dds_mode_widget), &manager->dac2.txs[i]);
 }
 
 int dac_data_manager_set_dds_mode(struct dac_data_manager *manager,
 		const char *dac_name, unsigned tx_index, int mode)
 {
-	if (!manager || !dac_name || tx_index > 2)
+	if (!manager || !dac_name)
 		return -1;
 
 	if (mode < DDS_DISABLED  || mode > DDS_BUFFER)
-		return -1;
-
-	struct iio_device *dac = iio_context_find_device(manager->ctx, dac_name);
-
-	if (!dac)
 		return -1;
 
 	GtkWidget *dds_mode_combobox;
@@ -2134,20 +2109,12 @@ int dac_data_manager_set_dds_mode(struct dac_data_manager *manager,
 	if (!strcmp(dac_name, iio_device_get_name(manager->dac1.iio_dac))) {
 		if (tx_index > manager->dac1.tx_count)
 			return -1;
-		if (tx_index == 1) {
-			dds_mode_combobox = manager->dac1.tx1.dds_mode_widget;
-		} else {
-			dds_mode_combobox = manager->dac1.tx2.dds_mode_widget;
-		}
+		dds_mode_combobox = manager->dac1.txs[tx_index].dds_mode_widget;
 	} else if (manager->dacs_count == 2 &&
 			!strcmp(dac_name, iio_device_get_name(manager->dac2.iio_dac))) {
 		if (tx_index > manager->dac2.tx_count)
 			return -1;
-		if (tx_index == 1) {
-			dds_mode_combobox = manager->dac2.tx1.dds_mode_widget;
-		} else {
-			dds_mode_combobox = manager->dac2.tx2.dds_mode_widget;
-		}
+		dds_mode_combobox = manager->dac2.txs[tx_index].dds_mode_widget;
 	} else {
 		return -1;
 	}
@@ -2159,12 +2126,7 @@ int dac_data_manager_set_dds_mode(struct dac_data_manager *manager,
 
 int  dac_data_manager_get_dds_mode(struct dac_data_manager *manager, const char *dac_name, unsigned tx_index)
 {
-	if (!manager || !dac_name || tx_index > 2)
-		return 0;
-
-	struct iio_device *dac = iio_context_find_device(manager->ctx, dac_name);
-
-	if (!dac)
+	if (!manager || !dac_name)
 		return 0;
 
 	GtkWidget *dds_mode_combobox;
@@ -2172,20 +2134,12 @@ int  dac_data_manager_get_dds_mode(struct dac_data_manager *manager, const char 
 	if (!strcmp(dac_name, iio_device_get_name(manager->dac1.iio_dac))) {
 		if (tx_index > manager->dac1.tx_count)
 			return 0;
-		if (tx_index == 1) {
-			dds_mode_combobox = manager->dac1.tx1.dds_mode_widget;
-		} else {
-			dds_mode_combobox = manager->dac1.tx2.dds_mode_widget;
-		}
+		dds_mode_combobox = manager->dac1.txs[tx_index].dds_mode_widget;
 	} else if (manager->dacs_count == 2 &&
 			!strcmp(dac_name, iio_device_get_name(manager->dac2.iio_dac))) {
 		if (tx_index > manager->dac2.tx_count)
 			return 0;
-		if (tx_index == 1) {
-			dds_mode_combobox = manager->dac2.tx1.dds_mode_widget;
-		} else {
-			dds_mode_combobox = manager->dac2.tx2.dds_mode_widget;
-		}
+		dds_mode_combobox = manager->dac2.txs[tx_index].dds_mode_widget;
 	} else {
 		return 0;
 	}
