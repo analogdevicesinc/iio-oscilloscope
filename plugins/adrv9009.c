@@ -223,9 +223,6 @@ static const char *dds_device_sr_attribs[] = {
 static const char *adrv9009_driver_attribs[] = {
 	"load_tal_profile_file",
 	"ensm_mode",
-	// TO DO: Make scalable for TX3, TX4,..
-	// "dds_mode_tx1",
-	// "dds_mode_tx2",
 	"global_settings_show",
 	"tx_show",
 	"rx_show",
@@ -896,12 +893,9 @@ static int adrv9009_handle_driver(struct osc_plugin *plugin, const char *attrib,
 		if (!plugin_single_device_mode) {
 			set_ensm_mode_of_all_devices(value);
 		}
-	} else if (MATCH_ATTRIB("dds_mode_tx1")) {
-		dac_data_manager_set_dds_mode(dac_tx_manager,
-		                              DDS_DEVICE, 1, atoi(value));
-	} else if (MATCH_ATTRIB("dds_mode_tx2")) {
-		dac_data_manager_set_dds_mode(dac_tx_manager,
-		                              DDS_DEVICE, 2, atoi(value));
+	} else if (!strncmp(attrib, "dds_mode_tx", sizeof("dds_mode_tx") - 1)) {
+		int tx = atoi(attrib + sizeof("dds_mode_tx") - 1);
+		dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE, tx - 1, atoi(value));
 	} else if (MATCH_ATTRIB("global_settings_show")) {
 		gtk_toggle_tool_button_set_active(
 		        section_toggle[SECTION_GLOBAL], !!atoi(value));
@@ -1615,8 +1609,6 @@ static void save_widgets_to_ini(FILE *f)
 {
 	fprintf(f, "load_tal_profile_file = %s\n"
 			   "ensm_mode=%s\n"
-			//    "dds_mode_tx1 = %i\n"
-			//    "dds_mode_tx2 = %i\n"
 			   "dac_buf_filename = %s\n"
 			   "global_settings_show = %i\n"
 			   "tx_show = %i\n"
@@ -1625,8 +1617,6 @@ static void save_widgets_to_ini(FILE *f)
 			   "fpga_show = %i\n",
 			last_profile,
 			(plugin_single_device_mode ? "" : gtk_combo_box_get_active_text(GTK_COMBO_BOX(ensm_mode_available))),
-			// dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 1),
-			// dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, 2),
 			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]),
@@ -1637,6 +1627,14 @@ static void save_widgets_to_ini(FILE *f)
 
 	/* Save the state of each TX channel */
 	if (dds) {
+		/* Save state of DDS modes. We know there are 2 TXs for each device. */
+		guint d;
+		for (d = 0; d < phy_devs_count; d++) {
+			fprintf(f, "dds_mode_tx%i=%i\n", (d * 2) + 1, dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, (d * 2) + 0));
+			fprintf(f, "dds_mode_tx%i=%i\n", (d * 2) + 2, dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, (d * 2) + 1));
+		}
+
+		/* Save state of buffer channels */
 		int i = 0, tx_ch_count = device_scan_elements_count(dds);
 		for (; i < tx_ch_count; i++) {
 			fprintf(f, "tx_channel_%i = %i\n", i, dac_data_manager_get_tx_channel_state(dac_tx_manager, i));
