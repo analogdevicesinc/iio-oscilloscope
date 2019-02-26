@@ -332,13 +332,14 @@ static void tx_sample_rate_changed(void *data)
 	GtkSpinButton *dac_freq_spin;
 	gdouble rate;
 	GtkWidget *tone_freq;
-	int tone;
+	unsigned tone;
 
 	dac_freq_spin = GTK_SPIN_BUTTON(tx_widgets[num_dac_freq].widget);
 	rate = gtk_spin_button_get_value(dac_freq_spin) / 2.0;
 	dac_data_manager_freq_widgets_range_update(dac_tx_manager, rate);
 
-	for (tone = TX1_T1_I; tone <= TX1_T2_Q; tone++) {
+	for (tone = dac_data_manager_dds_tone(0, TONE_1, TONE_I);
+		tone <= dac_data_manager_dds_tone(0, TONE_2, TONE_Q); tone++) {
 		tone_freq = dac_data_manager_get_widget(dac_tx_manager,
 				tone, WIDGET_FREQUENCY);
 		g_signal_emit_by_name(tone_freq, "value-changed", NULL);
@@ -1770,20 +1771,20 @@ static GtkWidget * fmcomms1_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	if (ini_fn)
 		load_profile(NULL, ini_fn);
 
-	dds1_freq = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_I, WIDGET_FREQUENCY);
-	dds2_freq = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_I, WIDGET_FREQUENCY);
-	dds3_freq = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_Q, WIDGET_FREQUENCY);
-	dds4_freq = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_Q, WIDGET_FREQUENCY);
+	dds1_freq = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_I), WIDGET_FREQUENCY);
+	dds2_freq = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_I), WIDGET_FREQUENCY);
+	dds3_freq = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_Q), WIDGET_FREQUENCY);
+	dds4_freq = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_Q), WIDGET_FREQUENCY);
 
-	dds1_scale = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_I, WIDGET_SCALE);
-	dds2_scale = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_I, WIDGET_SCALE);
-	dds3_scale = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_Q, WIDGET_SCALE);
-	dds4_scale = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_Q, WIDGET_SCALE);
+	dds1_scale = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_I), WIDGET_SCALE);
+	dds2_scale = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_I), WIDGET_SCALE);
+	dds3_scale = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_Q), WIDGET_SCALE);
+	dds4_scale = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_Q), WIDGET_SCALE);
 
-	dds1_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_I, WIDGET_PHASE);
-	dds2_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_I, WIDGET_PHASE);
-	dds3_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_Q, WIDGET_PHASE);
-	dds4_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_Q, WIDGET_PHASE);
+	dds1_phase = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_I), WIDGET_PHASE);
+	dds2_phase = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_I), WIDGET_PHASE);
+	dds3_phase = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_Q), WIDGET_PHASE);
+	dds4_phase = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_Q), WIDGET_PHASE);
 
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
 	if (!adc)
