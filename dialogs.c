@@ -429,7 +429,7 @@ static void refresh_usb(void)
 						strlen(")), serial=")));
 			}
 		}
-		if (active_pid != -1 && !strcmp(pid, current)) {
+		if (active_pid != -1 && current && !strcmp(pid, current)) {
 			index = i;
 		}
 		usb_pids[i]=pid;
