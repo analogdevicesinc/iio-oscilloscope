@@ -465,6 +465,11 @@ nope:
 	gtk_widget_set_sensitive(dialogs.connect_usbd,true);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd), index);
+
+	if (current) {
+		free(current);
+		current = NULL;
+	}
 }
 
 #ifdef SERIAL_BACKEND
