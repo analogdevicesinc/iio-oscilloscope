@@ -2099,7 +2099,7 @@ void dac_data_manager_update_iio_widgets(struct dac_data_manager *manager)
 int dac_data_manager_set_dds_mode(struct dac_data_manager *manager,
 		const char *dac_name, unsigned tx_index, int mode)
 {
-	if (!manager || !dac_name)
+	if (!manager || !dac_name || !tx_index)
 		return -1;
 
 	if (mode < DDS_DISABLED  || mode > DDS_BUFFER)
@@ -2110,12 +2110,12 @@ int dac_data_manager_set_dds_mode(struct dac_data_manager *manager,
 	if (!strcmp(dac_name, iio_device_get_name(manager->dac1.iio_dac))) {
 		if (tx_index > manager->dac1.tx_count)
 			return -1;
-		dds_mode_combobox = manager->dac1.txs[tx_index].dds_mode_widget;
+		dds_mode_combobox = manager->dac1.txs[tx_index - 1].dds_mode_widget;
 	} else if (manager->dacs_count == 2 &&
 			!strcmp(dac_name, iio_device_get_name(manager->dac2.iio_dac))) {
 		if (tx_index > manager->dac2.tx_count)
 			return -1;
-		dds_mode_combobox = manager->dac2.txs[tx_index].dds_mode_widget;
+		dds_mode_combobox = manager->dac2.txs[tx_index - 1].dds_mode_widget;
 	} else {
 		return -1;
 	}
@@ -2127,7 +2127,7 @@ int dac_data_manager_set_dds_mode(struct dac_data_manager *manager,
 
 int  dac_data_manager_get_dds_mode(struct dac_data_manager *manager, const char *dac_name, unsigned tx_index)
 {
-	if (!manager || !dac_name)
+	if (!manager || !dac_name || !tx_index)
 		return 0;
 
 	GtkWidget *dds_mode_combobox;
@@ -2135,12 +2135,12 @@ int  dac_data_manager_get_dds_mode(struct dac_data_manager *manager, const char 
 	if (!strcmp(dac_name, iio_device_get_name(manager->dac1.iio_dac))) {
 		if (tx_index > manager->dac1.tx_count)
 			return 0;
-		dds_mode_combobox = manager->dac1.txs[tx_index].dds_mode_widget;
+		dds_mode_combobox = manager->dac1.txs[tx_index - 1].dds_mode_widget;
 	} else if (manager->dacs_count == 2 &&
 			!strcmp(dac_name, iio_device_get_name(manager->dac2.iio_dac))) {
 		if (tx_index > manager->dac2.tx_count)
 			return 0;
-		dds_mode_combobox = manager->dac2.txs[tx_index].dds_mode_widget;
+		dds_mode_combobox = manager->dac2.txs[tx_index - 1].dds_mode_widget;
 	} else {
 		return 0;
 	}

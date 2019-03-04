@@ -896,7 +896,7 @@ static int adrv9009_handle_driver(struct osc_plugin *plugin, const char *attrib,
 		}
 	} else if (!strncmp(attrib, "dds_mode_tx", sizeof("dds_mode_tx") - 1)) {
 		int tx = atoi(attrib + sizeof("dds_mode_tx") - 1);
-		dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE, tx - 1, atoi(value));
+		dac_data_manager_set_dds_mode(dac_tx_manager, DDS_DEVICE, tx, atoi(value));
 	} else if (MATCH_ATTRIB("global_settings_show")) {
 		gtk_toggle_tool_button_set_active(
 		        section_toggle[SECTION_GLOBAL], !!atoi(value));
@@ -1634,8 +1634,8 @@ static void save_widgets_to_ini(FILE *f)
 		/* Save state of DDS modes. We know there are 2 TXs for each device. */
 		guint d;
 		for (d = 0; d < phy_devs_count; d++) {
-			fprintf(f, "dds_mode_tx%i=%i\n", (d * 2) + 1, dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, (d * 2) + 0));
-			fprintf(f, "dds_mode_tx%i=%i\n", (d * 2) + 2, dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, (d * 2) + 1));
+			fprintf(f, "dds_mode_tx%i=%i\n", (d * 2) + 1, dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, (d * 2) + 1));
+			fprintf(f, "dds_mode_tx%i=%i\n", (d * 2) + 2, dac_data_manager_get_dds_mode(dac_tx_manager, DDS_DEVICE, (d * 2) + 2));
 		}
 
 		/* Save state of buffer channels */
