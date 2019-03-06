@@ -1114,7 +1114,7 @@ static void apply_trigger_offset(const struct iio_channel *chn, off_t offset)
 	if (offset) {
 		struct extra_info *info = iio_channel_get_data(chn);
 
-		memmove(info->data_ref, info->data_ref + offset,
+		memmove(info->data_ref, (const char *)info->data_ref + offset,
 				info->offset * sizeof(gfloat) - offset);
 	}
 }
