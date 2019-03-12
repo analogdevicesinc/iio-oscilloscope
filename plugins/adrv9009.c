@@ -246,15 +246,7 @@ static void multichip_sync()
 	iio_device_reg_write(hmc7004_dev, 0x5a, 0);
 
 	guint i = 0;
-	for (; i <= 8; i++) {
-		if (i == 2) {
-			iio_device_reg_write(hmc7004_dev, 0x1, 4);
-			iio_device_reg_write(hmc7004_dev, 0x1, 0);
-		}
-		if (i == 6) {
-			iio_device_reg_write(hmc7004_dev, 0x1, 4);
-		}
-
+	for (; i <= 11; i++) {
 		guint n = 0;
 		for (; n < phy_devs_count; n++) {
 			iio_device_attr_write_longlong(subcomponents[n].iio_dev, "multichip_sync", i);
