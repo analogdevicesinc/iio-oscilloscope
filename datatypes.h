@@ -16,7 +16,7 @@
 
 #include <iio.h>
 
-#define FORCE_UPDATE TRUE
+#define INITIAL_UPDATE TRUE
 #define NORMAL_UPDATE FALSE
 
 struct detachable_plugin {
