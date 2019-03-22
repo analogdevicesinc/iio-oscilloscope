@@ -495,7 +495,7 @@ static bool is_frequency_transform(OscPlotPrivate *priv)
 	       priv->active_transform_type == FREQ_SPECTRUM_TRANSFORM;
 }
 
-void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
+void osc_plot_update_rx_lbl(OscPlot *plot, bool initial_update)
 {
 	OscPlotPrivate *priv = plot->priv;
 	TrList *tr_list = priv->transform_list;
@@ -507,7 +507,7 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 	device_rx_info_update(plot);
 
 	/* Skip rescaling graphs, updating labels and others if the redrawing is currently halted. */
-	if (priv->redraw_function <= 0 && !force_update)
+	if (priv->redraw_function <= 0 && !initial_update)
 		return;
 
 	if (is_frequency_transform(priv)) {
@@ -516,7 +516,8 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 
 		/* In FFT mode we need to scale the x-axis according to the selected sampling frequency */
 		for (i = 0; i < tr_list->size; i++) {
-			Transform_setup(tr_list->transforms[i]);
+			if(!initial_update)
+				Transform_setup(tr_list->transforms[i]);
 			gtk_databox_graph_set_hide(tr_list->transforms[i]->graph, TRUE);
 		}
 
@@ -528,7 +529,7 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool force_update)
 			corr = dev_info->adc_freq / 2.0;
 		else
 			corr = 0;
-		if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)) && !force_update)
+		if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->enable_auto_scale)) && !initial_update)
 			return;
 		if (priv->profile_loaded_scale)
 			return;
@@ -3254,7 +3255,7 @@ static void plot_setup(OscPlot *plot)
 		}
 	}
 
-	osc_plot_update_rx_lbl(plot, FORCE_UPDATE);
+	osc_plot_update_rx_lbl(plot, INITIAL_UPDATE);
 
 	bool show_phase_info = false;
 	if (priv->active_transform_type == COMPLEX_FFT_TRANSFORM &&
