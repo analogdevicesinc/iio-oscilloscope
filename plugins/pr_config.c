@@ -286,7 +286,7 @@ static void reg_write_clicked_cb(GtkButton *button, gpointer data)
 	writeReg(device, PR_CONTROL_ADDR, reg_data);
 }
 
-static int pr_config_handle_driver(const char *attrib, const char *value)
+static int pr_config_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	if (MATCH_ATTRIB("config_file")) {
 		pr_config_file_apply(value);
@@ -300,13 +300,13 @@ static int pr_config_handle_driver(const char *attrib, const char *value)
 	return 0;
 }
 
-static int pr_config_handle(int line, const char *attrib, const char *value)
+static int pr_config_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	return osc_plugin_default_handle(ctx, line, attrib, value,
-			pr_config_handle_driver);
+			pr_config_handle_driver, NULL);
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	unsigned int i;
 
@@ -314,14 +314,14 @@ static void load_profile(const char *ini_fn)
 		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				pr_config_driver_attribs[i]);
 		if (value) {
-			pr_config_handle_driver(
+			pr_config_handle_driver(NULL,
 					pr_config_driver_attribs[i], value);
 			free(value);
 		}
 	}
 }
 
-static GtkWidget * pr_config_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * pr_config_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 
@@ -340,7 +340,7 @@ static GtkWidget * pr_config_init(GtkWidget *notebook, const char *ini_fn)
 	reg_write = GTK_WIDGET(gtk_builder_get_object(builder, "button_regs_write"));
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	g_signal_connect(reconf_chooser, "file-set",
 		G_CALLBACK(reconfig_file_set_cb), NULL);
@@ -356,13 +356,13 @@ static GtkWidget * pr_config_init(GtkWidget *notebook, const char *ini_fn)
 	return pr_config_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void pr_config_get_preferred_size(int *width, int *height)
+static void pr_config_get_preferred_size(const struct osc_plugin *plugin, int *width, int *height)
 {
 	if (width)
 		*width = 640;
@@ -378,7 +378,7 @@ static void save_widgets_to_ini(FILE *f)
 			gtk_combo_box_get_active(GTK_COMBO_BOX(regmap_select)) == ADC_REGMAP);
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -387,15 +387,15 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	save_profile(ini_fn);
+	save_profile(NULL, ini_fn);
 	osc_destroy_context(ctx);
 }
 
 struct osc_plugin plugin;
 
-static bool pr_config_identify(void)
+static bool pr_config_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

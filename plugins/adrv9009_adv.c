@@ -31,6 +31,7 @@
 #include "../config.h"
 #include "../iio_widget.h"
 #include "../datatypes.h"
+#include "../iio_utils.h"
 
 #define PHY_DEVICE "adrv9009-phy"
 #define DDS_DEVICE "axi-adrv9009-tx-hpc"
@@ -39,13 +40,27 @@
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
-static struct iio_context *ctx;
-static struct iio_device *dev;
-static bool can_update_widgets;
-static gint this_page;
-static GtkNotebook *nbook;
-static gboolean plugin_detached;
-static GtkBuilder *builder;
+struct plugin_private {
+	/* References to IIO structures */
+	struct iio_context *ctx;
+	struct iio_device *dev;
+
+	/* Misc */
+	bool can_update_widgets;
+	gint this_page;
+	GtkNotebook *nbook;
+	gboolean plugin_detached;
+
+	/* Associated GTK builder */
+	GtkBuilder *builder;
+
+	/* Save/Restore attributes */
+	char **sr_attribs;
+	size_t sr_attribs_count;
+
+	/* Information upon which the plugin was constructed */
+	struct osc_plugin_context plugin_ctx;
+};
 
 enum adrv9009adv_wtype {
 	CHECKBOX,
@@ -62,6 +77,11 @@ struct w_info {
 	const char *const name;
 	const unsigned char *const lut;
 	const unsigned char lut_len;
+};
+
+struct plugin_and_w_info {
+		struct osc_plugin *plugin;
+		struct w_info *item;
 };
 
 static struct w_info attrs[] = {
@@ -420,318 +440,318 @@ static struct w_info attrs[] = {
 };
 
 static const char *adrv9009_adv_sr_attribs[] = {
-	"debug.adrv9009-phy.adi,rxagc-peak-agc-under-range-low-interval_ns",
-	"debug.adrv9009-phy.adi,rxagc-peak-agc-under-range-mid-interval",
-	"debug.adrv9009-phy.adi,rxagc-peak-agc-under-range-high-interval",
-	"debug.adrv9009-phy.adi,rxagc-peak-apd-high-thresh",
-	"debug.adrv9009-phy.adi,rxagc-peak-apd-low-gain-mode-high-thresh",
-	"debug.adrv9009-phy.adi,rxagc-peak-apd-low-thresh",
-	"debug.adrv9009-phy.adi,rxagc-peak-apd-low-gain-mode-low-thresh",
-	"debug.adrv9009-phy.adi,rxagc-peak-apd-upper-thresh-peak-exceeded-cnt",
-	"debug.adrv9009-phy.adi,rxagc-peak-apd-lower-thresh-peak-exceeded-cnt",
-	"debug.adrv9009-phy.adi,rxagc-peak-apd-gain-step-attack",
-	"debug.adrv9009-phy.adi,rxagc-peak-apd-gain-step-recovery",
-	"debug.adrv9009-phy.adi,rxagc-peak-enable-hb2-overload",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-overload-duration-cnt",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-overload-thresh-cnt",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-high-thresh",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-under-range-low-thresh",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-under-range-mid-thresh",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-under-range-high-thresh",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-upper-thresh-peak-exceeded-cnt",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-lower-thresh-peak-exceeded-cnt",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-gain-step-high-recovery",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-gain-step-low-recovery",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-gain-step-mid-recovery",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-gain-step-attack",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-overload-power-mode",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-ovrg-sel",
-	"debug.adrv9009-phy.adi,rxagc-peak-hb2-thresh-config",
+	".adi,rxagc-peak-agc-under-range-low-interval_ns",
+	".adi,rxagc-peak-agc-under-range-mid-interval",
+	".adi,rxagc-peak-agc-under-range-high-interval",
+	".adi,rxagc-peak-apd-high-thresh",
+	".adi,rxagc-peak-apd-low-gain-mode-high-thresh",
+	".adi,rxagc-peak-apd-low-thresh",
+	".adi,rxagc-peak-apd-low-gain-mode-low-thresh",
+	".adi,rxagc-peak-apd-upper-thresh-peak-exceeded-cnt",
+	".adi,rxagc-peak-apd-lower-thresh-peak-exceeded-cnt",
+	".adi,rxagc-peak-apd-gain-step-attack",
+	".adi,rxagc-peak-apd-gain-step-recovery",
+	".adi,rxagc-peak-enable-hb2-overload",
+	".adi,rxagc-peak-hb2-overload-duration-cnt",
+	".adi,rxagc-peak-hb2-overload-thresh-cnt",
+	".adi,rxagc-peak-hb2-high-thresh",
+	".adi,rxagc-peak-hb2-under-range-low-thresh",
+	".adi,rxagc-peak-hb2-under-range-mid-thresh",
+	".adi,rxagc-peak-hb2-under-range-high-thresh",
+	".adi,rxagc-peak-hb2-upper-thresh-peak-exceeded-cnt",
+	".adi,rxagc-peak-hb2-lower-thresh-peak-exceeded-cnt",
+	".adi,rxagc-peak-hb2-gain-step-high-recovery",
+	".adi,rxagc-peak-hb2-gain-step-low-recovery",
+	".adi,rxagc-peak-hb2-gain-step-mid-recovery",
+	".adi,rxagc-peak-hb2-gain-step-attack",
+	".adi,rxagc-peak-hb2-overload-power-mode",
+	".adi,rxagc-peak-hb2-ovrg-sel",
+	".adi,rxagc-peak-hb2-thresh-config",
 
-	"debug.adrv9009-phy.adi,rxagc-power-power-enable-measurement",
-	"debug.adrv9009-phy.adi,rxagc-power-power-use-rfir-out",
-	"debug.adrv9009-phy.adi,rxagc-power-power-use-bbdc2",
-	"debug.adrv9009-phy.adi,rxagc-power-under-range-high-power-thresh",
-	"debug.adrv9009-phy.adi,rxagc-power-under-range-low-power-thresh",
-	"debug.adrv9009-phy.adi,rxagc-power-under-range-high-power-gain-step-recovery",
-	"debug.adrv9009-phy.adi,rxagc-power-under-range-low-power-gain-step-recovery",
-	"debug.adrv9009-phy.adi,rxagc-power-power-measurement-duration",
-	"debug.adrv9009-phy.adi,rxagc-power-rx1-tdd-power-meas-duration",
-	"debug.adrv9009-phy.adi,rxagc-power-rx1-tdd-power-meas-delay",
-	"debug.adrv9009-phy.adi,rxagc-power-rx2-tdd-power-meas-duration",
-	"debug.adrv9009-phy.adi,rxagc-power-rx2-tdd-power-meas-delay",
-	"debug.adrv9009-phy.adi,rxagc-power-upper0-power-thresh",
-	"debug.adrv9009-phy.adi,rxagc-power-upper1-power-thresh",
-	"debug.adrv9009-phy.adi,rxagc-power-power-log-shift",
+	".adi,rxagc-power-power-enable-measurement",
+	".adi,rxagc-power-power-use-rfir-out",
+	".adi,rxagc-power-power-use-bbdc2",
+	".adi,rxagc-power-under-range-high-power-thresh",
+	".adi,rxagc-power-under-range-low-power-thresh",
+	".adi,rxagc-power-under-range-high-power-gain-step-recovery",
+	".adi,rxagc-power-under-range-low-power-gain-step-recovery",
+	".adi,rxagc-power-power-measurement-duration",
+	".adi,rxagc-power-rx1-tdd-power-meas-duration",
+	".adi,rxagc-power-rx1-tdd-power-meas-delay",
+	".adi,rxagc-power-rx2-tdd-power-meas-duration",
+	".adi,rxagc-power-rx2-tdd-power-meas-delay",
+	".adi,rxagc-power-upper0-power-thresh",
+	".adi,rxagc-power-upper1-power-thresh",
+	".adi,rxagc-power-power-log-shift",
 
-	"debug.adrv9009-phy.adi,rxagc-agc-peak-wait-time",
-	"debug.adrv9009-phy.adi,rxagc-agc-rx1-max-gain-index",
-	"debug.adrv9009-phy.adi,rxagc-agc-rx1-min-gain-index",
-	"debug.adrv9009-phy.adi,rxagc-agc-rx2-max-gain-index",
-	"debug.adrv9009-phy.adi,rxagc-agc-rx2-min-gain-index",
-	"debug.adrv9009-phy.adi,rxagc-agc-gain-update-counter_us",
-	"debug.adrv9009-phy.adi,rxagc-agc-rx1-attack-delay",
-	"debug.adrv9009-phy.adi,rxagc-agc-rx2-attack-delay",
-	"debug.adrv9009-phy.adi,rxagc-agc-slow-loop-settling-delay",
-	"debug.adrv9009-phy.adi,rxagc-agc-low-thresh-prevent-gain",
-	"debug.adrv9009-phy.adi,rxagc-agc-change-gain-if-thresh-high",
-	"debug.adrv9009-phy.adi,rxagc-agc-peak-thresh-gain-control-mode",
-	"debug.adrv9009-phy.adi,rxagc-agc-reset-on-rxon",
-	"debug.adrv9009-phy.adi,rxagc-agc-enable-sync-pulse-for-gain-counter",
-	"debug.adrv9009-phy.adi,rxagc-agc-enable-ip3-optimization-thresh",
-	"debug.adrv9009-phy.adi,rxagc-ip3-over-range-thresh",
-	"debug.adrv9009-phy.adi,rxagc-ip3-over-range-thresh-index",
-	"debug.adrv9009-phy.adi,rxagc-ip3-peak-exceeded-cnt",
-	"debug.adrv9009-phy.adi,rxagc-agc-enable-fast-recovery-loop",
+	".adi,rxagc-agc-peak-wait-time",
+	".adi,rxagc-agc-rx1-max-gain-index",
+	".adi,rxagc-agc-rx1-min-gain-index",
+	".adi,rxagc-agc-rx2-max-gain-index",
+	".adi,rxagc-agc-rx2-min-gain-index",
+	".adi,rxagc-agc-gain-update-counter_us",
+	".adi,rxagc-agc-rx1-attack-delay",
+	".adi,rxagc-agc-rx2-attack-delay",
+	".adi,rxagc-agc-slow-loop-settling-delay",
+	".adi,rxagc-agc-low-thresh-prevent-gain",
+	".adi,rxagc-agc-change-gain-if-thresh-high",
+	".adi,rxagc-agc-peak-thresh-gain-control-mode",
+	".adi,rxagc-agc-reset-on-rxon",
+	".adi,rxagc-agc-enable-sync-pulse-for-gain-counter",
+	".adi,rxagc-agc-enable-ip3-optimization-thresh",
+	".adi,rxagc-ip3-over-range-thresh",
+	".adi,rxagc-ip3-over-range-thresh-index",
+	".adi,rxagc-ip3-peak-exceeded-cnt",
+	".adi,rxagc-agc-enable-fast-recovery-loop",
 
-	"debug.adrv9009-phy.adi,aux-dac-enables",
-	"debug.adrv9009-phy.adi,aux-dac-vref0",
-	"debug.adrv9009-phy.adi,aux-dac-resolution0",
-	"debug.adrv9009-phy.adi,aux-dac-values0",
-	"debug.adrv9009-phy.adi,aux-dac-vref1",
-	"debug.adrv9009-phy.adi,aux-dac-resolution1",
-	"debug.adrv9009-phy.adi,aux-dac-values1",
-	"debug.adrv9009-phy.adi,aux-dac-vref2",
-	"debug.adrv9009-phy.adi,aux-dac-resolution2",
-	"debug.adrv9009-phy.adi,aux-dac-values2",
-	"debug.adrv9009-phy.adi,aux-dac-vref3",
-	"debug.adrv9009-phy.adi,aux-dac-resolution3",
-	"debug.adrv9009-phy.adi,aux-dac-values3",
-	"debug.adrv9009-phy.adi,aux-dac-vref4",
-	"debug.adrv9009-phy.adi,aux-dac-resolution4",
-	"debug.adrv9009-phy.adi,aux-dac-values4",
-	"debug.adrv9009-phy.adi,aux-dac-vref5",
-	"debug.adrv9009-phy.adi,aux-dac-resolution5",
-	"debug.adrv9009-phy.adi,aux-dac-values5",
-	"debug.adrv9009-phy.adi,aux-dac-vref6",
-	"debug.adrv9009-phy.adi,aux-dac-resolution6",
-	"debug.adrv9009-phy.adi,aux-dac-values6",
-	"debug.adrv9009-phy.adi,aux-dac-vref7",
-	"debug.adrv9009-phy.adi,aux-dac-resolution7",
-	"debug.adrv9009-phy.adi,aux-dac-values7",
-	"debug.adrv9009-phy.adi,aux-dac-vref8",
-	"debug.adrv9009-phy.adi,aux-dac-resolution8",
-	"debug.adrv9009-phy.adi,aux-dac-values8",
-	"debug.adrv9009-phy.adi,aux-dac-vref9",
-	"debug.adrv9009-phy.adi,aux-dac-resolution9",
-	"debug.adrv9009-phy.adi,aux-dac-values9",
-	"debug.adrv9009-phy.adi,aux-dac-values10",
-	"debug.adrv9009-phy.adi,aux-dac-values11",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-bank-id",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-device-id",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-lane0-id",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-m",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-k",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-f",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-np",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-scramble",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-external-sysref",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-serializer-lanes-enabled",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-serializer-lane-crossbar",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-lmfc-offset",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-new-sysref-on-relink",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-syncb-in-select",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-over-sample",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-syncb-in-lvds-mode",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-syncb-in-lvds-pn-invert",
-	"debug.adrv9009-phy.adi,jesd204-framer-a-enable-manual-lane-xbar",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-bank-id",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-device-id",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-lane0-id",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-m",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-k",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-f",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-np",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-scramble",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-external-sysref",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-serializer-lanes-enabled",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-serializer-lane-crossbar",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-lmfc-offset",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-new-sysref-on-relink",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-syncb-in-select",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-over-sample",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-syncb-in-lvds-mode",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-syncb-in-lvds-pn-invert",
-	"debug.adrv9009-phy.adi,jesd204-framer-b-enable-manual-lane-xbar",
+	".adi,aux-dac-enables",
+	".adi,aux-dac-vref0",
+	".adi,aux-dac-resolution0",
+	".adi,aux-dac-values0",
+	".adi,aux-dac-vref1",
+	".adi,aux-dac-resolution1",
+	".adi,aux-dac-values1",
+	".adi,aux-dac-vref2",
+	".adi,aux-dac-resolution2",
+	".adi,aux-dac-values2",
+	".adi,aux-dac-vref3",
+	".adi,aux-dac-resolution3",
+	".adi,aux-dac-values3",
+	".adi,aux-dac-vref4",
+	".adi,aux-dac-resolution4",
+	".adi,aux-dac-values4",
+	".adi,aux-dac-vref5",
+	".adi,aux-dac-resolution5",
+	".adi,aux-dac-values5",
+	".adi,aux-dac-vref6",
+	".adi,aux-dac-resolution6",
+	".adi,aux-dac-values6",
+	".adi,aux-dac-vref7",
+	".adi,aux-dac-resolution7",
+	".adi,aux-dac-values7",
+	".adi,aux-dac-vref8",
+	".adi,aux-dac-resolution8",
+	".adi,aux-dac-values8",
+	".adi,aux-dac-vref9",
+	".adi,aux-dac-resolution9",
+	".adi,aux-dac-values9",
+	".adi,aux-dac-values10",
+	".adi,aux-dac-values11",
+	".adi,jesd204-framer-a-bank-id",
+	".adi,jesd204-framer-a-device-id",
+	".adi,jesd204-framer-a-lane0-id",
+	".adi,jesd204-framer-a-m",
+	".adi,jesd204-framer-a-k",
+	".adi,jesd204-framer-a-f",
+	".adi,jesd204-framer-a-np",
+	".adi,jesd204-framer-a-scramble",
+	".adi,jesd204-framer-a-external-sysref",
+	".adi,jesd204-framer-a-serializer-lanes-enabled",
+	".adi,jesd204-framer-a-serializer-lane-crossbar",
+	".adi,jesd204-framer-a-lmfc-offset",
+	".adi,jesd204-framer-a-new-sysref-on-relink",
+	".adi,jesd204-framer-a-syncb-in-select",
+	".adi,jesd204-framer-a-over-sample",
+	".adi,jesd204-framer-a-syncb-in-lvds-mode",
+	".adi,jesd204-framer-a-syncb-in-lvds-pn-invert",
+	".adi,jesd204-framer-a-enable-manual-lane-xbar",
+	".adi,jesd204-framer-b-bank-id",
+	".adi,jesd204-framer-b-device-id",
+	".adi,jesd204-framer-b-lane0-id",
+	".adi,jesd204-framer-b-m",
+	".adi,jesd204-framer-b-k",
+	".adi,jesd204-framer-b-f",
+	".adi,jesd204-framer-b-np",
+	".adi,jesd204-framer-b-scramble",
+	".adi,jesd204-framer-b-external-sysref",
+	".adi,jesd204-framer-b-serializer-lanes-enabled",
+	".adi,jesd204-framer-b-serializer-lane-crossbar",
+	".adi,jesd204-framer-b-lmfc-offset",
+	".adi,jesd204-framer-b-new-sysref-on-relink",
+	".adi,jesd204-framer-b-syncb-in-select",
+	".adi,jesd204-framer-b-over-sample",
+	".adi,jesd204-framer-b-syncb-in-lvds-mode",
+	".adi,jesd204-framer-b-syncb-in-lvds-pn-invert",
+	".adi,jesd204-framer-b-enable-manual-lane-xbar",
 
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-bank-id",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-device-id",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-lane0-id",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-m",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-k",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-scramble",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-external-sysref",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-deserializer-lanes-enabled",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-deserializer-lane-crossbar",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-lmfc-offset",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-new-sysref-on-relink",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-syncb-out-select",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-np",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-syncb-out-lvds-mode",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-syncb-out-lvds-pn-invert",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-syncb-out-cmos-slew-rate",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-syncb-out-cmos-drive-level",
-	"debug.adrv9009-phy.adi,jesd204-deframer-a-enable-manual-lane-xbar",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-bank-id",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-device-id",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-lane0-id",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-m",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-k",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-scramble",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-external-sysref",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-deserializer-lanes-enabled",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-deserializer-lane-crossbar",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-lmfc-offset",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-new-sysref-on-relink",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-syncb-out-select",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-np",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-syncb-out-lvds-mode",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-syncb-out-lvds-pn-invert",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-syncb-out-cmos-slew-rate",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-syncb-out-cmos-drive-level",
-	"debug.adrv9009-phy.adi,jesd204-deframer-b-enable-manual-lane-xbar",
+	".adi,jesd204-deframer-a-bank-id",
+	".adi,jesd204-deframer-a-device-id",
+	".adi,jesd204-deframer-a-lane0-id",
+	".adi,jesd204-deframer-a-m",
+	".adi,jesd204-deframer-a-k",
+	".adi,jesd204-deframer-a-scramble",
+	".adi,jesd204-deframer-a-external-sysref",
+	".adi,jesd204-deframer-a-deserializer-lanes-enabled",
+	".adi,jesd204-deframer-a-deserializer-lane-crossbar",
+	".adi,jesd204-deframer-a-lmfc-offset",
+	".adi,jesd204-deframer-a-new-sysref-on-relink",
+	".adi,jesd204-deframer-a-syncb-out-select",
+	".adi,jesd204-deframer-a-np",
+	".adi,jesd204-deframer-a-syncb-out-lvds-mode",
+	".adi,jesd204-deframer-a-syncb-out-lvds-pn-invert",
+	".adi,jesd204-deframer-a-syncb-out-cmos-slew-rate",
+	".adi,jesd204-deframer-a-syncb-out-cmos-drive-level",
+	".adi,jesd204-deframer-a-enable-manual-lane-xbar",
+	".adi,jesd204-deframer-b-bank-id",
+	".adi,jesd204-deframer-b-device-id",
+	".adi,jesd204-deframer-b-lane0-id",
+	".adi,jesd204-deframer-b-m",
+	".adi,jesd204-deframer-b-k",
+	".adi,jesd204-deframer-b-scramble",
+	".adi,jesd204-deframer-b-external-sysref",
+	".adi,jesd204-deframer-b-deserializer-lanes-enabled",
+	".adi,jesd204-deframer-b-deserializer-lane-crossbar",
+	".adi,jesd204-deframer-b-lmfc-offset",
+	".adi,jesd204-deframer-b-new-sysref-on-relink",
+	".adi,jesd204-deframer-b-syncb-out-select",
+	".adi,jesd204-deframer-b-np",
+	".adi,jesd204-deframer-b-syncb-out-lvds-mode",
+	".adi,jesd204-deframer-b-syncb-out-lvds-pn-invert",
+	".adi,jesd204-deframer-b-syncb-out-cmos-slew-rate",
+	".adi,jesd204-deframer-b-syncb-out-cmos-drive-level",
+	".adi,jesd204-deframer-b-enable-manual-lane-xbar",
 
-	"debug.adrv9009-phy.adi,jesd204-ser-amplitude",
-	"debug.adrv9009-phy.adi,jesd204-ser-pre-emphasis",
-	"debug.adrv9009-phy.adi,jesd204-ser-invert-lane-polarity",
-	"debug.adrv9009-phy.adi,jesd204-des-invert-lane-polarity",
-	"debug.adrv9009-phy.adi,jesd204-des-eq-setting",
-	"debug.adrv9009-phy.adi,jesd204-sysref-lvds-mode",
-	"debug.adrv9009-phy.adi,jesd204-sysref-lvds-pn-invert",
+	".adi,jesd204-ser-amplitude",
+	".adi,jesd204-ser-pre-emphasis",
+	".adi,jesd204-ser-invert-lane-polarity",
+	".adi,jesd204-des-invert-lane-polarity",
+	".adi,jesd204-des-eq-setting",
+	".adi,jesd204-sysref-lvds-mode",
+	".adi,jesd204-sysref-lvds-pn-invert",
 
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx1-tx-sel0-pin-gpio-pin-sel",
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx1-tx-sel0-pin-polarity",
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx1-tx-sel0-pin-enable",
+	".adi,arm-gpio-config-orx1-tx-sel0-pin-gpio-pin-sel",
+	".adi,arm-gpio-config-orx1-tx-sel0-pin-polarity",
+	".adi,arm-gpio-config-orx1-tx-sel0-pin-enable",
 
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx1-tx-sel1-pin-gpio-pin-sel",
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx1-tx-sel1-pin-polarity",
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx1-tx-sel1-pin-enable",
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx2-tx-sel0-pin-gpio-pin-sel",
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx2-tx-sel0-pin-polarity",
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx2-tx-sel0-pin-enable",
+	".adi,arm-gpio-config-orx1-tx-sel1-pin-gpio-pin-sel",
+	".adi,arm-gpio-config-orx1-tx-sel1-pin-polarity",
+	".adi,arm-gpio-config-orx1-tx-sel1-pin-enable",
+	".adi,arm-gpio-config-orx2-tx-sel0-pin-gpio-pin-sel",
+	".adi,arm-gpio-config-orx2-tx-sel0-pin-polarity",
+	".adi,arm-gpio-config-orx2-tx-sel0-pin-enable",
 
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx2-tx-sel1-pin-gpio-pin-sel",
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx2-tx-sel1-pin-polarity",
-	"debug.adrv9009-phy.adi,arm-gpio-config-orx2-tx-sel1-pin-enable",
-	"debug.adrv9009-phy.adi,arm-gpio-config-en-tx-tracking-cals-gpio-pin-sel",
-	"debug.adrv9009-phy.adi,arm-gpio-config-en-tx-tracking-cals-polarity",
-	"debug.adrv9009-phy.adi,arm-gpio-config-en-tx-tracking-cals-enable",
-	"debug.adrv9009-phy.adi,orx-lo-cfg-disable-aux-pll-relocking",
-	"debug.adrv9009-phy.adi,orx-lo-cfg-gpio-select",
+	".adi,arm-gpio-config-orx2-tx-sel1-pin-gpio-pin-sel",
+	".adi,arm-gpio-config-orx2-tx-sel1-pin-polarity",
+	".adi,arm-gpio-config-orx2-tx-sel1-pin-enable",
+	".adi,arm-gpio-config-en-tx-tracking-cals-gpio-pin-sel",
+	".adi,arm-gpio-config-en-tx-tracking-cals-polarity",
+	".adi,arm-gpio-config-en-tx-tracking-cals-enable",
+	".adi,orx-lo-cfg-disable-aux-pll-relocking",
+	".adi,orx-lo-cfg-gpio-select",
 
-	"debug.adrv9009-phy.adi,fhm-config-fhm-gpio-pin",
-	"debug.adrv9009-phy.adi,fhm-config-fhm-min-freq_mhz",
-	"debug.adrv9009-phy.adi,fhm-config-fhm-max-freq_mhz",
-	"debug.adrv9009-phy.adi,fhm-mode-fhm-enable",
-	"debug.adrv9009-phy.adi,fhm-mode-enable-mcs-sync",
-	"debug.adrv9009-phy.adi,fhm-mode-fhm-trigger-mode",
-	"debug.adrv9009-phy.adi,fhm-mode-fhm-exit-mode",
-	"debug.adrv9009-phy.adi,fhm-mode-fhm-init-frequency_hz",
+	".adi,fhm-config-fhm-gpio-pin",
+	".adi,fhm-config-fhm-min-freq_mhz",
+	".adi,fhm-config-fhm-max-freq_mhz",
+	".adi,fhm-mode-fhm-enable",
+	".adi,fhm-mode-enable-mcs-sync",
+	".adi,fhm-mode-fhm-trigger-mode",
+	".adi,fhm-mode-fhm-exit-mode",
+	".adi,fhm-mode-fhm-init-frequency_hz",
 
-	"debug.adrv9009-phy.adi,rx1-gain-ctrl-pin-inc-step",
-	"debug.adrv9009-phy.adi,rx1-gain-ctrl-pin-dec-step",
-	"debug.adrv9009-phy.adi,rx1-gain-ctrl-pin-rx-gain-inc-pin",
-	"debug.adrv9009-phy.adi,rx1-gain-ctrl-pin-rx-gain-dec-pin",
-	"debug.adrv9009-phy.adi,rx1-gain-ctrl-pin-enable",
-	"debug.adrv9009-phy.adi,rx2-gain-ctrl-pin-inc-step",
-	"debug.adrv9009-phy.adi,rx2-gain-ctrl-pin-dec-step",
-	"debug.adrv9009-phy.adi,rx2-gain-ctrl-pin-rx-gain-inc-pin",
-	"debug.adrv9009-phy.adi,rx2-gain-ctrl-pin-rx-gain-dec-pin",
-	"debug.adrv9009-phy.adi,rx2-gain-ctrl-pin-enable",
+	".adi,rx1-gain-ctrl-pin-inc-step",
+	".adi,rx1-gain-ctrl-pin-dec-step",
+	".adi,rx1-gain-ctrl-pin-rx-gain-inc-pin",
+	".adi,rx1-gain-ctrl-pin-rx-gain-dec-pin",
+	".adi,rx1-gain-ctrl-pin-enable",
+	".adi,rx2-gain-ctrl-pin-inc-step",
+	".adi,rx2-gain-ctrl-pin-dec-step",
+	".adi,rx2-gain-ctrl-pin-rx-gain-inc-pin",
+	".adi,rx2-gain-ctrl-pin-rx-gain-dec-pin",
+	".adi,rx2-gain-ctrl-pin-enable",
 
-	"debug.adrv9009-phy.adi,tx1-atten-ctrl-pin-step-size",
-	"debug.adrv9009-phy.adi,tx1-atten-ctrl-pin-tx-atten-inc-pin",
-	"debug.adrv9009-phy.adi,tx1-atten-ctrl-pin-tx-atten-dec-pin",
-	"debug.adrv9009-phy.adi,tx1-atten-ctrl-pin-enable",
-	"debug.adrv9009-phy.adi,tx2-atten-ctrl-pin-step-size",
-	"debug.adrv9009-phy.adi,tx2-atten-ctrl-pin-tx-atten-inc-pin",
-	"debug.adrv9009-phy.adi,tx2-atten-ctrl-pin-tx-atten-dec-pin",
-	"debug.adrv9009-phy.adi,tx2-atten-ctrl-pin-enable",
+	".adi,tx1-atten-ctrl-pin-step-size",
+	".adi,tx1-atten-ctrl-pin-tx-atten-inc-pin",
+	".adi,tx1-atten-ctrl-pin-tx-atten-dec-pin",
+	".adi,tx1-atten-ctrl-pin-enable",
+	".adi,tx2-atten-ctrl-pin-step-size",
+	".adi,tx2-atten-ctrl-pin-tx-atten-inc-pin",
+	".adi,tx2-atten-ctrl-pin-tx-atten-dec-pin",
+	".adi,tx2-atten-ctrl-pin-enable",
 
-	"debug.adrv9009-phy.adi,tx-pa-protection-avg-duration",
-	"debug.adrv9009-phy.adi,tx-pa-protection-tx-atten-step",
-	"debug.adrv9009-phy.adi,tx-pa-protection-tx1-power-threshold",
-	"debug.adrv9009-phy.adi,tx-pa-protection-tx2-power-threshold",
-	"debug.adrv9009-phy.adi,tx-pa-protection-peak-count",
-	"debug.adrv9009-phy.adi,tx-pa-protection-tx1-peak-threshold",
-	"debug.adrv9009-phy.adi,tx-pa-protection-tx2-peak-threshold",
+	".adi,tx-pa-protection-avg-duration",
+	".adi,tx-pa-protection-tx-atten-step",
+	".adi,tx-pa-protection-tx1-power-threshold",
+	".adi,tx-pa-protection-tx2-power-threshold",
+	".adi,tx-pa-protection-peak-count",
+	".adi,tx-pa-protection-tx1-peak-threshold",
+	".adi,tx-pa-protection-tx2-peak-threshold",
 
-	"debug.adrv9009-phy.adi,rx-profile-rx-fir-decimation",
-	"debug.adrv9009-phy.adi,rx-profile-rx-dec5-decimation",
-	"debug.adrv9009-phy.adi,rx-profile-rhb1-decimation",
-	"debug.adrv9009-phy.adi,rx-profile-rx-output-rate_khz",
-	"debug.adrv9009-phy.adi,rx-profile-rf-bandwidth_hz",
-	"debug.adrv9009-phy.adi,rx-profile-rx-bbf3d-bcorner_khz",
+	".adi,rx-profile-rx-fir-decimation",
+	".adi,rx-profile-rx-dec5-decimation",
+	".adi,rx-profile-rhb1-decimation",
+	".adi,rx-profile-rx-output-rate_khz",
+	".adi,rx-profile-rf-bandwidth_hz",
+	".adi,rx-profile-rx-bbf3d-bcorner_khz",
 
-	"debug.adrv9009-phy.adi,rx-profile-rx-ddc-mode",
+	".adi,rx-profile-rx-ddc-mode",
 
-	"debug.adrv9009-phy.adi,rx-nco-shifter-band-a-input-band-width_khz",
-	"debug.adrv9009-phy.adi,rx-nco-shifter-band-a-input-center-freq_khz",
-	"debug.adrv9009-phy.adi,rx-nco-shifter-band-a-nco1-freq_khz",
-	"debug.adrv9009-phy.adi,rx-nco-shifter-band-a-nco2-freq_khz",
-	"debug.adrv9009-phy.adi,rx-nco-shifter-band-binput-band-width_khz",
-	"debug.adrv9009-phy.adi,rx-nco-shifter-band-binput-center-freq_khz",
-	"debug.adrv9009-phy.adi,rx-nco-shifter-band-bnco1-freq_khz",
-	"debug.adrv9009-phy.adi,rx-nco-shifter-band-bnco2-freq_khz",
+	".adi,rx-nco-shifter-band-a-input-band-width_khz",
+	".adi,rx-nco-shifter-band-a-input-center-freq_khz",
+	".adi,rx-nco-shifter-band-a-nco1-freq_khz",
+	".adi,rx-nco-shifter-band-a-nco2-freq_khz",
+	".adi,rx-nco-shifter-band-binput-band-width_khz",
+	".adi,rx-nco-shifter-band-binput-center-freq_khz",
+	".adi,rx-nco-shifter-band-bnco1-freq_khz",
+	".adi,rx-nco-shifter-band-bnco2-freq_khz",
 
-	"debug.adrv9009-phy.adi,rx-gain-control-gain-mode",
-	"debug.adrv9009-phy.adi,rx-gain-control-rx1-gain-index",
-	"debug.adrv9009-phy.adi,rx-gain-control-rx2-gain-index",
-	"debug.adrv9009-phy.adi,rx-gain-control-rx1-max-gain-index",
-	"debug.adrv9009-phy.adi,rx-gain-control-rx1-min-gain-index",
-	"debug.adrv9009-phy.adi,rx-gain-control-rx2-max-gain-index",
-	"debug.adrv9009-phy.adi,rx-gain-control-rx2-min-gain-index",
-	"debug.adrv9009-phy.adi,rx-settings-framer-sel",
+	".adi,rx-gain-control-gain-mode",
+	".adi,rx-gain-control-rx1-gain-index",
+	".adi,rx-gain-control-rx2-gain-index",
+	".adi,rx-gain-control-rx1-max-gain-index",
+	".adi,rx-gain-control-rx1-min-gain-index",
+	".adi,rx-gain-control-rx2-max-gain-index",
+	".adi,rx-gain-control-rx2-min-gain-index",
+	".adi,rx-settings-framer-sel",
 
-	"debug.adrv9009-phy.adi,rx-settings-rx-channels",
-	"debug.adrv9009-phy.adi,orx-profile-rx-fir-decimation",
-	"debug.adrv9009-phy.adi,orx-profile-rx-dec5-decimation",
-	"debug.adrv9009-phy.adi,orx-profile-rhb1-decimation",
-	"debug.adrv9009-phy.adi,orx-profile-orx-output-rate_khz",
-	"debug.adrv9009-phy.adi,orx-profile-rf-bandwidth_hz",
-	"debug.adrv9009-phy.adi,orx-profile-rx-bbf3d-bcorner_khz",
-	"debug.adrv9009-phy.adi,orx-profile-orx-ddc-mode",
+	".adi,rx-settings-rx-channels",
+	".adi,orx-profile-rx-fir-decimation",
+	".adi,orx-profile-rx-dec5-decimation",
+	".adi,orx-profile-rhb1-decimation",
+	".adi,orx-profile-orx-output-rate_khz",
+	".adi,orx-profile-rf-bandwidth_hz",
+	".adi,orx-profile-rx-bbf3d-bcorner_khz",
+	".adi,orx-profile-orx-ddc-mode",
 
-	"debug.adrv9009-phy.adi,orx-gain-control-gain-mode",
-	"debug.adrv9009-phy.adi,orx-gain-control-orx1-gain-index",
-	"debug.adrv9009-phy.adi,orx-gain-control-orx2-gain-index",
-	"debug.adrv9009-phy.adi,orx-gain-control-orx1-max-gain-index",
-	"debug.adrv9009-phy.adi,orx-gain-control-orx1-min-gain-index",
-	"debug.adrv9009-phy.adi,orx-gain-control-orx2-max-gain-index",
-	"debug.adrv9009-phy.adi,orx-gain-control-orx2-min-gain-index",
+	".adi,orx-gain-control-gain-mode",
+	".adi,orx-gain-control-orx1-gain-index",
+	".adi,orx-gain-control-orx2-gain-index",
+	".adi,orx-gain-control-orx1-max-gain-index",
+	".adi,orx-gain-control-orx1-min-gain-index",
+	".adi,orx-gain-control-orx2-max-gain-index",
+	".adi,orx-gain-control-orx2-min-gain-index",
 
-	"debug.adrv9009-phy.adi,obs-settings-framer-sel",
-	"debug.adrv9009-phy.adi,obs-settings-obs-rx-channels-enable",
-	"debug.adrv9009-phy.adi,obs-settings-obs-rx-lo-source",
+	".adi,obs-settings-framer-sel",
+	".adi,obs-settings-obs-rx-channels-enable",
+	".adi,obs-settings-obs-rx-lo-source",
 
-	"debug.adrv9009-phy.adi,tx-profile-dac-div",
+	".adi,tx-profile-dac-div",
 
-	"debug.adrv9009-phy.adi,tx-profile-tx-fir-interpolation",
-	"debug.adrv9009-phy.adi,tx-profile-thb1-interpolation",
-	"debug.adrv9009-phy.adi,tx-profile-thb2-interpolation",
-	"debug.adrv9009-phy.adi,tx-profile-thb3-interpolation",
-	"debug.adrv9009-phy.adi,tx-profile-tx-int5-interpolation",
-	"debug.adrv9009-phy.adi,tx-profile-tx-input-rate_khz",
-	"debug.adrv9009-phy.adi,tx-profile-primary-sig-bandwidth_hz",
-	"debug.adrv9009-phy.adi,tx-profile-rf-bandwidth_hz",
-	"debug.adrv9009-phy.adi,tx-profile-tx-dac3d-bcorner_khz",
-	"debug.adrv9009-phy.adi,tx-profile-tx-bbf3d-bcorner_khz",
-	"debug.adrv9009-phy.adi,tx-settings-deframer-sel",
-	"debug.adrv9009-phy.adi,tx-settings-tx-channels",
-	"debug.adrv9009-phy.adi,tx-settings-tx-atten-step-size",
-	"debug.adrv9009-phy.adi,tx-settings-tx1-atten_md-b",
-	"debug.adrv9009-phy.adi,tx-settings-tx2-atten_md-b",
-	"debug.adrv9009-phy.adi,tx-settings-dis-tx-data-if-pll-unlock",
-	"debug.adrv9009-phy.adi,dig-clocks-device-clock_khz",
-	"debug.adrv9009-phy.adi,dig-clocks-clk-pll-vco-freq_khz",
-	"debug.adrv9009-phy.adi,dig-clocks-clk-pll-hs-div",
-	"debug.adrv9009-phy.adi,dig-clocks-rf-pll-use-external-lo",
-	"debug.adrv9009-phy.adi,dig-clocks-rf-pll-phase-sync-mode",
+	".adi,tx-profile-tx-fir-interpolation",
+	".adi,tx-profile-thb1-interpolation",
+	".adi,tx-profile-thb2-interpolation",
+	".adi,tx-profile-thb3-interpolation",
+	".adi,tx-profile-tx-int5-interpolation",
+	".adi,tx-profile-tx-input-rate_khz",
+	".adi,tx-profile-primary-sig-bandwidth_hz",
+	".adi,tx-profile-rf-bandwidth_hz",
+	".adi,tx-profile-tx-dac3d-bcorner_khz",
+	".adi,tx-profile-tx-bbf3d-bcorner_khz",
+	".adi,tx-settings-deframer-sel",
+	".adi,tx-settings-tx-channels",
+	".adi,tx-settings-tx-atten-step-size",
+	".adi,tx-settings-tx1-atten_md-b",
+	".adi,tx-settings-tx2-atten_md-b",
+	".adi,tx-settings-dis-tx-data-if-pll-unlock",
+	".adi,dig-clocks-device-clock_khz",
+	".adi,dig-clocks-clk-pll-vco-freq_khz",
+	".adi,dig-clocks-clk-pll-hs-div",
+	".adi,dig-clocks-rf-pll-use-external-lo",
+	".adi,dig-clocks-rf-pll-phase-sync-mode",
 
-	"debug.adrv9009-phy.adi,default-initial-calibrations-mask",
+	".adi,default-initial-calibrations-mask",
 };
 
-static void reload_settings(void)
+static void reload_settings()
 {
 	struct osc_plugin *plugin;
 	GSList *node;
@@ -739,10 +759,10 @@ static void reload_settings(void)
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		plugin = node->data;
 
-		if (plugin && !strncmp(plugin->name, "adrv9009", 12)) {
+		if (plugin && !strncmp(plugin->name, "adrv9009", 12)) { // TO DO: How do we know the first plugin we find is not this one?
 			if (plugin->handle_external_request) {
 				g_usleep(1 * G_USEC_PER_SEC);
-				plugin->handle_external_request("Reload Settings");
+				plugin->handle_external_request(plugin, "Reload Settings");
 			}
 		}
 	}
@@ -750,7 +770,9 @@ static void reload_settings(void)
 
 static void signal_handler_cb(GtkWidget *widget, gpointer data)
 {
-	struct w_info *item = data;
+	struct plugin_and_w_info *plugin_and_item = data;
+	struct osc_plugin *plugin = plugin_and_item->plugin;
+	struct w_info *item = plugin_and_item->item;
 	long long val;
 	char str[80];
 	int bit, ret;
@@ -769,7 +791,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 		val = (long long) gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
 
 		if (item->lut_len) {
-			iio_device_debug_attr_read_longlong(dev, item->name, &mask);
+			iio_device_debug_attr_read_longlong(plugin->priv->dev, item->name, &mask);
 			mask &= ~((1 << item->lut_len) - 1);
 			mask |= val & ((1 << item->lut_len) - 1);
 			val = mask;
@@ -793,7 +815,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 		if (ret != 2)
 			return;
 
-		iio_device_debug_attr_read_longlong(dev, str, &mask);
+		iio_device_debug_attr_read_longlong(plugin->priv->dev, str, &mask);
 
 		if (val) {
 			mask |= (1 << bit);
@@ -801,7 +823,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 			mask &= ~(1 << bit);
 		}
 
-		iio_device_debug_attr_write_longlong(dev, str, mask);
+		iio_device_debug_attr_write_longlong(plugin->priv->dev, str, mask);
 
 		return;
 
@@ -809,7 +831,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 		return;
 	}
 
-	iio_device_debug_attr_write_longlong(dev, item->name, val);
+	iio_device_debug_attr_write_longlong(plugin->priv->dev, item->name, val);
 
 	if (!strcmp(item->name, "initialize")) {
 		reload_settings();
@@ -818,22 +840,22 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 
 static void bist_tone_cb(GtkWidget *widget, gpointer data)
 {
-	GtkBuilder *builder = data;
+	struct osc_plugin *plugin = data;
 	unsigned enable, tx1_freq, tx2_freq;
 	char temp[40];
 
 	tx1_freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON(
-	                gtk_builder_get_object(builder, "tx1_nco_freq"))) * 1000;
+	                gtk_builder_get_object(plugin->priv->builder, "tx1_nco_freq"))) * 1000;
 	tx2_freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON(
-	                gtk_builder_get_object(builder, "tx2_nco_freq"))) * 1000;
+	                gtk_builder_get_object(plugin->priv->builder, "tx2_nco_freq"))) * 1000;
 
 	enable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-	                GTK_WIDGET(gtk_builder_get_object(builder, "tx_nco_enable"))));
+	                GTK_WIDGET(gtk_builder_get_object(plugin->priv->builder, "tx_nco_enable"))));
 
 	sprintf(temp, "%u %u %u", enable, tx1_freq, tx2_freq);
 
-	iio_device_debug_attr_write(dev, "bist_tone", "0 0 0");
-	iio_device_debug_attr_write(dev, "bist_tone", temp);
+	iio_device_debug_attr_write(plugin->priv->dev, "bist_tone", "0 0 0");
+	iio_device_debug_attr_write(plugin->priv->dev, "bist_tone", temp);
 }
 
 static char *set_widget_value(GtkWidget *widget, struct w_info *item, long long val)
@@ -889,14 +911,17 @@ static char *set_widget_value(GtkWidget *widget, struct w_info *item, long long 
 
 	return NULL;
 }
-static void connect_widget(GtkBuilder *builder, struct w_info *item, long long val)
+static void connect_widget(struct osc_plugin *plugin, struct w_info *item, long long val)
 {
 	char *signal;
 	GtkWidget *widget;
-	widget = GTK_WIDGET(gtk_builder_get_object(builder, item->name));
+	struct plugin_and_w_info *data_to_pass = g_new(struct plugin_and_w_info, 1);
+	data_to_pass->plugin = plugin;
+	data_to_pass->item = item;
+	widget = GTK_WIDGET(gtk_builder_get_object(plugin->priv->builder, item->name));
 	signal = set_widget_value(widget, item, val);
-	g_builder_connect_signal(builder, item->name, signal,
-	                         G_CALLBACK(signal_handler_cb), item);
+	g_builder_connect_signal_data(plugin->priv->builder, item->name, signal,
+	                         G_CALLBACK(signal_handler_cb), data_to_pass, (GClosureNotify)g_free, 0);
 }
 
 static void update_widget(GtkBuilder *builder, struct w_info *item, long long val)
@@ -911,7 +936,7 @@ static int __connect_widget(struct iio_device *dev, const char *attr,
                             const char *value, size_t len, void *d)
 {
 	unsigned int i, nb_items = ARRAY_SIZE(attrs);
-	GtkBuilder *builder = (GtkBuilder *) d;
+	struct osc_plugin *plugin = d;
 	char str[80];
 	int bit, ret;
 
@@ -919,7 +944,7 @@ static int __connect_widget(struct iio_device *dev, const char *attr,
 		ret = sscanf(attrs[i].name, "%[^'#']#%d", str, &bit);
 
 		if (!strcmp(str, attr)) {
-			connect_widget(builder, &attrs[i], atoll(value));
+			connect_widget(plugin, &attrs[i], atoll(value));
 
 			if (ret == 1 && attrs[i].lut_len == 0) {
 				return 0;
@@ -956,14 +981,14 @@ static int __update_widget(struct iio_device *dev, const char *attr,
 	return 0;
 }
 
-static int connect_widgets(GtkBuilder *builder)
+static int connect_widgets(struct osc_plugin *plugin)
 {
-	return iio_device_debug_attr_read_all(dev, __connect_widget, builder);
+	return iio_device_debug_attr_read_all(plugin->priv->dev, __connect_widget, plugin);
 }
 
-static int update_widgets(GtkBuilder *builder)
+static int update_widgets(struct osc_plugin *plugin)
 {
-	return iio_device_debug_attr_read_all(dev, __update_widget, builder);
+	return iio_device_debug_attr_read_all(plugin->priv->dev, __update_widget, plugin->priv->builder);
 }
 
 static void change_page_cb(GtkNotebook *notebook, GtkNotebookPage *page,
@@ -977,31 +1002,31 @@ static void change_page_cb(GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
-static int handle_external_request(const char *request)
+static int handle_external_request(struct osc_plugin *plugin, const char *request)
 {
 	int ret = 0;
 
 	if (!strcmp(request, "Trigger MCS")) {
 		GtkWidget *mcs_btn;
 
-		mcs_btn = GTK_WIDGET(gtk_builder_get_object(builder, "mcs_sync"));
+		mcs_btn = GTK_WIDGET(gtk_builder_get_object(plugin->priv->builder, "mcs_sync"));
 		g_signal_emit_by_name(mcs_btn, "clicked", NULL);
 		ret = 1;
 	} else if (!strcmp(request, "RELOAD")) {
-		if (can_update_widgets)
-			update_widgets(builder);
+		if (plugin && plugin->priv->can_update_widgets)
+			update_widgets(plugin);
 	}
 
 	return ret;
 }
 
-static int adrv9009adv_handle_driver(const char *attrib, const char *value)
+static int adrv9009adv_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	int ret = 0;
 
 	if (MATCH_ATTRIB("SYNC_RELOAD") && atoi(value)) {
-		if (can_update_widgets)
-			update_widgets(builder);
+		if (plugin->priv->can_update_widgets)
+			update_widgets(plugin);
 
 		reload_settings();
 	} else {
@@ -1013,107 +1038,174 @@ static int adrv9009adv_handle_driver(const char *attrib, const char *value)
 	return ret;
 }
 
-static int adrv9009adv_handle(int line, const char *attrib, const char *value)
+static int adrv9009adv_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
-	return osc_plugin_default_handle(ctx, line, attrib, value,
-	                                 adrv9009adv_handle_driver);
+	return osc_plugin_default_handle(plugin->priv->ctx, line, attrib, value,
+		adrv9009adv_handle_driver, plugin);
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 
-	update_from_ini(ini_fn, THIS_DRIVER, dev,
-	                adrv9009_adv_sr_attribs,
-	                ARRAY_SIZE(adrv9009_adv_sr_attribs));
+	update_from_ini(ini_fn, plugin->name, plugin->priv->dev,
+	        (const char * const*)plugin->priv->sr_attribs, plugin->priv->sr_attribs_count);
 
-	if (can_update_widgets)
-		update_widgets(builder);
+	if (plugin->priv->can_update_widgets)
+		update_widgets(plugin);
 
 }
 
-static GtkWidget *adrv9009adv_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget *adrv9009adv_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
+	struct plugin_private *priv = plugin->priv;
 	GtkWidget *adrv9009adv_panel;
 
-	ctx = osc_create_context();
+	struct iio_context *ctx = osc_create_context();
 
 	if (!ctx)
 		return NULL;
 
-	dev = iio_context_find_device(ctx, PHY_DEVICE);
+	/* get_data_for_possible_plugin_instances() is responsibile to set the first device name to be of type adrv9009-phy */
+	const char *dev_name = g_list_first(priv->plugin_ctx.required_devices)->data;
+	struct iio_device *dev = iio_context_find_device(ctx, dev_name);
+
+	/* build the list of save/restore attributes */
+	plugin->priv->sr_attribs_count = ARRAY_SIZE(adrv9009_adv_sr_attribs);
+	plugin->priv->sr_attribs = g_new(char *, plugin->priv->sr_attribs_count);
+	size_t n = 0;
+	for (; n < plugin->priv->sr_attribs_count; n++) {
+		plugin->priv->sr_attribs[n] = g_strconcat(
+			"debug.", dev_name, adrv9009_adv_sr_attribs[n], NULL);
+	}
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(plugin, ini_fn);
 
-	builder = gtk_builder_new();
+	GtkBuilder *builder = gtk_builder_new();
 
 	if (osc_load_glade_file(builder, "adrv9009_adv") < 0)
 		return NULL;
 
-	adrv9009adv_panel = GTK_WIDGET(gtk_builder_get_object(builder, "adrv9009adv_panel"));
-	nbook = GTK_NOTEBOOK(gtk_builder_get_object(builder, "notebook"));
+	/* At this point the function cannot fail - initialize priv */
+	priv->ctx = ctx;
+	priv->dev = dev;
+	priv->builder = builder;
 
-	connect_widgets(builder);
+	adrv9009adv_panel = GTK_WIDGET(gtk_builder_get_object(builder, "adrv9009adv_panel"));
+	priv->nbook = GTK_NOTEBOOK(gtk_builder_get_object(builder, "notebook"));
+
+	connect_widgets(plugin);
 
 	g_builder_connect_signal(builder, "tx1_nco_freq", "value-changed",
-	                         G_CALLBACK(bist_tone_cb), builder);
+	                         G_CALLBACK(bist_tone_cb), plugin);
 
 	g_builder_connect_signal(builder, "tx2_nco_freq", "value-changed",
-	                         G_CALLBACK(bist_tone_cb), builder);
+	                         G_CALLBACK(bist_tone_cb), plugin);
 
 	g_builder_connect_signal(builder, "tx_nco_enable", "toggled",
-	                         G_CALLBACK(bist_tone_cb), builder);
+	                         G_CALLBACK(bist_tone_cb), plugin);
 
 	g_builder_connect_signal(builder, "notebook", "switch-page",
 	                         G_CALLBACK(change_page_cb),
 	                         GTK_WIDGET(gtk_builder_get_object(builder, "initialize")));
 
-	can_update_widgets = true;
+	priv->can_update_widgets = true;
 
 	return adrv9009adv_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
-	this_page = active_page;
-	plugin_detached = is_detached;
+	plugin->priv->this_page = active_page;
+	plugin->priv->plugin_detached = is_detached;
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 
 	if (f) {
-		save_to_ini(f, THIS_DRIVER, dev, adrv9009_adv_sr_attribs,
-		            ARRAY_SIZE(adrv9009_adv_sr_attribs));
+		save_to_ini(f, plugin->name, plugin->priv->dev,
+			(const char * const*)plugin->priv->sr_attribs,
+			plugin->priv->sr_attribs_count);
 		fclose(f);
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+gpointer copy_gchar_array(gconstpointer src, gpointer data)
 {
-	save_profile(ini_fn);
-	osc_destroy_context(ctx);
+	return (gpointer)g_strdup(src);
 }
 
-static bool adrv9009adv_identify(void)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	/* Use the OSC's IIO context just to detect the devices */
+	save_profile(plugin, ini_fn);
+
+	size_t n = 0;
+	for (; n < plugin->priv->sr_attribs_count; n++) {
+		g_free(plugin->priv->sr_attribs[n]);
+	}
+	g_free(plugin->priv->sr_attribs);
+
+	osc_plugin_context_free_resources(&plugin->priv->plugin_ctx);
+	
+	osc_destroy_context(plugin->priv->ctx);
+	
+	g_free(plugin->priv);
+}
+
+struct osc_plugin * create_plugin(struct osc_plugin_context *plugin_ctx)
+{
+	struct osc_plugin *plugin= g_new0(struct osc_plugin, 1);
+
+	if (!plugin_ctx ) {
+		fprintf(stderr, "Cannot create plugin because an invalid plugin context was provided\n");
+		return NULL;
+	}
+
+	plugin->priv = g_new0(struct plugin_private, 1);
+	plugin->priv->plugin_ctx.plugin_name = g_strdup(plugin_ctx->plugin_name);
+	plugin->priv->plugin_ctx.required_devices = g_list_copy_deep(plugin_ctx->required_devices, (GCopyFunc)copy_gchar_array, NULL);
+
+	plugin->name = plugin->priv->plugin_ctx.plugin_name;
+	plugin->dynamically_created = TRUE;
+	plugin->init = adrv9009adv_init;
+	plugin->handle_item = adrv9009adv_handle;
+	plugin->handle_external_request = handle_external_request;
+	plugin->update_active_page = update_active_page;
+	plugin->save_profile = save_profile;
+	plugin->load_profile = load_profile;
+	plugin->destroy = context_destroy;
+
+	return plugin;
+}
+
+/* Informs how many plugins can be instantiated and gives context for each possible plugin instance */
+GArray* get_data_for_possible_plugin_instances(void)
+{
+	GArray *data = g_array_new(FALSE, TRUE, sizeof(struct osc_plugin_context *));
 	struct iio_context *osc_ctx = get_context_from_osc();
+	GArray *devices = get_iio_devices_starting_with(osc_ctx, PHY_DEVICE);
+	guint i = 0;
 
-	dev = iio_context_find_device(osc_ctx, PHY_DEVICE);
+	for (; i < devices->len; i++) {
+		struct osc_plugin_context *context = g_new(struct osc_plugin_context, 1);
+		struct iio_device *dev = g_array_index(devices, struct iio_device*, i);
 
-	return !!dev && iio_device_get_debug_attrs_count(dev);
+		/* Construct the name of the plugin */
+		char *name;
+		if (devices->len > 1)
+			name = g_strdup_printf("%s-%i", THIS_DRIVER, i);
+		else
+			name = g_strdup(THIS_DRIVER);
+
+		context->required_devices = NULL;
+		context->required_devices = g_list_append(context->required_devices, g_strdup(iio_device_get_name(dev)));
+		context->plugin_name = name;
+		g_array_append_val(data, context);
+	}
+
+	g_array_free(devices, FALSE);
+
+	return data;
 }
-
-struct osc_plugin plugin = {
-	.name = THIS_DRIVER,
-	.identify = adrv9009adv_identify,
-	.init = adrv9009adv_init,
-	.handle_item = adrv9009adv_handle,
-	.handle_external_request = handle_external_request,
-	.update_active_page = update_active_page,
-	.save_profile = save_profile,
-	.load_profile = load_profile,
-	.destroy = context_destroy,
-};

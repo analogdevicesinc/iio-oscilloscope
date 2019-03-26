@@ -1,0 +1,43 @@
+#!/bin/sh -xe
+
+. CI/travis/lib.sh
+
+# Remove .git repo and see how it performs
+if [ "$TEST_NON_GIT_REPO" = "1" ] ; then
+	rm -rf .git
+fi
+
+handle_default() {
+	mkdir -p build
+	cd build
+	if [ "$TRAVIS" = "true" ] || [ "$INSIDE_DOCKER" = "1" ] ; then
+		cmake ..
+		make
+	else
+		export PKG_CONFIG_PATH="$STAGINGDIR/lib/pkgconfig" ; \
+		cmake -DCMAKE_PREFIX_PATH="$STAGINGDIR" -DCMAKE_INSTALL_PREFIX="$STAGINGDIR" \
+			-DCMAKE_EXE_LINKER_FLAGS="-L${STAGINGDIR}/lib" ..
+		CFLAGS=-I${STAGINGDIR}/include LDFLAGS=-L${STAGINGDIR}/lib make
+	fi
+	cd ..
+}
+
+handle_centos() {
+	handle_default
+}
+
+handle_centos_docker() {
+        run_docker_script inside_docker.sh \
+                "centos:centos${OS_VERSION}" "centos"
+}
+
+handle_ubuntu_docker() {
+        run_docker_script inside_docker.sh \
+                "ubuntu:${OS_VERSION}"
+}
+
+LIBNAME="iio-oscilloscope"
+OS_TYPE=${1:-default}
+OS_VERSION="$2"
+
+handle_${OS_TYPE}

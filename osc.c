@@ -26,6 +26,7 @@
 
 #include <iio.h>
 
+#include "compat.h"
 #include "libini2.h"
 #include "osc.h"
 #include "datatypes.h"
@@ -41,6 +42,7 @@ G_LOCK_DEFINE_STATIC(buffer_full);
 static gboolean stop_capture;
 static struct plugin_check_fct *setup_check_functions = NULL;
 static int num_check_fcts = 0;
+static GSList *plugin_lib_list = NULL;
 static GSList *dplugin_list = NULL;
 static struct osc_plugin *spect_analyzer_plugin = NULL;
 GtkWidget *notebook;
@@ -326,7 +328,7 @@ static void attach_plugin(GtkWidget *window, struct detachable_plugin *d_plugin)
 	detach_btn = plugin_tab_add_detach_btn(plugin_page, d_plugin);
 
 	if (plugin->update_active_page)
-		plugin->update_active_page(plugin_page_index, FALSE);
+		plugin->update_active_page((struct osc_plugin *)plugin, plugin_page_index, FALSE);
 	d_plugin->detached_state = FALSE;
 	d_plugin->detach_attach_button = detach_btn;
 	d_plugin->window = NULL;
@@ -388,7 +390,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	if (plugin->get_preferred_size) {
 		int width = -1, height = -1;
 
-		plugin->get_preferred_size(&width, &height);
+		plugin->get_preferred_size(plugin, &width, &height);
 		gtk_window_set_default_size(GTK_WINDOW(window), width, height);
 	}
 
@@ -402,7 +404,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 			G_CALLBACK(debug_window_delete_cb), (gpointer)d_plugin);
 
 	if (plugin->update_active_page)
-		plugin->update_active_page(-1, TRUE);
+		plugin->update_active_page((struct osc_plugin *)plugin, -1, TRUE);
 	d_plugin->detached_state = TRUE;
 	d_plugin->detach_attach_button = NULL;
 	d_plugin->window = window;
@@ -755,7 +757,7 @@ static void close_plugins(const char *ini_fn)
 
 	for (node = dplugin_list; node; node = g_slist_next(node)) {
 		struct detachable_plugin *d_plugin = node->data;
-		const struct osc_plugin *plugin = d_plugin->plugin;
+		struct osc_plugin *plugin = (struct osc_plugin *)d_plugin->plugin;
 
 		if (d_plugin->window)
 			gtk_widget_destroy(d_plugin->window);
@@ -763,11 +765,19 @@ static void close_plugins(const char *ini_fn)
 		if (plugin) {
 			printf("Closing plugin: %s\n", plugin->name);
 			if (plugin->destroy)
-				plugin->destroy(ini_fn);
-			dlclose(plugin->handle);
+				plugin->destroy(plugin, ini_fn);
+
+			if (plugin->dynamically_created)
+				g_free(plugin);
 		}
 
 		g_free(d_plugin);
+	}
+
+	/* Closing the shared library handles after we're done wit the plugins */
+	for (node = plugin_lib_list; node; node = g_slist_next(node)) {
+		void *lib_handle = node->data;
+		dlclose(lib_handle);
 	}
 
 	g_slist_free(dplugin_list);
@@ -775,6 +785,9 @@ static void close_plugins(const char *ini_fn)
 
 	g_slist_free(plugin_list);
 	plugin_list = NULL;
+
+	g_slist_free(plugin_lib_list);
+	plugin_lib_list = NULL;
 }
 
 static struct osc_plugin * get_plugin_from_name(const char *name)
@@ -831,6 +844,14 @@ void * plugin_dlsym(const char *name, const char *symbol)
 	return NULL;
 }
 
+void osc_plugin_context_free_resources(struct osc_plugin_context *ctx)
+{
+	if (ctx->plugin_name)
+		g_free(ctx->plugin_name);
+	if (ctx->required_devices)
+		g_list_free_full(ctx->required_devices, (GDestroyNotify)g_free);
+}
+
 bool str_endswith(const char *str, const char *needle)
 {
 	const char *pos;
@@ -849,7 +870,7 @@ static void * init_plugin(void *data)
 		const char *ini_fn;
 	} *params = data;
 
-	widget = params->plugin->init(params->notebook, params->ini_fn);
+	widget = params->plugin->init(params->plugin, params->notebook, params->ini_fn);
 	free(data);
 	return widget;
 }
@@ -864,7 +885,7 @@ static void load_plugin_finish(GtkNotebook *notebook,
 	gtk_notebook_set_tab_label_text(notebook, widget, plugin->name);
 
 	if (plugin->update_active_page)
-		plugin->update_active_page(page, FALSE);
+		plugin->update_active_page(plugin, page, FALSE);
 
 	d_plugin = malloc(sizeof(*d_plugin));
 	d_plugin->plugin = plugin;
@@ -874,6 +895,9 @@ static void load_plugin_finish(GtkNotebook *notebook,
 
 static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 {
+	typedef GArray* (*get_plugins_info_func)(void);
+	typedef struct osc_plugin* (*create_plugin_func)(struct osc_plugin_context *);
+
 	GSList *node;
 	struct osc_plugin *plugin;
 	struct dirent *ent;
@@ -896,18 +920,14 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 
 	while ((ent = readdir(d))) {
 		void *lib;
-		struct params {
-			struct osc_plugin *plugin;
-			GtkWidget *notebook;
-			const char *ini_fn;
-		} *params;
 
-#ifdef _DIRENT_HAVE_D_TYPE
-		if (ent->d_type != DT_REG)
+		if (!is_dirent_reqular_file(ent))
 			continue;
-#endif
 #ifdef __MINGW32__
 		if (!str_endswith(ent->d_name, ".dll"))
+			continue;
+#elif __APPLE__
+		 if (!str_endswith(ent->d_name, ".dylib"))
 			continue;
 #else
 		if (!str_endswith(ent->d_name, ".so"))
@@ -924,20 +944,62 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 
 		plugin = dlsym(lib, "plugin");
 		if (!plugin) {
-			fprintf(stderr, "Failed to load plugin \"%s\": "
+			/* Try for plugins that, first, return info on how they should be constructed */
+			get_plugins_info_func get_plugins_info =
+				dlsym(lib, "get_data_for_possible_plugin_instances");
+			create_plugin_func create_plugin =
+				dlsym(lib, "create_plugin");
+			if (!get_plugins_info || !create_plugin) {
+				fprintf(stderr, "Failed to load plugin \"%s\": "
 					"Could not find plugin\n", ent->d_name);
-			continue;
+				continue;
+			}
+
+			GArray *plugin_info = get_plugins_info();
+			if (plugin_info->len == 0) {
+				dlclose(lib);
+				continue;
+			}
+
+			/* Use the information retrieved from the plugin to create instances of it */
+			guint i = 0;
+			for (; i < plugin_info->len; i++) {
+				struct osc_plugin_context *plugin_ctx = g_array_index(plugin_info, struct osc_plugin_context *, i);
+				plugin = create_plugin(plugin_ctx);
+				printf("Found plugin: %s\n", plugin->name);
+				plugin->handle = lib;
+				plugin_list = g_slist_append(plugin_list, (gpointer) plugin);
+				plugin_lib_list = g_slist_append(plugin_lib_list, lib);
+
+				osc_plugin_context_free_resources(plugin_ctx);
+				g_free(plugin_ctx);
+			}
+			g_array_free(plugin_info, FALSE);
+
+		} else {
+			printf("Found plugin: %s\n", plugin->name);
+
+			if (!plugin->identify(plugin) && !force_plugin(plugin->name)) {
+				dlclose(lib);
+				continue;
+			}
+
+			plugin->handle = lib;
+			plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
+			plugin_lib_list = g_slist_append(plugin_lib_list, lib);
 		}
+	}
+	closedir(d);
 
-		printf("Found plugin: %s\n", plugin->name);
+	// Initialize all plugins that were previously loaded
+	for (node = plugin_list; node; node = g_slist_next(node)) {
+		struct params {
+			struct osc_plugin *plugin;
+			GtkWidget *notebook;
+			const char *ini_fn;
+		} *params;
 
-		if (!plugin->identify() && !force_plugin(plugin->name)) {
-			dlclose(lib);
-			continue;
-		}
-
-		plugin->handle = lib;
-		plugin_list = g_slist_append (plugin_list, (gpointer) plugin);
+		plugin = node->data;
 
 		params = malloc(sizeof(*params));
 		params->plugin = plugin;
@@ -952,7 +1014,6 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 			load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
 		}
 	}
-	closedir(d);
 
 	if (!load_in_parallel)
 		return;
@@ -1053,7 +1114,7 @@ static void apply_trigger_offset(const struct iio_channel *chn, off_t offset)
 	if (offset) {
 		struct extra_info *info = iio_channel_get_data(chn);
 
-		memmove(info->data_ref, info->data_ref + offset,
+		memmove(info->data_ref, (const char *)info->data_ref + offset,
 				info->offset * sizeof(gfloat) - offset);
 	}
 }
@@ -1338,7 +1399,7 @@ static void start(OscPlot *plot, gboolean start_event)
 		/* Make sure the capture process in the Spectrum Analyzer plugin
 		 * is not running */
 		if (spect_analyzer_plugin)
-			spect_analyzer_plugin->handle_external_request("Stop");
+			spect_analyzer_plugin->handle_external_request(spect_analyzer_plugin, "Stop");
 
 		/* Start the capture process */
 		capture_setup();
@@ -1782,7 +1843,7 @@ static void plugins_get_preferred_size(GSList *plist, int *width, int *height)
 	for (node = plist; node; node = g_slist_next(node)) {
 		p = node->data;
 		if (p->get_preferred_size) {
-			p->get_preferred_size(&w, &h);
+			p->get_preferred_size(p, &w, &h);
 			if (w > max_w)
 				max_w = w;
 			if (h > max_h)
@@ -1974,7 +2035,7 @@ void save_complete_profile(const char *filename)
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		struct osc_plugin *plugin = node->data;
 		if (plugin->save_profile)
-			plugin->save_profile(filename);
+			plugin->save_profile(plugin, filename);
 	}
 }
 
@@ -2022,7 +2083,7 @@ static int load_profile_sequential_handler(int line, const char *section,
 	struct osc_plugin *plugin = get_plugin_from_name(section);
 	if (plugin) {
 		if (plugin->handle_item)
-			return plugin->handle_item(line, name, value);
+			return plugin->handle_item(plugin, line, name, value);
 		else {
 			fprintf(stderr, "Unknown plugin for %s\n", section);
 			return 1;
@@ -2205,7 +2266,7 @@ nope:
 		char buf[1024];
 
 		if (load_plugins && plugin->load_profile)
-			plugin->load_profile(filename);
+			plugin->load_profile(plugin, filename);
 
 		snprintf(buf, sizeof(buf), "plugin.%s.detached", plugin->name);
 		value = read_token_from_ini(filename, OSC_INI_SECTION, buf);
@@ -2583,7 +2644,8 @@ err_ret:
 
 int osc_plugin_default_handle(struct iio_context *_ctx,
 		int line, const char *attrib, const char *value,
-		int (*driver_handle)(const char *, const char *))
+		int (*driver_handle)(struct osc_plugin *plugin, const char *, const char *),
+		struct osc_plugin *plugin)
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
@@ -2602,7 +2664,7 @@ int osc_plugin_default_handle(struct iio_context *_ctx,
 	ret = osc_identify_attrib(_ctx, attrib, &dev, &chn, &attr, &debug);
 	if (ret < 0) {
 		if (driver_handle)
-			return driver_handle(attrib, value);
+			return driver_handle(plugin, attrib, value);
 		else {
 			fprintf(stderr, "Error parsing ini file; key:'%s' value:'%s'\n",
 					attrib, value);
@@ -2648,6 +2710,19 @@ int osc_load_glade_file(GtkBuilder *builder, const char *fname)
 		return 0;
 	snprintf(path, sizeof(path), OSC_GLADE_FILE_PATH "%s.glade", fname);
 	if (gtk_builder_add_from_file(builder, path, NULL))
+		return 0;
+	fprintf(stderr, "Could not find '%s.glade' file", fname);
+	return -1;
+}
+
+int osc_load_objects_from_glade_file(GtkBuilder *builder, const char *fname, gchar **object_ids)
+{
+	char path[256];
+	snprintf(path, sizeof(path), "glade/%s.glade", fname);
+	if (gtk_builder_add_objects_from_file(builder, path, object_ids, NULL))
+		return 0;
+	snprintf(path, sizeof(path), OSC_GLADE_FILE_PATH "%s.glade", fname);
+	if (gtk_builder_add_objects_from_file(builder, path, object_ids, NULL))
 		return 0;
 	fprintf(stderr, "Could not find '%s.glade' file", fname);
 	return -1;

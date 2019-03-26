@@ -120,7 +120,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 	cal_update_values();
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	update_from_ini(ini_fn, THIS_DRIVER, adc, fmcomms6_sr_attribs,
 			ARRAY_SIZE(fmcomms6_sr_attribs));
@@ -131,7 +131,7 @@ static void load_profile(const char *ini_fn)
 		reload_button_clicked(NULL, NULL);
 }
 
-static GtkWidget * fmcomms6_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * fmcomms6_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	struct iio_channel *ch0, *ch1;
@@ -142,7 +142,7 @@ static GtkWidget * fmcomms6_init(GtkWidget *notebook, const char *ini_fn)
 	pll = iio_context_find_device(ctx, PLL_DEVICE);
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	if (osc_load_glade_file(builder, "fmcomms6") < 0)
 		return NULL;
@@ -197,13 +197,13 @@ static GtkWidget * fmcomms6_init(GtkWidget *notebook, const char *ini_fn)
 	return fmcomms6_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void fmcomms6_get_preferred_size(int *width, int *height)
+static void fmcomms6_get_preferred_size(const struct osc_plugin *plugin, int *width, int *height)
 {
 	if (width)
 		*width = 640;
@@ -211,7 +211,7 @@ static void fmcomms6_get_preferred_size(int *width, int *height)
 		*height = 480;
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -223,13 +223,13 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	save_profile(ini_fn);
+	save_profile(NULL, ini_fn);
 	osc_destroy_context(ctx);
 }
 
-static bool fmcomms6_identify(void)
+static bool fmcomms6_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

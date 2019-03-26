@@ -818,7 +818,7 @@ static void reload_settings(void)
 		if (plugin && !strncmp(plugin->name, "ad9371", 12)) {
 			if (plugin->handle_external_request) {
 				g_usleep(1 * G_USEC_PER_SEC);
-				plugin->handle_external_request("Reload Settings");
+				plugin->handle_external_request(NULL, "Reload Settings");
 			}
 		}
 	}
@@ -1032,7 +1032,7 @@ static void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
 		gtk_widget_show(tohide);
 }
 
-static int handle_external_request (const char *request)
+static int handle_external_request (struct osc_plugin *plugin, const char *request)
 {
 	int ret = 0;
 
@@ -1047,7 +1047,7 @@ static int handle_external_request (const char *request)
 	return ret;
 }
 
-static int ad9371adv_handle_driver(const char *attrib, const char *value)
+static int ad9371adv_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	int ret = 0;
 
@@ -1064,13 +1064,13 @@ static int ad9371adv_handle_driver(const char *attrib, const char *value)
 	return ret;
 }
 
-static int ad9371adv_handle(int line, const char *attrib, const char *value)
+static int ad9371adv_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	return osc_plugin_default_handle(ctx, line, attrib, value,
-			ad9371adv_handle_driver);
+			ad9371adv_handle_driver, NULL);
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 
 	update_from_ini(ini_fn, THIS_DRIVER, dev,
@@ -1081,7 +1081,7 @@ static void load_profile(const char *ini_fn)
 
 }
 
-static GtkWidget * ad9371adv_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * ad9371adv_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkWidget *ad9371adv_panel;
 
@@ -1092,7 +1092,7 @@ static GtkWidget * ad9371adv_init(GtkWidget *notebook, const char *ini_fn)
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
 	builder = gtk_builder_new();
 
@@ -1132,13 +1132,13 @@ static GtkWidget * ad9371adv_init(GtkWidget *notebook, const char *ini_fn)
 	return ad9371adv_panel;
 }
 
-static void update_active_page(gint active_page, gboolean is_detached)
+static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
 {
 	this_page = active_page;
 	plugin_detached = is_detached;
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -1148,13 +1148,13 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	save_profile(ini_fn);
+	save_profile(NULL, ini_fn);
 	osc_destroy_context(ctx);
 }
 
-static bool ad9371adv_identify(void)
+static bool ad9371adv_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

@@ -19,6 +19,7 @@
 
 #include <iio.h>
 
+#include "compat.h"
 #include "fru.h"
 #include "osc.h"
 #include "config.h"
@@ -129,7 +130,7 @@ static size_t write_fru(char *eeprom)
 	gtk_list_store_clear(store);
 
 	for (j = 0; j < n; j++) {
-		if (namelist[j]->d_type == DT_REG && str_endswith(namelist[j]->d_name, ".bin"))
+		if (is_dirent_reqular_file(namelist[j]) && str_endswith(namelist[j]->d_name, ".bin"))
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(fru_file_list), namelist[j]->d_name);
 		free(namelist[j]);
 	}
@@ -428,7 +429,7 @@ static void refresh_usb(void)
 						strlen(")), serial=")));
 			}
 		}
-		if (active_pid != -1 && !strcmp(pid, current)) {
+		if (active_pid != -1 && current && !strcmp(pid, current)) {
 			index = i;
 		}
 		usb_pids[i]=pid;
@@ -464,6 +465,11 @@ nope:
 	gtk_widget_set_sensitive(dialogs.connect_usbd,true);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd), index);
+
+	if (current) {
+		free(current);
+		current = NULL;
+	}
 }
 
 #ifdef SERIAL_BACKEND
@@ -731,6 +737,7 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 		ret = gtk_dialog_run(GTK_DIALOG(data->connect));
 		switch (ret) {
 		case GTK_RESPONSE_APPLY:
+			/* Refresh button */
 			widget_set_cursor(data->connect, GDK_WATCH);
 			connect_clear(NULL);
 			has_context = connect_fillin(data);
@@ -1124,17 +1131,10 @@ void dialogs_init(GtkBuilder *builder)
 	g_object_bind_property(dialogs.connect_net, "active", tmp, "sensitive", 0);
 	g_object_bind_property(dialogs.connect_net, "active", dialogs.net_ip, "sensitive", 0);
 
-	g_object_bind_property(dialogs.connect_usb, "active",
-		       GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")), "sensitive", 0);
-	g_object_bind_property(dialogs.connect_usb, "active", dialogs.connect_usbd, "sensitive", 0);
-
 	g_object_bind_property(dialogs.connect_serial, "active",
 		       GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_label")), "sensitive", 0);
 	g_object_bind_property(dialogs.connect_serial, "active", dialogs.connect_seriald, "sensitive", 0);
 	g_object_bind_property(dialogs.connect_serial, "active", dialogs.connect_serialbr, "sensitive", 0);
-
-	g_signal_connect(G_OBJECT(dialogs.connect_usbd), "changed",
-			(GCallback) hide_ok_btn, NULL);
 
 	g_signal_connect(G_OBJECT(dialogs.connect_seriald), "changed",
 			(GCallback) hide_ok_btn, NULL);
@@ -1143,9 +1143,6 @@ void dialogs_init(GtkBuilder *builder)
 			false);
 	gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_label")),
 			false);
-	g_signal_connect(G_OBJECT(dialogs.connect_usb), "toggled",
-			(GCallback) connect_clear, NULL);
-	gtk_widget_set_sensitive(dialogs.connect_usbd, false);
 
 	g_signal_connect(G_OBJECT(dialogs.connect_serial), "toggled",
 			(GCallback) connect_clear, NULL);
@@ -1153,16 +1150,21 @@ void dialogs_init(GtkBuilder *builder)
 	gtk_widget_set_sensitive(dialogs.connect_serialbr, false);
 
 	/* test USB backend & hide if it's not supported */
-	ctx = iio_create_context_from_uri("usb:expected_error");
-	if (errno == ENOSYS) {
+	if (!iio_has_backend("usb")) {
 		gtk_widget_hide(dialogs.connect_usbd);
 		gtk_widget_hide(dialogs.connect_usb);
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")));
-	} else if (errno != EINVAL) {
-		char buf[1024];
-		iio_strerror(errno, buf, sizeof(buf));
-		fprintf(stderr, "libiio issue - expecting 'EINVAL' (%i), and got '%s' (%i)\n",
-				EINVAL, buf, errno);
+	} else {
+		g_object_bind_property(dialogs.connect_usb, "active",
+				GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")),
+				"sensitive", 0);
+		g_object_bind_property(dialogs.connect_usb, "active", dialogs.connect_usbd,
+				"sensitive", 0);
+		g_signal_connect(G_OBJECT(dialogs.connect_usbd), "changed",
+				(GCallback) hide_ok_btn, NULL);
+		g_signal_connect(G_OBJECT(dialogs.connect_usb), "toggled",
+				(GCallback) connect_clear, NULL);
+		gtk_widget_set_sensitive(dialogs.connect_usbd, false);
 	}
 
 	/* Grey out the "local context" option if it is not available */

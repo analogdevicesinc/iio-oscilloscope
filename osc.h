@@ -58,6 +58,8 @@ extern void math_expression_objects_clean(void);
 #define DBG(D...)
 #endif
 
+struct osc_plugin;
+
 struct marker_type {
 	gfloat x;
 	gfloat y;
@@ -149,7 +151,8 @@ int osc_log_value(struct iio_context *ctx,
 		const char *attribute, const char *value);
 int osc_plugin_default_handle(struct iio_context *ctx,
 		int line, const char *attrib, const char *value,
-		int (*driver_handle)(const char *, const char *));
+		int (*driver_handle)(struct osc_plugin *plugin, const char *, const char *),
+		struct osc_plugin *plugin);
 
 /* Private functions */
 extern int load_default_profile(char *filename, bool load_plugins);
@@ -178,5 +181,6 @@ static inline int osc_iio_device_get_trigger(const struct iio_device *dev,
 }
 
 extern int osc_load_glade_file(GtkBuilder *builder, const char *fname);
+extern int osc_load_objects_from_glade_file(GtkBuilder *builder, const char *fname, gchar **object_ids);
 
 #endif

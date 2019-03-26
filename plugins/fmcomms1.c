@@ -332,13 +332,14 @@ static void tx_sample_rate_changed(void *data)
 	GtkSpinButton *dac_freq_spin;
 	gdouble rate;
 	GtkWidget *tone_freq;
-	int tone;
+	unsigned tone;
 
 	dac_freq_spin = GTK_SPIN_BUTTON(tx_widgets[num_dac_freq].widget);
 	rate = gtk_spin_button_get_value(dac_freq_spin) / 2.0;
 	dac_data_manager_freq_widgets_range_update(dac_tx_manager, rate);
 
-	for (tone = TX1_T1_I; tone <= TX1_T2_Q; tone++) {
+	for (tone = dac_data_manager_dds_tone(0, TONE_1, TONE_I);
+		tone <= dac_data_manager_dds_tone(0, TONE_2, TONE_Q); tone++) {
 		tone_freq = dac_data_manager_get_widget(dac_tx_manager,
 				tone, WIDGET_FREQUENCY);
 		g_signal_emit_by_name(tone_freq, "value-changed", NULL);
@@ -1547,7 +1548,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-static int fmcomms1_handle_driver(const char *attrib, const char *value)
+static int fmcomms1_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
 	if (MATCH_ATTRIB("dds_mode")) {
 		dac_data_manager_set_dds_mode(dac_tx_manager,
@@ -1622,13 +1623,13 @@ static int fmcomms1_handle_driver(const char *attrib, const char *value)
 	return 0;
 }
 
-static int fmcomms1_handle(int line, const char *attrib, const char *value)
+static int fmcomms1_handle(struct osc_plugin *plugin, int line, const char *attrib, const char *value)
 {
 	return osc_plugin_default_handle(ctx, line, attrib, value,
-			fmcomms1_handle_driver);
+			fmcomms1_handle_driver, NULL);
 }
 
-static void load_profile(const char *ini_fn)
+static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 {
 	unsigned int i;
 
@@ -1654,7 +1655,7 @@ static void load_profile(const char *ini_fn)
 		char *value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				fmcomms1_driver_attribs[i]);
 		if (value) {
-			fmcomms1_handle_driver(
+			fmcomms1_handle_driver(NULL,
 					fmcomms1_driver_attribs[i], value);
 			free(value);
 		}
@@ -1668,7 +1669,7 @@ static void load_profile(const char *ini_fn)
 	}
 }
 
-static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * fmcomms1_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *fmcomms1_panel;
@@ -1768,22 +1769,22 @@ static GtkWidget * fmcomms1_init(GtkWidget *notebook, const char *ini_fn)
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "tx_lo_box")));
 
 	if (ini_fn)
-		load_profile(ini_fn);
+		load_profile(NULL, ini_fn);
 
-	dds1_freq = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_I, WIDGET_FREQUENCY);
-	dds2_freq = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_I, WIDGET_FREQUENCY);
-	dds3_freq = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_Q, WIDGET_FREQUENCY);
-	dds4_freq = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_Q, WIDGET_FREQUENCY);
+	dds1_freq = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_I), WIDGET_FREQUENCY);
+	dds2_freq = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_I), WIDGET_FREQUENCY);
+	dds3_freq = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_Q), WIDGET_FREQUENCY);
+	dds4_freq = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_Q), WIDGET_FREQUENCY);
 
-	dds1_scale = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_I, WIDGET_SCALE);
-	dds2_scale = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_I, WIDGET_SCALE);
-	dds3_scale = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_Q, WIDGET_SCALE);
-	dds4_scale = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_Q, WIDGET_SCALE);
+	dds1_scale = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_I), WIDGET_SCALE);
+	dds2_scale = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_I), WIDGET_SCALE);
+	dds3_scale = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_Q), WIDGET_SCALE);
+	dds4_scale = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_Q), WIDGET_SCALE);
 
-	dds1_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_I, WIDGET_PHASE);
-	dds2_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_I, WIDGET_PHASE);
-	dds3_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T1_Q, WIDGET_PHASE);
-	dds4_phase = dac_data_manager_get_widget(dac_tx_manager, TX1_T2_Q, WIDGET_PHASE);
+	dds1_phase = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_I), WIDGET_PHASE);
+	dds2_phase = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_I), WIDGET_PHASE);
+	dds3_phase = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_1, TONE_Q), WIDGET_PHASE);
+	dds4_phase = dac_data_manager_get_widget(dac_tx_manager, dac_data_manager_dds_tone(0, TONE_2, TONE_Q), WIDGET_PHASE);
 
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
 	if (!adc)
@@ -2007,7 +2008,7 @@ static void save_widgets_to_ini(FILE *f)
 			!!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gain_locked)));
 }
 
-static void save_profile(const char *ini_fn)
+static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 {
 	FILE *f = fopen(ini_fn, "a");
 	if (f) {
@@ -2031,9 +2032,9 @@ static void save_profile(const char *ini_fn)
 	}
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	save_profile(ini_fn);
+	save_profile(NULL, ini_fn);
 
 	if (dac_tx_manager) {
 		dac_data_manager_free(dac_tx_manager);
@@ -2043,7 +2044,7 @@ static void context_destroy(const char *ini_fn)
 	osc_destroy_context(ctx);
 }
 
-static bool fmcomms1_identify(void)
+static bool fmcomms1_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();

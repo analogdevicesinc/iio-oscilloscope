@@ -1568,7 +1568,7 @@ fail:
 /*
  *  Main function
  */
-static GtkWidget * debug_init(GtkWidget *notebook, const char *ini_fn)
+static GtkWidget * debug_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
 {
 	GtkBuilder *builder;
 	GtkWidget *debug_panel;
@@ -1639,8 +1639,10 @@ static GtkWidget * debug_init(GtkWidget *notebook, const char *ini_fn)
 
 	for (i = 0; i < nb_devs; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_device_list),
-							(const gchar *)iio_device_get_name(dev));
+		const gchar *dev_name = iio_device_get_name(dev);
+		if (!dev_name)
+			continue;
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_device_list), dev_name);
 	}
 
 	/* Connect signals */
@@ -1682,12 +1684,12 @@ static GtkWidget * debug_init(GtkWidget *notebook, const char *ini_fn)
 	return debug_panel;
 }
 
-static void context_destroy(const char *ini_fn)
+static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	osc_destroy_context(ctx);
 }
 
-static bool debug_identify(void)
+static bool debug_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
