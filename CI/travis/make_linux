@@ -14,7 +14,7 @@ handle_default() {
 		cmake ..
 		make
 	else
-		export PKG_CONFIG_PATH="$STAGINGDIR/lib/pkgconfig" ; \
+		export PKG_CONFIG_PATH="$STAGINGDIR/lib/pkgconfig:$PKG_CONFIG_PATH" ; \
 		cmake -DCMAKE_PREFIX_PATH="$STAGINGDIR" -DCMAKE_INSTALL_PREFIX="$STAGINGDIR" \
 			-DCMAKE_EXE_LINKER_FLAGS="-L${STAGINGDIR}/lib" ..
 		CFLAGS=-I${STAGINGDIR}/include LDFLAGS=-L${STAGINGDIR}/lib make
