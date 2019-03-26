@@ -1,0 +1,5 @@
+#!/bin/sh -xe
+
+export PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig
+
+. CI/travis/make_linux
