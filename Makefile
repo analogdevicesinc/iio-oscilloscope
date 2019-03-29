@@ -216,7 +216,7 @@ uninstall-all: uninstall-common-files
 	xdg-icon-resource uninstall --noupdate --size 64 adi-osc
 	xdg-icon-resource uninstall --noupdate --size 128 adi-osc
 	xdg-icon-resource uninstall --size 256 adi-osc
-	xdg-desktop-menu uninstall osc.desktop
+	xdg-desktop-menu uninstall adi-osc.desktop
 	ldconfig
 
 install: $(if $(DEBIAN_INSTALL),install-common-files,install-all)
