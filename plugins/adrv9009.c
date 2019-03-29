@@ -235,15 +235,17 @@ static void destroy_dds_sr_attribs_list(void)
 
 static void multichip_sync()
 {
-	struct iio_device *hmc7004_dev = iio_context_find_device(ctx, "hmc7044");
+	struct iio_device *hmc7004_dev;
 
-	if (!hmc7004_dev) {
-		fprintf(stderr, "Multichip sync failed. No hmc7004 device found\n");
+	if (plugin_single_device_mode)
 		return;
-	}
 
-	iio_device_reg_write(hmc7004_dev, 0x1, 0);
-	iio_device_reg_write(hmc7004_dev, 0x5a, 0);
+	hmc7004_dev = iio_context_find_device(ctx, "hmc7044");
+
+	if (hmc7004_dev) {
+		iio_device_reg_write(hmc7004_dev, 0x1, 0);
+		iio_device_reg_write(hmc7004_dev, 0x5a, 0);
+	}
 
 	guint i = 0;
 	for (; i <= 11; i++) {
@@ -1577,6 +1579,9 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 
 	if (!cap)
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_rx")));
+
+	if (plugin_single_device_mode)
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "mcs_sync")));
 
 	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 	can_update_widgets = true;
