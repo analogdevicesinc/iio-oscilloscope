@@ -40,7 +40,7 @@
 
 #define HANNING_ENBW 1.50
 
-#define THIS_DRIVER "FMComms2/3/4"
+#define THIS_DRIVER "AD936X"
 #define PHY_DEVICE "ad9361-phy"
 #define DDS_DEVICE "cf-ad9361-dds-core-lpc"
 #define CAP_DEVICE "cf-ad9361-lpc"
