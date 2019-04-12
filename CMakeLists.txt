@@ -175,6 +175,12 @@ install(TARGETS oscmain RUNTIME DESTINATION bin)
 # Set default CMAKE_PREFIX_PATH to CMAKE_SYSTEM_PREFIX_PATH
 set(CMAKE_PREFIX_PATH ${CMAKE_SYSTEM_PREFIX_PATH})
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+	configure_file(org.adi.pkexec.osc.policy.cmakein ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy @ONLY)
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy
+		DESTINATION /usr/share/polkit-1/actions/)
+endif()
+
 set(PLIB_DEST lib/osc)
 set(SHARE_DEST share/osc)
 set(GLADE_FILES_DEST ${SHARE_DEST}/glade)
