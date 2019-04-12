@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN" "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>Analog Devices Inc.</vendor>
+  <vendor_url>https://wiki.analog.com/resources/tools-software/linux-software/iio_oscilloscope</vendor_url>
+  <icon_name>adi-osc</icon_name>
+  <action id="org.adi.pkexec.osc">
+    <description>The ADI IIO Oscilloscope is a example application, which demonstrates how to interface different evaluation boards from within a Linux system.</description>
+    <message>Authentication is required to run osc</message>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin_keep</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">@CMAKE_INSTALL_PREFIX@/bin/osc</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+</policyconfig>
