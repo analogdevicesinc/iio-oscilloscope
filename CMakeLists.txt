@@ -193,6 +193,12 @@ file(GLOB ICON_FILES icons/*)
 
 install(FILES ${GLADE_FILES} ${ICON_FILES} DESTINATION ${SHARE_DEST})
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+	configure_file(adi-osc.desktop.cmakein ${CMAKE_CURRENT_BINARY_DIR}/adi-osc.desktop @ONLY)
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/adi-osc.desktop
+		DESTINATION /usr/share/applications/)
+endif()
+
 install(DIRECTORY icons DESTINATION ${SHARE_DEST})
 
 foreach(plib_dest xmls filters waveforms profiles block_diagrams)
