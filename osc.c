@@ -436,6 +436,24 @@ struct iio_context *get_context_from_osc(void)
 	return ctx;
 }
 
+/*
+ * Helper function to move window to valid coordinate on screen
+ */
+bool move_gtk_window_on_screen(GtkWindow   *window,
+		  gint         x,
+		  gint         y)
+{
+	// get screen dimensions
+	gint width  = gdk_screen_width();
+	gint height = gdk_screen_height();
+
+	if(x <= width && y <= height) {
+		gtk_window_move(window, x, y);
+		return true; // window was moved
+	}
+	return false; // window coordinates out of range
+}
+
 const void * plugin_get_device_by_reference(const char * device_name)
 {
 	return device_name_check(device_name);
@@ -2015,13 +2033,13 @@ static void plugin_restore_ini_state(const char *plugin_name,
 		plugin_window = GTK_WINDOW(gtk_widget_get_toplevel(button));
 		if (dplugin->detached_state == true) {
 			dplugin->xpos = value;
-			gtk_window_move(plugin_window, dplugin->xpos, dplugin->ypos);
+			move_gtk_window_on_screen(plugin_window, dplugin->xpos, dplugin->ypos);
 		}
 	} else if (!strcmp(attribute, "y_pos")) {
 		plugin_window = GTK_WINDOW(gtk_widget_get_toplevel(button));
 		if (dplugin->detached_state == true) {
 			dplugin->ypos = value;
-			gtk_window_move(plugin_window, dplugin->xpos, dplugin->ypos);
+			move_gtk_window_on_screen(plugin_window, dplugin->xpos, dplugin->ypos);
 		}
 	}
 }
@@ -2257,7 +2275,7 @@ nope:
 		free(value);
 	}
 
-	gtk_window_move(GTK_WINDOW(main_window), x_pos, y_pos);
+	move_gtk_window_on_screen(GTK_WINDOW(main_window), x_pos, y_pos);
 
 	foreach_in_ini(filename, capture_profile_handler);
 

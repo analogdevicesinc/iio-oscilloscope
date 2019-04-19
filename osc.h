@@ -107,6 +107,7 @@ bool is_input_device(const struct iio_device *dev);
 bool is_output_device(const struct iio_device *dev);
 
 struct iio_context * get_context_from_osc(void);
+bool move_gtk_window_on_screen(GtkWindow *window, gint x, gint y);
 const void * plugin_get_device_by_reference(const char *device_name);
 int plugin_data_capture_size(const char *device);
 int plugin_data_capture_of_plot(OscPlot *plot, const char *device,
