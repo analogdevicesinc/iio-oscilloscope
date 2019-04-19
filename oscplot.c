@@ -5163,12 +5163,12 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 			} else if (MATCH_NAME("plot_x_pos")) {
 				if (atoi(value)) {
 					priv->plot_x_pos = atoi(value);
-					gtk_window_move(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
+					move_gtk_window_on_screen(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
 				}
 			} else if (MATCH_NAME("plot_y_pos")) {
 				if (atoi(value)) {
 					priv->plot_y_pos = atoi(value);
-					gtk_window_move(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
+					move_gtk_window_on_screen(GTK_WINDOW(priv->window), priv->plot_x_pos, priv->plot_y_pos);
 				}
 			} else if (MATCH_NAME("marker_type")) {
 				if (!strncmp(value, PEAK_MRK, strlen(PEAK_MRK))) {
