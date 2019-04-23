@@ -43,7 +43,7 @@
 #define DDS_DEVICE	"cf-ad9361-dds-core-lpc"
 #define DDS_SLAVE_DEVICE	"cf-ad9361-dds-core-B"
 
-#define THIS_DRIVER "FMComms2/3/4/5 Advanced"
+#define THIS_DRIVER "AD936X Advanced"
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
