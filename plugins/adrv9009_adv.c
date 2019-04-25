@@ -911,6 +911,12 @@ static char *set_widget_value(GtkWidget *widget, struct w_info *item, long long 
 
 	return NULL;
 }
+
+static void connect_widget_close_cb(gpointer data, GClosure *closure)
+{
+	g_free(data);
+}
+
 static void connect_widget(struct osc_plugin *plugin, struct w_info *item, long long val)
 {
 	char *signal;
@@ -921,7 +927,8 @@ static void connect_widget(struct osc_plugin *plugin, struct w_info *item, long 
 	widget = GTK_WIDGET(gtk_builder_get_object(plugin->priv->builder, item->name));
 	signal = set_widget_value(widget, item, val);
 	g_builder_connect_signal_data(plugin->priv->builder, item->name, signal,
-	                         G_CALLBACK(signal_handler_cb), data_to_pass, (GClosureNotify)g_free, 0);
+	                         G_CALLBACK(signal_handler_cb), data_to_pass,
+				 connect_widget_close_cb, 0);
 }
 
 static void update_widget(GtkBuilder *builder, struct w_info *item, long long val)
