@@ -68,7 +68,7 @@ typedef struct _fastlock_profile {
 
 /* Plugin Global Variables */
 static const double sweep_freq_step = 56; /* 56 MHz */
-static const double sampling_rate = 61.44; /* 61.44 MSPS */
+static const long long sampling_rate = 61440000; /* 61.44 MSPS */
 
 static struct iio_context *ctx;
 static struct iio_device *dev, *cap;
@@ -159,29 +159,29 @@ static ssize_t demux_sample(const struct iio_channel *chn,
 	return size;
 }
 
-static void device_set_rx_sampling_freq(struct iio_device *dev, double freq)
+static void device_set_rx_sampling_freq(struct iio_device *dev, long long freq_hz)
 {
 	struct iio_channel *ch0;
 
 	ch0 = iio_device_find_channel(dev, "voltage0", false);
 	if (ch0)
-		iio_channel_attr_write_double(ch0, "sampling_frequency", freq);
+		iio_channel_attr_write_longlong(ch0, "sampling_frequency", freq_hz);
 	else
 		fprintf(stderr, "Failed to retrieve iio channel in %s\n", __func__);
 }
 
-static double device_get_rx_sampling_freq(struct iio_device *dev)
+static long long device_get_rx_sampling_freq(struct iio_device *dev)
 {
-	double freq = 0.0;
+	long long freq_hz = 0;
 	struct iio_channel *ch0;
 
 	ch0 = iio_device_find_channel(dev, "voltage0", false);
 	if (ch0)
-		iio_channel_attr_read_double(ch0, "sampling_frequency", &freq);
+		iio_channel_attr_read_longlong(ch0, "sampling_frequency", &freq_hz);
 	else
 		fprintf(stderr, "Failed to retrieve iio channel in %s\n", __func__);
 
-	return freq;
+	return freq_hz;
 }
 
 /* Generate available values for the Resolution Bandwidth.
@@ -378,14 +378,21 @@ static bool configure_data_capture(plugin_setup *setup)
 	struct extra_info *info;
 	struct extra_dev_info *dev_info;
 	unsigned int i;
+	long long rate;
 
 	g_return_val_if_fail(setup, false);
 
-	device_set_rx_sampling_freq(dev, MHZ_TO_HZ(sampling_rate));
+	device_set_rx_sampling_freq(dev, sampling_rate);
+	rate = device_get_rx_sampling_freq(cap);
+	if (rate != sampling_rate) {
+		fprintf(stderr, "Failed to set the rx sampling rate to %lld"
+			"in %s\n", sampling_rate, __func__);
+		return false;
+	}
 
 	dev_info = iio_device_get_data(cap);
 	dev_info->sample_count = setup->fft_size;
-	dev_info->adc_freq = device_get_rx_sampling_freq(cap);
+	dev_info->adc_freq = rate;
 	if (dev_info->adc_freq >= 1000000) {
 		dev_info->adc_scale = 'M';
 		dev_info->adc_freq /= 1000000.0;
@@ -397,11 +404,6 @@ static bool configure_data_capture(plugin_setup *setup)
 	} else {
 		dev_info->adc_scale = '?';
 		dev_info->adc_freq = 0.0;
-	}
-	if (dev_info->adc_freq != sampling_rate) {
-		fprintf(stderr, "Failed to set the rx sampling rate to %f"
-			"in %s\n", sampling_rate, __func__);
-		return false;
 	}
 
 	for (i = 0; i < iio_device_get_channels_count(cap); i++) {
@@ -839,7 +841,7 @@ static GtkWidget * analyzer_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	gtk_adjustment_set_lower(gtk_spin_button_get_adjustment(
 		GTK_SPIN_BUTTON(freq_bw)), sweep_freq_step);
 	comboboxtext_rbw_fill(GTK_COMBO_BOX_TEXT(available_RBWs),
-				sampling_rate);
+				HZ_TO_MHZ(sampling_rate));
 	gtk_combo_box_set_active(GTK_COMBO_BOX(available_RBWs), 6);
 
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(receiver1), true);
