@@ -243,7 +243,7 @@ static void multichip_sync()
 	hmc7004_dev = iio_context_find_device(ctx, "hmc7044");
 
 	if (hmc7004_dev) {
-		iio_device_reg_write(hmc7004_dev, 0x1, 0);
+		/* Turn off continous SYSREF, and enable GPI SYSREF request */
 		iio_device_reg_write(hmc7004_dev, 0x5a, 0);
 	}
 
