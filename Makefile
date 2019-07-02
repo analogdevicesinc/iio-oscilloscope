@@ -99,6 +99,7 @@ PLUGINS=\
 	plugins/AD5628_1.$(SO) \
 	plugins/AD7303.$(SO) \
 	plugins/cn0357.$(SO) \
+	plugins/cn0508.$(SO) \
 	plugins/motor_control.$(SO) \
 	plugins/dmm.$(SO) \
 	plugins/debug.$(SO) \

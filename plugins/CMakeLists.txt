@@ -19,7 +19,7 @@ set(PLUGINS fmcomms1 fmcomms2 fmcomms5 fmcomms6
 	fmcomms11 ad9371 adrv9009 adrv9009_adv
 	fmcomms2_adv ad9371_adv ad6676 pr_config
 	fmcadc3 daq2 ad9739a AD5628_1 AD7303 cn0357
-	motor_control dmm debug)
+	cn0508 motor_control dmm debug)
 
 set(PLUGIN_GLADE_FILES "")
 
