@@ -101,6 +101,7 @@ PLUGINS=\
 	plugins/AD7303.$(SO) \
 	plugins/cn0357.$(SO) \
 	plugins/cn0508.$(SO) \
+	plugins/cn0511.$(SO) \
 	plugins/motor_control.$(SO) \
 	plugins/lidar.$(SO) \
 	plugins/dmm.$(SO) \
