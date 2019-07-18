@@ -13,16 +13,11 @@ matrix:
   include:
     - compiler: clang
       os: linux
-      dist: trusty
       env:
         - TEST_NON_GIT_REPO=1
         - LDIST=DO_NOT_DEPLOY
     - compiler: gcc
       os: linux
-      dist: trusty
-    - compiler: gcc
-      os: linux
-      dist: xenial
       env:
         - EXTRA_SSH=-oHostKeyAlgorithms=+ssh-dss
     - os: linux
