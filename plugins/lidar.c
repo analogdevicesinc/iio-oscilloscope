@@ -120,6 +120,11 @@ static void auto_cfg_button_changed_cb(GtkSpinButton *btn)
 		if (btn == auto_cfg_btns[i])
 			break;
 	}
+	if (i == 4) {
+		fprintf(stderr, "Could not find the current button."
+			"func: %s\n", __func__);
+		return;
+	}
 
 	old_val = auto_cfg_prev_values[i];
 
