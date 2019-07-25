@@ -101,6 +101,7 @@ PLUGINS=\
 	plugins/cn0357.$(SO) \
 	plugins/cn0508.$(SO) \
 	plugins/motor_control.$(SO) \
+	plugins/lidar.$(SO) \
 	plugins/dmm.$(SO) \
 	plugins/debug.$(SO) \
 	$(if $(WITH_MINGW),,plugins/spectrum_analyzer.so) \
@@ -189,6 +190,7 @@ install-common-files: $(OSC) $(PLUGINS)
 	install -m 644 ./icons/osc_capture.png $(PSHARE)
 	install -m 644 ./icons/osc_generator.png $(PSHARE)
 	install -m 644 ./icons/ch_color_icon.png $(PSHARE)
+	install -m 644 ./icons/laser_symbol.png $(PSHARE)
 	install $(PLUGINS) $(PLIB)
 	install -m 644 ./xmls/* $(PLIB)/xmls
 	install -m 644 ./filters/*.* $(PLIB)/filters
