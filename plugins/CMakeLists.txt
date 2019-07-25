@@ -15,11 +15,31 @@
 #  the Free Software Foundation, Inc., 51 Franklin Street,
 #  Boston, MA 02110-1301, USA.
 
-set(PLUGINS fmcomms1 fmcomms2 fmcomms5 fmcomms6
-	fmcomms11 ad9371 adrv9009 adrv9009_adv
-	fmcomms2_adv ad9371_adv ad6676 pr_config
-	fmcadc3 daq2 ad9739a AD5628_1 AD7303 cn0357
-	cn0508 motor_control dmm debug)
+set(PLUGINS
+	fmcomms1
+	fmcomms2
+	fmcomms2_adv
+	fmcomms5
+	fmcomms6
+	fmcomms11
+	ad9371
+	ad9371_adv
+	adrv9009
+	adrv9009_adv
+	ad6676
+	fmcadc3
+	daq2
+	ad9739a
+	AD5628_1
+	AD7303
+	cn0357
+	cn0508
+	pr_config
+	motor_control
+	lidar
+	dmm
+	debug
+)
 
 set(PLUGIN_GLADE_FILES "")
 
