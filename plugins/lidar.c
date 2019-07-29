@@ -18,12 +18,13 @@
 #include "../osc.h"
 #include "../iio_widget.h"
 #include "../osc_plugin.h"
+#include "../datatypes.h"
 
 #define THIS_DRIVER "LIDAR"
 
 #define PULSE_CAPTURE_DEV "7c700000.axi-pulse-capture"
 #define AFE_DEVICE "ad5627"
-
+#define CAP_DEVICE "axi-ad9094-hpc"
 
 static struct iio_context *ctx;
 static struct iio_device *pulse_dev;
@@ -325,6 +326,31 @@ static GtkWidget * lidar_init(struct osc_plugin *plugin, GtkWidget *notebook, co
 	make_widget_update_signal_based(widgets, num_widgets);
 
 	iio_update_widgets(widgets, num_widgets);
+
+	/* Information to be passed to the osc */
+	struct iio_device *adc_dev;
+	struct iio_channel *adc_ch4;
+
+	adc_dev = iio_context_find_device(get_context_from_osc(), CAP_DEVICE);
+	if (!adc_dev) {
+		fprintf(stderr, "device %s not found."
+				"This will cause limited functionality.", CAP_DEVICE);
+		return lidar_panel;
+	}
+
+	adc_ch4 = iio_device_find_channel(adc_dev, "voltage4", false);
+	if (adc_ch4) {
+		struct extra_info *ch_info = iio_channel_get_data(adc_ch4);
+		if (ch_info) {
+			ch_info->constraints = CONSTR_CHN_INITIAL_ENABLED | CONSTR_CHN_UNTOGGLEABLE;
+		} else {
+			fprintf(stderr, "no extra device info for device %s found."
+				"This will cause limited functionality.", CAP_DEVICE);
+		}
+	} else {
+		fprintf(stderr, "%s plugin couldn't find device %s."
+			"This will cause limited functionality", THIS_DRIVER, CAP_DEVICE);
+	}
 
 	return lidar_panel;
 }
