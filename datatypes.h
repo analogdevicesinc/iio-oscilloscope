@@ -40,6 +40,11 @@ enum {
 	TRANSFORMS_TYPES_COUNT
 };
 
+enum plot_channel_constraints {
+	CONSTR_CHN_INITIAL_ENABLED = 1 << 0,  /* The channel initial state is owerwritten to ENABLE state */
+	CONSTR_CHN_UNTOGGLEABLE = 1 << 1,     /* The channel state cannot be changed and is displayed as grey-out */
+};
+
 typedef struct _transform Transform;
 typedef struct _tr_list TrList;
 
@@ -50,6 +55,7 @@ struct extra_info {
 	int shadow_of_enabled;
 	bool may_be_enabled;
 	double lo_freq;
+	unsigned int constraints;
 };
 
 struct extra_dev_info {
