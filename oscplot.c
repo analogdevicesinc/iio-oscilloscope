@@ -3367,6 +3367,16 @@ static void iter_children_sensitivity_update(GtkTreeModel *model, GtkTreeIter *i
 
 	next_iter = true;
 	while (next_iter) {
+		struct iio_channel *chn;
+		gtk_tree_model_get(model, &child, ELEMENT_REFERENCE, &chn, -1);
+		struct extra_info *info = iio_channel_get_data(chn);
+		if (info) {
+			if (info->constraints & CONSTR_CHN_UNTOGGLEABLE) {
+				next_iter = gtk_tree_model_iter_next(model, &child);
+				continue;
+			}
+		}
+
 		gtk_tree_store_set(GTK_TREE_STORE(model), &child, SENSITIVE, state, -1);
 		if (state == false)
 			gtk_tree_store_set(GTK_TREE_STORE(model), &child, CHANNEL_ACTIVE, state, -1);
@@ -3673,16 +3683,26 @@ static void plot_channels_add_channel(OscPlot *plot, PlotChn *pchn)
 	if (ctx && (iio_dev = iio_context_find_device(ctx, pchn->parent_name)))
 		iio_chn = iio_device_find_channel(iio_dev, pchn->name, false);
 
+	bool sensitive = true;
+	bool active = false;
+
+	/* Check if there are any channel constraints */
+	struct extra_info *ch_info = iio_channel_get_data(iio_chn);
+	if (ch_info) {
+		active = (ch_info->constraints & CONSTR_CHN_INITIAL_ENABLED);
+		sensitive = !(ch_info->constraints & CONSTR_CHN_UNTOGGLEABLE);
+	}
+
 	gtk_tree_store_append(treestore, &child_iter, &parent_iter);
 	gtk_tree_store_set(treestore, &child_iter,
 			ELEMENT_NAME, pchn->name,
 			IS_CHANNEL, TRUE,
 			CHANNEL_TYPE, pchn->type,
-			CHANNEL_ACTIVE, FALSE,
+			CHANNEL_ACTIVE, active,
 			ELEMENT_REFERENCE, iio_chn,
 			CHANNEL_SETTINGS, pchn,
 			CHANNEL_COLOR_ICON, new_icon,
-			SENSITIVE, TRUE,
+			SENSITIVE, sensitive,
 			PLOT_TYPE, TIME_PLOT,
 			-1);
 }
