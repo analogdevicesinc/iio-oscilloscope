@@ -117,7 +117,7 @@ endif
 
 OSC_OBJS := osc.o oscplot.o datatypes.o iio_widget.o fru.o dialogs.o \
 	trigger_dialog.o xml_utils.o libini/libini.o libini2.o phone_home.o \
-	plugins/dac_data_manager.o plugins/fir_filter.o iio_utils.o \
+	plugins/dac_data_manager.o plugins/fir_filter.o iio_utils.o osc_preferences.o \
 	$(if $(WITH_MINGW),,eeprom.o)
 
 all: $(OSC) $(PLUGINS)
@@ -157,6 +157,7 @@ oscicon.o: oscicon.rc
 
 # Dependencies
 iio_utils.o: iio_utils.h
+osc_preferences.o: osc_preferences.h
 osc.o: iio_widget.h osc_plugin.h osc.h libini2.h
 oscmain.o: config.h osc.h
 oscplot.o: oscplot.h osc.h datatypes.h iio_widget.h libini2.h
