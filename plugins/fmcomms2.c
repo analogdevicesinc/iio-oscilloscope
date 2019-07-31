@@ -1999,7 +1999,7 @@ static GtkWidget * fmcomms2_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	adc_dev = iio_context_find_device(get_context_from_osc(), CAP_DEVICE);
 	if (adc_dev) {
 		adc_info = iio_device_get_data(adc_dev);
-		if (adc_info)
+		if (adc_info) /* TO DO: use osc preferences instead */
 			adc_info->plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
 	}
 
