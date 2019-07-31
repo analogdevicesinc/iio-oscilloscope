@@ -378,6 +378,19 @@ static void lidar_get_preferred_size(const struct osc_plugin *plugin,
 		*height = 480;
 }
 
+static OscPreferences* lidar_get_preferences_for_osc(const struct osc_plugin *plugin)
+{
+	OscPreferences *pref = osc_preferences_new();
+
+	pref->plot_preferences = osc_plot_preferences_new();
+	pref->plot_preferences->sample_count = g_new(unsigned int, 1);
+	*pref->plot_preferences->sample_count = 1024;
+
+	/* TO DO: add here the preferences about channel voltage4 */
+
+	return pref;
+}
+
 static bool lidar_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
@@ -392,5 +405,6 @@ struct osc_plugin plugin = {
 	.init = lidar_init,
 	.update_active_page = update_active_page,
 	.get_preferred_size = lidar_get_preferred_size,
+	.get_preferences_for_osc = lidar_get_preferences_for_osc,
 	.destroy = context_destroy,
 };

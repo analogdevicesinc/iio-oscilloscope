@@ -8,6 +8,8 @@
 #ifndef __OSC_PLUGIN_H__
 #define __OSC_PLUGIN_H__
 
+#include "osc_preferences.h"
+
 #include <gtk/gtk.h>
 
 /* Information needed to create a new plugin */
@@ -29,6 +31,7 @@ struct osc_plugin {
 	int (*handle_external_request) (struct osc_plugin *plugin, const char *request);
 	void (*update_active_page)(struct osc_plugin *plugin, gint active_page, gboolean is_detached);
 	void (*get_preferred_size)(const struct osc_plugin *plugin, int *width, int *size);
+	OscPreferences* (*get_preferences_for_osc)(const struct osc_plugin *plugin);
 	void (*destroy)(struct osc_plugin *plugin, const char *ini_fn);
 
 	void (*save_profile)(const struct osc_plugin *plugin, const char *ini_fn);
