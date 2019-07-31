@@ -45,6 +45,7 @@ static int num_check_fcts = 0;
 static GSList *plugin_lib_list = NULL;
 static GSList *dplugin_list = NULL;
 static struct osc_plugin *spect_analyzer_plugin = NULL;
+static OscPreferences *osc_preferences = NULL;
 GtkWidget *notebook;
 GtkWidget *infobar;
 GtkWidget *tooltips_en;
@@ -1463,7 +1464,11 @@ GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data)
 {
 	GtkWidget *new_plot;
 
-	new_plot = osc_plot_new(ctx);
+	if (osc_preferences && osc_preferences->plot_preferences)
+		new_plot = osc_plot_new_with_pref(ctx, osc_preferences->plot_preferences);
+	else
+		new_plot = osc_plot_new(ctx);
+
 	osc_plot_set_visible(OSC_PLOT(new_plot), true);
 	plot_init(new_plot);
 
@@ -1587,6 +1592,11 @@ static void do_quit(bool reload)
 	}
 
 	math_expression_objects_clean();
+
+	if (osc_preferences) {
+		osc_preferences_delete(osc_preferences);
+		osc_preferences = NULL;
+	}
 }
 
 void application_reload(struct iio_context *new_ctx, bool load_profile)
@@ -1852,6 +1862,27 @@ int load_default_profile(char *filename, bool load_plugins)
 	return ret;
 }
 
+static OscPreferences * aggregate_osc_preferences_from_plugins(GSList *plist)
+{
+	/* TO DO: implement this function to combine preferences from all
+	plugins. If two preferences are conflicting, signal that there is an
+	error in the design of the plugins and return NULL, otherwise return
+	the merged preferences from all plugins. For now we just get the first
+	preference that we encoutner. */
+
+	GSList *node;
+	struct osc_plugin *p;
+
+	for (node = plist; node; node = g_slist_next(node)) {
+		p = node->data;
+		if (p->get_preferences_for_osc) {
+			return p->get_preferences_for_osc(p);
+		}
+	}
+
+	return NULL;
+}
+
 static void plugins_get_preferred_size(GSList *plist, int *width, int *height)
 {
 	GSList *node;
@@ -1894,6 +1925,7 @@ void do_init(struct iio_context *new_ctx)
 {
 	init_device_list(new_ctx);
 	load_plugins(notebook, NULL);
+	osc_preferences = aggregate_osc_preferences_from_plugins(plugin_list);
 
 	int width = -1, height = -1;
 	plugins_get_preferred_size(plugin_list, &width, &height);
