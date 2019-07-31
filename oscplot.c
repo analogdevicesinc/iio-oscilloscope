@@ -306,6 +306,8 @@ struct _OscPlotPrivate
 	GtkTextBuffer* phase_buf;
 	GtkTextBuffer* math_expression;
 
+	OscPlotPreferences *preferences;
+
 	struct iio_context *ctx;
 
 	unsigned int nb_input_devices;
@@ -448,6 +450,18 @@ GtkWidget *osc_plot_new(struct iio_context *ctx)
 
 	plot = GTK_WIDGET(g_object_new(OSC_PLOT_TYPE, NULL));
 	OSC_PLOT(plot)->priv->ctx = ctx;
+	create_plot(OSC_PLOT(plot));
+
+	return plot;
+}
+
+GtkWidget *osc_plot_new_with_pref(struct iio_context *ctx, OscPlotPreferences *pref)
+{
+	GtkWidget *plot;
+
+	plot = GTK_WIDGET(g_object_new(OSC_PLOT_TYPE, NULL));
+	OSC_PLOT(plot)->priv->ctx = ctx;
+	OSC_PLOT(plot)->priv->preferences = pref;
 	create_plot(OSC_PLOT(plot));
 
 	return plot;
@@ -3346,7 +3360,7 @@ static void new_plot_button_clicked_cb(GtkToolButton *btn, OscPlot *plot)
 {
 	OscPlot *new_plot;
 
-	new_plot = OSC_PLOT(osc_plot_new(plot->priv->ctx));
+	new_plot = OSC_PLOT(osc_plot_new_with_pref(plot->priv->ctx, plot->priv->preferences));
 	osc_plot_set_visible(new_plot, true);
 	g_signal_emit(plot, oscplot_signals[NEWPLOT_EVENT_SIGNAL], 0, new_plot);
 }
@@ -7027,8 +7041,12 @@ static void create_plot(OscPlot *plot)
 	 g_object_bind_property_full(priv->plot_domain, "active", priv->plot_type, "visible",
 		0, domain_is_time, NULL, NULL, NULL);
 
-	gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), 400);
-	priv->sample_count = 400;
+	if (priv->preferences && priv->preferences->sample_count) {
+		priv->sample_count = *priv->preferences->sample_count;
+	} else {
+		priv->sample_count = 400;
+	}
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), priv->sample_count);
 	g_signal_connect(priv->sample_count_widget, "value-changed", G_CALLBACK(count_changed_cb), plot);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->fft_size_widget), 2);
