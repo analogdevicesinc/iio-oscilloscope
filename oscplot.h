@@ -7,6 +7,8 @@
 #ifndef __OSC_PLOT__
 #define __OSC_PLOT__
 
+#include "osc_preferences.h"
+
 #include <glib.h>
 #include <glib-object.h>
 #include <gtk/gtkwindow.h>
@@ -40,6 +42,7 @@ struct _OscPlotClass
 
 GType         osc_plot_get_type         (void);
 GtkWidget*    osc_plot_new              (struct iio_context *ctx);
+GtkWidget*    osc_plot_new_with_pref    (struct iio_context *ctx, OscPlotPreferences* pref);
 void          osc_plot_destroy          (OscPlot *plot);
 void          osc_plot_set_visible      (OscPlot *plot, bool visible);
 struct iio_buffer * osc_plot_get_buffer (OscPlot *plot);
