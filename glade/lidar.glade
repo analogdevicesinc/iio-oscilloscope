@@ -72,7 +72,6 @@
     <property name="page_increment">5</property>
   </object>
   <object class="GtkAdjustment" id="adj_tilt">
-    <property name="lower">-5</property>
     <property name="upper">5</property>
     <property name="step_increment">0.10000000000000001</property>
     <property name="page_increment">1</property>
