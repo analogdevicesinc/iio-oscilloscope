@@ -2055,7 +2055,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	} else if (plot_type == XCORR_PLOT) {
 		if (enabled_channels_count(plot) != 4) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
-				"Correlation requires 2 or 4 channels");
+				"Correlation requires 4 channels");
 			return false;
 		}
 	}
