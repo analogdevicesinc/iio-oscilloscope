@@ -79,6 +79,7 @@ static void set_channel_shadow_of_enabled(gpointer data, gpointer user_data);
 static gfloat * plot_channels_get_nth_data_ref(GSList *list, guint n);
 static void transform_add_own_markers(OscPlot *plot, Transform *transform);
 static void transform_remove_own_markers(Transform *transform);
+static bool set_channel_state_in_tree_model(GtkTreeModel *model, GtkTreeIter* chn_iter, gboolean state);
 
 /* IDs of signals */
 enum {
@@ -764,7 +765,7 @@ void osc_plot_set_channel_state(OscPlot *plot, const char *dev, unsigned int cha
 	ch = iio_channel_get_id(iio_ch);
 	get_iter_by_name(tree, &ch_iter, dev, ch);
 
-	gtk_tree_store_set(GTK_TREE_STORE(model), &ch_iter, CHANNEL_ACTIVE, state, -1);
+	set_channel_state_in_tree_model(model, &ch_iter, state);
 	check_valid_setup(plot);
 }
 
@@ -3487,7 +3488,7 @@ static void channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpo
 	gtk_tree_model_get_iter(model, &iter, path);
 	gtk_tree_model_get(model, &iter, CHANNEL_ACTIVE, &active, -1);
 	active = !active;
-	gtk_tree_store_set(GTK_TREE_STORE(model), &iter, CHANNEL_ACTIVE, active, -1);
+	set_channel_state_in_tree_model(model, &iter, active);
 	gtk_tree_path_free(path);
 
 	check_valid_setup(plot);
@@ -5395,7 +5396,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 			if (MATCH(ch_property, "enabled")) {
 				enabled = atoi(value);
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
-				gtk_tree_store_set(store, &ch_iter, CHANNEL_ACTIVE, enabled, -1);
+				set_channel_state_in_tree_model(gtk_tree_view_get_model(tree), &ch_iter, enabled);
 			} else if (MATCH(ch_property, "color_red")) {
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
@@ -6660,6 +6661,20 @@ static void capture_window_realize_cb(GtkWidget *widget, OscPlot *plot)
 {
 	gtk_window_get_size(GTK_WINDOW(plot->priv->window),
 		&plot->priv->size.width, &plot->priv->size.height);
+}
+
+static bool set_channel_state_in_tree_model(GtkTreeModel *model, GtkTreeIter* chn_iter, gboolean state)
+{
+	gboolean sensitive;
+
+	gtk_tree_model_get(model, chn_iter, SENSITIVE, &sensitive, -1);
+
+	if (sensitive) {
+		gtk_tree_store_set(GTK_TREE_STORE(model), chn_iter, CHANNEL_ACTIVE, state, -1);
+		return true;
+	}
+
+	return false;
 }
 
 static void create_plot(OscPlot *plot)
