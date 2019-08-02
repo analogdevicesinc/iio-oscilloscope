@@ -194,7 +194,7 @@ static void set_all_iio_atributes_to_default_values()
 		"sequencer_manual_chsel", "0, 0, 0, 0", 9);
 	iio_device_attr_write_raw(pulse_dev,
 		"sequencer_auto_cfg", "0, 1, 2, 3", 9);
-	iio_device_attr_write_longlong(pulse_dev, "sequencer_pulse_delay_ns", 0);
+	iio_device_attr_write_longlong(pulse_dev, "sequencer_pulse_delay_ns", 248);
 	iio_channel_attr_write_bool(pulse_ch0, "en", false);
 	iio_channel_attr_write_longlong(pulse_ch0, "frequency", 50000);
 	iio_channel_attr_write_longlong(pulse_ch0, "pulse_width_ns", 20);
