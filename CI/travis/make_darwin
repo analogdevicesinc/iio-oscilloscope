@@ -2,4 +2,6 @@
 
 export PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig
 
+export CFLAGS="-Wno-deprecated"
+
 . CI/travis/make_linux
