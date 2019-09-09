@@ -34,11 +34,6 @@ matrix:
         - OS_VERSION=bionic
     - compiler: "gcc"
       os: osx
-      osx_image: xcode9.2
-      env:
-        - EXTRA_SSH=-oHostKeyAlgorithms=+ssh-dss
-    - compiler: "gcc"
-      os: osx
       osx_image: xcode10.1
       env:
         - EXTRA_SSH=-oHostKeyAlgorithms=+ssh-dss
