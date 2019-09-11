@@ -1,6 +1,16 @@
 #!/bin/sh -e
 
-export PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig
+PKG_CONFIG_LIBS="libffi libxml2 glib"
+
+for lib in $PKG_CONFIG_LIBS ; do
+	if [ -z "$PKG_CONFIG_PATH" ] ; then
+		PKG_CONFIG_PATH="/usr/local/opt/$lib/lib/pkgconfig"
+	else
+		PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:/usr/local/opt/$lib/lib/pkgconfig"
+	fi
+done
+
+export PKG_CONFIG_PATH
 
 export CFLAGS="-Wno-deprecated"
 
