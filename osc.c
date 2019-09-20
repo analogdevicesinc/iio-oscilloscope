@@ -1230,7 +1230,7 @@ static gboolean capture_process(void *data)
 			if (offset / (off_t)sizeof(gfloat) < info->offset / 4) {
 				offset = 0;
 			} else if (offset) {
-				offset -= info->offset * sizeof(gfloat) / 4;
+				offset -= (info->offset / 4) * sizeof(gfloat);
 				for (i = 0; i < nb_channels; i++) {
 					chn = iio_device_get_channel(dev, i);
 					if (iio_channel_is_enabled(chn))
