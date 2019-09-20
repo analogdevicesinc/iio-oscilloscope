@@ -1223,14 +1223,19 @@ static gboolean capture_process(void *data)
 				dev_info->channel_trigger_enabled = false;
 		}
 
+		/* We find the sample that meets the trigger condition, then we grab samples
+		   before and after it so that the trigger sample gets to be displayed in the
+		   middle of the plot. When that's not possible, we display the sample as the
+		   first sample of the plot. */
 		if (dev_info->channel_trigger_enabled) {
 			struct extra_info *info = iio_channel_get_data(chn);
 			offset = get_trigger_offset(chn, dev_info->trigger_falling_edge,
 					dev_info->trigger_value);
-			if (offset / (off_t)sizeof(gfloat) < info->offset / 4) {
+			const off_t quatter_of_capture_interval = info->offset / 4;
+			if (offset / (off_t)sizeof(gfloat) < quatter_of_capture_interval) {
 				offset = 0;
 			} else if (offset) {
-				offset -= (info->offset / 4) * sizeof(gfloat);
+				offset -= quatter_of_capture_interval * sizeof(gfloat);
 				for (i = 0; i < nb_channels; i++) {
 					chn = iio_device_get_channel(dev, i);
 					if (iio_channel_is_enabled(chn))
@@ -1345,6 +1350,10 @@ static int capture_setup(void)
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info);
 
+		/* We capture a double amount o data. Then we look for a trigger
+		   condition in a half of this interval. This way, no matter where
+		   the trigger sample is we have enough samples after the triggered
+		   one to display on the plot. */
 		if (dev_info->channel_trigger_enabled)
 			sample_count *= 2;
 
