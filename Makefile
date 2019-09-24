@@ -104,7 +104,7 @@ PLUGINS=\
 	plugins/lidar.$(SO) \
 	plugins/dmm.$(SO) \
 	plugins/debug.$(SO) \
-	$(if $(WITH_MINGW),,plugins/spectrum_analyzer.so) \
+	plugins/spectrum_analyzer.$(SO) \
 	$(if $(WITH_MINGW),,plugins/scpi.so)
 
 ifdef V
