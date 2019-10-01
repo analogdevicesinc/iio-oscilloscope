@@ -133,6 +133,12 @@ static GtkWidget *ensm_mode_available;
 static GtkWidget *profile_config;
 static struct iio_widget iio_ensm_mode_available;
 
+/* Widgets for interpolation/decimation */
+GtkWidget *fpga_rx_frequency_available;
+GtkWidget *fpga_tx_frequency_available;
+struct iio_widget fpga_widgets[2];
+static unsigned int num_fpga = 0;
+
 static gint this_page;
 static GtkNotebook *nbook;
 static GtkWidget *adrv9009_panel;
@@ -194,6 +200,8 @@ static const char *adrv9009_driver_attribs[] = {
 	"tx_show",
 	"rx_show",
 	"fpga_show",
+	"fpga_rx_frequency_available",
+	"fpga_tx_frequency_available",
 	"dac_buf_filename",
 };
 
@@ -535,6 +543,36 @@ static void sample_frequency_changed_cb(void *data)
 	rx_freq_info_update();
 }
 
+static void int_dec_freq_update(void)
+{
+	struct iio_channel *ch;
+	double freq;
+	gchar *text;
+
+	ch = iio_device_find_channel(cap, "voltage0_i", false);
+	iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
+	text = g_strdup_printf ("%f", freq / mhz_scale);
+
+	guint i = 0;
+	for (; i < phy_devs_count; i++)
+		gtk_label_set_text(GTK_LABEL(subcomponents[i].label_sampling_freq_rx), text);
+	g_free(text);
+
+	ch = iio_device_find_channel(dds, "voltage0", true);
+	text = g_strdup_printf ("%f", freq / mhz_scale);
+	iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
+
+	for (i = 0; i < phy_devs_count; i++)
+		gtk_label_set_text(GTK_LABEL(subcomponents[i].label_sampling_freq_tx), text);
+	g_free(text);
+}
+
+static void int_dec_update_cb(GtkComboBox *cmb, gpointer data)
+{
+	int_dec_freq_update();
+	rx_freq_info_update();
+}
+
 static void rssi_update_label(GtkWidget *label, struct iio_channel *ch)
 {
 	char buf[1024];
@@ -665,6 +703,9 @@ static void update_widgets(void)
 		iio_update_widgets_of_device(subcomponents[i].widgets, subcomponents[i].num_glb +
 			subcomponents[i].num_tx + subcomponents[i].num_rx + subcomponents[i].num_obsrx, subcomponents[i].iio_dev);
 	}
+
+	for (i = 0; i < num_fpga; i++)
+		iio_widget_update(&fpga_widgets[i]);
 
 	if (!plugin_single_device_mode) {
 		iio_widget_update(&iio_ensm_mode_available);
@@ -1032,6 +1073,7 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	GtkBuilder *builder = NULL;
 	GtkWidget *dds_container;
 	const char *freq_name;
+	struct iio_channel *ch;
 
 	can_update_widgets = false;
 
@@ -1224,6 +1266,34 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 		gtk_container_add(GTK_CONTAINER(dds_container), dac_data_manager_get_gui_container(dac_tx_manager));
 	gtk_widget_show_all(dds_container);
 
+	fpga_rx_frequency_available = GTK_WIDGET(gtk_builder_get_object(builder, "fpga_rx_frequency_available"));
+	fpga_tx_frequency_available = GTK_WIDGET(gtk_builder_get_object(builder, "fpga_tx_frequency_available"));
+
+	gtk_combo_box_set_active(GTK_COMBO_BOX(fpga_rx_frequency_available), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(fpga_tx_frequency_available), 0);
+
+	ch = iio_device_find_channel(cap, "voltage0_i", false);
+	if (iio_channel_find_attr(ch, "sampling_frequency_available")) {
+		iio_combo_box_init(&fpga_widgets[num_fpga++],
+						   cap, ch, "sampling_frequency",
+						   "sampling_frequency_available",
+						   fpga_rx_frequency_available, NULL);
+	} else {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
+								  "receive_frame_dma_buf")));
+	}
+
+	ch = iio_device_find_channel(dds, "voltage0", true);
+	if (iio_channel_find_attr(ch, "sampling_frequency_available")) {
+		iio_combo_box_init(&fpga_widgets[num_fpga++],
+						   dds, ch, "sampling_frequency",
+						   "sampling_frequency_available",
+						   fpga_tx_frequency_available, NULL);
+	} else {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
+								  "transmit_frame_dma_buf")));
+	}
+
 	/* Transmit settings */
 
 	GtkWidget *sfreq = GTK_WIDGET(gtk_builder_get_object(builder, "sampling_freq_tx"));
@@ -1351,6 +1421,7 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 			iio_toggle_button_init_from_builder(&subcomponents[i].rx_widgets[subcomponents[i].num_rx++],
 							subcomponents[i].iio_dev, subcomponents[i].ch1, "powerdown", builder,
 							"rx2_powerdown_en", 0);
+
 		} else {
 			gtk_widget_hide(gtk_widget_get_parent(section_setting[SECTION_RX]));
 		}
@@ -1525,6 +1596,12 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	g_signal_connect_after(ensm_mode_available, "changed",
 	                       G_CALLBACK(on_ensm_mode_available_changed), NULL);
 
+	g_signal_connect_after(fpga_rx_frequency_available, "changed",
+			       G_CALLBACK(int_dec_update_cb), NULL);
+
+	g_signal_connect_after(fpga_tx_frequency_available, "changed",
+			       G_CALLBACK(int_dec_update_cb), NULL);
+
 	for (i = 0; i < phy_devs_count; i++) {
 		g_signal_connect_after(subcomponents[i].rx_gain_control_modes_rx1, "changed",
 							G_CALLBACK(glb_settings_update_labels), NULL);
@@ -1554,6 +1631,8 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 													sample_frequency_changed_cb, NULL);
 		}
 	}
+
+	make_widget_update_signal_based(fpga_widgets, num_fpga);
 
 	add_ch_setup_check_fct(CAP_DEVICE, channel_combination_check);
 	struct iio_device *adc_dev;
