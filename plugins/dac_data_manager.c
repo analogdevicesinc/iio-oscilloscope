@@ -1917,12 +1917,12 @@ static int dds_dac_init(struct dac_data_manager *manager,
 			"with %u number of tones\n", ddac->tones_count);
 			return -1;
 		}
-	}
-
-	ddac->txs = calloc(tx_count, sizeof(struct dds_tx));
-	guint tx = 0;
-	for (; tx < tx_count; tx++) {
-		dds_tx_init(ddac, &ddac->txs[tx], tx + 1);
+	} else {
+		ddac->txs = calloc(tx_count, sizeof(struct dds_tx));
+		guint tx = 0;
+		for (; tx < tx_count; tx++) {
+			dds_tx_init(ddac, &ddac->txs[tx], tx + 1);
+		}
 	}
 
 	manager->dacs_count++;
