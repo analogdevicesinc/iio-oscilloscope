@@ -30,12 +30,9 @@
 
 #include <arpa/inet.h>
 #include <dirent.h>
-#include <error.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
-#include <linux/errno.h>
-#include <linux/types.h>
 #include <math.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
