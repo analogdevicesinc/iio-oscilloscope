@@ -39,7 +39,13 @@ set(PLUGINS
 	lidar
 	dmm
 	debug
+	spectrum_analyzer
+	scpi
 )
+
+if (MINGW)
+	list(REMOVE_ITEM PLUGINS spectrum_analyzer scpi)
+endif()
 
 set(PLUGIN_GLADE_FILES "")
 
