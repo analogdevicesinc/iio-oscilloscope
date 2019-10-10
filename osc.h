@@ -15,6 +15,16 @@
 
 #include "oscplot.h"
 
+#ifdef __APPLE__
+/*
+ * Reverse memchr()
+ * Find the last occurrence of 'c' in the buffer 's' of size 'n'.
+ * This is GNU extension and is not available on OS X/Xcode, so
+ * it must be provided here.
+ */
+const void *memrchr(const void *src, int c, size_t length);
+#endif
+
 #define DEFAULT_PROFILE_NAME ".osc_profile.ini"
 #define OSC_INI_SECTION "IIO Oscilloscope"
 #define CAPTURE_INI_SECTION OSC_INI_SECTION " - Capture Window"
