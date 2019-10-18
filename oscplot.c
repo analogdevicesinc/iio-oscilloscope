@@ -1529,8 +1529,12 @@ bool cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
 		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++)
 			if (marker_type == MARKER_PEAK) {
+				/* If we don't have the alpha or the gamma peaks, we can't continue */
+				if (maxX[j] < 1 || maxX[j] > 2 * axis_length - 1) {
+					continue;
+				}
 				/* sync'ed with the pictures in the url above:
-				* alpha = (gfloat)out_data[maxX[j] - 1];
+				 * alpha = (gfloat)out_data[maxX[j] - 1];
 				 * gamma = (gfloat)out_data[maxX[j] + 1];
 				 * beta  = (gfloat)out_data[maxX[j]];
 				 */
