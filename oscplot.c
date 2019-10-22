@@ -1531,6 +1531,8 @@ bool cross_correlation_transform_function(Transform *tr, gboolean init_transform
 			if (marker_type == MARKER_PEAK) {
 				/* If we don't have the alpha or the gamma peaks, we can't continue */
 				if (maxX[j] < 1 || maxX[j] > 2 * axis_length - 1) {
+					markers[j].x = 0;
+					markers[j].y = 0;
 					continue;
 				}
 				/* sync'ed with the pictures in the url above:
