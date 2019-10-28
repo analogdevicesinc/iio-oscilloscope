@@ -1180,10 +1180,10 @@ static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
 	GtkWidget *toplevel;
 
 	if (gtk_toggle_tool_button_get_active(btn)) {
-		gtk_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-down", NULL);
+		g_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-down", NULL);
 		gtk_widget_show(section);
 	} else {
-		gtk_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-up", NULL);
+		g_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-up", NULL);
 		gtk_widget_hide(section);
 		toplevel = gtk_widget_get_toplevel(GTK_WIDGET(btn));
 		if (GTK_WIDGET_TOPLEVEL(toplevel))
