@@ -917,16 +917,29 @@ static glong date_compare_against_build_date(const char *iso8601_date)
 	glong build_time = atol(GIT_COMMIT_TIMESTAMP);
 	glong ret = 0;
 
+#if GLIB_CHECK_VERSION(2, 56, 0)
+
 	GDateTime *time = g_date_time_new_from_iso8601(iso8601_date, NULL);
-	if (time == NULL) {
+	if (time != NULL) {
+		ret = g_date_time_to_unix(time) - build_time;
+		g_date_time_unref(time);
+	} else {
 		printf("%s could not parse date. Not a ISO 8601 format.", __func__);
-		return -1;
 	}
 
-	build_time = g_date_time_to_unix(time);
-	ret = g_get_real_time() - build_time;
+#else
 
-	g_date_time_unref(time);
+	GTimeVal time;
+	gboolean parsed;
+
+	parsed = g_time_val_from_iso8601(iso8601_date, &time);
+	if (parsed) {
+		ret = time.tv_sec - build_time;
+	} else {
+		printf("%s could not parse date. Not a ISO 8601 format.", __func__);
+	}
+
+#endif
 
 	return ret;
 #else
