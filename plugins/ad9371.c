@@ -662,7 +662,7 @@ static void rx_freq_info_update(void)
 		rx_update_device_sampling_freq(CAP_DEVICE_2,
 						USE_INTERN_SAMPLING_FREQ);
 
-		source = gtk_combo_box_get_active_text(GTK_COMBO_BOX(obs_port_select));
+		source = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(obs_port_select));
 
 		if (source && strstr(source, "TX")) {
 			lo_freq = mhz_scale * gtk_spin_button_get_value(
@@ -717,7 +717,7 @@ static gboolean update_display(gpointer foo)
 		const char *gain_mode;
 
 		rssi_update_labels();
-		gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes_rx1));
+		gain_mode = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(rx_gain_control_modes_rx1));
 		if (gain_mode && strcmp(gain_mode, "manual")) {
 			iio_widget_update(&rx_widgets[rx1_gain]);
 			if (is_2rx_2tx)
