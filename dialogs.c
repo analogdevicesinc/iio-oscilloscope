@@ -162,7 +162,7 @@ get_serial_and_file:
 				goto get_serial_and_file;
 			}
 
-			file = gtk_combo_box_get_active_text(GTK_COMBO_BOX(fru_file_list));
+			file = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(fru_file_list));
 
 			if (strncmp(file, "Other...", 8) != 0) {
 				snprintf(filename, PATH_MAX, FRU_FILES "%s", file);
@@ -329,8 +329,8 @@ static struct iio_context * get_context(Dialogs *data)
 		return iio_create_network_context(hostname);
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb))) {
 		struct iio_context *ctx;
-		gchar *uri = gtk_combo_box_get_active_text(
-				GTK_COMBO_BOX(dialogs.connect_usbd));
+		gchar *uri = gtk_combo_box_text_get_active_text(
+				GTK_COMBO_BOX_TEXT(dialogs.connect_usbd));
 		gchar *uri2 = uri + strlen(uri);
 
 		while(*uri2 != '[')
@@ -353,10 +353,10 @@ static struct iio_context * get_context(Dialogs *data)
 #ifdef SERIAL_BACKEND
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial))) {
 		struct iio_context *ctx;
-		gchar *port = gtk_combo_box_get_active_text(
-				GTK_COMBO_BOX(dialogs.connect_seriald));
-		gchar *baud_rate = gtk_combo_box_get_active_text(
-				GTK_COMBO_BOX(dialogs.connect_serialbr));
+		gchar *port = gtk_combo_box_text_get_active_text(
+				GTK_COMBO_BOX_TEXT(dialogs.connect_seriald));
+		gchar *baud_rate = gtk_combo_box_text_get_active_text(
+				GTK_COMBO_BOX_TEXT(dialogs.connect_serialbr));
 
 		/* Size is +3: for ':', ',' and '\0' */
 		gchar *result = g_strdup_printf("serial:%s,%s", port, baud_rate);

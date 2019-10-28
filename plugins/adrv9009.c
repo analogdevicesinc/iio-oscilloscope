@@ -489,7 +489,7 @@ static void set_ensm_mode_of_all_devices(const char *mode)
 
 static void on_ensm_mode_available_changed(void)
 {
-	gchar *mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(ensm_mode_available));
+	gchar *mode = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(ensm_mode_available));
 	if (!mode)
 		return;
 
@@ -521,7 +521,7 @@ static void rx_freq_info_update(void)
 
 		guint i = 0;
 		for (; i < phy_devs_count; i++) {
-			source = gtk_combo_box_get_active_text(GTK_COMBO_BOX(subcomponents[i].obs_port_select));
+			source = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(subcomponents[i].obs_port_select));
 
 			if (source && strstr(source, "TX")) {
 				lo_freq = mhz_scale * gtk_spin_button_get_value(
@@ -608,7 +608,7 @@ static gboolean update_display(gpointer foo)
 		rssi_update_labels();
 		
 		for (; i < phy_devs_count; i++) {
-			gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(subcomponents[i].rx_gain_control_modes_rx1));
+			gain_mode = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(subcomponents[i].rx_gain_control_modes_rx1));
 
 			if (gain_mode && strcmp(gain_mode, "manual")) {
 				iio_widget_update(&subcomponents[i].rx_widgets[subcomponents[i].rx1_gain]);
@@ -1696,7 +1696,7 @@ static void save_widgets_to_ini(FILE *f)
 			   "obs_show = %i\n"
 			   "fpga_show = %i\n",
 			last_profile,
-			(plugin_single_device_mode ? "" : gtk_combo_box_get_active_text(GTK_COMBO_BOX(ensm_mode_available))),
+			(plugin_single_device_mode ? "" : gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(ensm_mode_available))),
 			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]),
