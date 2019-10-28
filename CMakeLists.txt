@@ -78,6 +78,7 @@ add_definitions(-Dlinux -D_GNU_SOURCE
 	${GIT_VERSION}
 	${GIT_COMMIT_TIMESTAMP}
 	-Wall -Werror
+	-DGTK_DISABLE_DEPRECATED
 )
 
 if(UNIX)
