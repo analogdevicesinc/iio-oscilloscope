@@ -9,7 +9,7 @@
 #define __CONFIG_H__
 
 #ifndef PREFIX
-#	define PREFIX "/usr/local/"
+#	define PREFIX "@CMAKE_INSTALL_PREFIX@"
 #endif
 
 #define OSC_GLADE_FILE_PATH PREFIX "/share/osc/"

@@ -156,6 +156,8 @@ set(LIBOSC_LIBS
 	${LIBAD9361_LIBRARIES}
 )
 
+configure_file(config.h.cmakein ${CMAKE_CURRENT_SOURCE_DIR}/config.h @ONLY)
+
 add_library(osc ${OSC_SRC})
 target_link_libraries(osc ${LIBOSC_LIBS})
 set_target_properties(osc PROPERTIES
