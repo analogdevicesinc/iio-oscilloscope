@@ -638,6 +638,7 @@ configuration:</property>
                                               <object class="GtkComboBoxText" id="dcxo_cal_type">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">REFCLK</item>
                                                   <item translatable="yes">RF Output</item>
@@ -2217,6 +2218,7 @@ configuration:</property>
                                                             <object class="GtkComboBoxText" id="fpga_tx_frequency_available">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
+                                                              <property name="entry_text_column">0</property>
                                                             </object>
                                                             <packing>
                                                             <property name="left_attach">1</property>
@@ -2347,6 +2349,7 @@ configuration:</property>
                                                             <object class="GtkComboBoxText" id="fpga_rx_frequency_available">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
+                                                              <property name="entry_text_column">0</property>
                                                             </object>
                                                             <packing>
                                                             <property name="left_attach">1</property>
