@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Some application launchers will execute osc and just reap it so that
+# osc parent becomes PID 1 which is not allowed by pkexec. Hence the need
+# of a wrapper script.
+pkexec @CMAKE_INSTALL_PREFIX@/bin/osc "$@"
+
