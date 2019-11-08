@@ -1159,6 +1159,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">CLKPLL VCO divider</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VCO DIV 1</item>
                           <item translatable="yes">VCO DIV 1.5</item>
@@ -1534,6 +1535,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Tx Attenuation step size</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">ATTEN STEP 0.05 dB</item>
                                       <item translatable="yes">ATTEN STEP 0.10 dB</item>
@@ -1597,6 +1599,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">The desired Tx channels to enable during initialization</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">OFF</item>
                                       <item translatable="yes">TX1</item>
@@ -1899,6 +1902,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">The TX digital FIR filter interpolation (1,2,4)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">INTERPOLATE by 1</item>
                                       <item translatable="yes">INTERPOLATE by 2</item>
@@ -1917,6 +1921,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">The divider used to generate the DAC clock (ENUM Values)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">DAC DIV 2</item>
                                       <item translatable="yes">DAC DIV 2.5</item>
@@ -3338,6 +3343,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">The desired Rx Channels to enable during initialization</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">OFF</item>
                                       <item translatable="yes">RX1</item>
@@ -3577,6 +3583,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Rx FIR decimation (1,2,4)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">DECIMATE by 1</item>
                                       <item translatable="yes">DECIMATE by 2</item>
@@ -3728,6 +3735,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Default ObsRx channel to enter when radioOn called</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">RXOFF</item>
                                       <item translatable="yes">RX1_TXLO</item>
@@ -3797,6 +3805,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">The sniffer/ORx mixers can use the TX_PLL or SNIFFER_PLL</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">OBSLO_TX_PLL</item>
                                       <item translatable="yes">OBSLO_SNIFFER_PLL</item>
@@ -4156,6 +4165,7 @@
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="tooltip_text" translatable="yes">Rx FIR decimation (1,2,4)</property>
+                                                <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">DECIMATE by 1</item>
                                                   <item translatable="yes">DECIMATE by 2</item>
@@ -4410,6 +4420,7 @@
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="tooltip_text" translatable="yes">Rx FIR decimation (1,2,4)</property>
+                                                <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">DECIMATE by 1</item>
                                                   <item translatable="yes">DECIMATE by 2</item>
@@ -4736,6 +4747,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Current Rx gain control mode setting</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">MGC</item>
                                       <item translatable="yes">AGC</item>
@@ -4907,6 +4919,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Current ORx gain control mode setting</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">MGC</item>
                                       <item translatable="yes">AGC</item>
@@ -5052,6 +5065,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Current Sniffer gain control mode setting</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">MGC</item>
                                       <item translatable="yes">AGC</item>
@@ -6685,6 +6699,7 @@ DETECT ENABLE</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="tooltip_text" translatable="yes">Power measurement configuration. 2-bit field. [00]=PMD disabled, [01]=PMD Enabled at HB2 output, [10]=Enabled at RFIR output (recommended), [11]=PMD Enabled at BBDC2</property>
+                                            <property name="entry_text_column">0</property>
                                             <items>
                                               <item translatable="yes">DISABLED</item>
                                               <item translatable="yes">HB2</item>
@@ -6938,6 +6953,7 @@ DETECT ENABLE</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="tooltip_text" translatable="yes">Power measurement configuration. 2-bit field. [00]=PMD disabled, [01]=PMD Enabled at HB2 output, [10]=Enabled at RFIR output (recommended), [11]=PMD Enabled at BBDC2</property>
+                                            <property name="entry_text_column">0</property>
                                             <items>
                                               <item translatable="yes">DISABLED</item>
                                               <item translatable="yes">HB2</item>
@@ -7886,6 +7902,7 @@ DETECT ENABLE</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Mode for GPIO3v3[11:8] pins</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">LEVELTRANSLATE_MODE</item>
                                       <item translatable="yes">INVLEVELTRANSLATE_MODE</item>
@@ -7905,6 +7922,7 @@ DETECT ENABLE</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Mode for GPIO3v3[7:4] pins</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">LEVELTRANSLATE_MODE</item>
                                       <item translatable="yes">INVLEVELTRANSLATE_MODE</item>
@@ -7924,6 +7942,7 @@ DETECT ENABLE</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Mode for GPIO3v3[3:0] pins</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">LEVELTRANSLATE_MODE</item>
                                       <item translatable="yes">INVLEVELTRANSLATE_MODE</item>
@@ -8216,6 +8235,7 @@ DETECT ENABLE</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Mode for low voltage GPIO[18:16] pins</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">MONITOR_MODE</item>
                                       <item translatable="yes">BITBANG_MODE</item>
@@ -8235,6 +8255,7 @@ DETECT ENABLE</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Mode for low voltage GPIO[15:12] pins</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">MONITOR_MODE</item>
                                       <item translatable="yes">BITBANG_MODE</item>
@@ -8254,6 +8275,7 @@ DETECT ENABLE</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Mode for low voltage GPIO[11:8] pins</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">MONITOR_MODE</item>
                                       <item translatable="yes">BITBANG_MODE</item>
@@ -8273,6 +8295,7 @@ DETECT ENABLE</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Mode for low voltage GPIO[7:4] pins</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">MONITOR_MODE</item>
                                       <item translatable="yes">BITBANG_MODE</item>
@@ -8292,6 +8315,7 @@ DETECT ENABLE</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Mode for low voltage GPIO[3:0] pins</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">MONITOR_MODE</item>
                                       <item translatable="yes">BITBANG_MODE</item>
@@ -9079,6 +9103,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">DAC SLOPE 1.404mV</item>
                           <item translatable="yes">DAC SLOPE 0.705mV</item>
@@ -9096,6 +9121,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">DAC SLOPE 1.404mV</item>
                           <item translatable="yes">DAC SLOPE 0.705mV</item>
@@ -9113,6 +9139,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">DAC SLOPE 1.404mV</item>
                           <item translatable="yes">DAC SLOPE 0.705mV</item>
@@ -9130,6 +9157,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">DAC SLOPE 1.404mV</item>
                           <item translatable="yes">DAC SLOPE 0.705mV</item>
@@ -9147,6 +9175,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">DAC SLOPE 1.404mV</item>
                           <item translatable="yes">DAC SLOPE 0.705mV</item>
@@ -9164,6 +9193,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">DAC SLOPE 1.404mV</item>
                           <item translatable="yes">DAC SLOPE 0.705mV</item>
@@ -9181,6 +9211,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">DAC SLOPE 1.404mV</item>
                           <item translatable="yes">DAC SLOPE 0.705mV</item>
@@ -9198,6 +9229,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">DAC SLOPE 1.404mV</item>
                           <item translatable="yes">DAC SLOPE 0.705mV</item>
@@ -9215,6 +9247,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">DAC SLOPE 1.404mV</item>
                           <item translatable="yes">DAC SLOPE 0.705mV</item>
@@ -9232,6 +9265,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">DAC SLOPE 1.404mV</item>
                           <item translatable="yes">DAC SLOPE 0.705mV</item>
@@ -9249,6 +9283,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VREF 1 V</item>
                           <item translatable="yes">VREF 1.5 V</item>
@@ -9268,6 +9303,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VREF 1 V</item>
                           <item translatable="yes">VREF 1.5 V</item>
@@ -9287,6 +9323,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VREF 1 V</item>
                           <item translatable="yes">VREF 1.5 V</item>
@@ -9306,6 +9343,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VREF 1 V</item>
                           <item translatable="yes">VREF 1.5 V</item>
@@ -9325,6 +9363,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VREF 1 V</item>
                           <item translatable="yes">VREF 1.5 V</item>
@@ -9344,6 +9383,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VREF 1 V</item>
                           <item translatable="yes">VREF 1.5 V</item>
@@ -9363,6 +9403,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VREF 1 V</item>
                           <item translatable="yes">VREF 1.5 V</item>
@@ -9382,6 +9423,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VREF 1 V</item>
                           <item translatable="yes">VREF 1.5 V</item>
@@ -9401,6 +9443,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VREF 1 V</item>
                           <item translatable="yes">VREF 1.5 V</item>
@@ -9420,6 +9463,7 @@ DETECT ENABLE</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">VREF 1 V</item>
                           <item translatable="yes">VREF 1.5 V</item>
@@ -12077,6 +12121,7 @@ DETECT ENABLE</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="active">0</property>
+                                            <property name="entry_text_column">0</property>
                                             <items>
                                               <item translatable="yes">OFF</item>
                                               <item translatable="yes">PRBS 7</item>
@@ -12117,6 +12162,7 @@ DETECT ENABLE</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="active">0</property>
+                                            <property name="entry_text_column">0</property>
                                             <items>
                                               <item translatable="yes">OFF</item>
                                               <item translatable="yes">PRBS 7</item>

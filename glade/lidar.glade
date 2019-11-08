@@ -471,6 +471,7 @@
                               <object class="GtkComboBoxText" id="cmb_mode">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="entry_text_column">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>

@@ -134,6 +134,7 @@
                                           <object class="GtkComboBoxText" id="ch0_scales">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="entry_text_column">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -200,6 +201,7 @@
                                           <object class="GtkComboBoxText" id="ch0_test_mode">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="entry_text_column">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
