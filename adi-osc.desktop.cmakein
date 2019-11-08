@@ -1,5 +1,5 @@
 [Desktop Entry]
-Exec=pkexec @CMAKE_INSTALL_PREFIX@/bin/osc
+Exec=@CMAKE_INSTALL_PREFIX@/bin/osc-wrapper
 Icon=@CMAKE_INSTALL_PREFIX@/@SHARE_DEST@/icons/osc.svg
 Terminal=false
 Type=Application
