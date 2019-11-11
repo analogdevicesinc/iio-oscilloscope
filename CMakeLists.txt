@@ -200,6 +200,25 @@ file(GLOB GLADE_FILES glade/*.glade)
 file(GLOB ICON_FILES icons/*)
 
 install(FILES ${GLADE_FILES} ${ICON_FILES} DESTINATION ${SHARE_DEST})
+# install theme icons
+install(FILES icons/osc16.png RENAME adi-osc.png
+	DESTINATION /usr/share/icons/hicolor/16x16/apps)
+install(FILES icons/osc32.png RENAME adi-osc.png
+	DESTINATION /usr/share/icons/hicolor/32x32/apps/adi-osc.png)
+install(FILES icons/osc64.png RENAME adi-osc.png
+	DESTINATION /usr/share/icons/hicolor/64x64/apps/adi-osc.png)
+install(FILES icons/osc128.png RENAME adi-osc.png
+	DESTINATION /usr/share/icons/hicolor/128x128/apps/adi-osc.png)
+install(FILES icons/osc256.png RENAME adi-osc.png
+	DESTINATION /usr/share/icons/hicolor/256x256/apps/adi-osc.png)
+install(FILES icons/osc.svg RENAME adi-osc.svg
+	DESTINATION /usr/share/icons/hicolor/scalable/apps)
+
+# This is a bit "ugly". It makes sure that the hicolor theme directory updates
+# it's modification date. This makes sure that osc icons are loaded right away.
+# We can also just remove this and assume the user has do this manually or run
+# something like `gtk-update-icon-cache -f /usr/share/icons/hicolor`.
+install(CODE "EXECUTE_PROCESS(COMMAND sh -c \"touch /usr/share/icons/hicolor\")")
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	configure_file(adi-osc.desktop.cmakein ${CMAKE_CURRENT_BINARY_DIR}/adi-osc.desktop @ONLY)
