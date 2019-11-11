@@ -58,6 +58,7 @@
   <object class="GtkDialog" id="channel_trigger_dialog">
     <property name="can_focus">False</property>
     <property name="type_hint">dialog</property>
+    <property name="icon_name">adi-osc</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="box4">
         <property name="visible">True</property>
@@ -259,6 +260,7 @@
     <property name="title" translatable="yes">Math Settings</property>
     <property name="destroy_with_parent">True</property>
     <property name="type_hint">dialog</property>
+    <property name="icon_name">adi-osc</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="dialog-vbox2">
         <property name="can_focus">False</property>
@@ -425,6 +427,7 @@
     <property name="border_width">5</property>
     <property name="title" translatable="yes">Plot Title Edit</property>
     <property name="type_hint">dialog</property>
+    <property name="icon_name">adi-osc</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="dialog-vbox6">
         <property name="can_focus">False</property>
@@ -532,6 +535,7 @@
     <property name="border_width">5</property>
     <property name="title" translatable="yes">Channel Math Expression Chooser</property>
     <property name="type_hint">dialog</property>
+    <property name="icon_name">adi-osc</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="dialog-vbox5">
         <property name="can_focus">False</property>
@@ -1635,6 +1639,7 @@
     <property name="type_hint">dialog</property>
     <property name="action">save</property>
     <property name="do_overwrite_confirmation">True</property>
+    <property name="icon_name">adi-osc</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="filechooserdialog-vbox3">
         <property name="can_focus">False</property>
@@ -2928,6 +2933,7 @@
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
     <property name="type_hint">dialog</property>
+    <property name="icon_name">adi-osc</property>
 	<property name="title" translatable="yes">Select Impulse Generator</property>
 	<property name="resizable">False</property>
     <child internal-child="vbox">
