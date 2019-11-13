@@ -8,10 +8,6 @@ brew_install_if_not_exists cmake fftw libmatio \
 	jansson glib curl openssl@1.1 flex bison \
 	gettext libserialport
 
-for pkg in gcc bison gettext ; do
-	brew link --overwrite --force $pkg
-done
-
 if [ "$TRAVIS" == "true" ] ; then
 	for pkg in libiio libad9361-iio ; do
 		wget http://swdownloads.analog.com/cse/travis_builds/master_latest_${pkg}${LDIST}.pkg
