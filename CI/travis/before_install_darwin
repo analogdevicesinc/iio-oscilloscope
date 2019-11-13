@@ -8,7 +8,7 @@ brew_install_if_not_exists cmake fftw libmatio \
 	jansson glib curl openssl@1.1 flex bison \
 	gettext libserialport
 
-for pkg in gcc bison gettext ; do
+for pkg in bison gettext ; do
 	brew link --overwrite --force $pkg
 done
 
