@@ -1,4 +1,4 @@
-#!/bin/sh -xe
+#!/bin/sh -e
 
 TRAVIS_BUILD_DIR=${TRAVIS_BUILD_DIR:-'./'}
 
