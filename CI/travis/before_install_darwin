@@ -5,10 +5,10 @@
 
 brew_install_if_not_exists cmake fftw libmatio \
 	libxml2 pkg-config libusb gtk+ gtkdatabox \
-	jansson glib curl openssl@1.1 flex bison \
+	jansson glib curl openssl@1.1 \
 	gettext libserialport
 
-for pkg in bison gettext ; do
+for pkg in gettext ; do
 	brew link --overwrite --force $pkg
 done
 
