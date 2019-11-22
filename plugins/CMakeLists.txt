@@ -42,6 +42,7 @@ set(PLUGINS
 	debug
 	spectrum_analyzer
 	scpi
+	ad9081
 )
 
 if (MINGW)
