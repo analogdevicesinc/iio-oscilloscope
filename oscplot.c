@@ -5656,8 +5656,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	if (!full && !(priv->marker_type == MARKER_OFF || priv->marker_type == MARKER_IMAGE)) {
 		menuitem = gtk_menu_item_new_with_label(ADD_MRK);
 		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
-		g_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-				G_CALLBACK(marker_menu), (gpointer) &priv->add_mrk, G_CONNECT_AFTER);
+		g_signal_connect_swapped(menuitem, "activate",
+				G_CALLBACK(marker_menu), (gpointer) &priv->add_mrk);
 		gtk_widget_show(menuitem);
 		i++;
 	}
@@ -5665,8 +5665,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	if (!empty && !(priv->marker_type == MARKER_OFF || priv->marker_type == MARKER_IMAGE)) {
 		menuitem = gtk_menu_item_new_with_label(REMOVE_MRK);
 		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
-		g_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-				G_CALLBACK(marker_menu), (gpointer) &priv->remove_mrk, G_CONNECT_AFTER);
+		g_signal_connect_swapped(menuitem, "activate",
+				G_CALLBACK(marker_menu), (gpointer) &priv->remove_mrk);
 		gtk_widget_show(menuitem);
 		i++;
 	}
@@ -5682,8 +5682,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 			priv->marker_type == MARKER_PEAK);
-	g_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-			G_CALLBACK(marker_menu), (gpointer) &priv->peak_mrk, G_CONNECT_AFTER);
+	g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->peak_mrk);
 	gtk_widget_show(menuitem);
 	i++;
 
@@ -5695,8 +5695,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 			priv->marker_type == MARKER_FIXED);
-	g_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-			G_CALLBACK(marker_menu), (gpointer) &priv->fix_mrk, G_CONNECT_AFTER);
+	g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->fix_mrk);
 	gtk_widget_show(menuitem);
 	i++;
 
@@ -5704,8 +5704,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 			priv->marker_type == MARKER_ONE_TONE);
-	g_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-			G_CALLBACK(marker_menu), (gpointer) &priv->single_mrk, G_CONNECT_AFTER);
+	g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->single_mrk);
 	gtk_widget_show(menuitem);
 	i++;
 
@@ -5714,8 +5714,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 			priv->marker_type == MARKER_TWO_TONE);
-	g_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-			G_CALLBACK(marker_menu), (gpointer) &priv->dual_mrk, G_CONNECT_AFTER);
+	g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->dual_mrk);
 	gtk_widget_show(menuitem);
 	i++;
 	*/
@@ -5725,8 +5725,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 				priv->marker_type == MARKER_IMAGE);
-		g_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-		G_CALLBACK(marker_menu), (gpointer) &priv->image_mrk, G_CONNECT_AFTER);
+		g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->image_mrk);
 		gtk_widget_show(menuitem);
 		i++;
 	}
@@ -5738,8 +5738,8 @@ skip_no_peak_markers:
 		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 				priv->marker_type == MARKER_OFF);
-		g_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-		G_CALLBACK(marker_menu), (gpointer) &priv->off_mrk, G_CONNECT_AFTER);
+		g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->off_mrk);
 		gtk_widget_show(menuitem);
 		i++;
 	}
