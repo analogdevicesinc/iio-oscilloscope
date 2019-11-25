@@ -1321,7 +1321,8 @@ static int dac_channels_assign(struct dds_dac *ddac)
 
 		if (!(s = strstr(ch_name, "TX")))
 			goto err;
-		tx_index = s[2] - '0';
+
+		tx_index = atoi(&s[2]);
 
 		if ((s = strstr(ch_name, "_I_")))
 			ch_type = I_CHANNEL;
