@@ -1049,7 +1049,7 @@ static GtkWidget *gui_dac_create(struct dds_dac *ddac)
 
 	for (i = 0; i < ddac->tx_count; i++)
 		gtk_table_attach(GTK_TABLE(dac_table), gui_tx_create(&ddac->txs[i]),
-			0 + i, 1 + i, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
+			0 + i % 4, 1 + i % 4, 1 + i / 4, 2 + i / 4, GTK_FILL, GTK_FILL, 0, 0);
 
 	ddac->frame = dac_frm;
 	gtk_widget_show(dac_frm);
