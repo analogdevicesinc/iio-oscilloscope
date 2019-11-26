@@ -1,5 +1,7 @@
 /**
- * Copyright (C) 2012-2014 Analog Devices, Inc.
+ * AD9081 (MxFE) Plugin
+ *
+ * Copyright (C) 2019 Analog Devices, Inc.
  *
  * Licensed under the GPL-2.
  *
