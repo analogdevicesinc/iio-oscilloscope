@@ -93,7 +93,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
  */
 static bool ad9081_is_buffer_capable(const struct iio_device *dev)
 {
-	int i;
+	unsigned int i;
 
 	for(i = 0; i < iio_device_get_channels_count(dev); i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
@@ -264,6 +264,7 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	GtkTextBuffer *adc_buff, *dac_buff;
 	struct plugin_private *priv = plugin->priv;
 	const char *dev_name = g_list_first(priv->plugin_ctx.required_devices)->data;
+	int idx;
 	struct {
 		const char *iio_name;
 		const char *rx_name;
@@ -331,7 +332,7 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 				 dac_buff);
 
 	/* setup RX and TX channels */
-	for (int idx = 0; idx < NUM_MAX_CHANNEL; idx++) {
+	for (idx = 0; idx < NUM_MAX_CHANNEL; idx++) {
 		GtkWidget *channel;
 		struct iio_channel *in_voltage, *out_voltage;
 		int ret;
