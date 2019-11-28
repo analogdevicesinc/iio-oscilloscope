@@ -838,10 +838,11 @@ void mcs_sync_button_clicked(GtkButton *btn, gpointer data)
 static int channel_combination_check(struct iio_device *dev, const char **ch_names)
 {
 	bool consecutive_ch = FALSE;
-	unsigned int i, k, nb_channels = iio_device_get_channels_count(dev);
+	unsigned int i, k;
+	GArray *channels = get_iio_channels_naturally_sorted(dev);
 
-	for (i = 0, k = 0; i < nb_channels; i++) {
-		struct iio_channel *ch = iio_device_get_channel(dev, i);
+	for (i = 0, k = 0; i < channels->len; ++i) {
+		struct iio_channel *ch = g_array_index(channels, struct iio_channel *, i);
 		struct extra_info *info = iio_channel_get_data(ch);
 
 		if (info->may_be_enabled) {
@@ -849,7 +850,7 @@ static int channel_combination_check(struct iio_device *dev, const char **ch_nam
 			ch_names[k++] = name;
 
 			if (i > 0) {
-				struct extra_info *prev = iio_channel_get_data(iio_device_get_channel(dev, i - 1));
+				struct extra_info *prev = iio_channel_get_data(g_array_index(channels, struct iio_channel *, i - 1));
 
 				if (prev->may_be_enabled) {
 					consecutive_ch = TRUE;
@@ -858,6 +859,7 @@ static int channel_combination_check(struct iio_device *dev, const char **ch_nam
 			}
 		}
 	}
+	g_array_free(channels, FALSE);
 
 	if (!consecutive_ch)
 		return 0;
