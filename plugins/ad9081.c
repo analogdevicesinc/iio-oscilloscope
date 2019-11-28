@@ -339,7 +339,7 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 		in_voltage = iio_device_find_channel(ad9081_dev,
 						     channels[idx].iio_name, 0);
-		if (in_voltage) {
+		if (in_voltage && iio_channel_find_attr(in_voltage, "channel_nco_frequency")) {
 			ret = ad9081_add_chan_widgets(builder, priv,
 						      ad9081_dev,
 						      in_voltage, idx);
