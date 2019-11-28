@@ -27,6 +27,7 @@
 #include <iio.h>
 
 #include "../osc.h"
+#include "../iio_utils.h"
 #include "../xml_utils.h"
 #include "../osc_plugin.h"
 #include "../config.h"
@@ -886,43 +887,17 @@ static void gtk_combo_box_text_remove_all (GtkWidget *combo_box)
 static gint combo_box_sort_natural(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data)
 {
 	gchar *s1, *s2;
-	unsigned int n1, n2;
-	unsigned int i1, i2;
+	int cmp_ret;
 
 	gtk_tree_model_get(model, a, 0, &s1, -1);
 	gtk_tree_model_get(model, b, 0, &s2, -1);
 
-	i1 = 0;
-	i2 = 0;
-
-	while (s1[i1] && s2[i2]) {
-		if (isdigit(s1[i1]) && isdigit(s2[i2])) {
-			n1 = 0;
-			do {
-				n1 = n1 * 10 + s1[i1] - '0';
-				i1++;
-			} while (isdigit(s1[i1]));
-
-			n2 = 0;
-			do {
-				n2 = n2 * 10 + s2[i2] - '0';
-				i2++;
-			} while (isdigit(s2[i2]));
-
-			if (n1 != n2)
-				return n1 - n2;
-		} else {
-			if (s1[i1] != s2[i2])
-				return s1[i1] - s2[i2];
-			i1++;
-			i2++;
-		}
-	}
+	cmp_ret = str_natural_cmp(s1, s2);
 
 	g_free(s1);
 	g_free(s2);
 
-	return 0;
+	return cmp_ret;
 }
 
 /*
