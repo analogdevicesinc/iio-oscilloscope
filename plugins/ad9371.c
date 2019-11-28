@@ -1046,10 +1046,10 @@ static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
 
 /* Check for a valid two channels combination (ch0->ch1, ch2->ch3, ...)
  *
- * struct iio_channel_info *chanels - list of channels of a device
- * int ch_count - number of channel in the list
- * char* ch_name - output parameter: stores references to the enabled
- *                 channels.
+ * struct iio_device *dev - the iio device that owns the channels
+ * char* ch_name - output parameter: stores the names of to the
+ *                 enabled channels, useful for reporting for which
+ *                 channels the combination is valid or not.
  * Return 1 if the channel combination is valid
  * Return 0 if the combination is not valid
  */
