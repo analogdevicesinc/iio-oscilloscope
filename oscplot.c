@@ -31,6 +31,7 @@
 #include "datatypes.h"
 #include "osc_plugin.h"
 #include "math_expression_generator.h"
+#include "iio_utils.h"
 
 /* add backwards compat for <matio-1.5.0 */
 #if MATIO_MAJOR_VERSION == 1 && MATIO_MINOR_VERSION < 5
@@ -3752,7 +3753,6 @@ static void device_list_treeview_init(OscPlot *plot)
 		goto math_channels;
 	for (i = 0; i < iio_context_get_devices_count(ctx); i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
-		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		const char *dev_name = iio_device_get_name(dev) ?:
 			iio_device_get_id(dev);
@@ -3766,8 +3766,11 @@ static void device_list_treeview_init(OscPlot *plot)
 		plot_channels_add_device(plot, dev_name);
 		priv->nb_input_devices++;
 
-		for (j = 0; j < nb_channels; j++) {
-			struct iio_channel *ch = iio_device_get_channel(dev, j);
+		GArray *channels = get_iio_channels_naturally_sorted(dev);
+
+		for (j = 0; j < channels->len; ++j) {
+			struct iio_channel *ch = g_array_index(channels,
+				struct iio_channel *, j);
 			if (!show_channel(ch))
 				continue;
 
@@ -3776,8 +3779,12 @@ static void device_list_treeview_init(OscPlot *plot)
 			PlotIioChn *pic;
 
 			pic = plot_iio_channel_new(priv->ctx);
-			if (!pic)
-				return;
+			if (!pic) {
+				fprintf(stderr, "Could not create an iio plot"
+					"channel with name %s in function %s\n",
+					chn_name, __func__);
+				break;
+			}
 			plot_channel_add_to_plot(plot, PLOT_CHN(pic));
 			pic->iio_chn = ch;
 			pic->base.type = PLOT_IIO_CHANNEL;
@@ -3785,6 +3792,7 @@ static void device_list_treeview_init(OscPlot *plot)
 			pic->base.parent_name = g_strdup(dev_name);
 			plot_channels_add_channel(plot, PLOT_CHN(pic));
 		}
+		g_array_free(channels, FALSE);
 	}
 math_channels:
 #ifdef linux
@@ -3803,7 +3811,7 @@ static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 	GtkWidget *parent;
 	GtkWidget *ch_checkbtn;
 	gchar *active_device;
-	unsigned int i, nb_channels;
+	unsigned int i;
 	int d;
 
 	parent = gtk_widget_get_parent(priv->saveas_channels_list);
@@ -3818,15 +3826,17 @@ static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 		return;
 
 	dev = iio_context_get_device(ctx, d);
-	nb_channels = iio_device_get_channels_count(dev);
 
-	for (i = 0; i < nb_channels; i++) {
-		struct iio_channel *chn = iio_device_get_channel(dev, i);
+	GArray *channels = get_iio_channels_naturally_sorted(dev);
+
+	for (i = 0; i < channels->len; ++i) {
+		struct iio_channel *chn = g_array_index(channels, struct iio_channel *, i);
 		const char *name = iio_channel_get_name(chn) ?:
 			iio_channel_get_id(chn);
 		ch_checkbtn = gtk_check_button_new_with_label(name);
 		gtk_box_pack_start(GTK_BOX(priv->saveas_channels_list), ch_checkbtn, FALSE, TRUE, 0);
 	}
+	g_array_free(channels, FALSE);
 	gtk_widget_show_all(priv->saveas_channels_list);
 }
 
