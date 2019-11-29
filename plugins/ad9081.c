@@ -379,7 +379,7 @@ tx_chann:
 	}
 	/* If buffer capable we need to initialize the DDS container */
 	if (ad9081_is_buffer_capable(ad9081_dev)) {
-		struct iio_device *dac;
+		struct iio_device *dac, *hmc425;
 		GArray *devices = get_iio_devices_starting_with(priv->ctx,
 								DAC_DEVICE);
 		double dac_tx_sampling_freq = 0;
@@ -419,12 +419,27 @@ tx_chann:
 
 		dac_data_manager_update_iio_widgets(priv->dac_tx_manager);
 		g_array_free(devices, FALSE);
+
+		hmc425 = iio_context_find_device(priv->ctx, "hmc425a");
+		if (!hmc425) {
+			gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
+									  "hmc425")));
+		} else {
+			ch0 = iio_device_find_channel(hmc425, "voltage0", true);
+			iio_spin_button_int_init_from_builder(
+				&priv->iio_widgets[priv->num_widgets++],
+				hmc425, ch0, "hardwaregain", builder,
+				"hmc425_attenuation", NULL);
+		}
 	} else {
 		GtkWidget *dds_container;
 
 		dds_container = GTK_WIDGET(gtk_builder_get_object(builder,
 								  "dds_transmit_block"));
 		gtk_widget_hide(dds_container);
+
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
+								  "hmc425")));
 	}
 
 	make_widget_update_signal_based(priv->iio_widgets, priv->num_widgets);
