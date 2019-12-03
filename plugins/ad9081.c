@@ -19,6 +19,7 @@
 #include "dac_data_manager.h"
 
 #define THIS_DRIVER			"ad9081"
+#define THIS_DRIVER_LABEL		"AD9081"
 #define AD9081				"axi-ad9081-rx"
 #define DAC_DEVICE			"axi-ad9081-tx"
 #define NUM_MAX_CHANNEL			8
@@ -513,6 +514,14 @@ struct osc_plugin *create_plugin(struct osc_plugin_context *plugin_ctx)
 	return plugin;
 }
 
+int iio_device_cmp_by_name(gconstpointer a, gconstpointer b)
+{
+	const char *str_a = iio_device_get_name(*(struct iio_device **)a);
+	const char *str_b = iio_device_get_name(*(struct iio_device **)b);
+
+	return g_strcmp0(str_a, str_b);
+}
+
 GArray* get_data_for_possible_plugin_instances(void)
 {
 	GArray *data = g_array_new(FALSE, TRUE,
@@ -520,6 +529,8 @@ GArray* get_data_for_possible_plugin_instances(void)
 	struct iio_context *osc_ctx = get_context_from_osc();
 	GArray *devices = get_iio_devices_starting_with(osc_ctx, AD9081);
 	guint i = 0;
+
+	g_array_sort(devices, iio_device_cmp_by_name);
 
 	for (; i < devices->len; i++) {
 		struct osc_plugin_context *context = g_new0(struct osc_plugin_context, 1);
@@ -529,7 +540,7 @@ GArray* get_data_for_possible_plugin_instances(void)
 		char *name;
 
 		if (devices->len > 1)
-			name = g_strdup_printf("%s-%i", THIS_DRIVER, i);
+			name = g_strdup_printf("%s-%i", THIS_DRIVER_LABEL, i);
 		else
 			name = g_strdup(THIS_DRIVER);
 
