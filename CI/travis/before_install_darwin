@@ -1,14 +1,14 @@
-#!/bin/sh -xe
+#!/bin/sh -e
 
 . CI/travis/lib.sh
 . CI/travis/before_install_lib.sh
 
-brew_install_or_upgrade cmake fftw libmatio \
+brew_install_if_not_exists cmake fftw libmatio \
 	libxml2 pkg-config libusb gtk+ gtkdatabox \
-	jansson glib curl openssl@1.1 flex bison \
+	jansson glib curl openssl@1.1 \
 	gettext libserialport
 
-for pkg in gcc bison gettext ; do
+for pkg in gettext ; do
 	brew link --overwrite --force $pkg
 done
 

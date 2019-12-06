@@ -360,6 +360,7 @@
                                               <object class="GtkComboBoxText" id="ensm_mode_available">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="entry_text_column">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -866,6 +867,7 @@ Hopping Mode</property>
                                               <object class="GtkComboBoxText" id="gain_control_mode_available_rx1">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="entry_text_column">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">3</property>
@@ -2355,6 +2357,7 @@ Hopping Mode</property>
                                               <object class="GtkComboBoxText" id="rf_port_select_obs">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="entry_text_column">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">3</property>
@@ -2803,6 +2806,7 @@ Hopping Mode</property>
                                                           <object class="GtkComboBoxText" id="fpga_tx_frequency_available">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
+                                                            <property name="entry_text_column">0</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -2918,6 +2922,7 @@ Hopping Mode</property>
                                                             <object class="GtkComboBoxText" id="fpga_rx_frequency_available">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
+                                                              <property name="entry_text_column">0</property>
                                                             </object>
                                                             <packing>
                                                             <property name="left_attach">1</property>

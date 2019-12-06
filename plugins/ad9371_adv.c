@@ -1021,7 +1021,7 @@ static int update_widgets(GtkBuilder *builder)
 	return iio_device_debug_attr_read_all(dev, __update_widget, builder);
 }
 
-static void change_page_cb (GtkNotebook *notebook, GtkNotebookPage *page,
+static void change_page_cb (GtkNotebook *notebook, GtkNotebookTab *page,
 		     guint page_num, gpointer user_data)
 {
 	GtkWidget *tohide = user_data;

@@ -31,6 +31,7 @@
 #include "datatypes.h"
 #include "osc_plugin.h"
 #include "math_expression_generator.h"
+#include "iio_utils.h"
 
 /* add backwards compat for <matio-1.5.0 */
 #if MATIO_MAJOR_VERSION == 1 && MATIO_MINOR_VERSION < 5
@@ -1529,8 +1530,14 @@ bool cross_correlation_transform_function(Transform *tr, gboolean init_transform
 	if (MAX_MARKERS && marker_type != MARKER_OFF) {
 		for (j = 0; j <= MAX_MARKERS && markers[j].active; j++)
 			if (marker_type == MARKER_PEAK) {
+				/* If we don't have the alpha or the gamma peaks, we can't continue */
+				if (maxX[j] < 1 || maxX[j] > 2 * axis_length - 1) {
+					markers[j].x = 0;
+					markers[j].y = 0;
+					continue;
+				}
 				/* sync'ed with the pictures in the url above:
-				* alpha = (gfloat)out_data[maxX[j] - 1];
+				 * alpha = (gfloat)out_data[maxX[j] - 1];
 				 * gamma = (gfloat)out_data[maxX[j] + 1];
 				 * beta  = (gfloat)out_data[maxX[j]];
 				 */
@@ -3746,7 +3753,6 @@ static void device_list_treeview_init(OscPlot *plot)
 		goto math_channels;
 	for (i = 0; i < iio_context_get_devices_count(ctx); i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
-		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		const char *dev_name = iio_device_get_name(dev) ?:
 			iio_device_get_id(dev);
@@ -3760,8 +3766,11 @@ static void device_list_treeview_init(OscPlot *plot)
 		plot_channels_add_device(plot, dev_name);
 		priv->nb_input_devices++;
 
-		for (j = 0; j < nb_channels; j++) {
-			struct iio_channel *ch = iio_device_get_channel(dev, j);
+		GArray *channels = get_iio_channels_naturally_sorted(dev);
+
+		for (j = 0; j < channels->len; ++j) {
+			struct iio_channel *ch = g_array_index(channels,
+				struct iio_channel *, j);
 			if (!show_channel(ch))
 				continue;
 
@@ -3770,8 +3779,12 @@ static void device_list_treeview_init(OscPlot *plot)
 			PlotIioChn *pic;
 
 			pic = plot_iio_channel_new(priv->ctx);
-			if (!pic)
-				return;
+			if (!pic) {
+				fprintf(stderr, "Could not create an iio plot"
+					"channel with name %s in function %s\n",
+					chn_name, __func__);
+				break;
+			}
 			plot_channel_add_to_plot(plot, PLOT_CHN(pic));
 			pic->iio_chn = ch;
 			pic->base.type = PLOT_IIO_CHANNEL;
@@ -3779,6 +3792,7 @@ static void device_list_treeview_init(OscPlot *plot)
 			pic->base.parent_name = g_strdup(dev_name);
 			plot_channels_add_channel(plot, PLOT_CHN(pic));
 		}
+		g_array_free(channels, FALSE);
 	}
 math_channels:
 #ifdef linux
@@ -3797,7 +3811,7 @@ static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 	GtkWidget *parent;
 	GtkWidget *ch_checkbtn;
 	gchar *active_device;
-	unsigned int i, nb_channels;
+	unsigned int i;
 	int d;
 
 	parent = gtk_widget_get_parent(priv->saveas_channels_list);
@@ -3812,15 +3826,17 @@ static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 		return;
 
 	dev = iio_context_get_device(ctx, d);
-	nb_channels = iio_device_get_channels_count(dev);
 
-	for (i = 0; i < nb_channels; i++) {
-		struct iio_channel *chn = iio_device_get_channel(dev, i);
+	GArray *channels = get_iio_channels_naturally_sorted(dev);
+
+	for (i = 0; i < channels->len; ++i) {
+		struct iio_channel *chn = g_array_index(channels, struct iio_channel *, i);
 		const char *name = iio_channel_get_name(chn) ?:
 			iio_channel_get_id(chn);
 		ch_checkbtn = gtk_check_button_new_with_label(name);
 		gtk_box_pack_start(GTK_BOX(priv->saveas_channels_list), ch_checkbtn, FALSE, TRUE, 0);
 	}
+	g_array_free(channels, FALSE);
 	gtk_widget_show_all(priv->saveas_channels_list);
 }
 
@@ -5650,8 +5666,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	if (!full && !(priv->marker_type == MARKER_OFF || priv->marker_type == MARKER_IMAGE)) {
 		menuitem = gtk_menu_item_new_with_label(ADD_MRK);
 		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
-		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-				GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->add_mrk);
+		g_signal_connect_swapped(menuitem, "activate",
+				G_CALLBACK(marker_menu), (gpointer) &priv->add_mrk);
 		gtk_widget_show(menuitem);
 		i++;
 	}
@@ -5659,8 +5675,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	if (!empty && !(priv->marker_type == MARKER_OFF || priv->marker_type == MARKER_IMAGE)) {
 		menuitem = gtk_menu_item_new_with_label(REMOVE_MRK);
 		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
-		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-				GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->remove_mrk);
+		g_signal_connect_swapped(menuitem, "activate",
+				G_CALLBACK(marker_menu), (gpointer) &priv->remove_mrk);
 		gtk_widget_show(menuitem);
 		i++;
 	}
@@ -5676,8 +5692,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 			priv->marker_type == MARKER_PEAK);
-	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-			GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->peak_mrk);
+	g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->peak_mrk);
 	gtk_widget_show(menuitem);
 	i++;
 
@@ -5689,8 +5705,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 			priv->marker_type == MARKER_FIXED);
-	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-			GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->fix_mrk);
+	g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->fix_mrk);
 	gtk_widget_show(menuitem);
 	i++;
 
@@ -5698,8 +5714,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 			priv->marker_type == MARKER_ONE_TONE);
-	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-			GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->single_mrk);
+	g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->single_mrk);
 	gtk_widget_show(menuitem);
 	i++;
 
@@ -5708,8 +5724,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 			priv->marker_type == MARKER_TWO_TONE);
-	gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-			GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->dual_mrk);
+	g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->dual_mrk);
 	gtk_widget_show(menuitem);
 	i++;
 	*/
@@ -5719,8 +5735,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 				priv->marker_type == MARKER_IMAGE);
-		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-		GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->image_mrk);
+		g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->image_mrk);
 		gtk_widget_show(menuitem);
 		i++;
 	}
@@ -5732,8 +5748,8 @@ skip_no_peak_markers:
 		gtk_menu_attach(GTK_MENU(popupmenu), menuitem, 0, 1, i, i + 1);
 		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem),
 				priv->marker_type == MARKER_OFF);
-		gtk_signal_connect_object(GTK_OBJECT(menuitem), "activate",
-		GTK_SIGNAL_FUNC(marker_menu), (gpointer) &priv->off_mrk);
+		g_signal_connect_swapped(menuitem, "activate",
+			G_CALLBACK(marker_menu), (gpointer) &priv->off_mrk);
 		gtk_widget_show(menuitem);
 		i++;
 	}
