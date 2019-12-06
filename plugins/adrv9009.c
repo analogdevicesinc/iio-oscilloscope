@@ -489,7 +489,7 @@ static void set_ensm_mode_of_all_devices(const char *mode)
 
 static void on_ensm_mode_available_changed(void)
 {
-	gchar *mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(ensm_mode_available));
+	gchar *mode = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(ensm_mode_available));
 	if (!mode)
 		return;
 
@@ -521,7 +521,7 @@ static void rx_freq_info_update(void)
 
 		guint i = 0;
 		for (; i < phy_devs_count; i++) {
-			source = gtk_combo_box_get_active_text(GTK_COMBO_BOX(subcomponents[i].obs_port_select));
+			source = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(subcomponents[i].obs_port_select));
 
 			if (source && strstr(source, "TX")) {
 				lo_freq = mhz_scale * gtk_spin_button_get_value(
@@ -608,7 +608,7 @@ static gboolean update_display(gpointer foo)
 		rssi_update_labels();
 		
 		for (; i < phy_devs_count; i++) {
-			gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(subcomponents[i].rx_gain_control_modes_rx1));
+			gain_mode = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(subcomponents[i].rx_gain_control_modes_rx1));
 
 			if (gain_mode && strcmp(gain_mode, "manual")) {
 				iio_widget_update(&subcomponents[i].rx_widgets[subcomponents[i].rx1_gain]);
@@ -745,14 +745,14 @@ static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
 	GtkWidget *toplevel;
 
 	if (gtk_toggle_tool_button_get_active(btn)) {
-		gtk_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-down", NULL);
+		g_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-down", NULL);
 		gtk_widget_show(section);
 	} else {
-		gtk_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-up", NULL);
+		g_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-up", NULL);
 		gtk_widget_hide(section);
 		toplevel = gtk_widget_get_toplevel(GTK_WIDGET(btn));
 
-		if (GTK_WIDGET_TOPLEVEL(toplevel))
+		if (gtk_widget_is_toplevel(toplevel))
 			gtk_window_resize(GTK_WINDOW(toplevel), 1, 1);
 	}
 }
@@ -828,20 +828,20 @@ void mcs_sync_button_clicked(GtkButton *btn, gpointer data)
 
 /* Check for a valid two channels combination (ch0->ch1, ch2->ch3, ...)
  *
- * struct iio_channel_info *chanels - list of channels of a device
- * int ch_count - number of channel in the list
- * char* ch_name - output parameter: stores references to the enabled
- *                 channels.
- * Return 1 if the channel combination is valid
- * Return 0 if the combination is not valid
+ * struct iio_device *dev - the iio device that owns the channels
+ * char* ch_name - output parameter: stores the names of to the
+ *                 enabled channels, useful for reporting for which
+ *                 channels the combination is valid or not.
+ * Return 1 if the channel combination is valid and 0 otherwise.
  */
 static int channel_combination_check(struct iio_device *dev, const char **ch_names)
 {
 	bool consecutive_ch = FALSE;
-	unsigned int i, k, nb_channels = iio_device_get_channels_count(dev);
+	unsigned int i, k;
+	GArray *channels = get_iio_channels_naturally_sorted(dev);
 
-	for (i = 0, k = 0; i < nb_channels; i++) {
-		struct iio_channel *ch = iio_device_get_channel(dev, i);
+	for (i = 0, k = 0; i < channels->len; ++i) {
+		struct iio_channel *ch = g_array_index(channels, struct iio_channel *, i);
 		struct extra_info *info = iio_channel_get_data(ch);
 
 		if (info->may_be_enabled) {
@@ -849,7 +849,7 @@ static int channel_combination_check(struct iio_device *dev, const char **ch_nam
 			ch_names[k++] = name;
 
 			if (i > 0) {
-				struct extra_info *prev = iio_channel_get_data(iio_device_get_channel(dev, i - 1));
+				struct extra_info *prev = iio_channel_get_data(g_array_index(channels, struct iio_channel *, i - 1));
 
 				if (prev->may_be_enabled) {
 					consecutive_ch = TRUE;
@@ -858,6 +858,7 @@ static int channel_combination_check(struct iio_device *dev, const char **ch_nam
 			}
 		}
 	}
+	g_array_free(channels, FALSE);
 
 	if (!consecutive_ch)
 		return 0;
@@ -1696,7 +1697,7 @@ static void save_widgets_to_ini(FILE *f)
 			   "obs_show = %i\n"
 			   "fpga_show = %i\n",
 			last_profile,
-			(plugin_single_device_mode ? "" : gtk_combo_box_get_active_text(GTK_COMBO_BOX(ensm_mode_available))),
+			(plugin_single_device_mode ? "" : gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(ensm_mode_available))),
 			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]),

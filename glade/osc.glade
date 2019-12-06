@@ -541,6 +541,7 @@ A GUI for Linux IIO devices</property>
     <property name="border_width">5</property>
     <property name="modal">True</property>
     <property name="type_hint">dialog</property>
+    <property name="icon_name">adi-osc</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="dialog-vbox6">
         <property name="can_focus">False</property>
@@ -767,6 +768,7 @@ A GUI for Linux IIO devices</property>
                                           <object class="GtkComboBoxText" id="connect_usb_devices">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="entry_text_column">0</property>
                                             <items>
                                               <item translatable="yes">None</item>
                                             </items>
@@ -833,6 +835,7 @@ A GUI for Linux IIO devices</property>
                                           <object class="GtkComboBoxText" id="connect_serial_devices">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="entry_text_column">0</property>
                                             <items>
                                               <item translatable="yes">None</item>
                                             </items>
@@ -848,6 +851,7 @@ A GUI for Linux IIO devices</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="active">6</property>
+                                            <property name="entry_text_column">0</property>
                                             <items>
                                               <item translatable="yes">2400</item>
                                               <item translatable="yes">4800</item>

@@ -1041,7 +1041,7 @@ static void dds_scale_set_string_value(GtkWidget *scale, const char *value)
 static const char *dds_scale_get_string_value(GtkWidget *scale)
 {
 	if (GTK_IS_COMBO_BOX_TEXT(scale)) {
-		return gtk_combo_box_get_active_text(GTK_COMBO_BOX(scale));
+		return gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(scale));
 	} else if (GTK_IS_SPIN_BUTTON(scale)) {
 		return gtk_entry_get_text(GTK_ENTRY(scale));
 	}

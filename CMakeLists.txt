@@ -78,6 +78,7 @@ add_definitions(-Dlinux -D_GNU_SOURCE
 	${GIT_VERSION}
 	${GIT_COMMIT_TIMESTAMP}
 	-Wall -Werror
+	-DGTK_DISABLE_DEPRECATED
 )
 
 if(UNIX)
@@ -155,6 +156,8 @@ set(LIBOSC_LIBS
 	${LIBAD9361_LIBRARIES}
 )
 
+configure_file(config.h.cmakein ${CMAKE_CURRENT_SOURCE_DIR}/config.h @ONLY)
+
 add_library(osc ${OSC_SRC})
 target_link_libraries(osc ${LIBOSC_LIBS})
 set_target_properties(osc PROPERTIES
@@ -179,6 +182,11 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	configure_file(org.adi.pkexec.osc.policy.cmakein ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy @ONLY)
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy
 		DESTINATION /usr/share/polkit-1/actions/)
+	# setup exec script
+	configure_file(osc-wrapper.cmakein ${CMAKE_CURRENT_SOURCE_DIR}/osc-wrapper @ONLY)
+	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/osc-wrapper
+		PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+		DESTINATION bin)
 endif()
 
 set(PLIB_DEST lib/osc)
@@ -197,6 +205,26 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	configure_file(adi-osc.desktop.cmakein ${CMAKE_CURRENT_BINARY_DIR}/adi-osc.desktop @ONLY)
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/adi-osc.desktop
 		DESTINATION /usr/share/applications/)
+
+	# install theme icons
+	install(FILES icons/osc16.png RENAME adi-osc.png
+		DESTINATION /usr/share/icons/hicolor/16x16/apps)
+	install(FILES icons/osc32.png RENAME adi-osc.png
+		DESTINATION /usr/share/icons/hicolor/32x32/apps/adi-osc.png)
+	install(FILES icons/osc64.png RENAME adi-osc.png
+		DESTINATION /usr/share/icons/hicolor/64x64/apps/adi-osc.png)
+	install(FILES icons/osc128.png RENAME adi-osc.png
+		DESTINATION /usr/share/icons/hicolor/128x128/apps/adi-osc.png)
+	install(FILES icons/osc256.png RENAME adi-osc.png
+		DESTINATION /usr/share/icons/hicolor/256x256/apps/adi-osc.png)
+	install(FILES icons/osc.svg RENAME adi-osc.svg
+		DESTINATION /usr/share/icons/hicolor/scalable/apps)
+
+	# This is a bit "ugly". It makes sure that the hicolor theme directory updates
+	# it's modification date. This makes sure that osc icons are loaded right away.
+	# We can also just remove this and assume the user has do this manually or run
+	# something like `gtk-update-icon-cache -f /usr/share/icons/hicolor`.
+	install(CODE "EXECUTE_PROCESS(COMMAND sh -c \"touch /usr/share/icons/hicolor\")")
 endif()
 
 install(DIRECTORY icons DESTINATION ${SHARE_DEST})

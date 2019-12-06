@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+echo_error() { printf "\033[1;31m$*\033[m\n"; }
+
+pushd dev-tools
+./fixup-all-glades.sh fixup-comboboxtext.pl
+popd
+
+if [[ $(git status --porcelain --untracked-files=no) ]]; then
+        echo_error "Every time a glade is edited with Glade editor for GTK3 (versions 3.9, 3.10, 3.11, etc.) the fixup scripts from dev-tools need to be run for the modified glade file."
+fi

@@ -1,0 +1,1 @@
+1. Every time a glade is edited with Glade editor for GTK3 (versions 3.9, 3.10, 3.11, etc.) the fixup scripts from dev-tools need to be run for the modified glade file. However if Glade 3.8 is used the fixup scripts are no longer required.

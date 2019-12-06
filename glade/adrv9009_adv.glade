@@ -1959,6 +1959,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">CLKPLL high speed clock divider</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">2</item>
                           <item translatable="yes">2.5</item>
@@ -1994,6 +1995,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Set RF PLL phase synchronization mode. Adds extra time to lock RF PLL when PLL frequency changed. See enum for options</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">NOSYNC</item>
                           <item translatable="yes">INIT TRACK</item>
@@ -2302,6 +2304,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">Options to disable Transmit data when the RFPLL unlocks</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">DISABLED</item>
                                       <item translatable="yes">ZERO_DATA</item>
@@ -2380,6 +2383,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">Tx Attenuation step size</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">0.05</item>
                                       <item translatable="yes">0.1</item>
@@ -2414,6 +2418,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">The desired Tx channels to enable during initialization</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">TXOFF</item>
                                       <item translatable="yes">TX1</item>
@@ -2457,6 +2462,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">Talise JESD204b deframer select (Deframer A or B, or both)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">A</item>
                                       <item translatable="yes">B</item>
@@ -2674,6 +2680,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">Tx Int5 filter interpolation (1,5)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">1</item>
                                       <item translatable="yes">5</item>
@@ -2706,6 +2713,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">Tx Halfband3 (HB3) filter interpolation (1,2)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">1</item>
                                       <item translatable="yes">2</item>
@@ -2725,6 +2733,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Tx Halfband2 (HB2) filter interpolation (1,2)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">1</item>
                                       <item translatable="yes">2</item>
@@ -2757,6 +2766,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Tx Halfband1 (HB1) filter interpolation (1,2)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">1</item>
                                       <item translatable="yes">2</item>
@@ -2789,6 +2799,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">The TX digital FIR filter interpolation (1,2,4)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">1</item>
                                       <item translatable="yes">2</item>
@@ -2822,6 +2833,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">The divider used to generate the DAC clock (1,2)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">1</item>
                                       <item translatable="yes">2</item>
@@ -3556,6 +3568,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">GPIO used to decrement Tx attenuation Tx2 : TAL_GPIO_07 or TAL_GPIO_15</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">7</item>
                                       <item translatable="yes">15</item>
@@ -3575,6 +3588,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">GPIO used to increment Tx attenuation Tx1 : TAL_GPIO_04 or TAL_GPIO_12 Tx2 : TAL_GPIO_06 or TAL_GPIO_14</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">6</item>
                                       <item translatable="yes">14</item>
@@ -3643,6 +3657,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">GPIO used to decrement Tx attenuation Tx2 : TAL_GPIO_07 or TAL_GPIO_15</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">5</item>
                                       <item translatable="yes">13</item>
@@ -3662,6 +3677,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">GPIO used to increment Tx attenuation Tx1 : TAL_GPIO_04 or TAL_GPIO_12 Tx2 : TAL_GPIO_06 or TAL_GPIO_14</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">4</item>
                                       <item translatable="yes">12</item>
@@ -3782,6 +3798,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">The desired Rx Channels to enable during initialization</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">RXOFF</item>
                                       <item translatable="yes">RX1</item>
@@ -3812,6 +3829,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">Rx JESD204b framer configuration enum</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">A</item>
                                       <item translatable="yes">B</item>
@@ -3956,6 +3974,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Rx DDC mode</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">BYPASS</item>
                                       <item translatable="yes">FILTERONLY</item>
@@ -4081,6 +4100,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">RX Halfband1 (HB1) decimation. Can be either 1 or 2</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">1</item>
                                       <item translatable="yes">2</item>
@@ -4113,6 +4133,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Decimation of Dec5 or Dec4 filter (5,4)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">4</item>
                                       <item translatable="yes">5</item>
@@ -4145,6 +4166,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">Rx FIR decimation (1,2,4)</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">1</item>
                                       <item translatable="yes">2</item>
@@ -5139,6 +5161,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">GPIO used for the Decrement gain input: Rx1 : TAL_GPIO_01 or TAL_GPIO_11, Rx2 : TAL_GPIO_04 or TAL_GPIO_14</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">4</item>
                                       <item translatable="yes">13</item>
@@ -5171,6 +5194,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">GPIO used for the Increment gain input: Rx1 : TAL_GPIO_00 or TAL_GPIO_10, Rx2 : TAL_GPIO_03 or TAL_GPIO_13</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">3</item>
                                       <item translatable="yes">13</item>
@@ -5282,6 +5306,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">GPIO used for the Decrement gain input: Rx1 : TAL_GPIO_01 or TAL_GPIO_11, Rx2 : TAL_GPIO_04 or TAL_GPIO_14</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">1</item>
                                       <item translatable="yes">11</item>
@@ -5301,6 +5326,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="tooltip_text" translatable="yes">GPIO used for the Increment gain input: Rx1 : TAL_GPIO_00 or TAL_GPIO_10, Rx2 : TAL_GPIO_03 or TAL_GPIO_13</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">0</item>
                                       <item translatable="yes">10</item>
@@ -5490,6 +5516,7 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="tooltip_text" translatable="yes">The desired ObsRx Channel to enable during initialization</property>
+                                        <property name="entry_text_column">0</property>
                                         <items>
                                           <item translatable="yes">OFF</item>
                                           <item translatable="yes">ORX1</item>
@@ -5524,6 +5551,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">Field not used, reserved for future use. The ORx mixers can use the RF_PLL or Aux_PLL</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">RFPLL</item>
                                       <item translatable="yes">AUXPLL</item>
@@ -5567,6 +5595,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">ObsRx JESD204b framer configuration structure</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">A</item>
                                       <item translatable="yes">B</item>
@@ -5642,6 +5671,7 @@
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="tooltip_text" translatable="yes">ORx DDC mode</property>
+                                                <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">0</item>
                                                 </items>
@@ -5760,6 +5790,7 @@
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="tooltip_text" translatable="yes">ORX Halfband1 (HB1) decimation. Can be either 1 or 2</property>
+                                                <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">1</item>
                                                   <item translatable="yes">2</item>
@@ -5792,6 +5823,7 @@
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="tooltip_text" translatable="yes">Decimation of Dec5 or Dec4 filter (5,4)</property>
+                                                <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">4</item>
                                                   <item translatable="yes">5</item>
@@ -5824,6 +5856,7 @@
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="tooltip_text" translatable="yes">ORx FIR decimation (1,2,4)</property>
+                                                <property name="entry_text_column">0</property>
                                                 <items>
                                                   <item translatable="yes">1</item>
                                                   <item translatable="yes">2</item>
@@ -9714,6 +9747,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">Current Rx gain control mode setting</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">MGC</item>
                                       <item translatable="yes">AGC_FAST</item>
@@ -9957,6 +9991,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="tooltip_text" translatable="yes">Current Rx gain control mode setting</property>
+                                    <property name="entry_text_column">0</property>
                                     <items>
                                       <item translatable="yes">MGC</item>
                                       <item translatable="yes">AGC_FAST</item>
@@ -16848,6 +16883,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope (resolution of voltage change per AuxDAC code) - only applies to 10bit DACs (0-9)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">10 Bit</item>
                           <item translatable="yes">11 Bit</item>
@@ -16868,6 +16904,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value for each of the 10-bit DACs</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1V</item>
                           <item translatable="yes">1V5</item>
@@ -16905,6 +16942,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope (resolution of voltage change per AuxDAC code) - only applies to 10bit DACs (0-9)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">10 Bit</item>
                           <item translatable="yes">11 Bit</item>
@@ -16925,6 +16963,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value for each of the 10-bit DACs</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1V</item>
                           <item translatable="yes">1V5</item>
@@ -16962,6 +17001,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope (resolution of voltage change per AuxDAC code) - only applies to 10bit DACs (0-9)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">10 Bit</item>
                           <item translatable="yes">11 Bit</item>
@@ -16982,6 +17022,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value for each of the 10-bit DACs</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1V</item>
                           <item translatable="yes">1V5</item>
@@ -17019,6 +17060,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope (resolution of voltage change per AuxDAC code) - only applies to 10bit DACs (0-9)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">10 Bit</item>
                           <item translatable="yes">11 Bit</item>
@@ -17039,6 +17081,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value for each of the 10-bit DACs</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1V</item>
                           <item translatable="yes">1V5</item>
@@ -17076,6 +17119,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope (resolution of voltage change per AuxDAC code) - only applies to 10bit DACs (0-9)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">10 Bit</item>
                           <item translatable="yes">11 Bit</item>
@@ -17096,6 +17140,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value for each of the 10-bit DACs</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1V</item>
                           <item translatable="yes">1V5</item>
@@ -17133,6 +17178,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope (resolution of voltage change per AuxDAC code) - only applies to 10bit DACs (0-9)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">10 Bit</item>
                           <item translatable="yes">11 Bit</item>
@@ -17153,6 +17199,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value for each of the 10-bit DACs</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1V</item>
                           <item translatable="yes">1V5</item>
@@ -17190,6 +17237,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope (resolution of voltage change per AuxDAC code) - only applies to 10bit DACs (0-9)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">10 Bit</item>
                           <item translatable="yes">11 Bit</item>
@@ -17210,6 +17258,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value for each of the 10-bit DACs</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1V</item>
                           <item translatable="yes">1V5</item>
@@ -17247,6 +17296,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope (resolution of voltage change per AuxDAC code) - only applies to 10bit DACs (0-9)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">10 Bit</item>
                           <item translatable="yes">11 Bit</item>
@@ -17267,6 +17317,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value for each of the 10-bit DACs</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1V</item>
                           <item translatable="yes">1V5</item>
@@ -17304,6 +17355,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope (resolution of voltage change per AuxDAC code) - only applies to 10bit DACs (0-9)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">10 Bit</item>
                           <item translatable="yes">11 Bit</item>
@@ -17324,6 +17376,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value for each of the 10-bit DACs</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1V</item>
                           <item translatable="yes">1V5</item>
@@ -17361,6 +17414,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC slope (resolution of voltage change per AuxDAC code) - only applies to 10bit DACs (0-9)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">10 Bit</item>
                           <item translatable="yes">11 Bit</item>
@@ -17381,6 +17435,7 @@ CALIBRATIONS</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Aux DAC voltage reference value for each of the 10-bit DACs</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1V</item>
                           <item translatable="yes">1V5</item>
@@ -18522,6 +18577,7 @@ INVERT POLARITY</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">converter sample resolution (12, 16, 24)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">12</item>
                           <item translatable="yes">16</item>
@@ -18555,6 +18611,7 @@ INVERT POLARITY</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Number of bytes(octets) per frame (Valid 1, 2, 4, 8)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1</item>
                           <item translatable="yes">2</item>
@@ -18620,6 +18677,7 @@ INVERT POLARITY</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Number of ADCs (0, 2, or 4) where 2 ADCs are required per receive chain (I and Q)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">0</item>
                           <item translatable="yes">2</item>
@@ -18924,6 +18982,7 @@ INVERT POLARITY</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">converter sample resolution (12, 16, 24)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">12</item>
                           <item translatable="yes">16</item>
@@ -18944,6 +19003,7 @@ INVERT POLARITY</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Number of bytes(octets) per frame (Valid 1, 2, 4, 8)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">1</item>
                           <item translatable="yes">2</item>
@@ -18983,6 +19043,7 @@ INVERT POLARITY</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Number of ADCs (0, 2, or 4) where 2 ADCs are required per receive chain (I and Q)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">0</item>
                           <item translatable="yes">2</item>
@@ -19467,6 +19528,7 @@ INVERT POLARITY</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">converter sample resolution (12, 16)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">12</item>
                           <item translatable="yes">16</item>
@@ -19662,6 +19724,7 @@ INVERT POLARITY</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Number of DACs (0, 2, or 4) - 2 DACs per transmit chain (I and Q)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">0</item>
                           <item translatable="yes">2</item>
@@ -19874,6 +19937,7 @@ INVERT POLARITY</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">converter sample resolution (12, 16)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">12</item>
                           <item translatable="yes">16</item>
@@ -20019,6 +20083,7 @@ INVERT POLARITY</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="tooltip_text" translatable="yes">Number of DACs (0, 2, or 4) - 2 DACs per transmit chain (I and Q)</property>
+                        <property name="entry_text_column">0</property>
                         <items>
                           <item translatable="yes">0</item>
                           <item translatable="yes">2</item>
@@ -20329,6 +20394,7 @@ INVERT POLARITY</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="active">0</property>
+                                            <property name="entry_text_column">0</property>
                                             <items>
                                               <item translatable="yes">ADC_DATA</item>
                                               <item translatable="yes">CHECKERBOARD</item>
@@ -20376,6 +20442,7 @@ INVERT POLARITY</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="active">0</property>
+                                            <property name="entry_text_column">0</property>
                                             <items>
                                               <item translatable="yes">ADC_DATA</item>
                                               <item translatable="yes">CHECKERBOARD</item>

@@ -79,6 +79,22 @@ static char * dma_devices[] = {
 
 #define DMA_DEVICES_COUNT (sizeof(dma_devices) / sizeof(dma_devices[0]))
 
+#ifdef __APPLE__
+const void *memrchr(const void *src, int c, size_t length)
+{
+	const unsigned char *cp;
+
+	if (length != 0) {
+		cp = (const unsigned char *)src + length;
+		do {
+			if (*(--cp) == (unsigned char)c)
+				return (const void *)cp;
+		} while (--length != 0);
+	}
+	return NULL;
+}
+#endif
+
 static const char * get_adi_part_code(const char *device_name)
 {
 	const char *ad = NULL;

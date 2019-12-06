@@ -29,6 +29,7 @@
 #include "../config.h"
 #include "../eeprom.h"
 #include "../libini2.h"
+#include "../iio_utils.h"
 #include "./block_diagram.h"
 #include "dac_data_manager.h"
 #include "fir_filter.h"
@@ -519,7 +520,7 @@ static gboolean update_display(gpointer foo)
 
 		rssi_update_labels();
 		for (i = 1; i <= 4; i++) {
-			gain_mode = gtk_combo_box_get_active_text(GTK_COMBO_BOX(rx_gain_control_modes[i]));
+			gain_mode = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(rx_gain_control_modes[i]));
 			if (gain_mode && strcmp(gain_mode, "manual"))
 				iio_widget_update(&rx_widgets[rx_gains[i]]);
 		}
@@ -688,13 +689,13 @@ static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
 	GtkWidget *toplevel;
 
 	if (gtk_toggle_tool_button_get_active(btn)) {
-		gtk_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-down", NULL);
+		g_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-down", NULL);
 		gtk_widget_show(section);
 	} else {
-		gtk_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-up", NULL);
+		g_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-up", NULL);
 		gtk_widget_hide(section);
 		toplevel = gtk_widget_get_toplevel(GTK_WIDGET(btn));
-		if (GTK_WIDGET_TOPLEVEL(toplevel))
+		if (gtk_widget_is_toplevel(toplevel))
 			gtk_window_resize (GTK_WINDOW(toplevel), 1, 1);
 	}
 }
@@ -801,20 +802,20 @@ static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
 
 /* Check for a valid two channels combination (ch0->ch1, ch2->ch3, ...)
  *
- * struct iio_channel_info *chanels - list of channels of a device
- * int ch_count - number of channel in the list
- * char* ch_name - output parameter: stores references to the enabled
- *                 channels.
- * Return 1 if the channel combination is valid
- * Return 0 if the combination is not valid
+ * struct iio_device *dev - the iio device that owns the channels
+ * char* ch_name - output parameter: stores the names of to the
+ *                 enabled channels, useful for reporting for which
+ *                 channels the combination is valid or not.
+ * Return 1 if the channel combination is valid and 0 otherwise.
  */
 static int channel_combination_check(struct iio_device *dev, const char **ch_names)
 {
 	bool consecutive_ch = FALSE;
-	unsigned int i, k, nb_channels = iio_device_get_channels_count(dev);
+	unsigned int i, k;
+	GArray *channels = get_iio_channels_naturally_sorted(dev);
 
-	for (i = 0, k = 0; i < nb_channels; i++) {
-		struct iio_channel *ch = iio_device_get_channel(dev, i);
+	for (i = 0, k = 0; i < channels->len; ++i) {
+		struct iio_channel *ch = g_array_index(channels, struct iio_channel *, i);
 		struct extra_info *info = iio_channel_get_data(ch);
 
 		if (info->may_be_enabled) {
@@ -822,7 +823,8 @@ static int channel_combination_check(struct iio_device *dev, const char **ch_nam
 			ch_names[k++] = name;
 
 			if (i > 0) {
-				struct extra_info *prev = iio_channel_get_data(iio_device_get_channel(dev, i - 1));
+				struct extra_info *prev = iio_channel_get_data(g_array_index(channels, struct iio_channel *, i - 1));
+
 				if (prev->may_be_enabled) {
 					consecutive_ch = TRUE;
 					break;
@@ -830,6 +832,8 @@ static int channel_combination_check(struct iio_device *dev, const char **ch_nam
 			}
 		}
 	}
+	g_array_free(channels, FALSE);
+
 	if (!consecutive_ch)
 		return 0;
 

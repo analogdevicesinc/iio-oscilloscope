@@ -1,4 +1,4 @@
-#!/bin/sh -xe
+#!/bin/sh -e
 
 . CI/travis/lib.sh
 . CI/travis/before_install_lib.sh
@@ -12,7 +12,8 @@ handle_centos() {
 	yum -y groupinstall 'Development Tools'
 	yum -y install cmake libxml2-devel libcurl-devel glib2-devel \
 		fftw-devel libusb1-devel jansson-devel cmake gtk2-devel \
-		bison flex doxygen matio-devel libaio-devel libtool
+		bison flex doxygen matio-devel libaio-devel libtool \
+		libavahi-client-devel
 
 	if [ "$TRAVIS" = "true" ] || [ "$INSIDE_DOCKER" = "1" ] ; then
 		for pkg in libiio libad9361-iio ; do
@@ -41,7 +42,8 @@ handle_default() {
 	sudo apt-get -qq update
 	sudo apt-get install -y build-essential libxml2-dev libcurl4-openssl-dev \
 		libmatio-dev libglib2.0-dev libfftw3-dev libusb-1.0-0-dev libjansson-dev \
-		cmake libgtk2.0-dev libgtkdatabox-dev bison flex doxygen libaio-dev
+		cmake libgtk2.0-dev libgtkdatabox-dev bison flex doxygen libaio-dev \
+		libavahi-client-dev
 	if [ `sudo apt-cache search libserialport-dev | wc -l` -gt 0 ] ; then
 		sudo apt-get install -y libserialport-dev
 	fi
