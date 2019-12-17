@@ -94,6 +94,54 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
+  <object class="GtkAdjustment" id="main_rx_nco_phase_adjust1">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="main_rx_nco_phase_adjust2">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="main_rx_nco_phase_adjust3">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="main_rx_nco_phase_adjust4">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="main_rx_nco_phase_adjust5">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="main_rx_nco_phase_adjust6">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="main_rx_nco_phase_adjust7">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="main_rx_nco_phase_adjust8">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
   <object class="GtkAdjustment" id="main_test_tone_scale_adjust_1">
     <property name="upper">1</property>
     <property name="step_increment">0.01</property>
@@ -278,6 +326,54 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
+  <object class="GtkAdjustment" id="nco_phase_adjust1">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="nco_phase_adjust2">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="nco_phase_adjust3">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="nco_phase_adjust4">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="nco_phase_adjust5">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="nco_phase_adjust6">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="nco_phase_adjust7">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="nco_phase_adjust8">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
   <object class="GtkAdjustment" id="test_tone_scale_adjust_1">
     <property name="upper">1</property>
     <property name="step_increment">0.01</property>
@@ -317,6 +413,102 @@
     <property name="upper">1</property>
     <property name="step_increment">0.01</property>
     <property name="page_increment">1</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_main_nco_phase_adjust_1">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_main_nco_phase_adjust_2">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_main_nco_phase_adjust_3">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_main_nco_phase_adjust_4">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_main_nco_phase_adjust_5">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_main_nco_phase_adjust_6">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_main_nco_phase_adjust_7">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_main_nco_phase_adjust_8">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_nco_phase_adjust_1">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_nco_phase_adjust_2">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_nco_phase_adjust_3">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_nco_phase_adjust_4">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_nco_phase_adjust_5">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_nco_phase_adjust_6">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_nco_phase_adjust_7">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="tx_nco_phase_adjust_8">
+    <property name="lower">-180</property>
+    <property name="upper">180</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
   </object>
   <object class="GtkScrolledWindow" id="ad9081_panel">
     <property name="visible">True</property>
@@ -530,12 +722,14 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="bottom_padding">3</property>
+                            <property name="left_padding">3</property>
+                            <property name="right_padding">3</property>
                             <child>
                               <object class="GtkTable" id="table1">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">2</property>
-                                <property name="n_columns">2</property>
+                                <property name="n_columns">3</property>
                                 <property name="column_spacing">5</property>
                                 <property name="row_spacing">5</property>
                                 <child>
@@ -598,6 +792,44 @@
                                     <property name="y_options"/>
                                   </packing>
                                 </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_nco_phase1">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">nco_phase_adjust1</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_main_nco_phase1">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">main_rx_nco_phase_adjust1</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
+                                    <property name="top_attach">1</property>
+                                    <property name="bottom_attach">2</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
                               </object>
                             </child>
                           </object>
@@ -634,18 +866,18 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">2</property>
-                                <property name="n_columns">2</property>
+                                <property name="n_columns">3</property>
                                 <property name="column_spacing">5</property>
                                 <property name="row_spacing">5</property>
                                 <child>
-                                  <object class="GtkLabel" id="label5">
+                                  <object class="GtkLabel" id="label1">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">NCO Frequency</property>
                                   </object>
                                   <packing>
-                                    <property name="x_options"/>
-                                    <property name="y_options"/>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options">GTK_FILL</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -653,6 +885,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">nco_adjust_2</property>
@@ -666,7 +899,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label7">
+                                  <object class="GtkLabel" id="label5">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Main NCO Frequency</property>
@@ -674,8 +907,8 @@
                                   <packing>
                                     <property name="top_attach">1</property>
                                     <property name="bottom_attach">2</property>
-                                    <property name="x_options"/>
-                                    <property name="y_options"/>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options">GTK_FILL</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -683,6 +916,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">main_rx_nco_adjust_2</property>
@@ -691,6 +925,44 @@
                                   <packing>
                                     <property name="left_attach">1</property>
                                     <property name="right_attach">2</property>
+                                    <property name="top_attach">1</property>
+                                    <property name="bottom_attach">2</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_nco_phase2">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">nco_phase_adjust2</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_main_nco_phase2">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">main_rx_nco_phase_adjust2</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
                                     <property name="top_attach">1</property>
                                     <property name="bottom_attach">2</property>
                                     <property name="x_options">GTK_FILL</property>
@@ -733,11 +1005,11 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">2</property>
-                                <property name="n_columns">2</property>
+                                <property name="n_columns">3</property>
                                 <property name="column_spacing">5</property>
                                 <property name="row_spacing">5</property>
                                 <child>
-                                  <object class="GtkLabel" id="label9">
+                                  <object class="GtkLabel" id="label7">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">NCO Frequency</property>
@@ -752,6 +1024,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">nco_adjust_3</property>
@@ -765,7 +1038,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label10">
+                                  <object class="GtkLabel" id="label9">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Main NCO Frequency</property>
@@ -782,6 +1055,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">main_rx_nco_adjust_3</property>
@@ -790,6 +1064,44 @@
                                   <packing>
                                     <property name="left_attach">1</property>
                                     <property name="right_attach">2</property>
+                                    <property name="top_attach">1</property>
+                                    <property name="bottom_attach">2</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_nco_phase3">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">nco_phase_adjust3</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_main_nco_phase3">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">main_rx_nco_phase_adjust3</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
                                     <property name="top_attach">1</property>
                                     <property name="bottom_attach">2</property>
                                     <property name="x_options">GTK_FILL</property>
@@ -828,15 +1140,15 @@
                             <property name="can_focus">False</property>
                             <property name="bottom_padding">3</property>
                             <child>
-                              <object class="GtkTable" id="table5">
+                              <object class="GtkTable" id="table4">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">2</property>
-                                <property name="n_columns">2</property>
+                                <property name="n_columns">3</property>
                                 <property name="column_spacing">5</property>
                                 <property name="row_spacing">5</property>
                                 <child>
-                                  <object class="GtkLabel" id="label16">
+                                  <object class="GtkLabel" id="label10">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">NCO Frequency</property>
@@ -851,6 +1163,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">nco_adjust_4</property>
@@ -864,7 +1177,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label17">
+                                  <object class="GtkLabel" id="label12">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Main NCO Frequency</property>
@@ -881,6 +1194,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">main_rx_nco_adjust_4</property>
@@ -889,6 +1203,44 @@
                                   <packing>
                                     <property name="left_attach">1</property>
                                     <property name="right_attach">2</property>
+                                    <property name="top_attach">1</property>
+                                    <property name="bottom_attach">2</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_nco_phase4">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">nco_phase_adjust4</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_main_nco_phase4">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">main_rx_nco_phase_adjust4</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
                                     <property name="top_attach">1</property>
                                     <property name="bottom_attach">2</property>
                                     <property name="x_options">GTK_FILL</property>
@@ -927,15 +1279,15 @@
                             <property name="can_focus">False</property>
                             <property name="bottom_padding">3</property>
                             <child>
-                              <object class="GtkTable" id="table4">
+                              <object class="GtkTable" id="table5">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">2</property>
-                                <property name="n_columns">2</property>
+                                <property name="n_columns">3</property>
                                 <property name="column_spacing">5</property>
                                 <property name="row_spacing">5</property>
                                 <child>
-                                  <object class="GtkLabel" id="label12">
+                                  <object class="GtkLabel" id="label13">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">NCO Frequency</property>
@@ -950,6 +1302,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">nco_adjust_5</property>
@@ -963,7 +1316,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label13">
+                                  <object class="GtkLabel" id="label14">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Main NCO Frequency</property>
@@ -980,6 +1333,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">main_rx_nco_adjust_5</property>
@@ -988,6 +1342,44 @@
                                   <packing>
                                     <property name="left_attach">1</property>
                                     <property name="right_attach">2</property>
+                                    <property name="top_attach">1</property>
+                                    <property name="bottom_attach">2</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_nco_phase5">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">nco_phase_adjust5</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_main_nco_phase5">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">main_rx_nco_phase_adjust5</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
                                     <property name="top_attach">1</property>
                                     <property name="bottom_attach">2</property>
                                     <property name="x_options">GTK_FILL</property>
@@ -1030,11 +1422,11 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">2</property>
-                                <property name="n_columns">2</property>
+                                <property name="n_columns">3</property>
                                 <property name="column_spacing">5</property>
                                 <property name="row_spacing">5</property>
                                 <child>
-                                  <object class="GtkLabel" id="label19">
+                                  <object class="GtkLabel" id="label16">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">NCO Frequency</property>
@@ -1049,6 +1441,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">nco_adjust_6</property>
@@ -1062,7 +1455,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label20">
+                                  <object class="GtkLabel" id="label17">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Main NCO Frequency</property>
@@ -1079,6 +1472,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">main_rx_nco_adjust_6</property>
@@ -1087,6 +1481,44 @@
                                   <packing>
                                     <property name="left_attach">1</property>
                                     <property name="right_attach">2</property>
+                                    <property name="top_attach">1</property>
+                                    <property name="bottom_attach">2</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_nco_phase6">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">nco_phase_adjust6</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_main_nco_phase6">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">main_rx_nco_phase_adjust6</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
                                     <property name="top_attach">1</property>
                                     <property name="bottom_attach">2</property>
                                     <property name="x_options">GTK_FILL</property>
@@ -1129,11 +1561,11 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">2</property>
-                                <property name="n_columns">2</property>
+                                <property name="n_columns">3</property>
                                 <property name="column_spacing">5</property>
                                 <property name="row_spacing">5</property>
                                 <child>
-                                  <object class="GtkLabel" id="label22">
+                                  <object class="GtkLabel" id="label19">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">NCO Frequency</property>
@@ -1148,6 +1580,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">nco_adjust_7</property>
@@ -1161,7 +1594,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label23">
+                                  <object class="GtkLabel" id="label20">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Main NCO Frequency</property>
@@ -1178,6 +1611,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">main_rx_nco_adjust_7</property>
@@ -1186,6 +1620,44 @@
                                   <packing>
                                     <property name="left_attach">1</property>
                                     <property name="right_attach">2</property>
+                                    <property name="top_attach">1</property>
+                                    <property name="bottom_attach">2</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_nco_phase7">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">nco_phase_adjust7</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_main_nco_phase7">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">main_rx_nco_phase_adjust7</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
                                     <property name="top_attach">1</property>
                                     <property name="bottom_attach">2</property>
                                     <property name="x_options">GTK_FILL</property>
@@ -1224,15 +1696,15 @@
                             <property name="can_focus">False</property>
                             <property name="bottom_padding">3</property>
                             <child>
-                              <object class="GtkTable" id="table0">
+                              <object class="GtkTable" id="table27">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">2</property>
-                                <property name="n_columns">2</property>
+                                <property name="n_columns">3</property>
                                 <property name="column_spacing">5</property>
                                 <property name="row_spacing">5</property>
                                 <child>
-                                  <object class="GtkLabel" id="label14">
+                                  <object class="GtkLabel" id="label22">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">NCO Frequency</property>
@@ -1247,6 +1719,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">nco_adjust_8</property>
@@ -1260,7 +1733,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel" id="label1">
+                                  <object class="GtkLabel" id="label23">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Main NCO Frequency</property>
@@ -1277,6 +1750,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000000</property>
                                     <property name="primary_icon_activatable">False</property>
                                     <property name="secondary_icon_activatable">False</property>
                                     <property name="adjustment">main_rx_nco_adjust_8</property>
@@ -1285,6 +1759,44 @@
                                   <packing>
                                     <property name="left_attach">1</property>
                                     <property name="right_attach">2</property>
+                                    <property name="top_attach">1</property>
+                                    <property name="bottom_attach">2</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_nco_phase8">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">nco_phase_adjust8</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
+                                    <property name="x_options">GTK_FILL</property>
+                                    <property name="y_options"/>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="rx_main_nco_phase8">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="invisible_char">●</property>
+                                    <property name="text" translatable="yes">0,000</property>
+                                    <property name="primary_icon_activatable">False</property>
+                                    <property name="secondary_icon_activatable">False</property>
+                                    <property name="adjustment">main_rx_nco_phase_adjust1</property>
+                                    <property name="digits">3</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">2</property>
+                                    <property name="right_attach">3</property>
                                     <property name="top_attach">1</property>
                                     <property name="bottom_attach">2</property>
                                     <property name="x_options">GTK_FILL</property>
@@ -1573,9 +2085,6 @@
                                             <property name="column_spacing">5</property>
                                             <property name="row_spacing">5</property>
                                             <child>
-                                              <placeholder/>
-                                            </child>
-                                            <child>
                                               <object class="GtkSpinButton" id="tx_nco_freq1">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
@@ -1588,36 +2097,6 @@
                                               <packing>
                                                 <property name="left_attach">1</property>
                                                 <property name="right_attach">2</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkLabel" id="label36">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Test Tone Scale</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">2</property>
-                                                <property name="right_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkSpinButton" id="tx_test_tone_scale1">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="invisible_char">●</property>
-                                                <property name="primary_icon_activatable">False</property>
-                                                <property name="secondary_icon_activatable">False</property>
-                                                <property name="adjustment">test_tone_scale_adjust_1</property>
-                                                <property name="digits">9</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">3</property>
-                                                <property name="right_attach">4</property>
                                                 <property name="x_options">GTK_FILL</property>
                                                 <property name="y_options"/>
                                               </packing>
@@ -1666,14 +2145,65 @@
                                               </packing>
                                             </child>
                                             <child>
+                                              <object class="GtkSpinButton" id="tx_test_tone_scale1">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">test_tone_scale_adjust_1</property>
+                                                <property name="digits">9</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkSpinButton" id="tx_nco_phase1">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_nco_phase_adjust_1</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
                                               <object class="GtkCheckButton" id="tx_test_tone_en1">
                                                 <property name="label" translatable="yes">Test Tone Enable</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
                                                 <property name="relief">none</property>
-                                                <property name="xalign">1</property>
+                                                <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label36">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">Test Tone Scale</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -1804,7 +2334,22 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <placeholder/>
+                                              <object class="GtkSpinButton" id="tx_main_nco_phase1">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_main_nco_phase_adjust_1</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
                                             </child>
                                           </object>
                                         </child>
@@ -1926,9 +2471,6 @@
                                             <property name="column_spacing">5</property>
                                             <property name="row_spacing">5</property>
                                             <child>
-                                              <placeholder/>
-                                            </child>
-                                            <child>
                                               <object class="GtkSpinButton" id="tx_nco_freq2">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
@@ -1950,37 +2492,6 @@
                                               <object class="GtkLabel" id="label27">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Test Tone Scale</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">2</property>
-                                                <property name="right_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkSpinButton" id="tx_test_tone_scale2">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">0,000000000</property>
-                                                <property name="primary_icon_activatable">False</property>
-                                                <property name="secondary_icon_activatable">False</property>
-                                                <property name="adjustment">test_tone_scale_adjust_2</property>
-                                                <property name="digits">9</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">3</property>
-                                                <property name="right_attach">4</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkLabel" id="label28">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">NCO Frequency</property>
                                               </object>
                                               <packing>
@@ -1989,7 +2500,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkLabel" id="label29">
+                                              <object class="GtkLabel" id="label28">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Gain Scale</property>
@@ -2022,6 +2533,44 @@
                                               </packing>
                                             </child>
                                             <child>
+                                              <object class="GtkSpinButton" id="tx_test_tone_scale2">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">test_tone_scale_adjust_2</property>
+                                                <property name="digits">9</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkSpinButton" id="tx_nco_phase2">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_nco_phase_adjust_2</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
                                               <object class="GtkCheckButton" id="tx_test_tone_en2">
                                                 <property name="label" translatable="yes">Test Tone Enable</property>
                                                 <property name="visible">True</property>
@@ -2030,6 +2579,19 @@
                                                 <property name="relief">none</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label29">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">Test Tone Scale</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -2162,7 +2724,22 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <placeholder/>
+                                              <object class="GtkSpinButton" id="tx_main_nco_phase2">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_main_nco_phase_adjust_2</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
                                             </child>
                                           </object>
                                         </child>
@@ -2284,9 +2861,6 @@
                                             <property name="column_spacing">5</property>
                                             <property name="row_spacing">5</property>
                                             <child>
-                                              <placeholder/>
-                                            </child>
-                                            <child>
                                               <object class="GtkSpinButton" id="tx_nco_freq3">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
@@ -2308,37 +2882,6 @@
                                               <object class="GtkLabel" id="label45">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Test Tone Scale</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">2</property>
-                                                <property name="right_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkSpinButton" id="tx_test_tone_scale3">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">0,000000000</property>
-                                                <property name="primary_icon_activatable">False</property>
-                                                <property name="secondary_icon_activatable">False</property>
-                                                <property name="adjustment">test_tone_scale_adjust_3</property>
-                                                <property name="digits">9</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">3</property>
-                                                <property name="right_attach">4</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkLabel" id="label46">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">NCO Frequency</property>
                                               </object>
                                               <packing>
@@ -2347,7 +2890,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkLabel" id="label47">
+                                              <object class="GtkLabel" id="label46">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Gain Scale</property>
@@ -2380,6 +2923,44 @@
                                               </packing>
                                             </child>
                                             <child>
+                                              <object class="GtkSpinButton" id="tx_test_tone_scale3">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">test_tone_scale_adjust_3</property>
+                                                <property name="digits">9</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkSpinButton" id="tx_nco_phase3">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_nco_phase_adjust_3</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
                                               <object class="GtkCheckButton" id="tx_test_tone_en3">
                                                 <property name="label" translatable="yes">Test Tone Enable</property>
                                                 <property name="visible">True</property>
@@ -2388,6 +2969,19 @@
                                                 <property name="relief">none</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label47">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">Test Tone Scale</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -2520,7 +3114,22 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <placeholder/>
+                                              <object class="GtkSpinButton" id="tx_main_nco_phase3">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_main_nco_phase_adjust_3</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
                                             </child>
                                           </object>
                                         </child>
@@ -2642,9 +3251,6 @@
                                             <property name="column_spacing">5</property>
                                             <property name="row_spacing">5</property>
                                             <child>
-                                              <placeholder/>
-                                            </child>
-                                            <child>
                                               <object class="GtkSpinButton" id="tx_nco_freq4">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
@@ -2666,37 +3272,6 @@
                                               <object class="GtkLabel" id="label55">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Test Tone Scale</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">2</property>
-                                                <property name="right_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkSpinButton" id="tx_test_tone_scale4">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">0,000000000</property>
-                                                <property name="primary_icon_activatable">False</property>
-                                                <property name="secondary_icon_activatable">False</property>
-                                                <property name="adjustment">test_tone_scale_adjust_4</property>
-                                                <property name="digits">9</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">3</property>
-                                                <property name="right_attach">4</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkLabel" id="label56">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">NCO Frequency</property>
                                               </object>
                                               <packing>
@@ -2705,7 +3280,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkLabel" id="label57">
+                                              <object class="GtkLabel" id="label56">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Gain Scale</property>
@@ -2738,6 +3313,44 @@
                                               </packing>
                                             </child>
                                             <child>
+                                              <object class="GtkSpinButton" id="tx_test_tone_scale4">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">test_tone_scale_adjust_4</property>
+                                                <property name="digits">9</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkSpinButton" id="tx_nco_phase4">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_nco_phase_adjust_4</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
                                               <object class="GtkCheckButton" id="tx_test_tone_en4">
                                                 <property name="label" translatable="yes">Test Tone Enable</property>
                                                 <property name="visible">True</property>
@@ -2746,6 +3359,19 @@
                                                 <property name="relief">none</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label57">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">Test Tone Scale</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -2878,7 +3504,22 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <placeholder/>
+                                              <object class="GtkSpinButton" id="tx_main_nco_phase4">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_main_nco_phase_adjust_4</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
                                             </child>
                                           </object>
                                         </child>
@@ -3000,19 +3641,15 @@
                                             <property name="column_spacing">5</property>
                                             <property name="row_spacing">5</property>
                                             <child>
-                                              <placeholder/>
-                                            </child>
-                                            <child>
                                               <object class="GtkSpinButton" id="tx_nco_freq5">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">-4,000000</property>
+                                                <property name="text" translatable="yes">0,000000</property>
                                                 <property name="primary_icon_activatable">False</property>
                                                 <property name="secondary_icon_activatable">False</property>
                                                 <property name="adjustment">nco_adjust_13</property>
                                                 <property name="digits">6</property>
-                                                <property name="value">-4</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -3025,37 +3662,6 @@
                                               <object class="GtkLabel" id="label64">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Test Tone Scale</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">2</property>
-                                                <property name="right_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkSpinButton" id="tx_test_tone_scale5">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">0,000000000</property>
-                                                <property name="primary_icon_activatable">False</property>
-                                                <property name="secondary_icon_activatable">False</property>
-                                                <property name="adjustment">test_tone_scale_adjust_5</property>
-                                                <property name="digits">9</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">3</property>
-                                                <property name="right_attach">4</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkLabel" id="label65">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">NCO Frequency</property>
                                               </object>
                                               <packing>
@@ -3064,7 +3670,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkLabel" id="label66">
+                                              <object class="GtkLabel" id="label65">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Gain Scale</property>
@@ -3097,6 +3703,44 @@
                                               </packing>
                                             </child>
                                             <child>
+                                              <object class="GtkSpinButton" id="tx_test_tone_scale5">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">test_tone_scale_adjust_5</property>
+                                                <property name="digits">9</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkSpinButton" id="tx_nco_phase5">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_nco_phase_adjust_5</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
                                               <object class="GtkCheckButton" id="tx_test_tone_en5">
                                                 <property name="label" translatable="yes">Test Tone Enable</property>
                                                 <property name="visible">True</property>
@@ -3105,6 +3749,19 @@
                                                 <property name="relief">none</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label66">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">Test Tone Scale</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -3237,7 +3894,22 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <placeholder/>
+                                              <object class="GtkSpinButton" id="tx_main_nco_phase5">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_nco_phase_adjust_5</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
                                             </child>
                                           </object>
                                         </child>
@@ -3359,19 +4031,15 @@
                                             <property name="column_spacing">5</property>
                                             <property name="row_spacing">5</property>
                                             <child>
-                                              <placeholder/>
-                                            </child>
-                                            <child>
                                               <object class="GtkSpinButton" id="tx_nco_freq6">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">-4,000000</property>
+                                                <property name="text" translatable="yes">0,000000</property>
                                                 <property name="primary_icon_activatable">False</property>
                                                 <property name="secondary_icon_activatable">False</property>
                                                 <property name="adjustment">nco_adjust_14</property>
                                                 <property name="digits">6</property>
-                                                <property name="value">-4</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -3384,37 +4052,6 @@
                                               <object class="GtkLabel" id="label73">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Test Tone Scale</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">2</property>
-                                                <property name="right_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkSpinButton" id="tx_test_tone_scale6">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">0,000000000</property>
-                                                <property name="primary_icon_activatable">False</property>
-                                                <property name="secondary_icon_activatable">False</property>
-                                                <property name="adjustment">test_tone_scale_adjust_6</property>
-                                                <property name="digits">9</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">3</property>
-                                                <property name="right_attach">4</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkLabel" id="label74">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">NCO Frequency</property>
                                               </object>
                                               <packing>
@@ -3423,7 +4060,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkLabel" id="label75">
+                                              <object class="GtkLabel" id="label74">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Gain Scale</property>
@@ -3443,7 +4080,7 @@
                                                 <property name="text" translatable="yes">0,000000000</property>
                                                 <property name="primary_icon_activatable">False</property>
                                                 <property name="secondary_icon_activatable">False</property>
-                                                <property name="adjustment">gain_scale_adjust_1</property>
+                                                <property name="adjustment">gain_scale_adjust_6</property>
                                                 <property name="digits">9</property>
                                               </object>
                                               <packing>
@@ -3451,6 +4088,44 @@
                                                 <property name="right_attach">2</property>
                                                 <property name="top_attach">1</property>
                                                 <property name="bottom_attach">2</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkSpinButton" id="tx_test_tone_scale6">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">test_tone_scale_adjust_6</property>
+                                                <property name="digits">9</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkSpinButton" id="tx_nco_phase6">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_nco_phase_adjust_6</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
                                                 <property name="x_options">GTK_FILL</property>
                                                 <property name="y_options"/>
                                               </packing>
@@ -3464,6 +4139,19 @@
                                                 <property name="relief">none</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label75">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">Test Tone Scale</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -3596,7 +4284,22 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <placeholder/>
+                                              <object class="GtkSpinButton" id="tx_main_nco_phase6">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_main_nco_phase_adjust_6</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
                                             </child>
                                           </object>
                                         </child>
@@ -3718,19 +4421,15 @@
                                             <property name="column_spacing">5</property>
                                             <property name="row_spacing">5</property>
                                             <child>
-                                              <placeholder/>
-                                            </child>
-                                            <child>
                                               <object class="GtkSpinButton" id="tx_nco_freq7">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">-4,000000</property>
+                                                <property name="text" translatable="yes">0,000000</property>
                                                 <property name="primary_icon_activatable">False</property>
                                                 <property name="secondary_icon_activatable">False</property>
                                                 <property name="adjustment">nco_adjust_15</property>
                                                 <property name="digits">6</property>
-                                                <property name="value">-4</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -3743,37 +4442,6 @@
                                               <object class="GtkLabel" id="label82">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Test Tone Scale</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">2</property>
-                                                <property name="right_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkSpinButton" id="tx_test_tone_scale7">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">0,000000000</property>
-                                                <property name="primary_icon_activatable">False</property>
-                                                <property name="secondary_icon_activatable">False</property>
-                                                <property name="adjustment">test_tone_scale_adjust_7</property>
-                                                <property name="digits">9</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">3</property>
-                                                <property name="right_attach">4</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkLabel" id="label83">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">NCO Frequency</property>
                                               </object>
                                               <packing>
@@ -3782,7 +4450,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkLabel" id="label84">
+                                              <object class="GtkLabel" id="label83">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Gain Scale</property>
@@ -3815,6 +4483,44 @@
                                               </packing>
                                             </child>
                                             <child>
+                                              <object class="GtkSpinButton" id="tx_test_tone_scale7">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">test_tone_scale_adjust_7</property>
+                                                <property name="digits">9</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkSpinButton" id="tx_nco_phase7">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_nco_phase_adjust_7</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
                                               <object class="GtkCheckButton" id="tx_test_tone_en7">
                                                 <property name="label" translatable="yes">Test Tone Enable</property>
                                                 <property name="visible">True</property>
@@ -3823,6 +4529,19 @@
                                                 <property name="relief">none</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label84">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">Test Tone Scale</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -3955,7 +4674,22 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <placeholder/>
+                                              <object class="GtkSpinButton" id="tx_main_nco_phase7">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_main_nco_phase_adjust_7</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
                                             </child>
                                           </object>
                                         </child>
@@ -4077,19 +4811,15 @@
                                             <property name="column_spacing">5</property>
                                             <property name="row_spacing">5</property>
                                             <child>
-                                              <placeholder/>
-                                            </child>
-                                            <child>
                                               <object class="GtkSpinButton" id="tx_nco_freq8">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">-4,000000</property>
+                                                <property name="text" translatable="yes">0,000000</property>
                                                 <property name="primary_icon_activatable">False</property>
                                                 <property name="secondary_icon_activatable">False</property>
                                                 <property name="adjustment">nco_adjust_16</property>
                                                 <property name="digits">6</property>
-                                                <property name="value">-4</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -4102,37 +4832,6 @@
                                               <object class="GtkLabel" id="label91">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Test Tone Scale</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">2</property>
-                                                <property name="right_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkSpinButton" id="tx_test_tone_scale8">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="invisible_char">●</property>
-                                                <property name="text" translatable="yes">0,000000000</property>
-                                                <property name="primary_icon_activatable">False</property>
-                                                <property name="secondary_icon_activatable">False</property>
-                                                <property name="adjustment">test_tone_scale_adjust_8</property>
-                                                <property name="digits">9</property>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">3</property>
-                                                <property name="right_attach">4</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkLabel" id="label92">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">NCO Frequency</property>
                                               </object>
                                               <packing>
@@ -4141,7 +4840,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkLabel" id="label93">
+                                              <object class="GtkLabel" id="label92">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Gain Scale</property>
@@ -4174,6 +4873,44 @@
                                               </packing>
                                             </child>
                                             <child>
+                                              <object class="GtkSpinButton" id="tx_test_tone_scale8">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000000000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">test_tone_scale_adjust_8</property>
+                                                <property name="digits">9</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkSpinButton" id="tx_nco_phase8">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_nco_phase_adjust_8</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
                                               <object class="GtkCheckButton" id="tx_test_tone_en8">
                                                 <property name="label" translatable="yes">Test Tone Enable</property>
                                                 <property name="visible">True</property>
@@ -4182,6 +4919,19 @@
                                                 <property name="relief">none</property>
                                                 <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">3</property>
+                                                <property name="right_attach">4</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="label93">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="label" translatable="yes">Test Tone Scale</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -4314,7 +5064,22 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <placeholder/>
+                                              <object class="GtkSpinButton" id="tx_main_nco_phase8">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="text" translatable="yes">0,000</property>
+                                                <property name="primary_icon_activatable">False</property>
+                                                <property name="secondary_icon_activatable">False</property>
+                                                <property name="adjustment">tx_main_nco_phase_adjust_8</property>
+                                                <property name="digits">3</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">2</property>
+                                                <property name="right_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"/>
+                                              </packing>
                                             </child>
                                           </object>
                                         </child>

@@ -32,6 +32,7 @@
 #define NUM_MAX_WIDGETS			81
 
 const gdouble mhz_scale = 1000000.0;
+const gdouble k_scale = 1000.0;
 
 struct plugin_private {
 	/* plugin context */
@@ -117,19 +118,23 @@ static int ad9081_add_chan_widgets(GtkBuilder *builder,
 	struct {
 		char *nco;
 		char *main_nco;
+		char *nco_phase;
+		char *main_nco_phase;
 	} rx_widgets[NUM_MAX_CHANNEL] = {
-		{ "rx_nco_freq1", "rx_main_nco_freq1" },
-		{ "rx_nco_freq2", "rx_main_nco_freq2" },
-		{ "rx_nco_freq3", "rx_main_nco_freq3" },
-		{ "rx_nco_freq4", "rx_main_nco_freq4" },
-		{ "rx_nco_freq5", "rx_main_nco_freq5" },
-		{ "rx_nco_freq6", "rx_main_nco_freq6" },
-		{ "rx_nco_freq7", "rx_main_nco_freq7" },
-		{ "rx_nco_freq8", "rx_main_nco_freq8" },
+		{ "rx_nco_freq1", "rx_main_nco_freq1", "rx_nco_phase1", "rx_main_nco_phase1" },
+		{ "rx_nco_freq2", "rx_main_nco_freq2", "rx_nco_phase2", "rx_main_nco_phase2" },
+		{ "rx_nco_freq3", "rx_main_nco_freq3", "rx_nco_phase3", "rx_main_nco_phase3" },
+		{ "rx_nco_freq4", "rx_main_nco_freq4", "rx_nco_phase4", "rx_main_nco_phase4" },
+		{ "rx_nco_freq5", "rx_main_nco_freq5", "rx_nco_phase5", "rx_main_nco_phase5" },
+		{ "rx_nco_freq6", "rx_main_nco_freq6", "rx_nco_phase6", "rx_main_nco_phase6" },
+		{ "rx_nco_freq7", "rx_main_nco_freq7", "rx_nco_phase7", "rx_main_nco_phase7" },
+		{ "rx_nco_freq8", "rx_main_nco_freq8", "rx_nco_phase8", "rx_main_nco_phase8" },
 	};
 	struct {
 		char *nco;
 		char *main_nco;
+		char *nco_phase;
+		char *main_nco_phase;
 		char *en;
 		char *nco_gain_scale;
 		char *test_tone_en;
@@ -137,35 +142,48 @@ static int ad9081_add_chan_widgets(GtkBuilder *builder,
 		char *main_nco_test_tone_en;
 		char *main_nco_test_tone_scale;
 	} tx_widgets[NUM_MAX_CHANNEL] = {
-		{"tx_nco_freq1", "tx_main_nco_freq1", "tx_enable1", "tx_nco_gain_scale1",
-		 "tx_test_tone_en1", "tx_test_tone_scale1", "tx_main_test_tone_en1",
-		 "tx_main_test_tone_scale1"},
-		{"tx_nco_freq2", "tx_main_nco_freq2", "tx_enable2", "tx_nco_gain_scale2",
-		 "tx_test_tone_en2", "tx_test_tone_scale2", "tx_main_test_tone_en2",
-		 "tx_main_test_tone_scale2"},
-		{"tx_nco_freq3", "tx_main_nco_freq3", "tx_enable3", "tx_nco_gain_scale3",
-		 "tx_test_tone_en3", "tx_test_tone_scale3", "tx_main_test_tone_en3",
-		 "tx_main_test_tone_scale3"},
-		{"tx_nco_freq4", "tx_main_nco_freq4", "tx_enable4", "tx_nco_gain_scale4",
-		 "tx_test_tone_en4", "tx_test_tone_scale4", "tx_main_test_tone_en4",
-		 "tx_main_test_tone_scale4"},
-		{"tx_nco_freq5", "tx_main_nco_freq5", "tx_enable5", "tx_nco_gain_scale5",
-		 "tx_test_tone_en5", "tx_test_tone_scale5", "tx_main_test_tone_en5",
-		 "tx_main_test_tone_scale5"},
-		{"tx_nco_freq6", "tx_main_nco_freq6", "tx_enable6", "tx_nco_gain_scale6",
-		 "tx_test_tone_en6", "tx_test_tone_scale6", "tx_main_test_tone_en6",
-		 "tx_main_test_tone_scale6"},
-		{"tx_nco_freq7", "tx_main_nco_freq7", "tx_enable7", "tx_nco_gain_scale7",
-		 "tx_test_tone_en7", "tx_test_tone_scale7", "tx_main_test_tone_en7",
-		 "tx_main_test_tone_scale7"},
-		{"tx_nco_freq8", "tx_main_nco_freq8", "tx_enable8", "tx_nco_gain_scale8",
-		 "tx_test_tone_en8", "tx_test_tone_scale8", "tx_main_test_tone_en8",
-		 "tx_main_test_tone_scale8"},
+		 {"tx_nco_freq1", "tx_main_nco_freq1", "tx_nco_phase1",
+		  "tx_main_nco_phase1", "tx_enable1", "tx_nco_gain_scale1",
+		  "tx_test_tone_en1", "tx_test_tone_scale1", "tx_main_test_tone_en1",
+		  "tx_main_test_tone_scale1"},
+		 {"tx_nco_freq2", "tx_main_nco_freq2", "tx_nco_phase2",
+		  "tx_main_nco_phase2", "tx_enable2", "tx_nco_gain_scale2",
+		  "tx_test_tone_en2", "tx_test_tone_scale2", "tx_main_test_tone_en2",
+		  "tx_main_test_tone_scale2"},
+		 {"tx_nco_freq3", "tx_main_nco_freq3", "tx_nco_phase3",
+		  "tx_main_nco_phase3", "tx_enable3", "tx_nco_gain_scale3",
+		  "tx_test_tone_en3", "tx_test_tone_scale3", "tx_main_test_tone_en3",
+		  "tx_main_test_tone_scale3"},
+		 {"tx_nco_freq4", "tx_main_nco_freq4", "tx_nco_phase4",
+		  "tx_main_nco_phase4", "tx_enable4", "tx_nco_gain_scale4",
+		  "tx_test_tone_en4", "tx_test_tone_scale4", "tx_main_test_tone_en4",
+		  "tx_main_test_tone_scale4"},
+		 {"tx_nco_freq5", "tx_main_nco_freq5", "tx_nco_phase5",
+		  "tx_main_nco_phase5", "tx_enable5", "tx_nco_gain_scale5",
+		  "tx_test_tone_en5", "tx_test_tone_scale5", "tx_main_test_tone_en5",
+		  "tx_main_test_tone_scale5"},
+		 {"tx_nco_freq6", "tx_main_nco_freq6", "tx_nco_phase6",
+		  "tx_main_nco_phase6", "tx_enable6", "tx_nco_gain_scale6",
+		  "tx_test_tone_en6", "tx_test_tone_scale6", "tx_main_test_tone_en6",
+		  "tx_main_test_tone_scale6"},
+		 {"tx_nco_freq7", "tx_main_nco_freq7", "tx_nco_phase7",
+		  "tx_main_nco_phase7", "tx_enable7", "tx_nco_gain_scale7",
+		  "tx_test_tone_en7", "tx_test_tone_scale7", "tx_main_test_tone_en7",
+		  "tx_main_test_tone_scale7"},
+		 {"tx_nco_freq8", "tx_main_nco_freq8", "tx_nco_phase8",
+		  "tx_main_nco_phase8", "tx_enable8", "tx_nco_gain_scale8",
+		  "tx_test_tone_en8", "tx_test_tone_scale8", "tx_main_test_tone_en8",
+		  "tx_main_test_tone_scale8"},
 	};
 	const char *nco = output ? tx_widgets[chann_nr].nco :
 					rx_widgets[chann_nr].nco;
 	const char *main_nco = output ? tx_widgets[chann_nr].main_nco :
 						rx_widgets[chann_nr].main_nco;
+
+	const char *nco_phase = output ? tx_widgets[chann_nr].nco_phase :
+					rx_widgets[chann_nr].nco_phase;
+	const char *main_nco_phase = output ? tx_widgets[chann_nr].main_nco_phase :
+						rx_widgets[chann_nr].main_nco_phase;
 
 	iio_spin_button_int_init_from_builder(&iio_widgets[priv->num_widgets++],
 					      ad9081, voltage,
@@ -176,6 +194,16 @@ static int ad9081_add_chan_widgets(GtkBuilder *builder,
 					      ad9081, voltage,
 					      "main_nco_frequency",
 					      builder, main_nco, &mhz_scale);
+
+	iio_spin_button_int_init_from_builder(&iio_widgets[priv->num_widgets++],
+					      ad9081, voltage,
+					      "channel_nco_phase",
+					      builder, nco_phase, &k_scale);
+
+	iio_spin_button_int_init_from_builder(&iio_widgets[priv->num_widgets++],
+					      ad9081, voltage,
+					      "main_nco_phase",
+					      builder, main_nco_phase, &k_scale);
 
 	if (!output)
 		return 0;
