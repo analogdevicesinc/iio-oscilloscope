@@ -22,7 +22,7 @@
 
 #define THIS_DRIVER "LIDAR"
 
-#define PULSE_CAPTURE_DEV "7c700000.axi-pulse-capture"
+#define PULSE_CAPTURE_DEV "axi-pulse-capture"
 #define AFE_DEVICE "ad5627"
 #define CAP_DEVICE "axi-ad9094-hpc"
 
