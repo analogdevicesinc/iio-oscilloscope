@@ -183,17 +183,21 @@ static bool pcore_get_version(const char *dev_name, int *major);
 static void scanel_read_clicked(GtkButton *btn, gpointer data)
 {
 	char *attr;
-	char attr_val[1024];
+	char *attr_val = NULL;
 	int ret;
 
 	attr = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel));
 	if (strcmp(attr, "None") == 0)
 		goto abort_read;
 
+	attr_val = g_new(char, IIO_ATTR_MAX_BYTES);
+	if (!attr_val)
+		goto abort_read;
+
 	if (current_ch)
-		ret = iio_channel_attr_read(current_ch, attr, attr_val, sizeof(attr_val));
+		ret = iio_channel_attr_read(current_ch, attr, attr_val, IIO_ATTR_MAX_BYTES);
 	else
-		ret = iio_device_attr_read(dev, attr, attr_val, sizeof(attr_val));
+		ret = iio_device_attr_read(dev, attr, attr_val, IIO_ATTR_MAX_BYTES);
 
 	if (ret <= 0)
 		goto abort_read;
@@ -204,11 +208,14 @@ static void scanel_read_clicked(GtkButton *btn, gpointer data)
 		gtk_entry_set_text(GTK_ENTRY(scanel_value), attr_val);
 
 	g_free(attr);
+	g_free(attr_val);
 	return;
 
 abort_read:
-		gtk_entry_set_text(GTK_ENTRY(scanel_value), "");
-		g_free(attr);
+	gtk_entry_set_text(GTK_ENTRY(scanel_value), "");
+
+	g_free(attr);
+	g_free(attr_val);
 }
 
 static void scanel_write_clicked(GtkButton *btn, gpointer data)
@@ -235,7 +242,7 @@ static void scanel_write_clicked(GtkButton *btn, gpointer data)
 
 static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 {
-	char options_attr_val[1024];
+	char *options_attr_val;
 	const char *options_attr;
 	const char *attr;
 	char buf[256];
@@ -252,13 +259,17 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 		gchar *elem;
 		int i = 0;
 
+		options_attr_val = g_new(char, IIO_ATTR_MAX_BYTES);
+		if (!options_attr_val)
+			return;
+
 		attribute_has_options = true;
 		if (current_ch)
 			iio_channel_attr_read(current_ch, options_attr, options_attr_val,
-						sizeof(options_attr_val));
+						IIO_ATTR_MAX_BYTES);
 		else
 			iio_device_attr_read(dev, options_attr, options_attr_val,
-						sizeof(options_attr_val));
+						IIO_ATTR_MAX_BYTES);
 
 		if (options_attr_val[0] == '[') {
 			/* Don't treat [min step max] as combobox items */
@@ -278,6 +289,7 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 			gtk_widget_show(scanel_options);
 			gtk_widget_hide(scanel_value);
 		}
+		g_free(options_attr_val);
 	} else {
 		attribute_has_options = false;
 		gtk_widget_show(scanel_value);
