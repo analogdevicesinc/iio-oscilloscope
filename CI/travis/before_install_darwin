@@ -3,6 +3,8 @@
 . CI/travis/lib.sh
 . CI/travis/before_install_lib.sh
 
+brew unlink python@2
+
 brew_install_if_not_exists cmake fftw libmatio \
 	libxml2 pkg-config libusb gtk+ gtkdatabox \
 	jansson glib curl openssl@1.1 \
