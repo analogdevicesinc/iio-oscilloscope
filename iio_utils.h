@@ -10,6 +10,8 @@
 #include "iio.h"
 #include <gmodule.h>
 
+#define IIO_ATTR_MAX_BYTES 16384
+
 GArray * get_iio_devices_starting_with(struct iio_context *ctx, const char *sequence);
 
 GArray * get_iio_channels_naturally_sorted(struct iio_device *dev);
