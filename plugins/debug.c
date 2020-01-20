@@ -244,7 +244,7 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 {
 	char *options_attr_val;
 	const char *options_attr;
-	const char *attr;
+	char *attr;
 	char buf[256];
 
 	attr = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(cmbText));
@@ -261,7 +261,7 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 
 		options_attr_val = g_new(char, IIO_ATTR_MAX_BYTES);
 		if (!options_attr_val)
-			return;
+			goto cleanup;
 
 		attribute_has_options = true;
 		if (current_ch)
@@ -303,6 +303,9 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 		gtk_entry_set_text(GTK_ENTRY(scanel_filename), attr);
 
 	scanel_read_clicked(GTK_BUTTON(scanel_read), NULL);
+
+cleanup:
+	g_free(attr);
 }
 
 static void attribute_type_changed_cb(GtkComboBoxText *cmbtext, gpointer data)
