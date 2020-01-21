@@ -379,6 +379,8 @@ static void tx_sample_frequency_changed_cb(void *data)
 	} else {
 		iio_spin_button_save(&tx_widgets[tx_sample_freq]);
 	}
+	/* We've set the sampling freq. Now read back the value and update the widget. */
+	iio_widget_update(&tx_widgets[tx_sample_freq]);
 
 	dac_data_manager_freq_widgets_range_update(dac_tx_manager, rate / 2.0);
 	sample_frequency_changed_cb(NULL);
