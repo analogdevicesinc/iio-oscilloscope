@@ -29,7 +29,7 @@
  * 81 = 2 widgets per maximmum of 8 rx channels + 8 widgets per maximun 8 tx
  * channels + 1 combo box for global RX configuration...
  */
-#define NUM_MAX_WIDGETS			81
+#define NUM_MAX_WIDGETS			162
 
 const gdouble mhz_scale = 1000000.0;
 const gdouble k_scale = 1000.0;
