@@ -210,13 +210,13 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	install(FILES icons/osc16.png RENAME adi-osc.png
 		DESTINATION /usr/share/icons/hicolor/16x16/apps)
 	install(FILES icons/osc32.png RENAME adi-osc.png
-		DESTINATION /usr/share/icons/hicolor/32x32/apps/adi-osc.png)
+		DESTINATION /usr/share/icons/hicolor/32x32/apps)
 	install(FILES icons/osc64.png RENAME adi-osc.png
-		DESTINATION /usr/share/icons/hicolor/64x64/apps/adi-osc.png)
+		DESTINATION /usr/share/icons/hicolor/64x64/apps)
 	install(FILES icons/osc128.png RENAME adi-osc.png
-		DESTINATION /usr/share/icons/hicolor/128x128/apps/adi-osc.png)
+		DESTINATION /usr/share/icons/hicolor/128x128/apps)
 	install(FILES icons/osc256.png RENAME adi-osc.png
-		DESTINATION /usr/share/icons/hicolor/256x256/apps/adi-osc.png)
+		DESTINATION /usr/share/icons/hicolor/256x256/apps)
 	install(FILES icons/osc.svg RENAME adi-osc.svg
 		DESTINATION /usr/share/icons/hicolor/scalable/apps)
 
