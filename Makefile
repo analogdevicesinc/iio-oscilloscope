@@ -30,7 +30,12 @@ PKG_CONFIG_PATH := $(SYSROOT)/usr/share/pkgconfig:$(SYSROOT)/usr/lib/pkgconfig:$
 PKG_CONFIG := env PKG_CONFIG_SYSROOT_DIR="$(SYSROOT)" \
 	PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" pkg-config
 
+WITH_SERIALPORT := $(if $(shell $(PKG_CONFIG) --libs libserialport --silence-errors |grep -lserialport),y)
+
 DEPENDENCIES := glib-2.0 gtk+-2.0 gthread-2.0 gtkdatabox fftw3 libiio libxml-2.0 libcurl jansson matio libad9361
+ifeq ($(WITH_SERIALPORT),y)
+	DEPENDENCIES += libserialport
+endif
 
 DEP_CFLAGS=
 DEP_LDFLAGS=
@@ -67,6 +72,10 @@ CFLAGS := $(DEP_CFLAGS) \
 	-DOSC_VERSION=\"$(OSC_VERSION)\" \
 	-DGTK_DISABLE_DEPRECATED \
 	-D_POSIX_C_SOURCE=200809L \
+
+ifeq ($(WITH_SERIALPORT),y)
+	CFLAGS += -DSERIAL_BACKEND
+endif
 
 DEBUG ?= 0
 ifeq ($(DEBUG),1)
