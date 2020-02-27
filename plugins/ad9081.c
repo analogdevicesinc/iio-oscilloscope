@@ -57,6 +57,13 @@ static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 		iio_w->update(iio_w);
 }
 
+static void __iio_update_widgets(GtkWidget *widget, struct plugin_private *priv)
+{
+	iio_update_widgets(priv->iio_widgets, priv->num_widgets);
+	if (priv->dac_tx_manager)
+		dac_data_manager_update_iio_widgets(priv->dac_tx_manager);
+}
+
 static void make_widget_update_signal_based(struct iio_widget *widgets,
 					    unsigned int num_widgets)
 {
@@ -285,7 +292,7 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 			      const char *ini_fn)
 {
 	GtkBuilder *builder;
-	GtkWidget *ad9081_panel;
+	GtkWidget *ad9081_panel, *refresh_button;
 	struct iio_device *ad9081_dev;
 	struct iio_channel *ch0;
 	char attr_val[256];
@@ -446,7 +453,6 @@ tx_chann:
 		dac_data_manager_set_buffer_chooser_current_folder(priv->dac_tx_manager,
 								   OSC_WAVEFORM_FILE_PATH);
 
-		dac_data_manager_update_iio_widgets(priv->dac_tx_manager);
 		g_array_free(devices, FALSE);
 
 		hmc425 = iio_context_find_device(priv->ctx, "hmc425a");
@@ -472,7 +478,10 @@ tx_chann:
 	}
 
 	make_widget_update_signal_based(priv->iio_widgets, priv->num_widgets);
-	iio_update_widgets(priv->iio_widgets, priv->num_widgets);
+	/* setup the refresh button */
+	refresh_button = GTK_WIDGET(gtk_builder_get_object(builder, "refresh_button"));
+	g_signal_connect(G_OBJECT(refresh_button), "clicked",
+			 G_CALLBACK(__iio_update_widgets), priv);
 
 	return ad9081_panel;
 
