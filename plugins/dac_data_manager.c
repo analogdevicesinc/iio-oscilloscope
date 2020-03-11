@@ -313,14 +313,13 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			if (*buf == NULL)
 				return -errno;
 
-			unsigned long long *sample = *((unsigned long long **) buf);
-			unsigned int *sample_32 = *((unsigned int **) buf);
 			unsigned short *sample_16 = *((unsigned short **) buf);
 
 			rewind(infile);
 
 			if (fgets(line, 80, infile) != NULL) {
 				if (strncmp(line, "TEXT", 4) == 0) {
+					int n;
 					size = 0;
 					i = 0;
 					while (fgets(line, 80, infile)) {
@@ -329,47 +328,8 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 							continue;
 
 						for (j = 0; j < (unsigned int) rep; j++) {
-							if (ret == 8 && tx_channels == 8) {
-								sample[i++] = ((unsigned long long) convert(scale, val[3], offset) << 48) |
-								((unsigned long long) convert(scale, val[2], offset) << 32) |
-								((unsigned long long) convert(scale, val[1], offset) << 16) |
-								((unsigned long long) convert(scale, val[0], offset) << 0);
-
-								sample[i++] = ((unsigned long long) convert(scale, val[7], offset) << 48) |
-								((unsigned long long) convert(scale, val[6], offset) << 32) |
-								((unsigned long long) convert(scale, val[5], offset) << 16) |
-								((unsigned long long) convert(scale, val[4], offset) << 0);
-
-							} else if (ret == 4 && tx_channels >= 4) {
-								sample[i++] = ((unsigned long long) convert(scale, val[3], offset) << 48) |
-								    ((unsigned long long) convert(scale, val[2], offset) << 32) |
-								    ((unsigned long long) convert(scale, val[1], offset) << 16) |
-								    ((unsigned long long) convert(scale, val[0], offset) << 0);
-
-								if (tx_channels == 8)
-									sample[i++] = ((unsigned long long) convert(scale, val[3], offset) << 48) |
-									((unsigned long long) convert(scale, val[2], offset) << 32) |
-									((unsigned long long) convert(scale, val[1], offset) << 16) |
-									((unsigned long long) convert(scale, val[0], offset) << 0);
-
-							} else if (ret == 2 && tx_channels >= 4) {
-								sample[i++] = ((unsigned long long) convert(scale, val[1], offset) << 48) |
-								    ((unsigned long long) convert(scale, val[0], offset) << 32) |
-								    ((unsigned long long) convert(scale, val[1], offset) << 16) |
-								    ((unsigned long long) convert(scale, val[0], offset) << 0);
-
-								if (tx_channels == 8)
-									sample[i++] = ((unsigned long long) convert(scale, val[1], offset) << 48) |
-									((unsigned long long) convert(scale, val[0], offset) << 32) |
-									((unsigned long long) convert(scale, val[1], offset) << 16) |
-									((unsigned long long) convert(scale, val[0], offset) << 0);
-
-							} else if (ret > 1 && tx_channels == 2) {
-								sample_32[i++] = ((unsigned int) convert(scale, val[1], offset) << 16) |
-										((unsigned int) convert(scale, val[0], offset) << 0);
-							} else if (ret > 1 && tx_channels == 1) {
-								sample_16[i++] = convert(scale, val[0], offset);
-							}
+							for (n = 0; n < tx_channels; n++)
+								sample_16[i++] = convert(scale, val[n & (ret - 1)], offset);
 
 							size += tx_channels * 2;
 						}
