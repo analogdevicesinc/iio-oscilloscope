@@ -47,6 +47,7 @@ struct plugin_private {
 	struct iio_widget iio_widgets[NUM_MAX_WIDGETS];
 	/* dac */
 	struct dac_data_manager *dac_tx_manager;
+	gboolean has_once_updated;
 };
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
@@ -62,6 +63,15 @@ static void __iio_update_widgets(GtkWidget *widget, struct plugin_private *priv)
 	iio_update_widgets(priv->iio_widgets, priv->num_widgets);
 	if (priv->dac_tx_manager)
 		dac_data_manager_update_iio_widgets(priv->dac_tx_manager);
+
+	priv->has_once_updated = true;
+}
+
+static void select_page_cb(GtkNotebook *notebook, gpointer arg1, guint page,
+			   struct plugin_private *priv)
+{
+	if (!priv->has_once_updated && page == priv->this_page)
+		__iio_update_widgets(NULL, priv);
 }
 
 static void make_widget_update_signal_based(struct iio_widget *widgets,
@@ -483,6 +493,9 @@ tx_chann:
 	g_signal_connect(G_OBJECT(refresh_button), "clicked",
 			 G_CALLBACK(__iio_update_widgets), priv);
 
+	g_signal_connect_after(G_OBJECT(notebook), "switch-page",
+			       G_CALLBACK(select_page_cb), priv);
+
 	return ad9081_panel;
 
 error_free_ctx:
@@ -525,6 +538,7 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 		dac_data_manager_free(priv->dac_tx_manager);
 	g_free(priv);
 }
+
 
 struct osc_plugin *create_plugin(struct osc_plugin_context *plugin_ctx)
 {
