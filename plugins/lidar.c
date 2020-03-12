@@ -306,7 +306,7 @@ static GtkWidget * lidar_init(struct osc_plugin *plugin, GtkWidget *notebook, co
 	iio_spin_button_set_convert_function(&widgets[num_widgets - 1], adp_bias_volts_to_raw_convert);
 
 	iio_spin_button_int_init_from_builder(&widgets[num_widgets++], afe_dev,
-		afe_ch1, "raw", builder, "spin_tilt", &inv_scale);
+		afe_ch1, "raw", builder, "spin_tilt", NULL);
 	iio_spin_button_set_convert_function(&widgets[num_widgets - 1], tilt_volts_to_raw_convert);
 
 	for (i = 0; i < 4; i++)
