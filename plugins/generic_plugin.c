@@ -51,21 +51,6 @@ static void tx_update_values(void)
 	iio_update_widgets(tx_widgets, num_tx);
 }
 
-static int compare_gain(const char *a, const char *b) __attribute__((unused));
-static int compare_gain(const char *a, const char *b)
-{
-	double val_a, val_b;
-	sscanf(a, "%lf", &val_a);
-	sscanf(b, "%lf", &val_b);
-
-	if (val_a < val_b)
-		return -1;
-	else if(val_a > val_b)
-		return 1;
-	else
-		return 0;
-}
-
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 {
 	iio_w->save(iio_w);
@@ -168,6 +153,9 @@ static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		gtk_container_add(GTK_CONTAINER(dds_container),
 				  dac_data_manager_get_gui_container(dac_tx_manager));
 		gtk_widget_show_all(dds_container);
+
+		dac_data_manager_freq_widgets_range_update(dac_tx_manager, INT_MAX / 2.0);
+		dac_data_manager_update_iio_widgets(dac_tx_manager);
 
 		make_widget_update_signal_based(tx_widgets, num_tx);
 
