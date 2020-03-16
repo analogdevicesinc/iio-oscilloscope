@@ -947,7 +947,8 @@ static void generic_plugin_handle(struct osc_plugin *generic_plugin, void *gener
 	params->ini_fn = ini_fn;
 
 	GtkWidget *widget = init_plugin(params);
-	load_plugin_finish(GTK_NOTEBOOK(notebook), widget, generic_plugin);
+	if (widget)
+		load_plugin_finish(GTK_NOTEBOOK(notebook), widget, generic_plugin);
 }
 
 static void load_plugins(GtkWidget *notebook, const char *ini_fn)
