@@ -36,6 +36,7 @@
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
 static struct dac_data_manager *dac_tx_manager;
+static GSList *dac_tx_manager_list = NULL;
 
 static struct iio_context *ctx;
 static struct iio_device *dac;
@@ -177,6 +178,8 @@ static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager,
 				OSC_WAVEFORM_FILE_PATH);
 
+		dac_tx_manager_list = g_slist_append(dac_tx_manager_list, (gpointer) dac_tx_manager);
+
 		can_update_widgets = true;
 	}
 
@@ -190,10 +193,15 @@ static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	if (dac_tx_manager) {
+	GSList *node;
+
+	for (node = dac_tx_manager_list; node; node = g_slist_next(node)) {
+		dac_tx_manager = node->data;
 		dac_data_manager_free(dac_tx_manager);
 		dac_tx_manager = NULL;
 	}
+	g_slist_free(dac_tx_manager_list);
+	dac_tx_manager_list = NULL;
 
 	osc_destroy_context(ctx);
 }
