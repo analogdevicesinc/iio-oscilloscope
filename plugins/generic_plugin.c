@@ -183,6 +183,8 @@ static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		can_update_widgets = true;
 	}
 
+	g_slist_free(dac_dev_names);
+
 	if (!generic_en) {
 		osc_destroy_context(ctx);
 		return NULL;
