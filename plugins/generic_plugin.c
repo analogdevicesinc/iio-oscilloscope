@@ -155,12 +155,12 @@ static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		if (!has_output_scan_elements(dac))
 			continue;
 
-		dac_tx_manager = dac_data_manager_new(dac, NULL, ctx);
-		if (!dac_tx_manager)
-			continue;
-
 		crt_dev_name = iio_device_get_name(dac);
 		if (g_slist_find_custom(dac_dev_names, crt_dev_name, compare_func))
+			continue;
+
+		dac_tx_manager = dac_data_manager_new(dac, NULL, ctx);
+		if (!dac_tx_manager)
 			continue;
 
 		generic_en = true;
