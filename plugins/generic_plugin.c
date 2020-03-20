@@ -111,6 +111,20 @@ static gint compare_func(gconstpointer a, gconstpointer b)
 	return strcmp(pa, pb);
 }
 
+static bool has_output_scan_elements(struct iio_device *dev)
+{
+	struct iio_channel *ch;
+	unsigned int i;
+
+	for (i = 0; i < iio_device_get_channels_count(dev); i++) {
+		ch = iio_device_get_channel(dev, i);
+		if (iio_channel_is_scan_element(ch) && iio_channel_is_output(ch))
+			return true;
+	}
+
+	return false;
+}
+
 static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 				const char *ini_fn)
 {
@@ -138,6 +152,9 @@ static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	for (i = 0; i < dev_count; i++) {
 		dac = iio_context_get_device(ctx, i);
+		if (!has_output_scan_elements(dac))
+			continue;
+
 		dac_tx_manager = dac_data_manager_new(dac, NULL, ctx);
 		if (!dac_tx_manager)
 			continue;
