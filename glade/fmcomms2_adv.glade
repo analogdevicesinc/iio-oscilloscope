@@ -1901,7 +1901,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkLabel" id="label33">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="label" translatable="yes">Decrese Steps</property>
+                                    <property name="label" translatable="yes">Decrease Steps</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">2</property>
@@ -1912,7 +1912,7 @@ Fast AGC Lock Level (dBFS)</property>
                                   <object class="GtkLabel" id="label34">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="label" translatable="yes">Decrese Steps</property>
+                                    <property name="label" translatable="yes">Decrease Steps</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">2</property>
@@ -2808,7 +2808,7 @@ if Large Overload</property>
                                       <object class="GtkLabel" id="label89">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="label" translatable="yes">&lt;b&gt;State 1 Response to Peak Overlaod&lt;/b&gt;</property>
+                                        <property name="label" translatable="yes">&lt;b&gt;State 1 Response to Peak Overload&lt;/b&gt;</property>
                                         <property name="use_markup">True</property>
                                       </object>
                                     </child>
