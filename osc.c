@@ -928,27 +928,27 @@ static void load_plugin_finish(GtkNotebook *notebook,
 	plugin_make_detachable(d_plugin);
 }
 
-static void generic_plugin_handle(struct osc_plugin *generic_plugin, void *generic_lib, const char *ini_fn) {
+static void generic_dac_handle(struct osc_plugin *generic_dac, void *generic_lib, const char *ini_fn) {
 	struct params {
 		struct osc_plugin *plugin;
 		GtkWidget *notebook;
 		const char *ini_fn;
 	} *params;
 
-	if (!generic_plugin || !generic_lib)
+	if (!generic_dac || !generic_lib)
 		return;
 
-	plugin_list = g_slist_append (plugin_list, (gpointer) generic_plugin);
+	plugin_list = g_slist_append (plugin_list, (gpointer) generic_dac);
 	plugin_lib_list = g_slist_append(plugin_lib_list, generic_lib);
 
 	params = malloc(sizeof(*params));
-	params->plugin = generic_plugin;
+	params->plugin = generic_dac;
 	params->notebook = notebook;
 	params->ini_fn = ini_fn;
 
 	GtkWidget *widget = init_plugin(params);
 	if (widget)
-		load_plugin_finish(GTK_NOTEBOOK(notebook), widget, generic_plugin);
+		load_plugin_finish(GTK_NOTEBOOK(notebook), widget, generic_dac);
 }
 
 static void load_plugins(GtkWidget *notebook, const char *ini_fn)
@@ -962,7 +962,7 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 	char *plugin_dir = "plugins";
 	char buf[512];
 	DIR *d;
-	struct osc_plugin *generic_plugin = NULL;
+	struct osc_plugin *generic_dac = NULL;
 	void *generic_lib = NULL;
 
 #ifdef __MINGW32__
@@ -1045,8 +1045,8 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 			}
 
 			plugin->handle = lib;
-			if (!strcmp(plugin->name, "GENERIC_PLUGIN")) {
-				generic_plugin = plugin;
+			if (!strcmp(plugin->name, "DAC Data Manager")) {
+				generic_dac = plugin;
 				generic_lib = lib;
 				continue;
 			}
@@ -1081,7 +1081,7 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 	}
 
 	if (!load_in_parallel) {
-		generic_plugin_handle(generic_plugin, generic_lib, ini_fn);
+		generic_dac_handle(generic_dac, generic_lib, ini_fn);
 		return;
 	}
 
@@ -1100,7 +1100,7 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 		load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
 		printf("Loaded plugin: %s\n", plugin->name);
 	}
-	generic_plugin_handle(generic_plugin, generic_lib, ini_fn);
+	generic_dac_handle(generic_dac, generic_lib, ini_fn);
 }
 
 static void plugin_state_ini_save(gpointer data, gpointer user_data)

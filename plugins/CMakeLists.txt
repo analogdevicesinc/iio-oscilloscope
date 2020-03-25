@@ -16,7 +16,7 @@
 #  Boston, MA 02110-1301, USA.
 
 set(PLUGINS
-	generic_plugin
+	generic_dac
 	fmcomms1
 	fmcomms2
 	fmcomms2_adv
