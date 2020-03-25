@@ -947,8 +947,10 @@ static void generic_dac_handle(struct osc_plugin *generic_dac, void *generic_lib
 	params->ini_fn = ini_fn;
 
 	GtkWidget *widget = init_plugin(params);
-	if (widget)
+	if (widget) {
 		load_plugin_finish(GTK_NOTEBOOK(notebook), widget, generic_dac);
+		printf("Loaded plugin: %s\n", generic_dac->name);
+	}
 }
 
 static void load_plugins(GtkWidget *notebook, const char *ini_fn)
