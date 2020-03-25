@@ -31,7 +31,7 @@
 #include "../eeprom.h"
 #include "dac_data_manager.h"
 
-#define THIS_DRIVER "GENERIC_PLUGIN"
+#define THIS_DRIVER "DAC Data Manager"
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
@@ -142,7 +142,7 @@ static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		return NULL;
 
 	builder = gtk_builder_new();
-	if (osc_load_glade_file(builder, "generic_plugin") < 0)
+	if (osc_load_glade_file(builder, "generic_dac") < 0)
 		return NULL;
 
 	generic_panel = GTK_WIDGET(gtk_builder_get_object(builder, "generic_panel"));
