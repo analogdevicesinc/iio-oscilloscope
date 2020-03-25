@@ -67,7 +67,7 @@ static void __iio_update_widgets(GtkWidget *widget, struct plugin_private *priv)
 	priv->has_once_updated = true;
 }
 
-static void select_page_cb(GtkNotebook *notebook, gpointer arg1, guint page,
+static void select_page_cb(GtkNotebook *notebook, gpointer arg1, gint page,
 			   struct plugin_private *priv)
 {
 	if (!priv->has_once_updated && page == priv->this_page)
