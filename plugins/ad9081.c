@@ -18,8 +18,7 @@
 #include "../config.h"
 #include "dac_data_manager.h"
 
-#define THIS_DRIVER			"ad9081"
-#define THIS_DRIVER_LABEL		"AD9081"
+#define THIS_DRIVER			"AD9081"
 #define AD9081				"axi-ad9081-rx"
 #define DAC_DEVICE			"axi-ad9081-tx"
 #define NUM_MAX_CHANNEL			8
@@ -338,7 +337,7 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		goto error_free_ctx;
 	}
 
-	if (osc_load_glade_file(builder, THIS_DRIVER) < 0)
+	if (osc_load_glade_file(builder, "ad9081") < 0)
 		goto error_free_ctx;
 
 	ad9081_panel = GTK_WIDGET(gtk_builder_get_object(builder,
@@ -591,7 +590,7 @@ GArray* get_data_for_possible_plugin_instances(void)
 		char *name;
 
 		if (devices->len > 1)
-			name = g_strdup_printf("%s-%i", THIS_DRIVER_LABEL, i);
+			name = g_strdup_printf("%s-%i", THIS_DRIVER, i);
 		else
 			name = g_strdup(THIS_DRIVER);
 
