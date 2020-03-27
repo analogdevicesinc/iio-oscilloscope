@@ -33,8 +33,6 @@
 const gdouble mhz_scale = 1000000.0;
 const gdouble k_scale = 1000.0;
 
-const char *dac_name;
-
 struct plugin_private {
 	/* plugin context */
 	struct osc_plugin_context plugin_ctx;
@@ -49,6 +47,7 @@ struct plugin_private {
 	/* dac */
 	struct dac_data_manager *dac_tx_manager;
 	gboolean has_once_updated;
+	const char *dac_name;
 };
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
@@ -440,7 +439,7 @@ tx_chann:
 		}
 
 		dac = g_array_index(devices, struct iio_device*, 0);
-		dac_name = iio_device_get_name(dac);
+		priv->dac_name = iio_device_get_name(dac);
 		priv->dac_tx_manager = dac_data_manager_new(dac, NULL, priv->ctx);
 		if (!priv->dac_tx_manager) {
 			printf("%s: Failed to start dac Manager...\n",
@@ -541,11 +540,12 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 	g_free(priv);
 }
 
-GSList* get_dac_dev_names(void) {
+GSList* get_dac_dev_names(const struct osc_plugin *plugin) {
+	struct plugin_private *priv = plugin->priv;
 	GSList *list = NULL;
 
-	if (dac_name)
-		list = g_slist_append (list, (gpointer) dac_name);
+	if (priv->dac_name)
+		list = g_slist_append (list, (gpointer) priv->dac_name);
 
 	return list;
 }
