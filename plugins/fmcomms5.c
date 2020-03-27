@@ -1760,7 +1760,7 @@ static bool fmcomms5_identify(const struct osc_plugin *plugin)
 	return !!dev1 && !!dds1 && !!cap1 && !!dev2 && !!dds2 && !!cap2;
 }
 
-GSList* get_dac_dev_names(void) {
+GSList* get_dac_dev_names(const struct osc_plugin *plugin) {
 	GSList *list = NULL;
 
 	list = g_slist_append (list, (gpointer) DDS_DEVICE1);

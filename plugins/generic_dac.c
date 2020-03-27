@@ -98,7 +98,7 @@ static GSList * get_dac_dev_names(void)
 	for (node = plugin_list; node; node = g_slist_next(node)) {
 		plugin = node->data;
 		if (plugin->get_dac_dev_names)
-			dac_dev_names = g_slist_concat (dac_dev_names, plugin->get_dac_dev_names());
+			dac_dev_names = g_slist_concat (dac_dev_names, plugin->get_dac_dev_names(plugin));
 	}
 
 	return dac_dev_names;
