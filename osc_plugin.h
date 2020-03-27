@@ -36,7 +36,7 @@ struct osc_plugin {
 
 	void (*save_profile)(const struct osc_plugin *plugin, const char *ini_fn);
 	void (*load_profile)(struct osc_plugin *plugin, const char *ini_fn);
-	GSList* (*get_dac_dev_names)(void);
+	GSList* (*get_dac_dev_names)(const struct osc_plugin *plugin);
 	struct plugin_private *priv;
 };
 

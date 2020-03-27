@@ -414,7 +414,7 @@ static bool daq2_identify(const struct osc_plugin *plugin)
 		!!iio_context_find_device(osc_ctx, ADC_DEVICE);
 }
 
-GSList* get_dac_dev_names(void) {
+GSList* get_dac_dev_names(const struct osc_plugin *plugin) {
 	GSList *list = NULL;
 
 	list = g_slist_append (list, (gpointer) DAQ1_DAC_DEVICE);

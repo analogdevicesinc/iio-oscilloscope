@@ -2129,7 +2129,7 @@ static bool fmcomms2_identify(const struct osc_plugin *plugin)
 	return !iio_context_find_device(osc_ctx, "ad9361-phy-B");
 }
 
-GSList* get_dac_dev_names(void) {
+GSList* get_dac_dev_names(const struct osc_plugin *plugin) {
 	GSList *list = NULL;
 
 	list = g_slist_append (list, (gpointer) DDS_DEVICE);

@@ -393,7 +393,7 @@ static bool fmcomms11_identify(const struct osc_plugin *plugin)
 		!!iio_context_find_device(osc_ctx, ATTN_DEVICE);
 }
 
-GSList* get_dac_dev_names(void) {
+GSList* get_dac_dev_names(const struct osc_plugin *plugin) {
 	GSList *list = NULL;
 
 	list = g_slist_append (list, (gpointer) DAC_DEVICE);
