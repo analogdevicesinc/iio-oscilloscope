@@ -156,6 +156,9 @@ static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 			continue;
 
 		crt_dev_name = iio_device_get_name(dac);
+		if (!crt_dev_name)
+			continue;
+
 		if (g_slist_find_custom(dac_dev_names, crt_dev_name, compare_func))
 			continue;
 
