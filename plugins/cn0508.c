@@ -259,6 +259,14 @@ static GtkWidget* cn0508_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	current_pot_pos_ch = iio_device_find_channel(adc, "voltage5-voltage19", false);
 	voltage_pot_pos_ch = iio_device_find_channel(adc, "voltage6-voltage19", false);
 
+	iio_channel_attr_write(u2_temp_ch, "sampling_frequency", "9600");
+	iio_channel_attr_write(u3_temp_ch, "sampling_frequency", "9600");
+	iio_channel_attr_write(out_current_ch, "sampling_frequency", "9600");
+	iio_channel_attr_write(in_v_attenuator_ch, "sampling_frequency", "9600");
+	iio_channel_attr_write(out_v_attenuator_ch, "sampling_frequency", "9600");
+	iio_channel_attr_write(current_pot_pos_ch, "sampling_frequency", "9600");
+	iio_channel_attr_write(voltage_pot_pos_ch, "sampling_frequency", "9600");
+
 	dac_ch = iio_device_find_channel(dac, "voltage0", true);
 
 	iio_channel_attr_read_double(dac_ch, "scale", &val);
