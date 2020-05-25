@@ -74,6 +74,8 @@ static GtkNotebook *nbook;
 static GtkWidget *cn0508_panel;
 static gboolean plugin_detached;
 
+const gdouble dac_scale = 2383.090; /* (2^16 - 1) / 27.5 */
+
 static void entry_set_double(GtkWidget *entry, double value, int digits)
 {
 	gchar *s;
@@ -273,7 +275,7 @@ static GtkWidget* cn0508_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	iio_spin_button_int_init_from_builder(&iio_widgets[num_widgets++], dac,
 					      dac_ch, "raw", builder,
-					      "spinbutton_dac_voltage", NULL);
+					      "spinbutton_dac_voltage", &dac_scale);
 
 	make_widget_update_signal_based(iio_widgets, num_widgets);
 	update_values();
