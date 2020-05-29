@@ -26,12 +26,12 @@
               <object class="GtkTable" id="table3">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="n_columns">2</property>
+                <property name="n_columns">3</property>
                 <child>
                   <object class="GtkLabel" id="label_dac_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">DAC Value:</property>
+                    <property name="label" translatable="yes">Set Output Voltage:</property>
                   </object>
                 </child>
                 <child>
@@ -45,10 +45,22 @@
                     <property name="primary_icon_sensitive">True</property>
                     <property name="secondary_icon_sensitive">True</property>
                     <property name="adjustment">adj_dac_voltage</property>
+                    <property name="digits">3</property>
                   </object>
                   <packing>
                     <property name="left_attach">1</property>
                     <property name="right_attach">2</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="dac_unit">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">V</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">2</property>
+                    <property name="right_attach">3</property>
                   </packing>
                 </child>
               </object>
