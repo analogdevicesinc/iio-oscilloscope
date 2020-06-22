@@ -44,6 +44,7 @@ set(PLUGINS
 	spectrum_analyzer
 	scpi
 	ad9081
+	adrv9002
 )
 
 if (MINGW)
