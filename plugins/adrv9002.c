@@ -34,7 +34,6 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 const gdouble mhz_scale = 1000000.0;
-const gdouble k_scale = 1000.0;
 
 struct adrv9002_gtklabel {
 	GtkLabel *labels;
@@ -557,8 +556,10 @@ static void load_profile(GtkFileChooser *chooser, gpointer data)
 	size = ftell(f);
 	rewind(f);
 	buf = malloc(size);
-	if (!buf)
+	if (!buf) {
+		fclose(f);
 		goto err;
+	}
 
 	size = fread(buf, sizeof(char), size, f);
 	fclose(f);
@@ -573,6 +574,7 @@ static void load_profile(GtkFileChooser *chooser, gpointer data)
 
 	gtk_file_chooser_set_filename(chooser, file_name);
 	strncpy(priv->last_profile, file_name, sizeof(priv->last_profile) - 1);
+	g_free(file_name);
 	/* check which channels are enabled */
 	check_enabled_channels(priv);
 	/* update widgets*/
@@ -582,6 +584,7 @@ static void load_profile(GtkFileChooser *chooser, gpointer data)
 					      priv);
 	return;
 err:
+	g_free(file_name);
 	dialog_box_message(GTK_WIDGET(chooser), "Profile Configuration Failed",
 			   "Failed to load profile using the selected file!");
 
