@@ -498,6 +498,7 @@ static void on_ensm_mode_available_changed(void)
 		set_ensm_mode_of_all_devices(mode);
 
 	glb_settings_update_labels();
+	g_free(mode);
 }
 
 static void rx_freq_info_update(void)
@@ -514,7 +515,7 @@ static void rx_freq_info_update(void)
 	}
 
 	if (cap_obs) {
-		const char *source;
+		gchar *source;
 
 		rx_update_device_sampling_freq(CAP_DEVICE_2,
 					USE_INTERN_SAMPLING_FREQ);
@@ -530,6 +531,7 @@ static void rx_freq_info_update(void)
 				lo_freq = mhz_scale * gtk_spin_button_get_value(
 					GTK_SPIN_BUTTON(subcomponents[i].obsrx_widgets[subcomponents[i].aux_lo].widget));
 			}
+			g_free(source);
 		}
 
 		// TO DO: figure out what to do here. Do we set each group of channels with corresponding LO frequency?
@@ -602,7 +604,7 @@ static void rssi_update_labels(void)
 static gboolean update_display(gpointer foo)
 {
 	if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
-		const char *gain_mode;
+		gchar *gain_mode;
 		guint i = 0;
 
 		rssi_update_labels();
@@ -614,6 +616,7 @@ static gboolean update_display(gpointer foo)
 				iio_widget_update(&subcomponents[i].rx_widgets[subcomponents[i].rx1_gain]);
 				iio_widget_update(&subcomponents[i].rx_widgets[subcomponents[i].rx2_gain]);
 			}
+			g_free(gain_mode);
 		}
 	}
 
@@ -1688,6 +1691,8 @@ static void adrv9009_get_preferred_size(const struct osc_plugin *plugin, int *wi
 
 static void save_widgets_to_ini(FILE *f)
 {
+	gchar *current_ensm_mode = gtk_combo_box_text_get_active_text(
+		GTK_COMBO_BOX_TEXT(ensm_mode_available));
 	fprintf(f, "load_tal_profile_file = %s\n"
 			   "ensm_mode=%s\n"
 			   "dac_buf_filename = %s\n"
@@ -1697,7 +1702,7 @@ static void save_widgets_to_ini(FILE *f)
 			   "obs_show = %i\n"
 			   "fpga_show = %i\n",
 			last_profile,
-			(plugin_single_device_mode ? "" : gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(ensm_mode_available))),
+			(plugin_single_device_mode ? "" : current_ensm_mode),
 			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_GLOBAL]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_TX]),
@@ -1705,6 +1710,7 @@ static void save_widgets_to_ini(FILE *f)
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_OBS]),
 			!!gtk_toggle_tool_button_get_active(section_toggle[SECTION_FPGA])
 		);
+	g_free(current_ensm_mode);
 
 	/* Save the state of each TX channel */
 	if (dds) {

@@ -658,7 +658,7 @@ static void rx_freq_info_update(void)
 	}
 
 	if (cap_obs) {
-		const char *source;
+		gchar *source;
 
 		rx_update_device_sampling_freq(CAP_DEVICE_2,
 						USE_INTERN_SAMPLING_FREQ);
@@ -673,7 +673,7 @@ static void rx_freq_info_update(void)
 				GTK_SPIN_BUTTON(obsrx_widgets[sn_lo].widget));
 		}
 		rx_update_channel_lo_freq(CAP_DEVICE_2, "all", lo_freq);
-
+		g_free(source);
 	}
 }
 
@@ -715,7 +715,7 @@ static void rssi_update_labels(void)
 static gboolean update_display(gpointer foo)
 {
 	if (this_page == gtk_notebook_get_current_page(nbook) || plugin_detached) {
-		const char *gain_mode;
+		gchar *gain_mode;
 
 		rssi_update_labels();
 		gain_mode = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(rx_gain_control_modes_rx1));
@@ -724,6 +724,7 @@ static gboolean update_display(gpointer foo)
 			if (is_2rx_2tx)
 				iio_widget_update(&rx_widgets[rx2_gain]);
 		}
+		g_free(gain_mode);
 
 		if (has_dpd) {
 			dpd_update_labels();

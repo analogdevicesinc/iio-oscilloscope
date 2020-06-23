@@ -62,6 +62,7 @@ abort:
 	if (!has_frequency)
 		trigger_freq = 0;
 
+	g_free(current_trigger);
 	gtk_widget_set_sensitive(GTK_WIDGET(spinbtn_freq), has_frequency);
 	gtk_widget_set_sensitive(GTK_WIDGET(label_freq), has_frequency);
 	gtk_spin_button_set_value(spinbtn_freq, trigger_freq);
@@ -162,6 +163,7 @@ static void trigger_save_settings(GtkBuilder *builder, const char *device)
 	}
 
 abort:
+	g_free(current_trigger);
 	return;
 }
 
