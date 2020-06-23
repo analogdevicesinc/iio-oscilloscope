@@ -213,13 +213,19 @@ static void rf_out_update(void)
 	tx_lo = gtk_spin_button_get_value (GTK_SPIN_BUTTON(tx_lo_freq));
 	dds1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq));
 	dds2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds2_freq));
-	if (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dac_shift)))
-		dac_shft = atof(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dac_shift)))/1000000.0;
+	gchar *dac_shift_text = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dac_shift));
+	if (dac_shift_text) {
+		dac_shft = atof(dac_shift_text)/1000000.0;
+		g_free(dac_shift_text);
+	}
 
 	val = -1;
 	if (GTK_IS_COMBO_BOX_TEXT(dds1_scale)) {
-		if(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds1_scale)))
-			val = oneover(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds1_scale)));
+		gchar *dds1_scale_text = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds1_scale));
+		if(dds1_scale_text) {
+			val = oneover(dds1_scale_text);
+			g_free(dds1_scale_text);
+		}
 	} else if (GTK_IS_SPIN_BUTTON(dds1_scale)) {
 		val = oneover(gtk_entry_get_text(GTK_ENTRY(dds1_scale)));
 	}
@@ -231,8 +237,11 @@ static void rf_out_update(void)
 
 	val = -1;
 	if (GTK_IS_COMBO_BOX_TEXT(dds2_scale)) {
-		if(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds2_scale)))
-			val = oneover(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds2_scale)));
+		gchar *dds2_scale_text = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dds2_scale));
+		if (dds2_scale_text) {
+			val = oneover(dds2_scale_text);
+			g_free(dds2_scale_text);
+		}
 	} else if (GTK_IS_SPIN_BUTTON(dds2_scale)) {
 		val = oneover(gtk_entry_get_text(GTK_ENTRY(dds2_scale)));
 	}
@@ -1038,12 +1047,12 @@ static void dds_scale_set_string_value(GtkWidget *scale, const char *value)
 	}
 }
 
-static const char *dds_scale_get_string_value(GtkWidget *scale)
+static gchar *dds_scale_get_string_value(GtkWidget *scale)
 {
 	if (GTK_IS_COMBO_BOX_TEXT(scale)) {
 		return gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(scale));
 	} else if (GTK_IS_SPIN_BUTTON(scale)) {
-		return gtk_entry_get_text(GTK_ENTRY(scale));
+		return g_strdup(gtk_entry_get_text(GTK_ENTRY(scale)));
 	}
 
 	return NULL;
@@ -1177,6 +1186,11 @@ static void save_cal(char * resfile)
 	if (!file)
 		return;
 
+	gchar *dds1_scale_text = dds_scale_get_string_value(dds1_scale);
+	gchar *dds2_scale_text = dds_scale_get_string_value(dds2_scale);
+	gchar *dds3_scale_text = dds_scale_get_string_value(dds3_scale);
+	gchar *dds4_scale_text = dds_scale_get_string_value(dds4_scale);
+
 	fprintf(file, ";Calibration time: %s\n", ctime(&clock));
 
 	fprintf(file, "[SYS_SETTINGS]\n");
@@ -1184,16 +1198,16 @@ static void save_cal(char * resfile)
 	fprintf(file, "%s = %f\n", TX_F, gtk_spin_button_get_value (GTK_SPIN_BUTTON(tx_lo_freq)));
 	fprintf(file, "dds_mode = %i", dac_data_manager_get_dds_mode(dac_tx_manager, "cf-ad9122-core-lpc", 1));
 	fprintf(file, "%s = %f\n", DDS1_F, gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_freq)));
-	fprintf(file, "%s = %s\n", DDS1_S, dds_scale_get_string_value(dds1_scale));
+	fprintf(file, "%s = %s\n", DDS1_S, dds1_scale_text);
 	fprintf(file, "%s = %f\n", DDS1_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds1_phase)));
 	fprintf(file, "%s = %f\n", DDS2_F, gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds2_freq)));
-	fprintf(file, "%s = %s\n", DDS2_S, dds_scale_get_string_value(dds2_scale));
+	fprintf(file, "%s = %s\n", DDS2_S, dds2_scale_text);
 	fprintf(file, "%s = %f\n", DDS2_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds2_phase)));
 	fprintf(file, "%s = %f\n", DDS3_F, gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds3_freq)));
-	fprintf(file, "%s = %s\n", DDS3_S, dds_scale_get_string_value(dds3_scale));
+	fprintf(file, "%s = %s\n", DDS3_S, dds3_scale_text);
 	fprintf(file, "%s = %f\n", DDS3_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds3_phase)));
 	fprintf(file, "%s = %f\n", DDS4_F, gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds4_freq)));
-	fprintf(file, "%s = %s\n", DDS4_S, dds_scale_get_string_value(dds4_scale));
+	fprintf(file, "%s = %s\n", DDS4_S, dds4_scale_text);
 	fprintf(file, "%s = %f\n", DDS4_P, gtk_spin_button_get_value(GTK_SPIN_BUTTON(dds4_phase)));
 
 	fprintf(file, "\n[DAC_SETTINGS]\n");
@@ -1235,6 +1249,10 @@ static void save_cal(char * resfile)
 	 */
 
 	fclose(file);
+	g_free(dds1_scale_text);
+	g_free(dds2_scale_text);
+	g_free(dds3_scale_text);
+	g_free(dds4_scale_text);
 	return;
 
 }

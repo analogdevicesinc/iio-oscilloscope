@@ -294,7 +294,7 @@ static void iio_button_init(struct iio_widget *widget,
 
 static void iio_combo_box_save(struct iio_widget *widget)
 {
-	const char *text;
+	gchar *text;
 
 	text = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->widget));
 	if (text == NULL)
@@ -304,6 +304,7 @@ static void iio_combo_box_save(struct iio_widget *widget)
 		iio_channel_attr_write(widget->chn, widget->attr_name, text);
 	else
 		iio_device_attr_write(widget->dev, widget->attr_name, text);
+	g_free(text);
 }
 
 static void iio_combo_box_update_value(struct iio_widget *widget,

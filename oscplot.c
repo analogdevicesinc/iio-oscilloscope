@@ -5996,12 +5996,13 @@ static void math_chooser_fullscale_key_pressed_cb(GtkButton *btn, OscPlot *plot)
 	GtkTextBuffer *tbuf = priv->math_expression;
 	struct iio_device *iio_dev;
 	char key_val[128] = "0";
-	const char *device_name;
+	gchar *device_name;
 
 	device_name = gtk_combo_box_text_get_active_text(
 			GTK_COMBO_BOX_TEXT(priv->math_device_select));
 	if (device_name) {
 		iio_dev = iio_context_find_device(priv->ctx, device_name);
+		g_free(device_name);
 		if (iio_dev) {
 			unsigned int i;
 			struct iio_channel *iio_chn;
@@ -6147,6 +6148,7 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 		if (ret != GTK_RESPONSE_OK)
 			break;
 
+		g_free(active_device);
 		active_device = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->math_device_select));
 
 		channel_name = gtk_entry_get_text(GTK_ENTRY(priv->math_channel_name_entry));
@@ -6182,8 +6184,10 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 			gtk_widget_set_visible(priv->math_expr_error, false);
 	} while (!fn || !channel_name);
 	gtk_widget_hide(priv->math_expression_dialog);
-	if (ret != GTK_RESPONSE_OK)
+	if (ret != GTK_RESPONSE_OK) {
+		g_free(active_device);
 		return - 1;
+	}
 
 	/* Store the settings of the new channel*/
 	if (pmc->txt_math_expression)

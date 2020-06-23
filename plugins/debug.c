@@ -233,6 +233,7 @@ static void scanel_write_clicked(GtkButton *btn, gpointer data)
 		iio_channel_attr_write(current_ch, attr_name, attr_val);
 	else
 		iio_device_attr_write(dev, attr_name, attr_val);
+	g_free(attr_name);
 
 	if (attribute_has_options)
 		g_free(attr_val);
@@ -321,6 +322,7 @@ static void attribute_type_changed_cb(GtkComboBoxText *cmbtext, gpointer data)
 	char **elems;
 	attr_type = gtk_combo_box_text_get_active_text(cmbtext);
 	elems = g_strsplit(attr_type, " ", 0);
+	g_free(attr_type);
 	if (!strcmp(elems[0], "global")) {
 		global_attr = true;
 	} else {

@@ -93,7 +93,8 @@ static time_t mins_since_jan_1_1996(void)
 static size_t write_fru(char *eeprom)
 {
 	gint result;
-	const char *serial, *file;
+	const char *serial;
+	gchar *file;
 	char *ser_num, *filename;
 	time_t frutime;
 	FILE *fp = NULL;
@@ -182,6 +183,7 @@ get_serial_and_file:
 				}
 				gtk_widget_destroy(dialog);
 			}
+			g_free(file);
 
 			if (filename) {
 				fflush(NULL);
@@ -332,6 +334,7 @@ static struct iio_context * get_context(Dialogs *data)
 		gchar *uri = gtk_combo_box_text_get_active_text(
 				GTK_COMBO_BOX_TEXT(dialogs.connect_usbd));
 		gchar *uri2 = uri + strlen(uri);
+		g_free(uri);
 
 		while(*uri2 != '[')
 			uri2--;
@@ -360,6 +363,8 @@ static struct iio_context * get_context(Dialogs *data)
 
 		/* Size is +3: for ':', ',' and '\0' */
 		gchar *result = g_strdup_printf("serial:%s,%s", port, baud_rate);
+		g_free(port);
+		g_free(baud_rate);
 
 		ctx = iio_create_context_from_uri(result);
 		g_free(result);

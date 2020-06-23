@@ -1114,11 +1114,14 @@ static void instrument_type_cb (GtkComboBox *box)
 			else
 				gtk_widget_hide(scpi_output);
 			break;
-		default:
+		default: {
+			gchar *box_text =
+				gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(box));
 			printf("Unknown selection in %s:%s: %s\n",
-				__FILE__, __func__,
-				gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(box)));
+				__FILE__, __func__, box_text);
+			g_free(box_text);
 			break;
+		}
 	}
 }
 
