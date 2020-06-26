@@ -36,6 +36,7 @@
 GSList *plugin_list = NULL;
 
 gint capture_function = 0;
+static bool restart_capture = FALSE;
 static GList *plot_list = NULL;
 static int num_capturing_plots;
 G_LOCK_DEFINE_STATIC(buffer_full);
@@ -1242,6 +1243,9 @@ static gboolean capture_process(void *data)
 			ssize_t ret = iio_buffer_refill(dev_info->buffer);
 			if (ret < 0) {
 				fprintf(stderr, "Error while reading data: %s\n", strerror(-ret));
+				if (ret == -EPIPE) {
+					restart_capture = true;
+				}
 				stop_sampling();
 				goto capture_stop_check;
 			}
@@ -1455,6 +1459,21 @@ static int capture_setup(void)
 	return 0;
 }
 
+static void capture_process_ended(gpointer data)
+{
+	if (restart_capture == true) {
+		fprintf(stderr, "Sample acquisition stopped\n");
+		restart_capture = false;
+
+		/* Wait 100 msec then restart acquisition */
+		g_usleep(G_USEC_PER_SEC * 0.1);
+
+		capture_setup();
+		fprintf(stderr, "Restarting acquisition\n");
+		capture_start();
+	}
+}
+
 static void capture_start(void)
 {
 	if (capture_function) {
@@ -1462,7 +1481,7 @@ static void capture_start(void)
 	}
 	else {
 		stop_capture = FALSE;
-		capture_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, capture_process, NULL, NULL);
+		capture_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, capture_process, NULL, capture_process_ended);
 	}
 }
 
