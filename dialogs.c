@@ -45,6 +45,7 @@ struct _Dialogs
 	GtkWidget *connect;
 	GtkWidget *connect_fru;
 	GtkWidget *connect_iio;
+	GtkWidget *connect_attrs;
 	GtkWidget *ctx_info;
 	GtkWidget *serial_num;
 	GtkWidget *load_save_profile;
@@ -52,9 +53,14 @@ struct _Dialogs
 	GtkWidget *net_ip;
 	GtkWidget *connect_usb;
 	GtkWidget *connect_usbd;
+	gulong    usbd_signals;
+	GtkWidget *filter_local;
+	GtkWidget *filter_usb;
+	GtkWidget *filter_ip;
 	GtkWidget *connect_serial;
 	GtkWidget *connect_seriald;
 	GtkWidget *connect_serialbr;
+	GtkWidget *connect_serialbits;
 	GtkWidget *ok_btn;
 	GtkWidget *latest_version;
 	GtkWidget *ver_progress_window;
@@ -70,6 +76,10 @@ static Release *release;
 
 static gchar *usb_pids[128];
 static int active_pid = -1;
+
+static bool connect_clear(GtkWidget *widget);
+
+#define NO_DEVICES "No Devices"
 
 #ifdef FRU_FILES
 static time_t mins_since_jan_1_1996(void)
@@ -295,6 +305,11 @@ static bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
 	g_return_val_if_fail(widget, false);
 
 	gdkWindow = gtk_widget_get_window(widget);
+
+	/* UI isn't ready yet */
+	if (!gdkWindow)
+		return false;
+
 	g_return_val_if_fail(gdkWindow, false);
 
 	watchCursor = gdk_cursor_new(type);
@@ -314,6 +329,9 @@ static bool widget_use_parent_cursor(GtkWidget *widget)
 	g_return_val_if_fail(widget, false);
 
 	gdkWindow = gtk_widget_get_window(widget);
+	if (!gdkWindow)
+		return false;
+
 	g_return_val_if_fail(gdkWindow, false);
 
 	gdk_window_set_cursor(gdkWindow, NULL);
@@ -325,44 +343,77 @@ static struct iio_context * get_context(Dialogs *data)
 {
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_net))) {
 		const char *hostname = gtk_entry_get_text(GTK_ENTRY(dialogs.net_ip));
-		if (!hostname[0])
-			hostname = NULL;
+		struct iio_context *ctx = get_context_from_osc();
 
-		return iio_create_network_context(hostname);
+		if (ctx && !g_strcmp0(hostname, iio_context_get_attr_value(ctx, "uri")))
+			return ctx;
+		return iio_create_context_from_uri(hostname);
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb))) {
-		struct iio_context *ctx;
-		gchar *uri = gtk_combo_box_text_get_active_text(
-				GTK_COMBO_BOX_TEXT(dialogs.connect_usbd));
-		gchar *uri2 = uri + strlen(uri);
-		g_free(uri);
+		struct iio_context *ctx, *ctx2;
+		char *uri , *uri2, *uri3;
 
-		while(*uri2 != '[')
+		if (gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd)) == -1)
+			return NULL;
+
+		uri = gtk_combo_box_text_get_active_text(
+				GTK_COMBO_BOX_TEXT(dialogs.connect_usbd));
+
+		if (!strcmp(uri, NO_DEVICES)) {
+			g_free(uri);
+			gtk_widget_set_sensitive(dialogs.connect_usbd, false);
+			return NULL;
+		}
+		gtk_widget_set_sensitive(dialogs.connect_usbd, true);
+
+		uri2 = uri + strlen(uri);
+
+		while(*uri2 != '[' && uri2 != uri)
 			uri2--;
+
+		if (uri2 == uri) {
+			g_free(uri);
+			return NULL;
+		}
+		active_pid = gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd));
 
 		/* take off the [] */
 		uri2++;
 		uri2[strlen(uri2)-1] = 0;
 
-		active_pid = gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd));
-
-		/* try to open, if fail & busy, it's likely we are the same */
+		/* are we the same URI? */
+		ctx2 = get_context_from_osc();
+		if (ctx2 && !g_strcmp0(uri2, iio_context_get_attr_value(ctx2, "uri"))) {
+			g_free(uri);
+			return ctx2;
+		}
 
 		ctx = iio_create_context_from_uri(uri2);
-		if (!ctx && errno == EBUSY &&
-				!strcmp("usb", iio_context_get_name(get_context_from_osc()))) {
-			return get_context_from_osc();
+		/* If you are looking up ip: with zeroconf, without bonjour installed,
+		 * try the IP number too
+		 */
+		if (!ctx && strncmp(uri2, "ip:", sizeof("ip:"))) {
+			uri3 = strdup(usb_pids[gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd))]);
+			if (uri3) {
+				if (strchr(uri3, ' ')) {
+					uri2 = strchr(uri3, ' ');
+					*uri2 = 0;
+					ctx = iio_create_network_context(uri3);
+				}
+				free(uri3);
+			}
 		}
+		g_free(uri);
 		return ctx;
-#ifdef SERIAL_BACKEND
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial))) {
 		struct iio_context *ctx;
 		gchar *port = gtk_combo_box_text_get_active_text(
 				GTK_COMBO_BOX_TEXT(dialogs.connect_seriald));
 		gchar *baud_rate = gtk_combo_box_text_get_active_text(
 				GTK_COMBO_BOX_TEXT(dialogs.connect_serialbr));
+		const gchar *bits8n1 = gtk_entry_get_text(GTK_ENTRY(dialogs.connect_serialbits));
 
 		/* Size is +3: for ':', ',' and '\0' */
-		gchar *result = g_strdup_printf("serial:%s,%s", port, baud_rate);
+		gchar *result = g_strdup_printf("serial:%s,%s,%s", port, baud_rate, bits8n1);
 		g_free(port);
 		g_free(baud_rate);
 
@@ -373,7 +424,6 @@ static struct iio_context * get_context(Dialogs *data)
 			return get_context_from_osc();
 		}
 		return ctx;
-#endif
 	} else {
 		return iio_create_local_context();
 	}
@@ -389,6 +439,17 @@ static void refresh_usb(void)
 	gint index = 0;
 	gchar *tmp, *tmp1, *pid, *buf;
 	char *current = NULL;
+	char filter[sizeof("local:ip:usb:")];
+	char *p;
+	bool scan = false;
+	gchar *active_uri = NULL;
+
+	widget_set_cursor(dialogs.connect, GDK_WATCH);
+
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd)) != -1) {
+		active_uri = gtk_combo_box_text_get_active_text(
+				GTK_COMBO_BOX_TEXT(dialogs.connect_usbd));
+	}
 
 	/* get the active setting (if there is one) */
 	if(active_pid != -1 && usb_pids[active_pid])
@@ -401,12 +462,33 @@ static void refresh_usb(void)
 		}
 	}
 
+	if (dialogs.usbd_signals) {
+		g_signal_handler_block(GTK_COMBO_BOX(dialogs.connect_usbd), dialogs.usbd_signals);
+	}
+
 	/* clear everything, and scan again */
 	liststore = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(dialogs.connect_usbd)));
 	gtk_list_store_clear(liststore);
 
+	p = filter;
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.filter_local))) {
+		p += sprintf(p, "local:");
+		scan = true;
+	}
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.filter_usb))) {
+		p += sprintf(p, "usb:");
+		scan = true;
+	}
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.filter_ip))) {
+		p += sprintf(p, "ip:");
+		scan = true;
+	}
+
 	i = 0;
-	ctxs = iio_create_scan_context("usb", 0);
+	if (!scan)
+		goto nope;
+
+	ctxs = iio_create_scan_context(filter, 0);
 	if (!ctxs)
 		goto nope;
 
@@ -420,7 +502,12 @@ static void refresh_usb(void)
 		tmp = strdup(iio_context_info_get_description(info[i]));
 		pid = strdup(iio_context_info_get_description(info[i]));
 
-		/* skip the PID/VID : xxxx:xxxx */
+		/* skip the PID/VID or IP Number, example descriptions are:
+		 * 0456:b673 (Analog Devices Inc. PlutoSDR (ADALM-PLUTO)), serial=104473541196000618001900241f1e6931
+		 * 192.168.2.1 (Analog Devices PlutoSDR Rev.B (Z7010-AD9363A)), serial=104473541196000618001900241f1e6931
+		 * 192.168.1.127 (ad7124-4)
+		 * 192.168.1.120 (AD-FMCOMMS2-EBZ on Xilinx Zynq ZED (armv7l)), serial=00100
+		 */
 		tmp1 = strchr(tmp, '(');
 		if (tmp1 && strstr(tmp1, ")), serial=")) {
 			/* skip the '(' char */
@@ -428,15 +515,20 @@ static void refresh_usb(void)
 			/* find the serial number */
 			if (strstr(tmp1, ")), serial=")) {
 				tmp1[strstr(tmp1, ")), serial=") - tmp1 + 1] = 0;
-				memmove(pid + strlen("xxxx:xxxx "),
-					strstr(pid, ")), serial=") + strlen(")), serial="),
-					strlen(pid) - (strstr(pid, ")), serial=") - pid -
-						strlen(")), serial=")));
+				if (strchr(pid, ' ')) {
+					memmove(strchr(pid, ' ') + 1,
+						strstr(pid, ")), serial=") + strlen(")), serial="),
+						strlen(pid) - (strstr(pid, ")), serial=") - pid -
+							strlen(")), serial=")));
+				} else {
+					printf("error parsing '%s' in refresh_usb\n", pid);
+				}
 			}
 		}
 		if (active_pid != -1 && current && !strcmp(pid, current)) {
 			index = i;
 		}
+
 		usb_pids[i]=pid;
 
 		if (!tmp1)
@@ -448,6 +540,10 @@ static void refresh_usb(void)
 		tmp1 = NULL;
 
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), buf);
+		if (active_uri && !g_strcmp0(active_uri, buf)) {
+			index = i;
+		}
+
 		free(buf);
 		free(tmp);
 	}
@@ -458,11 +554,14 @@ err_free_ctxs:
 	iio_scan_context_destroy(ctxs);
 nope:
 
+	widget_use_parent_cursor(dialogs.connect);
+
 	if (!i) {
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), "None");
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), NO_DEVICES);
 		gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd),0);
 		gtk_widget_set_sensitive(dialogs.connect_usbd, false);
-		gtk_widget_set_sensitive(dialogs.connect_usb, false);
+		/* Force a clear */
+		connect_clear(dialogs.connect_net);
 		return;
 	}
 
@@ -471,10 +570,18 @@ nope:
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd), index);
 
+	if (dialogs.usbd_signals) {
+		g_signal_handler_unblock(GTK_COMBO_BOX(dialogs.connect_usbd), dialogs.usbd_signals);
+	}
+
+
 	if (current) {
 		free(current);
 		current = NULL;
 	}
+
+	/* Fill things in */
+	connect_clear(dialogs.connect_usb);
 }
 
 #ifdef SERIAL_BACKEND
@@ -482,7 +589,14 @@ static void refresh_serial(GtkBuilder *builder)
 {
 	GtkListStore *liststore;
 	struct sp_port **ports;
-	int i;
+	int i, active = 0;
+	gchar *active_sp = NULL;
+
+	if (gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_seriald)) != -1) {
+		active_sp = gtk_combo_box_text_get_active_text(
+				GTK_COMBO_BOX_TEXT(dialogs.connect_seriald));
+	}
+
 
 	/* clear everything, and scan again */
 	liststore = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(dialogs.connect_seriald)));
@@ -491,15 +605,20 @@ static void refresh_serial(GtkBuilder *builder)
 	/*get serial ports*/
 	enum sp_return error = sp_list_ports(&ports);
 	if (error == SP_OK) {
-	for (i = 0; ports[i]; i++) {
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_seriald), sp_get_port_name(ports[i]));
-	}
+		for (i = 0; ports[i]; i++) {
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_seriald), sp_get_port_name(ports[i]));
+			if (active_sp && !g_strcmp0(active_sp, sp_get_port_name(ports[i])))
+				active = i;
+		}
 		sp_free_port_list(ports);
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_seriald), active);
+		gtk_entry_set_text(GTK_ENTRY(dialogs.connect_serialbits), (const gchar*) "8N1");
 	} else {
 		gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_seriald),0);
 		gtk_widget_set_sensitive(dialogs.connect_seriald, false);
 		gtk_widget_set_sensitive(dialogs.connect_serialbr, false);
 		gtk_widget_set_sensitive(dialogs.connect_serial, false);
+		gtk_widget_set_sensitive(dialogs.connect_serialbits, false);
 	}
 }
 #else
@@ -542,125 +661,22 @@ void usb_set_serialnumber(char * value)
 	refresh_usb();
 }
 
-
-static bool connect_clear(GtkToggleButton *button)
-{
-	GtkTextBuffer *buf;
-	GtkTextIter iter;
-	gchar tmp[2] = " ";
-
-	buf = gtk_text_buffer_new(NULL);
-	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
-	gtk_text_buffer_insert(buf, &iter, tmp, -1);
-	gtk_text_view_set_buffer(GTK_TEXT_VIEW(dialogs.connect_fru), buf);
-	gtk_text_view_set_buffer(GTK_TEXT_VIEW(dialogs.connect_iio), buf);
-	gtk_text_view_set_buffer(GTK_TEXT_VIEW(dialogs.ctx_info), buf);
-	g_object_unref(buf);
-
-	return true;
-}
-
 static bool connect_fillin(Dialogs *data)
 {
 	GtkTextBuffer *buf;
 	GtkTextIter iter;
 	char text[256];
-	unsigned int num;
 	size_t i;
 	struct iio_context *ctx;
 	const char *desc;
 
-#ifdef FRU_FILES
-	char eprom_names[128];
-	unsigned char *raw_input_data = NULL;
-	FILE *efp, *fp;
-	struct stat st;
-
-	/* flushes all open output streams */
-	fflush(NULL);
-#if DEBUG
-	fp = popen("find ./ -name \"fru*.bin\"", "r");
-#else
-	fp = popen("find /sys -name eeprom 2>/dev/null", "r");
-#endif
-
-	if(fp == NULL) {
-		fprintf(stderr, "can't execute find\n");
-		return false;
-	}
-
-	buf = gtk_text_buffer_new(NULL);
-	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
-
-	num = 0;
-
-	while(fgets(eprom_names, sizeof(eprom_names), fp) != NULL){
-		num++;
-		/* strip trailing new lines */
-		if (eprom_names[strlen(eprom_names) - 1] == '\n')
-			eprom_names[strlen(eprom_names) - 1] = '\0';
-
-		/* FRU EEPROMS are exactly 256 */
-		if(stat(eprom_names, &st) !=0)
-			continue;
-		if(st.st_size != 256) {
-			printf("skipping %s (size == %d)\n", eprom_names, (int)st.st_size);
-			continue;
-		}
-
-		i = 0;
-		if (!is_eeprom_fru(eprom_names, buf, &iter)) {
-			/* Wasn't a FRU file, but is it a blank, writeable EEPROM? */
-			efp = fopen(eprom_names, "w+");
-			if (efp) {
-				i = fread(text, 1, 256, efp);
-				if (i == 256) {
-					for (i = 0; i < 256; i++){
-						if (!(text[i] == 0x00 || ((unsigned char) text[i]) == 0xFF)) {
-							i = 0;
-							break;
-						}
-					}
-				}
-				fclose(efp);
-
-				/* dump the info into it */
-				if (i == 256) {
-					if (write_fru(eprom_names))
-						if(!is_eeprom_fru(eprom_names, buf, &iter))
-							i = 0;
-				}
-			} else {
-				int errsv = errno;
-				printf("Can't open %s in %s\n%s\n", eprom_names, __func__, strerror(errsv));
-			}
-			if (i == 0) {
-				sprintf(text, "No FRU information in %s\n", eprom_names);
-				gtk_text_buffer_insert(buf, &iter, text, -1);
-			}
-		}
-
-		free (raw_input_data);
-	}
-	pclose(fp);
-
-	if (!num) {
-		sprintf(text, "No eeprom files found in /sys/\n");
-		gtk_text_buffer_insert(buf, &iter, text, -1);
-	}
-	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_fru), buf);
-	g_object_unref(buf);
-#endif
-
 	ctx = get_context(data);
 	if (!ctx) {
-		char buf[1024];
-		printf("%s:%s():%i error getting context\n", __FILE__, __func__, __LINE__);
-		iio_strerror(errno, buf, sizeof(buf));
-		printf("error : %s\n", buf);
+		iio_strerror(errno, text, sizeof(text));
+		desc = text;
+	} else {
+		desc = iio_context_get_description(ctx);
 	}
-
-	desc = ctx ? iio_context_get_description(ctx) : "";
 
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
@@ -671,32 +687,182 @@ static bool connect_fillin(Dialogs *data)
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
 
-	num = ctx ? iio_context_get_devices_count(ctx) : 0;
-	if (num > 0) {
-		for (i = 0; i < num; i++) {
+	if (ctx) {
+		for (i = 0; i < iio_context_get_devices_count(ctx); i++) {
 			struct iio_device *dev = iio_context_get_device(ctx, i);
 			sprintf(text, "%s\n", iio_device_get_name(dev));
 			gtk_text_buffer_insert(buf, &iter, text, -1);
 		}
 	} else {
-		sprintf(text, "No iio devices found\n");
+		sprintf(text, "No context, No iio devices found\n");
 		gtk_text_buffer_insert(buf, &iter, text, -1);
 	}
 
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_iio), buf);
 	g_object_unref(buf);
 
-	if (ctx && ctx != get_context_from_osc())
-		iio_context_destroy(ctx);
+
+	buf = gtk_text_buffer_new(NULL);
+	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
+	if (ctx) {
+		for (i = 0; i < iio_context_get_attrs_count(ctx); i++) {
+			const char *key, *value;
+			ssize_t ret;
+			ret = iio_context_get_attr(ctx, i, &key, &value);
+			if (!ret) {
+				sprintf(text, "%s = %s\n", key, value);
+				gtk_text_buffer_insert(buf, &iter, text, -1);
+			}
+		}
+	} else {
+		sprintf(text, "No context attributes\n");
+		gtk_text_buffer_insert(buf, &iter, text, -1);
+	}
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_attrs), buf);
+	g_object_unref(buf);
+
+#ifdef FRU_FILES
+	buf = gtk_text_buffer_new(NULL);
+	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
+
+	if (ctx && !strcmp("local", iio_context_get_name(ctx))) {
+		char eprom_names[128];
+		unsigned char *raw_input_data = NULL;
+		FILE *efp, *fp;
+		struct stat st;
+		unsigned int num = 0;
+
+		/* flushes all open output streams */
+		fflush(NULL);
+#if DEBUG
+		fp = popen("find ./ -name \"fru*.bin\"", "r");
+#else
+		fp = popen("find /sys -name eeprom 2>/dev/null", "r");
+#endif
+
+		if(fp == NULL) {
+			fprintf(stderr, "can't execute find\n");
+			return false;
+		}
+
+		while(fgets(eprom_names, sizeof(eprom_names), fp) != NULL){
+			num++;
+			/* strip trailing new lines */
+			if (eprom_names[strlen(eprom_names) - 1] == '\n')
+				eprom_names[strlen(eprom_names) - 1] = '\0';
+
+			/* FRU EEPROMS are exactly 256 */
+			if(stat(eprom_names, &st) !=0)
+				continue;
+			if(st.st_size != 256) {
+				printf("skipping %s (size == %d)\n", eprom_names, (int)st.st_size);
+				continue;
+			}
+
+			i = 0;
+			if (!is_eeprom_fru(eprom_names, buf, &iter)) {
+				/* Wasn't a FRU file, but is it a blank, writeable EEPROM? */
+				efp = fopen(eprom_names, "w+");
+				if (efp) {
+					i = fread(text, 1, 256, efp);
+					if (i == 256) {
+					for (i = 0; i < 256; i++){
+							if (!(text[i] == 0x00 || ((unsigned char) text[i]) == 0xFF)) {
+								i = 0;
+								break;
+							}
+						}
+					}
+					fclose(efp);
+
+					/* dump the info into it */
+					if (i == 256) {
+						if (write_fru(eprom_names))
+							if(!is_eeprom_fru(eprom_names, buf, &iter))
+								i = 0;
+					}
+				} else {
+					int errsv = errno;
+					printf("Can't open %s in %s\n%s\n", eprom_names, __func__, strerror(errsv));
+				}
+				if (i == 0) {
+					sprintf(text, "No FRU information in %s\n", eprom_names);
+					gtk_text_buffer_insert(buf, &iter, text, -1);
+				}
+			}
+
+			free (raw_input_data);
+		}
+		pclose(fp);
+
+		if (!num) {
+			sprintf(text, "No eeprom files found in /sys/\n");
+			gtk_text_buffer_insert(buf, &iter, text, -1);
+		}
+	} else {
+		sprintf(text, "Not a local context, no access to FRU EEPROM\n");
+		gtk_text_buffer_insert(buf, &iter, text, -1);
+	}
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_fru), buf);
+	g_object_unref(buf);
+#endif
+
+	if (ctx) {
+		gtk_widget_set_sensitive(dialogs.ok_btn, true);
+		if (ctx != get_context_from_osc())
+			iio_context_destroy(ctx);
+	}
 
 	return !!ctx;
 }
 
-static bool hide_ok_btn()
+static bool connect_clear(GtkWidget *widget)
 {
-	gtk_widget_set_sensitive(dialogs.ok_btn, false);
+	GtkTextBuffer *buf;
+	GtkTextIter iter;
+	gchar tmp[2] = " ";
+
+	if (!widget) {
+		printf("nope - not callback\n");
+		return true;
+	}
+	if (GTK_TOGGLE_BUTTON (widget)->active) {
+		/* set - fill in */
+		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb))) {
+			if (connect_fillin(&dialogs))
+				gtk_widget_set_sensitive(dialogs.ok_btn, true);
+			else
+				gtk_widget_set_sensitive(dialogs.ok_btn, false);
+		} else {
+			/* serial or manual */
+			gtk_widget_set_sensitive(dialogs.ok_btn, false);
+			gtk_widget_set_sensitive(dialogs.connect_usbd, false);
+		}
+	} else {
+		/* Unset  - clear */
+		buf = gtk_text_buffer_new(NULL);
+		gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
+		gtk_text_buffer_insert(buf, &iter, tmp, -1);
+		gtk_text_view_set_buffer(GTK_TEXT_VIEW(dialogs.connect_fru), buf);
+		gtk_text_view_set_buffer(GTK_TEXT_VIEW(dialogs.connect_iio), buf);
+		gtk_text_view_set_buffer(GTK_TEXT_VIEW(dialogs.connect_attrs), buf);
+		gtk_text_view_set_buffer(GTK_TEXT_VIEW(dialogs.ctx_info), buf);
+		g_object_unref(buf);
+	}
 
 	return true;
+}
+
+static bool refresh_connect_attributes()
+{
+	bool has_context = false;
+
+	/* Refresh button */
+	widget_set_cursor(dialogs.connect, GDK_WATCH);
+	has_context = connect_fillin(&dialogs);
+	widget_use_parent_cursor(dialogs.connect);
+
+	return has_context;
 }
 
 static gint fru_connect_dialog(Dialogs *data, bool load_profile)
@@ -704,50 +870,29 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 	/* Connect Dialog */
 	gint ret;
 	struct iio_context *ctx;
-	const char *name = NULL;
-	bool has_context = false;
-	gchar *ip_addr;
+	const gchar *ip_addr;
 
 	/* Preload the device list and FRU info only if we can use the local
 	 * backend */
 	ctx = get_context_from_osc();
-	if (ctx)
-		name = iio_context_get_name(ctx);
 
-	if (name && !strcmp(name, "local"))
-		has_context = connect_fillin(data);
-
-	if (name && !strcmp(name, "network")) {
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_net), true);
-		ip_addr = (char *) iio_context_get_description(ctx);
-		ip_addr = strtok(ip_addr, " ");
-		gtk_entry_set_text(GTK_ENTRY(dialogs.net_ip), ip_addr);
-		has_context = connect_fillin(data);
+	if (ctx) {
+		ip_addr = iio_context_get_attr_value(ctx, "uri");
+		if (ip_addr) {
+			gtk_entry_set_text(GTK_ENTRY(dialogs.net_ip), ip_addr);
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_net), true);
+			connect_fillin(data);
+		}
 	}
-
-	if (name && !strcmp(name, "usb")) {
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb), true);
-		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb), true);
-		has_context = connect_fillin(data);
-	}
-
-#ifdef SERIAL_BACKEND
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial), true);
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial), true);
-#endif
 
 	while (true) {
-		gtk_widget_set_sensitive(data->ok_btn, has_context);
-
 		ret = gtk_dialog_run(GTK_DIALOG(data->connect));
 		switch (ret) {
 		case GTK_RESPONSE_APPLY:
 			/* Refresh button */
-			widget_set_cursor(data->connect, GDK_WATCH);
-			connect_clear(NULL);
-			has_context = connect_fillin(data);
-			widget_use_parent_cursor(data->connect);
-			refresh_usb();
+			refresh_connect_attributes();
+			if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb)))
+				refresh_usb();
 			continue;
 		case GTK_RESPONSE_OK:
 			ctx = get_context(data);
@@ -1116,26 +1261,32 @@ G_MODULE_EXPORT void cb_check_for_updates(GtkCheckMenuItem *item, Dialogs *_dial
 
 void dialogs_init(GtkBuilder *builder)
 {
-	const char *name = NULL;
 	struct iio_context *ctx;
 	GtkWidget *tmp;
+	bool scan = false;
 
 	dialogs.builder = builder;
+	dialogs.usbd_signals = 0;
 
 	dialogs.about = GTK_WIDGET(gtk_builder_get_object(builder, "About_dialog"));
 	dialogs.connect = GTK_WIDGET(gtk_builder_get_object(builder, "connect_dialog"));
 	dialogs.connect_fru = GTK_WIDGET(gtk_builder_get_object(builder, "fru_info"));
 	dialogs.serial_num = GTK_WIDGET(gtk_builder_get_object(builder, "serial_number_popup"));
 	dialogs.connect_iio = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_devices"));
+	dialogs.connect_attrs = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_attrs"));
 	dialogs.ctx_info = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_ctx_info"));
 	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
 	dialogs.connect_net = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
 	dialogs.net_ip = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
 	dialogs.connect_usb = GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb"));
 	dialogs.connect_usbd = GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_devices"));
+	dialogs.filter_local = GTK_WIDGET(gtk_builder_get_object(builder, "scan_local"));
+	dialogs.filter_usb = GTK_WIDGET(gtk_builder_get_object(builder, "scan_usb"));
+	dialogs.filter_ip = GTK_WIDGET(gtk_builder_get_object(builder, "scan_ip"));
 	dialogs.connect_serial = GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial"));
 	dialogs.connect_seriald = GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_devices"));
 	dialogs.connect_serialbr = GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_baudrate"));
+	dialogs.connect_serialbits = GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_bits"));
 	dialogs.ok_btn = GTK_WIDGET(gtk_builder_get_object(builder, "button3"));
 	dialogs.latest_version = GTK_WIDGET(gtk_builder_get_object(builder, "latest_version_popup"));
 	dialogs.ver_progress_window = GTK_WIDGET(gtk_builder_get_object(builder, "progress_window"));
@@ -1143,68 +1294,111 @@ void dialogs_init(GtkBuilder *builder)
 	gtk_builder_connect_signals(builder, &dialogs);
 
 	/* Bind some dialogs radio buttons to text/labels */
-	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_label"));
 	serial_num = GTK_WIDGET(gtk_builder_get_object(builder, "serial_number"));
 	fru_date = GTK_WIDGET(gtk_builder_get_object(builder, "fru_date"));
 	fru_file_list = GTK_WIDGET(gtk_builder_get_object(builder, "FRU_files"));
 
+	/* Manual is always enabled */
+	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_label"));
 	g_object_bind_property(dialogs.connect_net, "active", tmp, "sensitive", 0);
 	g_object_bind_property(dialogs.connect_net, "active", dialogs.net_ip, "sensitive", 0);
+	g_signal_connect(G_OBJECT(dialogs.connect_net), "toggled",
+			(GCallback) connect_clear, NULL);
 
-	g_object_bind_property(dialogs.connect_serial, "active",
-		       GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_label")), "sensitive", 0);
-	g_object_bind_property(dialogs.connect_serial, "active", dialogs.connect_seriald, "sensitive", 0);
-	g_object_bind_property(dialogs.connect_serial, "active", dialogs.connect_serialbr, "sensitive", 0);
-
-	g_signal_connect(G_OBJECT(dialogs.connect_seriald), "changed",
-			(GCallback) hide_ok_btn, NULL);
 
 	gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")),
 			false);
-	gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_label")),
-			false);
 
-	g_signal_connect(G_OBJECT(dialogs.connect_serial), "toggled",
-			(GCallback) connect_clear, NULL);
-	gtk_widget_set_sensitive(dialogs.connect_seriald, false);
-	gtk_widget_set_sensitive(dialogs.connect_serialbr, false);
+	if (iio_has_backend("serial")) {
+		g_object_bind_property(dialogs.connect_serial, "active",
+				GTK_WIDGET(gtk_builder_get_object(builder,
+						"connect_serial_label")), "sensitive", 0);
+		g_object_bind_property(dialogs.connect_serial, "active",
+				dialogs.connect_seriald, "sensitive", 0);
+		g_object_bind_property(dialogs.connect_serial, "active",
+				dialogs.connect_serialbr, "sensitive", 0);
+		g_object_bind_property(dialogs.connect_serial, "active",
+				dialogs.connect_serialbits, "sensitive", 0);
+		gtk_widget_set_sensitive(GTK_WIDGET(
+				gtk_builder_get_object(builder, "connect_serial_label")),
+					false);
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_serialbr), 6);
 
-	/* test USB backend & hide if it's not supported */
-	if (!iio_has_backend("usb")) {
-		gtk_widget_hide(dialogs.connect_usbd);
-		gtk_widget_hide(dialogs.connect_usb);
-		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")));
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial), true);
+
+		g_signal_connect(G_OBJECT(dialogs.connect_serial), "toggled",
+				(GCallback) connect_clear, NULL);
 	} else {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial), false);
+		gtk_widget_set_sensitive(GTK_WIDGET(dialogs.connect_serial), false);
+		gtk_widget_set_sensitive(dialogs.connect_seriald, false);
+		gtk_widget_set_sensitive(dialogs.connect_serialbr, false);
+		gtk_widget_set_sensitive(dialogs.connect_serialbits, false);
+	}
+
+
+	/* test discoverable backends & hide if it's not supported */
+	if (iio_has_backend("usb")) {
+		scan = true;
+		g_object_bind_property(dialogs.connect_usb, "active", dialogs.filter_usb,
+				"sensitive", G_BINDING_DEFAULT);
+		g_signal_connect(G_OBJECT(dialogs.filter_usb), "toggled",
+				(GCallback) refresh_usb, NULL);
+	} else {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.filter_usb), false);
+		gtk_widget_set_sensitive(dialogs.filter_usb, false);
+	}
+
+	if(iio_has_backend("ip")) {
+		scan = true;
+		g_object_bind_property(dialogs.connect_usb, "active", dialogs.filter_ip,
+				"sensitive", G_BINDING_DEFAULT);
+		g_signal_connect(G_OBJECT(dialogs.filter_ip), "toggled",
+				(GCallback) refresh_usb, NULL);
+	} else {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.filter_ip), false);
+		gtk_widget_set_sensitive(dialogs.filter_ip, false);
+	}
+
+	if (iio_has_backend("local")) {
+		ctx = iio_create_local_context();
+		if (ctx) {
+			scan = true;
+			iio_context_destroy(ctx);
+			g_object_bind_property(dialogs.connect_usb, "active", dialogs.filter_local,
+					"sensitive", G_BINDING_DEFAULT);
+			g_signal_connect(G_OBJECT(dialogs.filter_local), "toggled",
+					(GCallback) refresh_usb, NULL);
+		} else {
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.filter_local), false);
+			gtk_widget_set_sensitive(dialogs.filter_local, false);
+		}
+	} else {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.filter_local), false);
+		gtk_widget_set_sensitive(dialogs.filter_local, false);
+	}
+
+	if (!scan) {
+		gtk_widget_set_sensitive(dialogs.connect_usb, false);
+		tmp = GTK_WIDGET(gtk_builder_get_object(builder, "vbox_discover"));
+		gtk_widget_set_sensitive(tmp, false);
+
+	} else {
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb), true);
 		g_object_bind_property(dialogs.connect_usb, "active",
 				GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")),
 				"sensitive", 0);
-		g_object_bind_property(dialogs.connect_usb, "active", dialogs.connect_usbd,
-				"sensitive", 0);
-		g_signal_connect(G_OBJECT(dialogs.connect_usbd), "changed",
-				(GCallback) hide_ok_btn, NULL);
+
+		refresh_usb();
+
 		g_signal_connect(G_OBJECT(dialogs.connect_usb), "toggled",
 				(GCallback) connect_clear, NULL);
 		gtk_widget_set_sensitive(dialogs.connect_usbd, false);
+
+		dialogs.usbd_signals = g_signal_connect(G_OBJECT(dialogs.connect_usbd), "changed",
+				(GCallback) refresh_connect_attributes, NULL);
 	}
 
-	/* Grey out the "local context" option if it is not available */
-	ctx = get_context_from_osc();
-	if (ctx)
-		name = iio_context_get_name(ctx);
-	if (!name || strcmp(name, "local")) {
-		ctx = iio_create_local_context();
-		if (ctx) {
-			iio_context_destroy(ctx);
-		} else {
-			GtkWidget *local = GTK_WIDGET(gtk_builder_get_object(
-						builder, "connect_local"));
-			gtk_widget_set_sensitive(local, false);
-			gtk_toggle_button_set_active(
-					GTK_TOGGLE_BUTTON(dialogs.connect_net), true);
-		}
-	}
-
-	refresh_usb();
 	refresh_serial(builder);
 
 	g_signal_connect(dialogs.net_ip, "key-press-event",
