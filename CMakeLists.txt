@@ -158,6 +158,11 @@ set(LIBOSC_LIBS
 
 configure_file(config.h.cmakein ${CMAKE_CURRENT_SOURCE_DIR}/config.h @ONLY)
 
+if(CMAKE_COMPILER_IS_GNUCC)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wextra -Wno-unused-parameter")
+endif()
+
+
 add_library(osc ${OSC_SRC})
 target_link_libraries(osc ${LIBOSC_LIBS})
 set_target_properties(osc PROPERTIES
