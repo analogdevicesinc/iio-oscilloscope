@@ -334,9 +334,11 @@ static void int_dec_freq_update(void)
 	struct iio_channel *ch;
 	double freq;
 
-	ch = iio_device_find_channel(cap, "voltage0", false);
-	iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
-	gtk_spin_button_set_value(GTK_SPIN_BUTTON(sampling_freq_rx_decim), freq / mhz_scale);
+	if (cap) {
+		ch = iio_device_find_channel(cap, "voltage0", false);
+		iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(sampling_freq_rx_decim), freq / mhz_scale);
+	}
 
 	ch = iio_device_find_channel(dds, "voltage0", true);
 	iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
@@ -1837,8 +1839,12 @@ static GtkWidget * fmcomms2_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		gtk_widget_hide(sampling_freq_tx_inter);
 	}
 
-	ch0 = iio_device_find_channel(cap, "voltage0", false);
-	if (iio_channel_find_attr(ch0, "sampling_frequency_available")) {
+	if (cap) {
+		ch0 = iio_device_find_channel(cap, "voltage0", false);
+	} else {
+		ch0 = NULL;
+	}
+	if (ch0 && iio_channel_find_attr(ch0, "sampling_frequency_available")) {
 		iio_combo_box_init(&fpga_widgets[num_fpga++],
 				cap, ch0, "sampling_frequency",
 			"sampling_frequency_available",
