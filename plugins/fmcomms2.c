@@ -340,9 +340,11 @@ static void int_dec_freq_update(void)
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(sampling_freq_rx_decim), freq / mhz_scale);
 	}
 
-	ch = iio_device_find_channel(dds, "voltage0", true);
-	iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
-	gtk_spin_button_set_value(GTK_SPIN_BUTTON(sampling_freq_tx_inter), freq / mhz_scale);
+	if (dds) {
+		ch = iio_device_find_channel(dds, "voltage0", true);
+		iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(sampling_freq_tx_inter), freq / mhz_scale);
+	}
 }
 
 static void sample_frequency_changed_cb(void *data)
@@ -1821,8 +1823,12 @@ static GtkWidget * fmcomms2_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	/* FPGA widgets */
 	fpga_widgets = &tx_widgets[num_tx];
 
-	ch0 = iio_device_find_channel(dds, "voltage0", true);
-	if (iio_channel_find_attr(ch0, "sampling_frequency_available")) {
+	if (dds) {
+		ch0 = iio_device_find_channel(dds, "voltage0", true);
+	} else {
+		ch0 = NULL;
+	}
+	if (ch0 && iio_channel_find_attr(ch0, "sampling_frequency_available")) {
 		iio_combo_box_init(&fpga_widgets[num_fpga++],
 				dds, ch0, "sampling_frequency",
 			"sampling_frequency_available",
