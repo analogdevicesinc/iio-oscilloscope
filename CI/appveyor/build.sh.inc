@@ -40,7 +40,7 @@ build_osc () {
 remove_garbage () {
 	rm -rf ${SYSROOT}/${INSTALL_PREFIX}/bin/!(*.dll|osc.exe|iio_info.exe|iio_readdev.exe|iio_genxml.exe|curl.exe)
 	rm -rf ${SYSROOT}/${INSTALL_PREFIX}/include
-	rm -rf ${SYSROOT}/${INSTALL_PREFIX}/share/!(locale|themes|osc)
+	rm -rf ${SYSROOT}/${INSTALL_PREFIX}/share/!(locale|themes|osc|icons)
 	rm -rf ${SYSROOT}/${INSTALL_PREFIX}/lib/!(gtk-2.0|osc|gdk-pixbuf-2.0)
 	rm -rf ${SYSROOT}/${INSTALL_PREFIX}/lib/gtk-2.0/2.10.0/engines/!(*.dll)
 	rm -rf ${SYSROOT}/${INSTALL_PREFIX}/lib/gtk-2.0/modules/!(*.dll)
