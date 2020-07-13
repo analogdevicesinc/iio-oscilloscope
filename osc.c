@@ -456,19 +456,25 @@ struct iio_context *get_context_from_osc(void)
 /*
  * Helper function to move window to valid coordinate on screen
  */
-bool move_gtk_window_on_screen(GtkWindow   *window,
+void move_gtk_window_on_screen(GtkWindow   *window,
 		  gint         x,
 		  gint         y)
 {
 	// get screen dimensions
-	gint width  = gdk_screen_width();
-	gint height = gdk_screen_height();
+	gint screen_w = gdk_screen_width();
+	gint screen_h = gdk_screen_height();
 
-	if(x <= width && y <= height) {
+	gint window_w;
+	gint window_h;
+	gtk_window_get_size(window, &window_w, &window_h);
+
+	/* Make sure the window fully fits inside the screen area */
+	if ( (x >= 0 && x + window_w <= screen_w) &&
+		(y >= 0 && y + window_h <= screen_h) ) {
 		gtk_window_move(window, x, y);
-		return true; // window was moved
+	} else {
+		gtk_window_set_position(window, GTK_WIN_POS_CENTER);
 	}
-	return false; // window coordinates out of range
 }
 
 const void * plugin_get_device_by_reference(const char * device_name)
