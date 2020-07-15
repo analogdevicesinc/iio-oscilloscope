@@ -6697,6 +6697,44 @@ static bool set_channel_state_in_tree_model(GtkTreeModel *model, GtkTreeIter* ch
 	return false;
 }
 
+static void set_channel_state_via_iter(GtkTreeModel *model,
+	GtkTreeIter *iter, void *user_data)
+{
+	gboolean enable_state = *(gboolean *)user_data;
+	set_channel_state_in_tree_model(model, iter, enable_state);
+}
+
+static void enable_all_button_toggled_cb(GtkToggleButton *btn, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+	gboolean toggled = gtk_toggle_button_get_active(btn);
+
+	if (toggled) {
+		gtk_button_set_label(GTK_BUTTON(btn), "Disable All");
+	} else {
+		gtk_button_set_label(GTK_BUTTON(btn), "Enable All");
+	}
+
+	// Enable/disable by going through all channels of each device
+	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	gboolean next_iter;
+	gchar *dev_name;
+
+	model = gtk_tree_view_get_model(treeview);
+	next_iter = gtk_tree_model_get_iter_first(model, &iter);
+	while (next_iter) {
+		gtk_tree_model_get(model, &iter,
+				ELEMENT_NAME, &dev_name, -1);
+		foreach_channel_iter_of_device(treeview, dev_name,
+				*set_channel_state_via_iter, &toggled);
+		g_free(dev_name);
+		next_iter = gtk_tree_model_iter_next(model, &iter);
+	}
+	check_valid_setup(plot);
+}
+
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -7010,6 +7048,9 @@ static void create_plot(OscPlot *plot)
 	g_signal_handlers_disconnect_by_func(key_fullscale, math_chooser_key_pressed_cb, plot);
 	g_signal_connect(key_fullscale, "clicked",
 			G_CALLBACK(math_chooser_fullscale_key_pressed_cb), plot);
+
+	g_builder_connect_signal(builder, "togglebutton_enable_all", "toggled",
+		G_CALLBACK(enable_all_button_toggled_cb), plot);
 
 	/* Create Bindings */
 	g_object_bind_property_full(priv->capture_button, "active", priv->capture_button,
