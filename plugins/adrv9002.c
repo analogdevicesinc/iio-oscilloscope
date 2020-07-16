@@ -149,6 +149,22 @@ static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
 	iio_w->update(iio_w);
 }
 
+static void save_gain_value(GtkWidget *widget, struct adrv9002_common *chann)
+{
+	char *gain_ctl = gtk_combo_box_text_get_active_text(
+			GTK_COMBO_BOX_TEXT(chann->gain_ctrl.w.widget));
+	/*
+	 * Do not save the value if we are in automatic gain control. We can get here if we
+	 * change the gain to automatic and the part changes the RX gain...
+	 */
+	if (!strcmp(gain_ctl, "automatic"))
+		goto free_gain_ctl;
+
+	iio_widget_save(&chann->gain);
+free_gain_ctl:
+	g_free(gain_ctl);
+}
+
 static void combo_box_manual_update(struct adrv9002_combo_box *combo)
 {
 	char text[512], *item;
@@ -947,8 +963,8 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 			 "changed", G_CALLBACK(save_gain_ctl),
 			 &priv->rx_widgets[chann].rx);
 	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.gain.widget),
-			 "value-changed", G_CALLBACK(save_widget_value),
-			 &priv->rx_widgets[chann].rx.gain);
+			 "value-changed", G_CALLBACK(save_gain_value),
+			 &priv->rx_widgets[chann].rx);
 	/* nco freq */
 	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.nco_freq.widget),
 			 "value-changed", G_CALLBACK(save_widget_value),
