@@ -19,6 +19,9 @@
 #include "../config.h"
 #include "dac_data_manager.h"
 
+#ifndef ENOTSUPP
+#define ENOTSUPP	524
+#endif
 #define THIS_DRIVER "ADRV9002"
 #define PHY_DEVICE "adrv9002-phy"
 #define DDS_DEVICE "axi-adrv9002-tx"
@@ -68,6 +71,7 @@ struct adrv9002_combo_box {
 struct adrv9002_common {
 	struct adrv9002_combo_box gain_ctrl;
 	struct iio_widget gain;
+	struct iio_widget nco_freq;
 	struct adrv9002_combo_box ensm;
 	struct adrv9002_combo_box port_en;
 	struct adrv9002_gtklabel rf_bandwidth;
@@ -427,6 +431,7 @@ static void adrv9002_update_rx_widgets(struct plugin_private *priv, const int ch
 
 	combo_box_manual_update(&rx->rx.gain_ctrl);
 	iio_widget_update(&rx->rx.gain);
+	iio_widget_update(&rx->rx.nco_freq);
 	combo_box_manual_update(&rx->rx.ensm);
 	combo_box_manual_update(&rx->rx.port_en);
 	combo_box_manual_update(&rx->digital_gain_ctl);
@@ -449,6 +454,7 @@ static void adrv9002_update_tx_widgets(struct plugin_private *priv, const int ch
 
 	combo_box_manual_update(&tx->gain_ctrl);
 	iio_widget_update(&tx->gain);
+	iio_widget_update(&tx->nco_freq);
 	combo_box_manual_update(&tx->ensm);
 	combo_box_manual_update(&tx->port_en);
 	/* generic widgets */
@@ -514,6 +520,38 @@ static void adrv9002_check_channel_status(struct plugin_private *priv,
 	}
 }
 
+static void adrv9002_check_nco_freq_support(struct plugin_private *priv, const int channel,
+					    const bool tx)
+{
+	int ret;
+	long long dummy;
+	char gtk_str[32], label_str[32];
+	struct iio_widget *nco;
+
+	if (tx) {
+		nco = &priv->tx_widgets[channel].nco_freq;
+		sprintf(gtk_str, "nco_freq_tx%d", channel + 1);
+		sprintf(label_str, "nco_label_tx%d", channel + 1);
+	} else {
+		nco = &priv->rx_widgets[channel].rx.nco_freq;
+		sprintf(gtk_str, "nco_freq_rx%d", channel + 1);
+		sprintf(label_str, "nco_label_rx%d", channel + 1);
+	}
+
+	ret = iio_channel_attr_read_longlong(nco->chn, "nco_frequency", &dummy);
+	if (ret == -ENOTSUPP) {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder,
+								  label_str)));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder,
+								  gtk_str)));
+	} else {
+		gtk_widget_show(GTK_WIDGET(gtk_builder_get_object(priv->builder,
+								  label_str)));
+		gtk_widget_show(GTK_WIDGET(gtk_builder_get_object(priv->builder,
+								  gtk_str)));
+	}
+}
+
 void check_enabled_channels(struct plugin_private *priv)
 {
 	int i;
@@ -536,6 +574,16 @@ void check_enabled_channels(struct plugin_private *priv)
 			continue;
 
 		adrv9002_check_channel_status(priv, chann, &priv->tx_widgets[i], gtk_str);
+	}
+}
+
+static void check_nco_support(struct plugin_private *priv)
+{
+	int i;
+
+	for(i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
+		adrv9002_check_nco_freq_support(priv, i, false);
+		adrv9002_check_nco_freq_support(priv, i, true);
 	}
 }
 
@@ -577,6 +625,8 @@ static void load_profile(GtkFileChooser *chooser, gpointer data)
 	g_free(file_name);
 	/* check which channels are enabled */
 	check_enabled_channels(priv);
+	/* check if nco is available on profile */
+	check_nco_support(priv);
 	/* update widgets*/
 	update_all(priv);
 	/* re-arm the timer */
@@ -696,6 +746,13 @@ static int adrv9002_tx_widgets_init(struct plugin_private *priv, const int chann
 					    priv->adrv9002, channel,
 					    "en", priv->builder, widget_str, true);
 
+	sprintf(widget_str, "nco_freq_tx%d", chann + 1);
+	iio_spin_button_int_init_from_builder(&priv->tx_widgets[chann].nco_freq,
+					      priv->adrv9002, channel,
+					      "nco_frequency",
+					      priv->builder, widget_str, NULL);
+	adrv9002_check_nco_freq_support(priv, chann, true);
+
 	sprintf(widget_str, "hardware_gain_tx%d", chann + 1);
 	iio_spin_button_init_from_builder(&priv->tx_widgets[chann].gain,
 					  priv->adrv9002, channel,
@@ -810,10 +867,11 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 					    false);
 
 	sprintf(widget_str, "nco_freq_rx%d", chann + 1);
-	iio_spin_button_int_init_from_builder(&priv->rx_widgets[chann].rx.w[(*n_w)++],
+	iio_spin_button_int_init_from_builder(&priv->rx_widgets[chann].rx.nco_freq,
 					      priv->adrv9002, channel,
 					      "nco_frequency",
 					      priv->builder, widget_str, NULL);
+	adrv9002_check_nco_freq_support(priv, chann, false);
 
 	sprintf(widget_str, "hardware_gain_rx%d", chann + 1);
 	iio_spin_button_init_from_builder(&priv->rx_widgets[chann].rx.gain,
@@ -891,6 +949,10 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.gain.widget),
 			 "value-changed", G_CALLBACK(save_widget_value),
 			 &priv->rx_widgets[chann].rx.gain);
+	/* nco freq */
+	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.nco_freq.widget),
+			 "value-changed", G_CALLBACK(save_widget_value),
+			 &priv->rx_widgets[chann].rx.nco_freq);
 	/* ensm mode and port en */
 	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.ensm.w.widget),
 			 "changed", G_CALLBACK(combo_box_save),
@@ -909,7 +971,10 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].gain_ctrl.w.widget),
 			 "changed", G_CALLBACK(save_gain_ctl),
 			 &priv->tx_widgets[chann]);
-
+	/* nco freq */
+	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].nco_freq.widget),
+			 "value-changed", G_CALLBACK(save_widget_value),
+			 &priv->tx_widgets[chann].nco_freq);
 	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].gain.widget),
 			 "value-changed", G_CALLBACK(save_widget_value),
 			 &priv->tx_widgets[chann].gain);
