@@ -19,34 +19,36 @@
 #define THIS_DRIVER	"CN0540"
 #define ADC_DEVICE	"ad7768-1"
 #define DAC_DEVICE	"ltc2606"
+#define GPIO_CTRL	"one-bit-adc-dac"
 /*
  * For now leave this define as it is but, in future it would be nice if
  * the scaling is done in the driver so that, the plug in does not have
  * to knwow about  DAC_MAX_AMPLITUDE.
  */
-#define DAC_MAX_AMPLITUDE	32767.0
-#define SCALE_MINUS_INFINITE	-91.0
-#define SCALE_MAX		0
+
 #define DAC_SCALE               0.0625
 #define ADC_SCALE               0.000488
 #define G                       0.3
 #define G_FDA                   2.667
 #define V_OCM                   2.5
 #define DAC_GAIN                1.22
-#define AVG_COUNT               10
+#define AVG_COUNT               5
 
 #define DAC_DEFAULT_VAL         55616
+
 static struct iio_context *ctx;
 static struct iio_channel *adc_ch;
 static struct iio_channel *dac_ch;
+static struct iio_channel *sw_ff;
+static struct iio_channel *sw_in;
 static struct iio_widget iio_widgets[25];
 static unsigned int num_widgets;
 
 static GtkWidget *cn0540_panel;
-static GtkWidget *swin_enable;
-static GtkWidget *swff_enable;
-static GtkWidget *fdadis_enable;
-static GtkWidget *fdamode_pow;
+static GtkToggleButton *swin_enable;
+static GtkToggleButton *swff_enable;
+static GtkToggleButton *fdadis_enable;
+static GtkToggleButton *fdamode_pow;
 static GtkWidget *calib_btn;
 static GtkWidget *write_btn;
 static GtkWidget *read_btn;
@@ -66,20 +68,28 @@ static void enable_fdadis(GtkButton *btn)
 	printf("FDA_DIS callback\n");
 	gtk_text_buffer_set_text(calib_buffer,"FDA_DIS callback",-1);
 }
-static void set_fdapow(GtkButton *btn)
+static void set_fdapow(GtkToggleButton *btn)
 {
 	printf("FDA_POW callback\n");
 	fflush(stdout);
 }
-static void enable_swff(GtkButton *btn)
+static void enable_swff(GtkToggleButton *btn)
 {
-	printf("SW_FF callback\n");
-	fflush(stdout);
+	gboolean button_state;
+	button_state = gtk_toggle_button_get_active(swff_enable);
+	if(button_state)
+		iio_channel_attr_write_longlong(sw_ff, "cn0540_sw_ff_gpio_raw", 1);
+	else
+		iio_channel_attr_write_longlong(sw_ff, "cn0540_sw_ff_gpio_raw", 0);
 }
 static void enable_swin(GtkButton *btn)
 {
-	printf("SW_IN callback\n");
-	fflush(stdout);
+	gboolean button_state;
+	button_state = gtk_toggle_button_get_active(swin_enable);
+	if(button_state)
+		iio_channel_attr_write_longlong(sw_in, "cn0540_shutdown_gpio_raw", 1);
+	else
+		iio_channel_attr_write_longlong(sw_in, "cn0540_shutdown_gpio_raw", 0);
 }
 static double vout_function(int32_t adc_code)
 {        
@@ -126,7 +136,7 @@ static double get_vsensor_from_code(int32_t adc_code, uint16_t dac_code)
 static void read_vshift(GtkButton *btn)
 {
 	char vshift_string[20];
-	uint16_t val;
+	long long val;
 	iio_channel_attr_read_longlong(dac_ch,"raw",&val);
 	double vshift = dac_code_to_v(val);
 	snprintf(vshift_string, sizeof(vshift_string), "%f", vshift);
@@ -135,14 +145,14 @@ static void read_vshift(GtkButton *btn)
 static void write_vshift(GtkButton *btn)
 {
 	gchar *vshift_string;
-	uint16_t val;
+	long long val;
 	static GtkTextIter start, end;
 
 	gtk_text_buffer_get_start_iter(vshift_buf,&start);
 	gtk_text_buffer_get_end_iter(vshift_buf,&end);
 	vshift_string = gtk_text_buffer_get_text(vshift_buf,&start,&end, -1);
 	val = v_to_dac_code(atof(vshift_string));
-	printf("val %d\n",val);
+	printf("val %lld\n",val);
 	iio_channel_attr_write_longlong(dac_ch,"raw",val);
 	g_free(vshift_string);
 	fflush(stdout);
@@ -150,8 +160,8 @@ static void write_vshift(GtkButton *btn)
 static void read_vsensor(GtkButton *btn)
 {
 	char vsensor_string[20];
-	int32_t adc_code;
-	uint16_t dac_code;
+	long long adc_code;
+	long long dac_code;
 
 	iio_channel_attr_read_longlong(adc_ch,"raw",&adc_code);
 	iio_channel_attr_read_longlong(adc_ch,"raw",&dac_code);
@@ -162,10 +172,15 @@ static void read_vsensor(GtkButton *btn)
 static void calib(GtkButton *btn)
 {
 	static GtkTextIter iter;
-	int32_t val;
+	long long val;
+	int32_t sum=0;
 	char vshift_string[20], vsensor_string[20];
-
-	iio_channel_attr_read_longlong(adc_ch,"raw",&val);
+	for(int i = 0; i < AVG_COUNT;i++)
+	{
+		iio_channel_attr_read_longlong(adc_ch,"raw",&val);
+		sum = sum + val;
+	}
+	val = (int32_t)(sum/AVG_COUNT);
 	double vsensor = get_vsensor_from_code(val, DAC_DEFAULT_VAL);
 	double vshift_cal = compute_vshift_cal(vsensor);
 	uint16_t dac_code = v_to_dac_code(vshift_cal);
@@ -228,6 +243,7 @@ static GtkWidget *cn0540_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	GtkBuilder *builder;
 	struct iio_device *adc;
 	struct iio_device *dac;
+	struct iio_device *gpio;
 
 	builder = gtk_builder_new();
 
@@ -240,23 +256,25 @@ static GtkWidget *cn0540_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	adc = iio_context_find_device(ctx, ADC_DEVICE);
 	dac = iio_context_find_device(ctx, DAC_DEVICE);
+	gpio = iio_context_find_device(ctx, GPIO_CTRL);
 
 	if (!adc || !dac) {
 		printf("Could not find expected iio devices\n");
 		return NULL;
 	}
 
-
 	adc_ch = iio_device_find_channel(adc, "voltage0", false);
 	dac_ch = iio_device_find_channel(dac, "voltage0", true);
+	sw_ff = iio_device_find_channel(gpio, "voltage2", true);
+	sw_in = iio_device_find_channel(gpio, "voltage3",true);
 	iio_channel_attr_write_longlong(dac_ch, "raw", DAC_DEFAULT_VAL);
 
 	cn0540_panel = GTK_WIDGET(gtk_builder_get_object(builder,
 							 "cn0540_panel"));
-	swff_enable = GTK_WIDGET(gtk_builder_get_object(builder,"SWFF_enable"));
-	swin_enable = GTK_WIDGET(gtk_builder_get_object(builder,"SWIN_enable"));
-	fdadis_enable = GTK_WIDGET(gtk_builder_get_object(builder,"FDADIS_enable"));
-	fdamode_pow = GTK_WIDGET(gtk_builder_get_object(builder,"FDAMODE_power"));
+	swff_enable = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder,"SWFF_enable"));
+	swin_enable = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder,"SWIN_enable"));
+	fdadis_enable = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder,"FDADIS_enable"));
+	fdamode_pow = GTK_TOGGLE_BUTTON(gtk_builder_get_object(builder,"FDAMODE_power"));
 	calib_btn = GTK_WIDGET(gtk_builder_get_object(builder,"calib_btn"));
 	read_btn = GTK_WIDGET(gtk_builder_get_object(builder,"read_btn"));
 	write_btn = GTK_WIDGET(gtk_builder_get_object(builder,"write_btn"));
@@ -355,7 +373,8 @@ static bool cn0540_identify(const struct osc_plugin *plugin)
 	struct iio_context *osc_ctx = get_context_from_osc();
 
 	return !!iio_context_find_device(osc_ctx, ADC_DEVICE) &&
-			!!iio_context_find_device(osc_ctx, DAC_DEVICE);
+			!!iio_context_find_device(osc_ctx, DAC_DEVICE) &&
+			!!iio_context_find_device(osc_ctx, GPIO_CTRL);
 }
 
 struct osc_plugin plugin = {
