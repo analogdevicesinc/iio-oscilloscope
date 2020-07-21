@@ -2,224 +2,51 @@
 <interface>
   <requires lib="gtk+" version="2.24"/>
   <!-- interface-naming-policy project-wide -->
-  <object class="GtkAdjustment" id="adj_altVoltage0_nco">
-    <property name="upper">7500</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adj_altVoltage0_scale">
-    <property name="lower">-91</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adj_altVoltage0_scale_offset">
-    <property name="lower">-91</property>
-    <property name="upper">91</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adj_sampling_frequency">
-    <property name="upper">6000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkVBox" id="cn0511_panel">
+  <object class="GtkTextBuffer" id="calib_buffer"/>
+  <object class="GtkTextBuffer" id="vsensor_buf"/>
+  <object class="GtkTextBuffer" id="vshift_buf"/>
+  <object class="GtkVBox" id="cn0540_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="spacing">16</property>
     <child>
-      <object class="GtkFrame" id="dac_frame">
+      <object class="GtkFrame" id="gpio_settings_frame">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="label_xalign">0</property>
-        <property name="shadow_type">in</property>
+        <property name="shadow_type">none</property>
         <child>
           <object class="GtkAlignment" id="alignment1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="left_padding">12</property>
             <child>
-              <object class="GtkVBox" id="vbox3">
+              <object class="GtkVBox" id="vbox2">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkFrame" id="frame4">
+                  <object class="GtkCheckButton" id="SWFF_enable">
+                    <property name="label" translatable="yes">SW_FF flag</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="label_xalign">0</property>
-                    <property name="shadow_type">none</property>
-                    <child>
-                      <object class="GtkAlignment" id="alignment2">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="left_padding">12</property>
-                        <child>
-                          <object class="GtkTable" id="frequency_table">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="n_columns">2</property>
-                            <property name="column_spacing">5</property>
-                            <property name="row_spacing">5</property>
-                            <child>
-                              <object class="GtkLabel" id="label_frequency">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="halign">start</property>
-                                <property name="margin_right">5</property>
-                                <property name="label" translatable="yes">Sampling Frequency (MHz):</property>
-                                <property name="xalign">0</property>
-                              </object>
-                              <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkSpinButton" id="spinbutton_sample_freq">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="progress_pulse_step">0.11</property>
-                                <property name="adjustment">adj_sampling_frequency</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="x_options"/>
-                              </packing>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child type="label">
-                      <object class="GtkLabel" id="label_frequenc">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">&lt;b&gt;Frequency Settings&lt;/b&gt;</property>
-                        <property name="use_markup">True</property>
-                      </object>
-                    </child>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="draw_indicator">True</property>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
+                    <property name="expand">True</property>
                     <property name="fill">True</property>
                     <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkFrame" id="nco_frame">
+                  <object class="GtkCheckButton" id="SWIN_enable">
+                    <property name="label" translatable="yes">SW_IN, DAC_BUFF_EN flags</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="label_xalign">0</property>
-                    <property name="shadow_type">none</property>
-                    <child>
-                      <object class="GtkAlignment" id="alignment3">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="left_padding">12</property>
-                        <child>
-                          <object class="GtkTable" id="nco_table">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="n_rows">3</property>
-                            <property name="n_columns">2</property>
-                            <property name="column_spacing">5</property>
-                            <property name="row_spacing">5</property>
-                            <child>
-                              <object class="GtkLabel" id="label_nco_frequency">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">NCO Frequency (MHz):</property>
-                                <property name="xalign">0</property>
-                              </object>
-                              <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkSpinButton" id="spinbutton_nco_freq">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="adjustment">adj_altVoltage0_nco</property>
-                                <property name="digits">6</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkLabel" id="label_nco_scale">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">NCO Scale (db):</property>
-                                <property name="xalign">0</property>
-                              </object>
-                              <packing>
-                                <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkSpinButton" id="spinbutton_nco_scale">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="adjustment">adj_altVoltage0_scale</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkSpinButton" id="spinbutton_nco_offset">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="text" translatable="yes">0</property>
-                                <property name="adjustment">adj_altVoltage0_scale_offset</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="top_attach">2</property>
-                                <property name="bottom_attach">3</property>
-                                <property name="x_options">GTK_FILL</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkLabel" id="label_nco_scale_offset">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Scale Calibration (db):</property>
-                                <property name="xalign">0</property>
-                              </object>
-                              <packing>
-                                <property name="top_attach">2</property>
-                                <property name="bottom_attach">3</property>
-                                <property name="x_options">GTK_FILL</property>
-                              </packing>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child type="label">
-                      <object class="GtkLabel" id="label_nco">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">&lt;b&gt;NCO Settings&lt;/b&gt;</property>
-                        <property name="use_markup">True</property>
-                      </object>
-                    </child>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="draw_indicator">True</property>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
+                    <property name="expand">True</property>
                     <property name="fill">True</property>
                     <property name="position">1</property>
                   </packing>
@@ -229,10 +56,11 @@
           </object>
         </child>
         <child type="label">
-          <object class="GtkLabel" id="label_dac">
+          <object class="GtkLabel" id="label1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="label" translatable="yes">DAC</property>
+            <property name="label" translatable="yes">GPIO SETTINGS</property>
+            <property name="use_markup">True</property>
           </object>
         </child>
       </object>
@@ -243,43 +71,265 @@
       </packing>
     </child>
     <child>
-      <object class="GtkFrame" id="dac_amp_frame">
+      <object class="GtkFrame" id="ad7768-1_frame">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="label_xalign">0</property>
-        <property name="shadow_type">in</property>
+        <property name="shadow_type">none</property>
         <child>
-          <object class="GtkAlignment" id="alignment4">
+          <object class="GtkAlignment" id="alignment2">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="yscale">0.5</property>
             <property name="left_padding">12</property>
             <child>
-              <object class="GtkCheckButton" id="dac_amplifier_enable">
-                <property name="label" translatable="yes">Enable</property>
+              <object class="GtkVBox" id="vbox1">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">False</property>
-                <property name="xalign">0</property>
-                <property name="draw_indicator">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkCheckButton" id="FDADIS_enable">
+                    <property name="label" translatable="yes">FDA_DIS enable/disable</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="active">True</property>
+                    <property name="draw_indicator">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="FDAMODE_power">
+                    <property name="label" translatable="yes">FDA_MODE full/low power</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="active">True</property>
+                    <property name="draw_indicator">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
               </object>
             </child>
           </object>
         </child>
         <child type="label">
-          <object class="GtkLabel" id="label_dac_amp">
+          <object class="GtkLabel" id="label2">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="margin_bottom">5</property>
-            <property name="label" translatable="yes">DAC_AMPLIFIER</property>
+            <property name="label" translatable="yes">AD7768-1 SETTINGS</property>
+            <property name="use_markup">True</property>
           </object>
         </child>
       </object>
       <packing>
         <property name="expand">False</property>
         <property name="fill">False</property>
-        <property name="padding">5</property>
         <property name="position">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkFrame" id="sensor_calib_frame">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label_xalign">0</property>
+        <property name="shadow_type">none</property>
+        <child>
+          <object class="GtkHBox" id="hbox1">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="spacing">4</property>
+            <property name="homogeneous">True</property>
+            <child>
+              <object class="GtkVBox" id="vbox3">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkLabel" id="label4">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">Result</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="label5">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">Vshift[V]</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="label6">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">Vsensor[V]</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkVBox" id="vbox4">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="spacing">5</property>
+                <child>
+                  <object class="GtkTextView" id="calib_status">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="buffer">calib_buffer</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkTextView" id="vshift_log">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="buffer">vshift_buf</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkTextView" id="vsensor_log">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="buffer">vsensor_buf</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkVBox" id="vbox5">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkButton" id="calib_btn">
+                    <property name="label" translatable="yes">Calibrate</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkHBox" id="hbox2">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <child>
+                      <object class="GtkButton" id="write_btn">
+                        <property name="label" translatable="yes">Write</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="read_btn">
+                        <property name="label" translatable="yes">Read</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="readvsensor_btn">
+                    <property name="label" translatable="yes">Read</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+        </child>
+        <child type="label">
+          <object class="GtkLabel" id="label3">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="label" translatable="yes">SENSOR CALIBRATION</property>
+            <property name="use_markup">True</property>
+          </object>
+        </child>
+      </object>
+      <packing>
+        <property name="expand">False</property>
+        <property name="fill">False</property>
+        <property name="position">3</property>
       </packing>
     </child>
   </object>
