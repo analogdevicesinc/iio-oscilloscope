@@ -41,6 +41,8 @@ static struct iio_channel *adc_ch;
 static struct iio_channel *dac_ch;
 static struct iio_channel *sw_ff;
 static struct iio_channel *sw_in;
+static struct iio_channel *fda_dis;
+static struct iio_channel *fda_mode;
 static struct iio_widget iio_widgets[25];
 static unsigned int num_widgets;
 
@@ -65,13 +67,21 @@ static gint this_page;
 
 static void enable_fdadis(GtkButton *btn)
 {
-	printf("FDA_DIS callback\n");
-	gtk_text_buffer_set_text(calib_buffer,"FDA_DIS callback",-1);
+	gboolean button_state;
+	button_state = gtk_toggle_button_get_active(fdadis_enable);
+	if(button_state)
+		iio_channel_attr_write_longlong(sw_ff, "cn0540_FDA_DIS_raw", 1);
+	else
+		iio_channel_attr_write_longlong(sw_ff, "cn0540_FDA_DIS_raw", 0);
 }
-static void set_fdapow(GtkToggleButton *btn)
+static void set_fdamode(GtkToggleButton *btn)
 {
-	printf("FDA_POW callback\n");
-	fflush(stdout);
+	gboolean button_state;
+	button_state = gtk_toggle_button_get_active(fdamode_pow);
+	if(button_state)
+		iio_channel_attr_write_longlong(sw_ff, "cn0540_FDA_MODE_raw", 1);
+	else
+		iio_channel_attr_write_longlong(sw_ff, "cn0540_FDA_MODE_raw", 0);
 }
 static void enable_swff(GtkToggleButton *btn)
 {
@@ -92,7 +102,7 @@ static void enable_swin(GtkButton *btn)
 		iio_channel_attr_write_longlong(sw_in, "cn0540_shutdown_gpio_raw", 0);
 }
 static double vout_function(int32_t adc_code)
-{        
+{
 	double vout = (adc_code * ADC_SCALE) / 1000.0;
 	return vout;
 
@@ -267,6 +277,9 @@ static GtkWidget *cn0540_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	dac_ch = iio_device_find_channel(dac, "voltage0", true);
 	sw_ff = iio_device_find_channel(gpio, "voltage2", true);
 	sw_in = iio_device_find_channel(gpio, "voltage3",true);
+	fda_dis = iio_device_find_channel(gpio, "voltage6",true);
+	fda_mode = iio_device_find_channel(gpio, "voltage7",true);
+
 	iio_channel_attr_write_longlong(dac_ch, "raw", DAC_DEFAULT_VAL);
 
 	cn0540_panel = GTK_WIDGET(gtk_builder_get_object(builder,
@@ -297,11 +310,11 @@ static GtkWidget *cn0540_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	iio_toggle_button_init_from_builder(&iio_widgets[num_widgets++],
 			adc, NULL, NULL, builder,
-			"FDADIS_enable", 1);
+			"FDADIS_enable", 0);
 
 	iio_toggle_button_init_from_builder(&iio_widgets[num_widgets++],
 			adc, NULL, NULL, builder,
-			"FDAMODE_power", 1);
+			"FDAMODE_power", 0);
 
 	iio_button_init_from_builder(&iio_widgets[num_widgets++],
 			adc,NULL,NULL,builder,"calib_btn");
@@ -330,7 +343,7 @@ static GtkWidget *cn0540_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	g_signal_connect(G_OBJECT(fdadis_enable), "toggled",
 			 G_CALLBACK(enable_fdadis), NULL);
 	g_signal_connect(G_OBJECT(fdamode_pow), "toggled",
-			 G_CALLBACK(set_fdapow), NULL);
+			 G_CALLBACK(set_fdamode), NULL);
 	g_signal_connect(G_OBJECT(calib_btn),"clicked",
 			 G_CALLBACK(calib),NULL);
 	g_signal_connect(G_OBJECT(read_btn),"clicked",
