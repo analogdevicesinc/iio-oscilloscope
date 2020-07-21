@@ -20,6 +20,23 @@ static gint iio_chn_cmp_by_name(gconstpointer ptr_a, gconstpointer ptr_b)
 	return str_natural_cmp(name_a, name_b);
 }
 
+static gint iio_dev_cmp_by_name(gconstpointer ptr_a, gconstpointer ptr_b)
+{
+	const struct iio_device *dev_a = *(struct iio_device **)ptr_a;
+	const struct iio_device *dev_b = *(struct iio_device **)ptr_b;
+
+	g_return_val_if_fail(dev_a, 0);
+	g_return_val_if_fail(dev_b, 0);
+
+	const char *name_a = iio_device_get_name(dev_a);
+	const char *name_b = iio_device_get_name(dev_b);
+
+	g_return_val_if_fail(name_a, 0);
+	g_return_val_if_fail(name_b, 0);
+
+	return -1 * strcmp(name_a, name_b);
+}
+
 /*
  * Gets all devices that have their name starting with the given sequence.
  * Returns an array of 'struct iio_device *' elements.
@@ -36,6 +53,8 @@ GArray * get_iio_devices_starting_with(struct iio_context *ctx, const char *sequ
                         g_array_append_val(devices, dev);
                 }
         }
+
+        g_array_sort(devices, iio_dev_cmp_by_name);
 
         return devices;
 }
