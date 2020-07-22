@@ -167,13 +167,27 @@ static void write_vshift(GtkButton *btn)
 	g_free(vshift_string);
 	fflush(stdout);
 }
+
+static long long read_adc_raw_val()
+{
+	long long val;
+	long long sum = 0;
+	for(int i = 0; i < AVG_COUNT;i++)
+	{
+		iio_channel_attr_read_longlong(adc_ch,"raw",&val);
+		sum = sum + val;
+	}
+	val = (int32_t)(sum/AVG_COUNT);
+	return val;
+}
 static void read_vsensor(GtkButton *btn)
 {
 	char vsensor_string[20];
 	long long adc_code;
 	long long dac_code;
 
-	iio_channel_attr_read_longlong(adc_ch,"raw",&adc_code);
+
+	adc_code = read_adc_raw_val();
 	iio_channel_attr_read_longlong(adc_ch,"raw",&dac_code);
 	double vsensor = get_vsensor_from_code(adc_code,dac_code);
 	snprintf(vsensor_string,sizeof(vsensor_string),"%f",vsensor);
