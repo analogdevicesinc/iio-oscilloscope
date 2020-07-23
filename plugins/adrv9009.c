@@ -551,6 +551,9 @@ static void int_dec_freq_update(void)
 	double freq;
 	gchar *text;
 
+	if (!cap)
+		return;
+
 	ch = iio_device_find_channel(cap, "voltage0_i", false);
 	iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
 	text = g_strdup_printf ("%f", freq / mhz_scale);
@@ -559,6 +562,9 @@ static void int_dec_freq_update(void)
 	for (; i < phy_devs_count; i++)
 		gtk_label_set_text(GTK_LABEL(subcomponents[i].label_sampling_freq_rx), text);
 	g_free(text);
+
+	if (!dds)
+		return;
 
 	ch = iio_device_find_channel(dds, "voltage0", true);
 	text = g_strdup_printf ("%f", freq / mhz_scale);
