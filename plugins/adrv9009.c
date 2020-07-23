@@ -1276,23 +1276,33 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(fpga_rx_frequency_available), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(fpga_tx_frequency_available), 0);
 
-	ch = iio_device_find_channel(cap, "voltage0_i", false);
-	if (iio_channel_find_attr(ch, "sampling_frequency_available")) {
-		iio_combo_box_init(&fpga_widgets[num_fpga++],
+	if (cap) {
+		ch = iio_device_find_channel(cap, "voltage0_i", false);
+		if (iio_channel_find_attr(ch, "sampling_frequency_available")) {
+			iio_combo_box_init(&fpga_widgets[num_fpga++],
 						   cap, ch, "sampling_frequency",
 						   "sampling_frequency_available",
 						   fpga_rx_frequency_available, NULL);
+		} else {
+			gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
+								  "receive_frame_dma_buf")));
+		}
 	} else {
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
 								  "receive_frame_dma_buf")));
 	}
 
-	ch = iio_device_find_channel(dds, "voltage0", true);
-	if (iio_channel_find_attr(ch, "sampling_frequency_available")) {
-		iio_combo_box_init(&fpga_widgets[num_fpga++],
+	if (dds) {
+		ch = iio_device_find_channel(dds, "voltage0", true);
+		if (iio_channel_find_attr(ch, "sampling_frequency_available")) {
+			iio_combo_box_init(&fpga_widgets[num_fpga++],
 						   dds, ch, "sampling_frequency",
 						   "sampling_frequency_available",
 						   fpga_tx_frequency_available, NULL);
+		} else {
+			gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
+								  "transmit_frame_dma_buf")));
+		}
 	} else {
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
 								  "transmit_frame_dma_buf")));
