@@ -244,15 +244,30 @@ static void destroy_dds_sr_attribs_list(void)
 static void multichip_sync()
 {
 	struct iio_device *hmc7004_dev;
+	int ret;
 
 	if (plugin_single_device_mode)
+		return;
+
+	/* Check for and skip in case of JESD204-FSM support */
+	ret = iio_device_attr_write_longlong(subcomponents[0].iio_dev, "multichip_sync", 424242);
+	if (ret != -EINVAL)
 		return;
 
 	hmc7004_dev = iio_context_find_device(ctx, "hmc7044");
 
 	if (hmc7004_dev) {
+		unsigned int val;
 		/* Turn off continous SYSREF, and enable GPI SYSREF request */
-		iio_device_reg_write(hmc7004_dev, 0x5a, 0);
+		ret = iio_device_reg_read(hmc7004_dev, 0x5a, &val);
+		/* Is continous mode? */
+		if (!ret && val == 7) {
+			iio_device_reg_write(hmc7004_dev, 0x5a, 0);
+			/* Inform - since this can be undesired */
+			fprintf(stdout,
+				"%s:%s: INFO:HMC7044 REG 0x5A set to level sensitive GPI SYSREF request\n",
+				__FILE__, __func__);
+		}
 	}
 
 	guint i = 0;
