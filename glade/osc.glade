@@ -917,6 +917,13 @@ A GUI for Linux IIO devices</property>
                                             <property name="visible">True</property>
                                             <property name="sensitive">False</property>
                                             <property name="can_focus">True</property>
+                                            <property name="tooltip_markup">&lt;b&gt;Examples of URI:&lt;/b&gt;
+Network:
+  &lt;i&gt;"ip:192.168.2.1"&lt;/i&gt;, &lt;b&gt;or&lt;/b&gt; &lt;i&gt;"ip:localhost"&lt;/i&gt;, &lt;b&gt;or&lt;/b&gt; &lt;i&gt;"ip:"&lt;/i&gt;&lt;b&gt; or &lt;/b&gt; &lt;i&gt;"ip:plutosdr.local"&lt;/i&gt;
+USB:
+  &lt;i&gt;"usb:3.32.5"&lt;/i&gt;. Where there is only one USB device attached, the shorthand &lt;i&gt;"usb:"&lt;/i&gt; can be used.
+Serial:
+  &lt;i&gt;"serial:/dev/ttyUSB0,115200"&lt;/i&gt; &lt;b&gt;or&lt;/b&gt; &lt;i&gt;"serial:/dev/ttyUSB0,115200,8n1"&lt;/i&gt;*/</property>
                                             <property name="invisible_char">•</property>
                                             <property name="activates_default">True</property>
                                             <property name="invisible_char_set">True</property>
@@ -1040,11 +1047,11 @@ A GUI for Linux IIO devices</property>
                             <property name="left_padding">12</property>
                             <child>
                               <object class="GtkScrolledWindow" id="connect_iio_attrs_scrolledwindow">
+                                <property name="height_request">100</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="hscrollbar_policy">automatic</property>
                                 <property name="vscrollbar_policy">automatic</property>
-                                <property name="height-request">100</property>
                                 <child>
                                   <object class="GtkTextView" id="connect_iio_attrs">
                                     <property name="visible">True</property>
@@ -1083,11 +1090,11 @@ A GUI for Linux IIO devices</property>
                             <property name="left_padding">12</property>
                             <child>
                               <object class="GtkScrolledWindow" id="connect_iio_devices_scrolledwindow">
+                                <property name="height_request">100</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="hscrollbar_policy">automatic</property>
                                 <property name="vscrollbar_policy">automatic</property>
-                                <property name="height-request">100</property>
                                 <child>
                                   <object class="GtkTextView" id="connect_iio_devices">
                                     <property name="visible">True</property>
