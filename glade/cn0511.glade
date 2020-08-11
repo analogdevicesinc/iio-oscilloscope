@@ -80,6 +80,8 @@
                                 <property name="can_focus">True</property>
                                 <property name="progress_pulse_step">0.11</property>
                                 <property name="adjustment">adj_sampling_frequency</property>
+                                <property name="digits">6</property>
+                                <property name="numeric">True</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
