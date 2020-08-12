@@ -188,7 +188,7 @@ static void read_vsensor(GtkButton *btn)
 
 
 	adc_code = read_adc_raw_val();
-	iio_channel_attr_read_longlong(adc_ch,"raw",&dac_code);
+	iio_channel_attr_read_longlong(dac_ch,"raw",&dac_code);
 	double vsensor = get_vsensor_from_code(adc_code,dac_code);
 	snprintf(vsensor_string,sizeof(vsensor_string),"%f",vsensor);
 	gtk_text_buffer_set_text(vsensor_buf,vsensor_string,-1);
