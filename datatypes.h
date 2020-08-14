@@ -136,6 +136,7 @@ struct _fft_settings {
 	gfloat *real_source;
 	gfloat *imag_source;
 	unsigned int fft_size;
+	gchar *fft_win;
 	unsigned int fft_avg;
 	gfloat fft_pwr_off;
 	struct _fft_alg_data fft_alg_data;
@@ -174,6 +175,7 @@ struct _freq_spectrum_settings {
 	gfloat *imag_source;
 	gfloat *freq_axis_source;
 	gfloat *magn_axis_source;
+	gchar *fft_win;
 	unsigned freq_axis_size;
 	unsigned magn_axis_size;
 	unsigned fft_index;
