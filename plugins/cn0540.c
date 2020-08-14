@@ -172,7 +172,8 @@ static long long read_adc_raw_val()
 {
 	long long val;
 	long long sum = 0;
-	for(int i = 0; i < AVG_COUNT;i++)
+	int i;
+	for(i = 0; i < AVG_COUNT;i++)
 	{
 		iio_channel_attr_read_longlong(adc_ch,"raw",&val);
 		sum = sum + val;
@@ -199,7 +200,8 @@ static void calib(GtkButton *btn)
 	long long val;
 	int32_t sum=0;
 	char vshift_string[20], vsensor_string[20];
-	for(int i = 0; i < AVG_COUNT;i++)
+	int i;
+	for(i = 0; i < AVG_COUNT;i++)
 	{
 		iio_channel_attr_read_longlong(adc_ch,"raw",&val);
 		sum = sum + val;
