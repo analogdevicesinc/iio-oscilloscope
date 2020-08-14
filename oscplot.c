@@ -277,6 +277,7 @@ struct _OscPlotPrivate
 	GtkWidget *sample_count_widget;
 	unsigned int sample_count;
 	GtkWidget *fft_size_widget;
+	GtkWidget *fft_win_widget;
 	GtkWidget *fft_avg_widget;
 	GtkWidget *fft_pwr_offset_widget;
 	GtkWidget *device_settings_menu;
@@ -860,13 +861,122 @@ static void osc_plot_finalize(GObject *object)
 	G_OBJECT_CLASS(osc_plot_parent_class)->finalize(object);
 }
 
-static double win_hanning(int j, int n)
+/* Ref:
+ *    A Family of Cosine-Sum Windows for High-Resolution Measurements
+ *    Hans-Helge Albrecht
+ *    Physikalisch-Technische Bendesanstalt
+ *   Acoustics, Speech, and Signal Processing, 2001. Proceedings. (ICASSP '01).
+ *   2001 IEEE International Conference on   (Volume:5 )
+ *   pgs. 3081-3084
+ *
+ * While this doesn't use any of his code - I did find the coeffients that were nicely
+ * typed in by Joe Henning as part of his MATLAB Window Utilities
+ * (https://www.mathworks.com/matlabcentral/fileexchange/46092-window-utilities)
+ *
+ */
+static double window_function(gchar *win, int j, int n)
 {
-	double a = 2.0 * M_PI / (n - 1), w;
+	/* Strings need to match what is in glade */
+	if (!g_strcmp0(win, "Hanning")) {
+		double a = 2.0 * M_PI / (n - 1);
+		return 0.5 * (1.0 - cos(a * j));
+	} else if (!g_strcmp0(win, "Boxcar")) {
+		return 1.0;
+	} else if (!g_strcmp0(win, "Triangular")) {
+		double a = fabs(j - (n - 1)/ 2.0) / ((n - 1.0) / 2.0);
+		return 1.0 - a;
+	} else if (!g_strcmp0(win, "Welch")) {
+		double a = (j - (n - 1.0) / 2.0) / ((n - 1.0) / 2.0);
+		return 1.0 - (a * a);
+	} else if (!g_strcmp0(win, "Cosine")) {
+		double a = M_PI * j / (n - 1);
+		return sin(a);
+	} else if (!g_strcmp0(win, "Hamming")) {
+		double a0 = 0.5383553946707251, a1 = .4616446053292749;
+		return a0 - a1 * cos(j * 2.0 * M_PI / (n - 1));
+	} else if (!g_strcmp0(win, "Exact Blackman")) {
+		/* https://ieeexplore.ieee.org/document/940309 */
+		double a0 = 7938.0/18608.0, a1 = 9240.0/18608.0, a2 = 1430.0/18608.0;
+		double a = j * 2.0 * M_PI / (n - 1);
+		return a0 - a1 * cos(a) + a2 * cos(2.0 * a);
+	} else if (!g_strcmp0(win, "3 Term Cosine")) {
+		double a0 = 4.243800934609435e-1, a1 = 4.973406350967378e-1, a2 = 7.827927144231873e-2;
+		double a = j * 2.0 * M_PI / (n - 1);
+		return a0 - a1 * cos(a) + a2 * cos(2.0 * a);
+	} else if (!g_strcmp0(win, "4 Term Cosine")) {
+		double a0 = 3.635819267707608e-1, a1 = 4.891774371450171e-1, a2 = 1.365995139786921e-1,
+		       a3 = 1.064112210553003e-2;
+		double a = j * 2.0 * M_PI / (n - 1);
+		return a0 - a1 * cos(a) + a2 * cos(2.0 * a) - a3 * cos(3.0 * a);
+	} else if (!g_strcmp0(win, "5 Term Cosine")) {
+		double a0 = 3.232153788877343e-1, a1 = 4.714921439576260e-1, a2 = 1.755341299601972e-1,
+		       a3 = 2.849699010614994e-2, a4 = 1.261357088292677e-3;
+		double a = j * 2.0 * M_PI / (n - 1);
+		return a0 - a1 * cos(a) + a2 * cos(2.0 * a) - a3 * cos(3.0 * a) + a4 * cos(4.0 * a);
+	} else if (!g_strcmp0(win, "6 Term Cosine")) {
+		double a0 = 2.935578950102797e-1, a1 = 4.519357723474506e-1, a2 = 2.014164714263962e-1,
+		       a3 = 4.792610922105837e-2, a4 = 5.026196426859393e-3, a5 = 1.375555679558877e-4;
+		double a = j * 2.0 * M_PI / (n - 1);
+		return a0 - a1 * cos(1.0 * a) + a2 * cos(2.0 * a) - a3 * cos(3.0 * a) + a4 * cos(4.0 * a) -
+			    a5 * cos(5.0 * a);
+	} else if (!g_strcmp0(win, "7 Term Cosine")) {
+		double a0 = 2.712203605850388e-1, a1 = 4.334446123274422e-1, a2 = 2.180041228929303e-1,
+		       a3 = 6.578534329560609e-2, a4 = 1.076186730534183e-2, a5 = 7.700127105808265e-4,
+		       a6 = 1.368088305992921e-5;
+		double a = j * 2.0 * M_PI / (n - 1);
+		return a0 - a1 * cos(1.0 * a) + a2 * cos(2.0 * a) - a3 * cos(3.0 * a) + a4 * cos(4.0 * a) -
+			    a5 * cos(5.0 * a) + a6 * cos(6.0 * a);
+	} else if (!g_strcmp0(win, "Blackman-Harris")) {
+		double a0 = 3.58750287312166e-1, a1 = 4.88290107472600e-1, a2 = 1.41279712970519e-1,
+		       a3 = 1.16798922447150e-2;
+		double a = j * 2.0 * M_PI / (n - 1);
+		return a0 - a1 * cos(a) + a2 * cos(2.0 * a) - a3 * cos(3.0 * a);
+	} else if (!g_strcmp0(win, "Flat Top")) {
+		double a0 = 2.1557895e-1, a1 = 4.1663158e-1, a2 = 2.77263158e-1,
+		       a3 = 8.3578947e-2, a4 = 6.947368e-3;
+		double a = j * 2.0 * M_PI / (n - 1);
+		return a0 - a1 * cos(a) + a2 * cos(2.0 * a) - a3 * cos(3.0 * a) + a4 * cos(4.0 * a);
+	}
 
-	w = 0.5 * (1.0 - cos(a * j));
+	printf("unknown window function\n");
+	return 0;
+}
 
-	return (w);
+/* This equalized power, so full scale is always 0dBFS */
+static double window_function_offset(gchar *win)
+{
+	/* Strings need to match what is in glade */
+	if (!g_strcmp0(win, "Hanning")) {
+		return 1.77;
+	} else if (!g_strcmp0(win, "Boxcar")) {
+		return -4.25;
+	} else if (!g_strcmp0(win, "Triangular")) {
+		return 1.77;
+	} else if (!g_strcmp0(win, "Welch")) {
+		return -0.73;
+	} else if (!g_strcmp0(win, "Cosine")) {
+		return -0.33;
+	} else if (!g_strcmp0(win, "Hamming")) {
+		return 1.13;
+	} else if (!g_strcmp0(win, "Exact Blackman")) {
+		return 3.15;
+	} else if (!g_strcmp0(win, "3 Term Cosine")) {
+		return 3.19;
+	} else if (!g_strcmp0(win, "4 Term Cosine")) {
+		return 4.54;
+	} else if (!g_strcmp0(win, "5 Term Cosine")) {
+		return 5.56;
+	} else if (!g_strcmp0(win, "6 Term Cosine")) {
+		return 6.39;
+	} else if (!g_strcmp0(win, "7 Term Cosine")) {
+		return 7.08;
+	} else if (!g_strcmp0(win, "Blackman-Harris")) {
+		return 4.65;
+	} else if (!g_strcmp0(win, "Flat Top")) {
+		return 9.08;
+	}
+	printf("missed\n");
+	return 0;
 }
 
 static void do_fft(Transform *tr)
@@ -922,7 +1032,7 @@ static void do_fft(Transform *tr)
 		}
 
 		for (i = 0; i < fft_size; i ++)
-			fft->win[i] = win_hanning(i, fft_size);
+			fft->win[i] = window_function(settings->fft_win, i, fft_size);
 
 		fft->cached_fft_size = fft_size;
 		fft->cached_num_active_channels = fft->num_active_channels;
@@ -952,7 +1062,7 @@ static void do_fft(Transform *tr)
 	if (avg && avg != 128 )
 		avg = 1.0f / avg;
 
-	pwr_offset = settings->fft_pwr_off;
+	pwr_offset = settings->fft_pwr_off + window_function_offset(settings->fft_win);
 
 	for (j = 0; j <= MAX_MARKERS; j++) {
 		maxX[j] = 0;
@@ -1170,7 +1280,7 @@ static void do_fft_for_spectrum(Transform *tr)
 		fft->plan_forward = fftw_plan_dft_1d(fft_size, fft->in_c, fft->out, FFTW_FORWARD, FFTW_ESTIMATE);
 
 		for (i = 0; i < fft_size; i ++)
-			fft->win[i] = win_hanning(i, fft_size);
+			fft->win[i] = window_function(settings->fft_win, i, fft_size);
 
 		fft->cached_fft_size = fft_size;
 		fft->cached_num_active_channels = fft->num_active_channels;
@@ -2106,6 +2216,31 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 		}
 	}
 
+	if (num_enabled && plot_type == FFT_PLOT && !gtk_toggle_tool_button_get_active((GtkToggleToolButton *)priv->capture_button)) {
+		GtkListStore *liststore;
+		int i, j, k = 0, m = 0;
+		char buf[256];
+
+		j = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
+		liststore = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(priv->fft_size_widget)));
+		gtk_list_store_clear(liststore);
+
+		i = 4194304;
+		/* make sure we don't exceed DMA, 2^22 bytes (not samples) */
+		while (i >= 64) {
+			if (i * num_enabled * 2 <= 4194304) {
+				sprintf(buf, "%i", i);
+				gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(priv->fft_size_widget), buf);
+
+				if (i == j)
+					m = k;
+				k++;
+			}
+			i = i / 2;
+		}
+		gtk_combo_box_set_active(GTK_COMBO_BOX(priv->fft_size_widget), m);
+	}
+
 	return true;
 }
 
@@ -2280,6 +2415,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 	plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
 	if (plot_type == FFT_PLOT) {
 		FFT_SETTINGS(transform)->fft_size = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
+		FFT_SETTINGS(transform)->fft_win = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->fft_win_widget));
 		FFT_SETTINGS(transform)->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
 		FFT_SETTINGS(transform)->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_pwr_offset_widget));
 		FFT_SETTINGS(transform)->fft_alg_data.cached_fft_size = -1;
@@ -2883,12 +3019,39 @@ static void device_rx_info_update(OscPlot *plot)
 		struct iio_device *dev = iio_context_get_device(priv->ctx, i);
 		const char *name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+		double freq, seconds;
+		char freq_prefix, sec_prefix;
 
 		if (dev_info->input_device == false)
 			continue;
 
-		snprintf(text, sizeof(text), "%s:\n\tSampleRate: %f %cSPS\n",
-			name, dev_info->adc_freq, dev_info->adc_scale);
+		freq = dev_info->adc_freq * prefix2scale(dev_info->adc_scale);
+		freq = freq / osc_plot_get_sample_count(plot);
+		seconds = 1 / freq;
+		if (freq > 1e6) {
+			freq = freq / 1e6;
+			freq_prefix = 'M';
+		} else if (freq > 1e3) {
+			freq = freq / 1e3;
+			freq_prefix = 'k';
+		} else
+			freq_prefix = ' ';
+		if (seconds < 1e-6) {
+			seconds = seconds * 1e9;
+			sec_prefix = 'n';
+		} else if (seconds < 1e-3) {
+			seconds = seconds * 1e6;
+			sec_prefix = 'u';
+		} else {
+			seconds = seconds * 1e3;
+			sec_prefix = 'm';
+		}
+
+		snprintf(text, sizeof(text), "%s:\n\tSampleRate: %3.2f %cSPS\n"
+				"\tHz/Bin: %3.2f %cHz\n"
+				"\tSweep: %3.2f %cs\n",
+			name, dev_info->adc_freq, dev_info->adc_scale,
+			freq, freq_prefix, seconds, sec_prefix);
 		gtk_text_buffer_insert(priv->devices_buf, &iter, text, -1);
 	}
 }
@@ -4864,6 +5027,9 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 	tmp_int = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 	fprintf(fp, "fft_size=%d\n", tmp_int);
 
+	tmp_string = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->fft_win_widget));
+	fprintf(fp, "fft_win=%s\n", tmp_string);
+
 	tmp_int = (int)gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
 	fprintf(fp, "fft_avg=%d\n", tmp_int);
 
@@ -5166,7 +5332,13 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 				gtk_combo_box_set_active(GTK_COMBO_BOX(priv->hor_units), HOR_SCALE_TIME);
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->sample_count_widget), atof(value));
 			} else if (MATCH_NAME("fft_size")) {
-				if (!comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_size_widget), value))
+				if (!comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_size_widget), value)) {
+					gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(priv->fft_size_widget), value);
+					if (!comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_size_widget), value))
+						goto unhandled;
+				}
+			} else if (MATCH_NAME("fft_win")) {
+				if (!comboboxtext_set_active_by_string(GTK_COMBO_BOX(priv->fft_win_widget), value))
 					goto unhandled;
 			} else if (MATCH_NAME("fft_avg")) {
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->fft_avg_widget), atoi(value));
@@ -6786,6 +6958,7 @@ static void create_plot(OscPlot *plot)
 	priv->saveas_select_channel_message = GTK_WIDGET(gtk_builder_get_object(builder, "hbox_ch_sel_label"));
 	priv->sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count"));
 	priv->fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
+	priv->fft_win_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_win"));
 	priv->fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
 	priv->fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
 	priv->math_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_math_settings"));
@@ -7067,6 +7240,8 @@ static void create_plot(OscPlot *plot)
 	g_builder_bind_property(builder, "capture_button", "active",
 		"fft_size", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
+		"fft_win", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
 		"plot_type", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
 		"sample_count", "sensitive", G_BINDING_INVERT_BOOLEAN);
@@ -7089,6 +7264,12 @@ static void create_plot(OscPlot *plot)
 	 g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
 		0, domain_is_fft, NULL, plot, NULL);
 	 g_object_bind_property_full(priv->plot_domain, "active", priv->fft_size_widget, "visible",
+		0, domain_is_fft, NULL, NULL, NULL);
+
+	 tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_win_label"));
+	 g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
+		0, domain_is_fft, NULL, plot, NULL);
+	 g_object_bind_property_full(priv->plot_domain, "active", priv->fft_win_widget, "visible",
 		0, domain_is_fft, NULL, NULL, NULL);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg_label"));
@@ -7126,6 +7307,7 @@ static void create_plot(OscPlot *plot)
 	g_signal_connect(priv->sample_count_widget, "value-changed", G_CALLBACK(count_changed_cb), plot);
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->fft_size_widget), 2);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->fft_win_widget), 0);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priv->plot_type), 0);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_max), 1000);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_min), -1000);
