@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <matio.h>
+#include <sys/time.h>
 #include <string.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -39,6 +40,19 @@ typedef int mat_dim;
 #else
 typedef size_t mat_dim;
 #endif
+
+/* timersub, macros are _BSD_SOURCE, and aren't included in windows */
+#ifndef timersub
+#define timersub(a, b, result) \
+	do { \
+		(result)->tv_sec = (a)->tv_sec - (b)->tv_sec; \
+		(result)->tv_usec = (a)->tv_usec - (b)->tv_usec; \
+		if ((result)->tv_usec < 0) { \
+			--(result)->tv_sec; \
+			(result)->tv_usec += 1000000; \
+		} \
+	} while (0)
+#endif /* timersub */
 
 extern void *find_setup_check_fct_by_devname(const char *dev_name);
 
@@ -72,7 +86,7 @@ static int comboboxtext_get_active_text_as_int(GtkComboBoxText* combobox);
 static gboolean check_valid_setup(OscPlot *plot);
 static int device_find_by_name(struct iio_context *ctx, const char *name);
 static int channel_find_by_name(struct iio_context *ctx, int device_index, const char *name);
-static void device_rx_info_update(OscPlot *plot);
+static void device_rx_info_update(OscPlotPrivate *priv);
 static gdouble prefix2scale (char adc_scale);
 static struct iio_device * transform_get_device_parent(Transform *transform);
 static gboolean tree_get_selected_row_iter(GtkTreeView *treeview, GtkTreeIter *iter);
@@ -319,7 +333,8 @@ struct _OscPlotPrivate
 	struct plot_geometry size;
 
 	int frame_counter;
-	time_t last_update;
+	double fps;
+	struct timeval last_update;
 
 	int last_hor_unit;
 
@@ -521,7 +536,7 @@ void osc_plot_update_rx_lbl(OscPlot *plot, bool initial_update)
 	double corr;
 	int i;
 
-	device_rx_info_update(plot);
+	device_rx_info_update(priv);
 
 	/* Skip rescaling graphs, updating labels and others if the redrawing is currently halted. */
 	if (priv->redraw_function <= 0 && !initial_update)
@@ -581,6 +596,8 @@ void osc_plot_restart (OscPlot *plot)
 		add_grid(plot);
 		gtk_widget_queue_draw(priv->databox);
 		priv->frame_counter = 0;
+		priv->fps = 0.0;
+		gettimeofday(&(priv->last_update), NULL);
 		capture_start(priv);
 	}
 }
@@ -3002,9 +3019,8 @@ static void draw_marker_values(OscPlotPrivate *priv, Transform *tr)
 	}
 }
 
-static void device_rx_info_update(OscPlot *plot)
+static void device_rx_info_update(OscPlotPrivate *priv)
 {
-	OscPlotPrivate *priv = plot->priv;
 	GtkTextIter iter;
 	char text[256];
 	unsigned int i, num_devices = 0;
@@ -3019,15 +3035,16 @@ static void device_rx_info_update(OscPlot *plot)
 		struct iio_device *dev = iio_context_get_device(priv->ctx, i);
 		const char *name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
-		double freq, seconds;
+		double freq, percent, seconds;
 		char freq_prefix, sec_prefix;
 
 		if (dev_info->input_device == false)
 			continue;
 
 		freq = dev_info->adc_freq * prefix2scale(dev_info->adc_scale);
-		freq = freq / osc_plot_get_sample_count(plot);
+		freq = freq / comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));;
 		seconds = 1 / freq;
+		percent = seconds * priv->fps * 100.0;
 		if (freq > 1e6) {
 			freq = freq / 1e6;
 			freq_prefix = 'M';
@@ -3049,9 +3066,10 @@ static void device_rx_info_update(OscPlot *plot)
 
 		snprintf(text, sizeof(text), "%s:\n\tSampleRate: %3.2f %cSPS\n"
 				"\tHz/Bin: %3.2f %cHz\n"
-				"\tSweep: %3.2f %cs\n",
+				"\tSweep: %3.2f %cs (%2.2f%%)\n"
+				"\tFPS: %2.2f\n",
 			name, dev_info->adc_freq, dev_info->adc_scale,
-			freq, freq_prefix, seconds, sec_prefix);
+			freq, freq_prefix, seconds, sec_prefix, percent, priv->fps);
 		gtk_text_buffer_insert(priv->devices_buf, &iter, text, -1);
 	}
 }
@@ -3321,14 +3339,30 @@ static void auto_scale_databox(OscPlotPrivate *priv, GtkDatabox *box)
 
 static void fps_counter(OscPlotPrivate *priv)
 {
-	time_t t;
+	struct timeval now, diff;
 
 	priv->frame_counter++;
-	t = time(NULL);
-	if (t - priv->last_update >= 10) {
-		printf("FPS: %d\n", priv->frame_counter / 10);
+	if (gettimeofday(&now, NULL) == -1) {
+		printf("err with gettimeofdate()\n");
+		return;
+	}
+	if (!priv->fps) {
+		priv->last_update.tv_sec = now.tv_sec;
+		priv->last_update.tv_usec = now.tv_usec;
+		priv->fps = -1.0;
 		priv->frame_counter = 0;
-		priv->last_update = t;
+		return;
+	}
+
+	timersub(&now, &priv->last_update, &diff);
+
+	if (diff.tv_sec >= 5 || priv->fps == -1.0) {
+		double tmp =  priv->frame_counter / (diff.tv_sec + diff.tv_usec / 1000000.0);
+		priv->fps = tmp;
+		priv->frame_counter = 0;
+		priv->last_update.tv_sec = now.tv_sec;
+		priv->last_update.tv_usec = now.tv_usec;
+		device_rx_info_update(priv);
 	}
 }
 
@@ -3514,6 +3548,8 @@ static void capture_button_clicked_cb(GtkToggleToolButton *btn, gpointer data)
 		add_grid(plot);
 		gtk_widget_queue_draw(priv->databox);
 		priv->frame_counter = 0;
+		priv->fps = 0.0;
+		gettimeofday(&(priv->last_update), NULL);
 		capture_start(priv);
 	} else {
 		priv->stop_redraw = TRUE;
@@ -7316,7 +7352,7 @@ static void create_plot(OscPlot *plot)
 	add_grid(plot);
 	check_valid_setup(plot);
 	g_mutex_init(&priv->g_marker_copy_lock);
-	device_rx_info_update(plot);
+	device_rx_info_update(priv);
 
 	if (MAX_MARKERS) {
 		priv->marker_type = MARKER_OFF;
