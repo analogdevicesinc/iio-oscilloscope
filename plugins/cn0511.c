@@ -106,6 +106,7 @@ static GtkWidget *cn0511_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	struct iio_channel *dac_ch;
 	struct iio_device *dac;
 	struct iio_device *dac_amp;
+	int ret;
 
 	builder = gtk_builder_new();
 
@@ -132,6 +133,11 @@ static GtkWidget *cn0511_init(struct osc_plugin *plugin, GtkWidget *notebook,
 						"adj_altVoltage0_scale"));
 
 	dac_ch = iio_device_find_channel(dac, "altvoltage0", true);
+
+	ret = iio_device_attr_write_longlong(dac, "fir85_enable", 1);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to enable FIR85. Error: %d\n", ret);
+	}
 
 	iio_spin_button_int_init_from_builder(&iio_widgets[num_widgets++], dac,
 					      NULL, "sampling_frequency",
