@@ -519,14 +519,23 @@ static void on_ensm_mode_available_changed(void)
 static void rx_freq_info_update(void)
 {
 	double lo_freq = 0;
+	guint nb_chn_per_phy = 4;
 
 	if (cap) {
 		rx_update_device_sampling_freq(CAP_DEVICE,
 		                               USE_INTERN_SAMPLING_FREQ);
-		lo_freq = mhz_scale * gtk_spin_button_get_value(
-				GTK_SPIN_BUTTON(subcomponents[0].glb_widgets[subcomponents[0].trx_lo].widget));
 
-		rx_update_channel_lo_freq(CAP_DEVICE, "all", lo_freq);
+		guint i = 0;
+		for (; i < phy_devs_count; ++i) {
+			lo_freq = mhz_scale * gtk_spin_button_get_value(
+				GTK_SPIN_BUTTON(subcomponents[i].glb_widgets[subcomponents[i].trx_lo].widget));
+			guint j = 0;
+			for (; j < nb_chn_per_phy; ++j) {
+				gchar *chn_name = g_strdup_printf("voltage%i", nb_chn_per_phy * i + j);
+				rx_update_channel_lo_freq(CAP_DEVICE, chn_name, lo_freq);
+				g_free(chn_name);
+			}
+		}
 	}
 
 	if (cap_obs) {
@@ -547,10 +556,14 @@ static void rx_freq_info_update(void)
 					GTK_SPIN_BUTTON(subcomponents[i].obsrx_widgets[subcomponents[i].aux_lo].widget));
 			}
 			g_free(source);
-		}
 
-		// TO DO: figure out what to do here. Do we set each group of channels with corresponding LO frequency?
-		rx_update_channel_lo_freq(CAP_DEVICE_2, "all", lo_freq);
+			guint j = 0;
+			for (; j < nb_chn_per_phy; ++j) {
+				gchar *chn_name = g_strdup_printf("voltage%i", nb_chn_per_phy * i + j);
+				rx_update_channel_lo_freq(CAP_DEVICE_2, chn_name, lo_freq);
+				g_free(chn_name);
+			}
+		}
 	}
 }
 

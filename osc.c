@@ -1835,7 +1835,7 @@ bool rx_update_device_sampling_freq(const char *device, double freq)
  * @device  - name of the device
  * @channel - name of the channel
  *          - use "all" value to target all iio scan_element channels
- * @lo_freq - value of the Local Oscillcator frequency (Hz)
+ * @lo_freq - value of the Local Oscillator frequency (Hz)
  */
 bool rx_update_channel_lo_freq(const char *device, const char *channel,
 	double lo_freq)
