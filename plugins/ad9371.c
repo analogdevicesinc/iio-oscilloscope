@@ -1257,11 +1257,41 @@ static GtkWidget * ad9371_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 		return NULL;
 
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
+	if (!dev) {
+		fprintf(stderr, "Failed to find phy device %s\n", PHY_DEVICE);
+		return NULL;
+	}
+
 	dds = iio_context_find_device(ctx, DDS_DEVICE);
+	if (!dds) {
+		fprintf(stderr, "Failed to find dds device %s\n", DDS_DEVICE);
+		return NULL;
+	}
+
 	cap = iio_context_find_device(ctx, CAP_DEVICE);
+	if (!cap) {
+		fprintf(stderr, "Failed to find cap device %s\n", CAP_DEVICE);
+		return NULL;
+	}
+
 	cap_obs = iio_context_find_device(ctx, CAP_DEVICE_2);
+	if (!cap_obs) {
+		fprintf(stderr, "Failed to find cap obs device %s\n", CAP_DEVICE_2);
+		return NULL;
+	}
+
 	udc_rx = iio_context_find_device(ctx, UDC_RX_DEVICE);
+	if (!udc_rx) {
+		fprintf(stderr, "Failed to find UDC RX device %s\n", UDC_RX_DEVICE);
+		return NULL;
+	}
+
 	udc_tx = iio_context_find_device(ctx, UDC_TX_DEVICE);
+	if (!udc_tx) {
+		fprintf(stderr, "Failed to find UDC TX device %s\n", UDC_TX_DEVICE);
+		return NULL;
+	}
+
 	has_udc_driver = (udc_rx && udc_tx);
 
 	ch0 = iio_device_find_channel(dev, "voltage0", false); /* RX1 */
