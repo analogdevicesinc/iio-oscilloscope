@@ -777,6 +777,9 @@ static void updn_converter_lo_freq_changed_cb(GtkSpinButton *button, int data)
 	double target_freq, ad9371_lo, updn_pll, center_freq;
 	int ret;
 
+	if (!has_udc_driver)
+		return;
+
 	if (data == UPDN_RX) {
 		ad9371_ch = iio_device_find_channel(dev, "altvoltage0", true);
 		updn_ch = iio_device_find_channel(udc_rx, "altvoltage0", true);
@@ -1281,16 +1284,7 @@ static GtkWidget * ad9371_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 	}
 
 	udc_rx = iio_context_find_device(ctx, UDC_RX_DEVICE);
-	if (!udc_rx) {
-		fprintf(stderr, "Failed to find UDC RX device %s\n", UDC_RX_DEVICE);
-		return NULL;
-	}
-
 	udc_tx = iio_context_find_device(ctx, UDC_TX_DEVICE);
-	if (!udc_tx) {
-		fprintf(stderr, "Failed to find UDC TX device %s\n", UDC_TX_DEVICE);
-		return NULL;
-	}
 
 	has_udc_driver = (udc_rx && udc_tx);
 
@@ -1370,7 +1364,7 @@ static GtkWidget * ad9371_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 
 	/* Transmit Chain */
 
-	fpga_tx_frequency_available = GTK_WIDGET(gtk_builder_get_object(builder, "fpga_tx_frequency_available"));	
+	fpga_tx_frequency_available = GTK_WIDGET(gtk_builder_get_object(builder, "fpga_tx_frequency_available"));
 	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));
 	if (dac_tx_manager)
 		gtk_container_add(GTK_CONTAINER(dds_container),
