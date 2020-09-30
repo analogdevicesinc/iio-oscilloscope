@@ -871,6 +871,154 @@
 			</BitField>
 		</BitFields>
 	</Register>
+		<Register>
+		<Name>REG_TPL_CNTRL</Name>
+		<Address>0x0200</Address>
+		<Description>JESD, TPL Control (REG_TPL_CNTRL)</Description>
+		<Exists>True</Exists>
+		<Width>32</Width>
+		<Notes></Notes>
+		<BitFields>
+			<BitField>
+				<Name>PROFILE_SEL</Name>
+				<Access>RW</Access>
+				<Description>PROFILE_SEL</Description>
+				<Visibility>Public</Visibility>
+				<Width>4</Width>
+				<Notes>Selects one of the available deframer/framers from the transport layer. Valid only if ''PROFILE_NUM'' &gt; 1.</Notes>
+				<BitOffset>0</BitOffset>
+				<RegOffset>0</RegOffset>
+				<SliceWidth>4</SliceWidth>
+			</BitField>
+		</BitFields>
+	</Register>
+	<Register>
+		<Name>REG_TPL_STATUS</Name>
+		<Address>0x0204</Address>
+		<Description>JESD, TPL Status (REG_TPL_STATUS)</Description>
+		<Exists>True</Exists>
+		<Width>32</Width>
+		<Notes></Notes>
+		<BitFields>
+			<BitField>
+				<Name>PROFILE_NUM</Name>
+				<Access>RO</Access>
+				<Description>PROFILE_NUM</Description>
+				<Visibility>Public</Visibility>
+				<Width>4</Width>
+				<Notes>Number of supported framer/deframer profiles.</Notes>
+				<BitOffset>0</BitOffset>
+				<RegOffset>0</RegOffset>
+				<SliceWidth>4</SliceWidth>
+			</BitField>
+		</BitFields>
+	</Register>
+	<Register>
+		<Name>REG_TPL_DESCRIPTOR_1</Name>
+		<Address>0x0240</Address>
+		<Description>JESD, TPL descriptor for profile 0 (REG_TPL_DESCRIPTOR_1)</Description>
+		<Exists>True</Exists>
+		<Width>32</Width>
+		<Notes></Notes>
+		<BitFields>
+			<BitField>
+				<Name>JESD_F</Name>
+				<Access>RO</Access>
+				<Description>JESD_F</Description>
+				<Visibility>Public</Visibility>
+				<Width>8</Width>
+				<Notes>Octets per Frame per Lane.</Notes>
+				<BitOffset>0</BitOffset>
+				<RegOffset>24</RegOffset>
+				<SliceWidth>8</SliceWidth>
+			</BitField>
+			<BitField>
+				<Name>JESD_S</Name>
+				<Access>RO</Access>
+				<Description>JESD_S</Description>
+				<Visibility>Public</Visibility>
+				<Width>8</Width>
+				<Notes>Samples per Converter per Frame.</Notes>
+				<BitOffset>0</BitOffset>
+				<RegOffset>16</RegOffset>
+				<SliceWidth>8</SliceWidth>
+			</BitField>
+			<BitField>
+				<Name>JESD_L</Name>
+				<Access>RO</Access>
+				<Description>JESD_L</Description>
+				<Visibility>Public</Visibility>
+				<Width>8</Width>
+				<Notes>Lane Count.</Notes>
+				<BitOffset>0</BitOffset>
+				<RegOffset>8</RegOffset>
+				<SliceWidth>8</SliceWidth>
+			</BitField>
+			<BitField>
+				<Name>JESD_M</Name>
+				<Access>RO</Access>
+				<Description>JESD_M</Description>
+				<Visibility>Public</Visibility>
+				<Width>8</Width>
+				<Notes>Converter Count.</Notes>
+				<BitOffset>0</BitOffset>
+				<RegOffset>0</RegOffset>
+				<SliceWidth>8</SliceWidth>
+			</BitField>
+		</BitFields>
+	</Register>
+	<Register>
+		<Name>REG_TPL_DESCRIPTOR_2</Name>
+		<Address>0x0244</Address>
+		<Description>JESD, TPL descriptor for profile 0 (REG_TPL_DESCRIPTOR_2)</Description>
+		<Exists>True</Exists>
+		<Width>32</Width>
+		<Notes></Notes>
+		<BitFields>
+			<BitField>
+				<Name>JESD_N</Name>
+				<Access>RO</Access>
+				<Description>JESD_N</Description>
+				<Visibility>Public</Visibility>
+				<Width>8</Width>
+				<Notes>Converter Resolution.</Notes>
+				<BitOffset>0</BitOffset>
+				<RegOffset>0</RegOffset>
+				<SliceWidth>8</SliceWidth>
+			</BitField>
+			<BitField>
+				<Name>JESD_NP</Name>
+				<Access>RO</Access>
+				<Description>JESD_NP</Description>
+				<Visibility>Public</Visibility>
+				<Width>8</Width>
+				<Notes>Total Number of Bits per Sample.</Notes>
+				<BitOffset>0</BitOffset>
+				<RegOffset>8</RegOffset>
+				<SliceWidth>8</SliceWidth>
+			</BitField>
+		</BitFields>
+	</Register>
+	<Register>
+		<Name>REG_*</Name>
+		<Address>0x0248</Address>
+		<Description>Profile 1, similar to registers 0x00010 to 0x00011. (REG_*)</Description>
+		<Exists>True</Exists>
+		<Width>32</Width>
+		<Notes></Notes>
+		<BitFields>
+		</BitFields>
+	</Register>
+	<Register>
+		<Name>REG_*</Name>
+		<Address>0x0250</Address>
+		<Description>Profile 2, similar to registers 0x00010 to 0x00011. (REG_*)</Description>
+		<Exists>True</Exists>
+		<Width>32</Width>
+		<Notes></Notes>
+		<BitFields>
+		</BitFields>
+	</Register>
 	<Register>
 		<Name>REG_CHAN_CNTRL</Name>
 		<Address>0x0400</Address>
