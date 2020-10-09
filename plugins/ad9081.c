@@ -330,16 +330,16 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	priv->ctx = osc_create_context();
 	if (!priv->ctx)
-		goto error_free_priv;
+		return NULL;
 
 	ad9081_dev = iio_context_find_device(priv->ctx, dev_name);
 	if (!ad9081_dev) {
 		printf("Could not find iio device:%s\n", dev_name);
-		goto error_free_ctx;
+		return NULL;
 	}
 
 	if (osc_load_glade_file(builder, "ad9081") < 0)
-		goto error_free_ctx;
+		return NULL;
 
 	ad9081_panel = GTK_WIDGET(gtk_builder_get_object(builder,
 							 "ad9081_panel"));
@@ -390,7 +390,7 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 						      ad9081_dev,
 						      in_voltage, idx);
 			if (ret)
-				goto error_free_ctx;
+				return NULL;
 
 			if (adc_freq != 0 && adc_freq < AD9081_MAX_ADC_FREQ_MHZ)
 				ad9081_adjust_main_nco(builder, idx, adc_freq,
@@ -411,7 +411,7 @@ tx_chann:
 						      ad9081_dev,
 						      out_voltage, idx);
 			if (ret)
-				goto error_free_ctx;
+				return NULL;
 
 			if (dac_freq != 0 && dac_freq < AD9081_MAX_DAC_FREQ_MHZ)
 				ad9081_adjust_main_nco(builder, idx, dac_freq,
@@ -435,7 +435,7 @@ tx_chann:
 			printf("Warning: Got %d DDS devices. We should have 1\n",
 			       devices->len);
 			g_array_free(devices, FALSE);
-			goto error_free_ctx;
+			return NULL;
 		}
 
 		dac = g_array_index(devices, struct iio_device*, 0);
@@ -445,7 +445,7 @@ tx_chann:
 			printf("%s: Failed to start dac Manager...\n",
 			       iio_device_get_name(dac));
 			g_array_free(devices, FALSE);
-			goto error_free_ctx;
+			return NULL;
 		}
 
 		dds_container = GTK_WIDGET(gtk_builder_get_object(builder,
@@ -498,14 +498,6 @@ tx_chann:
 			       G_CALLBACK(select_page_cb), priv);
 
 	return ad9081_panel;
-
-error_free_ctx:
-	osc_destroy_context(priv->ctx);
-error_free_priv:
-	osc_plugin_context_free_resources(&priv->plugin_ctx);
-	g_free(priv);
-
-	return NULL;
 }
 
 static void update_active_page(struct osc_plugin *plugin, gint active_page,
@@ -534,7 +526,8 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 	struct plugin_private *priv = plugin->priv;
 
 	osc_plugin_context_free_resources(&priv->plugin_ctx);
-	osc_destroy_context(priv->ctx);
+	if (priv->ctx)
+		osc_destroy_context(priv->ctx);
 	if (priv->dac_tx_manager)
 		dac_data_manager_free(priv->dac_tx_manager);
 	g_free(priv);
