@@ -832,6 +832,18 @@ static void close_plugins(const char *ini_fn)
 	plugin_lib_list = NULL;
 }
 
+static void close_plugin(struct osc_plugin *plugin, const char *ini_fn, const bool do_destroy)
+{
+	if (plugin->destroy && do_destroy)
+		plugin->destroy(plugin, ini_fn);
+
+	plugin_lib_list = g_slist_remove(plugin_lib_list, plugin->handle);
+	dlclose(plugin->handle);
+	plugin_list = g_slist_remove(plugin_list, plugin);
+	if (plugin->dynamically_created)
+		g_free(plugin);
+}
+
 static struct osc_plugin * get_plugin_from_name(const char *name)
 {
 	GSList *node;
@@ -960,12 +972,69 @@ static void generic_dac_handle(struct osc_plugin *generic_dac, void *generic_lib
 	}
 }
 
+static void load_plugin_complete(gpointer data, gpointer user_data)
+{
+	struct osc_plugin *plugin = data;
+	GtkWidget *widget;
+
+	/* not sure if plugin can actually be null but... */
+	if (!plugin || !plugin->thd)
+		return;
+
+	widget = g_thread_join(plugin->thd);
+	if (!widget) {
+		close_plugin(plugin, NULL, TRUE);
+		return;
+	}
+
+	load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
+	printf("Loaded plugin: %s\n", plugin->name);
+}
+
+#ifdef __MINGW32__
+	static const bool load_in_parallel = false;
+#else
+	static const bool load_in_parallel = true;
+#endif
+
+static void start_plugin(gpointer data, gpointer user_data)
+{
+	struct osc_plugin *plugin = data;
+	struct params {
+		struct osc_plugin *plugin;
+		GtkWidget *notebook;
+		const char *ini_fn;
+	} *params;
+
+	params = malloc(sizeof(*params));
+	if (!params) {
+		/* don't call destroy since we didn't even called init! */
+		close_plugin(plugin, NULL, FALSE);
+		return;
+	}
+
+	params->plugin = plugin;
+	params->notebook = notebook;
+	params->ini_fn = user_data;
+
+	/* Call plugin->init() in a thread to speed up boot time */
+	if (load_in_parallel) {
+		plugin->thd = g_thread_new(plugin->name, init_plugin, params);
+	} else {
+		GtkWidget *widget = init_plugin(params);
+		if (!widget) {
+			close_plugin(plugin, NULL, TRUE);
+			return;
+		}
+		load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
+	}
+}
+
 static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 {
 	typedef GArray* (*get_plugins_info_func)(void);
 	typedef struct osc_plugin* (*create_plugin_func)(struct osc_plugin_context *);
 
-	GSList *node;
 	struct osc_plugin *plugin;
 	struct dirent *ent;
 	char *plugin_dir = "plugins";
@@ -973,12 +1042,6 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 	DIR *d;
 	struct osc_plugin *generic_dac = NULL;
 	void *generic_lib = NULL;
-
-#ifdef __MINGW32__
-	const bool load_in_parallel = false;
-#else
-	const bool load_in_parallel = true;
-#endif
 
 	/* Check the local plugins folder first */
 	d = opendir(plugin_dir);
@@ -1066,28 +1129,7 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 	closedir(d);
 
 	// Initialize all plugins that were previously loaded
-	for (node = plugin_list; node; node = g_slist_next(node)) {
-		struct params {
-			struct osc_plugin *plugin;
-			GtkWidget *notebook;
-			const char *ini_fn;
-		} *params;
-
-		plugin = node->data;
-
-		params = malloc(sizeof(*params));
-		params->plugin = plugin;
-		params->notebook = notebook;
-		params->ini_fn = ini_fn;
-
-		/* Call plugin->init() in a thread to speed up boot time */
-		if (load_in_parallel) {
-			plugin->thd = g_thread_new(plugin->name, init_plugin, params);
-		} else {
-			GtkWidget *widget = init_plugin(params);
-			load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
-		}
-	}
+	g_slist_foreach(plugin_list, start_plugin, (gpointer) ini_fn);
 
 	if (!load_in_parallel) {
 		generic_dac_handle(generic_dac, generic_lib, ini_fn);
@@ -1095,20 +1137,7 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 	}
 
 	/* Wait for all init functions to finish */
-	for (node = plugin_list; node; node = g_slist_next(node)) {
-		GtkWidget *widget;
-
-		plugin = node->data;
-		if (!plugin || !plugin->thd)
-			continue;
-
-		widget = g_thread_join(plugin->thd);
-		if (!widget)
-			continue;
-
-		load_plugin_finish(GTK_NOTEBOOK(notebook), widget, plugin);
-		printf("Loaded plugin: %s\n", plugin->name);
-	}
+	g_slist_foreach(plugin_list, load_plugin_complete, NULL);
 	generic_dac_handle(generic_dac, generic_lib, ini_fn);
 }
 
