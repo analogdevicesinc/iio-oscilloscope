@@ -36,6 +36,7 @@ set(PLUGINS
 	cn0357
 	cn0508
 	cn0511
+	cn0540
 	pr_config
 	motor_control
 	lidar
