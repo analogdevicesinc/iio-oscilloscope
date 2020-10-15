@@ -114,6 +114,7 @@ PLUGINS=\
 	plugins/cn0357.$(SO) \
 	plugins/cn0508.$(SO) \
 	plugins/cn0511.$(SO) \
+	plugins/cn0540.$(SO) \
 	plugins/motor_control.$(SO) \
 	plugins/lidar.$(SO) \
 	plugins/dmm.$(SO) \
