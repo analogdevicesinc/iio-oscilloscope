@@ -1096,8 +1096,10 @@ static GtkWidget * ad9371adv_init(struct osc_plugin *plugin, GtkWidget *notebook
 
 	builder = gtk_builder_new();
 
-	if (osc_load_glade_file(builder, "ad9371_adv") < 0)
+	if (osc_load_glade_file(builder, "ad9371_adv") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	ad9371adv_panel = GTK_WIDGET(gtk_builder_get_object(builder, "ad9371adv_panel"));
 	nbook = GTK_NOTEBOOK(gtk_builder_get_object(builder, "notebook"));
