@@ -312,12 +312,15 @@ static GtkWidget * AD7303_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 		return NULL;
 
 	thread_ctx = osc_create_context();
+	if (!thread_ctx)
+		goto destroy_ctx;
+
 	dev = iio_context_find_device(thread_ctx, "ad7303");
 
 	builder = gtk_builder_new();
 
 	if (osc_load_glade_file(builder, "AD7303") < 0)
-		return NULL;
+		goto destroy_thread_ctx;
 
 	AD7303_panel = GTK_WIDGET(gtk_builder_get_object(builder, "tablePanelAD7303"));
 	btn_sine = GTK_WIDGET(gtk_builder_get_object(builder, "togBtnSine"));
@@ -378,6 +381,12 @@ static GtkWidget * AD7303_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 	rx_update_values();
 
 	return AD7303_panel;
+
+destroy_thread_ctx:
+	osc_destroy_context(thread_ctx);
+destroy_ctx:
+	osc_destroy_context(ctx);
+	return NULL;
 }
 
 static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
