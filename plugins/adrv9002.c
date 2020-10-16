@@ -1116,35 +1116,35 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	priv->builder = gtk_builder_new();
 	if (!priv->builder)
-		return NULL;
+		goto error_free_priv;
 
 	priv->ctx = osc_create_context();
 	if (!priv->ctx)
-		return NULL;
+		goto error_free_priv;
 
 	priv->adrv9002 = iio_context_find_device(priv->ctx, dev_name);
 	if (!priv->adrv9002) {
 		printf("Could not find iio device:%s\n", dev_name);
-		return NULL;
+		goto error_free_ctx;
 	}
 
 	if (osc_load_glade_file(priv->builder, "adrv9002") < 0)
-		return NULL;
+		goto error_free_ctx;
 
 	priv->nbook = GTK_NOTEBOOK(notebook);
 	adrv9002_panel = GTK_WIDGET(gtk_builder_get_object(priv->builder,
 							   "adrv9002_panel"));
 	if (!adrv9002_panel)
-		return NULL;
+		goto error_free_ctx;
 
 	for (i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
 		ret = adrv9002_rx_widgets_init(priv, i);
 		if (ret)
-			return NULL;
+			goto error_free_ctx;
 
 		ret = adrv9002_tx_widgets_init(priv, i);
 		if (ret)
-			return NULL;
+			goto error_free_ctx;
 	}
 	/* handle sections buttons and reload settings */
 	global = GTK_WIDGET(gtk_builder_get_object(priv->builder, "global_settings"));
@@ -1181,18 +1181,18 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	/* init temperature label */
 	temp = iio_device_find_channel(priv->adrv9002, "temp0", false);
 	if (!temp)
-		return NULL;
+		goto error_free_ctx;
 
 	adrv9002_gtk_label_init(priv, &priv->temperature, temp, "input", "temperature", 1000);
 
 	/* init dds container */
 	ret = adrv9002_dds_init(priv);
 	if (ret)
-		return NULL;
+		goto error_free_ctx;
 
 	ret = adrv9002_adc_get_name(priv);
 	if (ret)
-		return NULL;
+		goto error_free_ctx;
 
 	/* update widgets and connect signals */
 	for (i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
@@ -1211,6 +1211,14 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	priv->refresh_timeout = g_timeout_add(1000, (GSourceFunc)update_display,
 					      priv);
 	return adrv9002_panel;
+
+error_free_ctx:
+	osc_destroy_context(priv->ctx);
+error_free_priv:
+	osc_plugin_context_free_resources(&priv->plugin_ctx);
+	g_free(priv);
+
+	return NULL;
 }
 
 static void update_active_page(struct osc_plugin *plugin, gint active_page,
@@ -1235,8 +1243,7 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 	int i;
 
 	osc_plugin_context_free_resources(&priv->plugin_ctx);
-	if (priv->ctx)
-		osc_destroy_context(priv->ctx);
+	osc_destroy_context(priv->ctx);
 
 	for (i = 0; i < priv->n_dacs; i++) {
 		dac_data_manager_free(priv->dac_manager[i].dac_tx_manager);
