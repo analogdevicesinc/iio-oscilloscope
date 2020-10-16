@@ -152,7 +152,7 @@ static GtkWidget * ad6676_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 
 	ctx = osc_create_context();
 	if (!ctx)
-		goto init_abort;
+		return NULL;
 
 	dev = iio_context_find_device(ctx, IIO_DEVICE);
 	if (!dev) {
@@ -170,7 +170,7 @@ static GtkWidget * ad6676_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 	nbook = GTK_NOTEBOOK(notebook);
 
 	if (osc_load_glade_file(builder, "ad6676") < 0)
-		return NULL;
+		goto init_abort;
 
 	ad6676_panel = GTK_WIDGET(gtk_builder_get_object(builder, "ad6676_panel"));
 	spin_adc_freq = GTK_WIDGET(gtk_builder_get_object(builder, "spin_adc_freq"));
@@ -240,8 +240,7 @@ static GtkWidget * ad6676_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 	return ad6676_panel;
 
 init_abort:
-	if (ctx)
-		osc_destroy_context(ctx);
+	osc_destroy_context(ctx);
 
 	return NULL;
 }
