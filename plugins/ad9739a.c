@@ -192,8 +192,10 @@ static GtkWidget * ad9739a_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	}
 
 	builder = gtk_builder_new();
-	if (osc_load_glade_file(builder, "ad9739a") < 0)
+	if (osc_load_glade_file(builder, "ad9739a") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	ad9739a_panel = GTK_WIDGET(gtk_builder_get_object(builder, "ad9739a_panel"));
 	dds_container = GTK_WIDGET(gtk_builder_get_object(builder, "dds_transmit_block"));
@@ -256,12 +258,8 @@ static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	save_profile(NULL, ini_fn);
-
-	if (dac_tx_manager) {
-		dac_data_manager_free(dac_tx_manager);
-		dac_tx_manager = NULL;
-	}
-
+	dac_data_manager_free(dac_tx_manager);
+	dac_tx_manager = NULL;
 	osc_destroy_context(ctx);
 }
 
