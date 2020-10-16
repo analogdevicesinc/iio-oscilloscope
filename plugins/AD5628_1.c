@@ -62,8 +62,10 @@ static GtkWidget * AD5628_1_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	builder = gtk_builder_new();
 
-	if (osc_load_glade_file(builder, "AD5628_1") < 0)
+	if (osc_load_glade_file(builder, "AD5628_1") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	AD5628_1_panel = GTK_WIDGET(gtk_builder_get_object(builder, "tablePanelAD5628_1"));
 
