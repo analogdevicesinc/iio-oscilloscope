@@ -1262,25 +1262,25 @@ static GtkWidget * ad9371_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
 	if (!dev) {
 		fprintf(stderr, "Failed to find phy device %s\n", PHY_DEVICE);
-		return NULL;
+		goto destroy_ctx;
 	}
 
 	dds = iio_context_find_device(ctx, DDS_DEVICE);
 	if (!dds) {
 		fprintf(stderr, "Failed to find dds device %s\n", DDS_DEVICE);
-		return NULL;
+		goto destroy_ctx;
 	}
 
 	cap = iio_context_find_device(ctx, CAP_DEVICE);
 	if (!cap) {
 		fprintf(stderr, "Failed to find cap device %s\n", CAP_DEVICE);
-		return NULL;
+		goto destroy_ctx;
 	}
 
 	cap_obs = iio_context_find_device(ctx, CAP_DEVICE_2);
 	if (!cap_obs) {
 		fprintf(stderr, "Failed to find cap obs device %s\n", CAP_DEVICE_2);
-		return NULL;
+		goto destroy_ctx;
 	}
 
 	udc_rx = iio_context_find_device(ctx, UDC_RX_DEVICE);
@@ -1321,7 +1321,7 @@ static GtkWidget * ad9371_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 	nbook = GTK_NOTEBOOK(notebook);
 
 	if (osc_load_glade_file(builder, "ad9371") < 0)
-		return NULL;
+		goto free_dac_manager;
 
 	is_2rx_2tx = ch1 && iio_channel_find_attr(ch1, "hardwaregain");
 
@@ -1858,6 +1858,14 @@ static GtkWidget * ad9371_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 	can_update_widgets = true;
 
 	return ad9371_panel;
+
+free_dac_manager:
+	dac_data_manager_free(dac_tx_manager);
+	dac_tx_manager = NULL;
+destroy_ctx:
+	osc_destroy_context(ctx);
+	return NULL;
+
 }
 
 static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
@@ -1925,11 +1933,8 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 	if (ini_fn)
 		save_profile(NULL, ini_fn);
 
-	if (dac_tx_manager) {
-		dac_data_manager_free(dac_tx_manager);
-		dac_tx_manager = NULL;
-	}
-
+	dac_data_manager_free(dac_tx_manager);
+	dac_tx_manager = NULL;
 	osc_destroy_context(ctx);
 }
 
