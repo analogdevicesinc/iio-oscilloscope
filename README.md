@@ -15,7 +15,7 @@ and modify settings of the attached IIO device(s).
 
 The main documentation for the IIO 'scope (including checkout/build instructions)
 can be found at:
-https://github.com/analogdevicesinc/iio-oscilloscope/wiki
+https://wiki.analog.com/resources/tools-software/linux-software/iio_oscilloscope#installation
 
 Source can be found at:
 https://github.com/analogdevicesinc/iio-oscilloscope
