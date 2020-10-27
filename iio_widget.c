@@ -307,6 +307,95 @@ static void iio_combo_box_save(struct iio_widget *widget)
 	g_free(text);
 }
 
+static void iio_combo_box_no_avail_flush_update_value(struct iio_widget *widget, const char *src,
+						      const size_t len)
+{
+	GtkComboBox *combo_box = GTK_COMBO_BOX(widget->widget);
+	GtkTreeModel *model = gtk_combo_box_get_model(combo_box);
+	GtkTreeIter iter;
+	gboolean has_iter;
+	int (*compare)(const char *, const char *);
+	char *item;
+
+
+	if (widget->priv)
+		compare = widget->priv;
+	else
+		compare = strcmp;
+
+	has_iter = gtk_tree_model_get_iter_first(model, &iter);
+	while (has_iter) {
+		gtk_tree_model_get(model, &iter, 0, &item, -1);
+		if (compare (src, item) == 0) {
+			gtk_combo_box_set_active_iter(combo_box, &iter);
+			g_free(item);
+			break;
+		}
+		g_free(item);
+		has_iter = gtk_tree_model_iter_next(model, &iter);
+	}
+}
+
+static void iio_combo_box_no_avail_flush_update(struct iio_widget *widget)
+{
+	ssize_t len;
+	char text[256];
+
+	if (widget->chn)
+		len = iio_channel_attr_read(widget->chn, widget->attr_name, text, sizeof(text));
+	else
+		len = iio_device_attr_read(widget->dev, widget->attr_name, text, sizeof(text));
+
+	if (len > 0)
+		iio_combo_box_no_avail_flush_update_value(widget, text, len);
+}
+
+void iio_combo_box_init_no_avail_flush(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name, const char *attr_name_avail,
+	GtkWidget *combo_box, int (*compare)(const char *a, const char *b))
+{
+	/*
+	 * Here we assume that the available list cannot change, hence construct our combo box
+	 * alternatives only once...
+	 */
+	if (attr_name_avail) {
+		int ret, item;
+		char text[1024];
+		GtkTreeModel *model = gtk_combo_box_get_model(GTK_COMBO_BOX(combo_box));
+		gchar **items_avail = NULL;
+
+		if (chn)
+			ret = iio_channel_attr_read(chn, attr_name_avail, text,
+						    sizeof(text));
+		else
+			ret = iio_device_attr_read(dev, attr_name_avail, text,
+						   sizeof(text));
+
+		if (ret < 0)
+			return;
+
+		/* may use gtk_combo_box_text_remove_all gtk3 only */
+		gtk_list_store_clear (GTK_LIST_STORE(model));
+
+		items_avail = g_strsplit (text, " ", 0);
+		for (item = 0; items_avail[item]; item++) {
+			if (items_avail[item][0] == '\0')
+				continue;
+
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combo_box),
+						       items_avail[item]);
+		}
+
+		g_strfreev(items_avail);
+	}
+
+	iio_widget_init(widget, dev, chn, attr_name, attr_name_avail, combo_box, (void *)compare,
+			iio_combo_box_no_avail_flush_update,
+			iio_combo_box_no_avail_flush_update_value, iio_combo_box_save);
+
+	gtk_combo_box_set_entry_text_column(GTK_COMBO_BOX(widget->widget), 0);
+}
+
 static void iio_combo_box_update_value(struct iio_widget *widget,
 		const char *src, size_t len)
 {
@@ -506,6 +595,22 @@ void iio_combo_box_init_from_builder(struct iio_widget *widget,
 	int (*compare)(const char *a, const char *b))
 {
 	iio_combo_box_init(widget, dev, chn, attr_name, attr_name_avail,
+		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)),
+		compare);
+}
+
+/*
+ * The difference to @iio_combo_box_init_from_builder() is that the combo_box entries won't be
+ * refreshed at every update_value() call. This assumes that the IIO available attr cannot really
+ * change at runtime which is true most of the times... Having this done like this, let's us do
+ * things like 'widget->save()' followed by 'widget->update()' in combo boxes signal handlers
+ * without getting an infinite loop (as updating triggers the handler again).
+ */
+void iio_combo_box_init_no_avail_flush_from_builder(struct iio_widget *widget, struct iio_device *dev,
+		struct iio_channel *chn, const char *attr_name, const char *attr_name_avail,
+		GtkBuilder *builder, const char *widget_name, int (*compare)(const char *a, const char *b))
+{
+	iio_combo_box_init_no_avail_flush(widget, dev, chn, attr_name, attr_name_avail,
 		GTK_WIDGET(gtk_builder_get_object(builder, widget_name)),
 		compare);
 }
