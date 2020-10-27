@@ -36,11 +36,14 @@ void g_builder_bind_property(GtkBuilder *builder,
 	const gchar *target_name, const gchar *target_property,
 	GBindingFlags flags);
 
+void iio_make_widgets_update_signal_based(struct iio_widget *widgets, unsigned int num_widgets,
+					  GCallback handler);
 void iio_update_widgets(struct iio_widget *widgets, unsigned int num_widgets);
 void iio_widget_update(struct iio_widget *widget);
 void iio_update_widgets_of_device(struct iio_widget *widgets,
 		unsigned int num_widgets, struct iio_device *dev);
 void iio_widget_save(struct iio_widget *widget);
+void iio_widget_save_cb(GtkWidget *widget, struct iio_widget *iio_widget);
 void iio_save_widgets(struct iio_widget *widgets, unsigned int num_widgets);
 
 void iio_spin_button_init(struct iio_widget *widget, struct iio_device *dev,
