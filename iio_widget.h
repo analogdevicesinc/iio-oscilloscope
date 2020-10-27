@@ -59,6 +59,13 @@ void iio_combo_box_init_from_builder(struct iio_widget *widget,
 	GtkBuilder *builder, const char *widget_name,
 	int (*compare)(const char *a, const char *b));
 
+void iio_combo_box_init_no_avail_flush(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name, const char *attr_name_avail,
+	GtkWidget *combo_box, int (*compare)(const char *a, const char *b));
+void iio_combo_box_init_no_avail_flush_from_builder(struct iio_widget *widget, struct iio_device *dev,
+	struct iio_channel *chn, const char *attr_name, const char *attr_name_avail,
+	GtkBuilder *builder, const char *widget_name, int (*compare)(const char *a, const char *b));
+
 void iio_toggle_button_init_from_builder(struct iio_widget *widget,
 	struct iio_device *dev, struct iio_channel *chn, const char *attr_name,
 	GtkBuilder *builder, const char *widget_name, const bool invert);
