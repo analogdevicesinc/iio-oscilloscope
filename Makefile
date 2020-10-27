@@ -118,6 +118,7 @@ PLUGINS=\
 	plugins/lidar.$(SO) \
 	plugins/dmm.$(SO) \
 	plugins/debug.$(SO) \
+	plugins/cf_axi_tdd.$(SO) \
 	$(if $(WITH_MINGW),,plugins/spectrum_analyzer.so) \
 	$(if $(WITH_MINGW),,plugins/scpi.so)
 
