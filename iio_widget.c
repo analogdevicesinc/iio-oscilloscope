@@ -6,6 +6,7 @@
  **/
 
 #include <gtk/gtk.h>
+#include <glib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <errno.h>
@@ -492,12 +493,48 @@ void iio_widget_save(struct iio_widget *widget)
 	widget->update(widget);
 }
 
+void iio_widget_save_cb(GtkWidget *widget, struct iio_widget *iio_widget)
+{
+	iio_widget_save(iio_widget);
+}
+
 void iio_update_widgets(struct iio_widget *widgets, unsigned int num_widgets)
 {
 	unsigned int i;
 
 	for (i = 0; i < num_widgets; i++)
 		iio_widget_update(&widgets[i]);
+}
+
+void iio_make_widgets_update_signal_based(struct iio_widget *widgets, unsigned int num_widgets,
+					  GCallback handler)
+{
+	char signal_name[25];
+	unsigned int i;
+
+	for (i = 0; i < num_widgets; i++) {
+		if (GTK_IS_CHECK_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "toggled");
+		else if (GTK_IS_TOGGLE_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "toggled");
+		else if (GTK_IS_SPIN_BUTTON(widgets[i].widget))
+			sprintf(signal_name, "%s", "value-changed");
+		else if (GTK_IS_COMBO_BOX_TEXT(widgets[i].widget))
+			sprintf(signal_name, "%s", "changed");
+		else {
+			printf("unhandled widget type, attribute: %s\n",
+			       widgets[i].attr_name);
+			return;
+		}
+
+		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
+		    widgets[i].priv_progress != NULL) {
+			iio_spin_button_progress_activate(&widgets[i]);
+		} else {
+			g_signal_connect(G_OBJECT(widgets[i].widget), signal_name,
+					 handler, &widgets[i]);
+		}
+	}
 }
 
 static int __cb_dev_update(struct iio_device *dev, const char *attr,
