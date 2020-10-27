@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <ctype.h>
+#include <gtk/gtk.h>
 
 static gint iio_chn_cmp_by_name(gconstpointer ptr_a, gconstpointer ptr_b)
 {
@@ -118,4 +119,21 @@ int str_natural_cmp(const char *s1, const char *s2)
 	}
 
 	return 0;
+}
+
+void handle_toggle_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
+{
+	GtkWidget *toplevel;
+
+	if (gtk_toggle_tool_button_get_active(btn)) {
+		g_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-down", NULL);
+		gtk_widget_show(section);
+	} else {
+		g_object_set(GTK_OBJECT(btn), "stock-id", "gtk-go-up", NULL);
+		gtk_widget_hide(section);
+		toplevel = gtk_widget_get_toplevel(GTK_WIDGET(btn));
+
+		if (gtk_widget_is_toplevel(toplevel))
+			gtk_window_resize(GTK_WINDOW(toplevel), 1, 1);
+	}
 }
