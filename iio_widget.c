@@ -487,6 +487,59 @@ void iio_widget_update(struct iio_widget *widget)
 	widget->update(widget);
 }
 
+static gboolean iio_widget_signal_unblock(gpointer arg)
+{
+	struct iio_widget *widget = arg;
+
+	g_signal_handlers_unblock_matched(G_OBJECT(widget->widget), G_SIGNAL_MATCH_DATA, 0, 0,
+					  NULL, NULL, widget->sig_handler_data);
+	/* just meant to run once... */
+	return FALSE;
+}
+
+/*
+* The point of these is that when we update a widget, we can receive a different value from the
+* iio dev from the one in the GUI (eg: a failed call to widget->save() or an autonomous update).
+* In these case, we don't really want our widget signal handler to be called on a value that we
+* we know the device is already holding...
+*/
+void iio_widget_update_block_signals_by_data(struct iio_widget *widget)
+{
+	guint sig = 0;
+
+	if (widget->sig_handler_data)
+		sig = g_signal_handlers_block_matched(G_OBJECT(widget->widget), G_SIGNAL_MATCH_DATA,
+						      0, 0, NULL, NULL, widget->sig_handler_data);
+
+	widget->update(widget);
+	/*
+	* It looks like calling the unblock function does not work for spinbuttons if it's called
+	* from it's signal handler context. Hence, we start a timer that will only run once and
+	* unblock the signal in ~1ms...
+	*/
+	if (sig)
+		g_timeout_add(1, (GSourceFunc)iio_widget_signal_unblock, widget);
+}
+
+void iio_widget_save_block_signals_by_data(struct iio_widget *widget)
+{
+	widget->save(widget);
+	iio_widget_update_block_signals_by_data(widget);
+}
+
+void iio_widget_save_block_signals_by_data_cb(GtkWidget *widget, struct iio_widget *iio_widget)
+{
+	iio_widget_save_block_signals_by_data(iio_widget);
+}
+
+void iio_update_widgets_block_signals_by_data(struct iio_widget *widgets, unsigned int num_widgets)
+{
+	unsigned int i;
+
+	for (i = 0; i < num_widgets; i++)
+		iio_widget_update_block_signals_by_data(&widgets[i]);
+}
+
 void iio_widget_save(struct iio_widget *widget)
 {
 	widget->save(widget);
@@ -506,6 +559,25 @@ void iio_update_widgets(struct iio_widget *widgets, unsigned int num_widgets)
 		iio_widget_update(&widgets[i]);
 }
 
+static int iio_widget_get_signal_name(struct iio_widget *w, char *signal_name, size_t len)
+{
+	if (GTK_IS_CHECK_BUTTON(w->widget))
+		snprintf(signal_name, len, "%s", "toggled");
+	else if (GTK_IS_TOGGLE_BUTTON(w->widget))
+		snprintf(signal_name, len, "%s", "toggled");
+	else if (GTK_IS_SPIN_BUTTON(w->widget))
+		snprintf(signal_name, len, "%s", "value-changed");
+	else if (GTK_IS_COMBO_BOX_TEXT(w->widget))
+		snprintf(signal_name, len, "%s", "changed");
+	else {
+		printf("unhandled widget type, attribute: %s\n",
+			  w->attr_name);
+		return -ENOENT;
+	}
+
+	return 0;
+}
+
 void iio_make_widgets_update_signal_based(struct iio_widget *widgets, unsigned int num_widgets,
 					  GCallback handler)
 {
@@ -513,27 +585,33 @@ void iio_make_widgets_update_signal_based(struct iio_widget *widgets, unsigned i
 	unsigned int i;
 
 	for (i = 0; i < num_widgets; i++) {
-		if (GTK_IS_CHECK_BUTTON(widgets[i].widget))
-			sprintf(signal_name, "%s", "toggled");
-		else if (GTK_IS_TOGGLE_BUTTON(widgets[i].widget))
-			sprintf(signal_name, "%s", "toggled");
-		else if (GTK_IS_SPIN_BUTTON(widgets[i].widget))
-			sprintf(signal_name, "%s", "value-changed");
-		else if (GTK_IS_COMBO_BOX_TEXT(widgets[i].widget))
-			sprintf(signal_name, "%s", "changed");
-		else {
-			printf("unhandled widget type, attribute: %s\n",
-			       widgets[i].attr_name);
+		if (iio_widget_get_signal_name(&widgets[i], signal_name, sizeof(signal_name)))
 			return;
-		}
 
 		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
 		    widgets[i].priv_progress != NULL) {
 			iio_spin_button_progress_activate(&widgets[i]);
 		} else {
+			widgets[i].sig_handler_data = &widgets[i];
 			g_signal_connect(G_OBJECT(widgets[i].widget), signal_name,
 					 handler, &widgets[i]);
 		}
+	}
+}
+
+void iio_make_widget_update_signal_based(struct iio_widget *widget, GCallback handler, gpointer data)
+{
+	char signal_name[25];
+
+	if (iio_widget_get_signal_name(widget, signal_name, sizeof(signal_name)))
+		return;
+
+	if (GTK_IS_SPIN_BUTTON(widget->widget) &&
+		    widget->priv_progress != NULL) {
+			iio_spin_button_progress_activate(widget);
+	} else {
+		widget->sig_handler_data = data;
+		g_signal_connect(G_OBJECT(widget->widget), signal_name, handler, data);
 	}
 }
 
