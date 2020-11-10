@@ -186,7 +186,7 @@ set(CMAKE_PREFIX_PATH ${CMAKE_SYSTEM_PREFIX_PATH})
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	configure_file(org.adi.pkexec.osc.policy.cmakein ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy @ONLY)
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/polkit-1/actions/)
+		DESTINATION /usr/share/polkit-1/actions/)
 	# setup exec script
 	configure_file(osc-wrapper.cmakein ${CMAKE_CURRENT_SOURCE_DIR}/osc-wrapper @ONLY)
 	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/osc-wrapper
@@ -199,30 +199,31 @@ set(SHARE_DEST share/osc)
 set(GLADE_FILES_DEST ${SHARE_DEST}/glade)
 
 set(PLIB_DEST lib/osc)
+set(SHARE_DEST share/osc)
 
 file(GLOB GLADE_FILES glade/*.glade)
 file(GLOB ICON_FILES icons/*)
 
-install(FILES ${GLADE_FILES} ${ICON_FILES} DESTINATION ${GLADE_FILES_DEST})
+install(FILES ${GLADE_FILES} ${ICON_FILES} DESTINATION ${SHARE_DEST})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	configure_file(adi-osc.desktop.cmakein ${CMAKE_CURRENT_BINARY_DIR}/adi-osc.desktop @ONLY)
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/adi-osc.desktop
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications/)
+		DESTINATION /usr/share/applications/)
 
 	# install theme icons
 	install(FILES icons/osc16.png RENAME adi-osc.png
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/16x16/apps)
+		DESTINATION /usr/share/icons/hicolor/16x16/apps)
 	install(FILES icons/osc32.png RENAME adi-osc.png
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/32x32/apps)
+		DESTINATION /usr/share/icons/hicolor/32x32/apps)
 	install(FILES icons/osc64.png RENAME adi-osc.png
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/64x64/apps)
+		DESTINATION /usr/share/icons/hicolor/64x64/apps)
 	install(FILES icons/osc128.png RENAME adi-osc.png
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/128x128/apps)
+		DESTINATION /usr/share/icons/hicolor/128x128/apps)
 	install(FILES icons/osc256.png RENAME adi-osc.png
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/256x256/apps)
+		DESTINATION /usr/share/icons/hicolor/256x256/apps)
 	install(FILES icons/osc.svg RENAME adi-osc.svg
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps)
+		DESTINATION /usr/share/icons/hicolor/scalable/apps)
 
 	# This is a bit "ugly". It makes sure that the hicolor theme directory updates
 	# it's modification date. This makes sure that osc icons are loaded right away.
