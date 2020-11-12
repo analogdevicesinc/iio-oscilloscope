@@ -237,7 +237,17 @@ endif()
 
 install(DIRECTORY icons DESTINATION ${SHARE_DEST})
 
-foreach(plib_dest xmls filters waveforms profiles block_diagrams)
+file(GLOB PROFILES profiles/*.cmakein)
+foreach(PROFILE IN LISTS PROFILES)
+  string(REPLACE ".cmakein" "" PROFILE_TARGET ${PROFILE})
+  configure_file(${PROFILE} ${CMAKE_CURRENT_BINARY_DIR}/profiles/${PROFILE_TARGET})
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/profiles/${PROFILE_TARGET} DESTINATION ${PLIB_DEST}/profiles/)
+endforeach()
+
+file(GLOB PROFILES profiles/*.ini)
+install(FILES ${PROFILES} DESTINATION ${PLIB_DEST}/profiles/)
+
+foreach(plib_dest xmls filters waveforms block_diagrams)
 	install(DIRECTORY ${plib_dest} DESTINATION ${PLIB_DEST})
 endforeach()
 
