@@ -26,6 +26,8 @@ if (WIN32)
 	string(TIMESTAMP BUILD_YEAR "%Y")
 endif()
 
+include(GNUInstallDirs)
+
 # Get the GIT hash of the latest commit
 include(FindGit OPTIONAL)
 if (GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
@@ -164,6 +166,10 @@ if(CMAKE_COMPILER_IS_GNUCC)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wextra -Wno-unused-parameter")
 endif()
 
+# Override on distributions that do not use a global polkit prefix (e.g. NixOS)
+if(NOT DEFINED CMAKE_POLKIT_PREFIX)
+  set(CMAKE_POLKIT_PREFIX /usr)
+endif()
 
 add_library(osc ${OSC_SRC})
 target_link_libraries(osc ${LIBOSC_LIBS})
@@ -188,7 +194,7 @@ set(CMAKE_PREFIX_PATH ${CMAKE_SYSTEM_PREFIX_PATH})
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	configure_file(org.adi.pkexec.osc.policy.cmakein ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy @ONLY)
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/polkit-1/actions/)
+		DESTINATION ${CMAKE_POLKIT_PREFIX}/${CMAKE_INSTALL_DATADIR}/polkit-1/actions/)
 	# setup exec script
 	configure_file(osc-wrapper.cmakein ${CMAKE_CURRENT_SOURCE_DIR}/osc-wrapper @ONLY)
 	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/osc-wrapper
@@ -196,11 +202,9 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 		DESTINATION bin)
 endif()
 
-set(PLIB_DEST lib/osc)
-set(SHARE_DEST share/osc)
+set(PLIB_DEST ${CMAKE_INSTALL_LIBDIR}/osc)
+set(SHARE_DEST ${CMAKE_INSTALL_DATADIR}/osc)
 set(GLADE_FILES_DEST ${SHARE_DEST}/glade)
-
-set(PLIB_DEST lib/osc)
 
 file(GLOB GLADE_FILES glade/*.glade)
 file(GLOB ICON_FILES icons/*)
@@ -210,27 +214,27 @@ install(FILES ${GLADE_FILES} ${ICON_FILES} DESTINATION ${GLADE_FILES_DEST})
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	configure_file(adi-osc.desktop.cmakein ${CMAKE_CURRENT_BINARY_DIR}/adi-osc.desktop @ONLY)
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/adi-osc.desktop
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications/)
+		DESTINATION ${CMAKE_INSTALL_DATADIR}/applications/)
 
 	# install theme icons
 	install(FILES icons/osc16.png RENAME adi-osc.png
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/16x16/apps)
+		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/16x16/apps)
 	install(FILES icons/osc32.png RENAME adi-osc.png
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/32x32/apps)
+		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/32x32/apps)
 	install(FILES icons/osc64.png RENAME adi-osc.png
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/64x64/apps)
+		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/64x64/apps)
 	install(FILES icons/osc128.png RENAME adi-osc.png
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/128x128/apps)
+		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/128x128/apps)
 	install(FILES icons/osc256.png RENAME adi-osc.png
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/256x256/apps)
+		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps)
 	install(FILES icons/osc.svg RENAME adi-osc.svg
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps)
+		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 
 	# This is a bit "ugly". It makes sure that the hicolor theme directory updates
 	# it's modification date. This makes sure that osc icons are loaded right away.
 	# We can also just remove this and assume the user has do this manually or run
 	# something like `gtk-update-icon-cache -f /usr/share/icons/hicolor`.
-	install(CODE "EXECUTE_PROCESS(COMMAND sh -c \"touch /usr/share/icons/hicolor\")")
+	install(CODE "EXECUTE_PROCESS(COMMAND sh -c \"touch ${CMAKE_INSTALL_FULL_DATADIR}/icons/hicolor\")")
 endif()
 
 install(DIRECTORY icons DESTINATION ${SHARE_DEST})
