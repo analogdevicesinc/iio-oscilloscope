@@ -236,7 +236,7 @@ debug.ad9361-phy.initialize=1
 
 [AD936X]
 # load filter LTE20_MHz.ftr
-load_fir_filter_file = /usr/local/lib/osc/filters/LTE20_MHz.ftr
+load_fir_filter_file = @CMAKE_INSTALL_FULL_LIBDIR@/osc/filters/LTE20_MHz.ftr
 ad9361-phy.out_altvoltage1_TX_LO_frequency = 2400000000
 ad9361-phy.out_altvoltage1_TX_LO_external = 0
 ad9361-phy.out_voltage_rf_bandwidth = 19365438
@@ -718,7 +718,7 @@ debug.ad9361-phy.initialize=1
 
 [AD936X]
 # load filter LTE20_MHZ.ftr
-load_fir_filter_file = /usr/local/lib/osc/filters/LTE20_MHz.ftr
+load_fir_filter_file = @CMAKE_INSTALL_FULL_LIBDIR@/osc/filters/LTE20_MHz.ftr
 ad9361-phy.out_altvoltage1_TX_LO_frequency = 2400000000
 ad9361-phy.out_altvoltage1_TX_LO_external = 0
 ad9361-phy.out_voltage_rf_bandwidth = 19365438
@@ -911,7 +911,7 @@ cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_frequency = 9279985
 cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_raw = 1
 cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_phase = 90000
 cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_scale = 0.000000
-load_fir_filter_file = /usr/local/lib/osc/filters/LTE20_MHz.ftr
+load_fir_filter_file = @CMAKE_INSTALL_FULL_LIBDIR@/osc/filters/LTE20_MHz.ftr
 # turn on TX outputs
 dds_mode_tx1 = 1
 dds_mode_tx2 = 1
@@ -1067,7 +1067,7 @@ cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_frequency = 9279985
 cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_raw = 1
 cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_phase = 90000
 cf-ad9361-dds-core-lpc.out_altvoltage1_TX1_I_F2_scale = 0.000000
-load_fir_filter_file = /usr/local/lib/osc/filters/LTE20_MHz.ftr
+load_fir_filter_file = @CMAKE_INSTALL_FULL_LIBDIR@/osc/filters/LTE20_MHz.ftr
 dds_mode_tx1 = 1
 dds_mode_tx2 = 1
 tx_channel_0 = 0
