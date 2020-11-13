@@ -242,8 +242,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy
 		DESTINATION ${CMAKE_POLKIT_PREFIX}/${CMAKE_INSTALL_DATADIR}/polkit-1/actions/)
 	# setup exec script
-	configure_file(osc-wrapper.cmakein ${CMAKE_CURRENT_SOURCE_DIR}/osc-wrapper @ONLY)
-	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/osc-wrapper
+	configure_file(osc-wrapper.cmakein ${CMAKE_CURRENT_BINARY_DIR}/osc-wrapper @ONLY)
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/osc-wrapper
 		PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 		DESTINATION bin)
 endif()
