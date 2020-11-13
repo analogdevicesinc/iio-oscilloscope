@@ -1817,8 +1817,9 @@ static bool adrv9009_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
+	GArray *phy_adrv9009_devs = get_iio_devices_starting_with(osc_ctx, PHY_DEVICE);
 
-	return !!iio_context_find_device(osc_ctx, PHY_DEVICE);
+	return !!phy_adrv9009_devs->len;
 }
 
 GSList* get_dac_dev_names(const struct osc_plugin *plugin) {
