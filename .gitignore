@@ -8,4 +8,17 @@ core
 *~
 *.swp
 build
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+install_manifest.txt
+AD-FREQCVT1_test.ini
+AD-TRXBOOST1_test.ini
+PZSDR2_2400TDD_test.ini
 deps
+config.h
+adi-osc.desktop
+org.adi.pkexec.osc.policy
+osc-wrapper
+.vscode
