@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.18.3 -->
+<!-- Generated with glade 3.22.2 -->
 <interface>
   <object class="GtkAdjustment" id="adjustment_hmc425">
     <property name="lower">-31</property>
@@ -610,6 +610,7 @@
                                               <object class="GtkTable" id="table16">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="n_rows">2</property>
                                                 <property name="n_columns">2</property>
                                                 <property name="column_spacing">5</property>
                                                 <child>
@@ -631,7 +632,34 @@
                                                   <packing>
                                                     <property name="left_attach">1</property>
                                                     <property name="right_attach">2</property>
-                                                    <property name="x_options"/>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options"/>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkLabel" id="label104">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="label" translatable="yes">Nyquist Zone:</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="top_attach">1</property>
+                                                    <property name="bottom_attach">2</property>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options">GTK_FILL</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkComboBoxText" id="rx_nyquist_zone">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left_attach">1</property>
+                                                    <property name="right_attach">2</property>
+                                                    <property name="top_attach">1</property>
+                                                    <property name="bottom_attach">2</property>
+                                                    <property name="x_options">GTK_FILL</property>
                                                     <property name="y_options"/>
                                                   </packing>
                                                 </child>
