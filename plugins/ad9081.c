@@ -28,7 +28,7 @@
  * 81 = 2 widgets per maximmum of 8 rx channels + 8 widgets per maximun 8 tx
  * channels + 1 combo box for global RX configuration...
  */
-#define NUM_MAX_WIDGETS			162
+#define NUM_MAX_WIDGETS			163
 
 const gdouble mhz_scale = 1000000.0;
 const gdouble k_scale = 1000.0;
@@ -362,6 +362,11 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 					ad9081_dev, ch0, "test_mode",
 					"test_mode_available", builder,
 					"rx_test_mode", NULL);
+
+	iio_combo_box_init_from_builder(&priv->iio_widgets[priv->num_widgets++],
+					ad9081_dev, ch0, "nyquist_zone",
+					"nyquist_zone_available", builder,
+					"rx_nyquist_zone", NULL);
 
 	/* TX Global */
 	ch0 = iio_device_find_channel(ad9081_dev, "voltage0_i", TRUE);
