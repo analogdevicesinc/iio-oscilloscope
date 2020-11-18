@@ -392,6 +392,9 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 					"nyquist_zone_available", builder,
 					"rx_nyquist_zone", NULL);
 
+	iio_spin_button_int_init_from_builder(&priv->iio_widgets[priv->num_widgets++],
+					ad9081_dev, NULL, "loopback_mode", builder,
+					"loopback_mode", 0);
 
 	/* TX Global */
 	ch0 = iio_device_find_channel(ad9081_dev, "voltage0_i", TRUE);
