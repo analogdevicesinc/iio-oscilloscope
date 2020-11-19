@@ -60,6 +60,7 @@ static GtkWidget *cn0540_panel;
 static GtkCheckButton *tgbtn_shutdown;
 static GtkCheckButton *tgbtn_fda;
 static GtkCheckButton *tgbtn_fda_mode;
+static GtkCheckButton *tgbtn_cc;
 static GtkButton *btn_get_sw_ff;
 static GtkButton *calib_btn;
 static GtkButton *write_btn;
@@ -73,6 +74,7 @@ static GtkTextView *voltage_status[6];
 static GtkTextView *vshift_log;
 static GtkTextView *vsensor_log;
 static GtkTextView *calib_status;
+static GtkTextView *cc_status;
 static GtkTextBuffer *sw_ff_buffer;
 static GtkTextBuffer *shutdown_buffer;
 static GtkTextBuffer *fda_buffer;
@@ -81,6 +83,7 @@ static GtkTextBuffer *voltage_buffer[NUM_ANALOG_PINS];
 static GtkTextBuffer *calib_buffer;
 static GtkTextBuffer *vsensor_buf;
 static GtkTextBuffer *vshift_buf;
+static GtkTextBuffer *cc_buf;
 
 static gboolean plugin_detached;
 static gint this_page;
@@ -177,6 +180,13 @@ static void monitor_fda(GtkCheckButton *btn)
 		"ENABLED" : "DISABLED", -1);
 	/* Enable back the channel */
 	iio_channel_enable(adc_ch);
+}
+
+static void monitor_cc(GtkCheckButton *btn)
+{
+	cn0540_set_gpio_state("cn0540_blue_led",btn->toggle_button.active);
+	gtk_text_buffer_set_text(cc_buf, btn->toggle_button.active ?
+		"ENABLED" : "DISABLED", -1);
 }
 
 static void monitor_fda_mode(GtkCheckButton *btn)
@@ -390,6 +400,8 @@ static void cn0540_plugin_interface_init(GtkBuilder *builder)
 				"tgbtn_fda"));
 	tgbtn_fda_mode = GTK_CHECK_BUTTON(gtk_builder_get_object(builder,
 				"tgbtn_fda_mode"));
+	tgbtn_cc = GTK_CHECK_BUTTON(gtk_builder_get_object(builder,
+				"tgbtn_cc"));
 	btn_get_sw_ff = GTK_BUTTON(gtk_builder_get_object(builder,
 				"btn_get_sw_ff"));
 	sw_ff_status = GTK_TEXT_VIEW(gtk_builder_get_object(builder,
@@ -400,6 +412,8 @@ static void cn0540_plugin_interface_init(GtkBuilder *builder)
 				"fda_status"));
 	fda_mode_status = GTK_TEXT_VIEW(gtk_builder_get_object(builder,
 				"fda_mode_status "));
+	cc_status = GTK_TEXT_VIEW(gtk_builder_get_object(builder,
+				"cc_status "));
 	voltage_status[0] = GTK_TEXT_VIEW(gtk_builder_get_object(builder,
 				"voltage_0_status"));
 	voltage_status[1] = GTK_TEXT_VIEW(gtk_builder_get_object(builder,
@@ -452,6 +466,8 @@ static void cn0540_plugin_interface_init(GtkBuilder *builder)
 				"vsensor_log"));
 	vsensor_buf = GTK_TEXT_BUFFER(gtk_builder_get_object(builder,
 				"vsensor_buf"));
+	cc_buf = GTK_TEXT_BUFFER(gtk_builder_get_object(builder,
+				"cc_buffer"));
 
 	make_widget_update_signal_based(iio_widgets, num_widgets);
 
@@ -461,6 +477,8 @@ static void cn0540_plugin_interface_init(GtkBuilder *builder)
 		G_CALLBACK(monitor_fda), NULL);
 	g_signal_connect(G_OBJECT(&tgbtn_fda_mode->toggle_button), "toggled",
 		G_CALLBACK(monitor_fda_mode), NULL);
+	g_signal_connect(G_OBJECT(&tgbtn_cc->toggle_button), "toggled",
+		G_CALLBACK(monitor_cc), NULL);
 	g_signal_connect(G_OBJECT(btn_get_sw_ff), "clicked",
 		G_CALLBACK(monitor_sw_ff), &btn_get_sw_ff);
 	g_signal_connect(G_OBJECT(calib_btn),"clicked",
@@ -479,6 +497,7 @@ static void cn0540_init()
 {
 	int idx;
 
+	gtk_toggle_button_toggled(&tgbtn_cc->toggle_button);
 	gtk_toggle_button_toggled(&tgbtn_shutdown->toggle_button);
 	gtk_toggle_button_toggled(&tgbtn_fda->toggle_button);
 	gtk_toggle_button_toggled(&tgbtn_fda_mode->toggle_button);
