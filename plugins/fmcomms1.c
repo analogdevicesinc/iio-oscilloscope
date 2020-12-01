@@ -1713,8 +1713,10 @@ static GtkWidget * fmcomms1_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	builder = gtk_builder_new();
 
-	if (osc_load_glade_file(builder, "fmcomms1") < 0)
+	if (osc_load_glade_file(builder, "fmcomms1") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	rx_lo_freq = GTK_WIDGET(gtk_builder_get_object(builder, "rx_lo_freq"));
 	tx_lo_freq = GTK_WIDGET(gtk_builder_get_object(builder, "tx_lo_freq"));
