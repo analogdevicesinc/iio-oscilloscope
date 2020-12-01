@@ -792,13 +792,13 @@ static GtkWidget * analyzer_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	dev = iio_context_find_device(ctx, PHY_DEVICE);
 	if (!dev)
-		return NULL;
+		goto destroy_ctx;
 	cap = iio_context_find_device(ctx, CAP_DEVICE);
 	if (!cap)
-		return NULL;
+		goto destroy_ctx;
 	alt_ch0 = iio_device_find_channel(dev, "altvoltage0", true);
 	if (!alt_ch0)
-		return NULL;
+		goto destroy_ctx;
 
 	ch1 = iio_device_find_channel(dev, "voltage1", false);
 	is_2rx_2tx = ch1 && iio_channel_find_attr(ch1, "hardwaregain");
@@ -818,7 +818,7 @@ static GtkWidget * analyzer_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	nbook = GTK_NOTEBOOK(notebook);
 
 	if (osc_load_glade_file(builder, "spectrum_analyzer") < 0)
-		return NULL;
+		goto destroy_ctx;
 
 	analyzer_panel = GTK_WIDGET(gtk_builder_get_object(builder,
 				"spectrum_analyzer_panel"));
@@ -862,6 +862,10 @@ static GtkWidget * analyzer_init(struct osc_plugin *plugin, GtkWidget *notebook,
 			G_CALLBACK(center_freq_changed), center_freq);
 
 	return analyzer_panel;
+
+destroy_ctx:
+	osc_destroy_context(ctx);
+	return NULL;
 }
 
 static void update_active_page(struct osc_plugin *plugin, gint active_page, gboolean is_detached)
