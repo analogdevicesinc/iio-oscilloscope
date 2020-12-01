@@ -107,7 +107,7 @@ static GtkWidget * fmcadc3_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 
 	ctx = osc_create_context();
 	if (!ctx)
-		goto init_abort;
+		return NULL;
 
 	dev = iio_context_find_device(ctx,IIO_DEVICE);
 	ch0 = iio_device_find_channel(dev, "voltage0", true);
@@ -115,8 +115,10 @@ static GtkWidget * fmcadc3_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
-	if (osc_load_glade_file(builder, "fmcadc3") < 0)
+	if (osc_load_glade_file(builder, "fmcadc3") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	fmcadc3_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcadc3_panel"));
 	gain = GTK_WIDGET(gtk_builder_get_object(builder, "gain"));
@@ -140,12 +142,6 @@ static GtkWidget * fmcadc3_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	can_update_widgets = true;
 
 	return fmcadc3_panel;
-
-init_abort:
-	if (ctx)
-		osc_destroy_context(ctx);
-
-	return NULL;
 }
 
 static void fmcadc3_get_preferred_size(const struct osc_plugin *plugin, int *width, int *height)
@@ -168,8 +164,6 @@ static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 
 static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	g_source_remove_by_user_data(ctx);
-
 	if (ini_fn)
 		save_profile(NULL, ini_fn);
 
