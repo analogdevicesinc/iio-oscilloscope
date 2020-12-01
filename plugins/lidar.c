@@ -154,7 +154,7 @@ static void pulse_freq_changed_cb(GtkSpinButton *btn, GtkAdjustment *pulse_delay
 	gdouble freq = gtk_spin_button_get_value(btn);
 	gdouble delay_upper_ns = 1e6 / freq; // freq is in kHz, we need ns
 	gdouble delay_ns = gtk_adjustment_get_value(pulse_delay_adj);
-	
+
 	gtk_adjustment_set_upper(pulse_delay_adj, delay_upper_ns);
 	if (delay_ns > delay_upper_ns)
 		gtk_adjustment_set_value(pulse_delay_adj, delay_upper_ns);
@@ -220,41 +220,41 @@ static GtkWidget * lidar_init(struct osc_plugin *plugin, GtkWidget *notebook, co
 	if (!pulse_dev) {
 		fprintf(stderr, "Could not find device: %s in %s\n",
 			PULSE_CAPTURE_DEV, __func__);
-		return NULL;
+		goto destroy_ctx;
 	}
 	afe_dev = iio_context_find_device(ctx, AFE_DEVICE);
 	if (!afe_dev) {
 		fprintf(stderr, "Could not find device: %s in %s\n",
 			AFE_DEVICE, __func__);
-		return NULL;
+		goto destroy_ctx;
 	}
 
 	pulse_ch0 = iio_device_find_channel(pulse_dev, "altvoltage0", true);
 	if (!pulse_ch0) {
 		fprintf(stderr, "Could not find channel: %s of device %s in %s\n",
 			"voltage0", PULSE_CAPTURE_DEV, __func__);
-		return NULL;
+		goto destroy_ctx;
 	}
 
 	afe_ch0 = iio_device_find_channel(afe_dev, "voltage0", true);
 	if (!afe_ch0) {
 		fprintf(stderr, "Could not find channel: %s of device %s in %s\n",
 			"voltage0", AFE_DEVICE, __func__);
-		return NULL;
+		goto destroy_ctx;
 	}
 
 	afe_ch1 = iio_device_find_channel(afe_dev, "voltage1", true);
 	if (!afe_ch1) {
 		fprintf(stderr, "Could not find channel: %s of device %s in %s\n",
 			"voltage1", AFE_DEVICE, __func__);
-		return NULL;
+		goto destroy_ctx;
 	}
 
 	set_all_iio_atributes_to_default_values();
 
 	builder = gtk_builder_new();
 	if (osc_load_glade_file(builder, "lidar") < 0)
-		return NULL;
+		goto destroy_ctx;
 
 	if (!gtk_builder_add_from_file(builder, "./glade/lidar.glade", NULL)) {
 		gtk_builder_add_from_file(builder, OSC_GLADE_FILE_PATH "lidar.glade", NULL);
@@ -294,10 +294,10 @@ static GtkWidget * lidar_init(struct osc_plugin *plugin, GtkWidget *notebook, co
 
 	iio_toggle_button_init_from_builder(&widgets[num_widgets++], pulse_dev,
 		pulse_ch0, "en", builder, "check_en_generator", false);
-		
+
 	iio_spin_button_int_init_from_builder(&widgets[num_widgets++], pulse_dev,
 		pulse_ch0, "frequency", builder, "spin_pulse_freq", &khz_scale);
-	
+
 	iio_spin_button_int_init_from_builder(&widgets[num_widgets++], pulse_dev,
 		pulse_ch0, "pulse_width_ns", builder, "spin_pulse_width", NULL);
 
@@ -312,17 +312,17 @@ static GtkWidget * lidar_init(struct osc_plugin *plugin, GtkWidget *notebook, co
 	for (i = 0; i < 4; i++)
 		g_signal_connect(auto_cfg_btns[i],
 			"value-changed", G_CALLBACK(auto_cfg_button_changed_cb), NULL);
-	
+
 	g_builder_connect_signal(builder, "btn_set_auto_cfg", "clicked",
 		G_CALLBACK(auto_cfg_set_cb), NULL);
-	
+
 	g_builder_connect_signal(builder, "btn_set_manual_ch", "clicked",
 		G_CALLBACK(manual_ch_set_cb), NULL);
 
 	g_builder_connect_signal(builder, "spin_pulse_freq", "value-changed",
 		G_CALLBACK(pulse_freq_changed_cb),
 		GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adj_pulse_delay")));
-	
+
 	make_widget_update_signal_based(widgets, num_widgets);
 
 	iio_update_widgets(widgets, num_widgets);
@@ -353,12 +353,16 @@ static GtkWidget * lidar_init(struct osc_plugin *plugin, GtkWidget *notebook, co
 	}
 
 	return lidar_panel;
+
+destroy_ctx:
+	osc_destroy_context(ctx);
+	return NULL;
 }
 
 static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	set_all_iio_atributes_to_default_values();
-	
+
 	osc_destroy_context(ctx);
 }
 
