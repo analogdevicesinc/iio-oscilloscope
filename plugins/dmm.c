@@ -180,9 +180,9 @@ static void build_channel_list(void)
 					iter3_valid = TRUE;
 				}
 
-				snprintf(dev_ch, sizeof(dev_ch), "%s:%s", 
+				snprintf(dev_ch, sizeof(dev_ch), "%s:%s",
 					device, name);
-				
+
 				gtk_list_store_set(channel_list_store, &iter2,
 						0, dev_ch,	/* device & channel name */
 						1, 0,		/* On/Off */
@@ -406,8 +406,10 @@ static GtkWidget * dmm_init(struct osc_plugin *plugin, GtkWidget *notebook, cons
 	if (!ctx)
 		return NULL;
 
-	if (osc_load_glade_file(builder, "dmm") < 0)
+	if (osc_load_glade_file(builder, "dmm") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	dmm_panel = GTK_WIDGET(gtk_builder_get_object(builder, "dmm_panel"));
 	device_list_widget = GTK_WIDGET(gtk_builder_get_object(builder, "device_list_view"));
