@@ -327,8 +327,10 @@ static GtkWidget * pr_config_init(struct osc_plugin *plugin, GtkWidget *notebook
 
 	builder = gtk_builder_new();
 
-	if (osc_load_glade_file(builder, "pr_config") < 0)
+	if (osc_load_glade_file(builder, "pr_config") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	pr_config_panel = GTK_WIDGET(gtk_builder_get_object(builder, "pr_config_panel"));
 	reconf_chooser = GTK_WIDGET(gtk_builder_get_object(builder, "filechooserbutton_reconf"));
