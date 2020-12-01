@@ -1121,6 +1121,9 @@ static GtkWidget * fmcomms5_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	nbook = GTK_NOTEBOOK(notebook);
 
 	ctx = osc_create_context();
+	if (!ctx)
+		return NULL;
+
 	dev1 = iio_context_find_device(ctx, PHY_DEVICE1);
 	dds1 = iio_context_find_device(ctx, DDS_DEVICE1);
 	cap1 = iio_context_find_device(ctx, CAP_DEVICE1);
@@ -1133,11 +1136,14 @@ static GtkWidget * fmcomms5_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	dac_tx_manager = dac_data_manager_new(dds1, dds2, ctx);
 	if (!dac_tx_manager) {
 		printf("FMComms5: Failed to use DDS resources\n");
-		return 0;
+		osc_destroy_context(ctx);
+		return NULL;
 	}
 
-	if (osc_load_glade_file(builder, "fmcomms5") < 0)
+	if (osc_load_glade_file(builder, "fmcomms5") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	fmcomms5_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms5_panel"));
 
