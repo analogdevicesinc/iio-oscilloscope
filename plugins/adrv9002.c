@@ -1249,6 +1249,7 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 		dac_data_manager_free(priv->dac_manager[i].dac_tx_manager);
 	}
 
+	g_source_remove(priv->refresh_timeout);
 	g_free(priv);
 }
 
