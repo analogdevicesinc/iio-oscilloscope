@@ -114,14 +114,17 @@ static GtkWidget *cn0511_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	if (!ctx)
 		return NULL;
 
-	if (osc_load_glade_file(builder, "cn0511") < 0)
+	if (osc_load_glade_file(builder, "cn0511") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	dac = iio_context_find_device(ctx, DAC_DEVICE);
 	dac_amp = iio_context_find_device(ctx, DAC_AMPLIFIER);
 
 	if (!dac || !dac_amp) {
 		printf("Could not find expected iio devices\n");
+		osc_destroy_context(ctx);
 		return NULL;
 	}
 
@@ -187,7 +190,6 @@ static void cn0511_get_preferred_size(const struct osc_plugin *plugin,
 
 static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	g_source_remove_by_user_data(ctx);
 	osc_destroy_context(ctx);
 }
 
