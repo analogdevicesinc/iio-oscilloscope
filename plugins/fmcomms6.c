@@ -138,14 +138,19 @@ static GtkWidget * fmcomms6_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	builder = gtk_builder_new();
 
 	ctx = osc_create_context();
+	if (!ctx)
+		return NULL;
+
 	adc = iio_context_find_device(ctx, ADC_DEVICE);
 	pll = iio_context_find_device(ctx, PLL_DEVICE);
 
 	if (ini_fn)
 		load_profile(NULL, ini_fn);
 
-	if (osc_load_glade_file(builder, "fmcomms6") < 0)
+	if (osc_load_glade_file(builder, "fmcomms6") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	fmcomms6_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms6_panel"));
 
