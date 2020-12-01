@@ -1326,8 +1326,10 @@ static GtkWidget * fmcomms2adv_init(struct osc_plugin *plugin, GtkWidget *notebo
 
 		dev_dds_master = iio_context_find_device(ctx, DDS_DEVICE);
 		dev_dds_slave = iio_context_find_device(ctx, DDS_SLAVE_DEVICE);
-		if (get_dds_channels())
+		if (get_dds_channels()) {
+			osc_destroy_context(ctx);
 			return NULL;
+		}
 	}
 
 	if (ini_fn)
@@ -1336,8 +1338,10 @@ static GtkWidget * fmcomms2adv_init(struct osc_plugin *plugin, GtkWidget *notebo
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
-	if (osc_load_glade_file(builder, "fmcomms2_adv") < 0)
+	if (osc_load_glade_file(builder, "fmcomms2_adv") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	fmcomms2adv_panel = GTK_WIDGET(gtk_builder_get_object(builder, "fmcomms2adv_panel"));
 
