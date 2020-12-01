@@ -236,8 +236,10 @@ static GtkWidget* cn0508_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	adc = iio_context_find_device(ctx, ADC_DEVICE);
 	dac = iio_context_find_device(ctx, DAC_DEVICE);
 
-	if (osc_load_glade_file(builder, "cn0508") < 0)
+	if (osc_load_glade_file(builder, "cn0508") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	cn0508_panel = GTK_WIDGET(gtk_builder_get_object(builder, "cn0508_panel"));
 	u2_temp_monitor = GTK_WIDGET(gtk_builder_get_object(builder, "entry_u2_temp"));
