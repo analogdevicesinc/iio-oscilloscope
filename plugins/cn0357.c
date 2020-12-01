@@ -288,8 +288,10 @@ static GtkWidget* cn0357_init(struct osc_plugin *plugin, GtkWidget *notebook, co
 
 	adc = iio_context_find_device(ctx, ADC_DEVICE);
 
-	if (osc_load_glade_file(builder, "cn0357") < 0)
+	if (osc_load_glade_file(builder, "cn0357") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	cn0357_panel = GTK_WIDGET(gtk_builder_get_object(builder, "cn0357_panel"));
 	update_rates = GTK_WIDGET(gtk_builder_get_object(builder, "comboboxtext_update_rates"));
