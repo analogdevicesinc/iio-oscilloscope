@@ -1562,8 +1562,10 @@ static GtkWidget * fmcomms2_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	builder = gtk_builder_new();
 	nbook = GTK_NOTEBOOK(notebook);
 
-	if (osc_load_glade_file(builder, "fmcomms2") < 0)
+	if (osc_load_glade_file(builder, "fmcomms2") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	is_2rx_2tx = ch1 && iio_channel_find_attr(ch1, "hardwaregain");
 
