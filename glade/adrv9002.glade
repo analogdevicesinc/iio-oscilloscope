@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.22.2 -->
 <interface>
+  <requires lib="gtk+" version="2.24"/>
+  <!-- interface-naming-policy toplevel-contextual -->
   <object class="GtkAdjustment" id="adjustment_atten_tx1">
     <property name="lower">-41.950000000000003</property>
     <property name="step_increment">0.050000000000000003</property>
@@ -118,41 +119,6 @@
                                         <property name="column_spacing">5</property>
                                         <property name="row_spacing">5</property>
                                         <child>
-                                          <object class="GtkVBox" id="box1">
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">False</property>
-                                            <child>
-                                              <object class="GtkLabel" id="label_filter_fir_sel1">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Load Profile</property>
-                                                <property name="xalign">0</property>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">False</property>
-                                                <property name="fill">True</property>
-                                                <property name="position">0</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkFileChooserButton" id="profile_config">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <property name="width_chars">12</property>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">False</property>
-                                                <property name="fill">True</property>
-                                                <property name="position">1</property>
-                                              </packing>
-                                            </child>
-                                          </object>
-                                          <packing>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="x_padding">5</property>
-                                          </packing>
-                                        </child>
-                                        <child>
                                           <object class="GtkHBox" id="box10">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
@@ -160,8 +126,8 @@
                                               <object class="GtkLabel" id="label4">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Temperature (°C):  </property>
                                                 <property name="xalign">1</property>
+                                                <property name="label" translatable="yes">Temperature (°C):  </property>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
@@ -187,6 +153,84 @@
                                             <property name="bottom_attach">2</property>
                                           </packing>
                                         </child>
+                                        <child>
+                                          <object class="GtkHBox" id="hbox1">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <child>
+                                              <object class="GtkVBox" id="box1">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <child>
+                                                  <object class="GtkLabel" id="label_filter_fir_sel1">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="xalign">0</property>
+                                                    <property name="label" translatable="yes">Load Profile</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="fill">True</property>
+                                                    <property name="position">0</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkFileChooserButton" id="profile_config">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="width_chars">12</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="fill">True</property>
+                                                    <property name="position">1</property>
+                                                  </packing>
+                                                </child>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">True</property>
+                                                <property name="fill">True</property>
+                                                <property name="position">0</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkVBox" id="box13">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <child>
+                                                  <object class="GtkLabel" id="label_stream_config">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="xalign">0</property>
+                                                    <property name="label" translatable="yes">Load Stream</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="fill">True</property>
+                                                    <property name="position">0</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkFileChooserButton" id="stream_config">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="width_chars">12</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="fill">True</property>
+                                                    <property name="position">1</property>
+                                                  </packing>
+                                                </child>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">True</property>
+                                                <property name="fill">True</property>
+                                                <property name="position">1</property>
+                                              </packing>
+                                            </child>
+                                          </object>
+                                        </child>
                                       </object>
                                       <packing>
                                         <property name="expand">True</property>
@@ -204,7 +248,6 @@
                                 <property name="can_focus">False</property>
                                 <child>
                                   <object class="GtkToggleToolButton" id="global_settings_toggle">
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Zoom In</property>
@@ -302,8 +345,8 @@
                                                           <object class="GtkLabel" id="label15">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Hardware Gain (dB):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Hardware Gain (dB):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="x_options">GTK_FILL</property>
@@ -315,12 +358,12 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">183,00</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_gain_rx1</property>
                                                             <property name="digits">2</property>
-                                                            <property name="value">183</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -370,8 +413,8 @@
                                                           <object class="GtkLabel" id="label12">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Interface Gain(dB):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Interface Gain(dB):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -386,8 +429,8 @@
                                                           <object class="GtkLabel" id="label13">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Port Enable:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Port Enable:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -415,8 +458,8 @@
                                                           <object class="GtkLabel" id="label14">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Gain Control:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Gain Control:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">1</property>
@@ -441,7 +484,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="bbdc_rejection_tracking_en_rx1">
                                                             <property name="label" translatable="yes">BBDC Rejection</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -458,7 +500,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="hd2_tracking_en_rx1">
                                                             <property name="label" translatable="yes">HD2</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -476,8 +517,8 @@
                                                           <object class="GtkLabel" id="label23">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Tracking:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Tracking:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">7</property>
@@ -490,8 +531,8 @@
                                                           <object class="GtkLabel" id="label25">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">6</property>
@@ -503,7 +544,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="quadrature_fic_tracking_en_rx1">
                                                             <property name="label" translatable="yes">Quadrature FIC</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -520,7 +560,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="agc_tracking_en_rx1">
                                                             <property name="label" translatable="yes">AGC</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -537,7 +576,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="quadrature_poly_tracking_en_rx1">
                                                             <property name="label" translatable="yes">Quadrature Poly</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -554,7 +592,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="rssi_tracking_en_rx1">
                                                             <property name="label" translatable="yes">RSSI</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -571,7 +608,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="rfdc_tracking_en_rx1">
                                                             <property name="label" translatable="yes">RFDC</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -604,8 +640,8 @@
                                                           <object class="GtkLabel" id="label7">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Powerdown:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Powerdown:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">3</property>
@@ -617,7 +653,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="powerdown_en_rx1">
                                                             <property name="label" translatable="yes">Enable</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -635,8 +670,8 @@
                                                           <object class="GtkLabel" id="nco_label_rx1">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">NCO (Hz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">NCO (Hz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">4</property>
@@ -649,8 +684,8 @@
                                                           <object class="GtkLabel" id="label20">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Decimated Power (dB):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Decimated Power (dB):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">5</property>
@@ -663,8 +698,8 @@
                                                           <object class="GtkLabel" id="label5">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Dynamic Adc Switch:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Dynamic Adc Switch:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -678,7 +713,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="dynamic_adc_switch_rx1">
                                                             <property name="label" translatable="yes">Enable</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -696,8 +730,8 @@
                                                           <object class="GtkLabel" id="label57">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">RSSI (dB):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">RSSI (dB):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -712,8 +746,8 @@
                                                           <object class="GtkLabel" id="label30">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -743,8 +777,8 @@
                                                           <object class="GtkLabel" id="label63">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Local Oscillator (MHz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Local Oscillator (MHz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -760,12 +794,12 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">30,000000</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_lo_rx1</property>
                                                             <property name="digits">6</property>
-                                                            <property name="value">30</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">3</property>
@@ -779,9 +813,10 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">0,000000</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_nco_rx1</property>
                                                             <property name="digits">6</property>
                                                           </object>
@@ -811,8 +846,8 @@
                                                           <object class="GtkLabel" id="label27">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">ENSM:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">ENSM:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">2</property>
@@ -838,8 +873,8 @@
                                                           <object class="GtkLabel" id="label36">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Digital Gain Control:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Digital Gain Control:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -902,8 +937,8 @@
                                                           <object class="GtkLabel" id="label2">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Hardware Gain (dB):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Hardware Gain (dB):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="x_options">GTK_FILL</property>
@@ -915,12 +950,12 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">183,00</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_gain_rx2</property>
                                                             <property name="digits">2</property>
-                                                            <property name="value">183</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -933,8 +968,8 @@
                                                           <object class="GtkLabel" id="label3">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">ENSM:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">ENSM:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">2</property>
@@ -947,8 +982,8 @@
                                                           <object class="GtkLabel" id="label8">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Digital Gain Control:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Digital Gain Control:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -998,8 +1033,8 @@
                                                           <object class="GtkLabel" id="label18">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Interface Gain (dB):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Interface Gain (dB):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1014,8 +1049,8 @@
                                                           <object class="GtkLabel" id="label22">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Port Enable:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Port Enable:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1043,8 +1078,8 @@
                                                           <object class="GtkLabel" id="label26">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Gain Control:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Gain Control:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">1</property>
@@ -1069,7 +1104,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="bbdc_rejection_tracking_en_rx2">
                                                             <property name="label" translatable="yes">BBDC Rejection</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1086,7 +1120,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="hd2_tracking_en_rx2">
                                                             <property name="label" translatable="yes">HD2</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1104,8 +1137,8 @@
                                                           <object class="GtkLabel" id="label29">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Tracking:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Tracking:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">7</property>
@@ -1118,8 +1151,8 @@
                                                           <object class="GtkLabel" id="label100">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">6</property>
@@ -1131,7 +1164,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="quadrature_fic_tracking_en_rx2">
                                                             <property name="label" translatable="yes">Quadrature FIC</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1148,7 +1180,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="agc_tracking_en_rx2">
                                                             <property name="label" translatable="yes">AGC</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1165,7 +1196,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="quadrature_poly_tracking_en_rx2">
                                                             <property name="label" translatable="yes">Quadrature Poly</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1182,7 +1212,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="rssi_tracking_en_rx2">
                                                             <property name="label" translatable="yes">RSSI</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1199,7 +1228,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="rfdc_tracking_en_rx2">
                                                             <property name="label" translatable="yes">RFDC</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1232,8 +1260,8 @@
                                                           <object class="GtkLabel" id="label32">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Powerdown:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Powerdown:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">3</property>
@@ -1245,7 +1273,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="powerdown_en_rx2">
                                                             <property name="label" translatable="yes">Enable</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1263,8 +1290,8 @@
                                                           <object class="GtkLabel" id="nco_label_rx2">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">NCO (Hz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">NCO (Hz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">4</property>
@@ -1278,9 +1305,10 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">0,000000</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_nco_rx2</property>
                                                             <property name="digits">6</property>
                                                           </object>
@@ -1295,8 +1323,8 @@
                                                           <object class="GtkLabel" id="label34">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Decimated Power (dB):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Decimated Power (dB):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">5</property>
@@ -1309,8 +1337,8 @@
                                                           <object class="GtkLabel" id="label35">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Dynamic Adc Switch:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Dynamic Adc Switch:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1324,7 +1352,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="dynamic_adc_switch_rx2">
                                                             <property name="label" translatable="yes">Enable</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1342,8 +1369,8 @@
                                                           <object class="GtkLabel" id="label37">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">RSSI (dB):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">RSSI (dB):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1388,8 +1415,8 @@
                                                           <object class="GtkLabel" id="label31">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1419,8 +1446,8 @@
                                                           <object class="GtkLabel" id="label64">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Local Oscillator (MHz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Local Oscillator (MHz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1436,12 +1463,12 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">44,000000</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_lo_rx2</property>
                                                             <property name="digits">6</property>
-                                                            <property name="value">44</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">3</property>
@@ -1494,7 +1521,6 @@
                                 <property name="can_focus">False</property>
                                 <child>
                                   <object class="GtkToggleToolButton" id="rx_toggle">
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Zoom In</property>
@@ -1617,9 +1643,10 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">0,00</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_atten_tx1</property>
                                                             <property name="digits">2</property>
                                                           </object>
@@ -1634,8 +1661,8 @@
                                                           <object class="GtkLabel" id="label39">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Attenuation Control:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Attenuation Control:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">1</property>
@@ -1661,8 +1688,8 @@
                                                           <object class="GtkLabel" id="label9">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Port Enable:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Port Enable:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1686,8 +1713,8 @@
                                                           <object class="GtkLabel" id="label17">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">ENSM:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">ENSM:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1715,8 +1742,8 @@
                                                           <object class="GtkLabel" id="label21">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Powerdown:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Powerdown:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1730,7 +1757,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="powerdown_en_tx1">
                                                             <property name="label" translatable="yes">Enable</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1748,8 +1774,8 @@
                                                           <object class="GtkLabel" id="label65">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Local Oscillator (MHz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Local Oscillator (MHz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">2</property>
@@ -1763,12 +1789,12 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">44,000000</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_lo_tx1</property>
                                                             <property name="digits">6</property>
-                                                            <property name="value">44</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -1781,8 +1807,8 @@
                                                           <object class="GtkLabel" id="label19">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Tracking:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Tracking:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">5</property>
@@ -1794,7 +1820,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="lo_leakage_tracking_en_tx1">
                                                             <property name="label" translatable="yes">LO Leakage</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1811,7 +1836,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="pa_correction_tracking_en_tx1">
                                                             <property name="label" translatable="yes">PA Correction</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1828,7 +1852,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="quadrature_tracking_en_tx1">
                                                             <property name="label" translatable="yes">Quadrature</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1845,7 +1868,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="loopback_delay_tracking_en_tx1">
                                                             <property name="label" translatable="yes">Loopback Delay</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1862,7 +1884,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="close_loop_gain_tracking_en_tx1">
                                                             <property name="label" translatable="yes">Close Loop Gain</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -1880,8 +1901,8 @@
                                                           <object class="GtkLabel" id="label28">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1911,8 +1932,8 @@
                                                           <object class="GtkLabel" id="nco_label_tx1">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">NCO (Hz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">NCO (Hz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">3</property>
@@ -1926,9 +1947,10 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">0,000000</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_nco_tx1</property>
                                                             <property name="digits">6</property>
                                                           </object>
@@ -1958,8 +1980,8 @@
                                                           <object class="GtkLabel" id="label40">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">4</property>
@@ -2047,9 +2069,10 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">0,00</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_atten_tx2</property>
                                                             <property name="digits">2</property>
                                                           </object>
@@ -2064,8 +2087,8 @@
                                                           <object class="GtkLabel" id="label44">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Attenuation Control:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Attenuation Control:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">1</property>
@@ -2091,8 +2114,8 @@
                                                           <object class="GtkLabel" id="label47">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Port Enable:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Port Enable:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -2116,8 +2139,8 @@
                                                           <object class="GtkLabel" id="label51">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">ENSM:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">ENSM:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -2145,8 +2168,8 @@
                                                           <object class="GtkLabel" id="label52">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Powerdown:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Powerdown:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -2160,7 +2183,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="powerdown_en_tx2">
                                                             <property name="label" translatable="yes">Enable</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -2178,8 +2200,8 @@
                                                           <object class="GtkLabel" id="label66">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Local Oscillator (MHz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Local Oscillator (MHz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">2</property>
@@ -2193,12 +2215,12 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">44,000000</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_lo_tx2</property>
                                                             <property name="digits">6</property>
-                                                            <property name="value">44</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -2211,8 +2233,8 @@
                                                           <object class="GtkLabel" id="label61">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Tracking:</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Tracking:</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">5</property>
@@ -2225,8 +2247,8 @@
                                                           <object class="GtkLabel" id="label60">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">4</property>
@@ -2238,7 +2260,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="lo_leakage_tracking_en_tx2">
                                                             <property name="label" translatable="yes">LO Leakage</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -2255,7 +2276,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="pa_correction_tracking_en_tx2">
                                                             <property name="label" translatable="yes">PA Correction</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -2272,7 +2292,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="quadrature_tracking_en_tx2">
                                                             <property name="label" translatable="yes">Quadrature</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -2289,7 +2308,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="loopback_delay_tracking_en_tx2">
                                                             <property name="label" translatable="yes">Loopback Delay</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -2306,7 +2324,6 @@
                                                         <child>
                                                           <object class="GtkCheckButton" id="close_loop_gain_tracking_en_tx2">
                                                             <property name="label" translatable="yes">Close Loop Gain</property>
-                                                            <property name="use_action_appearance">False</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="receives_default">False</property>
@@ -2324,8 +2341,8 @@
                                                           <object class="GtkLabel" id="label58">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -2370,8 +2387,8 @@
                                                           <object class="GtkLabel" id="nco_label_tx2">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">NCO (Hz):</property>
                                                             <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">NCO (Hz):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="top_attach">3</property>
@@ -2385,9 +2402,10 @@
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                            <property name="text" translatable="yes">0,000000</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
                                                             <property name="adjustment">adjustment_nco_tx2</property>
                                                             <property name="digits">6</property>
                                                           </object>
@@ -2441,7 +2459,6 @@
                                 <property name="can_focus">False</property>
                                 <child>
                                   <object class="GtkToggleToolButton" id="tx_toggle">
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Zoom In</property>
@@ -2576,7 +2593,6 @@
                                 <property name="can_focus">False</property>
                                 <child>
                                   <object class="GtkToggleToolButton" id="fpga_toggle">
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="label" translatable="yes">Zoom In</property>
@@ -2633,7 +2649,6 @@
                 <child>
                   <object class="GtkButton" id="settings_reload">
                     <property name="label">Reload Settings</property>
-                    <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
@@ -2690,7 +2705,6 @@
                     <property name="can_focus">False</property>
                     <child>
                       <object class="GtkToolButton" id="previous_pict">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="label" translatable="yes">Previous</property>
@@ -2704,7 +2718,6 @@
                     </child>
                     <child>
                       <object class="GtkToolButton" id="zoom_image">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="label" translatable="yes">Zoom In</property>
@@ -2718,7 +2731,6 @@
                     </child>
                     <child>
                       <object class="GtkToolButton" id="unzoom_image">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="label" translatable="yes">Zoom Out</property>
@@ -2732,7 +2744,6 @@
                     </child>
                     <child>
                       <object class="GtkToolButton" id="auto_image">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="label" translatable="yes">Reset Zoom</property>
@@ -2746,7 +2757,6 @@
                     </child>
                     <child>
                       <object class="GtkToolButton" id="next_pict">
-                        <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="label" translatable="yes">Next</property>
