@@ -690,7 +690,7 @@ static bool connect_fillin(Dialogs *data)
 	if (ctx) {
 		for (i = 0; i < iio_context_get_devices_count(ctx); i++) {
 			struct iio_device *dev = iio_context_get_device(ctx, i);
-			sprintf(text, "%s\n", iio_device_get_name(dev));
+			snprintf(text, sizeof(text), "%s\n", iio_device_get_name(dev));
 			gtk_text_buffer_insert(buf, &iter, text, -1);
 		}
 	} else {
@@ -710,7 +710,7 @@ static bool connect_fillin(Dialogs *data)
 			ssize_t ret;
 			ret = iio_context_get_attr(ctx, i, &key, &value);
 			if (!ret) {
-				sprintf(text, "%s = %s\n", key, value);
+				snprintf(text, sizeof(text), "%s = %s\n", key, value);
 				gtk_text_buffer_insert(buf, &iter, text, -1);
 			}
 		}
