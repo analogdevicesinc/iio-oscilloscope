@@ -55,14 +55,7 @@ static CURLcode git_request(const char *url, char **out_data)
 		goto cleanup;
 	}
 
-	c_ret = curl_easy_setopt(c_handle, CURLOPT_SSL_VERIFYPEER, false);
-	if (c_ret != CURLE_OK) {
-		printf("curl_easy_setop(with CURLOPT_SSL_VERIFYPEER) failed: %s\n",
-			   curl_easy_strerror(c_ret));
-		goto cleanup;
-	}
-
-	c_ret = curl_easy_setopt(c_handle, CURLOPT_USERAGENT, "pixelpulse2");
+	c_ret = curl_easy_setopt(c_handle, CURLOPT_USERAGENT, "iio-oscilloscope");
 	if (c_ret != CURLE_OK) {
 		printf("curl_easy_setop(with CURLOPT_USERAGENT) failed: %s\n",
 			   curl_easy_strerror(c_ret));

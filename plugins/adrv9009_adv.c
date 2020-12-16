@@ -1090,8 +1090,10 @@ static GtkWidget *adrv9009adv_init(struct osc_plugin *plugin, GtkWidget *noteboo
 
 	GtkBuilder *builder = gtk_builder_new();
 
-	if (osc_load_glade_file(builder, "adrv9009_adv") < 0)
+	if (osc_load_glade_file(builder, "adrv9009_adv") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	/* At this point the function cannot fail - initialize priv */
 	priv->ctx = ctx;
@@ -1155,9 +1157,9 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 	g_free(plugin->priv->sr_attribs);
 
 	osc_plugin_context_free_resources(&plugin->priv->plugin_ctx);
-	
+
 	osc_destroy_context(plugin->priv->ctx);
-	
+
 	g_free(plugin->priv);
 }
 

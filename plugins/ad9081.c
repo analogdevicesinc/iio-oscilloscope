@@ -28,7 +28,7 @@
  * 81 = 2 widgets per maximmum of 8 rx channels + 8 widgets per maximun 8 tx
  * channels + 1 combo box for global RX configuration...
  */
-#define NUM_MAX_WIDGETS			162
+#define NUM_MAX_WIDGETS			163
 
 const gdouble mhz_scale = 1000000.0;
 const gdouble k_scale = 1000.0;
@@ -298,6 +298,30 @@ static void ad9081_adjust_main_nco(GtkBuilder *builder,
 	gtk_adjustment_set_lower(main_nco_adjust, -freq / 2);
 }
 
+static void ad9081_label_writer(GtkBuilder *builder, struct iio_channel *voltage,
+	const int chann_nr, const char *name)
+{
+	char buf[32];
+	int ret;
+
+	if (!voltage)
+		return;
+
+	ret = iio_channel_attr_read(voltage, "label", buf, sizeof(buf));
+	if (ret > 0) {
+		GtkWidget *label;
+		gchar *text, *id;
+
+		id = g_strdup_printf("label_%s", name);
+		label = GTK_WIDGET(gtk_builder_get_object(builder, id));
+		g_free(id);
+
+		text = g_strdup_printf("<b>Channel%d</b> [%s]", chann_nr + 1, buf);
+		gtk_label_set_markup(GTK_LABEL(label), text);
+		g_free(text);
+	}
+}
+
 static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 			      const char *ini_fn)
 {
@@ -363,6 +387,15 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 					"test_mode_available", builder,
 					"rx_test_mode", NULL);
 
+	iio_combo_box_init_from_builder(&priv->iio_widgets[priv->num_widgets++],
+					ad9081_dev, ch0, "nyquist_zone",
+					"nyquist_zone_available", builder,
+					"rx_nyquist_zone", NULL);
+
+	iio_spin_button_int_init_from_builder(&priv->iio_widgets[priv->num_widgets++],
+					ad9081_dev, NULL, "loopback_mode", builder,
+					"loopback_mode", 0);
+
 	/* TX Global */
 	ch0 = iio_device_find_channel(ad9081_dev, "voltage0_i", TRUE);
 
@@ -385,6 +418,9 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 		in_voltage = iio_device_find_channel(ad9081_dev,
 						     channels[idx].iio_name, 0);
+
+		ad9081_label_writer(builder, in_voltage, idx, channels[idx].rx_name);
+
 		if (in_voltage && iio_channel_find_attr(in_voltage, "channel_nco_frequency")) {
 			ret = ad9081_add_chan_widgets(builder, priv,
 						      ad9081_dev,
@@ -406,6 +442,9 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 tx_chann:
 		out_voltage = iio_device_find_channel(ad9081_dev,
 						      channels[idx].iio_name, TRUE);
+
+		ad9081_label_writer(builder, out_voltage, idx, channels[idx].tx_name);
+
 		if (out_voltage) {
 			ret = ad9081_add_chan_widgets(builder, priv,
 						      ad9081_dev,

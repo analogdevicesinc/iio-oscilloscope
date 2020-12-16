@@ -629,7 +629,7 @@ static gboolean update_display(gpointer foo)
 		guint i = 0;
 
 		rssi_update_labels();
-		
+
 		for (; i < phy_devs_count; i++) {
 			gain_mode = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(subcomponents[i].rx_gain_control_modes_rx1));
 
@@ -1112,8 +1112,10 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	cap_obs = iio_context_find_device(ctx, CAP_DEVICE_2);
 
 	builder = gtk_builder_new();
-	if (osc_load_glade_file(builder, "adrv9009") < 0)
+	if (osc_load_glade_file(builder, "adrv9009") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	/* Are there more adrv9009-phy devices? */
 	GArray *phy_adrv9009_devs = get_iio_devices_starting_with(ctx, PHY_DEVICE);
@@ -1202,7 +1204,8 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 		if (i > 0) {
 			if (osc_load_objects_from_glade_file(subcomponents[i].builder, "adrv9009", ui_object_ids)) {
 				fprintf(stderr, "Error, could not add objects from adrv9009 glade file\n");
-				return FALSE;
+				osc_destroy_context(ctx);
+				return NULL;
 			}
 		}
 		subcomponents[i].section_containers[SECTION_GLOBAL] =
@@ -1279,7 +1282,7 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	section_setting[SECTION_FPGA] = GTK_WIDGET(gtk_builder_get_object(builder, "fpga_settings"));
 
 	gtk_combo_box_set_active(GTK_COMBO_BOX(ensm_mode_available), 0);
-	
+
 	for (i = 0; i < phy_devs_count; i++) {
 		gtk_combo_box_set_active(GTK_COMBO_BOX(subcomponents[i].rx_gain_control_modes_rx1), 0);
 	}
@@ -1529,9 +1532,9 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 			iio_spin_button_init_from_builder(&subcomponents[i].tx_widgets[subcomponents[i].num_tx++],
 							subcomponents[i].iio_dev, subcomponents[i].out_ch1, "hardwaregain", builder,
 							"hardware_gain_tx2", &inv_scale);
-			
+
 			subcomponents[i].tx_sample_freq = subcomponents[i].num_tx;
-			
+
 			iio_spin_button_int_init_from_builder(&subcomponents[i].tx_widgets[subcomponents[i].num_tx++],
 							subcomponents[i].iio_dev, subcomponents[i].out_ch0, "sampling_frequency", builder,
 							"sampling_freq_tx", &mhz_scale);

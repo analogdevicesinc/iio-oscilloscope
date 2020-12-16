@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.18.3 -->
+<!-- Generated with glade 3.22.2 -->
 <interface>
   <object class="GtkAdjustment" id="adjustment_hmc425">
     <property name="lower">-31</property>
@@ -45,6 +45,12 @@
     <property name="upper">1</property>
     <property name="step_increment">0.01</property>
     <property name="page_increment">1</property>
+  </object>
+  <object class="GtkAdjustment" id="loopback_mode_adjustment">
+    <property name="upper">2</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">1</property>
+    <property name="page_size">1</property>
   </object>
   <object class="GtkAdjustment" id="main_rx_nco_adjust_1">
     <property name="lower">-2000</property>
@@ -610,6 +616,7 @@
                                               <object class="GtkTable" id="table16">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="n_rows">3</property>
                                                 <property name="n_columns">2</property>
                                                 <property name="column_spacing">5</property>
                                                 <child>
@@ -631,7 +638,67 @@
                                                   <packing>
                                                     <property name="left_attach">1</property>
                                                     <property name="right_attach">2</property>
-                                                    <property name="x_options"/>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options"/>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkLabel" id="label104">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="label" translatable="yes">Nyquist Zone:</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="top_attach">1</property>
+                                                    <property name="bottom_attach">2</property>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options">GTK_FILL</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkComboBoxText" id="rx_nyquist_zone">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left_attach">1</property>
+                                                    <property name="right_attach">2</property>
+                                                    <property name="top_attach">1</property>
+                                                    <property name="bottom_attach">2</property>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options"/>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkLabel" id="label4">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="label" translatable="yes">Loopback Mode:</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="top_attach">2</property>
+                                                    <property name="bottom_attach">3</property>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options">GTK_FILL</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkSpinButton" id="loopback_mode">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="invisible_char">●</property>
+                                                    <property name="text" translatable="yes">0,000</property>
+                                                    <property name="primary_icon_activatable">False</property>
+                                                    <property name="secondary_icon_activatable">False</property>
+                                                    <property name="adjustment">loopback_mode_adjustment</property>
+                                                    <property name="climb_rate">1</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left_attach">1</property>
+                                                    <property name="right_attach">2</property>
+                                                    <property name="top_attach">2</property>
+                                                    <property name="bottom_attach">3</property>
+                                                    <property name="x_options">GTK_FILL</property>
                                                     <property name="y_options"/>
                                                   </packing>
                                                 </child>
@@ -866,7 +933,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label4">
+                          <object class="GtkLabel" id="label_channel_rx_0">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 1&lt;/b&gt;</property>
@@ -1005,7 +1072,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label8">
+                          <object class="GtkLabel" id="label_channel_rx_1">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 2&lt;/b&gt;</property>
@@ -1144,7 +1211,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label11">
+                          <object class="GtkLabel" id="label_channel_rx_2">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 3&lt;/b&gt;</property>
@@ -1283,7 +1350,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label18">
+                          <object class="GtkLabel" id="label_channel_rx_3">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 4&lt;/b&gt;</property>
@@ -1422,7 +1489,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label15">
+                          <object class="GtkLabel" id="label_channel_rx_4">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 5&lt;/b&gt;</property>
@@ -1561,7 +1628,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label21">
+                          <object class="GtkLabel" id="label_channel_rx_5">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 6&lt;/b&gt;</property>
@@ -1700,7 +1767,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label24">
+                          <object class="GtkLabel" id="label_channel_rx_6">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 7&lt;/b&gt;</property>
@@ -1839,7 +1906,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label6">
+                          <object class="GtkLabel" id="label_channel_rx_7">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 8&lt;/b&gt;</property>
@@ -2407,7 +2474,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label31">
+                          <object class="GtkLabel" id="label_channel_tx_0">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 1&lt;/b&gt;</property>
@@ -2797,7 +2864,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label43">
+                          <object class="GtkLabel" id="label_channel_tx_1">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 2&lt;/b&gt;</property>
@@ -3187,7 +3254,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label53">
+                          <object class="GtkLabel" id="label_channel_tx_2">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 3&lt;/b&gt;</property>
@@ -3577,7 +3644,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label62">
+                          <object class="GtkLabel" id="label_channel_tx_3">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 4&lt;/b&gt;</property>
@@ -3967,7 +4034,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label71">
+                          <object class="GtkLabel" id="label_channel_tx_4">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 5&lt;/b&gt;</property>
@@ -4357,7 +4424,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label80">
+                          <object class="GtkLabel" id="label_channel_tx_5">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 6&lt;/b&gt;</property>
@@ -4747,7 +4814,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label89">
+                          <object class="GtkLabel" id="label_channel_tx_6">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 7&lt;/b&gt;</property>
@@ -5137,7 +5204,7 @@
                           </object>
                         </child>
                         <child type="label">
-                          <object class="GtkLabel" id="label98">
+                          <object class="GtkLabel" id="label_channel_tx_7">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="label" translatable="yes">&lt;b&gt;Channel 8&lt;/b&gt;</property>

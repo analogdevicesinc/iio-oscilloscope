@@ -111,6 +111,7 @@ struct plugin_private {
 	gint this_page;
 	gint refresh_timeout;
 	char last_profile[PATH_MAX];
+	char last_stream[PATH_MAX];
 	struct adrv9002_gtklabel temperature;
 	/* rx */
 	struct adrv9002_rx rx_widgets[ADRV9002_NUM_CHANNELS];
@@ -603,30 +604,80 @@ static void check_nco_support(struct plugin_private *priv)
 	}
 }
 
-static void load_profile(GtkFileChooser *chooser, gpointer data)
+static char *read_file(const char *file, ssize_t *f_size)
 {
-	struct plugin_private *priv = data;
-	char *file_name = gtk_file_chooser_get_filename(chooser);
 	FILE *f;
 	char *buf;
-	int ret;
 	ssize_t size;
 
-	f = fopen(file_name, "r");
+	f = fopen(file, "r");
 	if (!f)
-		goto err;
+		return NULL;
 
 	fseek(f, 0, SEEK_END);
 	size = ftell(f);
 	rewind(f);
+
 	buf = malloc(size);
 	if (!buf) {
 		fclose(f);
-		goto err;
+		return NULL;
 	}
 
-	size = fread(buf, sizeof(char), size, f);
+	*f_size = fread(buf, sizeof(char), size, f);
+	if (*f_size < size) {
+		free(buf);
+		buf = NULL;
+	}
+
 	fclose(f);
+	return buf;
+}
+
+static void load_stream(GtkFileChooser *chooser, gpointer data)
+{
+	struct plugin_private *priv = data;
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+	char *buf;
+	ssize_t size;
+	int ret;
+
+	buf = read_file(file_name, &size);
+	if (!buf)
+		goto err;
+
+	ret = iio_device_attr_write_raw(priv->adrv9002, "stream_config", buf, size);
+	free(buf);
+	if (ret < 0)
+		goto err;
+
+	gtk_file_chooser_set_filename(chooser, file_name);
+	strncpy(priv->last_stream, file_name, sizeof(priv->last_stream) - 1);
+	g_free(file_name);
+	return;
+err:
+	g_free(file_name);
+	dialog_box_message(GTK_WIDGET(chooser), "Stream Loading Failed",
+			   "Failed to load stream using the selected file!");
+
+	if (priv->last_stream[0])
+		gtk_file_chooser_set_filename(chooser, priv->last_stream);
+	else
+		gtk_file_chooser_set_filename(chooser, "(None)");
+}
+
+static void load_profile(GtkFileChooser *chooser, gpointer data)
+{
+	struct plugin_private *priv = data;
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+	char *buf;
+	int ret;
+	ssize_t size;
+
+	buf = read_file(file_name, &size);
+	if (!buf)
+		goto err;
+
 	g_source_remove(priv->refresh_timeout);
 	iio_context_set_timeout(priv->ctx, 30000);
 	ret = iio_device_attr_write_raw(priv->adrv9002, "profile_config", buf,
@@ -1178,6 +1229,10 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	g_builder_connect_signal(priv->builder, "profile_config", "file-set",
 	                         G_CALLBACK(load_profile), priv);
 
+	/* load stream cb */
+	g_builder_connect_signal(priv->builder, "stream_config", "file-set",
+	                         G_CALLBACK(load_stream), priv);
+
 	/* init temperature label */
 	temp = iio_device_find_channel(priv->adrv9002, "temp0", false);
 	if (!temp)
@@ -1249,6 +1304,7 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 		dac_data_manager_free(priv->dac_manager[i].dac_tx_manager);
 	}
 
+	g_source_remove(priv->refresh_timeout);
 	g_free(priv);
 }
 

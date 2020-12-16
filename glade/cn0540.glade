@@ -4,6 +4,7 @@
   <!-- interface-naming-policy project-wide -->
   <object class="GtkActionGroup" id="actiongroup1"/>
   <object class="GtkTextBuffer" id="calib_buffer"/>
+  <object class="GtkTextBuffer" id="cc_buffer"/>
   <object class="GtkTextBuffer" id="fda_buffer"/>
   <object class="GtkTextBuffer" id="fda_mode_buffer"/>
   <object class="GtkTextBuffer" id="shutdown_buffer"/>
@@ -148,6 +149,48 @@
                                     <property name="expand">False</property>
                                     <property name="fill">False</property>
                                     <property name="position">1</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkHBox" id="hbox4">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <child>
+                                      <object class="GtkCheckButton" id="tgbtn_cc">
+                                        <property name="label" translatable="yes">CONSTANT CURRENT </property>
+                                        <property name="width_request">180</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="active">True</property>
+                                        <property name="draw_indicator">True</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">False</property>
+                                        <property name="fill">True</property>
+                                        <property name="position">0</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkTextView" id="cc_status">
+                                        <property name="width_request">116</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="wrap_mode">word-char</property>
+                                        <property name="justification">center</property>
+                                        <property name="buffer">cc_buffer</property>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">False</property>
+                                        <property name="fill">False</property>
+                                        <property name="position">1</property>
+                                      </packing>
+                                    </child>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">True</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">2</property>
                                   </packing>
                                 </child>
                               </object>

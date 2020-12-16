@@ -142,8 +142,10 @@ static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		return NULL;
 
 	builder = gtk_builder_new();
-	if (osc_load_glade_file(builder, "generic_dac") < 0)
+	if (osc_load_glade_file(builder, "generic_dac") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	generic_panel = GTK_WIDGET(gtk_builder_get_object(builder, "generic_panel"));
 	dds_vbox = GTK_WIDGET(gtk_builder_get_object(builder, "dds_vbox"));

@@ -1582,8 +1582,10 @@ static GtkWidget * debug_init(struct osc_plugin *plugin, GtkWidget *notebook, co
 	}
 
 	builder = gtk_builder_new();
-	if (osc_load_glade_file(builder, "debug") < 0)
+	if (osc_load_glade_file(builder, "debug") < 0) {
+		osc_destroy_context(ctx);
 		return NULL;
+	}
 
 	debug_panel = GTK_WIDGET(gtk_builder_get_object(builder, "reg_debug_panel"));
 	vbox_device_list = GTK_WIDGET(gtk_builder_get_object(builder, "device_list_container"));
