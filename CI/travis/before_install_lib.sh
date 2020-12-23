@@ -2,19 +2,22 @@
 
 . ./CI/travis/lib.sh
 
+# All these functions get used only if no PACKAGE_TO_INSTALL is defined
+# or INSTALL_FROM_SW_DOWNLOADS != 1
+# They are useful only for local builds, where this should build iio-osc
+# locally and also building some deps
+
+WORKDIR="${PWD}/deps"
+mkdir -p "$WORKDIR"
+STAGINGDIR="${STAGINGDIR:-${WORKDIR}/staging}"
+
 # arbitrary number of jobs
 NUM_JOBS=3
 
 __make() {
-	if [ "$TRAVIS" = "true" ] || [ "$INSIDE_DOCKER" = "1" ] ; then
-		$configure --prefix=/usr $LIBDIR
-		$make -j${NUM_JOBS}
-		sudo $make install
-	else
-		$configure --prefix="$STAGINGDIR" $SILENCED
-		CFLAGS=-I${STAGINGDIR}/include LDFLAGS=-L${STAGINGDIR}/lib $make -j${NUM_JOBS} $SILENCED
-		$SUDO $make install
-	fi
+	$configure --prefix="$STAGINGDIR" $SILENCED
+	CFLAGS=-I${STAGINGDIR}/include LDFLAGS=-L${STAGINGDIR}/lib $make -j${NUM_JOBS} $SILENCED
+	$SUDO $make install
 }
 
 __cmake() {
@@ -22,17 +25,11 @@ __cmake() {
 	mkdir -p build
 	cd build # build
 
-	if [ "$TRAVIS" = "true" ] || [ "$INSIDE_DOCKER" = "1" ] ; then
-		cmake $args ..
-		make -j${NUM_JOBS}
-		sudo make install
-	else
-		cmake -DCMAKE_PREFIX_PATH="$STAGINGDIR" -DCMAKE_INSTALL_PREFIX="$STAGINGDIR" \
-			-DCMAKE_EXE_LINKER_FLAGS="-L${STAGINGDIR}/lib" \
-			$args .. $SILENCED
-		CFLAGS=-I${STAGINGDIR}/include LDFLAGS=-L${STAGINGDIR}/lib make -j${NUM_JOBS} $SILENCED
-		make install
-	fi
+	cmake -DCMAKE_PREFIX_PATH="$STAGINGDIR" -DCMAKE_INSTALL_PREFIX="$STAGINGDIR" \
+		-DCMAKE_EXE_LINKER_FLAGS="-L${STAGINGDIR}/lib" \
+		$args .. $SILENCED
+	CFLAGS=-I${STAGINGDIR}/include LDFLAGS=-L${STAGINGDIR}/lib make -j${NUM_JOBS} $SILENCED
+	make install
 
 	cd ..
 }
