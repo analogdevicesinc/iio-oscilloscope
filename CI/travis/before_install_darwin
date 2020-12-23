@@ -3,18 +3,16 @@
 . CI/travis/lib.sh
 . CI/travis/before_install_lib.sh
 
-brew unlink python@2
-
 brew_install_if_not_exists cmake fftw libmatio \
 	libxml2 pkg-config libusb gtk+ gtkdatabox \
 	jansson glib curl openssl@1.1 \
-	gettext libserialport
+	gettext libserialport python
 
-for pkg in gettext ; do
-	brew link --overwrite --force $pkg
-done
-
-if [ "$TRAVIS" == "true" ] ; then
+if [ -n "$PACKAGE_TO_INSTALL" ] ; then
+	for file in $PACKAGE_TO_INSTALL ; do
+		sudo installer -pkg "${file}" -target /
+	done
+elif [ "$INSTALL_FROM_SW_DOWNLOADS" = "1" ] ; then
 	for pkg in libiio libad9361-iio ; do
 		wget http://swdownloads.analog.com/cse/travis_builds/master_latest_${pkg}${LDIST}.pkg
 		sudo installer -pkg master_latest_${pkg}${LDIST}.pkg -target /
@@ -24,4 +22,3 @@ else
 
 	cmake_build_git "libad9361-iio" "https://github.com/analogdevicesinc/libad9361-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.dylib"
 fi
-
