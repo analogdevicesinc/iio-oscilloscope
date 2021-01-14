@@ -50,7 +50,6 @@
     <property name="upper">2</property>
     <property name="step_increment">1</property>
     <property name="page_increment">1</property>
-    <property name="page_size">1</property>
   </object>
   <object class="GtkAdjustment" id="main_rx_nco_adjust_1">
     <property name="lower">-2000</property>
@@ -611,12 +610,14 @@
                                           <object class="GtkAlignment" id="alignment43">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="left_padding">12</property>
+                                            <property name="bottom_padding">5</property>
+                                            <property name="left_padding">5</property>
+                                            <property name="right_padding">5</property>
                                             <child>
                                               <object class="GtkTable" id="table16">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="n_rows">3</property>
+                                                <property name="n_rows">4</property>
                                                 <property name="n_columns">2</property>
                                                 <property name="column_spacing">5</property>
                                                 <child>
@@ -700,6 +701,32 @@
                                                     <property name="bottom_attach">3</property>
                                                     <property name="x_options">GTK_FILL</property>
                                                     <property name="y_options"/>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkLabel" id="label6">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="label" translatable="yes">PFIR Config:</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="top_attach">3</property>
+                                                    <property name="bottom_attach">4</property>
+                                                    <property name="x_options">GTK_FILL</property>
+                                                    <property name="y_options">GTK_FILL</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkFileChooserButton" id="pfir_config">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="title" translatable="yes"/>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left_attach">1</property>
+                                                    <property name="right_attach">2</property>
+                                                    <property name="top_attach">3</property>
+                                                    <property name="bottom_attach">4</property>
                                                   </packing>
                                                 </child>
                                               </object>
