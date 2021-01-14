@@ -594,6 +594,9 @@ tx_chann:
 		g_array_free(devices, FALSE);
 
 		hmc425 = iio_context_find_device(priv->ctx, "hmc425a");
+		if (!hmc425)
+			hmc425 = iio_context_find_device(priv->ctx, "hmc540s");
+
 		if (!hmc425) {
 			gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder,
 									  "hmc425")));
