@@ -8,8 +8,9 @@
  **/
 #include <errno.h>
 #include <stdio.h>
-#include <gtk/gtk.h>
+#include <string.h>
 #include <glib.h>
+#include <gtk/gtk.h>
 
 #include "../osc.h"
 #include "../osc_plugin.h"
@@ -33,11 +34,31 @@
 const gdouble mhz_scale = 1000000.0;
 const gdouble k_scale = 1000.0;
 
+#define dialog_box_message(widget, title, msg) { 					\
+	GtkWidget *toplevel = gtk_widget_get_toplevel(widget);				\
+											\
+	if (gtk_widget_is_toplevel(toplevel)) {						\
+		GtkWidget *dialog;							\
+											\
+		dialog = gtk_message_dialog_new(GTK_WINDOW(toplevel),			\
+					GTK_DIALOG_DESTROY_WITH_PARENT,			\
+					GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,		\
+					msg);						\
+											\
+		gtk_window_set_title(GTK_WINDOW(dialog), title);			\
+		gtk_dialog_run(GTK_DIALOG(dialog));					\
+		gtk_widget_destroy (dialog);						\
+	} else {									\
+		printf("Cannot display dialog: Toplevel wigdet not found\n");		\
+	}										\
+}
+
 struct plugin_private {
 	/* plugin context */
 	struct osc_plugin_context plugin_ctx;
 	/* iio */
 	struct iio_context *ctx;
+	struct iio_device *ad9081;
 	/* misc */
 	gboolean plugin_detached;
 	gint this_page;
@@ -48,6 +69,7 @@ struct plugin_private {
 	struct dac_data_manager *dac_tx_manager;
 	gboolean has_once_updated;
 	const char *dac_name;
+	char last_pfir[PATH_MAX];
 };
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
@@ -322,6 +344,70 @@ static void ad9081_label_writer(GtkBuilder *builder, struct iio_channel *voltage
 	}
 }
 
+static char *read_file(const char *file, ssize_t *f_size)
+{
+	FILE *f;
+	char *buf;
+	ssize_t size;
+
+	f = fopen(file, "r");
+	if (!f)
+		return NULL;
+
+	fseek(f, 0, SEEK_END);
+	size = ftell(f);
+	rewind(f);
+
+	buf = malloc(size);
+	if (!buf) {
+		fclose(f);
+		return NULL;
+	}
+
+	*f_size = fread(buf, sizeof(char), size, f);
+	if (*f_size < size) {
+		free(buf);
+		buf = NULL;
+	}
+
+	fclose(f);
+
+	return buf;
+}
+
+static void load_pfir(GtkFileChooser *chooser, gpointer data)
+{
+	struct plugin_private *priv = data;
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+	char *buf;
+	ssize_t size;
+	int ret;
+
+	buf = read_file(file_name, &size);
+	if (!buf)
+		goto err;
+
+	ret = iio_device_attr_write_raw(priv->ad9081, "filter_fir_config", buf, size);
+	free(buf);
+	if (ret < 0)
+		goto err;
+
+	gtk_file_chooser_set_filename(chooser, file_name);
+	strncpy(priv->last_pfir, file_name, sizeof(priv->last_pfir) - 1);
+	g_free(file_name);
+
+	return;
+err:
+	g_free(file_name);
+	dialog_box_message(GTK_WIDGET(chooser), "PFIR Loading Failed",
+			   "Failed to PFIR using the selected file!");
+
+	if (priv->last_pfir[0])
+		gtk_file_chooser_set_filename(chooser, priv->last_pfir);
+	else
+		gtk_file_chooser_set_filename(chooser, "(None)");
+}
+
 static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 			      const char *ini_fn)
 {
@@ -361,6 +447,8 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		printf("Could not find iio device:%s\n", dev_name);
 		goto error_free_ctx;
 	}
+
+	priv->ad9081 = ad9081_dev;
 
 	if (osc_load_glade_file(builder, "ad9081") < 0)
 		goto error_free_ctx;
@@ -535,6 +623,14 @@ tx_chann:
 
 	g_signal_connect_after(G_OBJECT(notebook), "switch-page",
 			       G_CALLBACK(select_page_cb), priv);
+
+	/* load pfir cb */
+	g_builder_connect_signal(builder, "pfir_config", "file-set",
+	                         G_CALLBACK(load_pfir), priv);
+
+	gtk_file_chooser_set_current_folder(
+		GTK_FILE_CHOOSER(gtk_builder_get_object(builder, "pfir_config")),
+		OSC_FILTER_FILE_PATH"/ad9081");
 
 	return ad9081_panel;
 
