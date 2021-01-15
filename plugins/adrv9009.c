@@ -1334,10 +1334,6 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 
 	/* Transmit settings */
 
-	GtkWidget *sfreq = GTK_WIDGET(gtk_builder_get_object(builder, "sampling_freq_tx"));
-	GtkAdjustment *sfreq_adj = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(sfreq));
-	gtk_adjustment_set_upper(sfreq_adj, 307.20); // are these 3 lines necessary?
-
 	/* Bind the IIO device files to the GUI widgets */
 
 	/* Treat 'ensm_mode_available' separately because it will be shared between devices (when more are avaialable) */
