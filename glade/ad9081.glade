@@ -2011,7 +2011,7 @@
                           <object class="GtkLabel" id="label105">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="label" translatable="yes">&lt;b&gt;HMC425  DSA&lt;/b&gt;</property>
+                            <property name="label" translatable="yes">&lt;b&gt;External DSA&lt;/b&gt;</property>
                             <property name="use_markup">True</property>
                           </object>
                         </child>
