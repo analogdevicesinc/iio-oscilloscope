@@ -529,14 +529,14 @@
     </action-widgets>
   </object>
   <object class="GtkAdjustment" id="adjustmentYmax">
-    <property name="lower">-524287</property>
-    <property name="upper">524287</property>
+    <property name="lower">-2147483648</property>
+    <property name="upper">2147483647</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustmentYmin">
-    <property name="lower">-65536</property>
-    <property name="upper">65535</property>
+    <property name="lower">-2147483648</property>
+    <property name="upper">2147483647</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
