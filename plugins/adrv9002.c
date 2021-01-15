@@ -1229,9 +1229,17 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	g_builder_connect_signal(priv->builder, "profile_config", "file-set",
 	                         G_CALLBACK(load_profile), priv);
 
+	gtk_file_chooser_set_current_folder(
+		GTK_FILE_CHOOSER(gtk_builder_get_object(priv->builder, "profile_config")),
+		OSC_FILTER_FILE_PATH"/adrv9002");
+
 	/* load stream cb */
 	g_builder_connect_signal(priv->builder, "stream_config", "file-set",
 	                         G_CALLBACK(load_stream), priv);
+
+	gtk_file_chooser_set_current_folder(
+		GTK_FILE_CHOOSER(gtk_builder_get_object(priv->builder, "stream_config")),
+		OSC_FILTER_FILE_PATH"/adrv9002");
 
 	/* init temperature label */
 	temp = iio_device_find_channel(priv->adrv9002, "temp0", false);
