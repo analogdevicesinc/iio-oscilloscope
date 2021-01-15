@@ -10,7 +10,7 @@ fi
 handle_default() {
 	mkdir -p build
 	cd build
-	if [ "$TRAVIS" = "true" ] || [ "$INSIDE_DOCKER" = "1" ] ; then
+	if [ -n "$PACKAGE_TO_INSTALL" ] || [ "$INSTALL_FROM_SW_DOWNLOADS" = "1" ] ; then
 		cmake ..
 		make
 	else
@@ -26,18 +26,18 @@ handle_centos() {
 	handle_default
 }
 
-handle_centos_docker() {
-        run_docker_script inside_docker.sh \
-                "centos:centos${OS_VERSION}" "centos"
+handle_ubuntu() {
+	handle_default
 }
 
-handle_ubuntu_docker() {
-        run_docker_script inside_docker.sh \
-                "ubuntu:${OS_VERSION}"
+handle_debian() {
+	handle_default
 }
 
-LIBNAME="iio-oscilloscope"
-OS_TYPE=${1:-default}
-OS_VERSION="$2"
+handle_generic_docker() {
+	run_docker_script inside_docker.sh
+}
 
-handle_${OS_TYPE}
+setup_build_type_env_vars
+
+handle_${BUILD_TYPE}

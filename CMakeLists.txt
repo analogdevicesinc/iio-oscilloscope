@@ -71,6 +71,8 @@ link_directories(${CMAKE_PREFIX_PATH}/lib)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	add_compile_options("-F/Library/Frameworks/")
 	link_libraries("-F/Library/Frameworks/")
+	# Fix linking on 10.14+ with Homebrew. See https://stackoverflow.com/questions/54068035
+	LINK_DIRECTORIES(/usr/local/lib)
 endif()
 
 add_definitions(-Dlinux -D_GNU_SOURCE 

@@ -158,7 +158,7 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_sampl_freq_obs">
-    <property name="upper">400</property>
+    <property name="upper">600</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -174,7 +174,7 @@
     <property name="digits">6</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_sampl_freq_rx">
-    <property name="upper">400</property>
+    <property name="upper">600</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -190,7 +190,7 @@
     <property name="digits">6</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_sampl_freq_tx">
-    <property name="upper">400</property>
+    <property name="upper">600</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
