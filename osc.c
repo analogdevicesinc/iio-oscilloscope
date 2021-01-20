@@ -1482,6 +1482,8 @@ static int capture_setup(void)
 			if (timeout > min_timeout)
 				min_timeout = timeout;
 		}
+
+		rx_update_device_sampling_freq(iio_device_get_id(dev), freq);
 	}
 
 	if (ctx)
