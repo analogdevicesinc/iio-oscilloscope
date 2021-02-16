@@ -834,11 +834,14 @@ static void close_plugins(const char *ini_fn)
 
 static void close_plugin(struct osc_plugin *plugin)
 {
-	plugin_lib_list = g_slist_remove(plugin_lib_list, plugin->handle);
-	dlclose(plugin->handle);
 	plugin_list = g_slist_remove(plugin_list, plugin);
-	if (plugin->dynamically_created)
+	plugin_lib_list = g_slist_remove(plugin_lib_list, plugin->handle);
+	if (plugin->dynamically_created) {
+		dlclose(plugin->handle);
 		g_free(plugin);
+	} else {
+		dlclose(plugin->handle);
+	}
 }
 
 static struct osc_plugin * get_plugin_from_name(const char *name)
