@@ -13,9 +13,8 @@ install:
   - appveyor DownloadFile http://files.jrsoftware.org/is/5/innosetup-5.6.1.exe innosetup-5.6.1.exe
   - DISPLAY=:0.0 wine innosetup-5.6.1.exe \/VERYSILENT \/SUPPRESSMSGBOXES
 
-  - 'appveyor DownloadFile "https://ci.appveyor.com/api/projects/analogdevicesinc/iio-osc-mingw/artifacts/iio-osc-i686-build-deps.tar.xz?branch=master&job=Environment: MINGW_VERSION=i686" -FileName iio-osc-i686-build-deps.tar.xz'
-  - 'appveyor DownloadFile "https://ci.appveyor.com/api/projects/analogdevicesinc/iio-osc-mingw/artifacts/iio-osc-x86_64-build-deps.tar.xz?branch=master&job=Environment: MINGW_VERSION=x86_64" -FileName iio-osc-x86_64-build-deps.tar.xz'
-
+  - appveyor DownloadFile https://github.com/analogdevicesinc/iio-osc-mingw/releases/latest/download/iio-osc-i686-build-deps.tar.xz
+  - appveyor DownloadFile https://github.com/analogdevicesinc/iio-osc-mingw/releases/latest/download/iio-osc-x86_64-build-deps.tar.xz
   - tar -xf iio-osc-i686-build-deps.tar.xz
   - tar -xf iio-osc-x86_64-build-deps.tar.xz
 
