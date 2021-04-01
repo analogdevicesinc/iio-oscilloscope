@@ -1,17 +1,18 @@
-<profile Talise version=1 name=Tx_BW400_IR491p52_Rx_BW200_OR245p76_ORx_BW400_OR491p52_DC245p76>
+<profile Talise version=1 name=Tx_BW400_IR491p52_Rx_BW100_OR122p88_ORx_BW400_OR491p52_DC245p76>
  <clocks>
   <deviceClock_kHz=245760>
   <clkPllVcoFreq_kHz=9830400>
   <clkPllHsDiv=2.5>
  </clocks>
 
- <rx name=Rx 200.00MHz, OutputRate 245.76MHz, TotalDecimation 8>
+ <rx name=Rx 100.00MHz, OutputRate 122.88MHz, TotalDecimation 16>
+  <rxChannels=TAL_RX1RX2>
   <rxFirDecimation=2>
   <rxDec5Decimation=4>
-  <rhb1Decimation=1>
-  <rxOutputRate_kHz=245760>
-  <rfBandwidth_Hz=200000000>
-  <rxBbf3dBCorner_kHz=200000>
+  <rhb1Decimation=2>
+  <rxOutputRate_kHz=122880>
+  <rfBandwidth_Hz=100000000>
+  <rxBbf3dBCorner_kHz=100000>
   <rxDdcMode=0>
 
   <rxNcoShifterCfg>
@@ -25,55 +26,103 @@
    <bandBNco2Freq_kHz=0>
   </rxNcoShifterCfg>
 
-  <filter FIR gain_dB=-6 numFirCoefs=24>
-  -194
-  -715
-  777
-  907
-  -1163
-  -1890
-  2240
-  3306
-  -4068
-  -7024
-  9205
-  31112
-  31112
-  9205
-  -7024
-  -4068
-  3306
-  2240
-  -1890
-  -1163
-  907
-  777
-  -715
-  -194
+  <filter FIR gain_dB=-6 numFirCoefs=72>
+  0
+  -1
+  2
+  3
+  -4
+  -7
+  10
+  16
+  -21
+  -31
+  40
+  56
+  -71
+  -96
+  119
+  157
+  -187
+  -241
+  288
+  363
+  -431
+  -538
+  622
+  772
+  -891
+  -1105
+  1264
+  1582
+  -1819
+  -2335
+  2710
+  3697
+  -4461
+  -7201
+  9397
+  31111
+  31111
+  9397
+  -7201
+  -4461
+  3697
+  2710
+  -2335
+  -1819
+  1582
+  1264
+  -1105
+  -891
+  772
+  622
+  -538
+  -431
+  363
+  288
+  -241
+  -187
+  157
+  119
+  -96
+  -71
+  56
+  40
+  -31
+  -21
+  16
+  10
+  -7
+  -4
+  3
+  2
+  -1
+  0
   </filter>
 
   <rxAdcProfile num=42>
-  185
-  141
-  172
+  265
+  146
+  181
   90
   1280
-  942
-  1332
-  90
-  1368
+  366
+  1257
+  27
+  1258
+  17
+  718
+  39
+  48
   46
-  1016
-  19
-  48
-  48
-  37
-  208
+  27
+  161
   0
   0
   0
   0
-  52
+  40
   0
   7
   6
@@ -99,7 +148,8 @@
  </rx>
 
  <obsRx name=Rx 400.00MHz, OutputRate 491.52MHz, TotalDecimation 4>
-  <enAdcStitching=0>
+  <obsRxChannelsEnable=TAL_ORX1>
+  <enAdcStitching=1>
   <rxFirDecimation=1>
   <rxDec5Decimation=4>
   <rhb1Decimation=1>
@@ -109,61 +159,61 @@
   <orxDdcMode=0>
 
   <filter FIR gain_dB=6 numFirCoefs=24>
-  -44
-  22
-  -18
-  -1
-  32
-  -75
-  83
-  -81
-  -15
-  354
-  -1940
-  19672
-  -1940
-  354
-  -15
-  -81
-  83
-  -75
-  32
-  -1
-  -18
-  22
-  -44
+  -25
+  14
+  -13
+  1
+  19
+  -52
+  60
+  -65
+  4
+  233
+  -1475
+  18937
+  -1475
+  233
+  4
+  -65
+  60
+  -52
+  19
+  1
+  -13
+  14
+  -25
   0
   </filter>
 
   <orxLowPassAdcProfile num=42>
-  113
-  171
+  152
+  162
   181
   90
   1280
-  1737
-  1574
-  839
-  1305
-  297
-  846
-  74
-  30
-  41
-  32
-  193
-  0
-  0
-  0
-  0
+  1307
+  1531
+  301
+  1435
+  148
+  972
+  6
   48
+  47
+  36
+  205
   0
   0
   0
+  0
+  51
+  0
+  0
+  6
   24
   0
   0
-  0
+  6
   24
   0
   25
@@ -181,27 +231,27 @@
   </orxLowPassAdcProfile>
 
   <orxBandPassAdcProfile num=42>
-  113
-  171
-  181
+  129
+  131
+  168
   90
   1280
-  1737
-  1574
+  2825
+  2289
+  0
+  1053
   839
-  1305
-  297
-  846
-  74
-  30
-  41
-  32
-  193
+  975
+  111
+  3
+  16
+  28
+  178
   0
   0
   0
   0
-  48
+  45
   0
   0
   0
@@ -225,72 +275,97 @@
   905
   </orxBandPassAdcProfile>
 
+  <orxMergeFilter num=23>
+  -107
+  419
+  -302
+  -398
+  990
+  -471
+  -1150
+  2212
+  -598
+  -4033
+  9267
+  21200
+  9267
+  -4033
+  -598
+  2212
+  -1150
+  -471
+  990
+  -398
+  -302
+  419
+  -107
+  </orxMergeFilter>
  </obsRx>
 
  <lpbk>
   <rxFirDecimation=1>
   <rhb1Decimation=1>
   <outputRate_kHz=491520>
-  <rfBandwidth_Hz=150000000>
+  <rfBandwidth_Hz=75000000>
   <rxBbf3dBCorner_kHz=225000>
 
   <filter FIR gain_dB=6 num=24>
-  -44
-  22
-  -18
-  -1
-  32
-  -75
-  83
-  -81
-  -15
-  354
-  -1940
-  19672
-  -1940
-  354
-  -15
-  -81
-  83
-  -75
-  32
-  -1
-  -18
-  22
-  -44
+  -25
+  14
+  -13
+  1
+  19
+  -52
+  60
+  -65
+  4
+  233
+  -1475
+  18937
+  -1475
+  233
+  4
+  -65
+  60
+  -52
+  19
+  1
+  -13
+  14
+  -25
   0
   </filter>
 
   <lpbkAdcProfile num=42>
-  186
-  148
-  176
+  243
+  143
+  181
   90
   1280
-  901
-  1479
-  225
-  1401
-  85
-  995
-  21
+  485
+  1275
+  37
+  1317
+  23
+  797
+  35
   48
   48
-  36
-  207
+  30
+  174
   0
   0
   0
   0
-  52
+  44
   0
-  0
+  7
   6
-  24
+  42
   0
-  0
+  7
   6
-  24
+  42
   0
   25
   27
@@ -302,12 +377,13 @@
   0
   165
   44
-  15
+  31
   905
   </lpbkAdcProfile>
  </lpbk>
 
  <tx name=Tx 400.00MHz, InputRate 491.52MHz, TotalInterpolation 4>
+  <txChannels=TAL_TX1TX2>
   <dacDiv=1>
   <txFirInterpolation=1>
   <thb1Interpolation=2>
@@ -315,7 +391,7 @@
   <thb3Interpolation=1>
   <txInt5Interpolation=1>
   <txInputRate_kHz=491520>
-  <primarySigBandwidth_Hz=150000000>
+  <primarySigBandwidth_Hz=75000000>
   <rfBandwidth_Hz=400000000>
   <txDac3dBCorner_kHz=400000>
   <txBbf3dBCorner_kHz=200000>
