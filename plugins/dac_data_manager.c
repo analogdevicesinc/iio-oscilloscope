@@ -1460,6 +1460,34 @@ static void dds_locked_freq_cb(GtkToggleButton *btn, struct dds_tx *tx)
 	dds_locked_phase_cb(NULL, tx);
 }
 
+/*
+ * The goal of this API is to handle the frequency attr change for the I type channels.
+ * In single/dual tone modes, the Q channel is not visible to the user and the plugin automatically
+ * changes the gtk widget causing its signal to be called and thus, changing the value in the device.
+ * The problem is that for some frequency values, we won't get exactly what we tried to set
+ * (due to integer approximations in the driver) which means that 'widget->update(widget)'
+ * called from 'iio_widget_save()' will trigger another gtk signal to set the frequency on the Q
+ * channel for the value we got from the driver. Thus, we will end up will slightly different
+ * setting in the I and Q channels. With this handler, we make use of the '*_block_signals_by_data'
+ * to save the widget value and make sure that 'widget->update(widget)' won#t trigger another
+ * signal in case we get a different value.
+ */
+static void save_freq_i_widget_value(void *data)
+{
+	struct dds_tone *tone = data;
+	struct dds_tx *tx = tone->parent->parent;
+
+	switch (gtk_combo_box_get_active(GTK_COMBO_BOX(tx->dds_mode_widget))) {
+	case DDS_TWO_TONE:
+	case DDS_ONE_TONE:
+		iio_widget_save_block_signals_by_data(&tone->iio_freq);
+		break;
+	default:
+		iio_widget_save(&tone->iio_freq);
+		break;
+	}
+}
+
 static void dds_locked_scale_cb(GtkWidget *scale, struct dds_tx *tx)
 {
 	struct dds_tone **tones = tx->dds_tones;
@@ -1727,6 +1755,16 @@ static void tone_setup(struct dds_tone *tone)
 	iio_spin_button_s64_init(&tone->iio_freq,
 			tone->iio_dac, tone->iio_ch, "frequency", tone->freq, &abs_mhz_scale);
 	iio_spin_button_add_progress(&tone->iio_freq);
+	if (tone->parent->type == I_CHANNEL) {
+		iio_spin_button_set_on_complete_function(&tone->iio_freq, save_freq_i_widget_value,
+							 tone);
+		iio_spin_button_skip_save_on_complete(&tone->iio_freq, TRUE);
+		/*
+		 * We just want to block the signal that takes the dds_tx object. Ideally, we
+		 * would do this through an iio_widget api (maybe something to add in the future)
+		 */
+		tone->iio_freq.sig_handler_data = tone->parent->parent;
+	}
 
 	if (combobox_scales) {
 		iio_combo_box_init(&tone->iio_scale, tone->iio_dac, tone->iio_ch, "scale",
