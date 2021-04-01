@@ -709,10 +709,6 @@ err:
 		gtk_file_chooser_set_filename(chooser, priv->last_profile);
 	else
 		gtk_file_chooser_set_filename(chooser, "(None)");
-
-	/* re-arm the timer */
-	priv->refresh_timeout = g_timeout_add(1000, (GSourceFunc)update_display,
-					      priv);
 }
 
 static void adrv9002_combo_box_init(struct adrv9002_combo_box *combo, const char *w_str,
