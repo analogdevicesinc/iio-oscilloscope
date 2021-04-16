@@ -901,6 +901,11 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 					    priv->adrv9002, channel,
 					    "en", priv->builder, widget_str, true);
 
+	sprintf(widget_str, "bbdc_en_rx%d", chann + 1);
+	iio_toggle_button_init_from_builder(&priv->rx_widgets[chann].rx.w[(*n_w)++],
+					    priv->adrv9002, channel,
+					    "bbdc_rejection_en", priv->builder, widget_str, false);
+
 	sprintf(widget_str, "agc_tracking_en_rx%d", chann + 1);
 	iio_toggle_button_init_from_builder(&priv->rx_widgets[chann].rx.w[(*n_w)++],
 					    priv->adrv9002, channel,

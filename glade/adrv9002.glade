@@ -377,16 +377,10 @@
                                                       <object class="GtkTable" id="table2">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
-                                                        <property name="n_rows">10</property>
+                                                        <property name="n_rows">11</property>
                                                         <property name="n_columns">4</property>
                                                         <property name="column_spacing">5</property>
                                                         <property name="row_spacing">5</property>
-                                                        <child>
-                                                          <placeholder/>
-                                                        </child>
-                                                        <child>
-                                                          <placeholder/>
-                                                        </child>
                                                         <child>
                                                           <placeholder/>
                                                         </child>
@@ -534,161 +528,6 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <object class="GtkCheckButton" id="bbdc_rejection_tracking_en_rx1">
-                                                            <property name="label" translatable="yes">BBDC Rejection</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">8</property>
-                                                            <property name="bottom_attach">9</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="hd2_tracking_en_rx1">
-                                                            <property name="label" translatable="yes">HD2</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">9</property>
-                                                            <property name="bottom_attach">10</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label23">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">Tracking:</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="top_attach">7</property>
-                                                            <property name="bottom_attach">8</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label25">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="top_attach">6</property>
-                                                            <property name="bottom_attach">7</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="quadrature_fic_tracking_en_rx1">
-                                                            <property name="label" translatable="yes">Quadrature FIC</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">7</property>
-                                                            <property name="bottom_attach">8</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="agc_tracking_en_rx1">
-                                                            <property name="label" translatable="yes">AGC</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="right_attach">3</property>
-                                                            <property name="top_attach">7</property>
-                                                            <property name="bottom_attach">8</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="quadrature_poly_tracking_en_rx1">
-                                                            <property name="label" translatable="yes">Quadrature Poly</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="right_attach">3</property>
-                                                            <property name="top_attach">8</property>
-                                                            <property name="bottom_attach">9</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="rssi_tracking_en_rx1">
-                                                            <property name="label" translatable="yes">RSSI</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="right_attach">3</property>
-                                                            <property name="top_attach">9</property>
-                                                            <property name="bottom_attach">10</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="rfdc_tracking_en_rx1">
-                                                            <property name="label" translatable="yes">RFDC</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">3</property>
-                                                            <property name="right_attach">4</property>
-                                                            <property name="top_attach">7</property>
-                                                            <property name="bottom_attach">8</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="bandwidth_rx1">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">0</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">6</property>
-                                                            <property name="bottom_attach">7</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
                                                           <object class="GtkLabel" id="label7">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
@@ -716,34 +555,6 @@
                                                             <property name="right_attach">2</property>
                                                             <property name="top_attach">3</property>
                                                             <property name="bottom_attach">4</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="nco_label_rx1">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">NCO (Hz):</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="top_attach">4</property>
-                                                            <property name="bottom_attach">5</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label20">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">Decimated Power (dB):</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="top_attach">5</property>
-                                                            <property name="bottom_attach">6</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
                                                           </packing>
                                                         </child>
                                                         <child>
@@ -779,122 +590,6 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <object class="GtkLabel" id="label57">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">RSSI (dB):</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="right_attach">3</property>
-                                                            <property name="top_attach">5</property>
-                                                            <property name="bottom_attach">6</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label30">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="right_attach">3</property>
-                                                            <property name="top_attach">6</property>
-                                                            <property name="bottom_attach">7</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="sampling_rate_rx1">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">0</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">3</property>
-                                                            <property name="right_attach">4</property>
-                                                            <property name="top_attach">6</property>
-                                                            <property name="bottom_attach">7</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label63">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">Local Oscillator (MHz):</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="right_attach">3</property>
-                                                            <property name="top_attach">4</property>
-                                                            <property name="bottom_attach">5</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkSpinButton" id="lo_freq_rx1">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="invisible_char">•</property>
-                                                            <property name="primary_icon_activatable">False</property>
-                                                            <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
-                                                            <property name="adjustment">adjustment_lo_rx1</property>
-                                                            <property name="digits">6</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">3</property>
-                                                            <property name="right_attach">4</property>
-                                                            <property name="top_attach">4</property>
-                                                            <property name="bottom_attach">5</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkSpinButton" id="nco_freq_rx1">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="invisible_char">•</property>
-                                                            <property name="primary_icon_activatable">False</property>
-                                                            <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
-                                                            <property name="adjustment">adjustment_nco_rx1</property>
-                                                            <property name="digits">6</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">4</property>
-                                                            <property name="bottom_attach">5</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="decimated_power_rx1">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">0</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">5</property>
-                                                            <property name="bottom_attach">6</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
                                                           <object class="GtkLabel" id="label27">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
@@ -909,19 +604,6 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <object class="GtkLabel" id="rssi_rx1">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">0</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">3</property>
-                                                            <property name="right_attach">4</property>
-                                                            <property name="top_attach">5</property>
-                                                            <property name="bottom_attach">6</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
                                                           <object class="GtkLabel" id="label36">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
@@ -933,6 +615,360 @@
                                                             <property name="right_attach">3</property>
                                                             <property name="x_options">GTK_FILL</property>
                                                             <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label23">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Tracking:</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="top_attach">8</property>
+                                                            <property name="bottom_attach">9</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="hd2_tracking_en_rx1">
+                                                            <property name="label" translatable="yes">HD2</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">10</property>
+                                                            <property name="bottom_attach">11</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="bbdc_rejection_tracking_en_rx1">
+                                                            <property name="label" translatable="yes">BBDC Rejection</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">9</property>
+                                                            <property name="bottom_attach">10</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="quadrature_fic_tracking_en_rx1">
+                                                            <property name="label" translatable="yes">Quadrature FIC</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">8</property>
+                                                            <property name="bottom_attach">9</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="rssi_tracking_en_rx1">
+                                                            <property name="label" translatable="yes">RSSI</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">2</property>
+                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">10</property>
+                                                            <property name="bottom_attach">11</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="quadrature_poly_tracking_en_rx1">
+                                                            <property name="label" translatable="yes">Quadrature Poly</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">2</property>
+                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">9</property>
+                                                            <property name="bottom_attach">10</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="agc_tracking_en_rx1">
+                                                            <property name="label" translatable="yes">AGC</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">2</property>
+                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">8</property>
+                                                            <property name="bottom_attach">9</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="rfdc_tracking_en_rx1">
+                                                            <property name="label" translatable="yes">RFDC</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">3</property>
+                                                            <property name="right_attach">4</property>
+                                                            <property name="top_attach">8</property>
+                                                            <property name="bottom_attach">9</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label25">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="top_attach">7</property>
+                                                            <property name="bottom_attach">8</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="bandwidth_rx1">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">0</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">7</property>
+                                                            <property name="bottom_attach">8</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="decimated_power_rx1">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">0</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">6</property>
+                                                            <property name="bottom_attach">7</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label20">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Decimated Power (dB):</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="top_attach">6</property>
+                                                            <property name="bottom_attach">7</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label30">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">2</property>
+                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">7</property>
+                                                            <property name="bottom_attach">8</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="sampling_rate_rx1">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">0</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">3</property>
+                                                            <property name="right_attach">4</property>
+                                                            <property name="top_attach">7</property>
+                                                            <property name="bottom_attach">8</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label57">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">RSSI (dB):</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">2</property>
+                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">6</property>
+                                                            <property name="bottom_attach">7</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="rssi_rx1">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">0</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">3</property>
+                                                            <property name="right_attach">4</property>
+                                                            <property name="top_attach">6</property>
+                                                            <property name="bottom_attach">7</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="nco_label_rx1">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">NCO (Hz):</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="top_attach">5</property>
+                                                            <property name="bottom_attach">6</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkSpinButton" id="nco_freq_rx1">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="invisible_char">●</property>
+                                                            <property name="primary_icon_activatable">False</property>
+                                                            <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
+                                                            <property name="adjustment">adjustment_nco_rx1</property>
+                                                            <property name="digits">6</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">5</property>
+                                                            <property name="bottom_attach">6</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label63">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Local Oscillator (MHz):</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">2</property>
+                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">5</property>
+                                                            <property name="bottom_attach">6</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkSpinButton" id="lo_freq_rx1">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="invisible_char">●</property>
+                                                            <property name="primary_icon_activatable">False</property>
+                                                            <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
+                                                            <property name="adjustment">adjustment_lo_rx1</property>
+                                                            <property name="digits">6</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">3</property>
+                                                            <property name="right_attach">4</property>
+                                                            <property name="top_attach">5</property>
+                                                            <property name="bottom_attach">6</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label33">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">BBDC Rejection:</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="top_attach">4</property>
+                                                            <property name="bottom_attach">5</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="bbdc_en_rx1">
+                                                            <property name="label" translatable="yes">Enable</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">4</property>
+                                                            <property name="bottom_attach">5</property>
                                                           </packing>
                                                         </child>
                                                       </object>
@@ -969,16 +1005,10 @@
                                                       <object class="GtkTable" id="table1">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
-                                                        <property name="n_rows">10</property>
+                                                        <property name="n_rows">11</property>
                                                         <property name="n_columns">4</property>
                                                         <property name="column_spacing">5</property>
                                                         <property name="row_spacing">5</property>
-                                                        <child>
-                                                          <placeholder/>
-                                                        </child>
-                                                        <child>
-                                                          <placeholder/>
-                                                        </child>
                                                         <child>
                                                           <placeholder/>
                                                         </child>
@@ -1154,161 +1184,6 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <object class="GtkCheckButton" id="bbdc_rejection_tracking_en_rx2">
-                                                            <property name="label" translatable="yes">BBDC Rejection</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">8</property>
-                                                            <property name="bottom_attach">9</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="hd2_tracking_en_rx2">
-                                                            <property name="label" translatable="yes">HD2</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">9</property>
-                                                            <property name="bottom_attach">10</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label29">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">Tracking:</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="top_attach">7</property>
-                                                            <property name="bottom_attach">8</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label100">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="top_attach">6</property>
-                                                            <property name="bottom_attach">7</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="quadrature_fic_tracking_en_rx2">
-                                                            <property name="label" translatable="yes">Quadrature FIC</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">7</property>
-                                                            <property name="bottom_attach">8</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="agc_tracking_en_rx2">
-                                                            <property name="label" translatable="yes">AGC</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="right_attach">3</property>
-                                                            <property name="top_attach">7</property>
-                                                            <property name="bottom_attach">8</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="quadrature_poly_tracking_en_rx2">
-                                                            <property name="label" translatable="yes">Quadrature Poly</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="right_attach">3</property>
-                                                            <property name="top_attach">8</property>
-                                                            <property name="bottom_attach">9</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="rssi_tracking_en_rx2">
-                                                            <property name="label" translatable="yes">RSSI</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="right_attach">3</property>
-                                                            <property name="top_attach">9</property>
-                                                            <property name="bottom_attach">10</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkCheckButton" id="rfdc_tracking_en_rx2">
-                                                            <property name="label" translatable="yes">RFDC</property>
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="receives_default">False</property>
-                                                            <property name="xalign">0</property>
-                                                            <property name="draw_indicator">True</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">3</property>
-                                                            <property name="right_attach">4</property>
-                                                            <property name="top_attach">7</property>
-                                                            <property name="bottom_attach">8</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="bandwidth_rx2">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">0</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">6</property>
-                                                            <property name="bottom_attach">7</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
                                                           <object class="GtkLabel" id="label32">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
@@ -1336,53 +1211,6 @@
                                                             <property name="right_attach">2</property>
                                                             <property name="top_attach">3</property>
                                                             <property name="bottom_attach">4</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="nco_label_rx2">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">NCO (Hz):</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="top_attach">4</property>
-                                                            <property name="bottom_attach">5</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkSpinButton" id="nco_freq_rx2">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="invisible_char">•</property>
-                                                            <property name="primary_icon_activatable">False</property>
-                                                            <property name="secondary_icon_activatable">False</property>
-                                                            <property name="primary_icon_sensitive">True</property>
-                                                            <property name="secondary_icon_sensitive">True</property>
-                                                            <property name="adjustment">adjustment_nco_rx2</property>
-                                                            <property name="digits">6</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">4</property>
-                                                            <property name="bottom_attach">5</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label34">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">Decimated Power (dB):</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="top_attach">5</property>
-                                                            <property name="bottom_attach">6</property>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options">GTK_FILL</property>
                                                           </packing>
                                                         </child>
                                                         <child>
@@ -1418,15 +1246,109 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <object class="GtkLabel" id="label37">
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="hd2_tracking_en_rx2">
+                                                            <property name="label" translatable="yes">HD2</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">10</property>
+                                                            <property name="bottom_attach">11</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="bbdc_rejection_tracking_en_rx2">
+                                                            <property name="label" translatable="yes">BBDC Rejection</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">9</property>
+                                                            <property name="bottom_attach">10</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="quadrature_fic_tracking_en_rx2">
+                                                            <property name="label" translatable="yes">Quadrature FIC</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">8</property>
+                                                            <property name="bottom_attach">9</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label29">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">1</property>
-                                                            <property name="label" translatable="yes">RSSI (dB):</property>
+                                                            <property name="label" translatable="yes">Tracking:</property>
                                                           </object>
                                                           <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">8</property>
+                                                            <property name="bottom_attach">9</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label100">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Bandwidth (MHz):</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="top_attach">7</property>
+                                                            <property name="bottom_attach">8</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label34">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">Decimated Power (dB):</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="top_attach">6</property>
+                                                            <property name="bottom_attach">7</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="nco_label_rx2">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">NCO (Hz):</property>
+                                                          </object>
+                                                          <packing>
                                                             <property name="top_attach">5</property>
                                                             <property name="bottom_attach">6</property>
                                                             <property name="x_options">GTK_FILL</property>
@@ -1434,16 +1356,16 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <object class="GtkLabel" id="rssi_rx2">
+                                                          <object class="GtkLabel" id="bandwidth_rx2">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">0</property>
                                                           </object>
                                                           <packing>
-                                                            <property name="left_attach">3</property>
-                                                            <property name="right_attach">4</property>
-                                                            <property name="top_attach">5</property>
-                                                            <property name="bottom_attach">6</property>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">7</property>
+                                                            <property name="bottom_attach">8</property>
                                                             <property name="x_options">GTK_FILL</property>
                                                             <property name="y_options">GTK_FILL</property>
                                                           </packing>
@@ -1457,10 +1379,93 @@
                                                           <packing>
                                                             <property name="left_attach">1</property>
                                                             <property name="right_attach">2</property>
-                                                            <property name="top_attach">5</property>
-                                                            <property name="bottom_attach">6</property>
+                                                            <property name="top_attach">6</property>
+                                                            <property name="bottom_attach">7</property>
                                                             <property name="x_options">GTK_FILL</property>
                                                             <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkSpinButton" id="nco_freq_rx2">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="invisible_char">●</property>
+                                                            <property name="primary_icon_activatable">False</property>
+                                                            <property name="secondary_icon_activatable">False</property>
+                                                            <property name="primary_icon_sensitive">True</property>
+                                                            <property name="secondary_icon_sensitive">True</property>
+                                                            <property name="adjustment">adjustment_nco_rx2</property>
+                                                            <property name="digits">6</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
+                                                            <property name="top_attach">5</property>
+                                                            <property name="bottom_attach">6</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="rssi_tracking_en_rx2">
+                                                            <property name="label" translatable="yes">RSSI</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">2</property>
+                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">10</property>
+                                                            <property name="bottom_attach">11</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="quadrature_poly_tracking_en_rx2">
+                                                            <property name="label" translatable="yes">Quadrature Poly</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">2</property>
+                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">9</property>
+                                                            <property name="bottom_attach">10</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="agc_tracking_en_rx2">
+                                                            <property name="label" translatable="yes">AGC</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">2</property>
+                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">8</property>
+                                                            <property name="bottom_attach">9</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="rfdc_tracking_en_rx2">
+                                                            <property name="label" translatable="yes">RFDC</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">3</property>
+                                                            <property name="right_attach">4</property>
+                                                            <property name="top_attach">8</property>
+                                                            <property name="bottom_attach">9</property>
                                                           </packing>
                                                         </child>
                                                         <child>
@@ -1469,6 +1474,22 @@
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">1</property>
                                                             <property name="label" translatable="yes">Sampling Rate (MSPS):</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">2</property>
+                                                            <property name="right_attach">3</property>
+                                                            <property name="top_attach">7</property>
+                                                            <property name="bottom_attach">8</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label37">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">RSSI (dB):</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">2</property>
@@ -1488,11 +1509,29 @@
                                                           <packing>
                                                             <property name="left_attach">3</property>
                                                             <property name="right_attach">4</property>
+                                                            <property name="top_attach">7</property>
+                                                            <property name="bottom_attach">8</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="rssi_rx2">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">0</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">3</property>
+                                                            <property name="right_attach">4</property>
                                                             <property name="top_attach">6</property>
                                                             <property name="bottom_attach">7</property>
                                                             <property name="x_options">GTK_FILL</property>
                                                             <property name="y_options">GTK_FILL</property>
                                                           </packing>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
                                                         </child>
                                                         <child>
                                                           <object class="GtkLabel" id="label64">
@@ -1504,17 +1543,20 @@
                                                           <packing>
                                                             <property name="left_attach">2</property>
                                                             <property name="right_attach">3</property>
-                                                            <property name="top_attach">4</property>
-                                                            <property name="bottom_attach">5</property>
+                                                            <property name="top_attach">5</property>
+                                                            <property name="bottom_attach">6</property>
                                                             <property name="x_options">GTK_FILL</property>
                                                             <property name="y_options">GTK_FILL</property>
                                                           </packing>
                                                         </child>
                                                         <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
                                                           <object class="GtkSpinButton" id="lo_freq_rx2">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
-                                                            <property name="invisible_char">•</property>
+                                                            <property name="invisible_char">●</property>
                                                             <property name="primary_icon_activatable">False</property>
                                                             <property name="secondary_icon_activatable">False</property>
                                                             <property name="primary_icon_sensitive">True</property>
@@ -1525,6 +1567,36 @@
                                                           <packing>
                                                             <property name="left_attach">3</property>
                                                             <property name="right_attach">4</property>
+                                                            <property name="top_attach">5</property>
+                                                            <property name="bottom_attach">6</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkLabel" id="label46">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">False</property>
+                                                            <property name="xalign">1</property>
+                                                            <property name="label" translatable="yes">BBDC Rejection:</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="top_attach">4</property>
+                                                            <property name="bottom_attach">5</property>
+                                                            <property name="x_options">GTK_FILL</property>
+                                                            <property name="y_options">GTK_FILL</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="bbdc_en_rx2">
+                                                            <property name="label" translatable="yes">Enable</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="receives_default">False</property>
+                                                            <property name="xalign">0</property>
+                                                            <property name="draw_indicator">True</property>
+                                                          </object>
+                                                          <packing>
+                                                            <property name="left_attach">1</property>
+                                                            <property name="right_attach">2</property>
                                                             <property name="top_attach">4</property>
                                                             <property name="bottom_attach">5</property>
                                                           </packing>
