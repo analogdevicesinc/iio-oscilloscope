@@ -491,6 +491,19 @@ static void rx_sample_rate_update(struct plugin_private *priv)
 	}
 }
 
+static void adrv9002_profile_read(struct plugin_private *priv)
+{
+	char profile[512];
+	ssize_t ret;
+	GtkLabel *label = GTK_LABEL(gtk_builder_get_object(priv->builder, "profile_config_read"));
+
+	ret = iio_device_attr_read(priv->adrv9002, "profile_config", profile, sizeof(profile));
+	if (ret < 0)
+		strcpy(profile, "error\n");
+
+	gtk_label_set_text(label, profile);
+}
+
 static void update_all(struct plugin_private *priv)
 {
 	int i;
@@ -499,6 +512,7 @@ static void update_all(struct plugin_private *priv)
 		adrv9002_update_rx_widgets(priv, i);
 		adrv9002_update_tx_widgets(priv, i);
 	}
+	adrv9002_profile_read(priv);
 	update_label(&priv->temperature);
 	update_dac_manager(priv);
 	rx_sample_rate_update(priv);
@@ -1228,6 +1242,8 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	gtk_file_chooser_set_current_folder(
 		GTK_FILE_CHOOSER(gtk_builder_get_object(priv->builder, "profile_config")),
 		OSC_FILTER_FILE_PATH"/adrv9002");
+
+	adrv9002_profile_read(priv);
 
 	/* load stream cb */
 	g_builder_connect_signal(priv->builder, "stream_config", "file-set",
