@@ -31,6 +31,7 @@
 
 /* Max nr of widgets per channel */
 #define NUM_MAX_WIDGETS	10
+#define NUM_MAX_ORX_WIDGETS 3
 #define NUM_MAX_DDS	2
 #define NUM_MAX_ADC	2
 
@@ -90,6 +91,15 @@ struct adrv9002_rx {
 	struct adrv9002_gtklabel decimated_power;
 };
 
+struct adrv9002_orx {
+	struct iio_widget w[NUM_MAX_ORX_WIDGETS];
+	struct iio_widget orx_en;
+	struct plugin_private *priv;
+	bool enabled;
+	uint16_t num_widgets;
+	uint8_t idx;
+};
+
 struct adrv9002_dac_mgmt {
 	struct dac_data_manager *dac_tx_manager;
 	const char *dac_name;
@@ -117,6 +127,8 @@ struct plugin_private {
 	struct adrv9002_rx rx_widgets[ADRV9002_NUM_CHANNELS];
 	/* tx */
 	struct adrv9002_common tx_widgets[ADRV9002_NUM_CHANNELS];
+	/* orx */
+	struct adrv9002_orx orx_widgets[ADRV9002_NUM_CHANNELS];
 	/* dac */
 	struct adrv9002_dac_mgmt dac_manager[NUM_MAX_DDS];
 	int n_dacs;
@@ -290,6 +302,61 @@ static void save_digital_gain_ctl(GtkWidget *widget, struct adrv9002_rx *rx)
 	g_free(digital_gain);
 }
 
+static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
+{
+	struct adrv9002_rx *rx = &orx->priv->rx_widgets[orx->idx];
+	struct adrv9002_common *tx = &orx->priv->tx_widgets[orx->idx];
+	GtkWidget *rx_ensm = rx->rx.ensm.w.widget;
+	GtkWidget *tx_ensm = tx->ensm.w.widget;
+	char *r_ensm = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(rx_ensm));
+	char *t_ensm = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(tx_ensm));
+	bool en = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+
+	/*
+	 * The way ORx is supposed to work is to enable it only if RX is not in rf_enabled
+	 * and TX __is__ in rf_enabled state. After that point we should not really touch any
+	 * of the RX controls as it might trigger some state change that could break the Orx
+	 * capture. For TX, we are also not supposed to do any state change on the port as some
+	 * state transitions break ORx and we can't recover from it without toggling the ORx button.
+	 * However the transition calibrated to rf_enabled always re-enables the capture so that, if
+	 * we make sure the user cannot touch the ensm and the port_en widgets, we should be fine in
+	 * leaving the other controls as the transitions they will imply are rf_enabled -> calibrated
+	 * (breaks ORx) to apply the control and then calibrated -> rf_enabled (re-enables ORx)...
+	 * Anyways, we need to take care that future firmware releases do not break this assumption!
+	 */
+	if (r_ensm && !strcmp(r_ensm, "rf_enabled") && !en) {
+		dialog_box_message(widget, "ORX Enable failed",
+				   "RX ENSM cannot be in rf_enabled in order to enable ORX");
+		/* restore widget value */
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), true);
+	} else if (t_ensm && strcmp(t_ensm, "rf_enabled") && !en) {
+		dialog_box_message(widget, "ORX Enable failed",
+				   "TX ENSM must be in rf_enabled in order to enable ORX");
+		/* restore widget value */
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), true);
+	} else {
+		char rx_str[32];
+		GtkWidget *rx_frame;
+
+		iio_widget_save(&orx->orx_en);
+		/* let's get the value again to make sure it is the most up to date */
+		en = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+		sprintf(rx_str, "frame_rx%d", orx->idx + 1);
+		rx_frame = GTK_WIDGET(gtk_builder_get_object(orx->priv->builder, rx_str));
+		/* do not allow any change on RX as it might trigger some state change on the port */
+		gtk_widget_set_sensitive(rx_frame, en);
+		gtk_widget_set_sensitive(tx_ensm, en);
+		/*
+		 * Changing the port en mode might trigger some ensm state change that could break the
+		 * ORx capture
+		 */
+		gtk_widget_set_sensitive(tx->port_en.w.widget, en);
+	}
+
+	g_free(r_ensm);
+	g_free(t_ensm);
+}
+
 static void save_port_en(GtkWidget *widget, struct adrv9002_common *chann)
 {
 	char *port_en;
@@ -438,6 +505,18 @@ static gboolean update_display(gpointer arg)
 	return true;
 }
 
+static void adrv9002_update_orx_widgets(struct plugin_private *priv, const int chann)
+{
+	struct adrv9002_orx *orx = &priv->orx_widgets[chann];
+
+	if (!orx->enabled)
+		return;
+
+	iio_widget_update(&orx->orx_en);
+	/* generic widgets */
+	iio_update_widgets(orx->w, orx->num_widgets);
+}
+
 static void adrv9002_update_rx_widgets(struct plugin_private *priv, const int chann)
 {
 	struct adrv9002_rx *rx = &priv->rx_widgets[chann];
@@ -510,6 +589,7 @@ static void update_all(struct plugin_private *priv)
 
 	for(i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
 		adrv9002_update_rx_widgets(priv, i);
+		adrv9002_update_orx_widgets(priv, i);
 		adrv9002_update_tx_widgets(priv, i);
 	}
 	adrv9002_profile_read(priv);
@@ -525,6 +605,24 @@ static void reload_settings(GtkButton *btn, struct plugin_private *priv)
 	/* re-arm the timer */
 	priv->refresh_timeout = g_timeout_add(1000, (GSourceFunc)update_display,
 					      priv);
+}
+
+static void adrv9002_check_orx_status(struct plugin_private *priv,
+				      struct iio_channel *channel,
+				      struct adrv9002_orx *orx,
+				      const char *gtk_str)
+{
+	int ret;
+	double dummy;
+
+	ret = iio_channel_attr_read_double(channel, "orx_hardwaregain", &dummy);
+	if (ret == -ENODEV) {
+		orx->enabled = false;
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, gtk_str)));
+	} else {
+		orx->enabled = true;
+		gtk_widget_show(GTK_WIDGET(gtk_builder_get_object(priv->builder, gtk_str)));
+	}
 }
 
 static void adrv9002_check_channel_status(struct plugin_private *priv,
@@ -583,7 +681,7 @@ static void adrv9002_check_nco_freq_support(struct plugin_private *priv, const i
 	}
 }
 
-void check_enabled_channels(struct plugin_private *priv)
+static void check_enabled_channels(struct plugin_private *priv)
 {
 	int i;
 	struct iio_channel *chann;
@@ -595,9 +693,14 @@ void check_enabled_channels(struct plugin_private *priv)
 		sprintf(gtk_str, "frame_rx%d", i + 1);
 		/* rx */
 		chann = iio_device_find_channel(priv->adrv9002, chan_str, false);
-		if (chann)
+		if (chann) {
 			adrv9002_check_channel_status(priv, chann, &priv->rx_widgets[i].rx,
 						      gtk_str);
+			/* orx */
+			sprintf(gtk_str, "frame_orx%d", i + 1);
+			adrv9002_check_orx_status(priv, chann, &priv->orx_widgets[i], gtk_str);
+		}
+
 		/* tx */
 		sprintf(gtk_str, "frame_tx%d", i + 1);
 		chann = iio_device_find_channel(priv->adrv9002, chan_str, true);
@@ -863,6 +966,7 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 	char widget_str[256];
 	const char *lo_attr = chann ? "RX2_LO_frequency" : "RX1_LO_frequency";
 	uint16_t *n_w = &priv->rx_widgets[chann].rx.num_widgets;
+	uint16_t *n_w_orx = &priv->orx_widgets[chann].num_widgets;
 
 	sprintf(chann_str, "voltage%d", chann);
 	channel = iio_device_find_channel(priv->adrv9002, chann_str, false);
@@ -986,6 +1090,34 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 	adrv9002_check_channel_status(priv, channel, &priv->rx_widgets[chann].rx,
 				      widget_str);
 
+	/* ORx widgets. Let's init them here as the IIO channel is the same as RX */
+	priv->orx_widgets[chann].idx = chann;
+	priv->orx_widgets[chann].priv = priv;
+	sprintf(widget_str, "hardware_gain_orx%d", chann + 1);
+	iio_spin_button_init_from_builder(&priv->orx_widgets[chann].w[(*n_w_orx)++],
+					  priv->adrv9002, channel,
+					  "orx_hardwaregain",
+					  priv->builder, widget_str, NULL);
+
+	sprintf(widget_str, "quadrature_poly_tracking_en_orx%d", chann + 1);
+	iio_toggle_button_init_from_builder(&priv->orx_widgets[chann].w[(*n_w_orx)++],
+					    priv->adrv9002, channel,
+					    "orx_quadrature_w_poly_tracking_en", priv->builder,
+					    widget_str, false);
+
+	sprintf(widget_str, "powerdown_en_orx%d", chann + 1);
+	iio_toggle_button_init_from_builder(&priv->orx_widgets[chann].orx_en,
+					    priv->adrv9002, channel,
+					    "orx_en", priv->builder, widget_str, true);
+
+	sprintf(widget_str, "bbdc_en_orx%d", chann + 1);
+	iio_toggle_button_init_from_builder(&priv->orx_widgets[chann].w[(*n_w_orx)++],
+					    priv->adrv9002, channel,
+					    "orx_bbdc_rejection_en", priv->builder, widget_str, false);
+
+	sprintf(widget_str, "frame_orx%d", chann + 1);
+	adrv9002_check_orx_status(priv, channel, &priv->orx_widgets[chann], widget_str);
+
 	return 0;
 }
 
@@ -1067,6 +1199,10 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].port_en.w.widget),
 			 "changed", G_CALLBACK(save_port_en),
 			 &priv->tx_widgets[chann]);
+	/* orx enable */
+	g_signal_connect(G_OBJECT(priv->orx_widgets[chann].orx_en.widget),
+			 "toggled", G_CALLBACK(save_orx_powerdown),
+			 &priv->orx_widgets[chann]);
 }
 
 static int adrv9002_adc_get_name(struct plugin_private *priv)
@@ -1278,9 +1414,12 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	for (i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
 		connect_special_signal_widgets(priv, i);
 		adrv9002_update_rx_widgets(priv, i);
+		adrv9002_update_orx_widgets(priv, i);
 		adrv9002_update_tx_widgets(priv, i);
 		make_widget_update_signal_based(priv->rx_widgets[i].rx.w,
 						priv->rx_widgets[i].rx.num_widgets);
+		make_widget_update_signal_based(priv->orx_widgets[i].w,
+						priv->orx_widgets[i].num_widgets);
 		make_widget_update_signal_based(priv->tx_widgets[i].w,
 						priv->tx_widgets[i].num_widgets);
 	}
