@@ -583,39 +583,14 @@ static void adrv9002_profile_read(struct plugin_private *priv)
 	gtk_label_set_text(label, profile);
 }
 
-static void update_all(struct plugin_private *priv)
-{
-	int i;
-
-	for(i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
-		adrv9002_update_rx_widgets(priv, i);
-		adrv9002_update_orx_widgets(priv, i);
-		adrv9002_update_tx_widgets(priv, i);
-	}
-	adrv9002_profile_read(priv);
-	update_label(&priv->temperature);
-	update_dac_manager(priv);
-	rx_sample_rate_update(priv);
-}
-
-static void reload_settings(GtkButton *btn, struct plugin_private *priv)
-{
-	g_source_remove(priv->refresh_timeout);
-	update_all(priv);
-	/* re-arm the timer */
-	priv->refresh_timeout = g_timeout_add(1000, (GSourceFunc)update_display,
-					      priv);
-}
-
-static void adrv9002_check_orx_status(struct plugin_private *priv,
-				      struct iio_channel *channel,
-				      struct adrv9002_orx *orx,
-				      const char *gtk_str)
+static void adrv9002_check_orx_status(struct plugin_private *priv, struct adrv9002_orx *orx)
 {
 	int ret;
 	double dummy;
+	char gtk_str[32];
 
-	ret = iio_channel_attr_read_double(channel, "orx_hardwaregain", &dummy);
+	sprintf(gtk_str, "frame_orx%d", orx->idx + 1);
+	ret = iio_channel_attr_read_double(orx->w[0].chn, "orx_hardwaregain", &dummy);
 	if (ret == -ENODEV) {
 		orx->enabled = false;
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, gtk_str)));
@@ -626,18 +601,19 @@ static void adrv9002_check_orx_status(struct plugin_private *priv,
 }
 
 static void adrv9002_check_channel_status(struct plugin_private *priv,
-					  struct iio_channel *channel,
 					  struct adrv9002_common *chan,
 					  const char *gtk_str)
 {
 	int ret;
 	double dummy;
+
 	/*
 	 * We use this attr to check if the channel is enabled or not since it should only
 	 * return error if the channel is disabled (assuming there's nothing seriously
-	 * wrong with the device).
+	 * wrong with the device). We can also just use the iio channel from the first
+	 * widget as the channel is the same for all widgets on this port...
 	 */
-	ret = iio_channel_attr_read_double(channel, "rf_bandwidth", &dummy);
+	ret = iio_channel_attr_read_double(chan->w[0].chn, "rf_bandwidth", &dummy);
 	if (ret == -ENODEV) {
 		chan->enabled = false;
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder,
@@ -681,44 +657,37 @@ static void adrv9002_check_nco_freq_support(struct plugin_private *priv, const i
 	}
 }
 
-static void check_enabled_channels(struct plugin_private *priv)
+static void update_all(struct plugin_private *priv)
 {
 	int i;
-	struct iio_channel *chann;
-	char chan_str[32];
 	char gtk_str[32];
 
 	for(i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
-		sprintf(chan_str, "voltage%d", i);
 		sprintf(gtk_str, "frame_rx%d", i + 1);
-		/* rx */
-		chann = iio_device_find_channel(priv->adrv9002, chan_str, false);
-		if (chann) {
-			adrv9002_check_channel_status(priv, chann, &priv->rx_widgets[i].rx,
-						      gtk_str);
-			/* orx */
-			sprintf(gtk_str, "frame_orx%d", i + 1);
-			adrv9002_check_orx_status(priv, chann, &priv->orx_widgets[i], gtk_str);
-		}
-
-		/* tx */
+		adrv9002_check_channel_status(priv, &priv->rx_widgets[i].rx, gtk_str);
+		adrv9002_check_nco_freq_support(priv, i, false);
+		adrv9002_update_rx_widgets(priv, i);
+		adrv9002_check_orx_status(priv, &priv->orx_widgets[i]);
+		adrv9002_update_orx_widgets(priv, i);
 		sprintf(gtk_str, "frame_tx%d", i + 1);
-		chann = iio_device_find_channel(priv->adrv9002, chan_str, true);
-		if (!chann)
-			continue;
-
-		adrv9002_check_channel_status(priv, chann, &priv->tx_widgets[i], gtk_str);
+		adrv9002_check_channel_status(priv, &priv->tx_widgets[i], gtk_str);
+		adrv9002_check_nco_freq_support(priv, i, true);
+		adrv9002_update_tx_widgets(priv, i);
 	}
+
+	adrv9002_profile_read(priv);
+	update_label(&priv->temperature);
+	update_dac_manager(priv);
+	rx_sample_rate_update(priv);
 }
 
-static void check_nco_support(struct plugin_private *priv)
+static void reload_settings(GtkButton *btn, struct plugin_private *priv)
 {
-	int i;
-
-	for(i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
-		adrv9002_check_nco_freq_support(priv, i, false);
-		adrv9002_check_nco_freq_support(priv, i, true);
-	}
+	g_source_remove(priv->refresh_timeout);
+	update_all(priv);
+	/* re-arm the timer */
+	priv->refresh_timeout = g_timeout_add(1000, (GSourceFunc)update_display,
+					      priv);
 }
 
 static char *read_file(const char *file, ssize_t *f_size)
@@ -807,10 +776,6 @@ static void load_profile(GtkFileChooser *chooser, gpointer data)
 	gtk_file_chooser_set_filename(chooser, file_name);
 	strncpy(priv->last_profile, file_name, sizeof(priv->last_profile) - 1);
 	g_free(file_name);
-	/* check which channels are enabled */
-	check_enabled_channels(priv);
-	/* check if nco is available on profile */
-	check_nco_support(priv);
 	/* update widgets*/
 	update_all(priv);
 	/* re-arm the timer */
@@ -953,8 +918,7 @@ static int adrv9002_tx_widgets_init(struct plugin_private *priv, const int chann
 				widget_str, 1000000);
 
 	sprintf(widget_str, "frame_tx%d", chann + 1);
-	adrv9002_check_channel_status(priv, channel, &priv->tx_widgets[chann],
-				      widget_str);
+	adrv9002_check_channel_status(priv, &priv->tx_widgets[chann], widget_str);
 
 	return 0;
 }
@@ -1087,8 +1051,7 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 				"rf_bandwidth", widget_str, 1000000);
 
 	sprintf(widget_str, "frame_rx%d", chann + 1);
-	adrv9002_check_channel_status(priv, channel, &priv->rx_widgets[chann].rx,
-				      widget_str);
+	adrv9002_check_channel_status(priv, &priv->rx_widgets[chann].rx, widget_str);
 
 	/* ORx widgets. Let's init them here as the IIO channel is the same as RX */
 	priv->orx_widgets[chann].idx = chann;
@@ -1115,8 +1078,7 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 					    priv->adrv9002, channel,
 					    "orx_bbdc_rejection_en", priv->builder, widget_str, false);
 
-	sprintf(widget_str, "frame_orx%d", chann + 1);
-	adrv9002_check_orx_status(priv, channel, &priv->orx_widgets[chann], widget_str);
+	adrv9002_check_orx_status(priv, &priv->orx_widgets[chann]);
 
 	return 0;
 }
