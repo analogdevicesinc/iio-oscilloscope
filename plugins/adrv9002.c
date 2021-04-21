@@ -631,19 +631,23 @@ static void adrv9002_check_nco_freq_support(struct plugin_private *priv, const i
 	int ret;
 	long long dummy;
 	char gtk_str[32], label_str[32];
-	struct iio_widget *nco;
+	struct adrv9002_common *c;
 
 	if (tx) {
-		nco = &priv->tx_widgets[channel].nco_freq;
+		c = &priv->tx_widgets[channel];
 		sprintf(gtk_str, "nco_freq_tx%d", channel + 1);
 		sprintf(label_str, "nco_label_tx%d", channel + 1);
 	} else {
-		nco = &priv->rx_widgets[channel].rx.nco_freq;
+		c = &priv->rx_widgets[channel].rx;
 		sprintf(gtk_str, "nco_freq_rx%d", channel + 1);
 		sprintf(label_str, "nco_label_rx%d", channel + 1);
 	}
 
-	ret = iio_channel_attr_read_longlong(nco->chn, "nco_frequency", &dummy);
+	/* nothing to do if the port is already disabled */
+	if (!c->enabled)
+		return;
+
+	ret = iio_channel_attr_read_longlong(c->nco_freq.chn, "nco_frequency", &dummy);
 	if (ret == -ENOTSUPP) {
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder,
 								  label_str)));
@@ -896,7 +900,6 @@ static int adrv9002_tx_widgets_init(struct plugin_private *priv, const int chann
 					      priv->adrv9002, channel,
 					      "nco_frequency",
 					      priv->builder, widget_str, NULL);
-	adrv9002_check_nco_freq_support(priv, chann, true);
 
 	sprintf(widget_str, "hardware_gain_tx%d", chann + 1);
 	iio_spin_button_init_from_builder(&priv->tx_widgets[chann].gain,
@@ -919,6 +922,7 @@ static int adrv9002_tx_widgets_init(struct plugin_private *priv, const int chann
 
 	sprintf(widget_str, "frame_tx%d", chann + 1);
 	adrv9002_check_channel_status(priv, &priv->tx_widgets[chann], widget_str);
+	adrv9002_check_nco_freq_support(priv, chann, true);
 
 	return 0;
 }
@@ -1021,7 +1025,6 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 					      priv->adrv9002, channel,
 					      "nco_frequency",
 					      priv->builder, widget_str, NULL);
-	adrv9002_check_nco_freq_support(priv, chann, false);
 
 	sprintf(widget_str, "hardware_gain_rx%d", chann + 1);
 	iio_spin_button_init_from_builder(&priv->rx_widgets[chann].rx.gain,
@@ -1052,6 +1055,7 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 
 	sprintf(widget_str, "frame_rx%d", chann + 1);
 	adrv9002_check_channel_status(priv, &priv->rx_widgets[chann].rx, widget_str);
+	adrv9002_check_nco_freq_support(priv, chann, false);
 
 	/* ORx widgets. Let's init them here as the IIO channel is the same as RX */
 	priv->orx_widgets[chann].idx = chann;
