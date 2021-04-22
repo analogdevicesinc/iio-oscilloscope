@@ -17,8 +17,8 @@
 #include "../iio_widget.h"
 #include "../iio_utils.h"
 
-#define THIS_DRIVER     	"CF-AXI-TDD"
-#define TDD_DEVICE      	"cf-core-tdd"
+#define THIS_DRIVER     	"AXI-CORE-TDD"
+#define TDD_DEVICE      	"axi-core-tdd"
 #define NUM_MAX_WIDGETS		32
 
 struct plugin_private {
@@ -261,14 +261,20 @@ GArray* get_data_for_possible_plugin_instances(void)
 		struct iio_device *dev = g_array_index(devices, struct iio_device*, i);
 		/* Construct the name of the plugin */
 		char *name;
+		const char *id;
 
 		if (devices->len > 1)
-			name = g_strdup_printf("%s-%i", THIS_DRIVER, i);
+			name = g_strdup_printf("%s-%i", THIS_DRIVER, i + 1);
 		else
 			name = g_strdup(THIS_DRIVER);
 
+		id = iio_device_get_label(dev);
+		/* fallback to the name */
+		if (!id)
+			id = iio_device_get_name(dev);
+
 		context->required_devices = g_list_append(context->required_devices,
-							  g_strdup(iio_device_get_name(dev)));
+							  g_strdup(id));
 		context->plugin_name = name;
 		g_array_append_val(data, context);
 	}
