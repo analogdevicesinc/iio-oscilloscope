@@ -400,6 +400,18 @@
                                                           <placeholder/>
                                                         </child>
                                                         <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
                                                           <object class="GtkLabel" id="label15">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
@@ -628,12 +640,6 @@
                                                             <property name="x_options">GTK_FILL</property>
                                                             <property name="y_options">GTK_FILL</property>
                                                           </packing>
-                                                        </child>
-                                                        <child>
-                                                          <placeholder/>
-                                                        </child>
-                                                        <child>
-                                                          <placeholder/>
                                                         </child>
                                                         <child>
                                                           <object class="GtkLabel" id="label23">
@@ -913,9 +919,6 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <placeholder/>
-                                                        </child>
-                                                        <child>
                                                           <object class="GtkLabel" id="label63">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
@@ -930,9 +933,6 @@
                                                             <property name="x_options">GTK_FILL</property>
                                                             <property name="y_options">GTK_FILL</property>
                                                           </packing>
-                                                        </child>
-                                                        <child>
-                                                          <placeholder/>
                                                         </child>
                                                         <child>
                                                           <object class="GtkSpinButton" id="lo_freq_rx1">
@@ -1021,6 +1021,18 @@
                                                         <property name="n_columns">4</property>
                                                         <property name="column_spacing">5</property>
                                                         <property name="row_spacing">5</property>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
+                                                        <child>
+                                                          <placeholder/>
+                                                        </child>
                                                         <child>
                                                           <placeholder/>
                                                         </child>
@@ -1256,12 +1268,6 @@
                                                             <property name="top_attach">3</property>
                                                             <property name="bottom_attach">4</property>
                                                           </packing>
-                                                        </child>
-                                                        <child>
-                                                          <placeholder/>
-                                                        </child>
-                                                        <child>
-                                                          <placeholder/>
                                                         </child>
                                                         <child>
                                                           <object class="GtkCheckButton" id="hd2_tracking_en_rx2">
@@ -1543,9 +1549,6 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <placeholder/>
-                                                        </child>
-                                                        <child>
                                                           <object class="GtkLabel" id="label64">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
@@ -1560,9 +1563,6 @@
                                                             <property name="x_options">GTK_FILL</property>
                                                             <property name="y_options">GTK_FILL</property>
                                                           </packing>
-                                                        </child>
-                                                        <child>
-                                                          <placeholder/>
                                                         </child>
                                                         <child>
                                                           <object class="GtkSpinButton" id="lo_freq_rx2">
@@ -1770,7 +1770,7 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <object class="GtkLabel" id="label68">
+                                                          <object class="GtkLabel" id="powerdown_en_label_orx1">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">1</property>
@@ -1929,7 +1929,7 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <object class="GtkLabel" id="label69">
+                                                          <object class="GtkLabel" id="powerdown_en_label_orx2">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
                                                             <property name="xalign">1</property>

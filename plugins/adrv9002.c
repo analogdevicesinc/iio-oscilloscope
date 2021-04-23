@@ -508,11 +508,31 @@ static gboolean update_display(gpointer arg)
 static void adrv9002_update_orx_widgets(struct plugin_private *priv, const int chann)
 {
 	struct adrv9002_orx *orx = &priv->orx_widgets[chann];
+	int ret;
+	long long dummy;
+	char label[32];
 
 	if (!orx->enabled)
 		return;
 
-	iio_widget_update(&orx->orx_en);
+	/* can we actually enable/disable orx?! */
+	sprintf(label, "powerdown_en_label_orx%d", orx->idx + 1);
+	ret = iio_channel_attr_read_longlong(orx->orx_en.chn, "orx_en", &dummy);
+	/*
+	 * Lets' hide as this is not really supposed to change at runtime. However, we need
+	 * to do the check here as at the plugin initialization, the device might not have a
+	 * profile supporting ORx and in that case, we cannot really know if orx_en is supported
+	 * or not as the return val would be ENODEV...
+	 */
+	if (ret == -ENOTSUPP) {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, label)));
+		gtk_widget_hide(orx->orx_en.widget);
+	} else {
+		gtk_widget_show(GTK_WIDGET(gtk_builder_get_object(priv->builder, label)));
+		gtk_widget_show(orx->orx_en.widget);
+		iio_widget_update(&orx->orx_en);
+	}
+
 	/* generic widgets */
 	iio_update_widgets(orx->w, orx->num_widgets);
 }
