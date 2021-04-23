@@ -513,8 +513,14 @@ static void adrv9002_update_orx_widgets(struct plugin_private *priv, const int c
 	long long dummy;
 	char label[32];
 
-	if (!orx->enabled)
+	if (!orx->enabled) {
+		/*
+		 * This will make sure that we restore TX/RX widgets sensitivity if we had ORx
+		 * enabled before updating the profile
+		 */
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(orx->orx_en.widget), true);
 		return;
+	}
 
 	/* can we actually enable/disable orx?! */
 	sprintf(label, "powerdown_en_label_orx%d", orx->idx + 1);
