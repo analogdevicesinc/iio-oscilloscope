@@ -324,7 +324,7 @@ static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
 	 * (breaks ORx) to apply the control and then calibrated -> rf_enabled (re-enables ORx)...
 	 * Anyways, we need to take care that future firmware releases do not break this assumption!
 	 */
-	if (r_ensm && !strcmp(r_ensm, "rf_enabled") && !en) {
+	if (rx->rx.enabled && r_ensm && !strcmp(r_ensm, "rf_enabled") && !en) {
 		dialog_box_message(widget, "ORX Enable failed",
 				   "RX ENSM cannot be in rf_enabled in order to enable ORX");
 		/* restore widget value */
@@ -344,7 +344,8 @@ static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
 		sprintf(rx_str, "frame_rx%d", orx->idx + 1);
 		rx_frame = GTK_WIDGET(gtk_builder_get_object(orx->priv->builder, rx_str));
 		/* do not allow any change on RX as it might trigger some state change on the port */
-		gtk_widget_set_sensitive(rx_frame, en);
+		if (rx->rx.enabled)
+			gtk_widget_set_sensitive(rx_frame, en);
 		gtk_widget_set_sensitive(tx_ensm, en);
 		/*
 		 * Changing the port en mode might trigger some ensm state change that could break the
