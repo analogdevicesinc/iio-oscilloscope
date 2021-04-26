@@ -516,7 +516,7 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 			if (ret)
 				goto error_free_ctx;
 
-			if (adc_freq != 0 && adc_freq < AD9081_MAX_ADC_FREQ_MHZ)
+			if (adc_freq != 0 && adc_freq <= AD9081_MAX_ADC_FREQ_MHZ)
 				ad9081_adjust_main_nco(builder, idx, adc_freq,
 						       0);
 
@@ -540,7 +540,7 @@ tx_chann:
 			if (ret)
 				goto error_free_ctx;
 
-			if (dac_freq != 0 && dac_freq < AD9081_MAX_DAC_FREQ_MHZ)
+			if (dac_freq != 0 && dac_freq <= AD9081_MAX_DAC_FREQ_MHZ)
 				ad9081_adjust_main_nco(builder, idx, dac_freq,
 						       TRUE);
 			continue;
