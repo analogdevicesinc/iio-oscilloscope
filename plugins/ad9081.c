@@ -23,7 +23,7 @@
 #define AD9081				"axi-ad9081-rx"
 #define DAC_DEVICE			"axi-ad9081-tx"
 #define NUM_MAX_CHANNEL			8
-#define AD9081_MAX_ADC_FREQ_MHZ		4000
+#define AD9081_MAX_ADC_FREQ_MHZ		6000 /* AD9081 4000MHz, AD9082 6000MHz */
 #define AD9081_MAX_DAC_FREQ_MHZ		12000
 /*
  * 81 = 2 widgets per maximmum of 8 rx channels + 8 widgets per maximun 8 tx
