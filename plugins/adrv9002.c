@@ -36,6 +36,7 @@
 #define NUM_MAX_ADC	2
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define ADRV9002_LO_INV	255
 
 const gdouble mhz_scale = 1000000.0;
 
@@ -70,9 +71,11 @@ struct adrv9002_combo_box {
 };
 
 struct adrv9002_common {
+	struct plugin_private *priv;
 	struct adrv9002_combo_box gain_ctrl;
 	struct iio_widget gain;
 	struct iio_widget nco_freq;
+	struct iio_widget carrier;
 	struct adrv9002_combo_box ensm;
 	struct adrv9002_combo_box port_en;
 	struct adrv9002_gtklabel rf_bandwidth;
@@ -81,6 +84,8 @@ struct adrv9002_common {
 	struct iio_widget w[NUM_MAX_WIDGETS];
 	uint16_t num_widgets;
 	bool enabled;
+	uint8_t lo;
+	uint8_t idx;
 };
 
 struct adrv9002_rx {
@@ -375,6 +380,136 @@ static void save_port_en(GtkWidget *widget, struct adrv9002_common *chann)
 	g_free(port_en);
 }
 
+/*
+ * helper struct to save the ensm of all ports that are on the same LO as the one
+ * we are changing the carrier.
+ */
+struct carrier_helper {
+	struct {
+		struct adrv9002_combo_box *ensm;
+		gchar *old;
+	} s[3]; /* can't have more than 3 other ports on the same LO */
+	int n_restore;
+};
+
+/* helper API to move all ports on the same LO to the calibrated state */
+static int carrier_helper_move_to_calibrated(struct adrv9002_common *c, struct carrier_helper *helper)
+{
+	int ret;
+	GtkComboBoxText *w;
+
+	ret = iio_channel_attr_write(c->ensm.w.chn, c->ensm.w.attr_name, "calibrated");
+	if (ret < 0)
+		return ret;
+
+	helper->s[helper->n_restore].ensm = &c->ensm;
+	w = GTK_COMBO_BOX_TEXT(c->ensm.w.widget);
+	helper->s[helper->n_restore++].old = gtk_combo_box_text_get_active_text(w);
+	return 0;
+}
+
+/* helper API to move the other port of the same type to the same carrier */
+static int carrier_helper_move_other_port(struct adrv9002_common *c, int other, bool tx)
+{
+	struct iio_widget *carrier;
+	gdouble freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON(c->carrier.widget));
+	int ret;
+
+	if (tx) {
+		/* nothing to do if the other TX is not on the same LO */
+		if (c->lo != c->priv->tx_widgets[other].lo)
+			return 0;
+		carrier = &c->priv->tx_widgets[other].carrier;
+	} else {
+		/* nothing to do if the other RX is not on the same LO */
+		if (c->lo != c->priv->rx_widgets[other].rx.lo)
+			return 0;
+		carrier = &c->priv->rx_widgets[other].rx.carrier;
+	}
+
+	freq *= mhz_scale;
+	ret = iio_channel_attr_write_longlong(carrier->chn, carrier->attr_name, freq);
+	if (ret)
+		return ret;
+
+	/* we do not want to get here when setting the carrier on the other port */
+	iio_widget_update_block_signals_by_data(carrier);
+
+	return 0;
+}
+
+/*
+ * Handle changing the carrier frequency. Handling the carrier frequency is not really
+ * straight because it looks like we have 4 independent controls when in reality they are not
+ * as the device only has 2 LOs. It all the depends on the LO mappings present in the
+ * current profile. First, the only way a carrier is actually applied (PLL re-tunes) is
+ * if all ports on the same LO, are moved into the calibrated state before changing it. Not
+ * doing so means that we may end up in an inconsistent state. For instance, consider the
+ * following steps in a FDD profile where RX1=RX2=LO1 (assuming both ports start at 2.4GHz):
+ *   1) Move RX1 carrier to 2.45GHz -> LO1 re-tunes
+ *   2) Move RX1 back to 2.4GHz -> LO1 does not re-tune and our carrier is at 2.45GHz
+ * With the above steps we are left with both ports, __apparently__, at 2.45GHz but in __reality__
+ * our carrier is at 2.4GHz.
+ *
+ * Secondly, when both ports of the same type are at the same LO, which happens on FDD and TTD
+ * (with diversity) profiles, we should move the carrier of these ports together, because it's
+ * just not possible to have both ports enabled with different carriers (they are on the same LO!).
+ * On TDD profiles, we never move TX/RX ports together even being on the same LO. The assumption
+ * is that we might have time to re-tune between RX and TX frames. If we don't, we need to manually
+ * set TX and RX carriers to the same value before starting operating...
+ */
+static void adrv9002_save_carrier_freq(GtkWidget *widget, struct adrv9002_common *chan)
+{
+	int c;
+	struct plugin_private *priv = chan->priv;
+	int ret;
+	int other = ~chan->idx & 0x1;
+	struct carrier_helper ensm_restore = {0};
+	/* we can use whatever attr as the iio channel is the same (naturally not for the LOs) */
+	bool tx = iio_channel_is_output(chan->ensm.w.chn);
+
+	if (chan->lo == ADRV9002_LO_INV) {
+		/* fallback to independent LOs */
+		iio_widget_save(&chan->carrier);
+		return;
+	}
+
+	for (c = 0; c < ADRV9002_NUM_CHANNELS; c++) {
+		/* let's move all ports on the same LO to the calibrated state */
+		if (chan == &priv->tx_widgets[c] || priv->tx_widgets[c].lo != chan->lo)
+			goto rx;
+
+		ret = carrier_helper_move_to_calibrated(&priv->tx_widgets[c], &ensm_restore);
+		if (ret)
+			goto ensm_restore;
+rx:
+		if (chan == &priv->rx_widgets[c].rx || priv->rx_widgets[c].rx.lo != chan->lo)
+			continue;
+
+		ret = carrier_helper_move_to_calibrated(&priv->rx_widgets[c].rx, &ensm_restore);
+		if (ret)
+			goto ensm_restore;
+	}
+
+	ret = carrier_helper_move_other_port(chan, other, tx);
+	if (ret)
+		goto ensm_restore;
+
+	chan->carrier.save(&chan->carrier);
+ensm_restore:
+	/* restore the ensm_mode */
+	for (c = 0; c < ensm_restore.n_restore; c++) {
+		iio_channel_attr_write(ensm_restore.s[c].ensm->w.chn,
+				       ensm_restore.s[c].ensm->w.attr_name,
+				       ensm_restore.s[c].old);
+		/* update the UI */
+		combo_box_manual_update(ensm_restore.s[c].ensm);
+		g_free(ensm_restore.s[c].old);
+	}
+
+	iio_widget_update_block_signals_by_data(&chan->carrier);
+}
+
 static void handle_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
 {
 	GtkWidget *toplevel;
@@ -559,6 +694,7 @@ static void adrv9002_update_rx_widgets(struct plugin_private *priv, const int ch
 	combo_box_manual_update(&rx->rx.port_en);
 	combo_box_manual_update(&rx->digital_gain_ctl);
 	combo_box_manual_update(&rx->intf_gain);
+	iio_widget_update_block_signals_by_data(&rx->rx.carrier);
 	/* generic widgets */
 	iio_update_widgets(rx->rx.w, rx->rx.num_widgets);
 	/* labels */
@@ -578,6 +714,7 @@ static void adrv9002_update_tx_widgets(struct plugin_private *priv, const int ch
 	combo_box_manual_update(&tx->gain_ctrl);
 	iio_widget_update(&tx->gain);
 	iio_widget_update(&tx->nco_freq);
+	iio_widget_update_block_signals_by_data(&tx->carrier);
 	combo_box_manual_update(&tx->ensm);
 	combo_box_manual_update(&tx->port_en);
 	/* generic widgets */
@@ -602,12 +739,53 @@ static void adrv9002_profile_read(struct plugin_private *priv)
 	char profile[512];
 	ssize_t ret;
 	GtkLabel *label = GTK_LABEL(gtk_builder_get_object(priv->builder, "profile_config_read"));
+	int c;
 
 	ret = iio_device_attr_read(priv->adrv9002, "profile_config", profile, sizeof(profile));
 	if (ret < 0)
 		strcpy(profile, "error\n");
 
 	gtk_label_set_text(label, profile);
+
+	/* lets get the LO mappings used when setting carriers */
+	for (c = 0; c < ADRV9002_NUM_CHANNELS; c++) {
+		int ret = 0, lo = 0;
+		char port[8], *p;
+
+		/* init LO mapping to an invalid value */
+		priv->rx_widgets[c].rx.lo = ADRV9002_LO_INV;
+		priv->tx_widgets[c].lo = ADRV9002_LO_INV;
+
+		if (!priv->rx_widgets[c].rx.enabled)
+			goto tx;
+
+		/* look for RX */
+		sprintf(port, "RX%d", c + 1);
+		p = strstr(profile, port);
+		if (!p)
+			continue;
+
+		ret = sscanf(p, "RX%*d LO: L0%d", &lo);
+		if (ret != 1)
+			continue;
+
+		priv->rx_widgets[c].rx.lo = lo;
+tx:
+		if (!priv->tx_widgets[c].enabled)
+			continue;
+
+		/* look for TX */
+		sprintf(port, "TX%d", c + 1);
+		p = strstr(profile, port);
+		if (!p)
+			continue;
+
+		ret = sscanf(p, "TX%*d LO: L0%d", &lo);
+		if (ret != 1)
+			continue;
+
+		priv->tx_widgets[c].lo = lo;
+	}
 }
 
 static void adrv9002_check_orx_status(struct plugin_private *priv, struct adrv9002_orx *orx)
@@ -874,6 +1052,8 @@ static int adrv9002_tx_widgets_init(struct plugin_private *priv, const int chann
 	if (!tx_lo)
 		return -ENODEV;
 
+	priv->tx_widgets[chann].priv = priv;
+	priv->tx_widgets[chann].idx = chann;
 	sprintf(widget_str, "attenuation_control_tx%d", chann + 1);
 	adrv9002_combo_box_init(&priv->tx_widgets[chann].gain_ctrl, widget_str,
 				"atten_control_mode", "atten_control_mode_available", priv,
@@ -935,7 +1115,7 @@ static int adrv9002_tx_widgets_init(struct plugin_private *priv, const int chann
 					  priv->builder, widget_str, NULL);
 
 	sprintf(widget_str, "lo_freq_tx%d", chann + 1);
-	iio_spin_button_int_init_from_builder(&priv->tx_widgets[chann].w[(*n_w)++],
+	iio_spin_button_int_init_from_builder(&priv->tx_widgets[chann].carrier,
 					      priv->adrv9002, tx_lo, lo_attr,
 					      priv->builder, widget_str, &mhz_scale);
 
@@ -973,6 +1153,8 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 	if (!rx_lo)
 		return -ENODEV;
 
+	priv->rx_widgets[chann].rx.priv = priv;
+	priv->rx_widgets[chann].rx.idx = chann;
 	sprintf(widget_str, "gain_control_rx%d", chann + 1);
 	adrv9002_combo_box_init(&priv->rx_widgets[chann].rx.gain_ctrl, widget_str,
 				"gain_control_mode", "gain_control_mode_available", priv,
@@ -1060,7 +1242,7 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 					  priv->builder, widget_str, NULL);
 
 	sprintf(widget_str, "lo_freq_rx%d", chann + 1);
-	iio_spin_button_int_init_from_builder(&priv->rx_widgets[chann].rx.w[(*n_w)++],
+	iio_spin_button_int_init_from_builder(&priv->rx_widgets[chann].rx.carrier,
 					      priv->adrv9002, rx_lo, lo_attr,
 					      priv->builder, widget_str, &mhz_scale);
 
@@ -1174,6 +1356,10 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].digital_gain_ctl.w.widget),
 			 "changed", G_CALLBACK(save_digital_gain_ctl),
 			 &priv->rx_widgets[chann]);
+	/* carrier frequency */
+	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.carrier,
+					    G_CALLBACK(adrv9002_save_carrier_freq),
+					    &priv->rx_widgets[chann].rx);
 	/* tx atten handling */
 	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].gain_ctrl.w.widget),
 			 "changed", G_CALLBACK(save_gain_ctl),
@@ -1192,6 +1378,10 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].port_en.w.widget),
 			 "changed", G_CALLBACK(save_port_en),
 			 &priv->tx_widgets[chann]);
+	/* carrier frequency */
+	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].carrier,
+					    G_CALLBACK(adrv9002_save_carrier_freq),
+					    &priv->tx_widgets[chann]);
 	/* orx enable */
 	g_signal_connect(G_OBJECT(priv->orx_widgets[chann].orx_en.widget),
 			 "toggled", G_CALLBACK(save_orx_powerdown),
