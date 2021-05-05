@@ -293,7 +293,10 @@ static GtkWidget * fmcomms11_init(struct osc_plugin *plugin, GtkWidget *notebook
 		tx_sampling_freq = 0;
 	}
 
-	ch0 = iio_device_find_channel(dac, "altvoltage2", true);
+	ch0 = iio_device_find_channel(dac, "altvoltage4", true);
+
+	if (!ch0)
+		ch0 = iio_device_find_channel(dac, "altvoltage2", true);
 
 	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
 		dac, ch0, "frequency_nco", builder,
