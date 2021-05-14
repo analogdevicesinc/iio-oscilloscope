@@ -308,6 +308,85 @@ static void save_digital_gain_ctl(GtkWidget *widget, struct adrv9002_rx *rx)
 	g_free(digital_gain);
 }
 
+static void orx_control_track_cals(const struct adrv9002_common *chan, bool en)
+{
+	int i = 0;
+
+	if (!chan->enabled)
+		return;
+
+	for (i = 0; i < chan->num_widgets; i++) {
+		if (!strstr(chan->w[i].attr_name, "_tracking_en"))
+			continue;
+		gtk_widget_set_sensitive(chan->w[i].widget, en);
+	}
+}
+
+static void orx_control_tx_widgets_visibility(const struct adrv9002_common *tx, bool en)
+{
+	int i = 0;
+
+	/* Disable all tx controls that might affect tx ensm state if @en=true */
+	gtk_widget_set_sensitive(tx->carrier.widget, en);
+	gtk_widget_set_sensitive(tx->ensm.w.widget, en);
+	gtk_widget_set_sensitive(tx->port_en.w.widget, en);
+	gtk_widget_set_sensitive(tx->gain_ctrl.w.widget, en);
+
+	for (i = 0; i < tx->num_widgets; i++) {
+		if (strcmp(tx->w[i].attr_name, "en"))
+			continue;
+		gtk_widget_set_sensitive(tx->w[i].widget, en);
+	}
+}
+
+static void orx_control_track_cal_visibility(const struct adrv9002_orx *orx, bool en)
+{
+	int i;
+	int other = ~orx->idx & 0x1;
+	const struct adrv9002_orx *orx_other = &orx->priv->orx_widgets[other];
+	gboolean wired;
+
+	/*
+	 * The thing with tracking cals is that, due to the way the device driver API/Firmware
+	 * is designed, we need to move all 4 ports to calibrated state to change a cal
+	 * (even if we are only changing cals in one specific port). Hence, we need to make
+	 * sure that if one of the ORxs is enabled, we block all the tracking calibrations
+	 * controls in all enabled ports. The driver would not allow it anyways, so this way,
+	 * we make it explicit to the user that this is not permitted.
+	 */
+	if (!en)
+		wired = false;
+	else
+		wired = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(orx_other->orx_en.widget));
+
+	for (i = 0; i < orx->num_widgets; i++) {
+		if (strcmp(orx->w[i].attr_name, "orx_quadrature_w_poly_tracking_en"))
+			continue;
+		gtk_widget_set_sensitive(orx->w[i].widget, wired);
+		gtk_widget_set_sensitive(orx_other->w[i].widget, wired);
+		break;
+	}
+
+	/* control track calls on both RXs */
+	orx_control_track_cals(&orx->priv->rx_widgets[other].rx, wired);
+	orx_control_track_cals(&orx->priv->rx_widgets[orx->idx].rx, wired);
+	/* control track calls on both TXs */
+	orx_control_track_cals(&orx->priv->tx_widgets[other], wired);
+	orx_control_track_cals(&orx->priv->tx_widgets[orx->idx], wired);
+}
+
+static void orx_control_rx_widgets_visibility(const struct adrv9002_common *rx, bool en)
+{
+	char rx_str[32];
+	GtkWidget *rx_frame;
+
+	/* Just disable all the RX frame as it does not make sense to control if @en=true*/
+	sprintf(rx_str, "frame_rx%d", rx->idx + 1);
+	rx_frame = GTK_WIDGET(gtk_builder_get_object(rx->priv->builder, rx_str));
+	if (rx->enabled && rx_frame)
+		gtk_widget_set_sensitive(rx_frame, en);
+}
+
 static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
 {
 	struct adrv9002_rx *rx = &orx->priv->rx_widgets[orx->idx];
@@ -324,11 +403,6 @@ static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
 	 * of the RX controls as it might trigger some state change that could break the Orx
 	 * capture. For TX, we are also not supposed to do any state change on the port as some
 	 * state transitions break ORx and we can't recover from it without toggling the ORx button.
-	 * However the transition calibrated to rf_enabled always re-enables the capture so that, if
-	 * we make sure the user cannot touch the ensm and the port_en widgets, we should be fine in
-	 * leaving the other controls as the transitions they will imply are rf_enabled -> calibrated
-	 * (breaks ORx) to apply the control and then calibrated -> rf_enabled (re-enables ORx)...
-	 * Anyways, we need to take care that future firmware releases do not break this assumption!
 	 */
 	if (rx->rx.enabled && r_ensm && !strcmp(r_ensm, "rf_enabled") && !en) {
 		dialog_box_message(widget, "ORX Enable failed",
@@ -341,23 +415,12 @@ static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
 		/* restore widget value */
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), true);
 	} else {
-		char rx_str[32];
-		GtkWidget *rx_frame;
-
 		iio_widget_save(&orx->orx_en);
 		/* let's get the value again to make sure it is the most up to date */
 		en = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-		sprintf(rx_str, "frame_rx%d", orx->idx + 1);
-		rx_frame = GTK_WIDGET(gtk_builder_get_object(orx->priv->builder, rx_str));
-		/* do not allow any change on RX as it might trigger some state change on the port */
-		if (rx->rx.enabled)
-			gtk_widget_set_sensitive(rx_frame, en);
-		gtk_widget_set_sensitive(tx_ensm, en);
-		/*
-		 * Changing the port en mode might trigger some ensm state change that could break the
-		 * ORx capture
-		 */
-		gtk_widget_set_sensitive(tx->port_en.w.widget, en);
+		orx_control_rx_widgets_visibility(&rx->rx, en);
+		orx_control_tx_widgets_visibility(tx, en);
+		orx_control_track_cal_visibility(orx, en);
 	}
 
 	g_free(r_ensm);
