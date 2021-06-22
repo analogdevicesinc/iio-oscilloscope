@@ -1649,6 +1649,8 @@ static GtkWidget * fmcomms5_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
 	dac_data_manager_set_buffer_size_alignment(dac_tx_manager, 16);
 
+	trigger_mcs_button();
+
 	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
 	can_update_widgets = true;
 
