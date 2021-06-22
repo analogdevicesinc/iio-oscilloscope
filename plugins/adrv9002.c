@@ -6,6 +6,7 @@
  * Licensed under the GPL-2.
  *
  **/
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -1432,10 +1433,23 @@ static int adrv9002_dds_init(struct plugin_private *priv)
 		double dac_tx_sampling_freq = 0;
 		struct iio_channel *ch0;
 		long long dac_freq = 0;
-		const char *dds_str = i ? "dds_transmit_block1" : "dds_transmit_block";
+		const char *dds_str;
 
 		dac = g_array_index(devices, struct iio_device*, i);
 		priv->dac_manager[i].dac_name = iio_device_get_name(dac);
+		/*
+		 * Make sure the dds gets into a consistent block with the rest of the plugin
+		 * (dds1 aligned with TX1 and dds2 with TX2). @iio_device_get_name() returns a
+		 * NULL terminated string that is __at least__ the size of @DDS_DEVICE
+		 * (via @get_iio_devices_starting_with). Hence, even if the sizes are the same,
+		 * the next condition should be fine as we will be calling @isdigit() on the NULL
+		 * terminating character (which is not a digit and not out of bounds)
+		 */
+		if (!isdigit(priv->dac_manager[i].dac_name[strlen(DDS_DEVICE)]))
+			dds_str = "dds_transmit_block";
+		else
+			dds_str = "dds_transmit_block1";
+
 		priv->dac_manager[i].dac_tx_manager = dac_data_manager_new(dac, NULL, priv->ctx);
 		if (!priv->dac_manager[i].dac_tx_manager) {
 			printf("%s: Failed to start dac Manager...\n",
