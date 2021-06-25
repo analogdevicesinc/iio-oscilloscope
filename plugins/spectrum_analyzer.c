@@ -42,8 +42,6 @@
 #define MHZ_TO_KHZ(x) ((x) * 1000)
 #define HZ_TO_MHZ(x) ((x) / 1E6)
 
-#define HANNING_ENBW 1.50
-
 enum receivers {
 	RX1,
 	RX2
@@ -244,7 +242,6 @@ static void init_device_list(struct iio_context *ctx)
 		struct extra_dev_info *dev_info = calloc(1, sizeof(*dev_info));
 		iio_device_set_data(dev, dev_info);
 		dev_info->input_device = is_input_device(dev);
-		dev_info->plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
 
 		for (j = 0; j < nb_channels; j++) {
 			struct iio_channel *ch = iio_device_get_channel(dev, j);
