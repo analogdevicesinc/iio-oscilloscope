@@ -44,20 +44,21 @@ static gint iio_dev_cmp_by_name(gconstpointer ptr_a, gconstpointer ptr_b)
  */
 GArray * get_iio_devices_starting_with(struct iio_context *ctx, const char *sequence)
 {
-        GArray *devices = g_array_new(FALSE, FALSE, sizeof(struct iio_devices *));
-        size_t i = 0;
+	GArray *devices = g_array_new(FALSE, FALSE, sizeof(struct iio_devices *));
+	size_t i = 0;
 
-        for (; i < iio_context_get_devices_count(ctx); i++) {
-                struct iio_device *dev = iio_context_get_device(ctx, i);
-                const char *dev_name = iio_device_get_name(dev);
-                if (dev_name && !strncmp(sequence, dev_name, strlen(sequence))) {
-                        g_array_append_val(devices, dev);
-                }
-        }
+	for (; i < iio_context_get_devices_count(ctx); i++) {
+		struct iio_device *dev = iio_context_get_device(ctx, i);
+		const char *dev_name = iio_device_get_name(dev);
 
-        g_array_sort(devices, iio_dev_cmp_by_name);
+		if (dev_name && !strncmp(sequence, dev_name, strlen(sequence))) {
+			g_array_append_val(devices, dev);
+		}
+	}
 
-        return devices;
+	g_array_sort(devices, iio_dev_cmp_by_name);
+
+	return devices;
 }
 /*
  * Gets all channels of the specified device sorted in a natural order.
