@@ -34,8 +34,6 @@
 #include "dac_data_manager.h"
 #include "../iio_utils.h"
 
-#define HANNING_ENBW 1.50
-
 #define THIS_DRIVER "ADRV9009"
 #define PHY_DEVICE "adrv9009-phy"
 #define DDS_DEVICE "axi-adrv9009-tx-hpc"
@@ -1669,17 +1667,6 @@ static GtkWidget *adrv9009_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	make_widget_update_signal_based(fpga_widgets, num_fpga);
 
 	add_ch_setup_check_fct(CAP_DEVICE, channel_combination_check);
-	struct iio_device *adc_dev;
-	struct extra_dev_info *adc_info;
-
-	adc_dev = iio_context_find_device(get_context_from_osc(), CAP_DEVICE);
-
-	if (adc_dev) {
-		adc_info = iio_device_get_data(adc_dev);
-
-		if (adc_info)
-			adc_info->plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
-	}
 
 	/* FIXME: Add later
 	 * block_diagram_init(builder, 2, "ADRV9009.svg", "ADRV9009-N_PCBZ.jpg");

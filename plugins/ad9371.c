@@ -36,8 +36,6 @@
 //#include "fir_filter.h"
 //#include "scpi.h"
 
-#define HANNING_ENBW 1.50
-
 #define THIS_DRIVER "AD9371"
 #define PHY_DEVICE "ad9371-phy"
 #define DDS_DEVICE "axi-ad9371-tx-hpc"
@@ -1827,16 +1825,6 @@ static GtkWidget * ad9371_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 		sample_frequency_changed_cb, NULL);
 
 	add_ch_setup_check_fct(CAP_DEVICE, channel_combination_check);
-
-	struct iio_device *adc_dev;
-	struct extra_dev_info *adc_info;
-
-	adc_dev = iio_context_find_device(get_context_from_osc(), CAP_DEVICE);
-	if (adc_dev) {
-		adc_info = iio_device_get_data(adc_dev);
-		if (adc_info)
-			adc_info->plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
-	}
 
 	block_diagram_init(builder, 2, "AD9371.svg", "ADRV9371-N_PCBZ.jpg");
 

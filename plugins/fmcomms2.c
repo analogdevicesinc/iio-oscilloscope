@@ -39,8 +39,6 @@
 #include "fir_filter.h"
 #include "scpi.h"
 
-#define HANNING_ENBW 1.50
-
 #define THIS_DRIVER "AD936X"
 #define PHY_DEVICE "ad9361-phy"
 #define DDS_DEVICE "cf-ad9361-dds-core-lpc"
@@ -2014,16 +2012,6 @@ static GtkWidget * fmcomms2_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	iio_spin_button_skip_save_on_complete(&tx_widgets[tx_sample_freq], TRUE);
 
 	add_ch_setup_check_fct("cf-ad9361-lpc", channel_combination_check);
-
-	struct iio_device *adc_dev;
-	struct extra_dev_info *adc_info;
-
-	adc_dev = iio_context_find_device(get_context_from_osc(), CAP_DEVICE);
-	if (adc_dev) {
-		adc_info = iio_device_get_data(adc_dev);
-		if (adc_info) /* TO DO: use osc preferences instead */
-			adc_info->plugin_fft_corr = 20 * log10(1/sqrt(HANNING_ENBW));
-	}
 
 	block_diagram_init(builder, 2, "AD9361.svg", "AD_FMCOMM2S2_RevC.jpg");
 
