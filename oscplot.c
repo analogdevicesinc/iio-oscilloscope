@@ -1308,7 +1308,7 @@ static void do_fft_for_spectrum(Transform *tr)
 	if (avg && avg != 128 )
 		avg = 1.0f / avg;
 
-	pwr_offset = settings->fft_pwr_off;
+	pwr_offset = settings->fft_pwr_off + window_function_offset(settings->fft_win);
 
 	for (i = 0, k = 0; i < fft->m; ++i) {
 		if ((unsigned)i < settings->fft_lower_clipping_limit || (unsigned)i >= settings->fft_upper_clipping_limit)
@@ -2473,6 +2473,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 		FREQ_SPECTRUM_SETTINGS(transform)->freq_sweep_start = priv->start_freq + priv->filter_bw / 2;
 		FREQ_SPECTRUM_SETTINGS(transform)->filter_bandwidth = priv->filter_bw;
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_size = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
+		FREQ_SPECTRUM_SETTINGS(transform)->fft_win = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->fft_win_widget));
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_pwr_offset_widget));
 		FREQ_SPECTRUM_SETTINGS(transform)->maxXaxis = malloc(sizeof(unsigned int) * (MAX_MARKERS + 1));
