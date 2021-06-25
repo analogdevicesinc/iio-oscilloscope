@@ -1013,7 +1013,6 @@ static void do_fft(Transform *tr)
 	double avg, pwr_offset;
 	int maxX[MAX_MARKERS + 1];
 	gfloat maxY[MAX_MARKERS + 1];
-	gfloat plugin_fft_corr;
 
 	if (settings->marker_type)
 		marker_type = *((enum marker_types *)settings->marker_type);
@@ -1070,10 +1069,6 @@ static void do_fft(Transform *tr)
 		}
 	}
 
-	struct iio_device *iio_dev = transform_get_device_parent(tr);
-	struct extra_dev_info *dev_info = iio_device_get_data(iio_dev);
-	plugin_fft_corr = dev_info->plugin_fft_corr;
-
 	fftw_execute(fft->plan_forward);
 	avg = (double)settings->fft_avg;
 	if (avg && avg != 128 )
@@ -1101,7 +1096,7 @@ static void do_fft(Transform *tr)
 
 		mag = 10 * log10((creal(fft->out[j]) * creal(fft->out[j]) +
 				cimag(fft->out[j]) * cimag(fft->out[j])) / ((unsigned long long)fft->m * fft->m)) +
-			fft->fft_corr + pwr_offset + plugin_fft_corr;
+			fft->fft_corr + pwr_offset;
 		/* it's better for performance to have separate loops,
 		 * rather than do these tests inside the loop, but it makes
 		 * the code harder to understand... Oh well...
@@ -1267,7 +1262,6 @@ static void do_fft_for_spectrum(Transform *tr)
 	int cnt;
 	gfloat mag;
 	double avg, pwr_offset;
-	gfloat plugin_fft_corr;
 	unsigned int *maxX = settings->maxXaxis;
 	gfloat *maxY = settings->maxYaxis;
 
@@ -1309,10 +1303,6 @@ static void do_fft_for_spectrum(Transform *tr)
 		i++;
 	}
 
-	struct iio_device *iio_dev = transform_get_device_parent(tr);
-	struct extra_dev_info *dev_info = iio_device_get_data(iio_dev);
-	plugin_fft_corr = dev_info->plugin_fft_corr;
-
 	fftw_execute(fft->plan_forward);
 	avg = (double)settings->fft_avg;
 	if (avg && avg != 128 )
@@ -1333,7 +1323,7 @@ static void do_fft_for_spectrum(Transform *tr)
 
 		mag = 10 * log10((creal(fft->out[j]) * creal(fft->out[j]) +
 				cimag(fft->out[j]) * cimag(fft->out[j])) / ((unsigned long long)fft->m * fft->m)) +
-			settings->fft_corr + pwr_offset + plugin_fft_corr;
+			settings->fft_corr + pwr_offset;
 		/* it's better for performance to have separate loops,
 		 * rather than do these tests inside the loop, but it makes
 		 * the code harder to understand... Oh well...
