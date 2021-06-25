@@ -6032,7 +6032,8 @@ static gboolean domain_is_fft(GBinding *binding,
 static gboolean domain_is_time(GBinding *binding,
 	const GValue *source_value, GValue *target_value, gpointer user_data)
 {
-	g_value_set_boolean(target_value, g_value_get_int(source_value) != FFT_PLOT);
+	g_value_set_boolean(target_value, (g_value_get_int(source_value) != FFT_PLOT) &&
+			(g_value_get_int(source_value) != SPECTRUM_PLOT));
 	return TRUE;
 }
 
