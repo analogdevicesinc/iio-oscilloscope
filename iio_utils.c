@@ -39,6 +39,25 @@ static gint iio_dev_cmp_by_name(gconstpointer ptr_a, gconstpointer ptr_b)
 }
 
 /*
+ * Get the device label attribute if there's one.
+ *
+ * Returns a newly allocated NULL terminated string. The caller is responsible to
+ * free the allocated memory.
+ */
+char *iio_get_device_label(const struct iio_device *dev)
+{
+	char label[256];
+
+	if (!iio_device_find_attr(dev, "label"))
+		return NULL;
+
+	if (iio_device_attr_read(dev, "label", label, sizeof(label)) < 0)
+		return NULL;
+
+	return g_strndup(label, sizeof(label));
+}
+
+/*
  * Gets all devices that have their name starting with the given sequence.
  * Returns an array of 'struct iio_device *' elements.
  */
@@ -50,10 +69,14 @@ GArray * get_iio_devices_starting_with(struct iio_context *ctx, const char *sequ
 	for (; i < iio_context_get_devices_count(ctx); i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		const char *dev_name = iio_device_get_name(dev);
+		char *label = iio_get_device_label(dev);
 
-		if (dev_name && !strncmp(sequence, dev_name, strlen(sequence))) {
+		if ((label && !strncmp(sequence, label, strlen(sequence))) ||
+		    (dev_name && !strncmp(sequence, dev_name, strlen(sequence)))) {
 			g_array_append_val(devices, dev);
 		}
+
+		g_free(label);
 	}
 
 	g_array_sort(devices, iio_dev_cmp_by_name);
