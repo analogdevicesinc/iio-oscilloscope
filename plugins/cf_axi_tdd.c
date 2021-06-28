@@ -254,16 +254,22 @@ GArray* get_data_for_possible_plugin_instances(void)
 	GArray *data = g_array_new(FALSE, TRUE, sizeof(struct osc_plugin_context *));
 	struct iio_context *osc_ctx = get_context_from_osc();
 	GArray *devices = get_iio_devices_starting_with(osc_ctx, TDD_DEVICE);
-	guint i = 0;
+	guint i = devices->len;
 
-	for (; i < devices->len; i++) {
+	/*
+	 * Let's go backwards as devices are sorted in descending order and we want
+	 * devices to pop up in the tabs in ascending order. We also need to make sure
+	 * to set the name right so that we are actually controlling the right instance
+	 * of the dev.
+	 */
+	while (i-- > 0) {
 		struct osc_plugin_context *context = g_new0(struct osc_plugin_context, 1);
 		struct iio_device *dev = g_array_index(devices, struct iio_device*, i);
 		/* Construct the name of the plugin */
 		char *name;
 
 		if (devices->len > 1)
-			name = g_strdup_printf("%s-%i", THIS_DRIVER, i);
+			name = g_strdup_printf("%s-%i", THIS_DRIVER, devices->len - i);
 		else
 			name = g_strdup(THIS_DRIVER);
 
