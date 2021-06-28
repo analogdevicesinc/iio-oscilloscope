@@ -17,8 +17,8 @@
 #include "../iio_widget.h"
 #include "../iio_utils.h"
 
-#define THIS_DRIVER     	"CF-AXI-TDD"
-#define TDD_DEVICE      	"cf-core-tdd"
+#define THIS_DRIVER     	"AXI-CORE-TDD"
+#define TDD_DEVICE      	"axi-core-tdd"
 #define NUM_MAX_WIDGETS		32
 
 struct plugin_private {
@@ -99,13 +99,44 @@ static int cf_axi_tdd_chann_widgets_init(struct plugin_private *priv, struct iio
 	return 0;
 }
 
+struct iio_device *cf_axi_tdd_find_device(const struct iio_context *ctx, const char *id)
+{
+	struct iio_device *dev;
+	unsigned int i, ndevs = iio_context_get_devices_count(ctx);
+
+	dev = iio_context_find_device(ctx, id);
+	if (dev)
+		return dev;
+
+	/* if not the device name, let's try by label... */
+	for (i = 0; i < ndevs; i++) {
+		dev = iio_context_get_device(ctx, i);
+		char *label = iio_get_device_label(dev);
+
+		if (!label)
+			continue;
+
+		if (!strcmp(label, id)) {
+			free(label);
+			break;
+		}
+
+		free(label);
+	}
+
+	if (i == ndevs)
+		return NULL;
+
+	return dev;
+}
+
 static GtkWidget *cf_axi_tdd_init(struct osc_plugin *plugin, GtkWidget *notebook,
                                   const char *ini_fn)
 {
 	GtkWidget *cf_axi_tdd_panel;
 	struct plugin_private *priv = plugin->priv;
 	struct iio_device *dev;
-	const char *dev_name = g_list_first(priv->plugin_ctx.required_devices)->data;
+	const char *id = g_list_first(priv->plugin_ctx.required_devices)->data;
 	GtkWidget *global, *primary, *secondary;
 	GtkToggleToolButton *global_btn, *primary_btn, *secondary_btn;
 	GtkButton *reload_btn;
@@ -119,7 +150,7 @@ static GtkWidget *cf_axi_tdd_init(struct osc_plugin *plugin, GtkWidget *notebook
 	if (!priv->ctx)
 		return NULL;
 
-	dev = iio_context_find_device(priv->ctx, dev_name);
+	dev = cf_axi_tdd_find_device(priv->ctx, id);
 	if (!dev)
 		goto context_destroy;
 
@@ -266,15 +297,19 @@ GArray* get_data_for_possible_plugin_instances(void)
 		struct osc_plugin_context *context = g_new0(struct osc_plugin_context, 1);
 		struct iio_device *dev = g_array_index(devices, struct iio_device*, i);
 		/* Construct the name of the plugin */
-		char *name;
+		char *name, *id;
 
 		if (devices->len > 1)
 			name = g_strdup_printf("%s-%i", THIS_DRIVER, devices->len - i);
 		else
 			name = g_strdup(THIS_DRIVER);
 
-		context->required_devices = g_list_append(context->required_devices,
-							  g_strdup(iio_device_get_name(dev)));
+		id = iio_get_device_label(dev);
+		if (!id)
+			/* fallback to the name */
+			id =  g_strdup(iio_device_get_name(dev));
+
+		context->required_devices = g_list_append(context->required_devices, id);
 		context->plugin_name = name;
 		g_array_append_val(data, context);
 	}
