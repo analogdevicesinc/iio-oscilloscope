@@ -251,35 +251,5 @@ struct osc_plugin *create_plugin(struct osc_plugin_context *plugin_ctx)
 
 GArray* get_data_for_possible_plugin_instances(void)
 {
-	GArray *data = g_array_new(FALSE, TRUE, sizeof(struct osc_plugin_context *));
-	struct iio_context *osc_ctx = get_context_from_osc();
-	GArray *devices = get_iio_devices_starting_with(osc_ctx, TDD_DEVICE);
-	guint i = 0;
-
-	for (; i < devices->len; i++) {
-		struct osc_plugin_context *context = g_new0(struct osc_plugin_context, 1);
-		struct iio_device *dev = g_array_index(devices, struct iio_device*, i);
-		/* Construct the name of the plugin */
-		char *name;
-		const char *id;
-
-		if (devices->len > 1)
-			name = g_strdup_printf("%s-%i", THIS_DRIVER, i + 1);
-		else
-			name = g_strdup(THIS_DRIVER);
-
-		id = iio_device_get_label(dev);
-		/* fallback to the name */
-		if (!id)
-			id = iio_device_get_name(dev);
-
-		context->required_devices = g_list_append(context->required_devices,
-							  g_strdup(id));
-		context->plugin_name = name;
-		g_array_append_val(data, context);
-	}
-
-	g_array_free(devices, FALSE);
-
-	return data;
+	return get_data_for_possible_plugin_instances_helper(TDD_DEVICE, THIS_DRIVER);
 }
