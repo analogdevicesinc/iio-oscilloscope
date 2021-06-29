@@ -25,12 +25,19 @@ static gint iio_dev_cmp_by_name(gconstpointer ptr_a, gconstpointer ptr_b)
 {
 	const struct iio_device *dev_a = *(struct iio_device **)ptr_a;
 	const struct iio_device *dev_b = *(struct iio_device **)ptr_b;
+	const char *name_a;
+	const char *name_b;
 
 	g_return_val_if_fail(dev_a, 0);
 	g_return_val_if_fail(dev_b, 0);
 
-	const char *name_a = iio_device_get_name(dev_a);
-	const char *name_b = iio_device_get_name(dev_b);
+	name_a = iio_device_get_label(dev_a);
+	if (!name_a)
+		name_a = iio_device_get_name(dev_a);
+
+	name_b = iio_device_get_label(dev_b);
+	if (!name_b)
+		name_b = iio_device_get_name(dev_b);
 
 	g_return_val_if_fail(name_a, 0);
 	g_return_val_if_fail(name_b, 0);
