@@ -32,6 +32,7 @@
 #include "datatypes.h"
 #include "config.h"
 #include "osc_plugin.h"
+#include "iio_utils.h"
 
 GSList *plugin_list = NULL;
 
@@ -2891,4 +2892,47 @@ int osc_load_objects_from_glade_file(GtkBuilder *builder, const char *fname, gch
 		return 0;
 	fprintf(stderr, "Could not find '%s.glade' file", fname);
 	return -1;
+}
+
+/*
+ * Looks for all devices starting with @dev_id. With that, informs how many plugins can be
+ * instantiated and gives context for each possible plugin instance.
+ */
+GArray* get_data_for_possible_plugin_instances_helper(const char *dev_id, const char *plugin)
+{
+	GArray *data = g_array_new(FALSE, TRUE, sizeof(struct osc_plugin_context *));
+	struct iio_context *osc_ctx = get_context_from_osc();
+	GArray *devices = get_iio_devices_starting_with(osc_ctx, dev_id);
+	guint i = devices->len;
+
+	/*
+	 * Let's go backwards as devices are sorted in descending order and we want
+	 * devices to pop up in the tabs in ascending order. We also need to make sure
+	 * to set the name right so that we are actually controlling the right instance
+	 * of the dev.
+	 */
+	while (i-- > 0) {
+		struct osc_plugin_context *context = g_new0(struct osc_plugin_context, 1);
+		struct iio_device *dev = g_array_index(devices, struct iio_device*, i);
+		char *full_name;
+		const char *id;
+
+		if (devices->len > 1)
+			full_name = g_strdup_printf("%s-%i", plugin, devices->len - i);
+		else
+			full_name = g_strdup(plugin);
+
+		id = iio_device_get_label(dev);
+		/* fallback to the name */
+		if (!id)
+			id = iio_device_get_name(dev);
+
+		context->required_devices = g_list_append(context->required_devices, g_strdup(id));
+		context->plugin_name = full_name;
+		g_array_append_val(data, context);
+	}
+
+	g_array_free(devices, FALSE);
+
+	return data;
 }
