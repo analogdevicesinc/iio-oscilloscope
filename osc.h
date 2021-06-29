@@ -164,6 +164,7 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 		int line, const char *attrib, const char *value,
 		int (*driver_handle)(struct osc_plugin *plugin, const char *, const char *),
 		struct osc_plugin *plugin);
+GArray* get_data_for_possible_plugin_instances_helper(const char *dev_id, const char *plugin);
 
 /* Private functions */
 extern int load_default_profile(char *filename, bool load_plugins);
