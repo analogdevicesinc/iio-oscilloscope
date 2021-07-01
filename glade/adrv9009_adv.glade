@@ -867,14 +867,14 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,obs-profile-iq-rate_khz">
-    <property name="lower">20000</property>
-    <property name="upper">320000</property>
+    <property name="lower">30625</property>
+    <property name="upper">500000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,obs-profile-rf-bandwidth_hz">
     <property name="lower">5000000</property>
-    <property name="upper">240000000</property>
+    <property name="upper">450000000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -885,7 +885,7 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,obs-profile-rx-bbf-3db-corner_khz">
-    <property name="upper">250000</property>
+    <property name="upper">500000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -992,20 +992,20 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,orx-profile-orx-output-rate_khz">
-    <property name="lower">46080</property>
-    <property name="upper">307200</property>
+    <property name="lower">30625</property>
+    <property name="upper">500000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,orx-profile-rf-bandwidth_hz">
-    <property name="lower">20000000</property>
-    <property name="upper">200000000</property>
+    <property name="lower">5000000</property>
+    <property name="upper">450000000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,orx-profile-rx-bbf3d-bcorner_khz">
-    <property name="lower">20000</property>
-    <property name="upper">200000</property>
+    <property name="lower">10000</property>
+    <property name="upper">400000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -1234,20 +1234,14 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,rx-profile-iq-rate_khz">
-    <property name="lower">20000</property>
-    <property name="upper">200000</property>
+    <property name="lower">25000</property>
+    <property name="upper">370000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,rx-profile-rf-bandwidth_hz">
-    <property name="lower">20000000</property>
-    <property name="upper">200000000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_adi,rx-profile-rf-bandwidth_hz1">
     <property name="lower">5000000</property>
-    <property name="upper">100000000</property>
+    <property name="upper">200000000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -1257,13 +1251,8 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkAdjustment" id="adjustment_adi,rx-profile-rx-bbf-3db-corner_khz">
-    <property name="upper">153600</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
   <object class="GtkAdjustment" id="adjustment_adi,rx-profile-rx-bbf3d-bcorner_khz">
-    <property name="lower">20000</property>
+    <property name="lower">5000</property>
     <property name="upper">200000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
@@ -1275,8 +1264,8 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,rx-profile-rx-output-rate_khz">
-    <property name="lower">46080</property>
-    <property name="upper">307200</property>
+    <property name="lower">25000</property>
+    <property name="upper">370000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -1704,30 +1693,20 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,tx-profile-iq-rate_khz">
-    <property name="lower">30000</property>
-    <property name="upper">320000</property>
+    <property name="lower">30625</property>
+    <property name="upper">500000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,tx-profile-primary-sig-bandwidth_hz">
-    <property name="lower">25000000</property>
+    <property name="lower">5000000</property>
     <property name="upper">200000000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkAdjustment" id="adjustment_adi,tx-profile-primary-sig-bandwidth_hz1">
-    <property name="upper">250000000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
   <object class="GtkAdjustment" id="adjustment_adi,tx-profile-rf-bandwidth_hz">
-    <property name="lower">56000000</property>
+    <property name="lower">10000000</property>
     <property name="upper">450000000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_adi,tx-profile-rf-bandwidth_hz1">
-    <property name="upper">250000000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -1749,19 +1728,14 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,tx-profile-tx-bbf3d-bcorner_khz">
-    <property name="lower">50000</property>
-    <property name="upper">225000</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="adjustment_adi,tx-profile-tx-dac-3db-corner_khz">
-    <property name="upper">250000</property>
+    <property name="lower">0</property>
+    <property name="upper">500000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,tx-profile-tx-dac3d-bcorner_khz">
-    <property name="lower">187000</property>
-    <property name="upper">450000</property>
+    <property name="lower">0</property>
+    <property name="upper">500000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -1772,8 +1746,8 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustment_adi,tx-profile-tx-input-rate_khz">
-    <property name="lower">122880</property>
-    <property name="upper">491520</property>
+    <property name="lower">30625</property>
+    <property name="upper">500000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
