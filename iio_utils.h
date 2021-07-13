@@ -23,4 +23,6 @@ int str_natural_cmp(const char *s1, const char *s2);
 
 void handle_toggle_section_cb(GtkToggleToolButton *btn, GtkWidget *section);
 
+const char *get_iio_device_label_or_name(const struct iio_device *dev);
+
 #endif  /* __IIO_UTILS__ */

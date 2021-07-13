@@ -147,3 +147,14 @@ void handle_toggle_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
 			gtk_window_resize(GTK_WINDOW(toplevel), 1, 1);
 	}
 }
+
+const char *get_iio_device_label_or_name(const struct iio_device *dev)
+{
+	const char *id;
+
+	id = iio_device_get_label(dev);
+	if (id)
+		return id;
+
+	return iio_device_get_name(dev);
+}
