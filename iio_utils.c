@@ -31,13 +31,8 @@ static gint iio_dev_cmp_by_name(gconstpointer ptr_a, gconstpointer ptr_b)
 	g_return_val_if_fail(dev_a, 0);
 	g_return_val_if_fail(dev_b, 0);
 
-	name_a = iio_device_get_label(dev_a);
-	if (!name_a)
-		name_a = iio_device_get_name(dev_a);
-
-	name_b = iio_device_get_label(dev_b);
-	if (!name_b)
-		name_b = iio_device_get_name(dev_b);
+	name_a = get_iio_device_label_or_name(dev_a);
+	name_b = get_iio_device_label_or_name(dev_b);
 
 	g_return_val_if_fail(name_a, 0);
 	g_return_val_if_fail(name_b, 0);
@@ -56,11 +51,9 @@ GArray * get_iio_devices_starting_with(struct iio_context *ctx, const char *sequ
 
 	for (; i < iio_context_get_devices_count(ctx); i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
-		const char *dev_name = iio_device_get_name(dev);
-		const char *label = iio_device_get_label(dev);
+		const char *dev_id = get_iio_device_label_or_name(dev);
 
-		if ((label && !strncmp(sequence, label, strlen(sequence))) ||
-		    (dev_name && !strncmp(sequence, dev_name, strlen(sequence)))) {
+		if (dev_id && !strncmp(sequence, dev_id, strlen(sequence))) {
 			g_array_append_val(devices, dev);
 		}
 	}

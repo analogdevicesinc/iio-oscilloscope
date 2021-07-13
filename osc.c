@@ -2927,10 +2927,7 @@ GArray* get_data_for_possible_plugin_instances_helper(const char *dev_id, const 
 		else
 			full_name = g_strdup(plugin);
 
-		id = iio_device_get_label(dev);
-		/* fallback to the name */
-		if (!id)
-			id = iio_device_get_name(dev);
+		id = get_iio_device_label_or_name(dev);
 
 		context->required_devices = g_list_append(context->required_devices, g_strdup(id));
 		context->plugin_name = full_name;
