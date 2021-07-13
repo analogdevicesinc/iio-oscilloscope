@@ -669,10 +669,11 @@ static bool connect_fillin(Dialogs *data)
 	size_t i;
 	struct iio_context *ctx;
 	const char *desc;
+	unsigned int n_devs, attr_cnt;
 
 	ctx = get_context(data);
 	if (!ctx) {
-		iio_strerror(errno, text, sizeof(text));
+		snprintf(text, sizeof(text), "Could not get IIO Context: %s...", strerror(errno));
 		desc = text;
 	} else {
 		desc = iio_context_get_description(ctx);
@@ -683,40 +684,40 @@ static bool connect_fillin(Dialogs *data)
 	gtk_text_buffer_insert(buf, &iter, desc, -1);
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->ctx_info), buf);
 	g_object_unref(buf);
+	if (!ctx) {
+		gtk_widget_set_sensitive(dialogs.ok_btn, false);
+		return false;
+	}
 
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
-
-	if (ctx) {
-		for (i = 0; i < iio_context_get_devices_count(ctx); i++) {
+	n_devs = iio_context_get_devices_count(ctx);
+	if (!n_devs) {
+		snprintf(text, sizeof(text), "No iio devices found\n");
+		gtk_text_buffer_insert(buf, &iter, text, -1);
+	} else {
+		for (i = 0; i < n_devs; i++) {
 			struct iio_device *dev = iio_context_get_device(ctx, i);
+
 			snprintf(text, sizeof(text), "%s\n", iio_device_get_name(dev));
 			gtk_text_buffer_insert(buf, &iter, text, -1);
 		}
-	} else {
-		sprintf(text, "No context, No iio devices found\n");
-		gtk_text_buffer_insert(buf, &iter, text, -1);
 	}
-
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_iio), buf);
 	g_object_unref(buf);
 
-
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
-	if (ctx) {
-		for (i = 0; i < iio_context_get_attrs_count(ctx); i++) {
-			const char *key, *value;
-			ssize_t ret;
-			ret = iio_context_get_attr(ctx, i, &key, &value);
-			if (!ret) {
-				snprintf(text, sizeof(text), "%s = %s\n", key, value);
-				gtk_text_buffer_insert(buf, &iter, text, -1);
-			}
+	attr_cnt = iio_context_get_attrs_count(ctx);
+	for (i = 0; i < attr_cnt; i++) {
+		const char *key, *value;
+		ssize_t ret;
+
+		ret = iio_context_get_attr(ctx, i, &key, &value);
+		if (!ret) {
+			snprintf(text, sizeof(text), "%s = %s\n", key, value);
+			gtk_text_buffer_insert(buf, &iter, text, -1);
 		}
-	} else {
-		sprintf(text, "No context attributes\n");
-		gtk_text_buffer_insert(buf, &iter, text, -1);
 	}
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_attrs), buf);
 	g_object_unref(buf);
@@ -725,7 +726,7 @@ static bool connect_fillin(Dialogs *data)
 	buf = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_get_iter_at_offset(buf, &iter, 0);
 
-	if (ctx && !strcmp("local", iio_context_get_name(ctx))) {
+	if (!strcmp("local", iio_context_get_name(ctx))) {
 		char eprom_names[128];
 		unsigned char *raw_input_data = NULL;
 		FILE *efp, *fp;
@@ -739,22 +740,21 @@ static bool connect_fillin(Dialogs *data)
 #else
 		fp = popen("find /sys -name eeprom 2>/dev/null", "r");
 #endif
-
-		if(fp == NULL) {
+		if (!fp) {
 			fprintf(stderr, "can't execute find\n");
 			return false;
 		}
 
-		while(fgets(eprom_names, sizeof(eprom_names), fp) != NULL){
+		while (fgets(eprom_names, sizeof(eprom_names), fp) != NULL) {
 			num++;
 			/* strip trailing new lines */
 			if (eprom_names[strlen(eprom_names) - 1] == '\n')
 				eprom_names[strlen(eprom_names) - 1] = '\0';
 
 			/* FRU EEPROMS are exactly 256 */
-			if(stat(eprom_names, &st) !=0)
+			if (stat(eprom_names, &st) != 0)
 				continue;
-			if(st.st_size != 256) {
+			if (st.st_size != 256) {
 				printf("skipping %s (size == %d)\n", eprom_names, (int)st.st_size);
 				continue;
 			}
@@ -766,7 +766,7 @@ static bool connect_fillin(Dialogs *data)
 				if (efp) {
 					i = fread(text, 1, 256, efp);
 					if (i == 256) {
-					for (i = 0; i < 256; i++){
+						for (i = 0; i < 256; i++) {
 							if (!(text[i] == 0x00 || ((unsigned char) text[i]) == 0xFF)) {
 								i = 0;
 								break;
@@ -800,20 +800,18 @@ static bool connect_fillin(Dialogs *data)
 			gtk_text_buffer_insert(buf, &iter, text, -1);
 		}
 	} else {
-		sprintf(text, "Not a local context, no access to FRU EEPROM\n");
+		snprintf(text, sizeof(text), "Not a local context, no access to FRU EEPROM\n");
 		gtk_text_buffer_insert(buf, &iter, text, -1);
 	}
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(data->connect_fru), buf);
 	g_object_unref(buf);
 #endif
 
-	if (ctx) {
-		gtk_widget_set_sensitive(dialogs.ok_btn, true);
-		if (ctx != get_context_from_osc())
-			iio_context_destroy(ctx);
-	}
+	gtk_widget_set_sensitive(dialogs.ok_btn, true);
+	if (ctx != get_context_from_osc())
+		iio_context_destroy(ctx);
 
-	return !!ctx;
+	return true;
 }
 
 static bool connect_clear(GtkWidget *widget)
