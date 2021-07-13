@@ -810,11 +810,11 @@ static bool connect_fillin(Dialogs *data)
 	g_object_unref(buf);
 #endif
 
-	gtk_widget_set_sensitive(dialogs.ok_btn, true);
+	gtk_widget_set_sensitive(dialogs.ok_btn, !!n_devs);
 	if (ctx != get_context_from_osc())
 		iio_context_destroy(ctx);
 
-	return true;
+	return !!n_devs;
 }
 
 static bool connect_clear(GtkWidget *widget)
