@@ -742,6 +742,9 @@ static bool connect_fillin(Dialogs *data)
 #endif
 		if (!fp) {
 			fprintf(stderr, "can't execute find\n");
+			gtk_widget_set_sensitive(dialogs.ok_btn, false);
+			if (ctx != get_context_from_osc())
+				iio_context_destroy(ctx);
 			return false;
 		}
 
