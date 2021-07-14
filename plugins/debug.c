@@ -1430,7 +1430,8 @@ static void debug_register_section_init(struct iio_device *iio_dev)
 
 	if (iio_device_get_debug_attrs_count(dev) > 0) {
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle_detailed_regmap))) {
-			device_xml_file_selection(iio_device_get_name(iio_dev), xml_filename);
+			device_xml_file_selection(get_iio_device_label_or_name(iio_dev),
+						  xml_filename);
 			if (xml_filename[0])
 				device_xml_file_load(xml_filename);
 		}
@@ -1633,7 +1634,7 @@ static GtkWidget * debug_init(struct osc_plugin *plugin, GtkWidget *notebook, co
 
 	for (i = 0; i < nb_devs; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
-		const gchar *dev_name = iio_device_get_name(dev);
+		const gchar *dev_name = get_iio_device_label_or_name(dev);
 		if (!dev_name)
 			continue;
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_device_list), dev_name);
