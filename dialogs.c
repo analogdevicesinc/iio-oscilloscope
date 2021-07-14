@@ -24,6 +24,7 @@
 #include "osc.h"
 #include "config.h"
 #include "phone_home.h"
+#include "iio_utils.h"
 
 #ifndef GIT_VERSION
 #define GIT_VERSION	""
@@ -699,7 +700,7 @@ static bool connect_fillin(Dialogs *data)
 		for (i = 0; i < n_devs; i++) {
 			struct iio_device *dev = iio_context_get_device(ctx, i);
 
-			snprintf(text, sizeof(text), "%s\n", iio_device_get_name(dev));
+			snprintf(text, sizeof(text), "%s\n", get_iio_device_label_or_name(dev));
 			gtk_text_buffer_insert(buf, &iter, text, -1);
 		}
 	}
