@@ -1637,13 +1637,17 @@ static gboolean idle_timeout_check(gpointer ptr)
 {
 	int ret;
 	struct iio_context *new_ctx = (struct iio_context *) ptr;
+	struct iio_device *dev;
+	const struct iio_device *trig;
 
 	if (new_ctx != ctx)
 		return FALSE;
 
-	/* We use iio_context_get_version here just as a way to ping the
+	/* Just get the first dev. We only run this if there are devices in the IIO context */
+	dev = iio_context_get_device(new_ctx, 0);
+	/* We use iio_device_get_trigger here just as a way to ping the
 	 * IIOD server. */
-	ret = iio_context_get_version(ctx, NULL, NULL, NULL);
+	ret = iio_device_get_trigger(dev, &trig);
 	if (ret == -EPIPE) {
 		gtk_widget_set_visible(infobar, true);
 		return FALSE;
@@ -2047,7 +2051,8 @@ void do_init(struct iio_context *new_ctx)
 	plugins_get_preferred_size(plugin_list, &width, &height);
 	window_size_readjust(GTK_WINDOW(main_window), width, height);
 
-	if (!strcmp(iio_context_get_name(new_ctx), "network")) {
+	if (!strcmp(iio_context_get_name(new_ctx), "network") &&
+	    iio_context_get_devices_count(new_ctx)) {
 		gtk_widget_set_visible(infobar, false);
 		g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 1000,
 				idle_timeout_check, new_ctx, NULL);
