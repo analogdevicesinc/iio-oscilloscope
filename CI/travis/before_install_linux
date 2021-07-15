@@ -11,10 +11,24 @@ handle_centos() {
 
 	# FIXME: see about adding `libserialport-dev` from EPEL ; maybe libusb-1.0.0-devel...
 	yum -y groupinstall 'Development Tools'
-	yum -y install cmake libxml2-devel libcurl-devel glib2-devel \
-		fftw-devel libusb1-devel jansson-devel cmake gtk2-devel \
-		bison flex doxygen matio-devel libaio-devel libtool \
-		avahi-devel
+	
+	yum -y install wget
+	wget https://github.com/Kitware/CMake/releases/download/v3.15.2/cmake-3.15.2.tar.gz
+	tar -zxvf cmake-3.15.2.tar.gz
+	cd cmake-3.15.2
+	./bootstrap
+	make
+	make install
+	cd ..
+	yum -y install epel-release
+	yum -y install libzstd
+
+	yum -y install dnf
+	dnf -y --enablerepo=powertools install doxygen
+	
+	yum -y install  libxml2-devel libcurl-devel glib2-devel \
+               fftw-devel libusb1-devel jansson-devel cmake gtk2-devel \
+               bison flex matio-devel libaio-devel libtool avahi-devel
 
 	if [ -n "$PACKAGE_TO_INSTALL" ] ; then
 		sudo yum localinstall -y $PACKAGE_TO_INSTALL
