@@ -30,10 +30,13 @@ fi
 
 # Build the osc
 build_osc () {
-	cd ${CURDIR}
-	make clean
-	PREFIX=.. CROSS_COMPILE=${HOST}- make SYSROOT=${SYSROOT} GIT_BRANCH=${BRANCH} ${MAKE_J}
-	PREFIX=/usr CROSS_COMPILE=${HOST}- DEBIAN_INSTALL=1 make SYSROOT=${SYSROOT} GIT_BRANCH=${BRANCH} install
+	mkdir -p "${CURDIR}/build"
+	cd "${CURDIR}/build"
+	cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
+		-DCMAKE_SYSROOT="${SYSROOT}" \
+		..
+	make ${MAKE_J}
+	make install
 }
 
 # Remove garbage

@@ -9,3 +9,5 @@ core
 *.swp
 build
 deps
+config.h
+build/
