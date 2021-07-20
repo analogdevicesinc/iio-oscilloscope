@@ -4006,7 +4006,7 @@ static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 
 	parent = gtk_widget_get_parent(priv->saveas_channels_list);
 	gtk_widget_destroy(priv->saveas_channels_list);
-	priv->saveas_channels_list = gtk_vbox_new(FALSE, 0);
+	priv->saveas_channels_list = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_box_pack_start(GTK_BOX(parent), priv->saveas_channels_list, FALSE, TRUE, 0);
 
 	active_device = gtk_combo_box_text_get_active_text(box);
@@ -4041,11 +4041,11 @@ static void saveas_channels_list_fill(OscPlot *plot)
 	if (priv->ctx)
 		num_devices = iio_context_get_devices_count(priv->ctx);
 	ch_window = priv->viewport_saveas_channels;
-	vbox = gtk_vbox_new(FALSE, 10);
+	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
 	gtk_container_add(GTK_CONTAINER(ch_window), vbox);
 	priv->device_combobox = gtk_combo_box_text_new();
 	gtk_box_pack_start(GTK_BOX(vbox), priv->device_combobox, FALSE, TRUE, 0);
-	priv->saveas_channels_list = gtk_vbox_new(FALSE, 0);
+	priv->saveas_channels_list = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_box_pack_end(GTK_BOX(vbox), priv->saveas_channels_list, FALSE, TRUE, 0);
 
 	for (i = 0; i < num_devices; i++) {
