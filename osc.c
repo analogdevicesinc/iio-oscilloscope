@@ -293,7 +293,7 @@ static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detach
 	const struct osc_plugin *plugin = d_plugin->plugin;
 	const char *plugin_name = plugin->name;
 
-	tab_box = gtk_hbox_new(FALSE, 0);
+	tab_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	tab_label = gtk_label_new(plugin_name);
 	tab_detach_btn = (GtkWidget *)gtk_tool_button_new_from_stock("gtk-disconnect");
 
@@ -413,7 +413,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 		gtk_window_set_default_size(GTK_WINDOW(window), width, height);
 	}
 
-	hbox = gtk_hbox_new(FALSE, 0);
+	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 
 	gtk_window_set_title(GTK_WINDOW(window), page_name);
 	gtk_widget_reparent(page, hbox);
