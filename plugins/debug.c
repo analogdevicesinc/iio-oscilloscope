@@ -1189,7 +1189,7 @@ static void create_reg_map(void)
 	gtk_label_set_width_chars((GtkLabel *)label_reg_descrip, -1);
 	gtk_label_set_width_chars((GtkLabel *)label_reg_notes, 110);
 
-	hbox_bits_container = gtk_hbox_new(FALSE, 0);
+	hbox_bits_container = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	gtk_container_add((GtkContainer *)reg_map_container,
 							hbox_bits_container);
 
@@ -1197,10 +1197,10 @@ static void create_reg_map(void)
 		elem_frames[i] = gtk_frame_new("");
 		gtk_container_add((GtkContainer *)hbox_bits_container,
 								elem_frames[i]);
-		vboxes[i] = gtk_vbox_new(FALSE, 0);
+		vboxes[i] = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 		gtk_container_add((GtkContainer *)elem_frames[i], vboxes[i]);
 
-		hboxes[i] = gtk_hbox_new(FALSE, 0);
+		hboxes[i] = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 		gtk_box_pack_start((GtkBox *)vboxes[i], hboxes[i], FALSE,
 								FALSE, 0);
 		snprintf(str_bit_field, 10, "Bit %d", i);

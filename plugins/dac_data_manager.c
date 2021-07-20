@@ -862,7 +862,7 @@ static GtkWidget *gui_dds_mode_chooser_create(struct dds_tx *tx)
 	GtkComboBoxText *dds_mode;
 	bool no_buffer_support = !strcmp(tx->parent->name, "axi-ad9739a-hpc");
 
-	box = gtk_hbox_new(FALSE, 10);
+	box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
 	dds_mode_lbl = gtk_label_new("DDS Mode:");
 	dds_mode = GTK_COMBO_BOX_TEXT(gtk_combo_box_text_new());
 	if (no_buffer_support == false)
@@ -1199,8 +1199,8 @@ static void gui_manager_create(struct dac_data_manager *manager)
 	if (!manager)
 		return;
 
-	hbox = gtk_hbox_new(FALSE, 0);
-	vbox = gtk_vbox_new(FALSE, 0);
+	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), gui_dac_create(&manager->dac1),
 			FALSE, TRUE, 0);
 	if (manager->dacs_count == 2)
