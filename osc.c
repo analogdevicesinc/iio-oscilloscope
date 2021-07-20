@@ -416,7 +416,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 
 	gtk_window_set_title(GTK_WINDOW(window), page_name);
-	gtk_widget_reparent(page, hbox);
+	gtk_container_add(GTK_CONTAINER(hbox), page);
 	gtk_container_add(GTK_CONTAINER(window), hbox);
 
 	g_signal_connect(window, "delete-event",
