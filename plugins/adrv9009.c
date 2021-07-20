@@ -1074,7 +1074,7 @@ void buildTabsInContainer(GtkBox *container_box, enum plugin_section section, bo
 		struct iio_device *dev = subcomponents[i].iio_dev;
 		GtkWidget *page_label = gtk_label_new(iio_device_get_name(dev) ?: iio_device_get_id(dev));
 
-		GtkWidget *page_container = gtk_vbox_new(FALSE, 0);
+		GtkWidget *page_container = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 		gtk_notebook_append_page(notebook, page_container, page_label);
 		GtkWidget *page = gtk_notebook_get_nth_page(notebook, i);
 		gtk_widget_show(page);
