@@ -109,7 +109,7 @@ struct _transform {
 	unsigned y_axis_size;
 	bool destroy_x_axis;
 	bool destroy_y_axis;
-	GdkColor *graph_color;
+	GdkRGBA *graph_color;
 	bool has_the_marker;
 	void *settings;
 	bool (*transform_function)(Transform *tr, gboolean init_transform);
