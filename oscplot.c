@@ -80,7 +80,7 @@ static int enabled_channels_count(OscPlot *plot);
 static int num_of_channels_of_device(GtkTreeView *treeview, const char *name);
 static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter, const char *dev_name, const char *ch_name);
 static void set_marker_labels (OscPlot *plot, gchar *buf, enum marker_types type);
-static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color);
+static void channel_color_icon_set_color(GdkPixbuf *pb, GdkRGBA *color);
 static int comboboxtext_set_active_by_string(GtkComboBox *combo_box, const char *name);
 static int comboboxtext_get_active_text_as_int(GtkComboBoxText* combobox);
 static gboolean check_valid_setup(OscPlot *plot);
@@ -141,50 +141,54 @@ enum {
 
 #define MATH_CHANNELS_DEVICE "Math"
 
-#define OSC_COLOR(r, g, b) { \
-	.red = (r) << 8, \
-	.green = (g) << 8, \
-	.blue = (b) << 8, \
+#define OSC_COLOR(r, g, b, a) { \
+	.red = (double) ((r) << 8) / 65535.0, \
+	.green = (double) ((g) << 8) / 65535.0, \
+	.blue = (double) ((b) << 8) / 65535.0, \
+	.alpha = (a) \
 }
 
-static GdkColor color_graph[] = {
-	OSC_COLOR(138, 226, 52),
-	OSC_COLOR(239, 41, 41),
-	OSC_COLOR(114, 159, 207),
-	OSC_COLOR(252, 175, 62),
-	OSC_COLOR(211, 215, 208),
-	OSC_COLOR(252, 233, 79),
-	OSC_COLOR(173, 127, 168),
-	OSC_COLOR(233, 185, 110),
+static GdkRGBA color_graph[] = {
+	OSC_COLOR(138, 226, 52, 1.0),
+	OSC_COLOR(239, 41, 41, 1.0),
+	OSC_COLOR(114, 159, 207, 1.0),
+	OSC_COLOR(252, 175, 62, 1.0),
+	OSC_COLOR(211, 215, 208, 1.0),
+	OSC_COLOR(252, 233, 79, 1.0),
+	OSC_COLOR(173, 127, 168, 1.0),
+	OSC_COLOR(233, 185, 110, 1.0),
 
-	OSC_COLOR(115, 210, 22),
-	OSC_COLOR(204, 0, 0),
-	OSC_COLOR(52, 101, 164),
-	OSC_COLOR(245, 121, 0),
-	OSC_COLOR(186, 189, 182),
-	OSC_COLOR(237, 212, 0),
-	OSC_COLOR(117, 80, 123),
-	OSC_COLOR(193, 125, 17),
+	OSC_COLOR(115, 210, 22, 1.0),
+	OSC_COLOR(204, 0, 0, 1.0),
+	OSC_COLOR(52, 101, 164, 1.0),
+	OSC_COLOR(245, 121, 0, 1.0),
+	OSC_COLOR(186, 189, 182, 1.0),
+	OSC_COLOR(237, 212, 0, 1.0),
+	OSC_COLOR(117, 80, 123, 1.0),
+	OSC_COLOR(193, 125, 17, 1.0),
 };
 
 #define NUM_GRAPH_COLORS (sizeof(color_graph) / sizeof(color_graph[0]))
 
-static GdkColor color_grid = {
-	.red = 51000,
-	.green = 51000,
+static GdkRGBA color_grid = {
+	.red = 0.778210117, /* = 51000 / 65535 */
+	.green = 0.778210117, /* = 51000 / 65535 */
 	.blue = 0,
+	.alpha = 1.0
 };
 
-static GdkColor color_background = {
+static GdkRGBA color_background = {
 	.red = 0,
 	.green = 0,
 	.blue = 0,
+	.alpha = 1.0
 };
 
-static GdkColor color_marker = {
-	.red = 0xFFFF,
+static GdkRGBA color_marker = {
+	.red = 1.0,
 	.green = 0,
-	.blue = 0xFFFF,
+	.blue = 1.0,
+	.alpha = 1.0
 };
 
 typedef struct channel_settings PlotChn;
@@ -196,7 +200,7 @@ struct channel_settings {
 	char *name;
 	char *parent_name;
 	struct iio_context *ctx;
-	GdkColor graph_color;
+	GdkRGBA graph_color;
 
 	struct iio_device * (*get_iio_parent)(PlotChn *);
 	gfloat * (*get_data_ref)(PlotChn *);
@@ -3807,7 +3811,7 @@ static GdkPixbuf * channel_color_icon_new(OscPlot *plot)
 	}
 }
 
-static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color)
+static void channel_color_icon_set_color(GdkPixbuf *pb, GdkRGBA *color)
 {
 	guchar *pixel;
 	int rowstride;
@@ -3821,9 +3825,9 @@ static void channel_color_icon_set_color(GdkPixbuf *pb, GdkColor *color)
 
 	for (i = border; i < ht - border; i++)
 		for (j = border * 4; j < rowstride - border * 4; j += 4) {
-			pixel[i * rowstride + j + 0] = color->red / 256;
-			pixel[i * rowstride + j + 1] = color->green / 256;
-			pixel[i * rowstride + j + 2] = color->blue / 256;
+			pixel[i * rowstride + j + 0] = color->red;
+			pixel[i * rowstride + j + 1] = color->green;
+			pixel[i * rowstride + j + 2] = color->blue;
 			pixel[i * rowstride + j + 3] = 255;
 		}
 }
@@ -3872,7 +3876,7 @@ static void plot_channels_add_channel(OscPlot *plot, PlotChn *pchn)
 	GtkTreeStore *treestore;
 	GtkTreeIter parent_iter, child_iter;
 	GdkPixbuf *new_icon;
-	GdkColor *icon_color;
+	GdkRGBA *icon_color;
 	gboolean ret;
 
 	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
@@ -6622,7 +6626,7 @@ static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	PlotChn *settings;
 	GtkWidget *color_dialog;
 	GtkWidget *colorsel;
-	GdkColor *color;
+	GdkRGBA *color;
 	GtkTreeView *treeview;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
