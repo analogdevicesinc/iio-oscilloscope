@@ -96,7 +96,7 @@ set(OSC_SRC osc.c oscplot.c datatypes.c iio_widget.c iio_utils.c
 
 find_package(PkgConfig)
 pkg_check_modules(GLIB REQUIRED glib-2.0)
-pkg_check_modules(GTK REQUIRED gtk+-2.0)
+pkg_check_modules(GTK REQUIRED gtk+-3.0)
 pkg_check_modules(GTHREAD REQUIRED gthread-2.0)
 pkg_check_modules(GTKDATABOX REQUIRED gtkdatabox)
 pkg_check_modules(FFTW3 REQUIRED fftw3)
