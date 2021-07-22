@@ -7120,7 +7120,7 @@ static void create_plot(OscPlot *plot)
 	gtk_widget_show_all(priv->math_channel_settings_menu);
 
 	gtk_box_pack_start(GTK_BOX(gtk_builder_get_object(builder, "buttons_separator_box")),
-			gtk_vseparator_new(), FALSE, TRUE, 0);
+			gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, TRUE, 0);
 
 	/* Create application's treeviews */
 	device_list_treeview_init(plot);
