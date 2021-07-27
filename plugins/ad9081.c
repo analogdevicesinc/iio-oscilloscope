@@ -23,8 +23,8 @@
 #define AD9081				"axi-ad9081-rx"
 #define DAC_DEVICE			"axi-ad9081-tx"
 #define NUM_MAX_CHANNEL			8
-#define AD9081_MAX_ADC_FREQ_MHZ		6000 /* AD9081 4000MHz, AD9082 6000MHz */
-#define AD9081_MAX_DAC_FREQ_MHZ		12000
+#define AD9081_MAX_ADC_FREQ_HZ		6000000000LL /* AD9081 4000MHz, AD9082 6000MHz */
+#define AD9081_MAX_DAC_FREQ_HZ		12000000000LL
 /*
  * 81 = 2 widgets per maximmum of 8 rx channels + 8 widgets per maximun 8 tx
  * channels + 1 combo box for global RX configuration...
@@ -516,7 +516,7 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 			if (ret)
 				goto error_free_ctx;
 
-			if (adc_freq != 0 && adc_freq <= AD9081_MAX_ADC_FREQ_MHZ)
+			if (adc_freq != 0 && adc_freq <= AD9081_MAX_ADC_FREQ_HZ)
 				ad9081_adjust_main_nco(builder, idx, adc_freq,
 						       0);
 
@@ -540,7 +540,7 @@ tx_chann:
 			if (ret)
 				goto error_free_ctx;
 
-			if (dac_freq != 0 && dac_freq <= AD9081_MAX_DAC_FREQ_MHZ)
+			if (dac_freq != 0 && dac_freq <= AD9081_MAX_DAC_FREQ_HZ)
 				ad9081_adjust_main_nco(builder, idx, dac_freq,
 						       TRUE);
 			continue;
