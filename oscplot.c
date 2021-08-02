@@ -6262,49 +6262,50 @@ static void buttons_table_remove_child(GtkWidget *child, gpointer data)
 
 static void math_device_cmb_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 {
-	char *device_name;
-	const char *channel_name;
-	struct iio_device *iio_dev;
-	struct iio_channel *iio_chn;
-	GtkWidget *button, *buttons_table;
-	int row, col, sc;
-	unsigned int i;
+// TO DO: handle this using GTK3
+// 	char *device_name;
+// 	const char *channel_name;
+// 	struct iio_device *iio_dev;
+// 	struct iio_channel *iio_chn;
+// 	GtkWidget *button, *buttons_table;
+// 	int row, col, sc;
+// 	unsigned int i;
 
-	device_name = gtk_combo_box_text_get_active_text(box);
-	if (!device_name)
-		return;
+// 	device_name = gtk_combo_box_text_get_active_text(box);
+// 	if (!device_name)
+// 		return;
 
-	iio_dev = iio_context_find_device(plot->priv->ctx, device_name);
-	if (!iio_dev)
-		goto end;
+// 	iio_dev = iio_context_find_device(plot->priv->ctx, device_name);
+// 	if (!iio_dev)
+// 		goto end;
 
-	buttons_table = GTK_WIDGET(gtk_builder_get_object(plot->priv->builder,
-			"table_channel_buttons"));
-	gtk_container_foreach(GTK_CONTAINER(buttons_table),
-		buttons_table_remove_child, buttons_table);
-	for (i = 0, sc = 0; i < iio_device_get_channels_count(iio_dev); i++) {
-		iio_chn = iio_device_get_channel(iio_dev, i);
+// 	buttons_table = GTK_WIDGET(gtk_builder_get_object(plot->priv->builder,
+// 			"table_channel_buttons"));
+// 	gtk_container_foreach(GTK_CONTAINER(buttons_table),
+// 		buttons_table_remove_child, buttons_table);
+// 	for (i = 0, sc = 0; i < iio_device_get_channels_count(iio_dev); i++) {
+// 		iio_chn = iio_device_get_channel(iio_dev, i);
 
-		if (iio_channel_is_scan_element(iio_chn)) {
-			channel_name = iio_channel_get_name(iio_chn) ?:
-					iio_channel_get_id(iio_chn);
-			button = gtk_button_new_with_label(channel_name);
-			row = sc % 4;
-			col = sc / 4;
-			gtk_table_attach_defaults(GTK_TABLE(buttons_table),
-				button, col, col + 1, row, row + 1);
-			sc++;
-		}
-	}
-	GList *node;
+// 		if (iio_channel_is_scan_element(iio_chn)) {
+// 			channel_name = iio_channel_get_name(iio_chn) ?:
+// 					iio_channel_get_id(iio_chn);
+// 			button = gtk_button_new_with_label(channel_name);
+// 			row = sc % 4;
+// 			col = sc / 4;
+// 			gtk_table_attach_defaults(GTK_TABLE(buttons_table),
+// 				button, col, col + 1, row, row + 1);
+// 			sc++;
+// 		}
+// 	}
+// 	GList *node;
 
-	for (node = gtk_container_get_children(GTK_CONTAINER(buttons_table)); node; node = g_list_next(node)) {
-		g_signal_connect(node->data, "clicked", G_CALLBACK(math_chooser_key_pressed_cb), plot);
-	}
+// 	for (node = gtk_container_get_children(GTK_CONTAINER(buttons_table)); node; node = g_list_next(node)) {
+// 		g_signal_connect(node->data, "clicked", G_CALLBACK(math_chooser_key_pressed_cb), plot);
+// 	}
 
-	gtk_widget_show_all(buttons_table);
-end:
-	g_free(device_name);
+// 	gtk_widget_show_all(buttons_table);
+// end:
+// 	g_free(device_name);
 }
 
 static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
@@ -6623,41 +6624,41 @@ static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 
 static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
-	OscPlotPrivate *priv = plot->priv;
-	PlotChn *settings;
-	GtkWidget *color_dialog;
-	GtkWidget *colorsel;
-	GdkRGBA *color;
-	GtkTreeView *treeview;
-	GtkTreeModel *model;
-	GtkTreeIter iter;
-	GdkPixbuf *color_icon;
-	gboolean selected;
-	gint response;
+	// OscPlotPrivate *priv = plot->priv;
+	// PlotChn *settings;
+	// GtkWidget *color_dialog;
+	// GtkWidget *colorsel;
+	// GdkRGBA *color;
+	// GtkTreeView *treeview;
+	// GtkTreeModel *model;
+	// GtkTreeIter iter;
+	// GdkPixbuf *color_icon;
+	// gboolean selected;
+	// gint response;
 
-	treeview = GTK_TREE_VIEW(priv->channel_list_view);
-	model = gtk_tree_view_get_model(treeview);
-	selected = tree_get_selected_row_iter(treeview, &iter);
-	if (!selected)
-		return;
-	gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &settings,
-			CHANNEL_COLOR_ICON, &color_icon, -1);
-	color = &settings->graph_color;
+	// treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	// model = gtk_tree_view_get_model(treeview);
+	// selected = tree_get_selected_row_iter(treeview, &iter);
+	// if (!selected)
+	// 	return;
+	// gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &settings,
+	// 		CHANNEL_COLOR_ICON, &color_icon, -1);
+	// color = &settings->graph_color;
 
-	color_dialog = gtk_color_selection_dialog_new("Channel Graph Color Selection");
-	colorsel = gtk_color_selection_dialog_get_color_selection(GTK_COLOR_SELECTION_DIALOG(color_dialog));
-	gtk_color_selection_set_current_color(GTK_COLOR_SELECTION(colorsel), color);
-	response = gtk_dialog_run(GTK_DIALOG(color_dialog));
-	gtk_widget_hide(color_dialog);
-	if (response != GTK_RESPONSE_OK)
-		return;
+	// color_dialog = gtk_color_selection_dialog_new("Channel Graph Color Selection");
+	// colorsel = gtk_color_selection_dialog_get_color_selection(GTK_COLOR_SELECTION_DIALOG(color_dialog));
+	// gtk_color_selection_set_current_color(GTK_COLOR_SELECTION(colorsel), color);
+	// response = gtk_dialog_run(GTK_DIALOG(color_dialog));
+	// gtk_widget_hide(color_dialog);
+	// if (response != GTK_RESPONSE_OK)
+	// 	return;
 
-	gtk_color_selection_get_current_color(GTK_COLOR_SELECTION(colorsel), color);
+	// gtk_color_selection_get_current_color(GTK_COLOR_SELECTION(colorsel), color);
 
-	/* Change icon color */
-	channel_color_icon_set_color(color_icon, color);
+	// /* Change icon color */
+	// channel_color_icon_set_color(color_icon, color);
 
-	gtk_widget_destroy(color_dialog);
+	// gtk_widget_destroy(color_dialog);
 }
 
 static void channel_math_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
@@ -6855,22 +6856,23 @@ static void show_capture_options_toggled_cb(GtkCheckMenuItem *menu_item, OscPlot
 
 static void fullscreen_changed_cb(GtkWidget *widget, OscPlot *plot)
 {
-	OscPlotPrivate *priv = plot->priv;
-	GtkWidget *img;
+	// TO DO: handle this with GTK3
+	// OscPlotPrivate *priv = plot->priv;
+	// GtkWidget *img;
 
-	if (priv->fullscreen_state) {
-		gtk_window_unfullscreen(GTK_WINDOW(priv->window));
-		gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-fullscreen");
-		gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Fullscreen");
-		img = gtk_image_menu_item_get_image(GTK_IMAGE_MENU_ITEM(priv->menu_fullscreen));
-		gtk_image_set_from_stock(GTK_IMAGE(img), "gtk-fullscreen", GTK_ICON_SIZE_MENU);
-	} else {
-		gtk_window_fullscreen(GTK_WINDOW(priv->window));
-		gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-leave-fullscreen");
-		gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Leave Fullscreen");
-		img = gtk_image_menu_item_get_image(GTK_IMAGE_MENU_ITEM(priv->menu_fullscreen));
-		gtk_image_set_from_stock(GTK_IMAGE(img), "gtk-leave-fullscreen", GTK_ICON_SIZE_MENU);
-	}
+	// if (priv->fullscreen_state) {
+	// 	gtk_window_unfullscreen(GTK_WINDOW(priv->window));
+	// 	gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-fullscreen");
+	// 	gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Fullscreen");
+	// 	img = gtk_image_menu_item_get_image(GTK_IMAGE_MENU_ITEM(priv->menu_fullscreen));
+	// 	gtk_image_set_from_stock(GTK_IMAGE(img), "gtk-fullscreen", GTK_ICON_SIZE_MENU);
+	// } else {
+	// 	gtk_window_fullscreen(GTK_WINDOW(priv->window));
+	// 	gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-leave-fullscreen");
+	// 	gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Leave Fullscreen");
+	// 	img = gtk_image_menu_item_get_image(GTK_IMAGE_MENU_ITEM(priv->menu_fullscreen));
+	// 	gtk_image_set_from_stock(GTK_IMAGE(img), "gtk-leave-fullscreen", GTK_ICON_SIZE_MENU);
+	// }
 }
 
 static gboolean window_state_event_cb(GtkWidget *widget, GdkEventWindowState *event, OscPlot *plot)
