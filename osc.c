@@ -295,7 +295,8 @@ static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detach
 
 	tab_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	tab_label = gtk_label_new(plugin_name);
-	tab_detach_btn = (GtkWidget *)gtk_tool_button_new_from_stock("gtk-disconnect");
+	// TO DO: handle the line below using GTK3
+	tab_detach_btn = NULL;//(GtkWidget *)gtk_tool_button_new_from_stock("gtk-disconnect");
 
 	gtk_widget_set_size_request(tab_detach_btn, 25, 25);
 
@@ -463,8 +464,9 @@ void move_gtk_window_on_screen(GtkWindow   *window,
 		  gint         y)
 {
 	// get screen dimensions
-	gint screen_w = gdk_screen_width();
-	gint screen_h = gdk_screen_height();
+	// TO DO: handle gettting screen resolution using GTK3
+	gint screen_w = 640;//gdk_screen_width();
+	gint screen_h = 480;//gdk_screen_height();
 
 	gint window_w;
 	gint window_h;
