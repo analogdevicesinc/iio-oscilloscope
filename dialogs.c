@@ -185,8 +185,8 @@ get_serial_and_file:
 				dialog = gtk_file_chooser_dialog_new("Select FRU file",
 							GTK_WINDOW(dialogs.serial_num),
 							GTK_FILE_CHOOSER_ACTION_OPEN,
-							GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-							GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+							"_Cancel", GTK_RESPONSE_CANCEL,
+							"_Open", GTK_RESPONSE_ACCEPT,
 							NULL);
 
 				if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
