@@ -91,7 +91,7 @@ endif()
 
 set(OSC_SRC osc.c oscplot.c datatypes.c iio_widget.c iio_utils.c
 	fru.c dialogs.c trigger_dialog.c xml_utils.c libini/libini.c
-	libini2.c phone_home.c plugins/dac_data_manager.c
+	libini2.c phone_home.c #plugins/dac_data_manager.c
 	plugins/fir_filter.c eeprom.c osc_preferences.c)
 
 find_package(PkgConfig)
@@ -254,4 +254,4 @@ foreach(plib_dest xmls filters waveforms block_diagrams)
 	install(DIRECTORY ${plib_dest} DESTINATION ${PLIB_DEST})
 endforeach()
 
-add_subdirectory(plugins)
+#add_subdirectory(plugins)
