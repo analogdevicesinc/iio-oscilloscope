@@ -372,7 +372,8 @@ static GtkWidget * AD7303_init(struct osc_plugin *plugin, GtkWidget *notebook, c
 	gtk_databox_create_box_with_scrollbars_and_rulers(&databox, &table,
 						TRUE, TRUE, TRUE, TRUE);
 	gtk_container_add(GTK_CONTAINER(preview_graph), table);
-	gtk_widget_modify_bg(databox, GTK_STATE_NORMAL, &color_background);
+	// TO DO: handle this using GTK3 (probably using stylesheets)
+	//gtk_widget_modify_bg(databox, GTK_STATE_NORMAL, &color_background);
 	gtk_widget_set_size_request(table, 450, 300);
 
 	gtk_widget_show_all(AD7303_panel);
