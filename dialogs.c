@@ -828,7 +828,7 @@ static bool connect_clear(GtkWidget *widget)
 		printf("nope - not callback\n");
 		return true;
 	}
-	if (GTK_TOGGLE_BUTTON (widget)->active) {
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
 		/* set - fill in */
 		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb))) {
 			if (connect_fillin(&dialogs))
