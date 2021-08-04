@@ -1249,8 +1249,8 @@ static gboolean connect_key_press_cb (GtkWidget *w, GdkEvent *ev, GtkWidget *dia
 	GdkEventKey *key = (GdkEventKey*)ev;
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_net)) && (key)) {
-		if ((key->keyval == GDK_Tab) ||
-		    (key->keyval == GDK_Return))
+		if ((key->keyval == GDK_KEY_Tab) ||
+		    (key->keyval == GDK_KEY_Return))
 			   gtk_dialog_response(GTK_DIALOG(dialog), GTK_RESPONSE_APPLY);
 	}
 
