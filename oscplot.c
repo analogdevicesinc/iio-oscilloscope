@@ -7030,7 +7030,8 @@ static void create_plot(OscPlot *plot)
 	gtk_databox_create_box_with_scrollbars_and_rulers(&priv->databox, &table,
 		TRUE, TRUE, TRUE, TRUE);
 	gtk_box_pack_start(GTK_BOX(priv->capture_graph), table, TRUE, TRUE, 0);
-	gtk_widget_modify_bg(priv->databox, GTK_STATE_NORMAL, &color_background);
+	// TO DO: handle this using GTK3 (probably using stylesheets)
+	// gtk_widget_modify_bg(priv->databox, GTK_STATE_NORMAL, &color_background);
 	gtk_widget_set_size_request(table, 320, 240);
 	ruler_y = gtk_databox_get_ruler_y(GTK_DATABOX(priv->databox));
 
