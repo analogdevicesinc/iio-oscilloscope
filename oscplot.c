@@ -5807,7 +5807,7 @@ static gint moved_fixed(GtkDatabox *box, GdkEventMotion *event, gpointer user_da
 	return FALSE;
 }
 
-static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
+static gint marker_button(GtkDatabox *box, GdkEvent *event, gpointer data)
 {
 	OscPlot *plot = (OscPlot *)data;
 	OscPlotPrivate *priv = plot->priv;
@@ -5816,14 +5816,17 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 	gfloat left, right, top, bottom;
 	int i, fix = -1;
 	bool full = TRUE, empty = TRUE;
+	GdkEventButton *event_button;
 
 	/* FFT? */
 	if (!is_frequency_transform(priv) &&
 		priv->active_transform_type != CROSS_CORRELATION_TRANSFORM)
 	return FALSE;
 
+	event_button = (GdkEventButton *)event;
+
 	/* Right button */
-	if (event->button != 3)
+	if (event_button->button != 3)
 		return FALSE;
 
 	/* things are running? */
@@ -5839,8 +5842,8 @@ static gint marker_button(GtkDatabox *box, GdkEventButton *event, gpointer data)
 		return FALSE;
 	}
 
-	x = gtk_databox_pixel_to_value_x(box, event->x);
-	y = gtk_databox_pixel_to_value_y(box, event->y);
+	x = gtk_databox_pixel_to_value_x(box, event_button->x);
+	y = gtk_databox_pixel_to_value_y(box, event_button->y);
 	gtk_databox_get_total_limits(box, &left, &right, &top, &bottom);
 
 	for (i = 0; i <= MAX_MARKERS; i++) {
@@ -5959,8 +5962,7 @@ skip_no_peak_markers:
 		i++;
 	}
 
-	gtk_menu_popup(GTK_MENU(popupmenu), NULL, NULL, NULL, NULL,
-		event->button, event->time);
+	gtk_menu_popup_at_pointer(GTK_MENU(popupmenu), event);
 
 	if (priv->marker_type == MARKER_FIXED)
 		return TRUE;
@@ -6708,7 +6710,7 @@ static void channel_math_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	gtk_widget_hide(priv->math_dialog);
 }
 
-static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
+static gboolean right_click_menu_show(OscPlot *plot, GdkEvent *event)
 {
 	OscPlotPrivate *priv = plot->priv;
 	GtkTreeView *treeview;
@@ -6722,14 +6724,17 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 	gchar *element_name;
 	int channel_type;
 	char name[1024];
+	GdkEventButton *event_button;
 
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(treeview);
 	selection = gtk_tree_view_get_selection(treeview);
 
+	event_button = (GdkEventButton *)event;
+
 	/* Get tree path for row that was clicked */
 	if (!gtk_tree_view_get_path_at_pos(treeview,
-				(gint) event->x, (gint) event->y,
+				(gint) event_button->x, (gint) event_button->y,
 				&path, NULL, NULL, NULL))
 		return false;
 
@@ -6753,16 +6758,10 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 
 		switch(channel_type) {
 		case PLOT_IIO_CHANNEL:
-			gtk_menu_popup(GTK_MENU(priv->channel_settings_menu), NULL, NULL,
-				NULL, NULL,
-				(event != NULL) ? event->button : 0,
-				gdk_event_get_time((GdkEvent*)event));
+			gtk_menu_popup_at_pointer(GTK_MENU(priv->channel_settings_menu), event);
 			return true;
 		case PLOT_MATH_CHANNEL:
-			gtk_menu_popup(GTK_MENU(priv->math_channel_settings_menu), NULL, NULL,
-				NULL, NULL,
-				(event != NULL) ? event->button : 0,
-				gdk_event_get_time((GdkEvent*)event));
+			gtk_menu_popup_at_pointer(GTK_MENU(priv->math_channel_settings_menu), event);
 			return true;
 		}
 	}
@@ -6783,28 +6782,24 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEventButton *event)
 		gtk_widget_set_sensitive(priv->device_trigger_menuitem,
 				has_trigger);
 
-		gtk_menu_popup(GTK_MENU(priv->device_settings_menu),
-				NULL, NULL, NULL, NULL,
-				(event != NULL) ? event->button : 0,
-				gdk_event_get_time((GdkEvent*)event));
+		gtk_menu_popup_at_pointer(GTK_MENU(priv->device_settings_menu), event);
 		return true;
 	}
 
 	if (!strncmp(name, MATH_CHANNELS_DEVICE, sizeof(MATH_CHANNELS_DEVICE))) {
-		gtk_menu_popup(GTK_MENU(priv->math_settings_menu),
-				NULL, NULL, NULL, NULL,
-				(event != NULL) ? event->button : 0,
-				gdk_event_get_time((GdkEvent*)event));
+		gtk_menu_popup_at_pointer(GTK_MENU(priv->math_settings_menu), event);
 		return true;
 	}
 
 	return false;
 }
 
-static gboolean right_click_on_ch_list_cb(GtkTreeView *treeview, GdkEventButton *event, OscPlot *plot)
+static gboolean right_click_on_ch_list_cb(GtkTreeView *treeview, GdkEvent *event, OscPlot *plot)
 {
+	GdkEventButton *event_button = (GdkEventButton *)event;
+
 	/* single click with the right mouse button */
-	if (event->type == GDK_BUTTON_PRESS && event->button == 3)
+	if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3)
 		return right_click_menu_show(plot, event);
 
 	return false;
