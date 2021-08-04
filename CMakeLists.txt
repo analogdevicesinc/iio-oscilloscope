@@ -163,7 +163,8 @@ set(LIBOSC_LIBS
 configure_file(config.h.cmakein ${CMAKE_CURRENT_SOURCE_DIR}/config.h @ONLY)
 
 if(CMAKE_COMPILER_IS_GNUCC)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wextra -Wno-unused-parameter")
+	# TO DO: remove -Wno-deprecated-declarations -Wno-unused-function -Wno-unused-variable
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Wno-unused-function -Wno-unused-variable")
 endif()
 
 # Override on distributions that do not use a global polkit prefix (e.g. NixOS)
