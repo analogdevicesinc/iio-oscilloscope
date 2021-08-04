@@ -7056,14 +7056,14 @@ static void create_plot(OscPlot *plot)
 	GtkWidget *image;
 	priv->device_settings_menu = gtk_menu_new();
 	priv->device_trigger_menuitem = gtk_menu_item_new_with_label("Impulse Generator");
-	image = gtk_image_new_from_stock(GTK_STOCK_PREFERENCES, GTK_ICON_SIZE_MENU);
+	image = gtk_image_new_from_icon_name("_Preferences", GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->device_trigger_menuitem), image);
 	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->device_trigger_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->device_settings_menu),
 		priv->device_trigger_menuitem);
 
 	priv->plot_trigger_menuitem = gtk_menu_item_new_with_label("Trigger settings");
-	image = gtk_image_new_from_stock(GTK_STOCK_PREFERENCES, GTK_ICON_SIZE_MENU);
+	image = gtk_image_new_from_icon_name("_Preferences", GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->plot_trigger_menuitem), image);
 	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->plot_trigger_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->device_settings_menu),
@@ -7072,7 +7072,7 @@ static void create_plot(OscPlot *plot)
 
 	priv->math_settings_menu = gtk_menu_new();
 	priv->math_menuitem = gtk_menu_item_new_with_label("New Channel");
-	image = gtk_image_new_from_stock(GTK_STOCK_ADD, GTK_ICON_SIZE_MENU);
+	image = gtk_image_new_from_icon_name("_Add", GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->math_menuitem), image);
 	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->math_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_settings_menu),
@@ -7083,13 +7083,13 @@ static void create_plot(OscPlot *plot)
 	priv->channel_settings_menu = gtk_menu_new();
 
 	priv->channel_iio_color_menuitem = gtk_menu_item_new_with_label("Color Selection");
-	image = gtk_image_new_from_stock(GTK_STOCK_SELECT_COLOR, GTK_ICON_SIZE_MENU);
+	image = gtk_image_new_from_icon_name("gtk-select-color", GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_iio_color_menuitem), image);
 	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_iio_color_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->channel_settings_menu),
 		priv->channel_iio_color_menuitem);
 	priv->channel_math_menuitem = gtk_menu_item_new_with_label("Math Settings");
-	image = gtk_image_new_from_stock(GTK_STOCK_PREFERENCES, GTK_ICON_SIZE_MENU);
+	image = gtk_image_new_from_icon_name("_Preferences", GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_menuitem), image);
 	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->channel_settings_menu),
@@ -7100,20 +7100,20 @@ static void create_plot(OscPlot *plot)
 	priv->math_channel_settings_menu = gtk_menu_new();
 
 	priv->channel_expression_edit_menuitem = gtk_menu_item_new_with_label("Edit Expression");
-	image = gtk_image_new_from_stock(GTK_STOCK_EDIT, GTK_ICON_SIZE_MENU);
+	image = gtk_image_new_from_icon_name("gtk-edit", GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_expression_edit_menuitem), image);
 	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_expression_edit_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
 		priv->channel_expression_edit_menuitem);
 
 	priv->channel_math_color_menuitem = gtk_menu_item_new_with_label("Color Selection");
-	image = gtk_image_new_from_stock(GTK_STOCK_SELECT_COLOR, GTK_ICON_SIZE_MENU);
+	image = gtk_image_new_from_icon_name("gtk-select-color", GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_color_menuitem), image);
 	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_color_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
 		priv->channel_math_color_menuitem);
 	priv->channel_remove_menuitem = gtk_menu_item_new_with_label("Remove");
-	image = gtk_image_new_from_stock(GTK_STOCK_REMOVE, GTK_ICON_SIZE_MENU);
+	image = gtk_image_new_from_icon_name("_Remove", GTK_ICON_SIZE_MENU);
 	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_remove_menuitem), image);
 	gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_remove_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
