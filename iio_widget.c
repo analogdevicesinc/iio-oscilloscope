@@ -375,8 +375,7 @@ void iio_combo_box_init_no_avail_flush(struct iio_widget *widget, struct iio_dev
 		if (ret < 0)
 			return;
 
-		/* may use gtk_combo_box_text_remove_all gtk3 only */
-		gtk_list_store_clear (GTK_LIST_STORE(model));
+		gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(combo_box));
 
 		items_avail = g_strsplit (text, " ", 0);
 		for (item = 0; items_avail[item]; item++) {
@@ -422,8 +421,8 @@ static void iio_combo_box_update_value(struct iio_widget *widget,
 		if (ret < 0)
 			return;
 
-		/* may use gtk_combo_box_text_remove_all gtk3 only */
-		gtk_list_store_clear (GTK_LIST_STORE (model));
+		gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(combo_box));
+
 		saveditems_avail = items_avail = g_strsplit (text2, " ", 0);
 
 		for (; NULL != *items_avail; items_avail++) {

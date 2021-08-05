@@ -167,7 +167,6 @@ static int update_regmap(int data);
 static void create_device_context(void);
 static void destroy_device_context(void);
 static void destroy_regmap_widgets(void);
-static void gtk_combo_box_text_remove_all (GtkWidget *combo_box);
 static void combo_box_text_sort(GtkComboBoxText *box, int column, int order);
 static bool combo_box_text_set_active_text(GtkComboBoxText *comboboxtext,
 		const char *text);
@@ -294,7 +293,7 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 			gtk_widget_hide(scanel_options);
 		} else {
 
-			gtk_combo_box_text_remove_all(scanel_options);
+			gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(scanel_options));
 			elems = g_strsplit(options_attr_val, " ", -1);
 			elem = elems[0];
 			while (elem) {
@@ -356,7 +355,7 @@ static void attribute_type_changed_cb(GtkComboBoxText *cmbtext, gpointer data)
 	g_strfreev(elems);
 
 	g_signal_handler_block(combobox_debug_scanel, debug_scanel_hid);
-	gtk_combo_box_text_remove_all(combobox_debug_scanel);
+	gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(combobox_debug_scanel));
 
 	if (global_attr) {
 		current_ch = NULL;
@@ -423,7 +422,7 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		char tmp[1024];
 
 		g_signal_handler_block(combobox_attr_type, attr_type_hid);
-		gtk_combo_box_text_remove_all(combobox_attr_type);
+		gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(combobox_attr_type));
 		for (i = 0; i < nb_channels; i++) {
 			struct iio_channel *ch = iio_device_get_channel(dev, i);
 
@@ -454,9 +453,9 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		gtk_entry_set_text(GTK_ENTRY(scanel_value), "");
 		g_signal_handler_block(combobox_attr_type, attr_type_hid);
 		g_signal_handler_block(combobox_debug_scanel, debug_scanel_hid);
-		gtk_combo_box_text_remove_all(combobox_attr_type);
+		gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(combobox_attr_type));
 		combo_box_text_add_default_text(GTK_COMBO_BOX_TEXT(combobox_attr_type), "None");
-		gtk_combo_box_text_remove_all(combobox_debug_scanel);
+		gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(combobox_debug_scanel));
 		combo_box_text_add_default_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel), "None");
 		g_signal_handler_unblock(combobox_attr_type, attr_type_hid);
 		g_signal_handler_unblock(combobox_debug_scanel, debug_scanel_hid);
@@ -913,17 +912,6 @@ static int get_option_index(int option_value, bgroup *bit)
 }
 
 /*
- * Helper function. Remove all elements of a combobox.
- */
-static void gtk_combo_box_text_remove_all (GtkWidget *combo_box)
-{
-	GtkListStore *store;
-
-	store = GTK_LIST_STORE (gtk_combo_box_get_model (GTK_COMBO_BOX (combo_box)));
-	gtk_list_store_clear (store);
-}
-
-/*
  * Sort strings naturally
  *
  * This function will sort strings naturally, this means when a number is
@@ -1019,7 +1007,7 @@ static void draw_reg_map(int valid_register)
 		gtk_widget_reparent(lbl_bits[i], hboxes[i]);
 		gtk_label_set_text((GtkLabel *)bit_descrip_list[i], "Reserved");
 		gtk_label_set_width_chars((GtkLabel *)bit_descrip_list[i], 13);
-		gtk_combo_box_text_remove_all(bit_comboboxes[i]);
+		gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(bit_comboboxes[i]));
 		g_object_set(bit_comboboxes[i], "sensitive", TRUE, NULL);
 		gtk_widget_hide(bit_comboboxes[i]);
 		gtk_widget_hide(bit_spinbuttons[i]);
@@ -1492,7 +1480,7 @@ static void reg_map_chooser_init(struct iio_device *dev)
 
 	g_signal_handler_block(reg_map_type, reg_map_hid);
 
-	gtk_combo_box_text_remove_all(reg_map_type);
+	gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(reg_map_type));
 	combo_box_text_add_default_text(GTK_COMBO_BOX_TEXT(reg_map_type), spi_option);
 	if (is_input_device(dev) || is_output_device(dev))
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(reg_map_type), axi_option);
