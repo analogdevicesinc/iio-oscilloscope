@@ -320,4 +320,4 @@ foreach(plib_dest xmls filters waveforms block_diagrams)
 	install(DIRECTORY ${plib_dest} DESTINATION ${PLIB_DEST})
 endforeach()
 
-#add_subdirectory(plugins)
+add_subdirectory(plugins)
