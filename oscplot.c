@@ -3776,6 +3776,7 @@ static void plot_channel_add_to_plot(OscPlot *plot, PlotChn *settings)
 	settings->graph_color.red = color_graph[index % NUM_GRAPH_COLORS].red;
 	settings->graph_color.green = color_graph[index % NUM_GRAPH_COLORS].green;
 	settings->graph_color.blue = color_graph[index % NUM_GRAPH_COLORS].blue;
+	settings->graph_color.alpha = color_graph[index % NUM_GRAPH_COLORS].alpha;
 
 	/* Add the settings to an internal list */
 	list = g_slist_prepend(list, settings);
