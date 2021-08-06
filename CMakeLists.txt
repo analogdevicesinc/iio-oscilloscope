@@ -17,10 +17,15 @@
 
 cmake_minimum_required(VERSION 2.8.7)
 
+# needed to use VERSION in 'project()'
+cmake_policy(SET CMP0048 NEW)
 set(OSC_VERSION_MAJOR 0)
 set(OSC_VERSION_MINOR 8)
 set(OSC_VERSION "${OSC_VERSION_MAJOR}.${OSC_VERSION_MINOR}")
-project(iio-oscilloscope C)
+project(iio-oscilloscope
+	VERSION ${OSC_VERSION}
+	LANGUAGES C
+)
 
 if (WIN32)
 	string(TIMESTAMP BUILD_YEAR "%Y")
