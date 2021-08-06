@@ -81,32 +81,30 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 
 static void manual_ch_set_cb(void)
 {
-	const int len = 9; // 4 digits, 4 spaces and NUL character
-	char ch_config[len];
+	char ch_config[9]; // 4 digits, 4 spaces and NUL character
 
-	snprintf(ch_config, len, "%i %i %i %i",
+	snprintf(ch_config, sizeof(ch_config), "%i %i %i %i",
 		gtk_spin_button_get_value_as_int(manual_ch_btns[0]),
 		gtk_spin_button_get_value_as_int(manual_ch_btns[1]),
 		gtk_spin_button_get_value_as_int(manual_ch_btns[2]),
 		gtk_spin_button_get_value_as_int(manual_ch_btns[3]));
 
 	iio_device_attr_write_raw(pulse_dev,
-		"sequencer_manual_chsel", ch_config, len);
+		"sequencer_manual_chsel", ch_config, sizeof(ch_config));
 }
 
 static void auto_cfg_set_cb(void)
 {
-	const int len = 9; // 4 digits, 4 spaces and NUL character
-	char ch_config[len];
+	char ch_config[9]; // 4 digits, 4 spaces and NUL character
 
-	snprintf(ch_config, len, "%i %i %i %i",
+	snprintf(ch_config, sizeof(ch_config), "%i %i %i %i",
 		gtk_spin_button_get_value_as_int(auto_cfg_btns[0]),
 		gtk_spin_button_get_value_as_int(auto_cfg_btns[1]),
 		gtk_spin_button_get_value_as_int(auto_cfg_btns[2]),
 		gtk_spin_button_get_value_as_int(auto_cfg_btns[3]));
 
 	iio_device_attr_write_raw(pulse_dev,
-		"sequencer_auto_cfg", ch_config, len);
+		"sequencer_auto_cfg", ch_config, sizeof(ch_config));
 }
 
 static void auto_cfg_button_changed_cb(GtkSpinButton *btn)
