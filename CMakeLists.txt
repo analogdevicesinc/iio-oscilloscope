@@ -190,7 +190,11 @@ set_target_properties(oscmain PROPERTIES
 	VERSION ${OSC_VERSION}
 	OUTPUT_NAME osc
 )
-target_link_libraries(oscmain PRIVATE ${LIBOSC_LIBS} osc)
+target_link_libraries(oscmain PRIVATE
+	${GTK_LIBRARIES}
+	${LIBIIO_LIBRARIES}
+	osc
+)
 
 install(TARGETS osc LIBRARY DESTINATION lib)
 install(TARGETS oscmain RUNTIME DESTINATION bin)
