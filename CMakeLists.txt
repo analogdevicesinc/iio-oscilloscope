@@ -182,7 +182,7 @@ target_include_directories(osc PRIVATE
 )
 target_link_libraries(osc PRIVATE ${LIBOSC_LIBS})
 set_target_properties(osc PROPERTIES
-	VERSION ${OSC_VERSION}
+	VERSION ${PROJECT_VERSION}
 	SOVERSION ${OSC_VERSION_MAJOR}
 )
 
@@ -191,15 +191,12 @@ target_include_directories(oscmain PRIVATE
 	${GTK_INCLUDE_DIRS}
 	${LIBIIO_INCLUDE_DIRS}
 )
-set_target_properties(oscmain PROPERTIES
-	VERSION ${OSC_VERSION}
-	OUTPUT_NAME osc
-)
 target_link_libraries(oscmain PRIVATE
 	${GTK_LIBRARIES}
 	${LIBIIO_LIBRARIES}
 	osc
 )
+set_target_properties(oscmain PROPERTIES OUTPUT_NAME osc)
 
 install(TARGETS osc LIBRARY DESTINATION lib)
 install(TARGETS oscmain RUNTIME DESTINATION bin)
