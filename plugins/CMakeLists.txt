@@ -49,8 +49,9 @@ set(PLUGINS
 	cf_axi_tdd
 )
 
-if (MINGW)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	list(REMOVE_ITEM PLUGINS spectrum_analyzer scpi)
+	set(EXTRA_WIN_LIBRARIES winpthread)
 endif()
 
 set(PLUGIN_GLADE_FILES "")
@@ -71,6 +72,7 @@ foreach(plugin ${PLUGINS})
 		${LIBIIO_LIBRARIES}
 		${LIBXML2_LIBRARIES}
 		${LIBAD9361_LIBRARIES}
+		${EXTRA_WIN_LIBRARIES}
 		osc
 	)
 
@@ -82,4 +84,5 @@ endforeach()
 
 install(TARGETS ${PLUGINS}
 	LIBRARY DESTINATION ${PLIB_DEST}
+	RUNTIME DESTINATION ${PLIB_DEST}
 )

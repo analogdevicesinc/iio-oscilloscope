@@ -27,7 +27,7 @@ project(iio-oscilloscope
 	LANGUAGES C
 )
 
-if (WIN32)
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	string(TIMESTAMP BUILD_YEAR "%Y")
 endif()
 
@@ -80,7 +80,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	LINK_DIRECTORIES(/usr/local/lib)
 endif()
 
-add_definitions(-Dlinux -D_GNU_SOURCE
+add_definitions(-D_GNU_SOURCE
 	-DOSC_VERSION="${OSC_VERSION}"
 	${GIT_VERSION}
 	${GIT_COMMIT_TIMESTAMP}
@@ -96,11 +96,10 @@ add_compile_options(-Wall -Wextra -Werror
 	-Wvla
 	-std=gnu90
 	-g -O2
-	-rdynamic
 )
 
 if(UNIX)
-	add_definitions(-DFRU_FILES="${CMAKE_PREFIX_PATH}/lib/fmc-tools/")
+	add_definitions(-Dlinux -DFRU_FILES="${CMAKE_PREFIX_PATH}/lib/fmc-tools/")
 endif()
 
 set(OSC_SRC osc.c oscplot.c datatypes.c iio_widget.c iio_utils.c
@@ -164,6 +163,35 @@ if(NOT DEFINED CMAKE_POLKIT_PREFIX)
   set(CMAKE_POLKIT_PREFIX /usr)
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	# This is a bit hacky but looks to be the less intrusive way I could think of
+	# to handle this. This is only useful when creating the windows installer together
+	# with the CI script. In that case, we have a sysroot with all dependecies where
+	# we want to install our artifacts. Hence, the first feeling is to just point
+	# CMAKE_INSTALL_PREFIX to that sysroot and we should fine. Well, that will
+	# break auto genarated files as config.h since the sysroot path won't exist in
+	# the target machine. Cpack gives us an easy way to package our artifacts in a tar.z
+	# archive with all the installation paths being relative (GNU DIR paths. The only
+	# full paths used are specific to linux builds). Hence, the CI script can just call
+	# 'make package' and untar it to the right place in the sysroot path. On top of
+	# this, it also gives us more flexibility to set CMAKE_INSTALL_PREFIX to a value
+	# that will be valid for the auto genarated files (there are some subtleties with
+	# this for windows). To finish it up, this also leaves the door open to just use
+	# cmake to package our windows installer (together with nsis).
+	set(CPACK_BINARY_NSIS OFF)
+	set(CPACK_GENERATOR TZ)
+	include(CPack)
+
+	list(APPEND LIBOSC_LIBS winpthread)
+	list(REMOVE_ITEM OSC_SRC eeprom.c)
+	set(OSCMAIN_RC oscicon.rc)
+	set_source_files_properties(${OSCMAIN_RC} PROPERTIES LANGUAGE RC)
+	add_compile_options(-mwindows)
+	set(WIN_LINK_FLAGS "-Wl,--export-all-symbols -Wl,--subsystem,windows")
+else()
+	add_compile_options(-rdynamic)
+endif()
+
 add_library(osc ${OSC_SRC})
 target_include_directories(osc PRIVATE
 	${GLIB_INCLUDE_DIRS}
@@ -183,11 +211,12 @@ target_include_directories(osc PRIVATE
 )
 target_link_libraries(osc PRIVATE ${LIBOSC_LIBS})
 set_target_properties(osc PROPERTIES
+	LINK_FLAGS "${WIN_LINK_FLAGS}"
 	VERSION ${PROJECT_VERSION}
 	SOVERSION ${OSC_VERSION_MAJOR}
 )
 
-add_executable(oscmain WIN32 oscmain.c)
+add_executable(oscmain WIN32 oscmain.c ${OSCMAIN_RC})
 target_include_directories(oscmain PRIVATE
 	${GTK_INCLUDE_DIRS}
 	${LIBIIO_INCLUDE_DIRS}
@@ -199,7 +228,10 @@ target_link_libraries(oscmain PRIVATE
 )
 set_target_properties(oscmain PROPERTIES OUTPUT_NAME osc)
 
-install(TARGETS osc LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS osc
+	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 install(TARGETS oscmain RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Set default CMAKE_PREFIX_PATH to CMAKE_SYSTEM_PREFIX_PATH
