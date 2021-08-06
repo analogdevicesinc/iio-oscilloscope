@@ -66,7 +66,13 @@ foreach(plugin ${PLUGINS})
 		${LIBXML2_INCLUDE_DIRS}
 		${LIBAD9361_INCLUDE_DIRS}
 	)
-	target_link_libraries(${plugin} PRIVATE osc)
+	target_link_libraries(${plugin} PRIVATE
+		${GTK_LIBRARIES}
+		${LIBIIO_LIBRARIES}
+		${LIBXML2_LIBRARIES}
+		${LIBAD9361_LIBRARIES}
+		osc
+	)
 
 	set_target_properties(${plugin} PROPERTIES
 		PREFIX ""
