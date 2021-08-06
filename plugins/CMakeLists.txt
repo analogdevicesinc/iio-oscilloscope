@@ -66,7 +66,7 @@ foreach(plugin ${PLUGINS})
 		${LIBXML2_INCLUDE_DIRS}
 		${LIBAD9361_INCLUDE_DIRS}
 	)
-	target_link_libraries(${plugin} LINK_PRIVATE osc)
+	target_link_libraries(${plugin} PRIVATE osc)
 
 	set_target_properties(${plugin} PROPERTIES
 		PREFIX ""
