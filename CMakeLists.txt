@@ -68,8 +68,6 @@ endif()
 
 set(BUILD_SHARED_LIBS ON CACHE BOOL "Build shared libraries")
 
-link_directories(${CMAKE_PREFIX_PATH}/lib)
-
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	add_compile_options("-F/Library/Frameworks/")
 	link_libraries("-F/Library/Frameworks/")
