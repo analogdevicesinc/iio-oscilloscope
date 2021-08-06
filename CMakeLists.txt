@@ -175,7 +175,7 @@ target_include_directories(osc PRIVATE
 	${HDF5_INCLUDE_DIRS}
 	${LIBAD9361_INCLUDE_DIRS}
 )
-target_link_libraries(osc ${LIBOSC_LIBS})
+target_link_libraries(osc PRIVATE ${LIBOSC_LIBS})
 set_target_properties(osc PROPERTIES
 	VERSION ${OSC_VERSION}
 	SOVERSION ${OSC_VERSION_MAJOR}
@@ -190,7 +190,7 @@ set_target_properties(oscmain PROPERTIES
 	VERSION ${OSC_VERSION}
 	OUTPUT_NAME osc
 )
-target_link_libraries(oscmain LINK_PRIVATE ${LIBOSC_LIBS} osc)
+target_link_libraries(oscmain PRIVATE ${LIBOSC_LIBS} osc)
 
 install(TARGETS osc LIBRARY DESTINATION lib)
 install(TARGETS oscmain RUNTIME DESTINATION bin)
