@@ -67,6 +67,7 @@ Source: "sysroot-i686\usr\share\*"; DestDir: "{app}\share"; Flags: ignoreversion
 
 Source: "sysroot-x86_64\usr\bin\*"; DestDir: "{app}\bin"; Check: Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "sysroot-x86_64\usr\lib\*"; DestDir: "{app}\lib"; Check: Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "sysroot-x86_64\usr\share\*"; DestDir: "{app}\share"; Check: Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\bin\{#MyAppExeName}"
