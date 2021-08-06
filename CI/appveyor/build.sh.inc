@@ -8,32 +8,25 @@ CURDIR_TWO_DIR_UP=$(dirname ${CURDIR_ONE_DIR_UP})
 export CURDIR=${CURDIR_TWO_DIR_UP}
 export SYSROOT=${CURDIR}/sysroot-${MINGW_VERSION}/
 export HOST=${MINGW_VERSION}-w64-mingw32
-INSTALL_PREFIX=/usr
-
-CONFIGURE_OPTS="--prefix=${INSTALL_PREFIX} --host=${HOST} --with-sysroot=${SYSROOT} --disable-dependency-tracking --enable-silent-rules --disable-static --disable-option-checking"
+INSTALL_PREFIX=usr
 
 export PKG_CONFIG_SYSROOT_DIR="${SYSROOT}"
 export PKG_CONFIG_LIBDIR="${SYSROOT}/usr/lib/pkgconfig:${SYSROOT}/usr/share/pkgconfig"
 
-# Debian's mingw32 toolchain is not sysroot-aware...
-export CPPFLAGS="-I${SYSROOT}/${INSTALL_PREFIX}/include"
-export LDFLAGS="-L${SYSROOT}/${INSTALL_PREFIX}/lib"
-#export CFLAGS="-g -ggdb -std=gnu89"
-export DESTDIR=${SYSROOT}/
 # Required for globbing
 shopt -s extglob
-
-if [ -z "$MAKE_J" ] ; then
-	MAKE_J=-j$(getconf _NPROCESSORS_ONLN)
-	MAKE_J=${MAKE_J:--j1}
-fi
 
 # Build the osc
 build_osc () {
 	cd ${CURDIR}
-	make clean
-	PREFIX=.. CROSS_COMPILE=${HOST}- make SYSROOT=${SYSROOT} GIT_BRANCH=${BRANCH} ${MAKE_J}
-	PREFIX=/usr CROSS_COMPILE=${HOST}- DEBIAN_INSTALL=1 make SYSROOT=${SYSROOT} GIT_BRANCH=${BRANCH} install
+	rm -rf build
+	mkdir build && cd build
+	cmake -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${HOST}-gcc -DCMAKE_RC_COMPILER=${HOST}-windres \
+                -DCMAKE_SYSROOT=${SYSROOT} -DCMAKE_INSTALL_PREFIX:STRING=.. -DCPACK_PACKAGE_FILE_NAME=osc-${MINGW_VERSION} ../
+	make -j$(nproc)
+	make package
+	tar -C ${SYSROOT}/usr -xf osc-${MINGW_VERSION}.tar.Z --strip-components=1
+	cd -
 }
 
 # Remove garbage
