@@ -58,6 +58,14 @@ set(PLUGIN_GLADE_FILES "")
 foreach(plugin ${PLUGINS})
 
 	add_library(${plugin} ${plugin}.c)
+	# We just include all the paths that work for all plugins. Keeping it on a per plugins
+	# basis seems like unnecessary overhead/work
+	target_include_directories(${plugin} PRIVATE
+		${GTK_INCLUDE_DIRS}
+		${LIBIIO_INCLUDE_DIRS}
+		${LIBXML2_INCLUDE_DIRS}
+		${LIBAD9361_INCLUDE_DIRS}
+	)
 	target_link_libraries(${plugin} LINK_PRIVATE osc)
 
 	set_target_properties(${plugin} PROPERTIES

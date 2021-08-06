@@ -4,12 +4,12 @@
 # it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 3, or (at your option)
 #  any later version.
-# 
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #  You should have received a copy of the GNU General Public License
 #  along with GNU Radio; see the file COPYING.  If not, write to
 #  the Free Software Foundation, Inc., 51 Franklin Street,
@@ -75,7 +75,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	LINK_DIRECTORIES(/usr/local/lib)
 endif()
 
-add_definitions(-Dlinux -D_GNU_SOURCE 
+add_definitions(-Dlinux -D_GNU_SOURCE
 	-DOSC_VERSION="${OSC_VERSION}"
 	${GIT_VERSION}
 	${GIT_COMMIT_TIMESTAMP}
@@ -131,24 +131,6 @@ else()
 	set(LIBSERIALPORT_INCLUDE_DIR "")
 endif()
 
-include_directories(
-	${GLIB_INCLUDE_DIRS}
-	${GLIBCONFIG_INCLUDE_DIRS}
-	${GTK_INCLUDE_DIRS}
-	${GTHREAD_INCLUDE_DIRS}
-	${GTKDATABOX_INCLUDE_DIRS}
-	${FFTW3_INCLUDE_DIRS}
-	${LIBIIO_INCLUDE_DIRS}
-	${LIBXML2_INCLUDE_DIRS}
-	${LIBCURL_INCLUDE_DIRS}
-	${LIBSERIALPORT_INCLUDE_DIR}
-	${JANSSON_INCLUDE_DIRS}
-	${MATIO_INCLUDE_DIRS}
-	${HDF5_INCLUDE_DIRS}
-	${LIBAD9361_INCLUDE_DIRS}
-	${CMAKE_SOURCE_DIR}/src
-)
-
 # On some newer systems (Ubuntu) it tries to link with libhdf5.so,
 # which doesn't seem to exist; but we only need -lmatio, so force it here
 set(MATIO_LIBRARIES -lmatio)
@@ -177,6 +159,22 @@ if(NOT DEFINED CMAKE_POLKIT_PREFIX)
 endif()
 
 add_library(osc ${OSC_SRC})
+target_include_directories(osc PRIVATE
+	${GLIB_INCLUDE_DIRS}
+	${GLIBCONFIG_INCLUDE_DIRS}
+	${GTK_INCLUDE_DIRS}
+	${GTHREAD_INCLUDE_DIRS}
+	${GTKDATABOX_INCLUDE_DIRS}
+	${FFTW3_INCLUDE_DIRS}
+	${LIBIIO_INCLUDE_DIRS}
+	${LIBXML2_INCLUDE_DIRS}
+	${LIBCURL_INCLUDE_DIRS}
+	${LIBSERIALPORT_INCLUDE_DIR}
+	${JANSSON_INCLUDE_DIRS}
+	${MATIO_INCLUDE_DIRS}
+	${HDF5_INCLUDE_DIRS}
+	${LIBAD9361_INCLUDE_DIRS}
+)
 target_link_libraries(osc ${LIBOSC_LIBS})
 set_target_properties(osc PROPERTIES
 	VERSION ${OSC_VERSION}
@@ -184,6 +182,10 @@ set_target_properties(osc PROPERTIES
 )
 
 add_executable(oscmain WIN32 oscmain.c)
+target_include_directories(oscmain PRIVATE
+	${GTK_INCLUDE_DIRS}
+	${LIBIIO_INCLUDE_DIRS}
+)
 set_target_properties(oscmain PROPERTIES
 	VERSION ${OSC_VERSION}
 	OUTPUT_NAME osc
