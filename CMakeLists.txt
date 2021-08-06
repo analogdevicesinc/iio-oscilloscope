@@ -154,6 +154,7 @@ set(LIBOSC_LIBS
 	${JANSSON_LIBRARIES}
 	${MATIO_LIBRARIES}
 	${LIBAD9361_LIBRARIES}
+	dl
 )
 
 configure_file(config.h.cmakein ${CMAKE_CURRENT_SOURCE_DIR}/config.h @ONLY)
