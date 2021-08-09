@@ -611,7 +611,7 @@ static char *read_file(const char *file, ssize_t *f_size)
 	char *buf;
 	ssize_t size;
 
-	f = fopen(file, "r");
+	f = fopen(file, "rb");
 	if (!f)
 		return NULL;
 
