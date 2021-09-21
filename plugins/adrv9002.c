@@ -281,7 +281,7 @@ static void save_digital_gain_ctl(GtkWidget *widget, struct adrv9002_rx *rx)
 	combo_box_save(widget, &rx->digital_gain_ctl);
 	digital_gain = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
 
-	if (digital_gain && strstr(digital_gain, "automatic_control")) {
+	if (digital_gain && strcmp(digital_gain, "spi")) {
 		gtk_widget_set_sensitive(rx->intf_gain.w.widget, false);
 	} else {
 		gtk_widget_set_sensitive(rx->intf_gain.w.widget, true);
