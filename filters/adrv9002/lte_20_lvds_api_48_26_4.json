@@ -37,9 +37,9 @@
     "rxInitChannelMask": 195,
     "rxChannelCfg": [ {
         "profile": {
-          "primarySigBandwidth_Hz": 4500000,
-          "rxOutputRate_Hz": 7680000,
-          "rxInterfaceSampleRate_Hz": 7680000,
+          "primarySigBandwidth_Hz": 18000000,
+          "rxOutputRate_Hz": 30720000,
+          "rxInterfaceSampleRate_Hz": 30720000,
           "rxOffsetLo_kHz": 0,
           "rxSignalOnLo": 0,
           "outputSignaling": 0,
@@ -71,8 +71,8 @@
             "rxWbDecTop": {
               "decBy2Blk25En": 0,
               "decBy2Blk27En": 0,
-              "decBy2Blk29En": 1,
-              "decBy2Blk31En": 1,
+              "decBy2Blk29En": 0,
+              "decBy2Blk31En": 0,
               "decBy2Blk33En": 1,
               "wbLpfBlk33p1En": 0
             },
@@ -98,10 +98,10 @@
                 "dpInFifoTestDataSel": 0
               },
               "rxNbNco": {
-                "rxNbNcoEn": 1,
+                "rxNbNcoEn": 0,
                 "rxNbNcoConfig": {
                   "freq": 0,
-                  "sampleFreq": 7680000,
+                  "sampleFreq": 0,
                   "phase": 0,
                   "realOut": 0
                 }
@@ -122,10 +122,20 @@
               "dpArmSel": 0
             }
           },
+          "lnaConfig": {
+            "externalLnaPresent": false,
+            "gpioSourceSel": 0,
+            "externalLnaPinSel": 0,
+            "settlingDelay": 0,
+            "numberLnaGainSteps": 0,
+            "lnaGainSteps_mdB": [ 0, 0, 0, 0 ],
+            "lnaDigitalGainDelay": 0,
+            "minGainIndex": 0
+          },
           "rxSsiConfig": {
-            "ssiType": 1,
+            "ssiType": 2,
             "ssiDataFormatSel": 4,
-            "numLaneSel": 2,
+            "numLaneSel": 1,
             "strobeType": 0,
             "lsbFirst": 0,
             "qFirst": 0,
@@ -134,20 +144,18 @@
             "lvdsQBitInversion": false,
             "lvdsStrobeBitInversion": false,
             "lvdsUseLsbIn12bitMode": 0,
-            "lvdsTxFullRefClkEn": false,
             "lvdsRxClkInversionEn": false,
-            "cmosTxDdrNegStrobeEn": false,
             "cmosDdrPosClkEn": false,
-            "cmosDdrClkInversionEn": false,
-            "cmosDdrEn": false,
+            "cmosClkInversionEn": false,
+            "ddrEn": true,
             "rxMaskStrobeEn": false
           }
         }
       }, {
         "profile": {
-          "primarySigBandwidth_Hz": 4500000,
-          "rxOutputRate_Hz": 7680000,
-          "rxInterfaceSampleRate_Hz": 7680000,
+          "primarySigBandwidth_Hz": 18000000,
+          "rxOutputRate_Hz": 30720000,
+          "rxInterfaceSampleRate_Hz": 30720000,
           "rxOffsetLo_kHz": 0,
           "rxSignalOnLo": 0,
           "outputSignaling": 0,
@@ -179,8 +187,8 @@
             "rxWbDecTop": {
               "decBy2Blk25En": 0,
               "decBy2Blk27En": 0,
-              "decBy2Blk29En": 1,
-              "decBy2Blk31En": 1,
+              "decBy2Blk29En": 0,
+              "decBy2Blk31En": 0,
               "decBy2Blk33En": 1,
               "wbLpfBlk33p1En": 0
             },
@@ -206,10 +214,10 @@
                 "dpInFifoTestDataSel": 0
               },
               "rxNbNco": {
-                "rxNbNcoEn": 1,
+                "rxNbNcoEn": 0,
                 "rxNbNcoConfig": {
                   "freq": 0,
-                  "sampleFreq": 7680000,
+                  "sampleFreq": 0,
                   "phase": 0,
                   "realOut": 0
                 }
@@ -230,10 +238,20 @@
               "dpArmSel": 0
             }
           },
+          "lnaConfig": {
+            "externalLnaPresent": false,
+            "gpioSourceSel": 0,
+            "externalLnaPinSel": 0,
+            "settlingDelay": 0,
+            "numberLnaGainSteps": 0,
+            "lnaGainSteps_mdB": [ 0, 0, 0, 0 ],
+            "lnaDigitalGainDelay": 0,
+            "minGainIndex": 0
+          },
           "rxSsiConfig": {
-            "ssiType": 1,
+            "ssiType": 2,
             "ssiDataFormatSel": 4,
-            "numLaneSel": 2,
+            "numLaneSel": 1,
             "strobeType": 0,
             "lsbFirst": 0,
             "qFirst": 0,
@@ -242,12 +260,10 @@
             "lvdsQBitInversion": false,
             "lvdsStrobeBitInversion": false,
             "lvdsUseLsbIn12bitMode": 0,
-            "lvdsTxFullRefClkEn": false,
             "lvdsRxClkInversionEn": false,
-            "cmosTxDdrNegStrobeEn": false,
             "cmosDdrPosClkEn": false,
-            "cmosDdrClkInversionEn": false,
-            "cmosDdrEn": false,
+            "cmosClkInversionEn": false,
+            "ddrEn": true,
             "rxMaskStrobeEn": false
           }
         }
@@ -325,7 +341,7 @@
               "rxWbNbCompPFir": {
                 "bankSel": 0,
                 "rxWbNbCompPFirInMuxSel": 0,
-                "rxWbNbCompPFirEn": 1
+                "rxWbNbCompPFirEn": 0
               },
               "resamp": {
                 "rxResampEn": 0,
@@ -337,6 +353,16 @@
               "rxRoundMode": 0,
               "dpArmSel": 0
             }
+          },
+          "lnaConfig": {
+            "externalLnaPresent": false,
+            "gpioSourceSel": 0,
+            "externalLnaPinSel": 0,
+            "settlingDelay": 0,
+            "numberLnaGainSteps": 0,
+            "lnaGainSteps_mdB": [ 0, 0, 0, 0 ],
+            "lnaDigitalGainDelay": 0,
+            "minGainIndex": 0
           },
           "rxSsiConfig": {
             "ssiType": 0,
@@ -350,12 +376,10 @@
             "lvdsQBitInversion": false,
             "lvdsStrobeBitInversion": false,
             "lvdsUseLsbIn12bitMode": 0,
-            "lvdsTxFullRefClkEn": false,
             "lvdsRxClkInversionEn": false,
-            "cmosTxDdrNegStrobeEn": false,
             "cmosDdrPosClkEn": false,
-            "cmosDdrClkInversionEn": false,
-            "cmosDdrEn": false,
+            "cmosClkInversionEn": false,
+            "ddrEn": false,
             "rxMaskStrobeEn": false
           }
         }
@@ -433,7 +457,7 @@
               "rxWbNbCompPFir": {
                 "bankSel": 0,
                 "rxWbNbCompPFirInMuxSel": 0,
-                "rxWbNbCompPFirEn": 1
+                "rxWbNbCompPFirEn": 0
               },
               "resamp": {
                 "rxResampEn": 0,
@@ -445,6 +469,16 @@
               "rxRoundMode": 0,
               "dpArmSel": 0
             }
+          },
+          "lnaConfig": {
+            "externalLnaPresent": false,
+            "gpioSourceSel": 0,
+            "externalLnaPinSel": 0,
+            "settlingDelay": 0,
+            "numberLnaGainSteps": 0,
+            "lnaGainSteps_mdB": [ 0, 0, 0, 0 ],
+            "lnaDigitalGainDelay": 0,
+            "minGainIndex": 0
           },
           "rxSsiConfig": {
             "ssiType": 0,
@@ -458,20 +492,18 @@
             "lvdsQBitInversion": false,
             "lvdsStrobeBitInversion": false,
             "lvdsUseLsbIn12bitMode": 0,
-            "lvdsTxFullRefClkEn": false,
             "lvdsRxClkInversionEn": false,
-            "cmosTxDdrNegStrobeEn": false,
             "cmosDdrPosClkEn": false,
-            "cmosDdrClkInversionEn": false,
-            "cmosDdrEn": false,
+            "cmosClkInversionEn": false,
+            "ddrEn": false,
             "rxMaskStrobeEn": false
           }
         }
       }, {
         "profile": {
-          "primarySigBandwidth_Hz": 4500000,
-          "rxOutputRate_Hz": 7680000,
-          "rxInterfaceSampleRate_Hz": 7680000,
+          "primarySigBandwidth_Hz": 18000000,
+          "rxOutputRate_Hz": 30720000,
+          "rxInterfaceSampleRate_Hz": 30720000,
           "rxOffsetLo_kHz": 0,
           "rxSignalOnLo": 0,
           "outputSignaling": 0,
@@ -503,8 +535,8 @@
             "rxWbDecTop": {
               "decBy2Blk25En": 0,
               "decBy2Blk27En": 0,
-              "decBy2Blk29En": 1,
-              "decBy2Blk31En": 1,
+              "decBy2Blk29En": 0,
+              "decBy2Blk31En": 0,
               "decBy2Blk33En": 1,
               "wbLpfBlk33p1En": 0
             },
@@ -541,7 +573,7 @@
               "rxWbNbCompPFir": {
                 "bankSel": 1,
                 "rxWbNbCompPFirInMuxSel": 0,
-                "rxWbNbCompPFirEn": 1
+                "rxWbNbCompPFirEn": 0
               },
               "resamp": {
                 "rxResampEn": 0,
@@ -554,10 +586,20 @@
               "dpArmSel": 0
             }
           },
+          "lnaConfig": {
+            "externalLnaPresent": false,
+            "gpioSourceSel": 0,
+            "externalLnaPinSel": 0,
+            "settlingDelay": 0,
+            "numberLnaGainSteps": 0,
+            "lnaGainSteps_mdB": [ 0, 0, 0, 0 ],
+            "lnaDigitalGainDelay": 0,
+            "minGainIndex": 0
+          },
           "rxSsiConfig": {
-            "ssiType": 1,
+            "ssiType": 2,
             "ssiDataFormatSel": 4,
-            "numLaneSel": 2,
+            "numLaneSel": 1,
             "strobeType": 0,
             "lsbFirst": 0,
             "qFirst": 0,
@@ -566,20 +608,18 @@
             "lvdsQBitInversion": false,
             "lvdsStrobeBitInversion": false,
             "lvdsUseLsbIn12bitMode": 0,
-            "lvdsTxFullRefClkEn": false,
             "lvdsRxClkInversionEn": false,
-            "cmosTxDdrNegStrobeEn": false,
             "cmosDdrPosClkEn": false,
-            "cmosDdrClkInversionEn": false,
-            "cmosDdrEn": false,
+            "cmosClkInversionEn": false,
+            "ddrEn": true,
             "rxMaskStrobeEn": false
           }
         }
       }, {
         "profile": {
-          "primarySigBandwidth_Hz": 4500000,
-          "rxOutputRate_Hz": 7680000,
-          "rxInterfaceSampleRate_Hz": 7680000,
+          "primarySigBandwidth_Hz": 18000000,
+          "rxOutputRate_Hz": 30720000,
+          "rxInterfaceSampleRate_Hz": 30720000,
           "rxOffsetLo_kHz": 0,
           "rxSignalOnLo": 0,
           "outputSignaling": 0,
@@ -611,8 +651,8 @@
             "rxWbDecTop": {
               "decBy2Blk25En": 0,
               "decBy2Blk27En": 0,
-              "decBy2Blk29En": 1,
-              "decBy2Blk31En": 1,
+              "decBy2Blk29En": 0,
+              "decBy2Blk31En": 0,
               "decBy2Blk33En": 1,
               "wbLpfBlk33p1En": 0
             },
@@ -649,7 +689,7 @@
               "rxWbNbCompPFir": {
                 "bankSel": 3,
                 "rxWbNbCompPFirInMuxSel": 0,
-                "rxWbNbCompPFirEn": 1
+                "rxWbNbCompPFirEn": 0
               },
               "resamp": {
                 "rxResampEn": 0,
@@ -662,10 +702,20 @@
               "dpArmSel": 0
             }
           },
+          "lnaConfig": {
+            "externalLnaPresent": false,
+            "gpioSourceSel": 0,
+            "externalLnaPinSel": 0,
+            "settlingDelay": 0,
+            "numberLnaGainSteps": 0,
+            "lnaGainSteps_mdB": [ 0, 0, 0, 0 ],
+            "lnaDigitalGainDelay": 0,
+            "minGainIndex": 0
+          },
           "rxSsiConfig": {
-            "ssiType": 1,
+            "ssiType": 2,
             "ssiDataFormatSel": 4,
-            "numLaneSel": 2,
+            "numLaneSel": 1,
             "strobeType": 0,
             "lsbFirst": 0,
             "qFirst": 0,
@@ -674,12 +724,10 @@
             "lvdsQBitInversion": false,
             "lvdsStrobeBitInversion": false,
             "lvdsUseLsbIn12bitMode": 0,
-            "lvdsTxFullRefClkEn": false,
             "lvdsRxClkInversionEn": false,
-            "cmosTxDdrNegStrobeEn": false,
             "cmosDdrPosClkEn": false,
-            "cmosDdrClkInversionEn": false,
-            "cmosDdrEn": false,
+            "cmosClkInversionEn": false,
+            "ddrEn": true,
             "rxMaskStrobeEn": false
           }
         }
@@ -757,7 +805,7 @@
               "rxWbNbCompPFir": {
                 "bankSel": 0,
                 "rxWbNbCompPFirInMuxSel": 0,
-                "rxWbNbCompPFirEn": 1
+                "rxWbNbCompPFirEn": 0
               },
               "resamp": {
                 "rxResampEn": 0,
@@ -769,6 +817,16 @@
               "rxRoundMode": 0,
               "dpArmSel": 0
             }
+          },
+          "lnaConfig": {
+            "externalLnaPresent": false,
+            "gpioSourceSel": 0,
+            "externalLnaPinSel": 0,
+            "settlingDelay": 0,
+            "numberLnaGainSteps": 0,
+            "lnaGainSteps_mdB": [ 0, 0, 0, 0 ],
+            "lnaDigitalGainDelay": 0,
+            "minGainIndex": 0
           },
           "rxSsiConfig": {
             "ssiType": 0,
@@ -782,12 +840,10 @@
             "lvdsQBitInversion": false,
             "lvdsStrobeBitInversion": false,
             "lvdsUseLsbIn12bitMode": 0,
-            "lvdsTxFullRefClkEn": false,
             "lvdsRxClkInversionEn": false,
-            "cmosTxDdrNegStrobeEn": false,
             "cmosDdrPosClkEn": false,
-            "cmosDdrClkInversionEn": false,
-            "cmosDdrEn": false,
+            "cmosClkInversionEn": false,
+            "ddrEn": false,
             "rxMaskStrobeEn": false
           }
         }
@@ -865,7 +921,7 @@
               "rxWbNbCompPFir": {
                 "bankSel": 0,
                 "rxWbNbCompPFirInMuxSel": 0,
-                "rxWbNbCompPFirEn": 1
+                "rxWbNbCompPFirEn": 0
               },
               "resamp": {
                 "rxResampEn": 0,
@@ -877,6 +933,16 @@
               "rxRoundMode": 0,
               "dpArmSel": 0
             }
+          },
+          "lnaConfig": {
+            "externalLnaPresent": false,
+            "gpioSourceSel": 0,
+            "externalLnaPinSel": 0,
+            "settlingDelay": 0,
+            "numberLnaGainSteps": 0,
+            "lnaGainSteps_mdB": [ 0, 0, 0, 0 ],
+            "lnaDigitalGainDelay": 0,
+            "minGainIndex": 0
           },
           "rxSsiConfig": {
             "ssiType": 0,
@@ -890,12 +956,10 @@
             "lvdsQBitInversion": false,
             "lvdsStrobeBitInversion": false,
             "lvdsUseLsbIn12bitMode": 0,
-            "lvdsTxFullRefClkEn": false,
             "lvdsRxClkInversionEn": false,
-            "cmosTxDdrNegStrobeEn": false,
             "cmosDdrPosClkEn": false,
-            "cmosDdrClkInversionEn": false,
-            "cmosDdrEn": false,
+            "cmosClkInversionEn": false,
+            "ddrEn": false,
             "rxMaskStrobeEn": false
           }
         }
@@ -904,9 +968,9 @@
   "tx": {
     "txInitChannelMask": 12,
     "txProfile": [ {
-        "primarySigBandwidth_Hz": 4500000,
-        "txInputRate_Hz": 7680000,
-        "txInterfaceSampleRate_Hz": 7680000,
+        "primarySigBandwidth_Hz": 18000000,
+        "txInputRate_Hz": 30720000,
+        "txInterfaceSampleRate_Hz": 30720000,
         "txOffsetLo_kHz": 0,
         "validDataDelay": 0,
         "txBbf3dBCorner_kHz": 50000,
@@ -934,8 +998,8 @@
           "txWbIntTop": {
             "txInterpBy2Blk30En": 0,
             "txInterpBy2Blk28En": 0,
-            "txInterpBy2Blk26En": 1,
-            "txInterpBy2Blk24En": 1,
+            "txInterpBy2Blk26En": 0,
+            "txInterpBy2Blk24En": 0,
             "txInterpBy2Blk22En": 1,
             "txWbLpfBlk22p1En": 0
           },
@@ -967,7 +1031,7 @@
             "txRoundEn": 1
           },
           "txIqdmDuc": {
-            "iqdmDucMode": 2,
+            "iqdmDucMode": 0,
             "iqdmDev": 0,
             "iqdmDevOffset": 0,
             "iqdmScalar": 0,
@@ -981,9 +1045,9 @@
           }
         },
         "txSsiConfig": {
-          "ssiType": 1,
+          "ssiType": 2,
           "ssiDataFormatSel": 4,
-          "numLaneSel": 2,
+          "numLaneSel": 1,
           "strobeType": 0,
           "lsbFirst": 0,
           "qFirst": 0,
@@ -992,18 +1056,16 @@
           "lvdsQBitInversion": false,
           "lvdsStrobeBitInversion": false,
           "lvdsUseLsbIn12bitMode": 0,
-          "lvdsTxFullRefClkEn": false,
           "lvdsRxClkInversionEn": false,
-          "cmosTxDdrNegStrobeEn": false,
           "cmosDdrPosClkEn": false,
-          "cmosDdrClkInversionEn": false,
-          "cmosDdrEn": false,
+          "cmosClkInversionEn": false,
+          "ddrEn": true,
           "rxMaskStrobeEn": false
         }
       }, {
-        "primarySigBandwidth_Hz": 4500000,
-        "txInputRate_Hz": 7680000,
-        "txInterfaceSampleRate_Hz": 7680000,
+        "primarySigBandwidth_Hz": 18000000,
+        "txInputRate_Hz": 30720000,
+        "txInterfaceSampleRate_Hz": 30720000,
         "txOffsetLo_kHz": 0,
         "validDataDelay": 0,
         "txBbf3dBCorner_kHz": 50000,
@@ -1031,8 +1093,8 @@
           "txWbIntTop": {
             "txInterpBy2Blk30En": 0,
             "txInterpBy2Blk28En": 0,
-            "txInterpBy2Blk26En": 1,
-            "txInterpBy2Blk24En": 1,
+            "txInterpBy2Blk26En": 0,
+            "txInterpBy2Blk24En": 0,
             "txInterpBy2Blk22En": 1,
             "txWbLpfBlk22p1En": 0
           },
@@ -1064,7 +1126,7 @@
             "txRoundEn": 1
           },
           "txIqdmDuc": {
-            "iqdmDucMode": 2,
+            "iqdmDucMode": 0,
             "iqdmDev": 0,
             "iqdmDevOffset": 0,
             "iqdmScalar": 0,
@@ -1078,9 +1140,9 @@
           }
         },
         "txSsiConfig": {
-          "ssiType": 1,
+          "ssiType": 2,
           "ssiDataFormatSel": 4,
-          "numLaneSel": 2,
+          "numLaneSel": 1,
           "strobeType": 0,
           "lsbFirst": 0,
           "qFirst": 0,
@@ -1089,12 +1151,10 @@
           "lvdsQBitInversion": false,
           "lvdsStrobeBitInversion": false,
           "lvdsUseLsbIn12bitMode": 0,
-          "lvdsTxFullRefClkEn": false,
           "lvdsRxClkInversionEn": false,
-          "cmosTxDdrNegStrobeEn": false,
           "cmosDdrPosClkEn": false,
-          "cmosDdrClkInversionEn": false,
-          "cmosDdrEn": false,
+          "cmosClkInversionEn": false,
+          "ddrEn": true,
           "rxMaskStrobeEn": false
         }
       } ]
@@ -1102,7 +1162,7 @@
   "sysConfig": {
     "duplexMode": 1,
     "fhModeOn": 0,
-    "numDynamicProfile": 1,
+    "numDynamicProfiles": 1,
     "mcsMode": 0,
     "mcsInterfaceType": 0,
     "adcTypeMonitor": 1,
