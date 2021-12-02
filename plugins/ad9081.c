@@ -127,25 +127,6 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 	}
 }
 
-/*
- * This is taken from iio_info utility. It should be provided by the iio lib
- * itself. Alternatively, it could be added to osc iio_utilities if we find the
- * need of more users of this...
- */
-static bool ad9081_is_buffer_capable(const struct iio_device *dev)
-{
-	unsigned int i;
-
-	for(i = 0; i < iio_device_get_channels_count(dev); i++) {
-		struct iio_channel *chn = iio_device_get_channel(dev, i);
-
-		if (iio_channel_is_scan_element(chn))
-			return true;
-	}
-
-	return false;
-}
-
 static int ad9081_add_chan_widgets(GtkBuilder *builder,
 				   struct plugin_private *priv,
 				   struct iio_device *ad9081,
@@ -421,6 +402,8 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	struct plugin_private *priv = plugin->priv;
 	const char *dev_name = g_list_first(priv->plugin_ctx.required_devices)->data;
 	int idx;
+	GArray *devices;
+
 	struct {
 		const char *iio_name;
 		const char *rx_name;
@@ -458,11 +441,11 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	/* RX Global */
 	ch0 = iio_device_find_channel(ad9081_dev, "voltage0_i", FALSE);
 
-	if (iio_channel_attr_read_longlong(ch0, "adc_frequency", &adc_freq) == 0)
+	if (ch0 && iio_channel_attr_read_longlong(ch0, "adc_frequency", &adc_freq) == 0)
 		snprintf(attr_val, sizeof(attr_val), "%.2f",
 			 (double)(adc_freq / 1000000ul));
 	else
-		snprintf(attr_val, sizeof(attr_val), "%s", "error");
+		snprintf(attr_val, sizeof(attr_val), "%s", "N/A");
 
 	adc_buff = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_set_text(adc_buff, attr_val, -1);
@@ -487,11 +470,11 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	/* TX Global */
 	ch0 = iio_device_find_channel(ad9081_dev, "voltage0_i", TRUE);
 
-	if (iio_channel_attr_read_longlong(ch0, "dac_frequency", &dac_freq) == 0)
+	if (ch0 && iio_channel_attr_read_longlong(ch0, "dac_frequency", &dac_freq) == 0)
 		snprintf(attr_val, sizeof(attr_val), "%.2f",
 			 (double)(dac_freq / 1000000ul));
 	else
-		snprintf(attr_val, sizeof(attr_val), "%s", "error");
+		snprintf(attr_val, sizeof(attr_val), "%s", "N/A");
 
 	dac_buff = gtk_text_buffer_new(NULL);
 	gtk_text_buffer_set_text(dac_buff, attr_val, -1);
@@ -550,20 +533,13 @@ tx_chann:
 							    channels[idx].tx_name));
 		gtk_widget_hide(channel);
 	}
+
+	devices = get_iio_devices_starting_with(priv->ctx, DAC_DEVICE);
 	/* If buffer capable we need to initialize the DDS container */
-	if (ad9081_is_buffer_capable(ad9081_dev)) {
+	if (devices->len == 1) {
 		struct iio_device *dac, *hmc425;
-		GArray *devices = get_iio_devices_starting_with(priv->ctx,
-								DAC_DEVICE);
 		double dac_tx_sampling_freq = 0;
 		GtkWidget *dds_container;
-
-		if (devices->len != 1) {
-			printf("Warning: Got %d DDS devices. We should have 1\n",
-			       devices->len);
-			g_array_free(devices, FALSE);
-			goto error_free_ctx;
-		}
 
 		dac = g_array_index(devices, struct iio_device*, 0);
 		priv->dac_name = iio_device_get_name(dac);
@@ -609,6 +585,9 @@ tx_chann:
 		}
 	} else {
 		GtkWidget *dds_container;
+
+		printf("Warning: Got %d DDS devices\n", devices->len);
+		g_array_free(devices, FALSE);
 
 		dds_container = GTK_WIDGET(gtk_builder_get_object(builder,
 								  "dds_transmit_block"));
