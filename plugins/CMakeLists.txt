@@ -74,6 +74,7 @@ foreach(plugin ${PLUGINS})
 		${LIBAD9361_LIBRARIES}
 		${EXTRA_WIN_LIBRARIES}
 		osc
+		m
 	)
 
 	set_target_properties(${plugin} PROPERTIES
