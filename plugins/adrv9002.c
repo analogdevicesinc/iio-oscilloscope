@@ -12,6 +12,7 @@
 #include <string.h>
 #include <glib.h>
 #include <gtk/gtk.h>
+#include <math.h>
 
 #include "../osc.h"
 #include "../osc_plugin.h"
@@ -40,6 +41,10 @@
 #define ADRV9002_LO_INV	255
 
 const gdouble mhz_scale = 1000000.0;
+
+#define BBDC_LOOP_GAIN_RES	2147483648U
+static const gdouble bbdc_adjust_min = 1.0 / BBDC_LOOP_GAIN_RES;
+static const gdouble bbdc_adjust_max = 1.0 / BBDC_LOOP_GAIN_RES * UINT32_MAX;
 
 struct adrv9002_gtklabel {
 	GtkLabel *labels;
@@ -572,6 +577,18 @@ ensm_restore:
 	}
 
 	iio_widget_update_block_signals_by_data(&chan->carrier);
+}
+
+static double adrv9002_bbdc_loop_gain_convert(double val, bool updating)
+{
+	double loop_gain;
+
+	if (updating)
+		loop_gain = val / BBDC_LOOP_GAIN_RES;
+	else
+		loop_gain = round(val * BBDC_LOOP_GAIN_RES);
+
+	return loop_gain;
 }
 
 static void handle_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
@@ -1203,6 +1220,9 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 	struct iio_channel *channel, *rx_lo;
 	char chann_str[32];
 	char widget_str[256];
+	GtkAdjustment *bbdc_loop_gain_adjust;
+	const char *bbdc_adjust = chann ? "adjustment_bbdc_loop_gain_rx1" :
+						"adjustment_bbdc_loop_gain_rx2";
 	const char *lo_attr = chann ? "RX2_LO_frequency" : "RX1_LO_frequency";
 	uint16_t *n_w = &priv->rx_widgets[chann].rx.num_widgets;
 	uint16_t *n_w_orx = &priv->orx_widgets[chann].num_widgets;
@@ -1250,6 +1270,18 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 	iio_toggle_button_init_from_builder(&priv->rx_widgets[chann].rx.w[(*n_w)++],
 					    priv->adrv9002, channel,
 					    "bbdc_rejection_en", priv->builder, widget_str, false);
+
+	sprintf(widget_str, "bbdc_loopgain_rx%d", chann + 1);
+	iio_spin_button_int_init_from_builder(&priv->rx_widgets[chann].rx.w[(*n_w)++],
+					      priv->adrv9002, channel, "bbdc_loop_gain_raw",
+					      priv->builder, widget_str, NULL);
+
+	/* bbdc loop gains has very low res. let's update here the adjustment */
+	bbdc_loop_gain_adjust = GTK_ADJUSTMENT(gtk_builder_get_object(priv->builder, bbdc_adjust));
+	gtk_adjustment_configure(bbdc_loop_gain_adjust, 0, bbdc_adjust_min, bbdc_adjust_max,
+				 bbdc_adjust_min, 0, 0);
+	iio_spin_button_set_convert_function(&priv->rx_widgets[chann].rx.w[*n_w - 1],
+					     adrv9002_bbdc_loop_gain_convert);
 
 	sprintf(widget_str, "agc_tracking_en_rx%d", chann + 1);
 	iio_toggle_button_init_from_builder(&priv->rx_widgets[chann].rx.w[(*n_w)++],
