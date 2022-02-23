@@ -418,6 +418,20 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		{"voltage6_i", "channel_rx_6", "channel_tx_6"},
 		{"voltage7_i", "channel_rx_7", "channel_tx_7"},
 	};
+	struct {
+		const char *iio_name;
+		const char *rx_name;
+		const char *tx_name;
+	} channels_real[NUM_MAX_CHANNEL] = {
+		{"voltage0", "channel_rx_0", "channel_tx_0"},
+		{"voltage1", "channel_rx_1", "channel_tx_1"},
+		{"voltage2", "channel_rx_2", "channel_tx_2"},
+		{"voltage3", "channel_rx_3", "channel_tx_3"},
+		{"voltage4", "channel_rx_4", "channel_tx_4"},
+		{"voltage5", "channel_rx_5", "channel_tx_5"},
+		{"voltage6", "channel_rx_6", "channel_tx_6"},
+		{"voltage7", "channel_rx_7", "channel_tx_7"},
+	};
 
 	builder = gtk_builder_new();
 
@@ -440,6 +454,8 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 							 "ad9081_panel"));
 	/* RX Global */
 	ch0 = iio_device_find_channel(ad9081_dev, "voltage0_i", FALSE);
+	if (!ch0)
+		ch0 = iio_device_find_channel(ad9081_dev, "voltage0", FALSE);
 
 	if (ch0 && iio_channel_attr_read_longlong(ch0, "adc_frequency", &adc_freq) == 0)
 		snprintf(attr_val, sizeof(attr_val), "%.2f",
@@ -469,6 +485,8 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	/* TX Global */
 	ch0 = iio_device_find_channel(ad9081_dev, "voltage0_i", TRUE);
+	if (!ch0)
+		ch0 = iio_device_find_channel(ad9081_dev, "voltage0", TRUE);
 
 	if (ch0 && iio_channel_attr_read_longlong(ch0, "dac_frequency", &dac_freq) == 0)
 		snprintf(attr_val, sizeof(attr_val), "%.2f",
@@ -489,6 +507,10 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 		in_voltage = iio_device_find_channel(ad9081_dev,
 						     channels[idx].iio_name, 0);
+
+		if (!in_voltage)
+			in_voltage = iio_device_find_channel(ad9081_dev,
+						     channels_real[idx].iio_name, 0);
 
 		ad9081_label_writer(builder, in_voltage, idx, channels[idx].rx_name);
 
@@ -513,6 +535,9 @@ static GtkWidget *ad9081_init(struct osc_plugin *plugin, GtkWidget *notebook,
 tx_chann:
 		out_voltage = iio_device_find_channel(ad9081_dev,
 						      channels[idx].iio_name, TRUE);
+		if (!out_voltage)
+			out_voltage = iio_device_find_channel(ad9081_dev,
+								channels_real[idx].iio_name, TRUE);
 
 		ad9081_label_writer(builder, out_voltage, idx, channels[idx].tx_name);
 
