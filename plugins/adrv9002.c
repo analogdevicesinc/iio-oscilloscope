@@ -687,7 +687,7 @@ static void update_special_rx_widgets(struct adrv9002_rx *rx, const int n_widget
 		update_label(&rx[i].decimated_power);
 		update_special_widgets(&rx[i].rx);
 
-		if (digital_gain && strstr(digital_gain, "automatic_control"))
+		if (digital_gain && strstr(digital_gain, "automatic"))
 			combo_box_manual_update(&rx[i].intf_gain);
 nex_widget:
 		g_free(digital_gain);
