@@ -1596,6 +1596,21 @@ free_dac:
 	return ret;
 }
 
+static void adrv9002_api_version_report(struct plugin_private *priv)
+{
+	GtkWidget *api_frame = GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_api"));
+	GtkLabel *gapi = GTK_LABEL(gtk_builder_get_object(priv->builder, "api_version"));
+	char api_version[16];
+
+	if (iio_device_debug_attr_read(priv->adrv9002, "api_version", api_version,
+				       sizeof(api_version)) < 0) {
+		gtk_widget_hide(api_frame);
+		return;
+	}
+
+	gtk_label_set_label(gapi, api_version);
+}
+
 static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 				const char *ini_fn)
 {
@@ -1718,6 +1733,8 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	/* update dac */
 	for (i = 0; i < priv->n_dacs; i++)
 		dac_data_manager_update_iio_widgets(priv->dac_manager[i].dac_tx_manager);
+
+	adrv9002_api_version_report(priv);
 
 	priv->refresh_timeout = g_timeout_add(1000, (GSourceFunc)update_display,
 					      priv);
