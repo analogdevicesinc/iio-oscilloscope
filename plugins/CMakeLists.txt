@@ -47,6 +47,7 @@ set(PLUGINS
 	ad9081
 	adrv9002
 	cf_axi_tdd
+	xmw
 )
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
