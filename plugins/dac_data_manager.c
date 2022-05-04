@@ -1802,6 +1802,9 @@ static void manager_iio_setup(struct dac_data_manager *manager)
 	GSList *node;
 	guint i;
 
+	if (!manager->tones_count)
+		return;
+
 	for (node = manager->dds_tones; node; node = g_slist_next(node))
 		tone_setup(node->data);
 
@@ -1894,8 +1897,6 @@ static void dds_non_iq_tx_init(struct dds_dac *ddac, struct dds_tx *tx, unsigned
 static int dds_dac_init(struct dac_data_manager *manager,
 	struct dds_dac *ddac, struct iio_device *iio_dac)
 {
-	int ret = 0;
-
 	if (!iio_dac)
 		return 0;
 
@@ -1903,6 +1904,9 @@ static int dds_dac_init(struct dac_data_manager *manager,
 	ddac->iio_dac = iio_dac;
 	ddac->name = iio_device_get_name(iio_dac);
 	ddac->tones_count = get_iio_tones_count(iio_dac);
+
+	if(!ddac->tones_count)
+		return 0;
 
 	guint tx_count = ddac->tones_count / TX_NB_TONES;
 	guint extra_tones = ddac->tones_count % TX_NB_TONES;
@@ -1927,7 +1931,7 @@ static int dds_dac_init(struct dac_data_manager *manager,
 	manager->dacs_count++;
 	ddac->index = manager->dacs_count;
 
-	return ret;
+	return 0;
 }
 
 int device_scan_elements_count(struct iio_device *dev)
@@ -1977,12 +1981,13 @@ static int dac_manager_init(struct dac_data_manager *manager,
 
 	dac_buffer_init(manager, &manager->dac_buffer_module);
 
-	struct iio_channel *ch = iio_device_find_channel(dac, "altvoltage0", true);
+	manager->scale_available_mode = false;
 
-	if (iio_channel_find_attr(ch, "scale_available"))
-		manager->scale_available_mode = true;
-	else
-		manager->scale_available_mode = false;
+	struct iio_channel *ch = iio_device_find_channel(dac, "altvoltage0", true);
+	if (ch) {
+		if (iio_channel_find_attr(ch, "scale_available"))
+			manager->scale_available_mode = true;
+	}
 
 	manager->is_local = strcmp(iio_context_get_name(ctx), "local") ? false : true;
 	manager->ctx = ctx;
@@ -2035,13 +2040,15 @@ init_error:
 void dac_data_manager_free(struct dac_data_manager *manager)
 {
 	if (manager) {
-		free(manager->dac1.txs);
-		free(manager->dac2.txs);
+		if (manager->tones_count) {
+			free(manager->dac1.txs);
+			free(manager->dac2.txs);
+			g_slist_free(manager->dds_tones);
+		}
 		if (manager->dds_buffer) {
 			iio_buffer_destroy(manager->dds_buffer);
 			manager->dds_buffer = NULL;
 		}
-		g_slist_free(manager->dds_tones);
 		free(manager);
 	}
 }
