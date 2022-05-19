@@ -145,8 +145,8 @@ static void monitor_shutdown(GtkCheckButton *btn)
 	}
 	/* Shutdown pin is tied to active-low inputs */
 	cn0540_set_gpio_state("cn0540_shutdown_gpio",
-		!tgbtn_shutdown->toggle_button.active);
-	gtk_text_buffer_set_text(shutdown_buffer, btn->toggle_button.active ?
+		!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(tgbtn_shutdown)));
+	gtk_text_buffer_set_text(shutdown_buffer, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn))?
 		"ENABLED" : "DISABLED", -1);
 	/* Enable back the channel */
 	iio_channel_enable(adc_ch);
@@ -175,8 +175,8 @@ static void monitor_fda(GtkCheckButton *btn)
 		iio_channel_disable(adc_ch);
 	}
 	/* FDA_DIS pin is tied to active-low inputs */
-	cn0540_set_gpio_state("cn0540_FDA_DIS",!btn->toggle_button.active);
-	gtk_text_buffer_set_text(fda_buffer, btn->toggle_button.active ?
+	cn0540_set_gpio_state("cn0540_FDA_DIS",!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)));
+	gtk_text_buffer_set_text(fda_buffer, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)) ?
 		"ENABLED" : "DISABLED", -1);
 	/* Enable back the channel */
 	iio_channel_enable(adc_ch);
@@ -184,8 +184,8 @@ static void monitor_fda(GtkCheckButton *btn)
 
 static void monitor_cc(GtkCheckButton *btn)
 {
-	cn0540_set_gpio_state("cn0540_blue_led",btn->toggle_button.active);
-	gtk_text_buffer_set_text(cc_buf, btn->toggle_button.active ?
+	cn0540_set_gpio_state("cn0540_blue_led",gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)));
+	gtk_text_buffer_set_text(cc_buf, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)) ?
 		"ENABLED" : "DISABLED", -1);
 }
 
@@ -203,8 +203,8 @@ static void monitor_fda_mode(GtkCheckButton *btn)
 
 		iio_channel_disable(adc_ch);
 	}
-	cn0540_set_gpio_state("cn0540_FDA_MODE",btn->toggle_button.active);
-	gtk_text_buffer_set_text(fda_mode_buffer, btn->toggle_button.active ?
+	cn0540_set_gpio_state("cn0540_FDA_MODE",gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)));
+	gtk_text_buffer_set_text(fda_mode_buffer, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)) ?
 		"FULL POWER" : "LOW POWER", -1);
 	/* Enable back the channel */
 	iio_channel_enable(adc_ch);
