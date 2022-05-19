@@ -1127,15 +1127,17 @@ static void instrument_type_cb (GtkComboBox *box)
 
 static void scpi_text_entry_cb (GtkEntry *box, int data)
 {
-	GdkColor green = {
+	GdkRGBA green = {
 		.red = 0,
 		.green = 0xFFFF,
 		.blue = 0,
+		.alpha = 1.0
 	};
-	GdkColor red = {
+	GdkRGBA red = {
 		.red = 0xFFFF,
 		.green = 0,
 		.blue = 0,
+		.alpha = 1.0
 	};
 
 	switch (data) {

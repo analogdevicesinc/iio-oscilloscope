@@ -54,21 +54,24 @@ static GtkWidget *radio_waveform;
 static GtkWidget *databox;
 static GtkWidget *preview_graph;
 
-static GdkColor color_background = {
+static GdkRGBA color_background = {
 	.red = 0,
 	.green = 0,
 	.blue = 0,
+	.alpha = 1.0
 };
-static GdkColor color_prev_graph = {
+static GdkRGBA color_prev_graph = {
 	.red = 0,
 	.green = 65535,
 	.blue = 0,
+	.alpha = 1.0
 };
 
-static GdkColor color_prev_graph_dots = {
+static GdkRGBA color_prev_graph_dots = {
 	.red = 65535,
 	.green = 0,
 	.blue = 0,
+	.alpha = 1.0
 };
 
 static GtkDataboxGraph *databox_graph;
