@@ -82,12 +82,12 @@ static gboolean draw_block_diagram(GtkWidget *widget, cairo_t *cr, GtkImage *blo
 	int x_big, y_big, x_click, y_click, x_in, y_in;
 	char name[256];
 
-	if (y == widget->allocation.height && x == widget->allocation.width &&
+	if (y == gtk_widget_get_allocated_height(widget) && x == gtk_widget_get_allocated_width(widget) &&
 			scale == scale_block && !redraw_block)
 		return false;
 
-	x = widget->allocation.width;
-	y = widget->allocation.height;
+	x = gtk_widget_get_allocated_width(widget);
+	y = gtk_widget_get_allocated_height(widget);
 	x_in = x * 0.95;
 	y_in = y * 0.95;
 	x_big = x * scale_block;
