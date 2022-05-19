@@ -1163,9 +1163,9 @@ static void scpi_text_entry_cb (GtkEntry *box, int data)
 			current_instrument->id_regex = strdup(gtk_entry_get_text(box));
 
 			if (strstr(gtk_label_get_text(GTK_LABEL(scpi_id)), current_instrument->id_regex))
-				gtk_widget_modify_text(GTK_WIDGET(box), GTK_STATE_NORMAL, &green);
+				gtk_widget_override_color(GTK_WIDGET(box), GTK_STATE_FLAG_NORMAL, &green);
 			else
-				gtk_widget_modify_text(GTK_WIDGET(box), GTK_STATE_NORMAL, &red);
+				gtk_widget_override_color(GTK_WIDGET(box), GTK_STATE_FLAG_NORMAL, &red);
 			break;
 		case 4:
 			if (cmd_to_send)
