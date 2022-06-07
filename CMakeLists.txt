@@ -91,8 +91,8 @@ endif()
 
 set(OSC_SRC osc.c oscplot.c datatypes.c iio_widget.c iio_utils.c
 	fru.c dialogs.c trigger_dialog.c xml_utils.c libini/libini.c
-	libini2.c phone_home.c #plugins/dac_data_manager.c
-	plugins/fir_filter.c eeprom.c osc_preferences.c)
+        libini2.c phone_home.c #plugins/dac_data_manager.c
+        plugins/fir_filter.c eeprom.c osc_preferences.c)
 
 find_package(PkgConfig)
 pkg_check_modules(GLIB REQUIRED glib-2.0)
@@ -253,5 +253,13 @@ install(FILES ${PROFILES} DESTINATION ${PLIB_DEST}/profiles/)
 foreach(plib_dest xmls filters waveforms block_diagrams)
 	install(DIRECTORY ${plib_dest} DESTINATION ${PLIB_DEST})
 endforeach()
+
+set(MODEL_FILE "styles.css")
+set(TARGET_PATH "${CMAKE_CURRENT_BINARY_DIR}/${MODEL_FILE}")
+set(MODEL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${MODEL_FILE}")
+if(NOT EXISTS "${TARGET_PATH}")
+        message("Copying ${MODEL_FILE} into ${CMAKE_CURRENT_BINARY_DIR}")
+    file(COPY "${MODEL_FILE}"  DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+endif()
 
 add_subdirectory(plugins)
