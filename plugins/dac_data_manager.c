@@ -838,19 +838,19 @@ static GtkWidget *spin_button_create(double min, double max, double step, unsign
 
 static GtkWidget *frame_with_table_create(const char *frm_title, unsigned rows, unsigned columns)
 {
+	// TO DO: replace commented lines with GTK3 allignment settings
+	//	  remove unused widgets once glade files are updated 
 	GtkWidget *frame;
-	GtkWidget *align;
+	// GtkWidget *box;
 	GtkWidget *table;
 
 	frame = gtk_frame_new("");
-	align = gtk_alignment_new(.5, .5, 1.0, 1.0);
-	table = gtk_table_new(rows, columns, FALSE);
-
+	table = gtk_grid_new();
 	gtk_label_set_markup(GTK_LABEL(gtk_frame_get_label_widget(GTK_FRAME(frame))), frm_title);
-	gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 0, 12, 0);
+	// gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 0, 12, 0);
 
-	gtk_container_add(GTK_CONTAINER(frame), align);
-	gtk_container_add(GTK_CONTAINER(align), table);
+	gtk_container_add(GTK_CONTAINER(frame), table);
+	// gtk_container_add(GTK_CONTAINER(box), table);
 
 	return frame;
 }
@@ -887,8 +887,10 @@ static GtkWidget *gui_dds_mode_chooser_create(struct dds_tx *tx)
 
 static GtkWidget *gui_tone_create(struct dds_tone *tone)
 {
+	// TO DO: replace commented lines with GTK3 allignment settings
+	//	  remove unused widgets once glade files are updated
 	GtkWidget *tone_frm;
-	GtkWidget *tone_align;
+	// GtkWidget *tone_align;
 	GtkWidget *tone_table;
 	bool combobox_scales;
 	char tone_label[16];
@@ -897,8 +899,8 @@ static GtkWidget *gui_tone_create(struct dds_tone *tone)
 	snprintf(tone_label, sizeof(tone_label), "<b>Tone %u</b>", tone->number);
 
 	tone_frm = frame_with_table_create(tone_label, 3, 2);
-	tone_align = gtk_bin_get_child(GTK_BIN(tone_frm));
-	tone_table = gtk_bin_get_child(GTK_BIN(tone_align));
+	// tone_align = gtk_bin_get_child(GTK_BIN(tone_frm));
+	tone_table = gtk_bin_get_child(GTK_BIN(tone_frm));
 	tone->frame = tone_frm;
 
 	gtk_frame_set_shadow_type(GTK_FRAME(tone_frm), GTK_SHADOW_NONE);
@@ -924,18 +926,31 @@ static GtkWidget *gui_tone_create(struct dds_tone *tone)
 		gtk_spin_button_set_numeric(GTK_SPIN_BUTTON(tone->scale), FALSE);
 	}
 
-	gtk_table_attach(GTK_TABLE(tone_table), freq,
-			0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
+	gtk_grid_attach(GTK_GRID(tone_table), freq,
+			0, 0, 5, 5);
+	gtk_grid_attach(GTK_GRID(tone_table), scale,
+			0, 1, 5, 5);
+	gtk_grid_attach(GTK_GRID(tone_table), phase,
+			0, 2, 5, 5);
+	gtk_grid_attach(GTK_GRID(tone_table), tone->freq,
+			1, 0, 5, 5);
+	gtk_grid_attach(GTK_GRID(tone_table), tone->scale,
+			1, 1, 5, 5);
+	gtk_grid_attach(GTK_GRID(tone_table), tone->phase,
+			1, 2, 5, 5);
+
+	/*gtk_table_attach(GTK_TABLE(tone_table), freq,
+		0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(tone_table), scale,
-			0, 1, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
+		0, 1, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(tone_table), phase,
-			0, 1, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
+		0, 1, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(tone_table), tone->freq,
-			1, 2, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
+		1, 2, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(tone_table), tone->scale,
-			1, 2, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
+		1, 2, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(tone_table), tone->phase,
-			1, 2, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
+		1, 2, 2, 3, GTK_FILL, GTK_FILL, 0, 0);*/
 
 	gtk_widget_show(tone_frm);
 
@@ -944,26 +959,34 @@ static GtkWidget *gui_tone_create(struct dds_tone *tone)
 
 static GtkWidget *gui_channel_create(struct dds_channel *ch)
 {
+	// TO DO: replace commented lines with GTK3 allignment settings
+	//	  remove unused widgets once glade files are updated
 	GtkWidget *channel_frm;
-	GtkWidget *channel_align;
+	// GtkWidget *channel_align;
 	GtkWidget *channel_table;
 	char channel_label[32];
 
 	snprintf(channel_label, sizeof(channel_label), "<b>Channel %c</b>", ch->type);
 
 	channel_frm = frame_with_table_create(channel_label, 1, 2);
-	channel_align = gtk_bin_get_child(GTK_BIN(channel_frm));
-	channel_table = gtk_bin_get_child(GTK_BIN(channel_align));
+	//+channel_align = gtk_bin_get_child(GTK_BIN(channel_frm));
+	channel_table = gtk_bin_get_child(GTK_BIN(channel_frm));
 	ch->frame = channel_frm;
 
 	gtk_frame_set_shadow_type(GTK_FRAME(channel_frm), GTK_SHADOW_NONE);
 
-	gtk_table_attach(GTK_TABLE(channel_table),
+	gtk_grid_attach(GTK_GRID(channel_table),
 			gui_tone_create(&ch->t1),
-			0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
-	gtk_table_attach(GTK_TABLE(channel_table),
+			0, 0, 5, 5);
+	gtk_grid_attach(GTK_GRID(channel_table),
 			gui_tone_create(&ch->t2),
-			1, 2, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
+			0, 1, 5, 5);
+	/*gtk_table_attach(GTK_TABLE(channel_table),
+		gui_tone_create(&ch->t1),
+		0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
+	gtk_table_attach(GTK_TABLE(channel_table),
+		gui_tone_create(&ch->t2),
+		1, 2, 0, 1, GTK_FILL, GTK_FILL, 0, 0);*/
 
 	gtk_widget_show(channel_frm);
 
@@ -972,8 +995,10 @@ static GtkWidget *gui_channel_create(struct dds_channel *ch)
 
 static GtkWidget *gui_tx_create(struct dds_tx *tx)
 {
+	// TO DO: replace commented lines with GTK3 allignment settings
+	//	  remove unused widgets once glade files are updated
 	GtkWidget *txmodule_frm;
-	GtkWidget *txmodule_align;
+	// GtkWidget *txmodule_align;
 	GtkWidget *txmodule_table;
 	char txmodule_label[16];
 	unsigned int dac_index = (tx->parent->index - 1) * (tx->parent->tones_count / 4);
@@ -981,21 +1006,31 @@ static GtkWidget *gui_tx_create(struct dds_tx *tx)
 	snprintf(txmodule_label, sizeof(txmodule_label), "<b>TX %u</b>", dac_index + tx->index);
 
 	txmodule_frm = frame_with_table_create(txmodule_label, 3, 1);
-	txmodule_align = gtk_bin_get_child(GTK_BIN(txmodule_frm));
-	txmodule_table = gtk_bin_get_child(GTK_BIN(txmodule_align));
+	// txmodule_align = gtk_bin_get_child(GTK_BIN(txmodule_frm));
+	txmodule_table = gtk_bin_get_child(GTK_BIN(txmodule_frm));
 	tx->frame = txmodule_frm;
-
-	gtk_table_attach(GTK_TABLE(txmodule_table),
+	gtk_grid_attach(GTK_GRID(txmodule_table),
 			gui_dds_mode_chooser_create(tx),
-			0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
+			0, 0, 5, 5);
+
+	gtk_grid_attach(GTK_GRID(txmodule_table),
+			gui_channel_create(&tx->ch_i),
+			0, 1, 5, 5);
+	if (tx->ch_q.type != CHAR_MAX)
+		gtk_grid_attach(GTK_GRID(txmodule_table),
+				gui_channel_create(&tx->ch_q),
+				0, 2, 5, 5);
+	/*gtk_table_attach(GTK_TABLE(txmodule_table),
+		gui_dds_mode_chooser_create(tx),
+		0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
 
 	gtk_table_attach(GTK_TABLE(txmodule_table),
-			gui_channel_create(&tx->ch_i),
-			0, 1, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
+		gui_channel_create(&tx->ch_i),
+		0, 1, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
 	if (tx->ch_q.type != CHAR_MAX)
-		gtk_table_attach(GTK_TABLE(txmodule_table),
-				gui_channel_create(&tx->ch_q),
-				0, 1, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
+	    gtk_table_attach(GTK_TABLE(txmodule_table),
+		    gui_channel_create(&tx->ch_q),
+		    0, 1, 2, 3, GTK_FILL, GTK_FILL, 0, 0);*/
 
 	gtk_widget_show(txmodule_frm);
 
@@ -1004,8 +1039,10 @@ static GtkWidget *gui_tx_create(struct dds_tx *tx)
 
 static GtkWidget *gui_dac_create(struct dds_dac *ddac)
 {
+	// TO DO: replace commented lines with GTK3 allignment settings
+	//	  remove unused widgets once glade files are updated
 	GtkWidget *dac_frm;
-	GtkWidget *dac_align;
+	// GtkWidget *dac_align;
 	GtkWidget *dac_table;
 	gchar *frm_title;
 	guint i;
@@ -1015,14 +1052,18 @@ static GtkWidget *gui_dac_create(struct dds_dac *ddac)
 
 	frm_title = g_strdup_printf("<b>%s</b>", ddac->name);
 	dac_frm = frame_with_table_create(frm_title, 1, 1);
-	dac_align = gtk_bin_get_child(GTK_BIN(dac_frm));
-	dac_table = gtk_bin_get_child(GTK_BIN(dac_align));
-
-	gtk_alignment_set_padding(GTK_ALIGNMENT(dac_align), 5, 5, 5, 5);
+	// dac_align = gtk_bin_get_child(GTK_BIN(dac_frm));
+	dac_table = gtk_bin_get_child(GTK_BIN(dac_frm));
 
 	for (i = 0; i < ddac->tx_count; i++)
-		gtk_table_attach(GTK_TABLE(dac_table), gui_tx_create(&ddac->txs[i]),
-			0 + i % 4, 1 + i % 4, 1 + i / 4, 2 + i / 4, GTK_FILL, GTK_FILL, 0, 0);
+		gtk_grid_attach(GTK_GRID(dac_table), gui_tx_create(&ddac->txs[i]),
+				0 + i % 4, 1 + i % 4, 5, 5);
+	// TO DO:
+	/*gtk_alignment_set_padding(GTK_ALIGNMENT(dac_align), 5, 5, 5, 5);
+
+	for (i = 0; i < ddac->tx_count; i++)
+	    gtk_table_attach(GTK_TABLE(dac_table), gui_tx_create(&ddac->txs[i]),
+		0 + i % 4, 1 + i % 4, 1 + i / 4, 2 + i / 4, GTK_FILL, GTK_FILL, 0, 0);*/
 
 	ddac->frame = dac_frm;
 	gtk_widget_show(dac_frm);
@@ -1092,8 +1133,10 @@ static GtkWidget *gui_dac_channels_tree_create(struct dac_buffer *d_buffer)
 
 static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 {
+	// TO DO: replace commented lines with GTK3 allignment settings
+	//	  remove unused widgets once glade files are updated
 	GtkWidget *dacbuf_frame;
-	GtkWidget *dacbuf_align;
+	// GtkWidget *dacbuf_align;
 	GtkWidget *dacbuf_table;
 	GtkWidget *fchooser_frame;
 	GtkWidget *fchooser_btn;
@@ -1106,10 +1149,10 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	GtkTextBuffer *load_status_tb;
 
 	dacbuf_frame = frame_with_table_create("<b>DAC Buffer Settings</b>", 2, 1);
-	dacbuf_align = gtk_bin_get_child(GTK_BIN(dacbuf_frame));
-	dacbuf_table = gtk_bin_get_child(GTK_BIN(dacbuf_align));
+	// dacbuf_align = gtk_bin_get_child(GTK_BIN(dacbuf_frame));
+	dacbuf_table = gtk_bin_get_child(GTK_BIN(dacbuf_frame));
 	fchooser_btn = gtk_file_chooser_button_new("Select a File",
-			GTK_FILE_CHOOSER_ACTION_OPEN);
+						   GTK_FILE_CHOOSER_ACTION_OPEN);
 	fileload_btn = gtk_button_new_with_label("Load");
 	load_status_tb = gtk_text_buffer_new(NULL);
 	load_status_txt = gtk_text_view_new_with_buffer(load_status_tb);
@@ -1117,7 +1160,7 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	cyclic_buff_btn = gtk_check_button_new_with_label("Enable/Disable cyclic buffer");
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(cyclic_buff_btn), d_buffer->parent->is_cyclic_buffer);
 
-	gtk_alignment_set_padding(GTK_ALIGNMENT(dacbuf_align), 5, 5, 5, 5);
+	// gtk_alignment_set_padding(GTK_ALIGNMENT(dacbuf_align), 5, 5, 5, 5);
 
 	fchooser_frame = frame_with_table_create("<b>File Selection</b>", 3, 2);
 	tx_channels_frame = frame_with_table_create("<b>DAC Channels</b>", 1, 1);
@@ -1132,15 +1175,26 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	gtk_misc_set_alignment(GTK_MISC(scale), 0.0, 0.5);
 	gtk_spin_button_set_numeric(GTK_SPIN_BUTTON(d_buffer->scale), FALSE);
 
-	align = gtk_bin_get_child(GTK_BIN(fchooser_frame));
-	table = gtk_bin_get_child(GTK_BIN(align));
+	// align = gtk_bin_get_child(GTK_BIN(fchooser_frame));
+	table = gtk_bin_get_child(GTK_BIN(fchooser_frame));
 
 	gtk_frame_set_shadow_type(GTK_FRAME(fchooser_frame), GTK_SHADOW_NONE);
-	gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 0, 0, 0);
-	gtk_table_attach(GTK_TABLE(table), fchooser_btn,
-		0, 1, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
+	// gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 0, 0, 0);
+	gtk_grid_attach(GTK_GRID(table), fchooser_btn,
+			0, 0, 5, 5);
+	gtk_grid_attach(GTK_GRID(table), fileload_btn,
+			1, 0, 5, 5);
+	gtk_grid_attach(GTK_GRID(table), load_status_txt,
+			0, 1, 5, 5);
+
+	gtk_grid_attach(GTK_GRID(table), d_buffer->scale,
+			1, 1, 5, 5);
+	gtk_grid_attach(GTK_GRID(table), scale,
+			0, 2, 5, 5);
+	/*gtk_table_attach(GTK_TABLE(table), fchooser_btn,
+	    0, 1, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
 	gtk_table_attach(GTK_TABLE(table), fileload_btn,
-		1, 2, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
+	    1, 2, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(table), load_status_txt,
 		0, 2, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
 	if (!d_buffer->parent->dac1.tones_count) {
@@ -1150,25 +1204,33 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 		0, 1, 4, 5, GTK_FILL, GTK_FILL, 0, 0);
 	}
 
+	    0, 2, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
+
 	gtk_table_attach(GTK_TABLE(table), d_buffer->scale,
-			 1, 2, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
+		 1, 2, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(table), scale,
-			 0, 2, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
+		 0, 2, 2, 3, GTK_FILL, GTK_FILL, 0, 0);*/
 
 	align = gtk_bin_get_child(GTK_BIN(tx_channels_frame));
 	table = gtk_bin_get_child(GTK_BIN(align));
 
-	gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 0, 0, 0);
+	// gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 0, 0, 0);
 
 	GtkWidget *channels_scrolled_view = gui_dac_channels_tree_create(d_buffer);
+	gtk_grid_attach(GTK_GRID(table), channels_scrolled_view,
+			0, 0, 5, 5);
 
-	gtk_table_attach(GTK_TABLE(table), channels_scrolled_view,
-		0, 1, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
+	gtk_grid_attach(GTK_GRID(dacbuf_table), fchooser_frame,
+			0, 1, 5, 5);
+	gtk_grid_attach(GTK_GRID(dacbuf_table), tx_channels_frame,
+			0, 2, 5, 5);
+	/*gtk_table_attach(GTK_TABLE(table), channels_scrolled_view,
+	    0, 1, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
 
 	gtk_table_attach(GTK_TABLE(dacbuf_table), fchooser_frame,
-		0, 1, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL, 0, 0);
+	    0, 1, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(dacbuf_table), tx_channels_frame,
-		0, 1, 2, 3, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
+	    0, 1, 2, 3, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);*/
 
 	d_buffer->frame = dacbuf_frame;
 	d_buffer->load_status_buf = load_status_tb;
@@ -1176,15 +1238,16 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	d_buffer->buffer_fchooser_btn = fchooser_btn;
 
 	g_signal_connect(fchooser_btn, "file-set",
-		G_CALLBACK(dac_buffer_config_file_set_cb), d_buffer);
+			 G_CALLBACK(dac_buffer_config_file_set_cb), d_buffer);
 	g_signal_connect(fileload_btn, "clicked",
-		G_CALLBACK(waveform_load_button_clicked_cb), d_buffer);
+			 G_CALLBACK(waveform_load_button_clicked_cb), d_buffer);
 	g_signal_connect(d_buffer->scale, "output",
 			 G_CALLBACK(scale_spin_button_output_cb), (void*) 1);
 	g_signal_connect(stop_buff_tx_btn, "clicked",
 			 G_CALLBACK(stop_buffer_tx_button_clicked_cb), d_buffer->parent);
 	g_signal_connect(cyclic_buff_btn, "toggled",
 			 G_CALLBACK(cyclic_buffer_button_clicked_cb), d_buffer->parent);
+
 
 	gtk_widget_show(dacbuf_frame);
 
