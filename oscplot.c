@@ -177,13 +177,6 @@ static GdkRGBA color_grid = {
 	.alpha = 1.0
 };
 
-static GdkRGBA color_background = {
-	.red = 0,
-	.green = 0,
-	.blue = 0,
-	.alpha = 1.0
-};
-
 static GdkRGBA color_marker = {
 	.red = 1.0,
 	.green = 0,
@@ -321,6 +314,8 @@ struct _OscPlotPrivate
 	GtkWidget *math_device_select;
 	GtkWidget *math_channel_name_entry;
 	GtkWidget *math_expr_error;
+
+	GtkCssProvider *provider;
 
 	GtkTextBuffer* tbuf;
 	GtkTextBuffer* devices_buf;
@@ -490,7 +485,8 @@ GtkWidget *osc_plot_new_with_pref(struct iio_context *ctx, OscPlotPreferences *p
 }
 
 void osc_plot_destroy (OscPlot *plot)
-{
+{	
+	g_free(G_OBJECT(plot->priv->provider));
 	gtk_widget_destroy(plot->priv->window);
 	gtk_widget_destroy(GTK_WIDGET(plot));
 }
@@ -6265,50 +6261,49 @@ static void buttons_table_remove_child(GtkWidget *child, gpointer data)
 
 static void math_device_cmb_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 {
-// TO DO: handle this using GTK3
-// 	char *device_name;
-// 	const char *channel_name;
-// 	struct iio_device *iio_dev;
-// 	struct iio_channel *iio_chn;
-// 	GtkWidget *button, *buttons_table;
-// 	int row, col, sc;
-// 	unsigned int i;
+// TO DO: modify glade file to match GTK3 
+    char *device_name;
+    const char *channel_name; 	struct iio_device *iio_dev;
+    struct iio_channel *iio_chn;
+    GtkWidget *button, *buttons_table;
+    int row, col, sc;
+    unsigned int i;
 
-// 	device_name = gtk_combo_box_text_get_active_text(box);
-// 	if (!device_name)
-// 		return;
+    device_name = gtk_combo_box_text_get_active_text(box);
+    if (!device_name)
+        return;
 
-// 	iio_dev = iio_context_find_device(plot->priv->ctx, device_name);
-// 	if (!iio_dev)
-// 		goto end;
+    iio_dev = iio_context_find_device(plot->priv->ctx, device_name);
+    if (!iio_dev)
+        goto end;
 
-// 	buttons_table = GTK_WIDGET(gtk_builder_get_object(plot->priv->builder,
-// 			"table_channel_buttons"));
-// 	gtk_container_foreach(GTK_CONTAINER(buttons_table),
-// 		buttons_table_remove_child, buttons_table);
-// 	for (i = 0, sc = 0; i < iio_device_get_channels_count(iio_dev); i++) {
-// 		iio_chn = iio_device_get_channel(iio_dev, i);
+    buttons_table = GTK_WIDGET(gtk_builder_get_object(plot->priv->builder,
+            "table_channel_buttons"));
+    gtk_container_foreach(GTK_CONTAINER(buttons_table),
+        buttons_table_remove_child, buttons_table);
+    for (i = 0, sc = 0; i < iio_device_get_channels_count(iio_dev); i++) {
+        iio_chn = iio_device_get_channel(iio_dev, i);
 
-// 		if (iio_channel_is_scan_element(iio_chn)) {
-// 			channel_name = iio_channel_get_name(iio_chn) ?:
-// 					iio_channel_get_id(iio_chn);
-// 			button = gtk_button_new_with_label(channel_name);
-// 			row = sc % 4;
-// 			col = sc / 4;
-// 			gtk_table_attach_defaults(GTK_TABLE(buttons_table),
-// 				button, col, col + 1, row, row + 1);
-// 			sc++;
-// 		}
-// 	}
-// 	GList *node;
+        if (iio_channel_is_scan_element(iio_chn)) {
+            channel_name = iio_channel_get_name(iio_chn) ?:
+                    iio_channel_get_id(iio_chn);
+            button = gtk_button_new_with_label(channel_name);
+            row = sc % 4;
+            col = sc / 4;
+            gtk_grid_attach(GTK_GRID(buttons_table),
+                button, col, row, 5, 5);
+            sc++;
+        }
+    }
+    GList *node;
 
-// 	for (node = gtk_container_get_children(GTK_CONTAINER(buttons_table)); node; node = g_list_next(node)) {
-// 		g_signal_connect(node->data, "clicked", G_CALLBACK(math_chooser_key_pressed_cb), plot);
-// 	}
+    for (node = gtk_container_get_children(GTK_CONTAINER(buttons_table)); node; node = g_list_next(node)) {
+        g_signal_connect(node->data, "clicked", G_CALLBACK(math_chooser_key_pressed_cb), plot);
+    }
 
-// 	gtk_widget_show_all(buttons_table);
-// end:
-// 	g_free(device_name);
+    gtk_widget_show_all(buttons_table);
+ end:
+    g_free(device_name);
 }
 
 static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
@@ -6628,41 +6623,40 @@ static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 
 static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
-	// OscPlotPrivate *priv = plot->priv;
-	// PlotChn *settings;
-	// GtkWidget *color_dialog;
-	// GtkWidget *colorsel;
-	// GdkRGBA *color;
-	// GtkTreeView *treeview;
-	// GtkTreeModel *model;
-	// GtkTreeIter iter;
-	// GdkPixbuf *color_icon;
-	// gboolean selected;
-	// gint response;
+          // TO DO : update glade files to match new ColorChooserDialog
+		  OscPlotPrivate *priv = plot->priv;
+          PlotChn *settings;
+          GtkWidget *color_dialog;
+          //GtkWidget *colorsel;
+          GdkRGBA *color;
+          GtkTreeView *treeview;
+          GtkTreeModel *model;
+          GtkTreeIter iter;
+          GdkPixbuf *color_icon;
+          gboolean selected;
+          gint response;
 
-	// treeview = GTK_TREE_VIEW(priv->channel_list_view);
-	// model = gtk_tree_view_get_model(treeview);
-	// selected = tree_get_selected_row_iter(treeview, &iter);
-	// if (!selected)
-	// 	return;
-	// gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &settings,
-	// 		CHANNEL_COLOR_ICON, &color_icon, -1);
-	// color = &settings->graph_color;
+          treeview = GTK_TREE_VIEW(priv->channel_list_view);
+          model = gtk_tree_view_get_model(treeview);
+          selected = tree_get_selected_row_iter(treeview, &iter);
+          if (!selected)
+            return;
+          gtk_tree_model_get(model, &iter, CHANNEL_SETTINGS, &settings,
+                             CHANNEL_COLOR_ICON, &color_icon, -1);
+          color = &settings->graph_color;
 
-	// color_dialog = gtk_color_selection_dialog_new("Channel Graph Color Selection");
-	// colorsel = gtk_color_selection_dialog_get_color_selection(GTK_COLOR_SELECTION_DIALOG(color_dialog));
-	// gtk_color_selection_set_current_color(GTK_COLOR_SELECTION(colorsel), color);
-	// response = gtk_dialog_run(GTK_DIALOG(color_dialog));
-	// gtk_widget_hide(color_dialog);
-	// if (response != GTK_RESPONSE_OK)
-	// 	return;
+          color_dialog = gtk_color_chooser_dialog_new("Channel Graph Color Selection",GTK_WINDOW(model));
 
-	// gtk_color_selection_get_current_color(GTK_COLOR_SELECTION(colorsel), color);
+          response = gtk_dialog_run(GTK_DIALOG(color_dialog));
+          gtk_widget_hide(color_dialog);
+          if (response != GTK_RESPONSE_OK)
+            return;
+          gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(color_dialog), color);
 
-	// /* Change icon color */
-	// channel_color_icon_set_color(color_icon, color);
+          /* Change icon color */
+          channel_color_icon_set_color(color_icon, color);
 
-	// gtk_widget_destroy(color_dialog);
+          gtk_widget_destroy(color_dialog);
 }
 
 static void channel_math_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
@@ -6845,31 +6839,28 @@ static void show_capture_options_toggled_cb(GtkCheckMenuItem *menu_item, OscPlot
 	if (gtk_check_menu_item_get_active(menu_item)) {
 		gtk_window_get_size(GTK_WINDOW(priv->window), &priv->size.width, &priv->size.height);
 		gtk_widget_show(plot->priv->capture_options_box);
-	} else {
-		gtk_widget_hide(plot->priv->capture_options_box);
+    } else {
+        gtk_widget_hide(plot->priv->capture_options_box);
 		gtk_window_resize(GTK_WINDOW(priv->window), priv->size.width, priv->size.height);
 	}
 }
 
 static void fullscreen_changed_cb(GtkWidget *widget, OscPlot *plot)
 {
-	// TO DO: handle this with GTK3
-	// OscPlotPrivate *priv = plot->priv;
-	// GtkWidget *img;
+        // TO DO: handle the fullscreen through the window manager
+     OscPlotPrivate *priv = plot->priv;
+     //GtkWidget *img;
 
-	// if (priv->fullscreen_state) {
-	// 	gtk_window_unfullscreen(GTK_WINDOW(priv->window));
-	// 	gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-fullscreen");
-	// 	gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Fullscreen");
-	// 	img = gtk_image_menu_item_get_image(GTK_IMAGE_MENU_ITEM(priv->menu_fullscreen));
-	// 	gtk_image_set_from_stock(GTK_IMAGE(img), "gtk-fullscreen", GTK_ICON_SIZE_MENU);
-	// } else {
-	// 	gtk_window_fullscreen(GTK_WINDOW(priv->window));
-	// 	gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-leave-fullscreen");
-	// 	gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Leave Fullscreen");
-	// 	img = gtk_image_menu_item_get_image(GTK_IMAGE_MENU_ITEM(priv->menu_fullscreen));
-	// 	gtk_image_set_from_stock(GTK_IMAGE(img), "gtk-leave-fullscreen", GTK_ICON_SIZE_MENU);
-	// }
+
+     if (priv->fullscreen_state) {
+         gtk_window_unfullscreen(GTK_WINDOW(priv->window));
+         gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-fullscreen");
+         gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Fullscreen");
+     } else {
+         gtk_window_fullscreen(GTK_WINDOW(priv->window));
+         gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-leave-fullscreen");
+         gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Leave Fullscreen");
+     }
 }
 
 static gboolean window_state_event_cb(GtkWidget *widget, GdkEventWindowState *event, OscPlot *plot)
@@ -7031,8 +7022,17 @@ static void create_plot(OscPlot *plot)
 	gtk_databox_create_box_with_scrollbars_and_rulers(&priv->databox, &table,
 		TRUE, TRUE, TRUE, TRUE);
 	gtk_box_pack_start(GTK_BOX(priv->capture_graph), table, TRUE, TRUE, 0);
-	// TO DO: handle this using GTK3 (probably using stylesheets)
-	// gtk_widget_modify_bg(priv->databox, GTK_STATE_NORMAL, &color_background);
+
+	GtkStyleContext *style_context;
+	GdkDisplay *display;
+	GdkScreen *screen;
+	plot->priv->provider = gtk_css_provider_new();
+	display = gdk_display_get_default();
+	screen = gdk_display_get_default_screen (display);
+	gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(plot->priv->provider),"styles.css",NULL);
+	gtk_style_context_add_provider_for_screen (screen, GTK_STYLE_PROVIDER(plot->priv->provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+	style_context = gtk_widget_get_style_context(GTK_WIDGET(priv->databox));
+	gtk_style_context_add_class(style_context,"data_box");
 	gtk_widget_set_size_request(table, 320, 240);
 	ruler_y = gtk_databox_get_ruler_y(GTK_DATABOX(priv->databox));
 
@@ -7055,6 +7055,7 @@ static void create_plot(OscPlot *plot)
 
 	/* Create Device Settings Menu */
 	//GtkWidget *image;
+	//TO DO: add images to menu items
 	priv->device_settings_menu = gtk_menu_new();
 	priv->device_trigger_menuitem = gtk_menu_item_new_with_label("Impulse Generator");
 	// image = gtk_image_new_from_icon_name("_Preferences", GTK_ICON_SIZE_MENU);
@@ -7082,8 +7083,9 @@ static void create_plot(OscPlot *plot)
 
 	/* Create Channel Settings Menu */
 	priv->channel_settings_menu = gtk_menu_new();
-
+	// TO DO: add icons to menu items, if necessesary 
 	priv->channel_iio_color_menuitem = gtk_menu_item_new_with_label("Color Selection");
+	//gtk_image_set_from_stock(GTK_IMAGE(priv->channel_iio_color_menuitem), "gtk-select-color", GTK_ICON_SIZE_MENU);
 	// image = gtk_image_new_from_icon_name("gtk-select-color", GTK_ICON_SIZE_MENU);
 	// gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_iio_color_menuitem), image);
 	// gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_iio_color_menuitem), true);
@@ -7108,7 +7110,8 @@ static void create_plot(OscPlot *plot)
 		priv->channel_expression_edit_menuitem);
 
 	priv->channel_math_color_menuitem = gtk_menu_item_new_with_label("Color Selection");
-	// image = gtk_image_new_from_icon_name("gtk-select-color", GTK_ICON_SIZE_MENU);
+	//image = gtk_image_new_from_icon_name("gtk-select-color", GTK_ICON_SIZE_MENU);
+    //gtk_image_set_from_icon_name(GTK_IMAGE(priv->channel_math_color_menuitem), "gtk-select-color", GTK_ICON_SIZE_MENU);
 	// gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_color_menuitem), image);
 	// gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_color_menuitem), true);
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
