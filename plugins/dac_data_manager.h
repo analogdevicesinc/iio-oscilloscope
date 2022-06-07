@@ -36,8 +36,8 @@ enum dds_widget_type {
 
 struct dac_data_manager;
 
-struct dac_data_manager *dac_data_manager_new(struct iio_device *dac1,
-		struct iio_device *dac2, struct iio_context *ctx);
+struct dac_data_manager *dac_data_manager_new(struct iio_device *dac,
+		struct iio_device *second_dac, struct iio_context *ctx);
 void dac_data_manager_free(struct dac_data_manager *manager);
 void dac_data_manager_freq_widgets_range_update(struct dac_data_manager *manager,
 		double tx_sample_rate);
