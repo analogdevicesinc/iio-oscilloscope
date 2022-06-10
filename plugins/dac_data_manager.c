@@ -1802,7 +1802,7 @@ static void manager_iio_setup(struct dac_data_manager *manager)
 	GSList *node;
 	guint i;
 
-	if (!manager->tones_count)
+	if (!manager->dac1.tones_count)
 		return;
 
 	for (node = manager->dds_tones; node; node = g_slist_next(node))
@@ -2040,7 +2040,7 @@ init_error:
 void dac_data_manager_free(struct dac_data_manager *manager)
 {
 	if (manager) {
-		if (manager->tones_count) {
+		if (manager->dac1.tones_count) {
 			free(manager->dac1.txs);
 			free(manager->dac2.txs);
 			g_slist_free(manager->dds_tones);
