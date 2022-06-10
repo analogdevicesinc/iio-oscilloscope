@@ -124,7 +124,6 @@ struct dac_data_manager {
 
 	struct iio_context *ctx;
 	unsigned dacs_count;
-	unsigned tones_count;
 	unsigned alignment;
 	bool hw_reported_alignment;
 	GSList *dds_tones;
