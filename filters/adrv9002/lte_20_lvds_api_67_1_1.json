@@ -37,9 +37,9 @@
     "rxInitChannelMask": 195,
     "rxChannelCfg": [ {
         "profile": {
-          "primarySigBandwidth_Hz": 9000000,
-          "rxOutputRate_Hz": 15360000,
-          "rxInterfaceSampleRate_Hz": 15360000,
+          "primarySigBandwidth_Hz": 18000000,
+          "rxOutputRate_Hz": 30720000,
+          "rxInterfaceSampleRate_Hz": 30720000,
           "rxOffsetLo_kHz": 0,
           "rxNcoEnable": false,
           "outputSignaling": 0,
@@ -73,7 +73,7 @@
               "decBy2Blk25En": 0,
               "decBy2Blk27En": 0,
               "decBy2Blk29En": 0,
-              "decBy2Blk31En": 1,
+              "decBy2Blk31En": 0,
               "decBy2Blk33En": 1,
               "wbLpfBlk33p1En": 0
             },
@@ -99,10 +99,10 @@
                 "dpInFifoTestDataSel": 0
               },
               "rxNbNco": {
-                "rxNbNcoEn": 1,
+                "rxNbNcoEn": 0,
                 "rxNbNcoConfig": {
                   "freq": 0,
-                  "sampleFreq": 15360000,
+                  "sampleFreq": 0,
                   "phase": 0,
                   "realOut": 0
                 }
@@ -154,9 +154,9 @@
         }
       }, {
         "profile": {
-          "primarySigBandwidth_Hz": 9000000,
-          "rxOutputRate_Hz": 15360000,
-          "rxInterfaceSampleRate_Hz": 15360000,
+          "primarySigBandwidth_Hz": 18000000,
+          "rxOutputRate_Hz": 30720000,
+          "rxInterfaceSampleRate_Hz": 30720000,
           "rxOffsetLo_kHz": 0,
           "rxNcoEnable": false,
           "outputSignaling": 0,
@@ -190,7 +190,7 @@
               "decBy2Blk25En": 0,
               "decBy2Blk27En": 0,
               "decBy2Blk29En": 0,
-              "decBy2Blk31En": 1,
+              "decBy2Blk31En": 0,
               "decBy2Blk33En": 1,
               "wbLpfBlk33p1En": 0
             },
@@ -216,10 +216,10 @@
                 "dpInFifoTestDataSel": 0
               },
               "rxNbNco": {
-                "rxNbNcoEn": 1,
+                "rxNbNcoEn": 0,
                 "rxNbNcoConfig": {
                   "freq": 0,
-                  "sampleFreq": 15360000,
+                  "sampleFreq": 0,
                   "phase": 0,
                   "realOut": 0
                 }
@@ -505,9 +505,9 @@
         }
       }, {
         "profile": {
-          "primarySigBandwidth_Hz": 9000000,
-          "rxOutputRate_Hz": 15360000,
-          "rxInterfaceSampleRate_Hz": 15360000,
+          "primarySigBandwidth_Hz": 18000000,
+          "rxOutputRate_Hz": 30720000,
+          "rxInterfaceSampleRate_Hz": 30720000,
           "rxOffsetLo_kHz": 0,
           "rxNcoEnable": false,
           "outputSignaling": 0,
@@ -541,7 +541,7 @@
               "decBy2Blk25En": 0,
               "decBy2Blk27En": 0,
               "decBy2Blk29En": 0,
-              "decBy2Blk31En": 1,
+              "decBy2Blk31En": 0,
               "decBy2Blk33En": 1,
               "wbLpfBlk33p1En": 0
             },
@@ -622,9 +622,9 @@
         }
       }, {
         "profile": {
-          "primarySigBandwidth_Hz": 9000000,
-          "rxOutputRate_Hz": 15360000,
-          "rxInterfaceSampleRate_Hz": 15360000,
+          "primarySigBandwidth_Hz": 18000000,
+          "rxOutputRate_Hz": 30720000,
+          "rxInterfaceSampleRate_Hz": 30720000,
           "rxOffsetLo_kHz": 0,
           "rxNcoEnable": false,
           "outputSignaling": 0,
@@ -658,7 +658,7 @@
               "decBy2Blk25En": 0,
               "decBy2Blk27En": 0,
               "decBy2Blk29En": 0,
-              "decBy2Blk31En": 1,
+              "decBy2Blk31En": 0,
               "decBy2Blk33En": 1,
               "wbLpfBlk33p1En": 0
             },
@@ -976,9 +976,9 @@
   "tx": {
     "txInitChannelMask": 12,
     "txProfile": [ {
-        "primarySigBandwidth_Hz": 9000000,
-        "txInputRate_Hz": 15360000,
-        "txInterfaceSampleRate_Hz": 15360000,
+        "primarySigBandwidth_Hz": 18000000,
+        "txInputRate_Hz": 30720000,
+        "txInterfaceSampleRate_Hz": 30720000,
         "txOffsetLo_kHz": 0,
         "validDataDelay": 0,
         "txBbf3dBCorner_kHz": 50000,
@@ -1007,7 +1007,7 @@
             "txInterpBy2Blk30En": 0,
             "txInterpBy2Blk28En": 0,
             "txInterpBy2Blk26En": 0,
-            "txInterpBy2Blk24En": 1,
+            "txInterpBy2Blk24En": 0,
             "txInterpBy2Blk22En": 1,
             "txWbLpfBlk22p1En": 0
           },
@@ -1039,7 +1039,7 @@
             "txRoundEn": 1
           },
           "txIqdmDuc": {
-            "iqdmDucMode": 2,
+            "iqdmDucMode": 0,
             "iqdmDev": 0,
             "iqdmDevOffset": 0,
             "iqdmScalar": 0,
@@ -1071,9 +1071,9 @@
           "rxMaskStrobeEn": false
         }
       }, {
-        "primarySigBandwidth_Hz": 9000000,
-        "txInputRate_Hz": 15360000,
-        "txInterfaceSampleRate_Hz": 15360000,
+        "primarySigBandwidth_Hz": 18000000,
+        "txInputRate_Hz": 30720000,
+        "txInterfaceSampleRate_Hz": 30720000,
         "txOffsetLo_kHz": 0,
         "validDataDelay": 0,
         "txBbf3dBCorner_kHz": 50000,
@@ -1102,7 +1102,7 @@
             "txInterpBy2Blk30En": 0,
             "txInterpBy2Blk28En": 0,
             "txInterpBy2Blk26En": 0,
-            "txInterpBy2Blk24En": 1,
+            "txInterpBy2Blk24En": 0,
             "txInterpBy2Blk22En": 1,
             "txWbLpfBlk22p1En": 0
           },
@@ -1134,7 +1134,7 @@
             "txRoundEn": 1
           },
           "txIqdmDuc": {
-            "iqdmDucMode": 2,
+            "iqdmDucMode": 0,
             "iqdmDev": 0,
             "iqdmDevOffset": 0,
             "iqdmScalar": 0,
@@ -1179,7 +1179,8 @@
     "pllModulus": {
       "modulus": [ 8388593, 8388593, 8388593, 8388593, 8388593 ],
       "dmModulus": [ 8388593, 8388593 ]
-    }
+    },
+    "warmBootEnable": false
   },
   "pfirBuffer": {
     "pfirRxWbNbChFilterCoeff_A": {
