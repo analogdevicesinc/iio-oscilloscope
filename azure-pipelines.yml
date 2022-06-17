@@ -1,6 +1,7 @@
 variables:
   libiioPipelineId: 9
   libad9361iioPipelineId: 10
+  libad9166iioPipelineId: 11
 
 trigger:
 - main
@@ -73,6 +74,16 @@ jobs:
       runVersion: 'latestFromBranch'
       runBranch: 'refs/heads/master'
       path: '$(Agent.BuildDirectory)/s/build/'
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Get libad9166-iio artifacts'
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: $(libad9166iioPipelineId)
+      artifact: '$(artifactName)'
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/master'
+      path: '$(Agent.BuildDirectory)/s/build/'
   - script: ./CI/travis/before_install_linux
     displayName: "Install Dependencies"
   - script: ./CI/travis/make_linux
@@ -108,6 +119,16 @@ jobs:
       source: 'specific'
       project: '$(System.TeamProjectId)'
       pipeline: $(libad9361iioPipelineId)
+      artifact: '$(artifactName)'
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/master'
+      path: '$(Agent.BuildDirectory)/s/build/'
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Get libad9166-iio artifacts'
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: $(libad9166iioPipelineId)
       artifact: '$(artifactName)'
       runVersion: 'latestFromBranch'
       runBranch: 'refs/heads/master'

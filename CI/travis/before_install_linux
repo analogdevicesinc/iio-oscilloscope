@@ -34,13 +34,14 @@ handle_centos() {
 		sudo yum localinstall -y $PACKAGE_TO_INSTALL
 		STAGINGDIR=/usr
 	elif [ "$INSTALL_FROM_SW_DOWNLOADS" = "1" ] ; then
-		for pkg in libiio libad9361-iio ; do
+		for pkg in libiio libad9361-iio libad9166-iio; do
 			wget http://swdownloads.analog.com/cse/travis_builds/${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.rpm
 			sudo yum localinstall -y ./${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.rpm
 		done
 	else
 		cmake_build_git "libiio" "https://github.com/analogdevicesinc/libiio" "" "-DINSTALL_UDEV_RULE:BOOL=OFF"
 		cmake_build_git "libad9361-iio" "https://github.com/analogdevicesinc/libad9361-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
+		cmake_build_git "libad9166-iio" "https://github.com/analogdevicesinc/libad9166-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
 	fi
 
 	# XXX: There is no gtkdatabox available in CentOS or EPEL....
@@ -61,13 +62,14 @@ handle_default() {
 	if [ -n "$PACKAGE_TO_INSTALL" ] ; then
 		sudo dpkg -i $PACKAGE_TO_INSTALL
 	elif [ "$INSTALL_FROM_SW_DOWNLOADS" = "1" ] ; then
-		for pkg in libiio libad9361-iio ; do
+		for pkg in libiio libad9361-iio libad9166-iio ; do
 			wget http://swdownloads.analog.com/cse/travis_builds/${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.deb
 			sudo dpkg -i ./${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.deb
 		done
 	else
 		cmake_build_git "libiio" "https://github.com/analogdevicesinc/libiio" "" "-DINSTALL_UDEV_RULE:BOOL=OFF"
 		cmake_build_git "libad9361-iio" "https://github.com/analogdevicesinc/libad9361-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
+		cmake_build_git "libad9166-iio" "https://github.com/analogdevicesinc/libad9166-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
 	fi
 }
 

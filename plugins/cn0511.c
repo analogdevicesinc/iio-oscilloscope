@@ -9,6 +9,9 @@
 #include <glib.h>
 #include <math.h>
 
+#include <ad9166.h>
+#include <iio.h>
+
 #include "../osc.h"
 #include "../osc_plugin.h"
 #include "../iio_widget.h"
@@ -26,39 +29,45 @@
 #define SCALE_MAX		0
 
 static struct iio_context *ctx;
+struct iio_channel *dac_ch;
+struct iio_device *dac;
 
 static struct iio_widget iio_widgets[25];
 static unsigned int num_widgets;
 
 static GtkWidget *cn0511_panel;
-static GtkWidget *scale_offset;
-static GtkAdjustment *adj_scale;
+static GtkWidget *calib_frequency;
+static GtkWidget *calib_amplitude;
+static GtkButton *calib_en;
 
 static gboolean plugin_detached;
 static gint this_page;
-static int scale_offset_db = 0;
+static int amplitude = 0;
+static double calib_freq = 4500000000;
 
 const gdouble mhz_scale = 1000000.0;
 
-static double db_full_scale_convert(double value, bool inverse)
+static void save_calib_freq(GtkSpinButton *btn, gpointer data)
 {
-	if (inverse) {
-		if (value == 0)
-			return -DBL_MAX;
-
-		return (int)((20 * log10(value / DAC_MAX_AMPLITUDE)) -
-			     scale_offset_db);
-	}
-
-	return DAC_MAX_AMPLITUDE * pow(10, (value + scale_offset_db) / 20.0);
+	calib_freq = gtk_spin_button_get_value(btn) * mhz_scale;
 }
 
-static void save_scale_offset(GtkSpinButton *btn, gpointer data)
+static void save_calib_ampl(GtkSpinButton *btn, gpointer data)
 {
-	scale_offset_db = gtk_spin_button_get_value(btn);
-	gtk_adjustment_set_upper(adj_scale, SCALE_MAX - scale_offset_db);
-	gtk_adjustment_set_lower(adj_scale,
-				 SCALE_MINUS_INFINITE - scale_offset_db);
+	amplitude = gtk_spin_button_get_value(btn);
+}
+
+static void save_calib_config(GtkSpinButton *btn, gpointer data)
+{
+	struct ad9166_calibration_data *calib_data;
+
+	ad9166_context_find_calibration_data(ctx, "cn0511", &calib_data);
+
+	ad9166_channel_set_freq(dac_ch, calib_freq);
+
+	ad9166_device_set_amplitude(dac, amplitude);
+
+	ad9166_device_set_iofs(dac, calib_data, calib_freq);
 }
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
@@ -103,8 +112,6 @@ static GtkWidget *cn0511_init(struct osc_plugin *plugin, GtkWidget *notebook,
 			      const char *ini_fn)
 {
 	GtkBuilder *builder;
-	struct iio_channel *dac_ch;
-	struct iio_device *dac;
 	struct iio_device *dac_amp;
 	int ret;
 
@@ -130,10 +137,12 @@ static GtkWidget *cn0511_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	cn0511_panel = GTK_WIDGET(gtk_builder_get_object(builder,
 							 "cn0511_panel"));
-	scale_offset = GTK_WIDGET(gtk_builder_get_object(builder,
-						"spinbutton_nco_offset"));
-	adj_scale = GTK_ADJUSTMENT(gtk_builder_get_object(builder,
-						"adj_altVoltage0_scale"));
+	calib_frequency = GTK_WIDGET(gtk_builder_get_object(builder,
+						"spinbutton_calib_freq"));
+	calib_amplitude = GTK_WIDGET(gtk_builder_get_object(builder,
+						"spinbutton_amplitude"));
+	calib_en = GTK_BUTTON(gtk_builder_get_object(builder,
+						"calib_btn"));
 
 	dac_ch = iio_device_find_channel(dac, "altvoltage0", true);
 
@@ -142,21 +151,10 @@ static GtkWidget *cn0511_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		fprintf(stderr, "Failed to enable FIR85. Error: %d\n", ret);
 	}
 
-	iio_spin_button_int_init_from_builder(&iio_widgets[num_widgets++], dac,
-					      NULL, "sampling_frequency",
-					      builder, "spinbutton_sample_freq",
-					      &mhz_scale);
-
-	iio_spin_button_int_init_from_builder(&iio_widgets[num_widgets++], dac,
-					      dac_ch, "nco_frequency",
-					      builder, "spinbutton_nco_freq",
-					      &mhz_scale);
-
-	iio_spin_button_int_init_from_builder(&iio_widgets[num_widgets++], dac,
-					      dac_ch, "raw", builder,
-					      "spinbutton_nco_scale", NULL);
-	iio_spin_button_set_convert_function(&iio_widgets[num_widgets - 1],
-					     db_full_scale_convert);
+	ret = iio_device_attr_write_longlong(dac, "sampling_frequency", 6000000000);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to set sampling frequency. Error: %d\n", ret);
+	}
 
 	iio_toggle_button_init_from_builder(&iio_widgets[num_widgets++],
 					    dac_amp, NULL, "en", builder,
@@ -166,8 +164,15 @@ static GtkWidget *cn0511_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	make_widget_update_signal_based(iio_widgets, num_widgets);
 	iio_update_widgets(iio_widgets, num_widgets);
 
-	g_signal_connect(G_OBJECT(scale_offset), "value-changed",
-			 G_CALLBACK(save_scale_offset), NULL);
+	g_signal_connect(G_OBJECT(calib_frequency), "value-changed",
+			 G_CALLBACK(save_calib_freq), NULL);
+
+	g_signal_connect(G_OBJECT(calib_amplitude), "value-changed",
+			 G_CALLBACK(save_calib_ampl), NULL);
+
+	g_signal_connect(G_OBJECT(calib_en), "clicked",
+			 G_CALLBACK(save_calib_config), NULL);
+
 
 	return cn0511_panel;
 }
