@@ -117,6 +117,7 @@ static struct iio_context *ctx;
 static struct iio_device *dev;
 static struct iio_channel *current_ch;
 static bool attribute_has_options;
+static bool debugfs_attr;
 
 /* Register map variables */
 static int *reg_addr_list;     /* Pointer to the list of addresses of all registers */
@@ -197,7 +198,10 @@ static void scanel_read_clicked(GtkButton *btn, gpointer data)
 	if (current_ch)
 		ret = iio_channel_attr_read(current_ch, attr, attr_val, IIO_ATTR_MAX_BYTES);
 	else
-		ret = iio_device_attr_read(dev, attr, attr_val, IIO_ATTR_MAX_BYTES);
+		if (debugfs_attr)
+			ret = iio_device_debug_attr_read(dev, attr, attr_val, IIO_ATTR_MAX_BYTES);
+		else
+			ret = iio_device_attr_read(dev, attr, attr_val, IIO_ATTR_MAX_BYTES);
 
 	if (ret <= 0)
 		goto abort_read;
@@ -232,7 +236,11 @@ static void scanel_write_clicked(GtkButton *btn, gpointer data)
 	if (current_ch)
 		iio_channel_attr_write(current_ch, attr_name, attr_val);
 	else
-		iio_device_attr_write(dev, attr_name, attr_val);
+		if (debugfs_attr)
+			iio_device_debug_attr_write(dev, attr_name, attr_val);
+		else
+			iio_device_attr_write(dev, attr_name, attr_val);
+
 	g_free(attr_name);
 
 	if (attribute_has_options)
@@ -253,7 +261,10 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 	if (current_ch)
 		options_attr = iio_channel_find_attr(current_ch, buf);
 	else
-		options_attr = iio_device_find_attr(dev, buf);
+		if (debugfs_attr)
+			options_attr = iio_device_find_debug_attr(dev, buf);
+		else
+			options_attr = iio_device_find_attr(dev, buf);
 
 	if (options_attr) {
 		gchar **elems;
@@ -269,8 +280,12 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 			iio_channel_attr_read(current_ch, options_attr, options_attr_val,
 						IIO_ATTR_MAX_BYTES);
 		else
-			iio_device_attr_read(dev, options_attr, options_attr_val,
-						IIO_ATTR_MAX_BYTES);
+			if (debugfs_attr)
+				iio_device_debug_attr_read(dev, options_attr, options_attr_val,
+							   IIO_ATTR_MAX_BYTES);
+			else
+				iio_device_attr_read(dev, options_attr, options_attr_val,
+						     IIO_ATTR_MAX_BYTES);
 
 		if (options_attr_val[0] == '[') {
 			/* Don't treat [min step max] as combobox items */
@@ -325,8 +340,13 @@ static void attribute_type_changed_cb(GtkComboBoxText *cmbtext, gpointer data)
 	g_free(attr_type);
 	if (!strcmp(elems[0], "global")) {
 		global_attr = true;
+		debugfs_attr = false;
+	} else if (!strcmp(elems[0], "debugfs")) {
+		global_attr = false;
+		debugfs_attr = true;
 	} else {
 		global_attr = false;
+		debugfs_attr = false;
 		if (!strcmp(elems[0], "output"))
 			is_output_ch = true;
 		else if (!strcmp(elems[0], "input"))
@@ -343,6 +363,15 @@ static void attribute_type_changed_cb(GtkComboBoxText *cmbtext, gpointer data)
 		nb_attrs = iio_device_get_attrs_count(dev);
 		for (i = 0; i < nb_attrs; i++) {
 			attr = iio_device_get_attr(dev, i);
+			if (g_strstr_len(attr, -1, "_available\0"))
+				continue;
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel), attr);
+		}
+	} else if (debugfs_attr) {
+		current_ch = NULL;
+		nb_attrs = iio_device_get_debug_attrs_count(dev);
+		for (i = 0; i < nb_attrs; i++) {
+			attr = iio_device_get_debug_attr(dev, i);
 			if (g_strstr_len(attr, -1, "_available\0"))
 				continue;
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel), attr);
@@ -411,9 +440,11 @@ static void debug_device_list_cb(GtkButton *btn, gpointer data)
 		}
 		combo_box_text_sort(GTK_COMBO_BOX_TEXT(combobox_attr_type), 0, GTK_SORT_ASCENDING);
 		gtk_combo_box_text_insert_text(GTK_COMBO_BOX_TEXT(combobox_attr_type),
+					       0, "debugfs");
+		gtk_combo_box_text_insert_text(GTK_COMBO_BOX_TEXT(combobox_attr_type),
 						0, "global");
 		g_signal_handler_unblock(combobox_attr_type, attr_type_hid);
-		gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_attr_type), 0);
+		gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_attr_type), 1); /* global should be default */
 	} else {
 		gtk_widget_set_sensitive(register_section, false);
 		gtk_widget_hide(scanel_read);
