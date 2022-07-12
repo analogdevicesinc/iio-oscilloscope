@@ -62,11 +62,11 @@
     <property name="step_increment">1</property>
     <property name="page_increment">100</property>
   </object>
-  <object class="GtkVBox" id="tablePanelMotor_Control">
+  <object class="GtkBox" id="tablePanelMotor_Control">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <child>
-      <object class="GtkHBox" id="hbox_all_widgets">
+      <object class="GtkBox" id="hbox_all_widgets">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -74,11 +74,11 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <child>
-              <object class="GtkVBox" id="vbox_torque_widgets">
+              <object class="GtkBox" id="vbox_torque_widgets">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkHBox" id="hbox_torque_top">
+                  <object class="GtkBox" id="hbox_torque_top">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -95,14 +95,14 @@
                             <property name="left_padding">12</property>
                             <property name="right_padding">5</property>
                             <child>
-                              <object class="GtkTable" id="table_torque_ctrl_widgets">
+                              <object class="GtkGrid" id="table_torque_ctrl_widgets">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">6</property>
                                 <property name="n_columns">2</property>
                                 <property name="column_spacing">5</property>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_run_lbls">
+                                  <object class="GtkBox" id="vbox_run_lbls">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -125,7 +125,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_run_widgets">
+                                  <object class="GtkBox" id="vbox_run_widgets">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -153,7 +153,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_ctrl_type_lbls">
+                                  <object class="GtkBox" id="vbox_ctrl_type_lbls">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -178,7 +178,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_ctrl_type_widgets">
+                                  <object class="GtkBox" id="vbox_ctrl_type_widgets">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -208,7 +208,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_manual_pwm_lbls">
+                                  <object class="GtkBox" id="vbox_manual_pwm_lbls">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -233,7 +233,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_torque_ctrl_lbls">
+                                  <object class="GtkBox" id="vbox_torque_ctrl_lbls">
                                     <property name="can_focus">False</property>
                                     <child>
                                       <placeholder/>
@@ -262,7 +262,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_manual_pwm_widgets">
+                                  <object class="GtkBox" id="vbox_manual_pwm_widgets">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -292,7 +292,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_delta_lbls">
+                                  <object class="GtkBox" id="vbox_delta_lbls">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -317,7 +317,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_delta_widgets">
+                                  <object class="GtkBox" id="vbox_delta_widgets">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -347,7 +347,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_direction_lbls">
+                                  <object class="GtkBox" id="vbox_direction_lbls">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -372,7 +372,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_direction_widgets">
+                                  <object class="GtkBox" id="vbox_direction_widgets">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -401,7 +401,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_torque_ctrl_widgets">
+                                  <object class="GtkBox" id="vbox_torque_ctrl_widgets">
                                     <property name="can_focus">False</property>
                                     <child>
                                       <placeholder/>
@@ -463,14 +463,14 @@
                             <property name="left_padding">12</property>
                             <property name="right_padding">5</property>
                             <child>
-                              <object class="GtkTable" id="table_torque_ctrl_widgets_2nd">
+                              <object class="GtkGrid" id="table_torque_ctrl_widgets_2nd">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">6</property>
                                 <property name="n_columns">2</property>
                                 <property name="column_spacing">5</property>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_run_lbls_2nd">
+                                  <object class="GtkBox" id="vbox_run_lbls_2nd">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -493,7 +493,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_run_widgets2nd">
+                                  <object class="GtkBox" id="vbox_run_widgets2nd">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -521,7 +521,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_ctrl_type_lbls_2nd">
+                                  <object class="GtkBox" id="vbox_ctrl_type_lbls_2nd">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -546,7 +546,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_ctrl_type_widgets_2nd">
+                                  <object class="GtkBox" id="vbox_ctrl_type_widgets_2nd">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -576,7 +576,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_manual_pwm_lbls_2nd">
+                                  <object class="GtkBox" id="vbox_manual_pwm_lbls_2nd">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -601,7 +601,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_manual_pwm_widgets_2nd">
+                                  <object class="GtkBox" id="vbox_manual_pwm_widgets_2nd">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -631,7 +631,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_delta_lbls_2nd">
+                                  <object class="GtkBox" id="vbox_delta_lbls_2nd">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -656,7 +656,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_delta_widgets_2nd">
+                                  <object class="GtkBox" id="vbox_delta_widgets_2nd">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -686,7 +686,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_direction_lbls_2nd">
+                                  <object class="GtkBox" id="vbox_direction_lbls_2nd">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -711,7 +711,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_direction_widgets_2nd">
+                                  <object class="GtkBox" id="vbox_direction_widgets_2nd">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
@@ -740,7 +740,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_torque_ctrl_widgets_2nd">
+                                  <object class="GtkBox" id="vbox_torque_ctrl_widgets_2nd">
                                     <property name="can_focus">False</property>
                                     <child>
                                       <placeholder/>
@@ -771,7 +771,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="vbox_torque_ctrl_lbls_2nd">
+                                  <object class="GtkBox" id="vbox_torque_ctrl_lbls_2nd">
                                     <property name="can_focus">False</property>
                                     <child>
                                       <placeholder/>
@@ -828,7 +828,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkVBox" id="vbox_torque_bottom">
+                  <object class="GtkBox" id="vbox_torque_bottom">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -854,18 +854,18 @@
               </packing>
             </child>
             <child>
-              <object class="GtkVBox" id="vbox_advanced_widgets">
+              <object class="GtkBox" id="vbox_advanced_widgets">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkTable" id="table_advanced_ctrl_widgets">
+                  <object class="GtkGrid" id="table_advanced_ctrl_widgets">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="n_rows">2</property>
                     <property name="n_columns">2</property>
                     <property name="column_spacing">5</property>
                     <child>
-                      <object class="GtkVBox" id="vbox_run_lbls_adv">
+                      <object class="GtkBox" id="vbox_run_lbls_adv">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
@@ -888,7 +888,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkVBox" id="vbox_run_widgets_adv">
+                      <object class="GtkBox" id="vbox_run_widgets_adv">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
@@ -916,7 +916,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkVBox" id="vbox_matlab_ctrl_lbls_adv">
+                      <object class="GtkBox" id="vbox_matlab_ctrl_lbls_adv">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
@@ -1054,7 +1054,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkVBox" id="vbox_matlab_ctrl_widgets_adv">
+                      <object class="GtkBox" id="vbox_matlab_ctrl_widgets_adv">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
@@ -1216,7 +1216,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkVBox" id="vbox_advanced_bottom">
+                  <object class="GtkBox" id="vbox_advanced_bottom">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -1246,7 +1246,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkVBox" id="vbox_resolver_widgets">
+              <object class="GtkBox" id="vbox_resolver_widgets">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
@@ -1256,7 +1256,7 @@
                     <property name="top_padding">5</property>
                     <property name="left_padding">10</property>
                     <child>
-                      <object class="GtkTable" id="table_resolver">
+                      <object class="GtkGrid" id="table_resolver">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">4</property>
@@ -1414,7 +1414,7 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <child>
-              <object class="GtkVBox" id="vbox_GPOs">
+              <object class="GtkBox" id="vbox_GPOs">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
@@ -1423,7 +1423,7 @@
                     <property name="can_focus">False</property>
                     <property name="right_padding">5</property>
                     <child>
-                      <object class="GtkTable" id="table_GPOs">
+                      <object class="GtkGrid" id="table_GPOs">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">11</property>
@@ -1609,7 +1609,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkVBox" id="vbox_bottom_gpo">
+                  <object class="GtkBox" id="vbox_bottom_gpo">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -1655,7 +1655,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkVBox" id="vbox_left">
+          <object class="GtkBox" id="vbox_left">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>

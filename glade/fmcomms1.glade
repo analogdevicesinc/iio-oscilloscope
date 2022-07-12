@@ -175,7 +175,7 @@
             <property name="homogeneous">True</property>
             <property name="layout_style">center</property>
             <child>
-              <object class="GtkTable" id="grid2">
+              <object class="GtkGrid" id="grid2">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">2</property>
@@ -314,7 +314,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkHBox" id="box1">
+          <object class="GtkBox" id="box1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
@@ -329,11 +329,11 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkVBox" id="box3">
+                      <object class="GtkBox" id="box3">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
-                          <object class="GtkHBox" id="box5">
+                          <object class="GtkBox" id="box5">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <child>
@@ -348,7 +348,7 @@
                                     <property name="can_focus">False</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkTable" id="grid10">
+                                      <object class="GtkGrid" id="grid10">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="border_width">5</property>
@@ -533,7 +533,7 @@
                                     <property name="can_focus">False</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkTable" id="grid11">
+                                      <object class="GtkGrid" id="grid11">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="border_width">5</property>
@@ -714,7 +714,7 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkTable" id="GtkTable">
+                          <object class="GtkGrid" id="GtkGrid">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="n_rows">2</property>
@@ -811,7 +811,7 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkTable" id="box2">
+                      <object class="GtkGrid" id="box2">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">2</property>
@@ -830,7 +830,7 @@
                                 <property name="can_focus">False</property>
                                 <property name="left_padding">12</property>
                                 <child>
-                                  <object class="GtkTable" id="grid8">
+                                  <object class="GtkGrid" id="grid8">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="column_spacing">5</property>
@@ -947,7 +947,7 @@
                                 <property name="can_focus">False</property>
                                 <property name="left_padding">12</property>
                                 <child>
-                                  <object class="GtkTable" id="grid9">
+                                  <object class="GtkGrid" id="grid9">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="column_spacing">5</property>
@@ -1203,7 +1203,7 @@
       <action-widget response="2">Open</action-widget>
     </action-widgets>
   </object>
-  <object class="GtkVBox" id="fmcomms1_panel">
+  <object class="GtkBox" id="fmcomms1_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -1215,7 +1215,7 @@
         <property name="label_xalign">0</property>
         <property name="shadow_type">in</property>
         <child>
-          <object class="GtkHBox" id="box9">
+          <object class="GtkBox" id="box9">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="spacing">12</property>
@@ -1231,7 +1231,7 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkTable" id="grid6">
+                      <object class="GtkGrid" id="grid6">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="border_width">5</property>
@@ -1297,7 +1297,7 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkTable" id="grid3">
+                      <object class="GtkGrid" id="grid3">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">3</property>
@@ -1418,7 +1418,7 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkTable" id="grid7">
+                      <object class="GtkGrid" id="grid7">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">3</property>
@@ -1567,7 +1567,7 @@
         <property name="label_xalign">0</property>
         <property name="shadow_type">in</property>
         <child>
-          <object class="GtkHBox" id="box8">
+          <object class="GtkBox" id="box8">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="border_width">5</property>
@@ -1619,7 +1619,7 @@
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkTable" id="grid1">
+                              <object class="GtkGrid" id="grid1">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="column_spacing">5</property>
@@ -1737,7 +1737,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkVBox" id="tx_lo_box">
+              <object class="GtkBox" id="tx_lo_box">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
@@ -1752,7 +1752,7 @@
                         <property name="can_focus">False</property>
                         <property name="left_padding">12</property>
                         <child>
-                          <object class="GtkTable" id="table1">
+                          <object class="GtkGrid" id="table1">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="n_rows">3</property>

@@ -11,7 +11,7 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkVBox" id="reg_debug_panel">
+  <object class="GtkBox" id="reg_debug_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="spacing">10</property>
@@ -21,7 +21,7 @@
         <property name="can_focus">False</property>
         <property name="label_xalign">0</property>
         <child>
-          <object class="GtkHBox" id="hboxDevice">
+          <object class="GtkBox" id="hboxDevice">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
@@ -39,7 +39,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkVBox" id="device_list_container">
+              <object class="GtkBox" id="device_list_container">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
               </object>
@@ -92,7 +92,7 @@
             <property name="left_padding">12</property>
             <property name="right_padding">5</property>
             <child>
-              <object class="GtkTable" id="table_scan_elements">
+              <object class="GtkGrid" id="table_scan_elements">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">2</property>
@@ -152,7 +152,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkVBox" id="scanel_container">
+                  <object class="GtkBox" id="scanel_container">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                   </object>
@@ -164,7 +164,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkVBox" id="debug_scanel">
+                  <object class="GtkBox" id="debug_scanel">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -265,7 +265,7 @@
         <property name="can_focus">False</property>
         <property name="label_xalign">0</property>
         <child>
-          <object class="GtkTable" id="tableRegister">
+          <object class="GtkGrid" id="tableRegister">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="n_rows">5</property>
@@ -273,7 +273,7 @@
               <placeholder/>
             </child>
             <child>
-              <object class="GtkTable" id="gridValAndAddr">
+              <object class="GtkGrid" id="gridValAndAddr">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="border_width">5</property>
@@ -490,7 +490,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkVBox" id="regmap_container">
+                      <object class="GtkBox" id="regmap_container">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                       </object>
@@ -506,7 +506,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkHBox" id="box2">
+              <object class="GtkBox" id="box2">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
@@ -527,7 +527,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkHBox" id="box1">
+                  <object class="GtkBox" id="box1">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -558,7 +558,7 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkTable" id="table1">
+                      <object class="GtkGrid" id="table1">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">2</property>
@@ -666,7 +666,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkTable" id="tableNotes">
+      <object class="GtkGrid" id="tableNotes">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="n_columns">2</property>
@@ -709,11 +709,11 @@
       </packing>
     </child>
     <child>
-      <object class="GtkVBox" id="vbox1">
+      <object class="GtkBox" id="vbox1">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
-          <object class="GtkVBox" id="vboxRegMapContainer">
+          <object class="GtkBox" id="vboxRegMapContainer">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
           </object>

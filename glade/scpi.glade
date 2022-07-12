@@ -11,7 +11,7 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkVBox" id="scpi_panel">
+  <object class="GtkBox" id="scpi_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="spacing">10</property>
@@ -26,7 +26,7 @@
             <property name="can_focus">False</property>
             <property name="left_padding">12</property>
             <child>
-              <object class="GtkVBox" id="box1">
+              <object class="GtkBox" id="box1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
@@ -47,7 +47,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkVBox" id="scpi_radio_conf">
+                  <object class="GtkBox" id="scpi_radio_conf">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -114,7 +114,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTable" id="scpi_tty_conf">
+                  <object class="GtkGrid" id="scpi_tty_conf">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -175,7 +175,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTable" id="scpi_network_conf">
+                  <object class="GtkGrid" id="scpi_network_conf">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="n_columns">2</property>
@@ -210,7 +210,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTable" id="grid4">
+                  <object class="GtkGrid" id="grid4">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="n_columns">2</property>
@@ -262,7 +262,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkTable" id="scpi_output">
+      <object class="GtkGrid" id="scpi_output">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="n_rows">4</property>

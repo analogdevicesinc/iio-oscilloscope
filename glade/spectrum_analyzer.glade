@@ -23,20 +23,20 @@
     <property name="active">True</property>
     <property name="draw_indicator">True</property>
   </object>
-  <object class="GtkVBox" id="spectrum_analyzer_panel">
+  <object class="GtkBox" id="spectrum_analyzer_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <child>
-      <object class="GtkHBox" id="hbox">
+      <object class="GtkBox" id="hbox">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
-          <object class="GtkVBox" id="vbox">
+          <object class="GtkBox" id="vbox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="spacing">5</property>
             <child>
-              <object class="GtkTable" id="table">
+              <object class="GtkGrid" id="table">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">3</property>
@@ -144,7 +144,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkHBox" id="hbox_sweep_btns">
+              <object class="GtkBox" id="hbox_sweep_btns">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
@@ -189,7 +189,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkVBox" id="vbox1">
+          <object class="GtkBox" id="vbox1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
@@ -204,7 +204,7 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkVBox" id="vbox2">
+                      <object class="GtkBox" id="vbox2">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>

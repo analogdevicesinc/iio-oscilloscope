@@ -58,13 +58,13 @@
       </row>
     </data>
   </object>
-  <object class="GtkVBox" id="tablePanelAD5628_1">
+  <object class="GtkBox" id="tablePanelAD5628_1">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
     <property name="spacing">5</property>
     <child>
-      <object class="GtkTable" id="table1">
+      <object class="GtkGrid" id="table1">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="n_rows">4</property>
@@ -78,7 +78,7 @@
             <property name="label_xalign">0</property>
             <property name="shadow_type">none</property>
             <child>
-              <object class="GtkTable" id="tableChannel0">
+              <object class="GtkGrid" id="tableChannel0">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">3</property>
@@ -192,7 +192,7 @@
             <property name="label_xalign">0</property>
             <property name="shadow_type">none</property>
             <child>
-              <object class="GtkTable" id="tableChannel1">
+              <object class="GtkGrid" id="tableChannel1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">3</property>
@@ -308,7 +308,7 @@
             <property name="label_xalign">0</property>
             <property name="shadow_type">none</property>
             <child>
-              <object class="GtkTable" id="tableChannel3">
+              <object class="GtkGrid" id="tableChannel3">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">3</property>
@@ -426,7 +426,7 @@
             <property name="label_xalign">0</property>
             <property name="shadow_type">none</property>
             <child>
-              <object class="GtkTable" id="tableChannel2">
+              <object class="GtkGrid" id="tableChannel2">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">3</property>
@@ -542,7 +542,7 @@
             <property name="label_xalign">0</property>
             <property name="shadow_type">none</property>
             <child>
-              <object class="GtkTable" id="tableChannel5">
+              <object class="GtkGrid" id="tableChannel5">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">3</property>
@@ -660,7 +660,7 @@
             <property name="label_xalign">0</property>
             <property name="shadow_type">none</property>
             <child>
-              <object class="GtkTable" id="tableChannel4">
+              <object class="GtkGrid" id="tableChannel4">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">3</property>
@@ -776,7 +776,7 @@
             <property name="label_xalign">0</property>
             <property name="shadow_type">none</property>
             <child>
-              <object class="GtkTable" id="tableChannel7">
+              <object class="GtkGrid" id="tableChannel7">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">3</property>
@@ -894,7 +894,7 @@
             <property name="label_xalign">0</property>
             <property name="shadow_type">none</property>
             <child>
-              <object class="GtkTable" id="tableChannel6">
+              <object class="GtkGrid" id="tableChannel6">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">3</property>
