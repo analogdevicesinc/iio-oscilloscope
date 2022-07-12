@@ -23,13 +23,13 @@
       <column type="gboolean"/>
     </columns>
   </object>
-  <object class="GtkHBox" id="dmm_panel">
+  <object class="GtkBox" id="dmm_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
     <property name="spacing">5</property>
     <child>
-      <object class="GtkVBox" id="box5">
+      <object class="GtkBox" id="box5">
         <property name="width_request">250</property>
         <property name="visible">True</property>
         <property name="can_focus">False</property>
@@ -45,11 +45,11 @@
                 <property name="can_focus">False</property>
                 <property name="left_padding">12</property>
                 <child>
-                  <object class="GtkVBox" id="input_device_channels">
+                  <object class="GtkBox" id="input_device_channels">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkVBox" id="input_device_channels2">
+                      <object class="GtkBox" id="input_device_channels2">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
@@ -141,7 +141,7 @@
                 <property name="can_focus">False</property>
                 <property name="left_padding">12</property>
                 <child>
-                  <object class="GtkVBox" id="input_device_channels1">
+                  <object class="GtkBox" id="input_device_channels1">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -237,7 +237,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkVBox" id="disp_dmm">
+      <object class="GtkBox" id="disp_dmm">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>

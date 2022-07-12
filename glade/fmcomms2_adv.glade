@@ -454,7 +454,7 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkVBox" id="fmcomms2adv_panel">
+  <object class="GtkBox" id="fmcomms2adv_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -464,7 +464,7 @@
         <property name="visible">True</property>
         <property name="can_focus">True</property>
         <child>
-          <object class="GtkVBox" id="box1">
+          <object class="GtkBox" id="box1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="spacing">10</property>
@@ -480,11 +480,11 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkVBox" id="box6">
+                      <object class="GtkBox" id="box6">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
-                          <object class="GtkTable" id="grid8">
+                          <object class="GtkGrid" id="grid8">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="column_spacing">5</property>
@@ -576,7 +576,7 @@
                                 <property name="can_focus">False</property>
                                 <property name="left_padding">12</property>
                                 <child>
-                                  <object class="GtkTable" id="grid2">
+                                  <object class="GtkGrid" id="grid2">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="n_columns">4</property>
@@ -694,7 +694,7 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkTable" id="grid3">
+                      <object class="GtkGrid" id="grid3">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">3</property>
@@ -818,7 +818,7 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkTable" id="grid4">
+                      <object class="GtkGrid" id="grid4">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">5</property>
@@ -1060,7 +1060,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkTable" id="grid5">
+          <object class="GtkGrid" id="grid5">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="n_rows">5</property>
@@ -1234,7 +1234,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkVBox" id="box3">
+          <object class="GtkBox" id="box3">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
@@ -1249,11 +1249,11 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkVBox" id="box9">
+                      <object class="GtkBox" id="box9">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
-                          <object class="GtkTable" id="grid1">
+                          <object class="GtkGrid" id="grid1">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="column_spacing">5</property>
@@ -1425,7 +1425,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkVBox" id="box2">
+                  <object class="GtkBox" id="box2">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">10</property>
@@ -1441,7 +1441,7 @@
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkTable" id="grid6">
+                              <object class="GtkGrid" id="grid6">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="n_rows">4</property>
@@ -1692,7 +1692,7 @@ Dec. PWR measurements</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkTable" id="grid7">
+                              <object class="GtkGrid" id="grid7">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="column_spacing">5</property>
@@ -1848,7 +1848,7 @@ Dec. PWR measurements</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkTable" id="grid9">
+                              <object class="GtkGrid" id="grid9">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="column_spacing">5</property>
@@ -2199,7 +2199,7 @@ Fast AGC Lock Level (dBFS)</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkTable" id="grid14">
+                              <object class="GtkGrid" id="grid14">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="column_spacing">5</property>
@@ -2440,7 +2440,7 @@ if Large Overload</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkTable" id="grid16">
+                              <object class="GtkGrid" id="grid16">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="column_spacing">5</property>
@@ -2627,7 +2627,7 @@ if Large Overload</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkTable" id="grid17">
+                              <object class="GtkGrid" id="grid17">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="column_spacing">5</property>
@@ -2754,7 +2754,7 @@ if Large Overload</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkVBox" id="box5">
+                              <object class="GtkBox" id="box5">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">10</property>
@@ -2770,7 +2770,7 @@ if Large Overload</property>
                                         <property name="can_focus">False</property>
                                         <property name="left_padding">12</property>
                                         <child>
-                                          <object class="GtkTable" id="grid15">
+                                          <object class="GtkGrid" id="grid15">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="column_spacing">5</property>
@@ -2831,7 +2831,7 @@ if Large Overload</property>
                                         <property name="can_focus">False</property>
                                         <property name="left_padding">12</property>
                                         <child>
-                                          <object class="GtkTable" id="grid19">
+                                          <object class="GtkGrid" id="grid19">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="column_spacing">5</property>
@@ -2974,7 +2974,7 @@ if signal below Low PWR Thresh</property>
                                         <property name="can_focus">False</property>
                                         <property name="left_padding">12</property>
                                         <child>
-                                          <object class="GtkTable" id="grid20">
+                                          <object class="GtkGrid" id="grid20">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="column_spacing">5</property>
@@ -3081,7 +3081,7 @@ if signal below Low PWR Thresh</property>
                                         <property name="can_focus">False</property>
                                         <property name="left_padding">12</property>
                                         <child>
-                                          <object class="GtkTable" id="grid21">
+                                          <object class="GtkGrid" id="grid21">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="column_spacing">5</property>
@@ -3227,7 +3227,7 @@ Gain Increase after Gain Lock</property>
                                         <property name="can_focus">False</property>
                                         <property name="left_padding">12</property>
                                         <child>
-                                          <object class="GtkTable" id="grid22">
+                                          <object class="GtkGrid" id="grid22">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="column_spacing">5</property>
@@ -3624,7 +3624,7 @@ power for (sample periods)</property>
                                         <property name="can_focus">False</property>
                                         <property name="left_padding">12</property>
                                         <child>
-                                          <object class="GtkTable" id="grid27">
+                                          <object class="GtkGrid" id="grid27">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="column_spacing">5</property>
@@ -3719,7 +3719,7 @@ power for (sample periods)</property>
                 <property name="can_focus">False</property>
                 <property name="left_padding">12</property>
                 <child>
-                  <object class="GtkTable" id="grid28">
+                  <object class="GtkGrid" id="grid28">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="column_spacing">5</property>
@@ -4210,7 +4210,7 @@ power for (sample periods)</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkVBox" id="box7">
+                  <object class="GtkBox" id="box7">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">10</property>
@@ -4226,7 +4226,7 @@ power for (sample periods)</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkTable" id="grid11">
+                              <object class="GtkGrid" id="grid11">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="column_spacing">5</property>
@@ -4368,7 +4368,7 @@ power for (sample periods)</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkTable" id="grid12">
+                              <object class="GtkGrid" id="grid12">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="column_spacing">5</property>
@@ -4454,7 +4454,7 @@ power for (sample periods)</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkVBox" id="box10">
+                              <object class="GtkBox" id="box10">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">5</property>
@@ -4477,7 +4477,7 @@ power for (sample periods)</property>
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkTable" id="grid24">
+                                  <object class="GtkGrid" id="grid24">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="column_spacing">5</property>
@@ -4494,7 +4494,7 @@ power for (sample periods)</property>
                                             <property name="can_focus">False</property>
                                             <property name="left_padding">12</property>
                                             <child>
-                                              <object class="GtkTable" id="grid25">
+                                              <object class="GtkGrid" id="grid25">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="column_spacing">5</property>
@@ -4629,7 +4629,7 @@ power for (sample periods)</property>
                                             <property name="can_focus">False</property>
                                             <property name="left_padding">12</property>
                                             <child>
-                                              <object class="GtkTable" id="grid26">
+                                              <object class="GtkGrid" id="grid26">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="column_spacing">5</property>
@@ -4794,7 +4794,7 @@ power for (sample periods)</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkTable" id="grid13">
+                              <object class="GtkGrid" id="grid13">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="column_spacing">5</property>
@@ -4873,7 +4873,7 @@ power for (sample periods)</property>
                         <property name="label_xalign">0</property>
                         <property name="shadow_type">in</property>
                         <child>
-                          <object class="GtkVBox" id="vbox1">
+                          <object class="GtkBox" id="vbox1">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <child>
@@ -4893,7 +4893,7 @@ power for (sample periods)</property>
                                         <property name="can_focus">False</property>
                                         <property name="left_padding">12</property>
                                         <child>
-                                          <object class="GtkTable" id="table35">
+                                          <object class="GtkGrid" id="table35">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="n_rows">2</property>
@@ -4921,7 +4921,7 @@ power for (sample periods)</property>
                                                     <property name="can_focus">False</property>
                                                     <property name="left_padding">12</property>
                                                     <child>
-                                                      <object class="GtkTable" id="table132">
+                                                      <object class="GtkGrid" id="table132">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
                                                         <property name="n_rows">4</property>
@@ -5029,7 +5029,7 @@ power for (sample periods)</property>
                                 <property name="can_focus">False</property>
                                 <property name="left_padding">12</property>
                                 <child>
-                                  <object class="GtkTable" id="grid31">
+                                  <object class="GtkGrid" id="grid31">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="n_rows">2</property>
@@ -5047,7 +5047,7 @@ power for (sample periods)</property>
                                             <property name="can_focus">False</property>
                                             <property name="left_padding">12</property>
                                             <child>
-                                              <object class="GtkTable" id="grid32">
+                                              <object class="GtkGrid" id="grid32">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="n_rows">3</property>
@@ -5197,7 +5197,7 @@ power for (sample periods)</property>
                                             <property name="can_focus">False</property>
                                             <property name="left_padding">12</property>
                                             <child>
-                                              <object class="GtkTable" id="grid30">
+                                              <object class="GtkGrid" id="grid30">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="n_rows">3</property>
@@ -5350,7 +5350,7 @@ power for (sample periods)</property>
                                             <property name="can_focus">False</property>
                                             <property name="left_padding">12</property>
                                             <child>
-                                              <object class="GtkTable" id="grid33">
+                                              <object class="GtkGrid" id="grid33">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="n_rows">3</property>
@@ -5503,7 +5503,7 @@ power for (sample periods)</property>
                                             <property name="can_focus">False</property>
                                             <property name="left_padding">12</property>
                                             <child>
-                                              <object class="GtkTable" id="grid34">
+                                              <object class="GtkGrid" id="grid34">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="n_rows">3</property>
@@ -5693,7 +5693,7 @@ power for (sample periods)</property>
           </packing>
         </child>
         <child>
-          <object class="GtkVBox" id="box8">
+          <object class="GtkBox" id="box8">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
@@ -5708,7 +5708,7 @@ power for (sample periods)</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkTable" id="grid18">
+                      <object class="GtkGrid" id="grid18">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="column_spacing">5</property>
@@ -5896,7 +5896,7 @@ power for (sample periods)</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkTable" id="grid29">
+                      <object class="GtkGrid" id="grid29">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
@@ -5964,11 +5964,11 @@ This can be reliably avoided by slowing down the control loop.
                 <property name="can_focus">False</property>
                 <property name="left_padding">12</property>
                 <child>
-                  <object class="GtkVBox" id="box4">
+                  <object class="GtkBox" id="box4">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkTable" id="grid10">
+                      <object class="GtkGrid" id="grid10">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">8</property>
@@ -6154,7 +6154,7 @@ This can be reliably avoided by slowing down the control loop.
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkTable" id="grid23">
+                          <object class="GtkGrid" id="grid23">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <child>
@@ -6283,7 +6283,7 @@ This can be reliably avoided by slowing down the control loop.
                 <property name="bottom_padding">5</property>
                 <property name="left_padding">12</property>
                 <child>
-                  <object class="GtkVBox" id="box11">
+                  <object class="GtkBox" id="box11">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">5</property>
@@ -6307,7 +6307,7 @@ This can be reliably avoided by slowing down the control loop.
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkHBox" id="box12">
+                      <object class="GtkBox" id="box12">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
@@ -6351,7 +6351,7 @@ This can be reliably avoided by slowing down the control loop.
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkHBox" id="box13">
+                      <object class="GtkBox" id="box13">
                         <property name="height_request">20</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>

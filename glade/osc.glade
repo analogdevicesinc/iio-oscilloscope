@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk+" version="2.24"/>
-  <!-- interface-naming-policy project-wide -->
-  <object class="GtkAboutDialog" id="About_dialog">
-    <property name="can_focus">False</property>
     <property name="border_width">5</property>
     <property name="modal">True</property>
     <property name="type_hint">dialog</property>
@@ -305,7 +302,7 @@ Timothy Harder
 </property>
     <property name="logo">osc128.png</property>
     <child internal-child="vbox">
-      <object class="GtkVBox" id="aboutdialog-vbox3">
+      <object class="GtkBox" id="aboutdialog-vbox3">
         <property name="can_focus">False</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
@@ -320,7 +317,7 @@ Timothy Harder
           </packing>
         </child>
         <child>
-          <object class="GtkHBox" id="box3">
+          <object class="GtkBox" id="box3">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="homogeneous">True</property>
@@ -336,7 +333,7 @@ Timothy Harder
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkVBox" id="box6">
+                      <object class="GtkBox" id="box6">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
@@ -428,7 +425,7 @@ ADCs and DACs for the rest of us</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkVBox" id="box7">
+                      <object class="GtkBox" id="box7">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
@@ -536,7 +533,7 @@ A GUI for Linux IIO devices</property>
     <property name="icon_name">adi-osc</property>
     <property name="type_hint">dialog</property>
     <child internal-child="vbox">
-      <object class="GtkVBox" id="dialog-vbox6">
+      <object class="GtkBox" id="dialog-vbox6">
         <property name="can_focus">False</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
@@ -606,7 +603,7 @@ A GUI for Linux IIO devices</property>
                 <property name="can_focus">False</property>
                 <property name="left_padding">12</property>
                 <child>
-                  <object class="GtkVBox" id="box8">
+                  <object class="GtkBox" id="box8">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -621,7 +618,7 @@ A GUI for Linux IIO devices</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">12</property>
                             <child>
-                              <object class="GtkVBox" id="box9">
+                              <object class="GtkBox" id="box9">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <child>
@@ -644,11 +641,11 @@ A GUI for Linux IIO devices</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
-                                      <object class="GtkVBox" id="vbox_discover">
+                                      <object class="GtkBox" id="vbox_discover">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <child>
-                                          <object class="GtkHBox" id="hbox1">
+                                          <object class="GtkBox" id="hbox1">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <child>
@@ -716,7 +713,7 @@ A GUI for Linux IIO devices</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkHBox" id="box1">
+                                          <object class="GtkBox" id="box1">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="spacing">5</property>
@@ -787,7 +784,7 @@ A GUI for Linux IIO devices</property>
                                     <property name="can_focus">False</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkHBox" id="box">
+                                      <object class="GtkBox" id="box">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="spacing">5</property>
@@ -894,7 +891,7 @@ A GUI for Linux IIO devices</property>
                                     <property name="can_focus">False</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkHBox" id="box10">
+                                      <object class="GtkBox" id="box10">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="spacing">5</property>
@@ -1179,7 +1176,7 @@ Serial:
     <property name="default_height">480</property>
     <property name="icon_name">adi-osc</property>
     <child>
-      <object class="GtkVBox" id="box2">
+      <object class="GtkBox" id="box2">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -1319,7 +1316,7 @@ Serial:
           </packing>
         </child>
         <child>
-          <object class="GtkVBox" id="connect_infobar_container">
+          <object class="GtkBox" id="connect_infobar_container">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
@@ -1337,10 +1334,10 @@ Serial:
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <child>
-              <object class="GtkHBox" id="hbox2">
+              <object class="GtkBox" id="hbox2">
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkHBox" id="hbox3">
+                  <object class="GtkBox" id="hbox3">
                     <property name="can_focus">False</property>
                     <property name="spacing">5</property>
                     <child>
@@ -1385,7 +1382,7 @@ Serial:
     <property name="buttons">ok</property>
     <property name="text" translatable="yes">A new version is available</property>
     <child internal-child="vbox">
-      <object class="GtkVBox" id="messagedialog-vbox">
+      <object class="GtkBox" id="messagedialog-vbox">
         <property name="can_focus">False</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
@@ -1406,11 +1403,11 @@ Serial:
             <property name="left_padding">20</property>
             <property name="right_padding">20</property>
             <child>
-              <object class="GtkVBox" id="msg_dialog_vbox">
+              <object class="GtkBox" id="msg_dialog_vbox">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkHBox" id="hbox">
+                  <object class="GtkBox" id="hbox">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">5</property>
@@ -1524,7 +1521,7 @@ Serial:
     <property name="do_overwrite_confirmation">True</property>
     <property name="show_hidden">True</property>
     <child internal-child="vbox">
-      <object class="GtkVBox" id="filechooserdialog-vbox5">
+      <object class="GtkBox" id="filechooserdialog-vbox5">
         <property name="can_focus">False</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
@@ -1606,7 +1603,7 @@ Serial:
         <property name="left_padding">15</property>
         <property name="right_padding">15</property>
         <child>
-          <object class="GtkVBox" id="vbox2">
+          <object class="GtkBox" id="vbox2">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="spacing">5</property>
@@ -1649,7 +1646,7 @@ Serial:
     <property name="buttons">ok</property>
     <property name="text" translatable="yes">FRU to be programmed</property>
     <child internal-child="vbox">
-      <object class="GtkVBox" id="messagedialog-vbox6">
+      <object class="GtkBox" id="messagedialog-vbox6">
         <property name="can_focus">False</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
@@ -1678,7 +1675,7 @@ Serial:
           </packing>
         </child>
         <child>
-          <object class="GtkTable" id="grid3">
+          <object class="GtkGrid" id="grid3">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>

@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
-  <object class="GtkVBox" id="pr_config_panel">
+  <object class="GtkBox" id="pr_config_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <child>
-      <object class="GtkVBox" id="vbox_rp_config">
+      <object class="GtkBox" id="vbox_rp_config">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
-          <object class="GtkHBox" id="hbox_rp_config">
+          <object class="GtkBox" id="hbox_rp_config">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
@@ -32,7 +32,7 @@
                         <property name="left_padding">12</property>
                         <property name="right_padding">5</property>
                         <child>
-                          <object class="GtkVBox" id="vbox_2">
+                          <object class="GtkBox" id="vbox_2">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <child>
@@ -54,7 +54,7 @@
                                 <property name="can_focus">False</property>
                                 <property name="left_padding">12</property>
                                 <child>
-                                  <object class="GtkTable" id="table_rp_config">
+                                  <object class="GtkGrid" id="table_rp_config">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="n_columns">2</property>
@@ -131,7 +131,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkHBox" id="hbox_reg_access">
+      <object class="GtkBox" id="hbox_reg_access">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -154,7 +154,7 @@
                     <property name="left_padding">12</property>
                     <property name="right_padding">5</property>
                     <child>
-                      <object class="GtkTable" id="table_regs">
+                      <object class="GtkGrid" id="table_regs">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">4</property>

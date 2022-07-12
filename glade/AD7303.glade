@@ -83,7 +83,7 @@
       </row>
     </data>
   </object>
-  <object class="GtkVBox" id="tablePanelAD7303">
+  <object class="GtkBox" id="tablePanelAD7303">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
@@ -112,7 +112,7 @@
         <property name="can_focus">False</property>
         <property name="left_padding">20</property>
         <child>
-          <object class="GtkHBox" id="hbox3">
+          <object class="GtkBox" id="hbox3">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="spacing">10</property>
@@ -130,7 +130,7 @@
                     <property name="left_padding">5</property>
                     <property name="right_padding">5</property>
                     <child>
-                      <object class="GtkTable" id="table1">
+                      <object class="GtkGrid" id="table1">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">2</property>
@@ -228,7 +228,7 @@
                     <property name="left_padding">5</property>
                     <property name="right_padding">5</property>
                     <child>
-                      <object class="GtkTable" id="table2">
+                      <object class="GtkGrid" id="table2">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="n_rows">2</property>
@@ -347,17 +347,17 @@
         <property name="yalign">0</property>
         <property name="left_padding">20</property>
         <child>
-          <object class="GtkHBox" id="hbox5">
+          <object class="GtkBox" id="hbox5">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="spacing">5</property>
             <child>
-              <object class="GtkVBox" id="box1">
+              <object class="GtkBox" id="box1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="spacing">5</property>
                 <child>
-                  <object class="GtkVBox" id="box2">
+                  <object class="GtkBox" id="box2">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -444,7 +444,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTable" id="table4">
+                  <object class="GtkGrid" id="table4">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="n_rows">2</property>
