@@ -50,9 +50,27 @@ set(PLUGINS
 	xmw
 )
 
+set(LIBAD9166_PLUGINS cn0511)
+
+set(LIBAD9361_PLUGINS
+	fmcomms2
+	fmcomms2_adv
+	spectrum_analyzer
+)
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	list(REMOVE_ITEM PLUGINS spectrum_analyzer scpi)
 	set(EXTRA_WIN_LIBRARIES winpthread)
+endif()
+
+if("${LIBAD9166_LIBRARIES}" STREQUAL "")
+	message(WARNING "libad9166 not found. The following plugins will not be installed: ${LIBAD9166_PLUGINS}")
+	list(REMOVE_ITEM PLUGINS ${LIBAD9166_PLUGINS})
+endif()
+
+if("${LIBAD9361_LIBRARIES}" STREQUAL "")
+	message(WARNING "libad9361 not found. The following plugins will not be installed: ${LIBAD9361_PLUGINS}")
+	list(REMOVE_ITEM PLUGINS ${LIBAD9361_PLUGINS})
 endif()
 
 set(PLUGIN_GLADE_FILES "")
