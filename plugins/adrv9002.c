@@ -139,6 +139,7 @@ struct plugin_private {
 	struct adrv9002_rx rx_widgets[ADRV9002_NUM_CHANNELS];
 	/* tx */
 	struct adrv9002_common tx_widgets[ADRV9002_NUM_CHANNELS];
+	int n_txs;
 	/* orx */
 	struct adrv9002_orx orx_widgets[ADRV9002_NUM_CHANNELS];
 	/* dac */
@@ -367,16 +368,25 @@ static void orx_control_track_cal_visibility(const struct adrv9002_orx *orx, boo
 	 * controls in all enabled ports. The driver would not allow it anyways, so this way,
 	 * we make it explicit to the user that this is not permitted.
 	 */
-	if (!en)
+	if (!en) {
 		wired = false;
-	else
-		wired = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(orx_other->orx_en.widget));
+	} else {
+		/*
+		 * this check is needed for adrv9003 where ORX2 is never enabled and the
+		 * widgets are never initialized for it.
+		 */
+		if (orx_other->enabled)
+			wired = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(orx_other->orx_en.widget));
+		else
+			wired = true;
+	}
 
 	for (i = 0; i < orx->num_widgets; i++) {
 		if (strcmp(orx->w[i].attr_name, "orx_quadrature_w_poly_tracking_en"))
 			continue;
 		gtk_widget_set_sensitive(orx->w[i].widget, wired);
-		gtk_widget_set_sensitive(orx_other->w[i].widget, wired);
+		if (orx_other->enabled)
+			gtk_widget_set_sensitive(orx_other->w[i].widget, wired);
 		break;
 	}
 
@@ -755,6 +765,9 @@ static void adrv9002_update_orx_widgets(struct plugin_private *priv, const int c
 	char label[32];
 
 	if (!orx->enabled) {
+		/* make sure the widget is initialized */
+		if (chann >= priv->n_txs)
+			return;
 		/*
 		 * This will make sure that we restore TX/RX widgets sensitivity if we had ORx
 		 * enabled before updating the profile
@@ -982,6 +995,10 @@ static void update_all(struct plugin_private *priv)
 		adrv9002_check_channel_status(priv, &priv->rx_widgets[i].rx, gtk_str);
 		adrv9002_check_nco_freq_support(priv, i, false);
 		adrv9002_update_rx_widgets(priv, i);
+
+		if (i >= priv->n_txs)
+			continue;
+
 		adrv9002_check_orx_status(priv, &priv->orx_widgets[i]);
 		adrv9002_update_orx_widgets(priv, i);
 		sprintf(gtk_str, "frame_tx%d", i + 1);
@@ -1146,6 +1163,9 @@ static int adrv9002_tx_widgets_init(struct plugin_private *priv, const int chann
 	char widget_str[256];
 	const char *lo_attr = chann ? "TX2_LO_frequency" : "TX1_LO_frequency";
 	uint16_t *n_w = &priv->tx_widgets[chann].num_widgets;
+
+	if (chann >= priv->n_txs)
+		return 0;
 
 	sprintf(chann_str, "voltage%d", chann);
 	channel = iio_device_find_channel(priv->adrv9002, chann_str, true);
@@ -1387,7 +1407,13 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 	adrv9002_check_channel_status(priv, &priv->rx_widgets[chann].rx, widget_str);
 	adrv9002_check_nco_freq_support(priv, chann, false);
 
-	/* ORx widgets. Let's init them here as the IIO channel is the same as RX */
+	/*
+	 * ORx widgets. Let's init them here as the IIO channel is the same as RX. ORx2 does
+	 * not exist for adrv9003.
+	 */
+	if (chann >= priv->n_txs)
+		return 0;
+
 	priv->orx_widgets[chann].idx = chann;
 	priv->orx_widgets[chann].priv = priv;
 	sprintf(widget_str, "hardware_gain_orx%d", chann + 1);
@@ -1481,6 +1507,9 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.carrier,
 					    G_CALLBACK(adrv9002_save_carrier_freq),
 					    &priv->rx_widgets[chann].rx);
+	if (chann >= priv->n_txs)
+		return;
+
 	/* tx atten handling */
 	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].gain_ctrl.w.widget),
 			 "changed", G_CALLBACK(save_gain_ctl),
@@ -1647,6 +1676,7 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	GtkToggleToolButton *global_btn, *rx_btn, *tx_btn, *fpga_btn;
 	GtkButton *reload_btn;
 	struct iio_channel *temp;
+	const char *name;
 
 	priv->builder = gtk_builder_new();
 	if (!priv->builder)
@@ -1670,6 +1700,16 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 							   "adrv9002_panel"));
 	if (!adrv9002_panel)
 		goto error_free_ctx;
+
+	/* lets check what device we have in hands */
+	name = iio_device_get_name(priv->adrv9002);
+	if (!strcmp(name, "adrv9003-phy")) {
+		priv->n_txs = 1;
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_tx2")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_orx2")));
+	} else {
+		priv->n_txs = ARRAY_SIZE(priv->tx_widgets);
+	}
 
 	for (i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
 		ret = adrv9002_rx_widgets_init(priv, i);
@@ -1750,6 +1790,10 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		adrv9002_update_tx_widgets(priv, i);
 		make_widget_update_signal_based(priv->rx_widgets[i].rx.w,
 						priv->rx_widgets[i].rx.num_widgets);
+
+		if (i >= priv->n_txs)
+			continue;
+
 		make_widget_update_signal_based(priv->orx_widgets[i].w,
 						priv->orx_widgets[i].num_widgets);
 		make_widget_update_signal_based(priv->tx_widgets[i].w,
@@ -1853,5 +1897,15 @@ struct osc_plugin *create_plugin(struct osc_plugin_context *plugin_ctx)
 
 GArray* get_data_for_possible_plugin_instances(void)
 {
-	return get_data_for_possible_plugin_instances_helper(PHY_DEVICE, THIS_DRIVER);
+	const char *dev = PHY_DEVICE;
+	struct iio_context *osc_ctx = get_context_from_osc();
+	GArray *devices = get_iio_devices_starting_with(osc_ctx, dev);
+
+	if (!devices->len)
+		/* then, let's try adrv9003 */
+		dev = "adrv9003-phy";
+
+	g_array_free(devices, FALSE);
+
+	return get_data_for_possible_plugin_instances_helper(dev, THIS_DRIVER);
 }
