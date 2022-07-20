@@ -572,6 +572,22 @@ rx:
 	if (ret)
 		goto ensm_restore;
 
+	/*
+	 * This is needed so that we are sure that the port where we are changing the
+	 * carrier is the last one to transition state. This might matter in TDD profiles
+	 * because a transition from calibrated to prime also causes the PLL to re-lock
+	 * to the port carrier. So let's say that RX1 and TX1 are both on LO1 and start:
+	 *	1. TX1 carrier set to 2.45GHz and primed
+	 *	2. RX1 carrier set to 2.4GHz and primed
+	 *	3. Change TX1 to rf_enabled and set carrier to 2.5GHz
+	 * With the last steps we end up with 2.4GHz on LO1 which is not expected. The
+	 * reason is that we will move RX1 from calibrated to prime after changing TX1
+	 * which causes a re-lock.
+	 */
+	ret = carrier_helper_move_to_calibrated(chan, &ensm_restore);
+	if (ret)
+		goto ensm_restore;
+
 	chan->carrier.save(&chan->carrier);
 ensm_restore:
 	/* restore the ensm_mode */
