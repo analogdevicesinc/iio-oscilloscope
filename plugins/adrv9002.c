@@ -13,6 +13,7 @@
 #include <glib.h>
 #include <gtk/gtk.h>
 #include <math.h>
+#include <unistd.h>
 
 #include "../osc.h"
 #include "../osc_plugin.h"
@@ -241,6 +242,13 @@ static void combo_box_save(GtkWidget *widget, struct adrv9002_combo_box *combo)
 		return;
 	}
 	combo->w.save(&combo->w);
+	/*
+	 * If it is a transition to rf_enabled, it can take some time and so, we
+	 * can still get the old value if we do not wait a bit...
+	 */
+	if (!strcmp("ensm_mode", combo->w.attr_name))
+		usleep(2000);
+
 	combo_box_manual_update(combo);
 }
 
@@ -572,6 +580,7 @@ ensm_restore:
 				       ensm_restore.s[c].ensm->w.attr_name,
 				       ensm_restore.s[c].old);
 		/* update the UI */
+		usleep(2000);
 		combo_box_manual_update(ensm_restore.s[c].ensm);
 		g_free(ensm_restore.s[c].old);
 	}
