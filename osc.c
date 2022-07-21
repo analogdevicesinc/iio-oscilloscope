@@ -295,8 +295,9 @@ static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detach
 
 	tab_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	tab_label = gtk_label_new(plugin_name);
-	// TO DO: handle the line below using GTK3
-	tab_detach_btn = NULL;//(GtkWidget *)gtk_tool_button_new_from_stock("gtk-disconnect");
+	// TO DO: since "gtk-disconnect" is no longer available, maybe use a custom image
+	tab_detach_btn = (GtkWidget *)gtk_tool_button_new(
+		gtk_image_new_from_icon_name("window-new", GTK_ICON_SIZE_SMALL_TOOLBAR), NULL);
 
 	gtk_widget_set_size_request(tab_detach_btn, 25, 25);
 
@@ -417,6 +418,7 @@ static void detach_plugin(GtkToolButton *btn, gpointer data)
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 
 	gtk_window_set_title(GTK_WINDOW(window), page_name);
+	gtk_container_remove(GTK_CONTAINER(notebook), page);
 	gtk_container_add(GTK_CONTAINER(hbox), page);
 	gtk_container_add(GTK_CONTAINER(window), hbox);
 
