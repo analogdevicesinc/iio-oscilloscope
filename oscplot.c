@@ -486,7 +486,6 @@ GtkWidget *osc_plot_new_with_pref(struct iio_context *ctx, OscPlotPreferences *p
 
 void osc_plot_destroy (OscPlot *plot)
 {	
-	g_free(G_OBJECT(plot->priv->provider));
 	gtk_widget_destroy(plot->priv->window);
 	gtk_widget_destroy(GTK_WIDGET(plot));
 }
