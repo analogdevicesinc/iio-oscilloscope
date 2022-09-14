@@ -19,11 +19,10 @@ export PKG_CONFIG_PATH="${SYSROOT}/usr/lib/pkgconfig:${SYSROOT}/usr/share/pkgcon
 
 # Debian's mingw32 toolchain is not sysroot-aware...
 export CPPFLAGS="-I${SYSROOT}/${INSTALL_PREFIX}/include" 
-export LDFLAGS="-L${SYSROOT}/${INSTALL_PREFIX}/lib"
+export LDFLAGS="-L$SYSROOT/${INSTALL_PREFIX}/lib  -L$SYSROOT/${INSTALL_PREFIX}/bin -lssp -lpixman-1 -lpng -lz -lmsimg32 -L${SYSROOT}/${INSTALL_PREFIX}/local/lib -fstack-protector"
 # fix printf formatting errors
 
-export CFLAGS="-D__USE_MINGW_ANSI_STDIO=1"
-#export CFLAGS="-g -ggdb -std=gnu89"
+export CFLAGS="-fstack-protector -D__USE_MINGW_ANSI_STDIO=1"
 export DESTDIR=${SYSROOT}/
 # Required for globbing
 shopt -s extglob
@@ -35,7 +34,7 @@ build_osc () {
 	mkdir build && cd build
 	$CMAKE -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${HOST}-gcc -DCMAKE_RC_COMPILER=${HOST}-windres \
                 -DCMAKE_SYSROOT=${SYSROOT} -DCMAKE_INSTALL_PREFIX:STRING=.. -DCPACK_PACKAGE_FILE_NAME=osc-${MINGW_VERSION} -DCMAKE_PREFIX_PATH="$SYSROOT/usr;$SYSROOT/usr/local" ../
-	make -j$(nproc)
+	VERBOSE=1 make -j$(nproc)
 	make package
 	tar -C ${SYSROOT}/usr -xf osc-${MINGW_VERSION}.tar.Z --strip-components=1
 	cd -
@@ -63,7 +62,7 @@ strip () {
 main () {
 	build_osc
 	remove_garbage
-	strip
+	#strip
 
 	echo "Build complete."
 }
