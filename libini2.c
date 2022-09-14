@@ -8,11 +8,11 @@
 #include <string.h>
 #include <glib.h>
 
-#ifdef _WIN32
+/*#ifdef _WIN32
 #define LONG_LONG_FORMAT "%I64d"
-#else
+#else*/
 #define LONG_LONG_FORMAT "%lld"
-#endif
+//#endif
 
 struct load_store_params {
 	const struct iio_device *dev;
