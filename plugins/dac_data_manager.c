@@ -133,6 +133,7 @@ struct dac_data_manager {
 	bool dds_disabled;
 	struct iio_buffer *dds_buffer;
 	bool is_local;
+	bool is_cyclic_buffer;
 
 	GtkWidget *container;
 };
@@ -728,7 +729,7 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		return -EINVAL;
 	}
 
-	manager->dds_buffer = iio_device_create_buffer(dac, size / s_size, true);
+	manager->dds_buffer = iio_device_create_buffer(dac, size / s_size, manager->is_cyclic_buffer);
 	if (!manager->dds_buffer) {
 		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
 		if (stat_msg)
@@ -818,6 +819,11 @@ static void stop_buffer_tx_button_clicked_cb (GtkButton *btn, struct dac_buffer 
 		iio_buffer_destroy(dbuf->parent->dds_buffer);
 		dbuf->parent->dds_buffer = NULL;
 	}
+}
+
+static void cyclic_buffer_button_clicked_cb (GtkButton *btn, struct dac_buffer *dbuf)
+{
+	dbuf->parent->is_cyclic_buffer = !dbuf->parent->is_cyclic_buffer;
 }
 
 static GtkWidget *spin_button_create(double min, double max, double step, unsigned digits)
@@ -1096,6 +1102,7 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	GtkWidget *scale;
 	GtkWidget *tx_channels_frame;
 	GtkWidget *stop_buff_tx_btn;
+	GtkWidget *cyclic_buff_btn;
 	GtkTextBuffer *load_status_tb;
 
 	dacbuf_frame = frame_with_table_create("<b>DAC Buffer Settings</b>", 2, 1);
@@ -1107,6 +1114,7 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	load_status_tb = gtk_text_buffer_new(NULL);
 	load_status_txt = gtk_text_view_new_with_buffer(load_status_tb);
 	stop_buff_tx_btn = gtk_button_new_with_label("Stop buffer transmission");
+	cyclic_buff_btn = gtk_check_button_new_with_label("Enable/Disable cyclic buffer");
 
 	gtk_alignment_set_padding(GTK_ALIGNMENT(dacbuf_align), 5, 5, 5, 5);
 
@@ -1134,9 +1142,12 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 		1, 2, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
 	gtk_table_attach(GTK_TABLE(table), load_status_txt,
 		0, 2, 1, 2, GTK_FILL, GTK_FILL, 0, 0);
-	if (!d_buffer->parent->dac1.tones_count)
+	if (!d_buffer->parent->dac1.tones_count) {
 		gtk_table_attach(GTK_TABLE(table), stop_buff_tx_btn,
 		0, 1, 3, 4, GTK_FILL, GTK_FILL, 0, 0);
+		gtk_table_attach(GTK_TABLE(table), cyclic_buff_btn,
+		0, 1, 4, 5, GTK_FILL, GTK_FILL, 0, 0);
+	}
 
 	gtk_table_attach(GTK_TABLE(table), d_buffer->scale,
 			 1, 2, 2, 3, GTK_FILL, GTK_FILL, 0, 0);
@@ -1171,6 +1182,8 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 			 G_CALLBACK(scale_spin_button_output_cb), (void*) 1);
 	g_signal_connect(stop_buff_tx_btn, "clicked",
 			 G_CALLBACK(stop_buffer_tx_button_clicked_cb), d_buffer->parent);
+	g_signal_connect(cyclic_buff_btn, "toggled",
+			 G_CALLBACK(cyclic_buffer_button_clicked_cb), d_buffer->parent);
 
 	gtk_widget_show(dacbuf_frame);
 
