@@ -901,11 +901,15 @@ struct osc_plugin plugin;
 
 static bool analyzer_identify(const struct osc_plugin *plugin)
 {
+#ifdef PLUGIN_SPECTRUM_ANALYZER
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
 
 	return !!iio_context_find_device(osc_ctx, PHY_DEVICE) &&
 		!!iio_context_find_device(osc_ctx, CAP_DEVICE);
+#else
+	return false;
+#endif
 }
 
 struct osc_plugin plugin = {

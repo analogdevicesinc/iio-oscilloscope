@@ -27,6 +27,9 @@ project(iio-oscilloscope
 	LANGUAGES C
 )
 
+############################### Options #######################################
+option(WITH_PLUGIN_SPECTRUM_ANALYZER "Build the Spectrum Analyzer plugin?" OFF)
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	string(TIMESTAMP BUILD_YEAR "%Y")
 endif()
@@ -314,5 +317,10 @@ install(FILES ${PROFILES} DESTINATION ${PLIB_DEST}/profiles/)
 foreach(plib_dest xmls filters waveforms block_diagrams)
 	install(DIRECTORY ${plib_dest} DESTINATION ${PLIB_DEST})
 endforeach()
+
+if (WITH_PLUGIN_SPECTRUM_ANALYZER)
+	add_definitions(-DPLUGIN_SPECTRUM_ANALYZER)
+endif()
+
 
 add_subdirectory(plugins)
