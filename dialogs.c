@@ -1271,6 +1271,12 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.builder = builder;
 	dialogs.usbd_signals = 0;
 
+	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
+	GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_OPEN;
+	dialogs.load_save_profile = GTK_WIDGET(gtk_file_chooser_dialog_new(
+		"Load/Save Profile", NULL, action, "Cancel", GTK_RESPONSE_CANCEL,
+		"Save", 1, "Open", 2, NULL));
+
 	dialogs.about = GTK_WIDGET(gtk_builder_get_object(builder, "About_dialog"));
 	dialogs.connect = GTK_WIDGET(gtk_builder_get_object(builder, "connect_dialog"));
 	dialogs.connect_fru = GTK_WIDGET(gtk_builder_get_object(builder, "fru_info"));
@@ -1278,7 +1284,6 @@ void dialogs_init(GtkBuilder *builder)
 	dialogs.connect_iio = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_devices"));
 	dialogs.connect_attrs = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_attrs"));
 	dialogs.ctx_info = GTK_WIDGET(gtk_builder_get_object(builder, "connect_iio_ctx_info"));
-	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
 	dialogs.connect_net = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net"));
 	dialogs.net_ip = GTK_WIDGET(gtk_builder_get_object(builder, "connect_net_IP"));
 	dialogs.connect_usb = GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb"));
