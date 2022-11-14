@@ -16,37 +16,37 @@
 #  Boston, MA 02110-1301, USA.
 
 set(PLUGINS
-#	generic_dac
-#	fmcomms1
-#	fmcomms2
-#	fmcomms2_adv
-#	fmcomms5
-#	fmcomms6
-#	fmcomms11
-#	ad9371
-#	ad9371_adv
-#	adrv9009
-#	adrv9009_adv
-#	ad6676
-#	fmcadc3
-#	daq2
-#	ad9739a
-#	AD5628_1
-#	AD7303
-#	cn0357
-#	cn0508
-#	cn0511
-#	cn0540
-#	pr_config
-#	motor_control
-#	lidar
+	generic_dac
+	fmcomms1
+	fmcomms2
+	fmcomms2_adv
+	fmcomms5
+	fmcomms6
+	fmcomms11
+	ad9371
+	ad9371_adv
+	adrv9009
+	adrv9009_adv
+	ad6676
+	fmcadc3
+	daq2
+	ad9739a
+	AD5628_1
+	#AD7303
+	cn0357
+	cn0508
+	cn0511
+	cn0540
+	pr_config
+	motor_control
+	lidar
 	dmm
 	debug
-#	spectrum_analyzer
-#	scpi
-#	ad9081
-#	adrv9002
-#	cf_axi_tdd
+	spectrum_analyzer
+	scpi
+	ad9081
+	adrv9002
+	cf_axi_tdd
 )
 
 set(LIBAD9166_PLUGINS cn0511)
