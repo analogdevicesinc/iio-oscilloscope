@@ -873,7 +873,7 @@ void * plugin_dlsym(const char *name, const char *symbol)
 	struct osc_plugin *plugin = NULL;
 	void *fcn;
 	char *buf;
-#ifndef __MINGW32__
+#ifndef __MINGW__
 	Dl_info info;
 #endif
 
@@ -886,7 +886,7 @@ void * plugin_dlsym(const char *name, const char *symbol)
 			if (buf) {
 				fprintf(stderr, "%s:%s(): found plugin %s, error looking up %s\n"
 						"\t%s\n", __FILE__, __func__, name, symbol, buf);
-#ifndef __MINGW32__
+#ifndef __MINGW__
 				if (dladdr(__builtin_return_address(0), &info))
 					fprintf(stderr, "\tcalled from %s:%s()\n", info.dli_fname, info.dli_sname);
 #endif
@@ -896,7 +896,7 @@ void * plugin_dlsym(const char *name, const char *symbol)
 	}
 
 	fprintf(stderr, "%s:%s : No plugin with matching name %s\n", __FILE__, __func__, name);
-#ifndef __MINGW32__
+#ifndef __MINGW__
 	if (dladdr(__builtin_return_address(0), &info))
 		fprintf(stderr, "\tcalled from %s:%s()\n", info.dli_fname, info.dli_sname);
 #endif
@@ -996,7 +996,7 @@ static void load_plugin_complete(gpointer data, gpointer user_data)
 	printf("Loaded plugin: %s\n", plugin->name);
 }
 
-#ifdef __MINGW32__
+#ifdef __MINGW__
 	static const bool load_in_parallel = false;
 #else
 	static const bool load_in_parallel = true;
@@ -1059,7 +1059,7 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 
 		if (!is_dirent_reqular_file(ent))
 			continue;
-#ifdef __MINGW32__
+#ifdef __MINGW__
 		if (!str_endswith(ent->d_name, ".dll"))
 			continue;
 #elif __APPLE__
