@@ -67,6 +67,9 @@ if (GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 	set(OSC_VERSION "${GIT_BRANCH}-g${GIT_HASH}")
 	set(GIT_VERSION "-DGIT_VERSION=\"${GIT_VERSION}\"")
 	set(GIT_COMMIT_TIMESTAMP "-DGIT_COMMIT_TIMESTAMP=${GIT_COMMIT_TIMESTAMP}")
+	# work around
+	# to do : fix this so the commit timestamp is set on windows too 
+	set(GIT_COMMIT_TIMESTAMP "")
 else()
 	set(OSC_VERSION v${PROJECT_VERSION})
 endif()
@@ -104,7 +107,7 @@ endif()
 
 set(OSC_SRC osc.c oscplot.c datatypes.c iio_widget.c iio_utils.c
 	fru.c dialogs.c trigger_dialog.c xml_utils.c libini/libini.c
-        libini2.c phone_home.c #plugins/dac_data_manager.c
+        libini2.c phone_home.c plugins/dac_data_manager.c
         plugins/fir_filter.c eeprom.c osc_preferences.c)
 
 find_package(PkgConfig)
@@ -195,6 +198,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	# that will be valid for the auto genarated files (there are some subtleties with
 	# this for windows). To finish it up, this also leaves the door open to just use
 	# cmake to package our windows installer (together with nsis).
+	add_definitions(-D__MINGW__)
+	message(STATUS "i was here")
 	set(CPACK_BINARY_NSIS OFF)
 	set(CPACK_GENERATOR TZ)
 	include(CPack)

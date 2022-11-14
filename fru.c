@@ -237,7 +237,7 @@ int ascii2six(unsigned char **dest, unsigned char *src, size_t size)
 		if ((i + 3) < size) {
 			k |= e[i + 3] << 18;
 		}
-#ifndef __MINGW32__
+#ifndef __MINGW__
 #if __BYTE_ORDER == __BIG_ENDIAN
 		k = __bswap_32(k);
 #endif
@@ -783,7 +783,7 @@ unsigned char * build_FRU_blob (struct FRU_DATA *fru, size_t *length, bool packe
 			/* Type ID, Record Format version, Length, checksum, checksum */
 			sprintf((char *)&buf[i], "%c%c%c%c%c", MULTIRECORD_FMC, 0x02, len + 4, 0, 0);
 			/* Store OUI */
-#ifndef __MINGW32__
+#ifndef __MINGW__
 # if __BYTE_ORDER == __BIG_ENDIAN
 			oui = __bswap_32(oui);
 #endif
