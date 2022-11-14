@@ -1155,7 +1155,7 @@ static gboolean version_info_show(gpointer data)
 		gtk_link_button_set_uri(GTK_LINK_BUTTON(r_link), release->url);
 		gtk_link_button_set_uri(GTK_LINK_BUTTON(r_dld_link),
 					release->windows_dld_url);
-		#ifndef __MINGW32__
+		#ifndef __MINGW__
 		gtk_widget_hide(r_dld_link);
 		#endif
 
