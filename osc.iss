@@ -61,13 +61,10 @@ Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "sysroot-i686\usr\bin\*"; DestDir: "{app}\bin"; Check: not Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "sysroot-i686\usr\lib\*"; DestDir: "{app}\lib"; Check: not Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "sysroot-i686\usr\share\*"; DestDir: "{app}\share"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-Source: "sysroot-x86_64\usr\bin\*"; DestDir: "{app}\bin"; Check: Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "sysroot-x86_64\usr\lib\*"; DestDir: "{app}\lib"; Check: Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "sysroot-x86_64\usr\share\*"; DestDir: "{app}\share"; Check: Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "build\bin\*"; DestDir: "{app}\bin"; Check: Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "build\lib\*"; DestDir: "{app}\lib"; Check: Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "build\share\*"; DestDir: "{app}\share"; Check: Is64BitInstallMode; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\bin\{#MyAppExeName}"
