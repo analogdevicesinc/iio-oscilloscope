@@ -927,17 +927,17 @@ static GtkWidget *gui_tone_create(struct dds_tone *tone)
 	}
 
 	gtk_grid_attach(GTK_GRID(tone_table), freq,
-			0, 0, 5, 5);
+			0, 0, 1, 1);
 	gtk_grid_attach(GTK_GRID(tone_table), scale,
-			0, 1, 5, 5);
+			0, 1, 1, 1);
 	gtk_grid_attach(GTK_GRID(tone_table), phase,
-			0, 2, 5, 5);
+			0, 2, 1, 1);
 	gtk_grid_attach(GTK_GRID(tone_table), tone->freq,
-			1, 0, 5, 5);
+			1, 0, 1, 1);
 	gtk_grid_attach(GTK_GRID(tone_table), tone->scale,
-			1, 1, 5, 5);
+			1, 1, 1, 1);
 	gtk_grid_attach(GTK_GRID(tone_table), tone->phase,
-			1, 2, 5, 5);
+			1, 2, 1, 1);
 
 	/*gtk_table_attach(GTK_TABLE(tone_table), freq,
 		0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
@@ -977,10 +977,10 @@ static GtkWidget *gui_channel_create(struct dds_channel *ch)
 
 	gtk_grid_attach(GTK_GRID(channel_table),
 			gui_tone_create(&ch->t1),
-			0, 0, 5, 5);
+			0, 0, 1, 1);
 	gtk_grid_attach(GTK_GRID(channel_table),
 			gui_tone_create(&ch->t2),
-			0, 1, 5, 5);
+			0, 1, 1, 1);
 	/*gtk_table_attach(GTK_TABLE(channel_table),
 		gui_tone_create(&ch->t1),
 		0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
@@ -1011,15 +1011,15 @@ static GtkWidget *gui_tx_create(struct dds_tx *tx)
 	tx->frame = txmodule_frm;
 	gtk_grid_attach(GTK_GRID(txmodule_table),
 			gui_dds_mode_chooser_create(tx),
-			0, 0, 5, 5);
+			0, 0, 1, 1);
 
 	gtk_grid_attach(GTK_GRID(txmodule_table),
 			gui_channel_create(&tx->ch_i),
-			0, 1, 5, 5);
+			0, 1, 1, 1);
 	if (tx->ch_q.type != CHAR_MAX)
 		gtk_grid_attach(GTK_GRID(txmodule_table),
 				gui_channel_create(&tx->ch_q),
-				0, 2, 5, 5);
+				0, 2, 1, 1);
 	/*gtk_table_attach(GTK_TABLE(txmodule_table),
 		gui_dds_mode_chooser_create(tx),
 		0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
@@ -1057,7 +1057,7 @@ static GtkWidget *gui_dac_create(struct dds_dac *ddac)
 
 	for (i = 0; i < ddac->tx_count; i++)
 		gtk_grid_attach(GTK_GRID(dac_table), gui_tx_create(&ddac->txs[i]),
-				0 + i % 4, 1 + i % 4, 5, 5);
+				0 + i % 4, 1 + i % 4, 1, 1);
 	// TO DO:
 	/*gtk_alignment_set_padding(GTK_ALIGNMENT(dac_align), 5, 5, 5, 5);
 
@@ -1181,16 +1181,16 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	gtk_frame_set_shadow_type(GTK_FRAME(fchooser_frame), GTK_SHADOW_NONE);
 	// gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 0, 0, 0);
 	gtk_grid_attach(GTK_GRID(table), fchooser_btn,
-			0, 0, 5, 5);
+			0, 0, 1, 1);
 	gtk_grid_attach(GTK_GRID(table), fileload_btn,
-			1, 0, 5, 5);
+			1, 0, 1, 1);
 	gtk_grid_attach(GTK_GRID(table), load_status_txt,
-			0, 1, 5, 5);
+			0, 1, 1, 1);
 
 	gtk_grid_attach(GTK_GRID(table), d_buffer->scale,
-			1, 1, 5, 5);
+			1, 1, 1, 1);
 	gtk_grid_attach(GTK_GRID(table), scale,
-			0, 2, 5, 5);
+			0, 2, 1, 1);
 	/*gtk_table_attach(GTK_TABLE(table), fchooser_btn,
 	    0, 1, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
 	gtk_table_attach(GTK_TABLE(table), fileload_btn,
@@ -1218,12 +1218,12 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 
 	GtkWidget *channels_scrolled_view = gui_dac_channels_tree_create(d_buffer);
 	gtk_grid_attach(GTK_GRID(table), channels_scrolled_view,
-			0, 0, 5, 5);
+			0, 0, 1, 1);
 
 	gtk_grid_attach(GTK_GRID(dacbuf_table), fchooser_frame,
-			0, 1, 5, 5);
+			0, 1, 1, 1);
 	gtk_grid_attach(GTK_GRID(dacbuf_table), tx_channels_frame,
-			0, 2, 5, 5);
+			0, 2, 1, 1);
 	/*gtk_table_attach(GTK_TABLE(table), channels_scrolled_view,
 	    0, 1, 0, 1, GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 0, 0);
 
