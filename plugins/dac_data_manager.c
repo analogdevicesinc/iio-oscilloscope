@@ -1999,6 +1999,8 @@ static int dac_manager_init(struct dac_data_manager *manager,
 	long long alignment;
 	int ret = 0;
 
+	manager->is_cyclic_buffer = true;
+
 	ret = dds_dac_init(manager, &manager->dac1, dac);
 	if (ret < 0)
 		return ret;
