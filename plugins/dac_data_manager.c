@@ -1115,6 +1115,7 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 	load_status_txt = gtk_text_view_new_with_buffer(load_status_tb);
 	stop_buff_tx_btn = gtk_button_new_with_label("Stop buffer transmission");
 	cyclic_buff_btn = gtk_check_button_new_with_label("Enable/Disable cyclic buffer");
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(cyclic_buff_btn), d_buffer->parent->is_cyclic_buffer);
 
 	gtk_alignment_set_padding(GTK_ALIGNMENT(dacbuf_align), 5, 5, 5, 5);
 
