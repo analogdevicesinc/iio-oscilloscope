@@ -201,7 +201,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	add_compile_options(-mwindows)
 	set(WIN_LINK_FLAGS "-Wl,--export-all-symbols -Wl,--subsystem,windows")
 else()
-	add_compile_options(-rdynamic)
+	add_link_options(-rdynamic)
 endif()
 
 add_library(osc ${OSC_SRC})
