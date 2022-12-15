@@ -675,10 +675,11 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
 	struct plugin_private *priv = plugin->priv;
 
-	osc_plugin_context_free_resources(&priv->plugin_ctx);
-	osc_destroy_context(priv->ctx);
 	if (priv->dac_tx_manager)
 		dac_data_manager_free(priv->dac_tx_manager);
+
+	osc_destroy_context(priv->ctx);
+	osc_plugin_context_free_resources(&priv->plugin_ctx);
 	g_free(priv);
 }
 
