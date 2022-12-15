@@ -1839,14 +1839,14 @@ static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 	struct plugin_private *priv = plugin->priv;
 	int i;
 
-	osc_plugin_context_free_resources(&priv->plugin_ctx);
-	osc_destroy_context(priv->ctx);
+	g_source_remove(priv->refresh_timeout);
 
 	for (i = 0; i < priv->n_dacs; i++) {
 		dac_data_manager_free(priv->dac_manager[i].dac_tx_manager);
 	}
 
-	g_source_remove(priv->refresh_timeout);
+	osc_destroy_context(priv->ctx);
+	osc_plugin_context_free_resources(&priv->plugin_ctx);
 	g_free(priv);
 }
 
