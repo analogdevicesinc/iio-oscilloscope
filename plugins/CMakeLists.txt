@@ -47,6 +47,7 @@ set(PLUGINS
 	ad9081
 	adrv9002
 	cf_axi_tdd
+	xmw
 )
 
 set(LIBAD9166_PLUGINS cn0511)
