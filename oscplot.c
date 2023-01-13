@@ -6941,6 +6941,11 @@ static void create_plot(OscPlot *plot)
 	GtkTreeSelection *tree_selection;
 	GtkDataboxRuler *ruler_y;
 	GtkTreeStore *tree_store;
+	GtkStyleContext *style_context;
+	GdkDisplay *display;
+	GdkScreen *screen;
+	GError *err = NULL;
+
 	char buf[50];
 	int i;
 
@@ -7023,13 +7028,17 @@ static void create_plot(OscPlot *plot)
 		TRUE, TRUE, TRUE, TRUE);
 	gtk_box_pack_start(GTK_BOX(priv->capture_graph), table, TRUE, TRUE, 0);
 
-	GtkStyleContext *style_context;
-	GdkDisplay *display;
-	GdkScreen *screen;
 	plot->priv->provider = gtk_css_provider_new();
 	display = gdk_display_get_default();
 	screen = gdk_display_get_default_screen (display);
-	gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(plot->priv->provider),"styles.css",NULL);
+
+	gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(plot->priv->provider),"./styles.css",&err);
+	if ( err ) {
+		g_error_free(err);
+		gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(plot->priv->provider),OSC_STYLE_FILE_PATH"styles.css",NULL);
+	}
+	
+	//gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(plot->priv->provider),"styles.css",NULL);
 	gtk_style_context_add_provider_for_screen (screen, GTK_STYLE_PROVIDER(plot->priv->provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
 	style_context = gtk_widget_get_style_context(GTK_WIDGET(priv->databox));
 	gtk_style_context_add_class(style_context,"data_box");

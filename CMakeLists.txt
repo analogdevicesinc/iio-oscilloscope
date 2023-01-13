@@ -199,7 +199,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	# this for windows). To finish it up, this also leaves the door open to just use
 	# cmake to package our windows installer (together with nsis).
 	add_definitions(-D__MINGW__)
-	message(STATUS "i was here")
 	set(CPACK_BINARY_NSIS OFF)
 	set(CPACK_GENERATOR TZ)
 	include(CPack)
@@ -298,6 +297,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps)
 	install(FILES icons/osc.svg RENAME adi-osc.svg
 		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+	
+	install(FILES ./styles.css DESTINATION ${SHARE_DEST})
 
 	# This is a bit "ugly". It makes sure that the hicolor theme directory updates
 	# it's modification date. This makes sure that osc icons are loaded right away.
