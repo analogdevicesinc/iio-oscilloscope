@@ -999,7 +999,7 @@ static void load_plugin_complete(gpointer data, gpointer user_data)
 #ifdef __MINGW__
 	static const bool load_in_parallel = false;
 #else
-	static const bool load_in_parallel = true;
+	static const bool load_in_parallel = false;
 #endif
 
 static void start_plugin(gpointer data, gpointer user_data)
