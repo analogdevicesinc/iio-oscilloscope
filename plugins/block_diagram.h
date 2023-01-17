@@ -189,7 +189,7 @@ static int block_diagram_init(GtkBuilder *builder, int count, ...)
 	next_pict = GTK_WIDGET(gtk_builder_get_object(builder, "next_pict"));
 	previous_pict = GTK_WIDGET(gtk_builder_get_object(builder, "previous_pict"));
 
-	g_signal_connect(block_diagram_events, "expose-event", G_CALLBACK(draw_block_diagram),
+	g_signal_connect(block_diagram_events, "draw", G_CALLBACK(draw_block_diagram),
 			block_diagram);
 
 	noteb = GTK_NOTEBOOK(gtk_builder_get_object(builder, "plugin_notebook"));
