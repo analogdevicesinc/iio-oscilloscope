@@ -78,9 +78,14 @@ bin_dir() {
 	cp  $WORKDIR/iio-oscilloscope/build/osc.exe $WORKDIR/iio-oscilloscope/build/bin
 	cp  $WORKDIR/iio-oscilloscope/build/styles.css $WORKDIR/iio-oscilloscope/build/bin
 	cp  $WORKDIR/iio-oscilloscope/build/libosc.dll $WORKDIR/iio-oscilloscope/build/bin
-	cp -r $WORKDIR/iio-oscilloscope/glade/ $WORKDIR/iio-oscilloscope/build/bin
 	cp $DLLS $WORKDIR/iio-oscilloscope/build/bin
 	cp $EXES $WORKDIR/iio-oscilloscope/build/bin
+
+	cp -r $WORKDIR/iio-oscilloscope/build/plugins $WORKDIR/iio-oscilloscope/build/bin
+
+	cp -r $WORKDIR/iio-oscilloscope/glade $WORKDIR/iio-oscilloscope/build/bin
+	cp -r $WORKDIR/iio-oscilloscope/block_diagrams $WORKDIR/iio-oscilloscope/build/bin
+	cp -r $WORKDIR/iio-oscilloscope/icons $WORKDIR/iio-oscilloscope/build/bin
 	popd
 	
 
@@ -92,7 +97,6 @@ lib_dir() {
 	cp -r $STAGING_DIR/lib/gdk-pixbuf-2.0 $WORKDIR/iio-oscilloscope/build/lib
 	cp -r $STAGING_DIR/lib/gtk-3.0 $WORKDIR/iio-oscilloscope/build/lib
 	mkdir $WORKDIR/iio-oscilloscope/build/lib/osc
-	cp -r $WORKDIR/iio-oscilloscope/block_diagrams $WORKDIR/iio-oscilloscope/build/lib/osc
 	cp -r $WORKDIR/iio-oscilloscope/filters $WORKDIR/iio-oscilloscope/build/lib/osc
 	cp -r $WORKDIR/iio-oscilloscope/build/profiles $WORKDIR/iio-oscilloscope/build/lib/osc
 	cp -r $WORKDIR/iio-oscilloscope/waveforms $WORKDIR/iio-oscilloscope/build/lib/osc
