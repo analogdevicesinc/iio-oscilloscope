@@ -294,6 +294,7 @@ static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detach
 	const char *plugin_name = plugin->name;
 
 	tab_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+
 	tab_label = gtk_label_new(plugin_name);
 	// TO DO: since "gtk-disconnect" is no longer available, maybe use a custom image
 	tab_detach_btn = (GtkWidget *)gtk_tool_button_new(
@@ -303,6 +304,8 @@ static GtkWidget* plugin_tab_add_detach_btn(GtkWidget *page, const struct detach
 
 	gtk_container_add(GTK_CONTAINER(tab_box), tab_label);
 	gtk_container_add(GTK_CONTAINER(tab_box), tab_detach_btn);
+
+	gtk_box_set_spacing(GTK_BOX(tab_box), 10);
 
 	gtk_widget_show_all(tab_box);
 
