@@ -44,7 +44,7 @@ if (GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 		)
 
 	execute_process(
-		COMMAND ${GIT_EXECUTABLE} show -s --pretty=format:"%ct" HEAD
+		COMMAND ${GIT_EXECUTABLE} show -s --pretty=format:%ct HEAD
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 		OUTPUT_VARIABLE GIT_COMMIT_TIMESTAMP
 		OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -67,9 +67,7 @@ if (GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 	set(OSC_VERSION "${GIT_BRANCH}-g${GIT_HASH}")
 	set(GIT_VERSION "-DGIT_VERSION=\"${GIT_VERSION}\"")
 	set(GIT_COMMIT_TIMESTAMP "-DGIT_COMMIT_TIMESTAMP=${GIT_COMMIT_TIMESTAMP}")
-	# work around
-	# to do : fix this so the commit timestamp is set on windows too 
-	set(GIT_COMMIT_TIMESTAMP "")
+
 else()
 	set(OSC_VERSION v${PROJECT_VERSION})
 endif()
