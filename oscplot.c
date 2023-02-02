@@ -3822,10 +3822,10 @@ static void channel_color_icon_set_color(GdkPixbuf *pb, GdkRGBA *color)
 
 	for (i = border; i < ht - border; i++)
 		for (j = border * 4; j < rowstride - border * 4; j += 4) {
-			pixel[i * rowstride + j + 0] = color->red;
-			pixel[i * rowstride + j + 1] = color->green;
-			pixel[i * rowstride + j + 2] = color->blue;
-			pixel[i * rowstride + j + 3] = 255;
+			pixel[i * rowstride + j + 0] = color->red * 255;
+			pixel[i * rowstride + j + 1] = color->green * 255;
+			pixel[i * rowstride + j + 2] = color->blue * 255;
+			pixel[i * rowstride + j + 3] = color->alpha * 255;
 		}
 }
 
@@ -6645,7 +6645,7 @@ static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
                              CHANNEL_COLOR_ICON, &color_icon, -1);
           color = &settings->graph_color;
 
-          color_dialog = gtk_color_chooser_dialog_new("Channel Graph Color Selection",GTK_WINDOW(model));
+          color_dialog = gtk_color_chooser_dialog_new("Channel Graph Color Selection", NULL);
 
           response = gtk_dialog_run(GTK_DIALOG(color_dialog));
           gtk_widget_hide(color_dialog);
