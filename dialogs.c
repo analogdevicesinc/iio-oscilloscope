@@ -1066,7 +1066,7 @@ gint create_blocking_popup(GtkMessageType type, GtkButtonsType button,
 static glong date_compare_against_build_date(const char *iso8601_date)
 {
 #ifdef GIT_COMMIT_TIMESTAMP
-	glong build_time = atol(GIT_COMMIT_TIMESTAMP);
+	glong build_time = GIT_COMMIT_TIMESTAMP;
 	glong ret = 0;
 
 #if GLIB_CHECK_VERSION(2, 56, 0)
