@@ -59,6 +59,11 @@ git \
 pacman -S --noconfirm --needed $WINDEPS
 }
 
+get_innosetup() {
+	pushd /home/
+	wget https://jrsoftware.org/download.php/is.exe 
+	popd
+}
 
 build_libiio() {
     pushd $WORKDIR
@@ -113,7 +118,8 @@ build_deps() {
 
 build_osc() {
     
-    pushd $WORKDIR/iio-oscilloscope
+    pushd /home/docker/
+    cd iio-oscilloscope
     mkdir build
     cd build
     $CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
