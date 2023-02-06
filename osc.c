@@ -469,9 +469,10 @@ void move_gtk_window_on_screen(GtkWindow   *window,
 		  gint         y)
 {
 	// get screen dimensions
-	// TO DO: handle gettting screen resolution using GTK3
-	gint screen_w = 640;//gdk_screen_width();
-	gint screen_h = 480;//gdk_screen_height();
+	GdkWindow *gdk_window = gtk_widget_get_window(GTK_WIDGET(window));
+	GdkScreen *screen = gdk_window_get_screen(gdk_window);
+	gint screen_w = gdk_screen_get_width(screen);
+	gint screen_h = gdk_screen_get_height(screen);
 
 	gint window_w;
 	gint window_h;
