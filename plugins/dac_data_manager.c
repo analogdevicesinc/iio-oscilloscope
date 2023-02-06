@@ -1156,11 +1156,11 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 			0, 2, 1, 1);
 	if (!d_buffer->parent->dac1.tones_count) {
 		gtk_grid_attach(GTK_GRID(table), stop_buff_tx_btn,
-		0, 3, 1, 1);
-		gtk_table_attach(GTK_GRID(table), cyclic_buff_btn,
 		1, 3, 1, 1);
+		gtk_grid_attach(GTK_GRID(table), cyclic_buff_btn,
+		0, 3, 1, 1);
 	}
-	
+
 	table = gtk_grid_new();
 	gtk_container_add(GTK_CONTAINER(tx_channels_frame), table);
 
