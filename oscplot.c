@@ -4436,16 +4436,14 @@ static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 
 static GdkPixbuf * window_get_screenshot_pixbuf(GtkWidget *window)
 {
-	// GdkWindow *gdk_w;
-	// gint width, height;
+	GdkWindow *gdk_w;
+	gint width, height;
 
-	// gdk_w = gtk_widget_get_window(window);
-	// width = gdk_window_get_width(gdk_w);
-	// height = gdk_window_get_height(gdk_w);
+	gdk_w = gtk_widget_get_window(window);
+	width = gdk_window_get_width(gdk_w);
+	height = gdk_window_get_height(gdk_w);
 
-	// return gdk_pixbuf_get_from_drawable(NULL, GDK_DRAWABLE(gdk_w),
-	// 		gdk_colormap_get_system(), 0, 0, 0, 0, width, height);
-	return NULL; // TO DO: remove this line and handle the above code
+	return gdk_pixbuf_get_from_window(gdk_w, 0, 0, width, height);
 }
 
 static void screenshot_saveas_png(OscPlot *plot)
