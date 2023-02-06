@@ -6931,6 +6931,22 @@ static void enable_all_button_toggled_cb(GtkToggleButton *btn, OscPlot *plot)
 	check_valid_setup(plot);
 }
 
+static GtkWidget * create_menuitem_with_label_and_icon(const gchar *label_text,
+	const gchar *icon_name)
+{
+	GtkWidget *menu_item = gtk_menu_item_new();
+	GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,6);
+	GtkWidget *image = gtk_image_new_from_icon_name(icon_name, GTK_ICON_SIZE_MENU);
+	GtkWidget *label = gtk_accel_label_new(label_text);
+
+	gtk_container_add(GTK_CONTAINER(box), image);
+	gtk_label_set_xalign(GTK_LABEL(label), 0.0);
+	gtk_box_pack_end(GTK_BOX(box), label, TRUE, TRUE, 0);
+	gtk_container_add(GTK_CONTAINER(menu_item), box);
+
+	return menu_item;
+}
+
 static void create_plot(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -7063,47 +7079,43 @@ static void create_plot(OscPlot *plot)
 	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 
 	/* Create Device Settings Menu */
-	//GtkWidget *image;
-	//TO DO: add images to menu items
+
 	priv->device_settings_menu = gtk_menu_new();
-	priv->device_trigger_menuitem = gtk_menu_item_new_with_label("Impulse Generator");
-	// image = gtk_image_new_from_icon_name("_Preferences", GTK_ICON_SIZE_MENU);
-	// gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->device_trigger_menuitem), image);
-	// gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->device_trigger_menuitem), true);
+
+	priv->device_trigger_menuitem =
+		create_menuitem_with_label_and_icon("Impulse Generator", "preferences-system");
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->device_settings_menu),
 		priv->device_trigger_menuitem);
 
-	priv->plot_trigger_menuitem = gtk_menu_item_new_with_label("Trigger settings");
-	// image = gtk_image_new_from_icon_name("_Preferences", GTK_ICON_SIZE_MENU);
-	// gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->plot_trigger_menuitem), image);
-	// gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->plot_trigger_menuitem), true);
+	priv->plot_trigger_menuitem =
+		create_menuitem_with_label_and_icon("Trigger settings", "preferences-system");
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->device_settings_menu),
 		priv->plot_trigger_menuitem);
+
 	gtk_widget_show_all(priv->device_settings_menu);
 
+	/* Create Settings Menu for 'Math' */
+
 	priv->math_settings_menu = gtk_menu_new();
-	priv->math_menuitem = gtk_menu_item_new_with_label("New Channel");
-	// image = gtk_image_new_from_icon_name("_Add", GTK_ICON_SIZE_MENU);
-	// gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->math_menuitem), image);
-	// gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->math_menuitem), true);
+
+	priv->math_menuitem =
+		create_menuitem_with_label_and_icon("New Channel", "list-add");
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_settings_menu),
 		priv->math_menuitem);
+
 	gtk_widget_show_all(priv->math_settings_menu);
 
 	/* Create Channel Settings Menu */
+
 	priv->channel_settings_menu = gtk_menu_new();
-	// TO DO: add icons to menu items, if necessesary 
-	priv->channel_iio_color_menuitem = gtk_menu_item_new_with_label("Color Selection");
-	//gtk_image_set_from_stock(GTK_IMAGE(priv->channel_iio_color_menuitem), "gtk-select-color", GTK_ICON_SIZE_MENU);
-	// image = gtk_image_new_from_icon_name("gtk-select-color", GTK_ICON_SIZE_MENU);
-	// gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_iio_color_menuitem), image);
-	// gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_iio_color_menuitem), true);
+
+	priv->channel_iio_color_menuitem =
+		create_menuitem_with_label_and_icon("Color Selection", "gtk-select-color");
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->channel_settings_menu),
 		priv->channel_iio_color_menuitem);
-	priv->channel_math_menuitem = gtk_menu_item_new_with_label("Math Settings");
-	// image = gtk_image_new_from_icon_name("_Preferences", GTK_ICON_SIZE_MENU);
-	// gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_menuitem), image);
-	// gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_menuitem), true);
+
+	priv->channel_math_menuitem =
+		create_menuitem_with_label_and_icon("Math Settings", "preferences-system");
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->channel_settings_menu),
 		priv->channel_math_menuitem);
 	gtk_widget_show_all(priv->channel_settings_menu);
@@ -7111,24 +7123,18 @@ static void create_plot(OscPlot *plot)
 	/* Create Math Channel Settings Menu */
 	priv->math_channel_settings_menu = gtk_menu_new();
 
-	priv->channel_expression_edit_menuitem = gtk_menu_item_new_with_label("Edit Expression");
-	// image = gtk_image_new_from_icon_name("gtk-edit", GTK_ICON_SIZE_MENU);
-	// gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_expression_edit_menuitem), image);
-	// gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_expression_edit_menuitem), true);
+	priv->channel_expression_edit_menuitem =
+		create_menuitem_with_label_and_icon("Edit Expression", "gtk-edit");
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
 		priv->channel_expression_edit_menuitem);
 
-	priv->channel_math_color_menuitem = gtk_menu_item_new_with_label("Color Selection");
-	//image = gtk_image_new_from_icon_name("gtk-select-color", GTK_ICON_SIZE_MENU);
-    //gtk_image_set_from_icon_name(GTK_IMAGE(priv->channel_math_color_menuitem), "gtk-select-color", GTK_ICON_SIZE_MENU);
-	// gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_color_menuitem), image);
-	// gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_math_color_menuitem), true);
+	priv->channel_math_color_menuitem =
+		create_menuitem_with_label_and_icon("Color Selection", "gtk-select-color");
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
 		priv->channel_math_color_menuitem);
-	priv->channel_remove_menuitem = gtk_menu_item_new_with_label("Remove");
-	// image = gtk_image_new_from_icon_name("_Remove", GTK_ICON_SIZE_MENU);
-	// gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(priv->channel_remove_menuitem), image);
-	// gtk_image_menu_item_set_always_show_image(GTK_IMAGE_MENU_ITEM(priv->channel_remove_menuitem), true);
+
+	priv->channel_remove_menuitem =
+		create_menuitem_with_label_and_icon("Remove", "_Remove");
 	gtk_menu_shell_append(GTK_MENU_SHELL(priv->math_channel_settings_menu),
 		priv->channel_remove_menuitem);
 	gtk_widget_show_all(priv->math_channel_settings_menu);
