@@ -5154,10 +5154,9 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 			ch_name = csettings->name;
 
 			fprintf(fp, "%s.%s.enabled=%d\n", name, ch_name, (ch_enabled) ? 1 : 0);
-			// TO DO: handle this (either save as float or continue using int to keep old profiles compatibility)
-			// fprintf(fp, "%s.%s.color_red=%d\n", name, ch_name, csettings->graph_color.red);
-			// fprintf(fp, "%s.%s.color_green=%d\n", name, ch_name, csettings->graph_color.green);
-			// fprintf(fp, "%s.%s.color_blue=%d\n", name, ch_name, csettings->graph_color.blue);
+			fprintf(fp, "%s.%s.color_red=%d\n", name, ch_name, (int)(csettings->graph_color.red * 255 + 0.5));
+			fprintf(fp, "%s.%s.color_green=%d\n", name, ch_name, (int)(csettings->graph_color.green * 255 + 0.5));
+			fprintf(fp, "%s.%s.color_blue=%d\n", name, ch_name, (int)(csettings->graph_color.blue * 255 + 0.5));
 			switch (csettings->type) {
 			case PLOT_IIO_CHANNEL:
 				fprintf(fp, "%s.%s.math_apply_inverse_funct=%d\n", name, ch_name, PLOT_IIO_CHN(csettings)->apply_inverse_funct);
@@ -5618,15 +5617,15 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 			} else if (MATCH(ch_property, "color_red")) {
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
-				csettings->graph_color.red = atoi(value);
+				csettings->graph_color.red = atoi(value) / 255.0f;
 			} else if (MATCH(ch_property, "color_green")) {
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
-				csettings->graph_color.green = atoi(value);
+				csettings->graph_color.green = atoi(value) / 255.0f;
 			} else if (MATCH(ch_property, "color_blue")) {
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
-				csettings->graph_color.blue = atoi(value);
+				csettings->graph_color.blue = atoi(value) / 255.0f;
 			} else if (MATCH(ch_property, "math_apply_inverse_funct")) {
 				get_iter_by_name(tree, &ch_iter, dev_name, ch_name);
 				gtk_tree_model_get(gtk_tree_view_get_model(tree), &ch_iter, CHANNEL_SETTINGS, &csettings, -1);
