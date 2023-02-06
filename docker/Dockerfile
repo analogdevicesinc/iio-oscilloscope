@@ -26,7 +26,7 @@ RUN C:\msys64\usr\bin\bash.exe -lc " "
 SHELL ["cmd", "/S", "/C"]
 RUN C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -Syuu" & C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -Syuu" & C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -Scc "
 # install general packages needed to run build scripts
-RUN C:\msys64\usr\bin\bash.exe -c 'pacman --noconfirm --needed -Sy git vim base-devel'
+RUN C:\msys64\usr\bin\bash.exe -c 'pacman --noconfirm --needed -Sy msys2-keyring git vim base-devel'
 
 # install packages and build iio-osc-deps
 ARG BUILD_TARGET=x86_64 
@@ -35,16 +35,10 @@ RUN echo %BUILD_TARGET%
 
 COPY build_mingw.sh .
 RUN C:\msys64\usr\bin\bash.exe -c "./build_mingw.sh install_pacman_deps"
-RUN C:\msys64\usr\bin\bash.exe -c "./build_mingw.sh build_deps
-RUN C:\msys64\usr\bin\bash.exe -c "./build_mingw.sh build_osc"
-
-# prepare dir hierarchy 
-
-COPY install_prep.sh .
-RUN C:\msys64\usr\bin\bash.exe -c "./install_prep.sh bin_dir"
-RUN C:\msys64\usr\bin\bash.exe -c "./install_prep.sh lib_dir"
-RUN C:\msys64\usr\bin\bash.exe -c "./install_prep.sh share_dir"
+RUN C:\msys64\usr\bin\bash.exe -c "./build_mingw.sh get_innosetup"
+RUN C:\msys64\usr\bin\bash.exe -c "./build_mingw.sh build_deps"
+RUN C:\msys64\usr\bin\bash.exe -c "git clone https://github.com/analogdevicesinc/iio-oscilloscope --branch gtk3transition-master-rebase
 
 # install inno setup
 
-COPY osc.iss .
+RUN C:\msys64\home\is.exe /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART /LOG=C:\msys64\home\docker\iss.log /DIR=C:\innosetup

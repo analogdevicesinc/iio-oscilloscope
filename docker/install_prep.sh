@@ -12,7 +12,7 @@ $STAGING_BIN/libbrotlidec.dll \
 $STAGING_BIN/libbz2-1.dll \
 $STAGING_BIN/libcairo-2.dll \
 $STAGING_BIN/libcairo-gobject-2.dll \
-$STAGING_BIN/libcrypto-1_1-x64.dll \
+$STAGING_BIN/libcrypto-3-x64.dll \
 $STAGING_BIN/libcurl-4.dll \
 $STAGING_BIN/libdatrie-1.dll \
 $STAGING_BIN/libepoxy-0.dll \
@@ -34,7 +34,7 @@ $STAGING_BIN/libgthread-2.0-0.dll \
 $STAGING_BIN/libgtk-3-0.dll \
 $STAGING_BIN/libgtkdatabox-1.dll \
 $STAGING_BIN/libharfbuzz-0.dll \
-$STAGING_BIN/libhdf5-0.dll \
+$STAGING_BIN/libhdf5-310.dll \
 $STAGING_BIN/libiconv-2.dll \
 $STAGING_BIN/libidn2-0.dll \
 $STAGING_BIN/libiio.dll \
@@ -55,7 +55,7 @@ $STAGING_BIN/libpsl-5.dll \
 $STAGING_BIN/librsvg-2-2.dll \
 $STAGING_BIN/libserialport-0.dll \
 $STAGING_BIN/libssh2-1.dll \
-$STAGING_BIN/libssl-1_1-x64.dll \
+$STAGING_BIN/libssl-3-x64.dll \
 $STAGING_BIN/libstdc++-6.dll \
 $STAGING_BIN/libsz.dll \
 $STAGING_BIN/libthai-0.dll \
@@ -119,6 +119,8 @@ share_dir() {
 
 }
 
-bin_dir
 lib_dir
 share_dir
+bin_dir
+
+$@
