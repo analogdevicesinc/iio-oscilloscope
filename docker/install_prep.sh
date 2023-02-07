@@ -1,7 +1,7 @@
 #/bin/bash
 set -xe
 
-export WORKDIR=/home/$USER/
+export WORKDIR=/home/docker/
 export STAGING_DIR="/mingw64"
 export STAGING_BIN="$STAGING_DIR/bin"
 export DLLS="$STAGING_BIN/libad9166.dll \
