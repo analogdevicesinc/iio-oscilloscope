@@ -3892,18 +3892,18 @@ static void plot_channels_add_channel(OscPlot *plot, PlotChn *pchn)
 
 	struct iio_device *iio_dev = NULL;
 	struct iio_channel *iio_chn = NULL;
-
-	if (ctx && (iio_dev = iio_context_find_device(ctx, pchn->parent_name)))
-		iio_chn = iio_device_find_channel(iio_dev, pchn->name, false);
-
 	bool sensitive = true;
 	bool active = false;
 
-	/* Check if there are any channel constraints */
-	struct extra_info *ch_info = iio_channel_get_data(iio_chn);
-	if (ch_info) {
-		active = (ch_info->constraints & CONSTR_CHN_INITIAL_ENABLED);
-		sensitive = !(ch_info->constraints & CONSTR_CHN_UNTOGGLEABLE);
+	if (ctx && (iio_dev = iio_context_find_device(ctx, pchn->parent_name))) {
+		iio_chn = iio_device_find_channel(iio_dev, pchn->name, false);
+
+		struct extra_info *ch_info = iio_channel_get_data(iio_chn);
+		/* Check if there are any channel constraints */
+		if (ch_info) {
+			active = (ch_info->constraints & CONSTR_CHN_INITIAL_ENABLED);
+			sensitive = !(ch_info->constraints & CONSTR_CHN_UNTOGGLEABLE);
+		}
 	}
 
 	gtk_tree_store_append(treestore, &child_iter, &parent_iter);
