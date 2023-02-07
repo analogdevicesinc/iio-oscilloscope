@@ -37,7 +37,7 @@ COPY build_mingw.sh .
 RUN C:\msys64\usr\bin\bash.exe -c "./build_mingw.sh install_pacman_deps"
 RUN C:\msys64\usr\bin\bash.exe -c "./build_mingw.sh get_innosetup"
 RUN C:\msys64\usr\bin\bash.exe -c "./build_mingw.sh build_deps"
-RUN C:\msys64\usr\bin\bash.exe -c "git clone https://github.com/analogdevicesinc/iio-oscilloscope --branch gtk3transition-master-rebase
+RUN C:\msys64\usr\bin\bash.exe -c "git clone https://github.com/analogdevicesinc/iio-oscilloscope --branch update-ci
 
 # install inno setup
 
