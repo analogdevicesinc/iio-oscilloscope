@@ -3,7 +3,7 @@ set -xe
 LIBIIO_BRANCH=master
 LIBAD9361_BRANCH=master
 LIBAD9166_BRANCH=master
-OSC_BRANCH=$2
+OSC_BRANCH=$BRANCH
 
 export WORKDIR=/home/$USER/
 
@@ -53,7 +53,7 @@ mingw-w64-x86_64-autotools \
 mingw-w64-x86_64-make \
 mingw-w64-x86_64-doxygen \
 mingw-w64-x86_64-jansson \
-cmake
+cmake 
 "
 pacman -S --noconfirm --needed $WINDEPS
 }
@@ -128,4 +128,3 @@ build_osc() {
 
 init_env
 $@
-
