@@ -33,6 +33,8 @@ ARG BUILD_TARGET=x86_64
 ENV BUILD_TARGET=$BUILD_TARGET
 RUN echo %BUILD_TARGET%
 
+COPY install_prep.sh .
+COPY inside_docker.sh .
 COPY build_mingw.sh .
 RUN C:\msys64\usr\bin\bash.exe -c "./build_mingw.sh install_pacman_deps"
 RUN C:\msys64\usr\bin\bash.exe -c "./build_mingw.sh get_innosetup"
