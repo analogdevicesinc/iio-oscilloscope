@@ -1,7 +1,7 @@
 #/bin/bash
 set -xe
 
-export WORKDIR=/home/docker/
+export WORKDIR=/home/docker
 export STAGING_DIR="/mingw64"
 export STAGING_BIN="$STAGING_DIR/bin"
 export DLLS="$STAGING_BIN/libad9166.dll \
@@ -59,12 +59,12 @@ $STAGING_BIN/libssl-3-x64.dll \
 $STAGING_BIN/libstdc++-6.dll \
 $STAGING_BIN/libsz.dll \
 $STAGING_BIN/libthai-0.dll \
-$STAGING_BIN/libunistring-2.dll \
+$STAGING_BIN/libunistring-5.dll \
 $STAGING_BIN/libusb-1.0.dll \
 $STAGING_BIN/libwinpthread-1.dll \
 $STAGING_BIN/libxml2-2.dll \
 $STAGING_BIN/libzstd.dll \
-$STAGING_BIN/zlib1.dll 
+$STAGING_BIN/zlib1.dll
 "
 export EXES="$STAGING_BIN/curl.exe \
 $STAGING_BIN/iio_genxml.exe \
@@ -75,20 +75,18 @@ $STAGING_BIN/iio_readdev.exe
 bin_dir() {
 	pushd $WORKDIR
 	mkdir $WORKDIR/iio-oscilloscope/build/bin
-	cp  $WORKDIR/iio-oscilloscope/build/osc.exe $WORKDIR/iio-oscilloscope/build/bin
-	cp  $WORKDIR/iio-oscilloscope/build/styles.css $WORKDIR/iio-oscilloscope/build/bin
-	cp  $WORKDIR/iio-oscilloscope/build/libosc.dll $WORKDIR/iio-oscilloscope/build/bin
-	cp $DLLS $WORKDIR/iio-oscilloscope/build/bin
-	cp $EXES $WORKDIR/iio-oscilloscope/build/bin
+	cp  $WORKDIR/iio-oscilloscope/build/osc.exe $WORKDIR/iio-oscilloscope/build/bin/
+	cp  $WORKDIR/iio-oscilloscope/build/styles.css $WORKDIR/iio-oscilloscope/build/bin/
+	cp  $WORKDIR/iio-oscilloscope/build/libosc.dll $WORKDIR/iio-oscilloscope/build/bin/
 
-	cp -r $WORKDIR/iio-oscilloscope/build/plugins $WORKDIR/iio-oscilloscope/build/bin
+	cp $DLLS $WORKDIR/iio-oscilloscope/build/bin/
+	cp -r $EXES $WORKDIR/iio-oscilloscope/build/bin/
 
-	cp -r $WORKDIR/iio-oscilloscope/glade $WORKDIR/iio-oscilloscope/build/bin
-	cp -r $WORKDIR/iio-oscilloscope/block_diagrams $WORKDIR/iio-oscilloscope/build/bin
-	cp -r $WORKDIR/iio-oscilloscope/icons $WORKDIR/iio-oscilloscope/build/bin
+	cp -r $WORKDIR/iio-oscilloscope/build/plugins $WORKDIR/iio-oscilloscope/build/bin/
+	cp -r $WORKDIR/iio-oscilloscope/glade $WORKDIR/iio-oscilloscope/build/bin/
+	cp -r $WORKDIR/iio-oscilloscope/block_diagrams $WORKDIR/iio-oscilloscope/build/bin/
+	cp -r $WORKDIR/iio-oscilloscope/icons $WORKDIR/iio-oscilloscope/build/bin/
 	popd
-	
-
 }
 
 lib_dir() {
@@ -122,5 +120,4 @@ share_dir() {
 lib_dir
 share_dir
 bin_dir
-
 $@
