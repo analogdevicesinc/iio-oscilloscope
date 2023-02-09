@@ -29,6 +29,7 @@ jobs:
 
             docker run ^
                 -e BRANCH=%GITHUB_REF_NAME% ^
+                -e HEAD_BRANCH=%GITHUB_HEAD_REF% ^
                 shooteu/iio-oscilloscope C:\msys64\usr\bin\bash.exe -c '/home/docker/inside_docker.sh '
             docker ps -q -l > lastcontainer
             set /p LAST=<lastcontainer
