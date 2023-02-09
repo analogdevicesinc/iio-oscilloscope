@@ -36,5 +36,5 @@ jobs:
 
     - uses: actions/upload-artifact@v2
       with:
-        name: adi-osc-setup.exe
+        name: adi-osc-setup
         path: ${{ github.workspace }}\artifacts\adi-osc-setup.exe
