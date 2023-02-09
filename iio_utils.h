@@ -10,8 +10,8 @@
 #include "iio.h"
 #include <gmodule.h>
 
-typedef struct _GtkToggleToolButton     GtkToggleToolButton;
-typedef struct _GtkWidget               GtkWidget;
+struct _GtkToggleToolButton;
+struct _GtkWidget;
 
 #define IIO_ATTR_MAX_BYTES 16384
 
@@ -21,7 +21,7 @@ GArray * get_iio_channels_naturally_sorted(struct iio_device *dev);
 
 int str_natural_cmp(const char *s1, const char *s2);
 
-void handle_toggle_section_cb(GtkToggleToolButton *btn, GtkWidget *section);
+void handle_toggle_section_cb(struct _GtkToggleToolButton *btn, struct _GtkWidget *section);
 
 const char *get_iio_device_label_or_name(const struct iio_device *dev);
 
