@@ -3,7 +3,6 @@ set -xe
 LIBIIO_BRANCH=master
 LIBAD9361_BRANCH=master
 LIBAD9166_BRANCH=master
-OSC_BRANCH=$BRANCH
 
 export WORKDIR=/home/$USER/
 
@@ -65,65 +64,70 @@ get_innosetup() {
 }
 
 build_libiio() {
-    pushd $WORKDIR
-    git clone https://github.com/analogdevicesinc/libiio --branch $LIBIIO_BRANCH
-    cd libiio
-    rm -rf build
-    mkdir build 
-    cd build
-    $CMAKE $CMAKE_OPTS -G"Unix Makefiles" -DWITH_SERIAL_BACKEND=ON ../
-    $MAKE install
-    popd
+	pushd $WORKDIR
+	git clone https://github.com/analogdevicesinc/libiio --branch $LIBIIO_BRANCH
+	cd libiio
+	mkdir build
+	cd build
+	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" -DWITH_SERIAL_BACKEND=ON ../
+	$MAKE install
+	popd
 }
 
 build_libad9361() {
-    pushd $WORKDIR
-    git clone https://github.com/analogdevicesinc/libad9361-iio --branch $LIBAD9361_BRANCH
-    cd libad9361-iio
-    mkdir build 
-    cd build
-    $CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
-    $MAKE install
-    popd
-}
+	pushd $WORKDIR
+	git clone https://github.com/analogdevicesinc/libad9361-iio --branch $LIBAD9361_BRANCH
+	cd libad9361-iio
+	mkdir build
+	cd build
+	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
+	$MAKE install
+	popd
+	}
 
 build_libad9166 () {
-    pushd $WORKDIR
-    git clone https://github.com/analogdevicesinc/libad9166-iio --branch $LIBAD9166_BRANCH
-    cd libad9166-iio
-    mkdir build 
-    cd build
-    $CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
-    $MAKE install
-    popd
+	pushd $WORKDIR
+	git clone https://github.com/analogdevicesinc/libad9166-iio --branch $LIBAD9166_BRANCH
+	cd libad9166-iio
+	mkdir build
+	cd build
+	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
+	$MAKE install
+	popd
 }
 
 build_gtkdatabox () {
-    pushd $WORKDIR
-    wget https://downloads.sourceforge.net/project/gtkdatabox/gtkdatabox-1/gtkdatabox-1.0.0.tar.gz
-    tar xvf gtkdatabox-1.0.0.tar.gz
-    cd gtkdatabox-1.0.0
-    ./configure $AUTOCONF_OPTS
-    $MAKE install
-    popd
+	pushd $WORKDIR
+	wget https://downloads.sourceforge.net/project/gtkdatabox/gtkdatabox-1/gtkdatabox-1.0.0.tar.gz
+	tar xvf gtkdatabox-1.0.0.tar.gz
+	cd gtkdatabox-1.0.0
+	./configure $AUTOCONF_OPTS
+	$MAKE install
+	popd
 }
 
 build_deps() {
-    build_libiio
-    build_libad9361
-    build_libad9166
-    build_gtkdatabox
+	build_libiio
+	build_libad9361
+	build_libad9166
+	build_gtkdatabox
 }
 
 build_osc() {
-    pushd /home/docker/
-    git clone https://github.com/analogdevicesinc/iio-oscilloscope --branch $OSC_BRANCH
-    cd iio-oscilloscope
-    mkdir build
-    cd build
-    $CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
-    $MAKE 
-    popd
+	pushd /home/docker/
+	if [ -z "$HEAD_BRANCH" ]
+	then
+		export OSC_BRANCH=$BRANCH
+	else
+		export OSC_BRANCH=$HEAD_BRANCH
+		fi
+	git clone https://github.com/analogdevicesinc/iio-oscilloscope --branch $OSC_BRANCH
+	cd iio-oscilloscope
+	mkdir build
+	cd build
+	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
+	$MAKE
+	popd
 }
 
 init_env
