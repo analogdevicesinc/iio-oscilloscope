@@ -30,7 +30,7 @@ jobs:
             docker run ^
                 -e BRANCH=%GITHUB_REF_NAME% ^
                 shooteu/iio-oscilloscope C:\msys64\usr\bin\bash.exe -c '/home/docker/inside_docker.sh '
-            docker ps - q -l > lastcontainer
+            docker ps -q -l > lastcontainer
             set /p LAST=<lastcontainer
             docker cp %LAST%:C:\msys64\home\docker\iio-oscilloscope\artifact\adi-osc-setup.exe %GITHUB_WORKSPACE%\artifacts
 
