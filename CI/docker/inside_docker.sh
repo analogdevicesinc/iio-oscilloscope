@@ -1,12 +1,11 @@
 #/bin/bash
 set -xe
-OSC_BRANCH=$1
 
 export SRCDIR=/home/docker/iio-oscilloscope
 
 # build osc
 
-./build_mingw.sh build_osc $OSC_BRANCH
+./build_mingw.sh build_osc
 
 # create dir hierarchy
 
