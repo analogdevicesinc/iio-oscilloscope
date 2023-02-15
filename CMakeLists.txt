@@ -15,7 +15,7 @@
 #  the Free Software Foundation, Inc., 51 Franklin Street,
 #  Boston, MA 02110-1301, USA.
 
-cmake_minimum_required(VERSION 2.8.7)
+cmake_minimum_required(VERSION 3.13.0)
 
 # needed to use VERSION in 'project()'
 cmake_policy(SET CMP0048 NEW)
