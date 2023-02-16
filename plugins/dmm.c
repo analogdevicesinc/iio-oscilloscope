@@ -64,34 +64,13 @@ static bool is_valid_dmm_channel(struct iio_channel *chn)
 
 static struct iio_device * get_device(const char *id)
 {
-	unsigned int i, nb = iio_context_get_devices_count(ctx);
-	for (i = 0; i < nb; i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
-		const char *name = iio_device_get_name(dev);
-
-		if (!strcmp(id, iio_device_get_id(dev)) ||
-				(name && !strcmp(name, id)))
-			return dev;
-	}
-	return NULL;
+	return iio_context_find_device(ctx, id);
 }
 
 static struct iio_channel * get_channel(const struct iio_device *dev,
 		const char *id)
 {
-	unsigned int i, nb = iio_device_get_channels_count(dev);
-	for (i = 0; i < nb; i++) {
-		struct iio_channel *chn = iio_device_get_channel(dev, i);
-		const char *name = iio_channel_get_name(chn);
-
-		if (iio_channel_is_output(chn))
-			continue;
-
-		if (!strcmp(id, iio_channel_get_id(chn)) ||
-				(name && !strcmp(name, id)))
-			return chn;
-	}
-	return NULL;
+	return iio_device_find_channel(dev, id, false);
 }
 
 static double read_double_attr(const struct iio_channel *chn, const char *name)
