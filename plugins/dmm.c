@@ -137,6 +137,8 @@ static void build_channel_list(void)
 				struct iio_channel *chn =
 					iio_device_get_channel(dev, i);
 				const char *name, *id, *devid;
+				char label[32];
+				int has_label;
 
 				/* Must be input */
 				if (!is_valid_dmm_channel(chn))
@@ -146,6 +148,9 @@ static void build_channel_list(void)
 				devid = iio_device_get_id(dev);
 				name = iio_channel_get_name(chn);
 				id = iio_channel_get_id(chn);
+				has_label = iio_channel_attr_read(chn, "label", label, sizeof(label));
+
+
 				if (!name)
 					name = id;
 
@@ -162,8 +167,12 @@ static void build_channel_list(void)
 					iter3_valid = TRUE;
 				}
 
-				snprintf(dev_ch, sizeof(dev_ch), "%s:%s",
-					device, name);
+				if (has_label > 0)
+					snprintf(dev_ch, sizeof(dev_ch), "%s:%s (%s)",
+						 device, name, label);
+				else
+					snprintf(dev_ch, sizeof(dev_ch), "%s:%s",
+						 device, name);
 
 				gtk_list_store_set(channel_list_store, &iter2,
 						0, dev_ch,	/* device & channel name */
