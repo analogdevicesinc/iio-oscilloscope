@@ -48,6 +48,9 @@ static bool is_valid_dmm_channel(struct iio_channel *chn)
 	if (iio_channel_is_output(chn))
 		return false;
 
+	if (iio_channel_find_attr(chn, "input"))
+		return true;
+
 	/* find the name */
 	id = iio_channel_get_id(chn);
 
@@ -336,6 +339,10 @@ static gboolean dmm_update(gpointer foo)
 					sprintf(tmp, "%s = %f kPa\n", name, value);
 				else if (!strncmp(channel, "magn", 4))
 					sprintf(tmp, "%s = %f Gauss\n", name, value);
+				else if (!strncmp(channel, "in", 2))
+					sprintf(tmp, "%s = %f Volts\n", name, value / 1000);
+				else if (!strncmp(channel, "power", 4))
+					sprintf(tmp, "%s = %f Milliwatts\n", name, value / 1000);
 				else
 					sprintf(tmp, "%s = %f\n", name, value);
 
