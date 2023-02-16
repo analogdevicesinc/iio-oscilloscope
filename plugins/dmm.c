@@ -87,7 +87,7 @@ static void build_channel_list(void)
 {
 	GtkTreeIter iter, iter2, iter3;
 	unsigned int enabled;
-	char *device, *device2;
+	char *device, *device2, *device_id;
 	gboolean first = FALSE, iter3_valid = FALSE, loop, loop2, all = FALSE;
 	char dev_ch[256];
 
@@ -95,7 +95,7 @@ static void build_channel_list(void)
 	gtk_list_store_clear(channel_list_store);
 
 	while (loop) {
-		gtk_tree_model_get(GTK_TREE_MODEL (device_list_store), &iter, 0, &device, 1, &enabled, -1);
+		gtk_tree_model_get(GTK_TREE_MODEL (device_list_store), &iter, 0, &device, 1, &enabled, 2, &device_id, -1);
 		if (enabled) {
 			struct iio_device *dev;
 			unsigned int i, nb_channels;
@@ -128,7 +128,7 @@ static void build_channel_list(void)
 				continue;
 			}
 
-			dev = get_device(device);
+			dev = get_device(device_id);
 			if (!dev)
 				continue;
 
@@ -260,7 +260,7 @@ static void init_device_list(void)
 	for (i = 0; i < num; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		unsigned int j, nch = iio_device_get_channels_count(dev);
-		const char *id;
+		const char *id, *name;
 		bool found_valid_chan = false;
 
 		for (j = 0; !found_valid_chan && j < nch; j++) {
@@ -272,12 +272,13 @@ static void init_device_list(void)
 		if (!found_valid_chan)
 			continue;
 
-		id = iio_device_get_name(dev);
-		if (!id)
-			id = iio_device_get_id(dev);
+		id = iio_device_get_id(dev);
+		name = iio_device_get_name(dev);
+		if (!name)
+			name = id;
 
 		gtk_list_store_append(device_list_store, &iter);
-		gtk_list_store_set(device_list_store, &iter, 0, id,  1, 0, -1);
+		gtk_list_store_set(device_list_store, &iter, 0, name, 1, 0, 2, id, -1);
 	}
 	gtk_tree_sortable_set_sort_column_id(
 		GTK_TREE_SORTABLE(GTK_TREE_MODEL(device_list_store)),
