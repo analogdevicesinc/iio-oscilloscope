@@ -95,6 +95,8 @@
   <object class="GtkVBox" id="adrv9002_panel">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
+    <property name="hexpand">True</property>
+    <property name="vexpand">True</property>
     <property name="border-width">5</property>
     <property name="spacing">5</property>
     <child>
