@@ -169,22 +169,6 @@ struct plugin_private {
 	}										\
 }
 
-static void save_gain_value(GtkWidget *widget, struct adrv9002_common *chann)
-{
-	char *gain_ctl = gtk_combo_box_text_get_active_text(
-			GTK_COMBO_BOX_TEXT(chann->gain_ctrl.w.widget));
-	/*
-	 * Do not save the value if we are in automatic gain control. We can get here if we
-	 * change the gain to automatic and the part changes the RX gain...
-	 */
-	if (!strcmp(gain_ctl, "automatic"))
-		goto free_gain_ctl;
-
-	iio_widget_save(&chann->gain);
-free_gain_ctl:
-	g_free(gain_ctl);
-}
-
 static void combo_box_manual_update(struct adrv9002_combo_box *combo)
 {
 	char text[512], *item;
@@ -265,7 +249,7 @@ static void save_gain_ctl(GtkWidget *widget, struct adrv9002_common *chann)
 		 * When changing modes the device might automatically change
 		 * some values
 		 */
-		iio_widget_update(&chann->gain);
+		iio_widget_update_block_signals_by_data(&chann->gain);
 	}
 
 	g_free(gain_ctl);
@@ -432,7 +416,7 @@ static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
 		/* restore widget value */
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), true);
 	} else {
-		iio_widget_save(&orx->orx_en);
+		iio_widget_save_block_signals_by_data(&orx->orx_en);
 		/* let's get the value again to make sure it is the most up to date */
 		en = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
 		orx_control_rx_widgets_visibility(&rx->rx, en);
@@ -692,7 +676,7 @@ static void update_special_widgets(struct adrv9002_common *chann)
 		GTK_COMBO_BOX_TEXT(chann->port_en.w.widget));
 
 	if (gain_ctl && strcmp(gain_ctl, "spi"))
-		iio_widget_update(&chann->gain);
+		iio_widget_update_block_signals_by_data(&chann->gain);
 
 	if (port_en && strcmp(port_en, "spi"))
 		combo_box_manual_update(&chann->ensm);
@@ -789,7 +773,7 @@ static void adrv9002_update_orx_widgets(struct plugin_private *priv, const int c
 	}
 
 	/* generic widgets */
-	iio_update_widgets(orx->w, orx->num_widgets);
+	iio_update_widgets_block_signals_by_data(orx->w, orx->num_widgets);
 }
 
 static void adrv9002_update_rx_widgets(struct plugin_private *priv, const int chann)
@@ -801,15 +785,15 @@ static void adrv9002_update_rx_widgets(struct plugin_private *priv, const int ch
 		return;
 
 	combo_box_manual_update(&rx->rx.gain_ctrl);
-	iio_widget_update(&rx->rx.gain);
-	iio_widget_update(&rx->rx.nco_freq);
+	iio_widget_update_block_signals_by_data(&rx->rx.gain);
+	iio_widget_update_block_signals_by_data(&rx->rx.nco_freq);
 	combo_box_manual_update(&rx->rx.ensm);
 	combo_box_manual_update(&rx->rx.port_en);
 	combo_box_manual_update(&rx->digital_gain_ctl);
 	combo_box_manual_update(&rx->intf_gain);
 	iio_widget_update_block_signals_by_data(&rx->rx.carrier);
 	/* generic widgets */
-	iio_update_widgets(rx->rx.w, rx->rx.num_widgets);
+	iio_update_widgets_block_signals_by_data(rx->rx.w, rx->rx.num_widgets);
 	/* labels */
 	update_label(&rx->rssi);
 	update_label(&rx->decimated_power);
@@ -825,13 +809,13 @@ static void adrv9002_update_tx_widgets(struct plugin_private *priv, const int ch
 		return;
 
 	combo_box_manual_update(&tx->gain_ctrl);
-	iio_widget_update(&tx->gain);
-	iio_widget_update(&tx->nco_freq);
+	iio_widget_update_block_signals_by_data(&tx->gain);
+	iio_widget_update_block_signals_by_data(&tx->nco_freq);
 	iio_widget_update_block_signals_by_data(&tx->carrier);
 	combo_box_manual_update(&tx->ensm);
 	combo_box_manual_update(&tx->port_en);
 	/* generic widgets */
-	iio_update_widgets(tx->w, tx->num_widgets);
+	iio_update_widgets_block_signals_by_data(tx->w, tx->num_widgets);
 	/* labels */
 	update_label(&tx->rf_bandwidth);
 	update_label(&tx->sampling_rate);
@@ -1486,13 +1470,13 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.gain_ctrl.w.widget),
 			 "changed", G_CALLBACK(save_gain_ctl),
 			 &priv->rx_widgets[chann].rx);
-	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.gain.widget),
-			 "value-changed", G_CALLBACK(save_gain_value),
-			 &priv->rx_widgets[chann].rx);
+	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.gain,
+					    G_CALLBACK(iio_widget_save_block_signals_by_data_cb),
+					    &priv->rx_widgets[chann].rx.gain);
 	/* nco freq */
-	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.nco_freq.widget),
-			 "value-changed", G_CALLBACK(iio_widget_save_cb),
-			 &priv->rx_widgets[chann].rx.nco_freq);
+	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.nco_freq,
+					    G_CALLBACK(iio_widget_save_block_signals_by_data_cb),
+					    &priv->rx_widgets[chann].rx.nco_freq);
 	/* ensm mode and port en */
 	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.ensm.w.widget),
 			 "changed", G_CALLBACK(combo_box_save),
@@ -1519,12 +1503,12 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 			 "changed", G_CALLBACK(save_gain_ctl),
 			 &priv->tx_widgets[chann]);
 	/* nco freq */
-	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].nco_freq.widget),
-			 "value-changed", G_CALLBACK(iio_widget_save_cb),
-			 &priv->tx_widgets[chann].nco_freq);
-	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].gain.widget),
-			 "value-changed", G_CALLBACK(iio_widget_save_cb),
-			 &priv->tx_widgets[chann].gain);
+	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].nco_freq,
+					    G_CALLBACK(iio_widget_save_block_signals_by_data_cb),
+					    &priv->tx_widgets[chann].nco_freq);
+	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].gain,
+					    G_CALLBACK(iio_widget_save_block_signals_by_data_cb),
+					    &priv->tx_widgets[chann].gain);
 	/* ensm mode and port en */
 	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].ensm.w.widget),
 			 "changed", G_CALLBACK(combo_box_save),
@@ -1537,9 +1521,8 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 					    G_CALLBACK(adrv9002_save_carrier_freq),
 					    &priv->tx_widgets[chann]);
 	/* orx enable */
-	g_signal_connect(G_OBJECT(priv->orx_widgets[chann].orx_en.widget),
-			 "toggled", G_CALLBACK(save_orx_powerdown),
-			 &priv->orx_widgets[chann]);
+	iio_make_widget_update_signal_based(&priv->orx_widgets[chann].orx_en,
+					    G_CALLBACK(save_orx_powerdown), &priv->orx_widgets[chann]);
 }
 
 static int adrv9002_adc_get_name(struct plugin_private *priv)
@@ -1794,17 +1777,17 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		adrv9002_update_tx_widgets(priv, i);
 		iio_make_widgets_update_signal_based(priv->rx_widgets[i].rx.w,
 						     priv->rx_widgets[i].rx.num_widgets,
-						     G_CALLBACK(iio_widget_save_cb));
+						     G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
 
 		if (i >= priv->n_txs)
 			continue;
 
 		iio_make_widgets_update_signal_based(priv->orx_widgets[i].w,
 						     priv->orx_widgets[i].num_widgets,
-						     G_CALLBACK(iio_widget_save_cb));
+						     G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
 		iio_make_widgets_update_signal_based(priv->tx_widgets[i].w,
 						     priv->tx_widgets[i].num_widgets,
-						     G_CALLBACK(iio_widget_save_cb));
+						     G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
 	}
 	/* update dac */
 	for (i = 0; i < priv->n_dacs; i++)
