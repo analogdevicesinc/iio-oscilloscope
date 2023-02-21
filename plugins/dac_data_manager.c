@@ -841,7 +841,7 @@ static GtkWidget *gui_dds_mode_chooser_create(struct dds_tx *tx)
 	GtkWidget *box;
 	GtkWidget *dds_mode_lbl;
 	GtkComboBoxText *dds_mode;
-	bool no_buffer_support = !strcmp(tx->parent->name, "axi-ad9739a-hpc");
+	bool no_buffer_support = !strcmp(tx->parent->name, "axi-ad9739a-lpc");
 
 	box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
 	dds_mode_lbl = gtk_label_new("DDS Mode:");
