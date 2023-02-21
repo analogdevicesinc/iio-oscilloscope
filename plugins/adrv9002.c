@@ -985,6 +985,47 @@ static void adrv9002_check_nco_freq_support(struct plugin_private *priv, const i
 	}
 }
 
+static void adrv9002_update_rx_intf_gain_attr_available(struct adrv9002_rx *rx)
+{
+	struct iio_widget *w = &rx->intf_gain.w;
+	gchar **saved_list, **available;
+	char text[512];
+	gint idx;
+	int ret;
+
+	ret = iio_channel_attr_read(w->chn, w->attr_name_avail, text,
+				    sizeof(text));
+	if (ret < 0)
+		return;
+
+	/*
+	 * We need to block the signals to avoid multiple calls to save_intf_gain() triggered
+	 * by removing the elements (number of calls depends on the active value/index). Note
+	 * there are other widgets sharing @rx as signal data but we are safe in still blocking
+	 * all the signals for it at this stage. We should only get here when the 'reload_settings'
+	 * button is pressed or on profile load.
+	 */
+	g_signal_handlers_block_matched(G_OBJECT(w->widget), G_SIGNAL_MATCH_DATA, 0, 0,
+					NULL, NULL, rx);
+
+	gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(w->widget));
+
+	g_signal_handlers_unblock_matched(G_OBJECT(w->widget), G_SIGNAL_MATCH_DATA, 0, 0,
+					  NULL, NULL, rx);
+
+	available = saved_list = g_strsplit(text, " ", 0);
+
+	/* our available is static so we can just set it here once */
+	for (; *available; available++) {
+		if (*available[0] == '\0')
+			continue;
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(w->widget),
+					       *available);
+	}
+
+	g_strfreev(saved_list);
+}
+
 static void update_all(struct plugin_private *priv)
 {
 	int i;
@@ -994,6 +1035,8 @@ static void update_all(struct plugin_private *priv)
 		sprintf(gtk_str, "frame_rx%d", i + 1);
 		adrv9002_check_channel_status(priv, &priv->rx_widgets[i].rx, gtk_str);
 		adrv9002_check_nco_freq_support(priv, i, false);
+		/* intf gain available value might change on profile load */
+		adrv9002_update_rx_intf_gain_attr_available(&priv->rx_widgets[i]);
 		adrv9002_update_rx_widgets(priv, i);
 
 		if (i >= priv->n_txs)
