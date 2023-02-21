@@ -1480,39 +1480,6 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 	return 0;
 }
 
-static void make_widget_update_signal_based(struct iio_widget *widgets,
-					    unsigned int num_widgets)
-{
-	char signal_name[25];
-	unsigned int i;
-
-	for (i = 0; i < num_widgets; i++) {
-		if (GTK_IS_CHECK_BUTTON(widgets[i].widget))
-			sprintf(signal_name, "%s", "toggled");
-		else if (GTK_IS_TOGGLE_BUTTON(widgets[i].widget))
-			sprintf(signal_name, "%s", "toggled");
-		else if (GTK_IS_SPIN_BUTTON(widgets[i].widget))
-			sprintf(signal_name, "%s", "value-changed");
-		else if (GTK_IS_COMBO_BOX_TEXT(widgets[i].widget))
-			sprintf(signal_name, "%s", "changed");
-		else {
-			printf("unhandled widget type, attribute: %s\n",
-			       widgets[i].attr_name);
-			return;
-		}
-
-		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
-		    widgets[i].priv_progress != NULL) {
-			iio_spin_button_progress_activate(&widgets[i]);
-		} else {
-			g_signal_connect(G_OBJECT(widgets[i].widget),
-					 signal_name,
-					 G_CALLBACK(iio_widget_save_cb),
-					 &widgets[i]);
-		}
-	}
-}
-
 static void connect_special_signal_widgets(struct plugin_private *priv, const int chann)
 {
 	/* rx gain handling */
@@ -1825,16 +1792,19 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		adrv9002_update_rx_widgets(priv, i);
 		adrv9002_update_orx_widgets(priv, i);
 		adrv9002_update_tx_widgets(priv, i);
-		make_widget_update_signal_based(priv->rx_widgets[i].rx.w,
-						priv->rx_widgets[i].rx.num_widgets);
+		iio_make_widgets_update_signal_based(priv->rx_widgets[i].rx.w,
+						     priv->rx_widgets[i].rx.num_widgets,
+						     G_CALLBACK(iio_widget_save_cb));
 
 		if (i >= priv->n_txs)
 			continue;
 
-		make_widget_update_signal_based(priv->orx_widgets[i].w,
-						priv->orx_widgets[i].num_widgets);
-		make_widget_update_signal_based(priv->tx_widgets[i].w,
-						priv->tx_widgets[i].num_widgets);
+		iio_make_widgets_update_signal_based(priv->orx_widgets[i].w,
+						     priv->orx_widgets[i].num_widgets,
+						     G_CALLBACK(iio_widget_save_cb));
+		iio_make_widgets_update_signal_based(priv->tx_widgets[i].w,
+						     priv->tx_widgets[i].num_widgets,
+						     G_CALLBACK(iio_widget_save_cb));
 	}
 	/* update dac */
 	for (i = 0; i < priv->n_dacs; i++)
