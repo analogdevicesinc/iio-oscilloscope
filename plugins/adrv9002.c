@@ -169,12 +169,6 @@ struct plugin_private {
 	}										\
 }
 
-static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
-{
-	iio_w->save(iio_w);
-	iio_w->update(iio_w);
-}
-
 static void save_gain_value(GtkWidget *widget, struct adrv9002_common *chann)
 {
 	char *gain_ctl = gtk_combo_box_text_get_active_text(
@@ -1513,7 +1507,7 @@ static void make_widget_update_signal_based(struct iio_widget *widgets,
 		} else {
 			g_signal_connect(G_OBJECT(widgets[i].widget),
 					 signal_name,
-					 G_CALLBACK(save_widget_value),
+					 G_CALLBACK(iio_widget_save_cb),
 					 &widgets[i]);
 		}
 	}
@@ -1530,7 +1524,7 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 			 &priv->rx_widgets[chann].rx);
 	/* nco freq */
 	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.nco_freq.widget),
-			 "value-changed", G_CALLBACK(save_widget_value),
+			 "value-changed", G_CALLBACK(iio_widget_save_cb),
 			 &priv->rx_widgets[chann].rx.nco_freq);
 	/* ensm mode and port en */
 	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.ensm.w.widget),
@@ -1559,10 +1553,10 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 			 &priv->tx_widgets[chann]);
 	/* nco freq */
 	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].nco_freq.widget),
-			 "value-changed", G_CALLBACK(save_widget_value),
+			 "value-changed", G_CALLBACK(iio_widget_save_cb),
 			 &priv->tx_widgets[chann].nco_freq);
 	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].gain.widget),
-			 "value-changed", G_CALLBACK(save_widget_value),
+			 "value-changed", G_CALLBACK(iio_widget_save_cb),
 			 &priv->tx_widgets[chann].gain);
 	/* ensm mode and port en */
 	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].ensm.w.widget),
