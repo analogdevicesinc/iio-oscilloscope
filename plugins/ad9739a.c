@@ -37,7 +37,7 @@
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
-#define DAC_DEVICE "axi-ad9739a-hpc"
+#define DAC_DEVICE "axi-ad9739a-lpc"
 
 static struct dac_data_manager *dac_tx_manager;
 
