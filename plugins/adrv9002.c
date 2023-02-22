@@ -55,36 +55,14 @@ struct adrv9002_gtklabel {
 	int scale;
 };
 
-/*
- * This wrappes a combox widget. The motivation for this is that in osc
- * implementation of combo boxes, the box is always cleared before updating it
- * with the active value. This assumes that the iio available values can change.
- * This will lead to the gtk 'changed' signal to be always called if we want to
- * update the box value. Hence, we cannot call 'iio_widget_update' on the
- * 'changed' signal since it leads to an infinite loop.
- * In this plugin, we know that our available iio attribute will never change,
- * so we are implementing a mechanism where we won't use osc core and so we
- * can update our combo boxes.
- */
-struct adrv9002_combo_box {
-	struct iio_widget w;
-	/*
-	 * This indicates that a manual or automatic update occured
-	 * (without using interaction with the GUI) in a combo box widget.
-	 * In this case, we don't want to save the value since it will be just
-	 * the same...
-	 */
-	bool m_update;
-};
-
 struct adrv9002_common {
 	struct plugin_private *priv;
-	struct adrv9002_combo_box gain_ctrl;
+	struct iio_widget gain_ctrl;
 	struct iio_widget gain;
 	struct iio_widget nco_freq;
 	struct iio_widget carrier;
-	struct adrv9002_combo_box ensm;
-	struct adrv9002_combo_box port_en;
+	struct iio_widget ensm;
+	struct iio_widget port_en;
 	struct adrv9002_gtklabel rf_bandwidth;
 	struct adrv9002_gtklabel sampling_rate;
 	/* these are generic widgets that don't need any special attention */
@@ -97,8 +75,8 @@ struct adrv9002_common {
 
 struct adrv9002_rx {
 	struct adrv9002_common rx;
-	struct adrv9002_combo_box digital_gain_ctl;
-	struct adrv9002_combo_box intf_gain;
+	struct iio_widget digital_gain_ctl;
+	struct iio_widget intf_gain;
 	struct adrv9002_gtklabel rssi;
 	struct adrv9002_gtklabel decimated_power;
 };
@@ -169,73 +147,11 @@ struct plugin_private {
 	}										\
 }
 
-static void combo_box_manual_update(struct adrv9002_combo_box *combo)
-{
-	char text[512], *item;
-	int ret, i = 0;
-	struct iio_widget *w = &combo->w;
-	GtkWidget *widget = w->widget;
-	gint idx = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-	GtkTreeIter iter;
-	GtkTreeModel *model = gtk_combo_box_get_model(GTK_COMBO_BOX(widget));
-	gboolean has_iter;
-
-	ret = iio_channel_attr_read(w->chn, w->attr_name,
-				    text, sizeof(text));
-	if (ret < 0)
-		return;
-
-	has_iter = gtk_tree_model_get_iter_first(model, &iter);
-	while (has_iter) {
-		gtk_tree_model_get(model, &iter, 0, &item, -1);
-		if (strcmp(text, item) == 0) {
-			if (i != idx) {
-				/*
-				 * This assumes the gtk signal is connected prior to call this function.
-				 * If the signal is connected after this API is called and we get an update,
-				 * we won't save the attribute value, the next time the user changes it in
-				 * the GUI.
-				 */
-				combo->m_update = true;
-				gtk_combo_box_set_active(GTK_COMBO_BOX(widget), i);
-			}
-
-			g_free(item);
-			break;
-		}
-		g_free(item);
-		i++;
-		has_iter = gtk_tree_model_iter_next(model, &iter);
-	}
-}
-
-/*
- * This checks if the there was any manual or automatic update before
- * writing the value in the device. Furthermore, it checks if were successful
- * in writing the value.
- */
-static void combo_box_save(GtkWidget *widget, struct adrv9002_combo_box *combo)
-{
-	if (combo->m_update) {
-		combo->m_update = false;
-		return;
-	}
-	combo->w.save(&combo->w);
-	/*
-	 * If it is a transition to rf_enabled, it can take some time and so, we
-	 * can still get the old value if we do not wait a bit...
-	 */
-	if (!strcmp("ensm_mode", combo->w.attr_name))
-		usleep(2000);
-
-	combo_box_manual_update(combo);
-}
-
 static void save_gain_ctl(GtkWidget *widget, struct adrv9002_common *chann)
 {
 	char *gain_ctl;
 
-	combo_box_save(widget, &chann->gain_ctrl);
+	iio_widget_save_block_signals_by_data(&chann->gain_ctrl);
 
 	gain_ctl = gtk_combo_box_text_get_active_text(
 		GTK_COMBO_BOX_TEXT(widget));
@@ -258,26 +174,14 @@ static void save_gain_ctl(GtkWidget *widget, struct adrv9002_common *chann)
 static void save_intf_gain(GtkWidget *widget, struct adrv9002_rx *rx)
 {
 	char *ensm = gtk_combo_box_text_get_active_text(
-			GTK_COMBO_BOX_TEXT(rx->rx.ensm.w.widget));
-
-	/*
-	 * This is done here to prevent the dialog box from poping up. Sometimes
-	 * changing a port state (e.g: from rf_enabled to prime) might affect
-	 * other values. In that case we could end up in this callback and
-	 * display the error dialog box without any actual misuse from the user.
-	 */
-	if (rx->intf_gain.m_update == true) {
-		rx->intf_gain.m_update = false;
-		g_free(ensm);
-		return;
-	}
+			GTK_COMBO_BOX_TEXT(rx->rx.ensm.widget));
 
 	if (ensm && strcmp(ensm, "rf_enabled")) {
 		dialog_box_message(widget, "Interface Gain Set Failed",
 				   "ENSM must be rf_enabled to change the interface gain");
-		combo_box_manual_update(&rx->intf_gain);
+		iio_widget_update_block_signals_by_data(&rx->intf_gain);
 	} else {
-		combo_box_save(widget, &rx->intf_gain);
+		iio_widget_save_block_signals_by_data(&rx->intf_gain);
 	}
 
 	g_free(ensm);
@@ -287,14 +191,14 @@ static void save_digital_gain_ctl(GtkWidget *widget, struct adrv9002_rx *rx)
 {
 	char *digital_gain;
 
-	combo_box_save(widget, &rx->digital_gain_ctl);
+	iio_widget_save_block_signals_by_data(&rx->digital_gain_ctl);
 	digital_gain = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
 
 	if (digital_gain && strcmp(digital_gain, "spi")) {
-		gtk_widget_set_sensitive(rx->intf_gain.w.widget, false);
+		gtk_widget_set_sensitive(rx->intf_gain.widget, false);
 	} else {
-		gtk_widget_set_sensitive(rx->intf_gain.w.widget, true);
-		combo_box_manual_update(&rx->intf_gain);
+		gtk_widget_set_sensitive(rx->intf_gain.widget, true);
+		iio_widget_update_block_signals_by_data(&rx->intf_gain);
 	}
 
 	g_free(digital_gain);
@@ -320,9 +224,9 @@ static void orx_control_tx_widgets_visibility(const struct adrv9002_common *tx, 
 
 	/* Disable all tx controls that might affect tx ensm state if @en=true */
 	gtk_widget_set_sensitive(tx->carrier.widget, en);
-	gtk_widget_set_sensitive(tx->ensm.w.widget, en);
-	gtk_widget_set_sensitive(tx->port_en.w.widget, en);
-	gtk_widget_set_sensitive(tx->gain_ctrl.w.widget, en);
+	gtk_widget_set_sensitive(tx->ensm.widget, en);
+	gtk_widget_set_sensitive(tx->port_en.widget, en);
+	gtk_widget_set_sensitive(tx->gain_ctrl.widget, en);
 
 	for (i = 0; i < tx->num_widgets; i++) {
 		if (strcmp(tx->w[i].attr_name, "en"))
@@ -392,8 +296,8 @@ static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
 {
 	struct adrv9002_rx *rx = &orx->priv->rx_widgets[orx->idx];
 	struct adrv9002_common *tx = &orx->priv->tx_widgets[orx->idx];
-	GtkWidget *rx_ensm = rx->rx.ensm.w.widget;
-	GtkWidget *tx_ensm = tx->ensm.w.widget;
+	GtkWidget *rx_ensm = rx->rx.ensm.widget;
+	GtkWidget *tx_ensm = tx->ensm.widget;
 	char *r_ensm = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(rx_ensm));
 	char *t_ensm = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(tx_ensm));
 	bool en = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
@@ -428,18 +332,29 @@ static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
 	g_free(t_ensm);
 }
 
+static void save_ensm(GtkWidget *w, struct iio_widget *widget)
+{
+	widget->save(widget);
+	/*
+	 * If it is a transition to rf_enabled, it can take some time and so, we
+	 * can still get the old value if we do not wait a bit...
+	 */
+	usleep(2000);
+	iio_widget_update_block_signals_by_data(widget);
+}
+
 static void save_port_en(GtkWidget *widget, struct adrv9002_common *chann)
 {
 	char *port_en;
 
-	combo_box_save(widget, &chann->port_en);
+	iio_widget_save_block_signals_by_data(&chann->port_en);
 	port_en = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
 
 	if (port_en && strcmp(port_en, "spi")) {
-		gtk_widget_set_sensitive(chann->ensm.w.widget, false);
+		gtk_widget_set_sensitive(chann->ensm.widget, false);
 	} else {
-		gtk_widget_set_sensitive(chann->ensm.w.widget, true);
-		combo_box_manual_update(&chann->ensm);
+		gtk_widget_set_sensitive(chann->ensm.widget, true);
+		iio_widget_update_block_signals_by_data(&chann->ensm);
 	}
 
 	g_free(port_en);
@@ -451,7 +366,7 @@ static void save_port_en(GtkWidget *widget, struct adrv9002_common *chann)
  */
 struct carrier_helper {
 	struct {
-		struct adrv9002_combo_box *ensm;
+		struct iio_widget *ensm;
 		gchar *old;
 	} s[3]; /* can't have more than 3 other ports on the same LO */
 	int n_restore;
@@ -463,12 +378,12 @@ static int carrier_helper_move_to_calibrated(struct adrv9002_common *c, struct c
 	int ret;
 	GtkComboBoxText *w;
 
-	ret = iio_channel_attr_write(c->ensm.w.chn, c->ensm.w.attr_name, "calibrated");
+	ret = iio_channel_attr_write(c->ensm.chn, c->ensm.attr_name, "calibrated");
 	if (ret < 0)
 		return ret;
 
 	helper->s[helper->n_restore].ensm = &c->ensm;
-	w = GTK_COMBO_BOX_TEXT(c->ensm.w.widget);
+	w = GTK_COMBO_BOX_TEXT(c->ensm.widget);
 	helper->s[helper->n_restore++].old = gtk_combo_box_text_get_active_text(w);
 	return 0;
 }
@@ -531,7 +446,7 @@ static void adrv9002_save_carrier_freq(GtkWidget *widget, struct adrv9002_common
 	int other = ~chan->idx & 0x1;
 	struct carrier_helper ensm_restore = {0};
 	/* we can use whatever attr as the iio channel is the same (naturally not for the LOs) */
-	bool tx = iio_channel_is_output(chan->ensm.w.chn);
+	bool tx = iio_channel_is_output(chan->ensm.chn);
 
 	if (chan->lo == ADRV9002_LO_INV) {
 		/* fallback to independent LOs */
@@ -580,12 +495,12 @@ rx:
 ensm_restore:
 	/* restore the ensm_mode */
 	for (c = 0; c < ensm_restore.n_restore; c++) {
-		iio_channel_attr_write(ensm_restore.s[c].ensm->w.chn,
-				       ensm_restore.s[c].ensm->w.attr_name,
+		iio_channel_attr_write(ensm_restore.s[c].ensm->chn,
+				       ensm_restore.s[c].ensm->attr_name,
 				       ensm_restore.s[c].old);
 		/* update the UI */
 		usleep(2000);
-		combo_box_manual_update(ensm_restore.s[c].ensm);
+		iio_widget_update_block_signals_by_data(ensm_restore.s[c].ensm);
 		g_free(ensm_restore.s[c].old);
 	}
 
@@ -671,15 +586,15 @@ static void update_label(const struct adrv9002_gtklabel *label)
 static void update_special_widgets(struct adrv9002_common *chann)
 {
 	char *gain_ctl = gtk_combo_box_text_get_active_text(
-		GTK_COMBO_BOX_TEXT(chann->gain_ctrl.w.widget));
+		GTK_COMBO_BOX_TEXT(chann->gain_ctrl.widget));
 	char *port_en = gtk_combo_box_text_get_active_text(
-		GTK_COMBO_BOX_TEXT(chann->port_en.w.widget));
+		GTK_COMBO_BOX_TEXT(chann->port_en.widget));
 
 	if (gain_ctl && strcmp(gain_ctl, "spi"))
 		iio_widget_update_block_signals_by_data(&chann->gain);
 
 	if (port_en && strcmp(port_en, "spi"))
-		combo_box_manual_update(&chann->ensm);
+		iio_widget_update_block_signals_by_data(&chann->ensm);
 
 	g_free(gain_ctl);
 	g_free(port_en);
@@ -691,7 +606,7 @@ static void update_special_rx_widgets(struct adrv9002_rx *rx, const int n_widget
 
 	for (i = 0; i < n_widgets; i++) {
 		char *digital_gain = gtk_combo_box_text_get_active_text(
-			GTK_COMBO_BOX_TEXT(rx[i].digital_gain_ctl.w.widget));
+			GTK_COMBO_BOX_TEXT(rx[i].digital_gain_ctl.widget));
 
 		if (!rx[i].rx.enabled)
 			goto nex_widget;
@@ -701,7 +616,7 @@ static void update_special_rx_widgets(struct adrv9002_rx *rx, const int n_widget
 		update_special_widgets(&rx[i].rx);
 
 		if (digital_gain && strstr(digital_gain, "automatic"))
-			combo_box_manual_update(&rx[i].intf_gain);
+			iio_widget_update_block_signals_by_data(&rx[i].intf_gain);
 nex_widget:
 		g_free(digital_gain);
 	}
@@ -784,13 +699,13 @@ static void adrv9002_update_rx_widgets(struct plugin_private *priv, const int ch
 	if (!rx->rx.enabled)
 		return;
 
-	combo_box_manual_update(&rx->rx.gain_ctrl);
+	iio_widget_update_block_signals_by_data(&rx->rx.gain_ctrl);
 	iio_widget_update_block_signals_by_data(&rx->rx.gain);
 	iio_widget_update_block_signals_by_data(&rx->rx.nco_freq);
-	combo_box_manual_update(&rx->rx.ensm);
-	combo_box_manual_update(&rx->rx.port_en);
-	combo_box_manual_update(&rx->digital_gain_ctl);
-	combo_box_manual_update(&rx->intf_gain);
+	iio_widget_update_block_signals_by_data(&rx->rx.ensm);
+	iio_widget_update_block_signals_by_data(&rx->rx.port_en);
+	iio_widget_update_block_signals_by_data(&rx->digital_gain_ctl);
+	iio_widget_update_block_signals_by_data(&rx->intf_gain);
 	iio_widget_update_block_signals_by_data(&rx->rx.carrier);
 	/* generic widgets */
 	iio_update_widgets_block_signals_by_data(rx->rx.w, rx->rx.num_widgets);
@@ -808,12 +723,12 @@ static void adrv9002_update_tx_widgets(struct plugin_private *priv, const int ch
 	if (!tx->enabled)
 		return;
 
-	combo_box_manual_update(&tx->gain_ctrl);
+	iio_widget_update_block_signals_by_data(&tx->gain_ctrl);
 	iio_widget_update_block_signals_by_data(&tx->gain);
 	iio_widget_update_block_signals_by_data(&tx->nco_freq);
 	iio_widget_update_block_signals_by_data(&tx->carrier);
-	combo_box_manual_update(&tx->ensm);
-	combo_box_manual_update(&tx->port_en);
+	iio_widget_update_block_signals_by_data(&tx->ensm);
+	iio_widget_update_block_signals_by_data(&tx->port_en);
 	/* generic widgets */
 	iio_update_widgets_block_signals_by_data(tx->w, tx->num_widgets);
 	/* labels */
@@ -965,7 +880,7 @@ static void adrv9002_check_nco_freq_support(struct plugin_private *priv, const i
 
 static void adrv9002_update_rx_intf_gain_attr_available(struct adrv9002_rx *rx)
 {
-	struct iio_widget *w = &rx->intf_gain.w;
+	struct iio_widget *w = &rx->intf_gain;
 	gchar **saved_list, **available;
 	char text[512];
 	gint idx;
@@ -1146,35 +1061,12 @@ err:
 		gtk_file_chooser_set_filename(chooser, "(None)");
 }
 
-static void adrv9002_combo_box_init(struct adrv9002_combo_box *combo, const char *w_str,
+static void adrv9002_combo_box_init(struct iio_widget *combo, const char *w_str,
 				    const char *attr, const char *attr_avail,
 				    struct plugin_private *priv, struct iio_channel *chann)
 {
-	char text[1024];
-	struct iio_widget *w = &combo->w;
-	int ret;
-	gchar **saved_list, **available;
-
-	iio_combo_box_init_from_builder(&combo->w, priv->adrv9002, chann, attr, attr_avail,
-					priv->builder, w_str, NULL);
-
-
-	ret = iio_channel_attr_read(w->chn, w->attr_name_avail, text,
-				    sizeof(text));
-	if (ret < 0)
-		return;
-
-	available = saved_list = g_strsplit(text, " ", 0);
-
-	/* our available is static so we can just set it here once */
-	for (; *available; available++) {
-		if (*available[0] == '\0')
-			continue;
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combo->w.widget),
-					       *available);
-	}
-
-	g_strfreev(saved_list);
+	iio_combo_box_init_no_avail_flush_from_builder(combo, priv->adrv9002, chann, attr,
+						       attr_avail, priv->builder, w_str, NULL);
 }
 
 static int adrv9002_tx_widgets_init(struct plugin_private *priv, const int chann)
@@ -1467,9 +1359,8 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 static void connect_special_signal_widgets(struct plugin_private *priv, const int chann)
 {
 	/* rx gain handling */
-	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.gain_ctrl.w.widget),
-			 "changed", G_CALLBACK(save_gain_ctl),
-			 &priv->rx_widgets[chann].rx);
+	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.gain_ctrl,
+					    G_CALLBACK(save_gain_ctl), &priv->rx_widgets[chann].rx);
 	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.gain,
 					    G_CALLBACK(iio_widget_save_block_signals_by_data_cb),
 					    &priv->rx_widgets[chann].rx.gain);
@@ -1478,19 +1369,16 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 					    G_CALLBACK(iio_widget_save_block_signals_by_data_cb),
 					    &priv->rx_widgets[chann].rx.nco_freq);
 	/* ensm mode and port en */
-	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.ensm.w.widget),
-			 "changed", G_CALLBACK(combo_box_save),
-			 &priv->rx_widgets[chann].rx.ensm);
-	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].rx.port_en.w.widget),
-			 "changed", G_CALLBACK(save_port_en),
-			 &priv->rx_widgets[chann].rx);
+	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.ensm,
+					    G_CALLBACK(save_ensm), &priv->rx_widgets[chann].rx.ensm);
+	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.port_en,
+					    G_CALLBACK(save_port_en), &priv->rx_widgets[chann].rx);
 	/* digital gain control */
-	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].intf_gain.w.widget),
-			 "changed", G_CALLBACK(save_intf_gain),
-			 &priv->rx_widgets[chann]);
-	g_signal_connect(G_OBJECT(priv->rx_widgets[chann].digital_gain_ctl.w.widget),
-			 "changed", G_CALLBACK(save_digital_gain_ctl),
-			 &priv->rx_widgets[chann]);
+	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].intf_gain,
+					    G_CALLBACK(save_intf_gain), &priv->rx_widgets[chann]);
+	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].digital_gain_ctl,
+					    G_CALLBACK(save_digital_gain_ctl),
+					    &priv->rx_widgets[chann]);
 	/* carrier frequency */
 	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.carrier,
 					    G_CALLBACK(adrv9002_save_carrier_freq),
@@ -1499,9 +1387,8 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 		return;
 
 	/* tx atten handling */
-	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].gain_ctrl.w.widget),
-			 "changed", G_CALLBACK(save_gain_ctl),
-			 &priv->tx_widgets[chann]);
+	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].gain_ctrl,
+					    G_CALLBACK(save_gain_ctl), &priv->tx_widgets[chann]);
 	/* nco freq */
 	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].nco_freq,
 					    G_CALLBACK(iio_widget_save_block_signals_by_data_cb),
@@ -1510,12 +1397,10 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 					    G_CALLBACK(iio_widget_save_block_signals_by_data_cb),
 					    &priv->tx_widgets[chann].gain);
 	/* ensm mode and port en */
-	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].ensm.w.widget),
-			 "changed", G_CALLBACK(combo_box_save),
-			 &priv->tx_widgets[chann].ensm);
-	g_signal_connect(G_OBJECT(priv->tx_widgets[chann].port_en.w.widget),
-			 "changed", G_CALLBACK(save_port_en),
-			 &priv->tx_widgets[chann]);
+	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].ensm,
+					    G_CALLBACK(save_ensm), &priv->tx_widgets[chann].ensm);
+	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].port_en,
+					    G_CALLBACK(save_port_en), &priv->tx_widgets[chann]);
 	/* carrier frequency */
 	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].carrier,
 					    G_CALLBACK(adrv9002_save_carrier_freq),
