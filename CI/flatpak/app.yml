@@ -1,0 +1,59 @@
+app-id: org.adi.IIO-Oscilloscope
+runtime: org.gnome.Platform
+runtime-version: '43'
+command: osc
+sdk: org.gnome.Sdk
+rename-desktop-file: adi-osc.desktop
+rename-icon: adi-osc
+finish-args:
+   - --socket=x11
+   - --socket=wayland
+   - --share=network
+   - --share=ipc
+   - --device=all
+   - --system-talk-name=org.freedesktop.Avahi
+   - --filesystem=xdg-config/org.adi.IIO-Oscilloscope:create
+tags:
+   - devel
+   - development
+   - nightly
+cleanup:
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - /lib/debug
+  - /lib/girepository-*
+  - /share/pkgconfig
+  - /share/aclocal
+  - /man
+  - /share/man
+  - '*.la'
+  - '*.a'
+  - /share/doc
+modules:
+# -- gtk3 widgets
+  - deps/gtkdatabox.yml
+# -- libaio
+  - deps/libaio.yml
+# -- libiio
+  - deps/libxml2.yml
+  - deps/libusb.yml
+  - deps/intltool.yml
+  - deps/avahi.yml
+  - deps/libiio.yml
+# -- libad*-iio
+  - deps/libad9166-iio.yml
+  - deps/libad9361-iio.yml
+# -- jansson
+  - deps/jansson.yml
+# -- matio
+  - deps/matio.yml
+# -- app
+  - name: osc
+    buildsystem: cmake
+    builddir: true
+    sources:
+      - type: dir
+        path: ../../
+    config-opts:
+      - -D CMAKE_INSTALL_PREFIX=/app
