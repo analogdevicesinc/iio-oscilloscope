@@ -256,8 +256,11 @@ install(TARGETS oscmain RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Set default CMAKE_PREFIX_PATH to CMAKE_SYSTEM_PREFIX_PATH
 set(CMAKE_PREFIX_PATH ${CMAKE_SYSTEM_PREFIX_PATH})
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+# Flatpaks have policies defined in the yml manifest file
+if (${CMAKE_INSTALL_PREFIX} MATCHES "/app")
+set(IS_FLATPAK_CI ON)
+endif()
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT(IS_FLATPAK_CI))
 	configure_file(org.adi.pkexec.osc.policy.cmakein ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy @ONLY)
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.adi.pkexec.osc.policy
 		DESTINATION ${CMAKE_POLKIT_PREFIX}/${CMAKE_INSTALL_DATADIR}/polkit-1/actions/)
