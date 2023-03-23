@@ -28,6 +28,7 @@ set(PLUGINS
 	adrv9009
 	adrv9009_adv
 	ad6676
+	ad7606x
 	fmcadc3
 	daq2
 	ad9739a
