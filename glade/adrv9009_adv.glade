@@ -1835,6 +1835,8 @@
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
     <property name="spacing">5</property>
+    <property name="hexpand">True</property>
+    <property name="vexpand">True</property>
     <child>
       <object class="GtkNotebook" id="notebook">
         <property name="visible">True</property>

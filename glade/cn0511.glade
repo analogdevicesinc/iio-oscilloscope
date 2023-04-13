@@ -33,6 +33,8 @@
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="spacing">16</property>
+    <property name="hexpand">True</property>
+    <property name="vexpand">True</property>
     <child>
       <object class="GtkFrame" id="dac_frame">
         <property name="visible">True</property>

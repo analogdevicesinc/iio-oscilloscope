@@ -15,6 +15,8 @@
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="spacing">10</property>
+    <property name="hexpand">True</property>
+    <property name="vexpand">True</property>
     <child>
       <object class="GtkFrame" id="frameDevice">
         <property name="visible">True</property>
