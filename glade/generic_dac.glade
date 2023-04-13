@@ -5,6 +5,8 @@
   <object class="GtkVBox" id="generic_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
+    <property name="hexpand">True</property>
+    <property name="vexpand">True</property>
     <child>
       <object class="GtkNotebook" id="plugin_notebook">
         <property name="visible">True</property>

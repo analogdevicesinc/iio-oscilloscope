@@ -4,6 +4,8 @@
   <object class="GtkVBox" id="pr_config_panel">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
+    <property name="hexpand">True</property>
+    <property name="vexpand">True</property>
     <child>
       <object class="GtkVBox" id="vbox_rp_config">
         <property name="visible">True</property>
