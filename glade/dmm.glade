@@ -29,9 +29,9 @@
   <object class="GtkBox" id="dmm_panel">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
-    <property name="spacing">5</property>
     <property name="hexpand">True</property>
     <property name="vexpand">True</property>
+    <property name="spacing">5</property>
     <child>
       <object class="GtkBox" id="box5">
         <property name="width-request">250</property>
