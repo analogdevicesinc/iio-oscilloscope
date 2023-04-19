@@ -81,7 +81,7 @@
                     <property name="primary_icon_sensitive">True</property>
                     <property name="secondary_icon_sensitive">True</property>
                     <property name="adjustment">adj_center_freq</property>
-                    <property name="digits">2</property>
+                    <property name="digits">5</property>
                     <property name="numeric">True</property>
                   </object>
                   <packing>
@@ -101,7 +101,7 @@
                     <property name="primary_icon_sensitive">True</property>
                     <property name="secondary_icon_sensitive">True</property>
                     <property name="adjustment">adj_freq_bw</property>
-                    <property name="digits">2</property>
+                    <property name="digits">5</property>
                     <property name="numeric">True</property>
                   </object>
                   <packing>
