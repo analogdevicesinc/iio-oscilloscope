@@ -6258,49 +6258,51 @@ static void buttons_table_remove_child(GtkWidget *child, gpointer data)
 
 static void math_device_cmb_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 {
-// TO DO: modify glade file to match GTK3 
-    char *device_name;
-    const char *channel_name; 	struct iio_device *iio_dev;
-    struct iio_channel *iio_chn;
-    GtkWidget *button, *buttons_table;
-    int row, col, sc;
-    unsigned int i;
 
-    device_name = gtk_combo_box_text_get_active_text(box);
-    if (!device_name)
-        return;
+        char *device_name;
+        const char *channel_name;
+        struct iio_device *iio_dev;
+        struct iio_channel *iio_chn;
+        GtkWidget *button, *buttons_table;
+        int row, col, sc;
+        unsigned int i;
 
-    iio_dev = iio_context_find_device(plot->priv->ctx, device_name);
-    if (!iio_dev)
-        goto end;
+        device_name = gtk_combo_box_text_get_active_text(box);
+        if (!device_name)
+          return;
 
-    buttons_table = GTK_WIDGET(gtk_builder_get_object(plot->priv->builder,
-            "table_channel_buttons"));
-    gtk_container_foreach(GTK_CONTAINER(buttons_table),
-        buttons_table_remove_child, buttons_table);
-    for (i = 0, sc = 0; i < iio_device_get_channels_count(iio_dev); i++) {
-        iio_chn = iio_device_get_channel(iio_dev, i);
+        iio_dev = iio_context_find_device(plot->priv->ctx, device_name);
+        if (!iio_dev)
+          goto end;
 
-        if (iio_channel_is_scan_element(iio_chn)) {
-            channel_name = iio_channel_get_name(iio_chn) ?:
-                    iio_channel_get_id(iio_chn);
-            button = gtk_button_new_with_label(channel_name);
-            row = sc % 4;
-            col = sc / 4;
-            gtk_grid_attach(GTK_GRID(buttons_table),
-                button, col, row, 5, 5);
-            sc++;
-        }
-    }
-    GList *node;
+        buttons_table = GTK_WIDGET(gtk_builder_get_object(plot->priv->builder,
+                                                          "table_channel_buttons"));
+        gtk_container_foreach(GTK_CONTAINER(buttons_table),
+                             buttons_table_remove_child, buttons_table);
 
-    for (node = gtk_container_get_children(GTK_CONTAINER(buttons_table)); node; node = g_list_next(node)) {
-        g_signal_connect(node->data, "clicked", G_CALLBACK(math_chooser_key_pressed_cb), plot);
-    }
+        for (i = 0, sc = 0; i < iio_device_get_channels_count(iio_dev); i++) {
+            iio_chn = iio_device_get_channel(iio_dev, i);
 
-    gtk_widget_show_all(buttons_table);
- end:
-    g_free(device_name);
+            if (iio_channel_is_scan_element(iio_chn)) {
+                channel_name = iio_channel_get_name(iio_chn) ?:
+                                                              iio_channel_get_id(iio_chn);
+                button = gtk_button_new_with_label(channel_name);
+                row = sc % 4;
+                col = sc / 4;
+                gtk_grid_attach(GTK_GRID(buttons_table),
+                                button, col, row, 1, 1);
+                sc++;
+              }
+          }
+        GList *node;
+
+        for (node = gtk_container_get_children(GTK_CONTAINER(buttons_table)); node; node = g_list_next(node)) {
+            g_signal_connect(node->data, "clicked", G_CALLBACK(math_chooser_key_pressed_cb), plot);
+          }
+
+        gtk_widget_show_all(buttons_table);
+end:
+        g_free(device_name);
 }
 
 static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
