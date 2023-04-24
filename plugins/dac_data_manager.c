@@ -957,7 +957,7 @@ static GtkWidget *gui_channel_create(struct dds_channel *ch)
 			0, 0, 1, 1);
 	gtk_grid_attach(GTK_GRID(channel_table),
 			gui_tone_create(&ch->t2),
-			0, 1, 1, 1);
+			1, 0, 1, 1);
 	/*gtk_table_attach(GTK_TABLE(channel_table),
 		gui_tone_create(&ch->t1),
 		0, 1, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
@@ -1163,7 +1163,8 @@ static GtkWidget *gui_dac_buffer_create(struct dac_buffer *d_buffer)
 
 	table = gtk_grid_new();
 	gtk_container_add(GTK_CONTAINER(tx_channels_frame), table);
-
+	gtk_widget_set_hexpand(tx_channels_frame, true);
+	gtk_widget_set_vexpand(tx_channels_frame, true);
 	GtkWidget *channels_scrolled_view = gui_dac_channels_tree_create(d_buffer);
 	gtk_widget_set_hexpand(channels_scrolled_view, true);
 	gtk_widget_set_vexpand(channels_scrolled_view, true);
