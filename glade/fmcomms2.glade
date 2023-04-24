@@ -791,6 +791,7 @@ configuration:</property>
                                                     <property name="visible">True</property>
                                                     <property name="can-focus">True</property>
                                                     <property name="invisible-char">•</property>
+                                                    <property name="width-chars">10</property>
                                                     <property name="text" translatable="yes">8</property>
                                                     <property name="primary-icon-activatable">False</property>
                                                     <property name="secondary-icon-activatable">False</property>
@@ -828,6 +829,7 @@ configuration:</property>
                                                     <property name="visible">True</property>
                                                     <property name="can-focus">True</property>
                                                     <property name="invisible-char">•</property>
+                                                    <property name="width-chars">15</property>
                                                     <property name="text" translatable="yes">10000000</property>
                                                     <property name="primary-icon-activatable">False</property>
                                                     <property name="secondary-icon-activatable">False</property>
@@ -950,6 +952,7 @@ configuration:</property>
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">True</property>
                                                 <property name="invisible-char">•</property>
+                                                <property name="width-chars">10</property>
                                                 <property name="primary-icon-activatable">False</property>
                                                 <property name="secondary-icon-activatable">False</property>
                                                 <property name="adjustment">adjustment_rf_bw_rx</property>
@@ -976,6 +979,7 @@ configuration:</property>
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">True</property>
                                                 <property name="invisible-char">•</property>
+                                                <property name="width-chars">10</property>
                                                 <property name="primary-icon-activatable">False</property>
                                                 <property name="secondary-icon-activatable">False</property>
                                                 <property name="adjustment">adjustment_sampl_freq_tx</property>
@@ -1004,6 +1008,7 @@ configuration:</property>
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">True</property>
                                                 <property name="invisible-char">•</property>
+                                                <property name="width-chars">15</property>
                                                 <property name="primary-icon-activatable">False</property>
                                                 <property name="secondary-icon-activatable">False</property>
                                                 <property name="adjustment">adjustment_rx_lo_freq</property>
@@ -1131,6 +1136,7 @@ configuration:</property>
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">True</property>
                                                 <property name="invisible-char">•</property>
+                                                <property name="width-chars">10</property>
                                                 <property name="text" translatable="yes">0,000000</property>
                                                 <property name="primary-icon-activatable">False</property>
                                                 <property name="secondary-icon-activatable">False</property>
@@ -1192,6 +1198,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">True</property>
                                                             <property name="invisible-char">•</property>
+                                                            <property name="width-chars">10</property>
                                                             <property name="primary-icon-activatable">False</property>
                                                             <property name="secondary-icon-activatable">False</property>
                                                             <property name="adjustment">adjustment_hw_gain_rx1</property>
@@ -1346,6 +1353,7 @@ configuration:</property>
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">True</property>
                                                             <property name="invisible-char">•</property>
+                                                            <property name="width-chars">10</property>
                                                             <property name="primary-icon-activatable">False</property>
                                                             <property name="secondary-icon-activatable">False</property>
                                                             <property name="adjustment">adjustment_hw_gain_rx2</property>
@@ -1651,6 +1659,7 @@ configuration:</property>
                                             <property name="visible">True</property>
                                             <property name="can-focus">True</property>
                                             <property name="invisible-char">•</property>
+                                            <property name="width-chars">10</property>
                                             <property name="primary-icon-activatable">False</property>
                                             <property name="secondary-icon-activatable">False</property>
                                             <property name="adjustment">adjustment_rf_bw_tx</property>
@@ -1681,6 +1690,7 @@ configuration:</property>
                                             <property name="visible">True</property>
                                             <property name="can-focus">True</property>
                                             <property name="invisible-char">•</property>
+                                            <property name="width-chars">10</property>
                                             <property name="primary-icon-activatable">False</property>
                                             <property name="secondary-icon-activatable">False</property>
                                             <property name="adjustment">adjustment_sampl_freq_tx</property>
@@ -1726,6 +1736,7 @@ configuration:</property>
                                             <property name="visible">True</property>
                                             <property name="can-focus">True</property>
                                             <property name="invisible-char">•</property>
+                                            <property name="width-chars">15</property>
                                             <property name="primary-icon-activatable">False</property>
                                             <property name="secondary-icon-activatable">False</property>
                                             <property name="adjustment">adjustment_tx_lo_freq</property>
@@ -1850,6 +1861,7 @@ configuration:</property>
                                             <property name="visible">True</property>
                                             <property name="can-focus">True</property>
                                             <property name="invisible-char">•</property>
+                                            <property name="width-chars">10</property>
                                             <property name="text" translatable="yes">0,000000</property>
                                             <property name="primary-icon-activatable">False</property>
                                             <property name="secondary-icon-activatable">False</property>
@@ -1961,6 +1973,7 @@ configuration:</property>
                                             <property name="visible">True</property>
                                             <property name="can-focus">True</property>
                                             <property name="invisible-char">•</property>
+                                            <property name="width-chars">10</property>
                                             <property name="primary-icon-activatable">False</property>
                                             <property name="secondary-icon-activatable">False</property>
                                             <property name="adjustment">adjustment_hw_gain_tx1</property>
@@ -2057,6 +2070,7 @@ configuration:</property>
                                             <property name="visible">True</property>
                                             <property name="can-focus">True</property>
                                             <property name="invisible-char">•</property>
+                                            <property name="width-chars">10</property>
                                             <property name="primary-icon-activatable">False</property>
                                             <property name="secondary-icon-activatable">False</property>
                                             <property name="adjustment">adjustment_hw_gain_tx2</property>
