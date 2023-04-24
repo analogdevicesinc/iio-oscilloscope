@@ -2699,23 +2699,14 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTable" id="table_channel_buttons">
+                  <!-- n-columns=2 n-rows=2 -->
+                  <object class="GtkGrid" id="table_channel_buttons">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="n-rows">2</property>
-                    <property name="n-columns">2</property>
-                    <child>
-                      <placeholder/>
-                    </child>
-                    <child>
-                      <placeholder/>
-                    </child>
-                    <child>
-                      <placeholder/>
-                    </child>
-                    <child>
-                      <placeholder/>
-                    </child>
+                    <property name="orientation">vertical</property>
+                    <property name="row-homogeneous">True</property>
+                    <property name="column-homogeneous">True</property>
+                    <property name="baseline-row">2</property>
                     <child>
                       <placeholder/>
                     </child>
