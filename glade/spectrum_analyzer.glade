@@ -76,6 +76,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="invisible-char">•</property>
+                    <property name="width-chars">10</property>
                     <property name="primary-icon-activatable">False</property>
                     <property name="secondary-icon-activatable">False</property>
                     <property name="adjustment">adj_center_freq</property>
@@ -94,6 +95,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="invisible-char">•</property>
+                    <property name="width-chars">10</property>
                     <property name="primary-icon-activatable">False</property>
                     <property name="secondary-icon-activatable">False</property>
                     <property name="adjustment">adj_freq_bw</property>
