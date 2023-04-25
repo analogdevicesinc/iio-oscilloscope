@@ -4,6 +4,7 @@ set -xe
 
 install_deps() {
 	export APT_PKGS="cmake \
+		gcc \
 		fftw \
 		libmatio \
 		libxml2 \
@@ -33,6 +34,7 @@ install_deps() {
 	}
 
 	brew_install_if_not_exists $APT_PKGS
+	brew cleanup
 }
 
 install_adi_pkgs() {
@@ -43,7 +45,7 @@ install_adi_pkgs() {
 
 build_osc() {
 	mkdir -p build && cd build
-	cmake ../
+	cmake -DCMAKE_C_COMPILER="/usr/bin/gcc" ../
 	make -j9
 }
 
