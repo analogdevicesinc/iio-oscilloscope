@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-2019
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: Pull the Docker Image
@@ -37,7 +37,7 @@ jobs:
                 -e OSC_BUILD_VER=%TAG% ^
                 shooteu/iio-oscilloscope C:\msys64\usr\bin\bash.exe -c '/home/docker/iio-oscilloscope/CI/docker/inside_docker.sh'
             
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: adi-osc-setup
         path: ${{ github.workspace }}\artifacts\adi-osc-setup.exe
