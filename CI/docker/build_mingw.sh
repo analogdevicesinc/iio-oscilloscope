@@ -115,13 +115,6 @@ build_deps() {
 
 build_osc() {
 	pushd /home/docker/
-	if [ -z "$HEAD_BRANCH" ]
-	then
-		export OSC_BRANCH=$BRANCH
-	else
-		export OSC_BRANCH=$HEAD_BRANCH
-		fi
-	git clone https://github.com/analogdevicesinc/iio-oscilloscope --branch $OSC_BRANCH
 	cd iio-oscilloscope
 	mkdir build
 	cd build
