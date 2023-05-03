@@ -1,8 +1,5 @@
 #/bin/bash
 set -xe
-LIBIIO_BRANCH=master
-LIBAD9361_BRANCH=master
-LIBAD9166_BRANCH=master
 
 export WORKDIR=/home/$USER/
 
@@ -65,8 +62,13 @@ get_innosetup() {
 
 build_libiio() {
 	pushd $WORKDIR
-	git clone https://github.com/analogdevicesinc/libiio --branch $LIBIIO_BRANCH
+	export DIR="$WORKDIR/libiio"
+	if [ -d "$DIR" ]; then
+  		rm -rf $DIR
+	fi
+	git clone https://github.com/analogdevicesinc/libiio
 	cd libiio
+	git checkout $LIBIIO_BRANCH
 	mkdir build
 	cd build
 	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" -DWITH_SERIAL_BACKEND=ON ../
@@ -76,8 +78,13 @@ build_libiio() {
 
 build_libad9361() {
 	pushd $WORKDIR
-	git clone https://github.com/analogdevicesinc/libad9361-iio --branch $LIBAD9361_BRANCH
+	export DIR="$WORKDIR/libad9361-iio"
+	if [ -d "$DIR" ]; then
+  		rm -rf $DIR
+	fi
+	git clone https://github.com/analogdevicesinc/libad9361-iio
 	cd libad9361-iio
+	git checkout $LIBAD9361_BRANCH
 	mkdir build
 	cd build
 	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
@@ -87,8 +94,13 @@ build_libad9361() {
 
 build_libad9166 () {
 	pushd $WORKDIR
-	git clone https://github.com/analogdevicesinc/libad9166-iio --branch $LIBAD9166_BRANCH
+	export DIR="$WORKDIR/libad9166-iio"
+	if [ -d "$DIR" ]; then
+  		rm -rf $DIR
+	fi
+	git clone https://github.com/analogdevicesinc/libad9166-iio
 	cd libad9166-iio
+	git checkout $LIBAD9166_BRANCH
 	mkdir build
 	cd build
 	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
