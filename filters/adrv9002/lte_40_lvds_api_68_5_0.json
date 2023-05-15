@@ -1,6 +1,6 @@
 {
   "clocks": {
-    "deviceClock_kHz": 38400,
+    "deviceClock_kHz": 40000,
     "clkPllVcoFreq_daHz": 884736000,
     "clkPllHsDiv": 0,
     "clkPllMode": 0,
