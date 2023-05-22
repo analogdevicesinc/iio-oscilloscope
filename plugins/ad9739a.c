@@ -185,7 +185,7 @@ static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 	}
 
 	update_from_ini(ini_fn, THIS_DRIVER, dac, ad9739a_sr_attribs,
-			ARRAY_SIZE(ad9739a_sr_attribs));
+			sr_attribs_array_size);
 
 	if (can_update_widgets)
 		reload_button_clicked(NULL, NULL);
@@ -266,7 +266,7 @@ static void save_profile(const struct osc_plugin *plugin, const char *ini_fn)
 	if (f) {
 		/* Write the section header */
 		save_to_ini(f, THIS_DRIVER, dac, ad9739a_sr_attribs,
-				ARRAY_SIZE(ad9739a_sr_attribs));
+				sr_attribs_array_size);
 		save_widgets_to_ini(f);
 		fclose(f);
 	}
