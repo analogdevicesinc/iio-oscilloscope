@@ -37,7 +37,10 @@
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
-#define DAC_DEVICE "axi-ad9739a-lpc"
+static const char *DAC_DEVICE;
+
+#define LPC_DAC_DEVICE "axi-ad9739a-lpc"
+#define HPC_DAC_DEVICE "axi-ad9739a-hpc"
 
 static struct dac_data_manager *dac_tx_manager;
 
@@ -49,15 +52,29 @@ static unsigned int num_tx;
 
 static bool can_update_widgets;
 
-static const char *ad9739a_sr_attribs[] = {
-	DAC_DEVICE".full_scale_current",
-	DAC_DEVICE".operation_mode",
-	DAC_DEVICE".out_altvoltage0_1A_frequency",
-	DAC_DEVICE".out_altvoltage1_1B_frequency",
-	DAC_DEVICE".out_altvoltage0_1A_scale",
-	DAC_DEVICE".out_altvoltage1_1B_scale",
-	DAC_DEVICE".out_altvoltage0_1A_phase",
-	DAC_DEVICE".out_altvoltage1_1B_phase",
+static const char **ad9739a_sr_attribs;
+static int sr_attribs_array_size;
+
+static const char *lpc_ad9739a_sr_attribs[] = {
+	LPC_DAC_DEVICE".full_scale_current",
+	LPC_DAC_DEVICE".operation_mode",
+	LPC_DAC_DEVICE".out_altvoltage0_1A_frequency",
+	LPC_DAC_DEVICE".out_altvoltage1_1B_frequency",
+	LPC_DAC_DEVICE".out_altvoltage0_1A_scale",
+	LPC_DAC_DEVICE".out_altvoltage1_1B_scale",
+	LPC_DAC_DEVICE".out_altvoltage0_1A_phase",
+	LPC_DAC_DEVICE".out_altvoltage1_1B_phase",
+};
+
+static const char *hpc_ad9739a_sr_attribs[] = {
+	HPC_DAC_DEVICE".full_scale_current",
+	HPC_DAC_DEVICE".operation_mode",
+	HPC_DAC_DEVICE".out_altvoltage0_1A_frequency",
+	HPC_DAC_DEVICE".out_altvoltage1_1B_frequency",
+	HPC_DAC_DEVICE".out_altvoltage0_1A_scale",
+	HPC_DAC_DEVICE".out_altvoltage1_1B_scale",
+	HPC_DAC_DEVICE".out_altvoltage0_1A_phase",
+	HPC_DAC_DEVICE".out_altvoltage1_1B_phase",
 };
 
 static const char * ad9739a_driver_attribs[] = {
@@ -267,6 +284,18 @@ static bool ad9739a_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
+	if(iio_context_find_device(osc_ctx, LPC_DAC_DEVICE)){
+	    DAC_DEVICE = LPC_DAC_DEVICE;
+	    ad9739a_sr_attribs = lpc_ad9739a_sr_attribs;
+	    sr_attribs_array_size = ARRAY_SIZE(lpc_ad9739a_sr_attribs);
+	  } else if(iio_context_find_device(osc_ctx, HPC_DAC_DEVICE)) {
+	    DAC_DEVICE = HPC_DAC_DEVICE;
+	    ad9739a_sr_attribs = hpc_ad9739a_sr_attribs;
+	    sr_attribs_array_size = ARRAY_SIZE(hpc_ad9739a_sr_attribs);
+	  } else {
+	    DAC_DEVICE="";
+	  }
+
 	return !!iio_context_find_device(osc_ctx, DAC_DEVICE);
 }
 
