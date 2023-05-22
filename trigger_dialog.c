@@ -92,7 +92,7 @@ static void trigger_load_settings(GtkBuilder *builder, const char *device)
 	if (!dev)
 		return;
 
-	ret = osc_iio_device_get_trigger(dev, &trigger);
+	ret = iio_device_get_trigger(dev, &trigger);
 	if (ret < 0)
 		trigger = NULL;
 

@@ -2195,12 +2195,16 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	const struct iio_device *trigger;
 	int ret;
 
-	ret = osc_iio_device_get_trigger(dev, &trigger);
+	ret = iio_device_get_trigger(dev, &trigger);
 	if (ret == 0 && trigger == NULL && num_enabled > 0) {
 		snprintf(warning_text, sizeof(warning_text),
 				"Device %s needs an impulse generator", name);
 		gtk_widget_set_tooltip_text(priv->capture_button, warning_text);
 		return false;
+	} else {
+		fprintf(stderr, "Failed to check if device: %s has trigger. Error:"
+			"%s\n", iio_device_get_name(dev) ?: iio_device_get_id(dev),
+			strerror(-ret));
 	}
 
 	/* Additional validation rules provided by the plugin of the device */
@@ -6767,11 +6771,15 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEvent *event)
 		bool has_trigger;
 		int ret;
 
-		ret = osc_iio_device_get_trigger(dev, &trigger);
-		if (ret == 0)
+		ret = iio_device_get_trigger(dev, &trigger);
+		has_trigger = false;
+		if (ret == 0 && trigger) {
 			has_trigger = true;
-		else
-			has_trigger = false;
+		} else {
+			fprintf(stderr, "Failed to check if device: %s has trigger. Error:"
+				"%s\n", iio_device_get_name(dev) ?: iio_device_get_id(dev),
+				strerror(-ret));
+		}
 
 		gtk_widget_set_sensitive(priv->device_trigger_menuitem,
 				has_trigger);

@@ -1420,7 +1420,7 @@ static double read_sampling_frequency(const struct iio_device *dev)
 				buf, sizeof(buf));
 	if (ret < 0) {
 		const struct iio_device *trigger;
-		ret = osc_iio_device_get_trigger(dev, &trigger);
+		ret = iio_device_get_trigger(dev, &trigger);
 		if (ret == 0 && trigger) {
 			attr = iio_device_find_attr(trigger, "sampling_frequency");
 			if (!attr)
@@ -1430,6 +1430,10 @@ static double read_sampling_frequency(const struct iio_device *dev)
 					sizeof(buf));
 			else
 				ret = -ENOENT;
+		} else {
+			fprintf(stderr, "Failed to check if device: %s has trigger. Error:"
+				"%s\n", iio_device_get_name(dev) ?: iio_device_get_id(dev),
+				strerror(-ret));
 		}
 	}
 
