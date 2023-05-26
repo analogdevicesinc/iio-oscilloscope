@@ -21,6 +21,273 @@
 #include "../iio_utils.h"
 #include "../config.h"
 #include "dac_data_manager.h"
+#include "../cJSON/cJSON.h"
+
+/*---------------------------------------------------------------------------
+ *			libadrv9002-iio structures
+ */
+
+/**
+ * @struct rx_radio_channel_config
+ * @brief RX channel configuration
+ *
+ * A structure containing the configuration for a single RX channel
+ */
+typedef struct rx_radio_channel_config
+{
+	/** Enable channel */
+	bool enabled;
+	/** Enable high performance ADC, otherwise use low-power ADC */
+	bool adc_high_performance_mode;
+	/** Enable ADC frequency offset correction */
+	bool frequency_offset_correction_enable;
+	/** Power mode of front-end analog filter Options are:
+	0 - Low power
+	1 - Medium power
+	2 - High power
+	*/
+	uint8_t analog_filter_power_mode;
+	/** Use second order (Biquad) analog filter, otherwise first order TIA is used */
+	bool analog_filter_biquad;
+	/** Front-end analog filter 1dB (Biquad) or 3 dB (TIA) bandwidth in Hz*/
+	uint32_t analog_filter_bandwidth_hz;
+	/** Channel bandwidth of interest at ADC in Hz*/
+	uint32_t channel_bandwidth_hz;
+	/** RX channel sample rate at digital interface */
+	uint32_t sample_rate_hz;
+	/** Enable NCO to perform frequency translation */
+	bool nco_enable;
+	/** NCO frequency in Hz */
+	int32_t nco_frequency_hz;
+	/** RF port source used for channel Options are:
+	0 - RX_A
+	1 - RX_B
+	*/
+	uint8_t rf_port;
+
+} rx_radio_channel_config;
+
+#define CHANNEL_COUNT 2
+
+/**
+ * @struct tx_radio_channel_config
+ * @brief TX channel configuration
+ *
+ * A structure containing the configuration for a single TX channel
+ */
+typedef struct tx_radio_channel_config
+{
+	/** Enable channel */
+	bool enabled;
+	/** Data rate at digital interface in Hz */
+	uint32_t sample_rate_hz;
+	/** Enable DAC frequency offset correction */
+	bool frequency_offset_correction_enable;
+	/** Power mode of front-end analog filter Options are:
+	0 - Low power
+	1 - Medium power
+	2 - High power
+	*/
+	uint8_t analog_filter_power_mode;
+	/** Channel bandwidth of interest at DAC in Hz*/
+	uint32_t channel_bandwidth_hz;
+	/** Enable observation path */
+	bool orx_enabled;
+	/** Set external loopback mode. Options are:
+	0 - Disabled
+	1 - Before PA
+	2 - After PA
+	*/
+	uint8_t elb_type;
+} tx_radio_channel_config;
+
+/**
+ * @struct radio_config
+ * @brief Device configuration
+ *
+ * A structure containing the configuration for the top-level device
+ */
+typedef struct radio_config
+{
+	/** SSI lanes to use Valid cases:
+	  1 (CMOS/LVDS)
+	  2 (LVDS)
+	  4 (CMOS)
+	*/
+	uint8_t ssi_lanes;
+	/** Use DDR mode at digital interface, false will use SDR */
+	bool ddr;
+	/** Use short strobe mode at digital interface, false will use long strobe */
+	bool short_strobe;
+	/** Use LVDS mode at digital interface, false will use CMOS*/
+	bool lvds;
+	/** ADC clock rate mode select. Options are:
+	1 = LOW
+	2 = MEDIUM
+	3 = HIGH
+	*/
+	uint8_t adc_rate_mode;
+	/** Use FDD duplex mode, false will use TDD */
+	bool fdd;
+	/** Channel configurations for RX1 and RX2 */
+	rx_radio_channel_config rx_config[2];
+	/** Channel configurations for TX1 and TX2 */
+	tx_radio_channel_config tx_config[2];
+
+} radio_config;
+
+/**
+ * @struct clock_config
+ * @brief Clock configuration
+ *
+ * A structure containing the configuration for the device clock
+ */
+typedef struct clock_config
+{
+	/** Device clock frequency in kHz */
+	uint32_t device_clock_frequency_khz;
+	bool device_clock_output_enable;
+	uint8_t device_clock_output_divider;
+	/** Enable high performance PLL mode, otherwise low-power mode is used*/
+	bool clock_pll_high_performance_enable;
+	/** PLL power mode. Options:
+	   0 = low power
+	   1 = medium performance
+	   2 = high performance
+	*/
+	uint8_t clock_pll_power_mode;
+	/** Processor clock divider. Valid values are 1, 2, 4, 8, 16, 32, 64, 128, 256
+	 */
+	uint8_t processor_clock_divider;
+} clock_config;
+
+/**
+ * @struct adrv9002_config
+ * @brief Top-level configuration
+ *
+ * A structure containing the configuration for the top-level device
+ */
+typedef struct adrv9002_config
+{
+	radio_config radio_cfg;
+	clock_config clk_cfg;
+} adrv9002_config;
+
+static adrv9002_config lte_defaults(void)
+{
+	radio_config radio_config;
+	radio_config.ssi_lanes = 2;
+	radio_config.ddr = true; // needs logic
+	radio_config.short_strobe = true;
+	radio_config.lvds = true;
+	radio_config.adc_rate_mode = 3;
+	radio_config.fdd = false;
+
+	tx_radio_channel_config tx_config[2];
+	int i;
+	for(i = 0; i < CHANNEL_COUNT; i++) {
+		tx_config[i].enabled = true;
+		tx_config[i].sample_rate_hz = 61440000;
+		tx_config[i].frequency_offset_correction_enable = false;
+		tx_config[i].analog_filter_power_mode = 2;
+		tx_config[i].channel_bandwidth_hz = 38000000;
+		tx_config[i].elb_type = 0;
+		tx_config[i].orx_enabled = false;
+
+		radio_config.tx_config[i] = tx_config[i];
+	}
+
+	rx_radio_channel_config rx_config[2];
+	for(i = 0; i < CHANNEL_COUNT; i++) {
+		rx_config[i].enabled = true;
+		rx_config[i].sample_rate_hz = 61440000;
+		rx_config[i].frequency_offset_correction_enable = false;
+		rx_config[i].analog_filter_power_mode = 2;
+		rx_config[i].channel_bandwidth_hz = 38000000;
+		rx_config[i].adc_high_performance_mode = true;
+		rx_config[i].analog_filter_biquad = false;	    // got from default cfg
+		rx_config[i].analog_filter_bandwidth_hz = 18000000; // got from default cfg
+		rx_config[i].nco_enable = false;
+		rx_config[i].nco_frequency_hz = 0;
+		rx_config[i].rf_port = 0;
+
+		radio_config.rx_config[i] = rx_config[i];
+	}
+	adrv9002_config cfg;
+	cfg.radio_cfg = radio_config;
+
+	clock_config clock_config;
+	clock_config.device_clock_frequency_khz = 38400;
+	clock_config.device_clock_output_enable = true;
+	clock_config.device_clock_output_divider = 2;
+	clock_config.clock_pll_high_performance_enable = false;
+	clock_config.clock_pll_power_mode = 2;
+	clock_config.processor_clock_divider = 1;
+
+	cfg.clk_cfg = clock_config;
+	return cfg;
+}
+
+static adrv9002_config lte_lvs_3072_MHz_10(void)
+{
+	rx_radio_channel_config rx1;
+	rx1.enabled = 1;
+	rx1.adc_high_performance_mode = true;
+	rx1.frequency_offset_correction_enable = false;
+	rx1.analog_filter_power_mode = 2; // High power/performance
+	rx1.analog_filter_biquad = false;
+	rx1.channel_bandwidth_hz = 18000000;
+	rx1.sample_rate_hz = 30720000;
+	rx1.nco_enable = false;
+	rx1.nco_frequency_hz = 0;
+	rx1.rf_port = 0;		    // RX-A
+	rx1.analog_filter_bandwidth_hz = 0; // TODO: not used?
+
+	// Copy rx1 to rx2
+	rx_radio_channel_config rx2 = rx1;
+	rx2.rf_port = 0; // RX-B
+
+	// TX side
+	tx_radio_channel_config tx1;
+	tx1.enabled = 1;
+	tx1.sample_rate_hz = 30720000;
+	tx1.frequency_offset_correction_enable = false;
+	tx1.analog_filter_power_mode = 2; // High power/performance
+	tx1.channel_bandwidth_hz = 18000000;
+	tx1.orx_enabled = true;
+	tx1.elb_type = 2;
+
+	// Copy tx1 to tx2
+	tx_radio_channel_config tx2 = tx1;
+
+	radio_config r_cfg;
+	r_cfg.adc_rate_mode = 3; // High Performance
+	r_cfg.fdd = false;
+	r_cfg.lvds = true;
+	r_cfg.ssi_lanes = 2;
+	r_cfg.ddr = true;
+	r_cfg.adc_rate_mode = 3; // High Performance
+	r_cfg.short_strobe = true;
+	r_cfg.rx_config[0] = rx1;
+	r_cfg.rx_config[1] = rx2;
+	r_cfg.tx_config[0] = tx1;
+	r_cfg.tx_config[1] = tx2;
+
+	clock_config clk_cfg;
+	clk_cfg.device_clock_frequency_khz = 38400;
+	clk_cfg.clock_pll_high_performance_enable = true;
+	clk_cfg.clock_pll_power_mode = 2; // High power/performance
+	clk_cfg.processor_clock_divider = 1;
+	clk_cfg.device_clock_output_divider = 0; // TODO: not used?
+	clk_cfg.device_clock_output_enable = 0;
+
+	adrv9002_config adrv_cfg;
+	adrv_cfg.clk_cfg = clk_cfg;
+	adrv_cfg.radio_cfg = r_cfg;
+
+	return adrv_cfg;
+}
+/*---------------------------------------------------------------------------*/
 
 #ifndef ENOTSUPP
 #define ENOTSUPP	524
@@ -127,6 +394,8 @@ struct plugin_private {
 	/* adc */
 	const char *adc_name[NUM_MAX_ADC];
 	int n_adcs;
+	/* profile generator */
+	int current_preset;
 };
 
 #define dialog_box_message(widget, title, level, msg) { 				\
@@ -927,6 +1196,1168 @@ err:
 		gtk_file_chooser_set_filename(chooser, "(None)");
 }
 
+static void profile_gen_append_debug_info(gpointer data, char *string)
+{
+	struct plugin_private *priv = data;
+	GtkLabel *info_label;
+	char message[BUFSIZ];
+
+	info_label = GTK_LABEL(gtk_builder_get_object(priv->builder, "label_profile_debug"));
+	sprintf(message, "%s%s", gtk_label_get_text(info_label), g_locale_to_utf8(string, -1, NULL, NULL, NULL));
+	gtk_label_set_text(info_label, message);
+}
+
+static void profile_gen_set_debug_info(gpointer data, char *string)
+{
+	struct plugin_private *priv = data;
+	gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(priv->builder, "label_profile_debug")),
+			   g_locale_to_utf8(string, -1, NULL, NULL, NULL));
+}
+
+static void profile_gen_save_type_changed(GtkComboBoxText *self, struct plugin_private *priv)
+{
+	// 0 - stream image
+	// 1 - profile
+	bool save_type;
+	char filename[64];
+
+	save_type = atoi(gtk_combo_box_get_active_id(GTK_COMBO_BOX(self)));
+	sprintf(filename, "adrv9002%s", save_type ? ".json" : ".stream");
+	GtkFileChooser *chooser = GTK_FILE_CHOOSER(gtk_builder_get_object(priv->builder, "save_panel"));
+	gtk_file_chooser_set_current_name(chooser, filename);
+}
+
+static void profile_gen_save_dialog_show(GtkButton *self, gpointer data)
+{
+	struct plugin_private *priv = data;
+	GtkFileChooser *chooser;
+
+	chooser = GTK_FILE_CHOOSER(gtk_builder_get_object(priv->builder, "save_panel"));
+	gtk_file_chooser_set_action(chooser, GTK_FILE_CHOOSER_ACTION_SAVE);
+	gtk_file_chooser_set_do_overwrite_confirmation(chooser, TRUE);
+
+	gtk_file_chooser_set_current_folder(chooser, getenv("HOME"));
+	profile_gen_save_type_changed(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, "cb_save_type")), priv);
+
+	gtk_widget_show(GTK_WIDGET(chooser));
+}
+
+static void profile_gen_update_orx(GtkComboBox *self, struct plugin_private *priv)
+{
+	int chann;
+	char widget_str[25];
+	bool tdd_en, tx_en;
+
+	tdd_en = atoi(gtk_combo_box_get_active_id(
+			 GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_radio_duplex")))) == 0;
+	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		sprintf(widget_str, "cb_tx_chan%d_en", chann + 1);
+		tx_en = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)));
+
+		sprintf(widget_str, "frame_radio_orx%d", chann + 1);
+		gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(priv->builder, widget_str)),
+					 tx_en && tdd_en);
+
+		// deactivate if disabled
+		if(!(tx_en && tdd_en)) {
+			sprintf(widget_str, "cb_radio_orx%d_en", chann + 1);
+			gtk_toggle_button_set_active(
+				GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)), false);
+		}
+	}
+}
+
+char *extract_value_between(const char *str, const char *begin, const char *end)
+{
+	// if end is empty it will stop at the end of str
+	const char *i1 = strstr(str, begin);
+	if(i1 != NULL) {
+		const size_t pl1 = strlen(begin);
+		const char *i2 = strcmp(end, "") != 0 ? strstr(i1 + pl1, end) : NULL;
+		const size_t mlen = strcmp(end, "") != 0 ? i2 - (i1 + pl1) : (int)(strlen(i1) - pl1);
+		char *ret = malloc(mlen + 1);
+
+		if(ret) {
+			memcpy(ret, i1 + pl1, mlen);
+			ret[mlen] = '\0';
+			return ret;
+		}
+	}
+
+	return NULL;
+}
+
+static int profile_gen_get_ssi_lanes_from_device(gpointer data, uint8_t *ssi_lanes)
+{
+	struct plugin_private *priv = data;
+	char message[BUFSIZ];
+	char profile_config[512];
+	int ret = 0;
+
+	ret = iio_device_attr_read(priv->adrv9002, "profile_config", profile_config, sizeof(profile_config));
+	if(ret < 0) {
+		sprintf(message, "\nFailed to get device attr read %s! error code: %d", "profile_config", ret);
+		goto iio_error;
+	}
+
+	char *ssi_interface = extract_value_between(profile_config, "SSI interface:", "");
+	if(ssi_interface == NULL) {
+		sprintf(message, "\nFailed to get SSI interface!");
+		ret = -ENODEV;
+		goto iio_error;
+	}
+	if(strstr(ssi_interface, "CMOS/LVDS") != NULL) {
+		*ssi_lanes = 1;
+	} else if(strstr(ssi_interface, "LVDS") != NULL) {
+		*ssi_lanes = 2;
+	} else if(strstr(ssi_interface, "CMOS") != NULL) {
+		*ssi_lanes = 4;
+	} else {
+		sprintf(message, "\nFailed to get SSI interface! got '%s' instead", ssi_interface);
+		ret = -EINVAL;
+		goto iio_error;
+	}
+	free(ssi_interface);
+
+iio_error:
+	profile_gen_set_debug_info(data, message);
+
+	return ret;
+}
+
+static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpointer data)
+{
+	struct adrv9002_config default_cfg = lte_lvs_3072_MHz_10();
+	struct plugin_private *priv = data;
+	int ret = 0;
+	char message[BUFSIZ];
+
+	radio_config radio_config;
+	char buf[1024];
+	char profile_config[512];
+	ret = iio_device_attr_read(priv->adrv9002, "profile_config", profile_config, sizeof(profile_config));
+	if(ret < 0) {
+		sprintf(message, "\nFailed to get device attr read %s! error code: %d", "profile_config", ret);
+		goto iio_error;
+	}
+
+	// radio_config.ssi_lanes
+	profile_gen_get_ssi_lanes_from_device(data, &radio_config.ssi_lanes);
+
+	// radio_config.ddr
+	radio_config.ddr = default_cfg.radio_cfg.ddr; // TODO
+
+	// radio_config.short_strobe
+	radio_config.short_strobe = default_cfg.radio_cfg.short_strobe; // TODO
+
+	// radio_config.lvds
+	radio_config.lvds = radio_config.ssi_lanes == 2;
+
+	// radio_config.adc_rate_mode
+	radio_config.adc_rate_mode = default_cfg.radio_cfg.adc_rate_mode; // TODO
+
+	char *duplex_mode = extract_value_between(profile_config, "Duplex Mode:", "\n");
+	if(duplex_mode == NULL) {
+		sprintf(message, "\nFailed to get Duplex Mode!");
+		ret = -ENODEV;
+		goto iio_error;
+	}
+	if(strstr(duplex_mode, "FDD") != NULL) {
+		radio_config.fdd = true;
+	} else if(strstr(duplex_mode, "TDD") != NULL) {
+		radio_config.fdd = false;
+	} else {
+		sprintf(message, "\nFailed to get Duplex Mode! got '%s' instead", duplex_mode);
+		ret = -EINVAL;
+		goto iio_error;
+	}
+	free(duplex_mode);
+
+	// radio_config.tx_config
+	tx_radio_channel_config tx_config[2];
+
+	int chann;
+	char chann_str[32];
+	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		sprintf(chann_str, "voltage%d", chann);
+		struct iio_channel *tx = iio_device_find_channel(priv->adrv9002, chann_str, true);
+		if(tx == NULL) {
+			sprintf(message, "\nFailed to find channel: %s!", chann_str);
+			ret = -EINVAL;
+			goto iio_error;
+		}
+
+		// tx.enabled
+		ret = iio_channel_attr_read(tx, "en", buf, sizeof(buf));
+		if(ret < 0) {
+			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str, "en",
+				ret);
+			goto iio_error;
+		}
+		tx_config[chann].enabled = atoi(buf);
+
+		// tx.sample_rate_hz
+		ret = iio_channel_attr_read(tx, "sampling_frequency", buf, sizeof(buf));
+		if(ret < 0) {
+			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
+				"sampling_frequency", ret);
+			goto iio_error;
+		}
+		tx_config[chann].sample_rate_hz = atoi(buf);
+
+		// tx.frequency_offset_correction_enable
+		tx_config[chann].frequency_offset_correction_enable =
+			default_cfg.radio_cfg.tx_config[chann].frequency_offset_correction_enable; // TODO
+
+		// tx.analog_filter_power_mode
+		tx_config[chann].analog_filter_power_mode =
+			default_cfg.radio_cfg.tx_config[chann].analog_filter_power_mode; // TODO
+
+		// tx.channel_bandwidth_hz
+		ret = iio_channel_attr_read(tx, "rf_bandwidth", buf, sizeof(buf));
+		if(ret < 0) {
+			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
+				"rf_bandwidth", ret);
+			goto iio_error;
+		}
+		tx_config[chann].channel_bandwidth_hz = atoi(buf);
+
+		// tx.elb_type
+		tx_config[chann].elb_type = default_cfg.radio_cfg.tx_config[chann].elb_type; // TODO
+
+		radio_config.tx_config[chann] = tx_config[chann];
+	}
+
+	// radio_config.rx_config
+	rx_radio_channel_config rx_config[2];
+
+	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		sprintf(chann_str, "voltage%d", chann);
+		struct iio_channel *rx = iio_device_find_channel(priv->adrv9002, chann_str, false);
+		if(rx == NULL) {
+			sprintf(message, "\nFailed to find channel %s!", chann_str);
+			ret = -EINVAL;
+			goto iio_error;
+		}
+
+		// rx.enabled
+		ret = iio_channel_attr_read(rx, "en", buf, sizeof(buf));
+		if(ret < 0) {
+			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str, "en",
+				ret);
+			goto iio_error;
+		}
+		rx_config[chann].enabled = atoi(buf);
+
+		// rx.sample_rate_hz
+		ret = iio_channel_attr_read(rx, "sampling_frequency", buf, sizeof(buf));
+		if(ret < 0) {
+			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
+				"sampling_frequency", ret);
+			goto iio_error;
+		}
+		rx_config[chann].sample_rate_hz = atoi(buf);
+
+		// rx.frequency_offset_correction_enable
+		rx_config[chann].frequency_offset_correction_enable =
+			default_cfg.radio_cfg.rx_config[chann].frequency_offset_correction_enable; // TODO
+
+		// rx.analog_filter_power_mode
+		rx_config[chann].analog_filter_power_mode =
+			default_cfg.radio_cfg.rx_config[chann].analog_filter_power_mode; // TODO
+
+		// rx.channel_bandwidth_hz
+		ret = iio_channel_attr_read(rx, "rf_bandwidth", buf, sizeof(buf));
+		if(ret < 0) {
+			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
+				"rf_bandwidth", ret);
+			goto iio_error;
+		}
+		rx_config[chann].channel_bandwidth_hz = atoi(buf);
+
+		// rx.adc_high_performance_mode
+		ret = iio_device_debug_attr_read(priv->adrv9002, chann == 0 ? "rx0_adc_type" : "rx1_adc_type",
+						       buf, sizeof(buf));
+		if(ret < 0) {
+			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
+				chann == 0 ? "rx0_adc_type" : "rx1_adc_type", ret);
+			goto iio_error;
+		}
+		rx_config[chann].adc_high_performance_mode = strstr(buf, "HP") != NULL;
+
+		// rx.analog_filter_biquad
+		rx_config[chann].analog_filter_biquad =
+			default_cfg.radio_cfg.rx_config[chann].analog_filter_biquad; // TODO
+
+		// rx.analog_filter_bandwidth_hz
+		rx_config[chann].analog_filter_bandwidth_hz =
+			default_cfg.radio_cfg.rx_config[chann].analog_filter_bandwidth_hz; // TODO
+
+		// rx.nco_enable
+		rx_config[chann].nco_enable = default_cfg.radio_cfg.rx_config[chann].nco_enable; // TODO
+
+		// rx.nco_frequency_hz
+		ret = iio_channel_attr_read(rx, "nco_frequency", buf, sizeof(buf));
+		if(ret < 0) {
+			if(ret == -ENOTSUPP) {
+				rx_config[chann].nco_frequency_hz = 0;
+			} else {
+				sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
+					"nco_frequency", ret);
+				goto iio_error;
+			}
+		} else {
+			rx_config[chann].nco_frequency_hz = atoi(buf);
+		}
+
+		// rx.rf_port
+		rx_config[chann].rf_port = default_cfg.radio_cfg.rx_config[chann].rf_port; // TODO
+
+		radio_config.rx_config[chann] = rx_config[chann];
+
+		// tx.orx_enabled
+		ret = iio_channel_attr_read(rx, "orx_en", buf, sizeof(buf));
+		if(ret < 0) {
+			if(ret == -ENODEV) {
+				tx_config[chann].orx_enabled =
+					default_cfg.radio_cfg.tx_config[chann].orx_enabled; // Temporary fix
+			} else {
+				sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
+					"orx_en", ret);
+				goto iio_error;
+			}
+		} else {
+			tx_config[chann].orx_enabled = atoi(buf);
+		}
+	}
+
+	cfg->radio_cfg = radio_config;
+
+	// clock_config
+	clock_config clock_config;
+
+	// clock_config.device_clock_frequency_khz
+	char *device_clock = extract_value_between(profile_config, "Device clk(Hz): ", "\n");
+	if(device_clock == NULL) {
+		sprintf(message, "\nFailed to get Device clk!");
+		ret = -ENODEV;
+		goto iio_error;
+	}
+	clock_config.device_clock_frequency_khz = atoi(device_clock) / 1000; // convert Hz to kHz
+	free(device_clock);
+
+	// clock_config.device_clock_output_divider
+	char *device_divider = extract_value_between(profile_config, "ARM Power Saving Clk Divider: ", "\n");
+	if(device_divider == NULL) {
+		sprintf(message, "\nFailed to get Saving Clk Divider!");
+		ret = -EINVAL;
+		goto iio_error;
+	}
+	clock_config.device_clock_output_divider = atoi(device_divider);
+	free(device_divider);
+
+	// clock_config.clock_pll_high_performance_enable
+	clock_config.clock_pll_high_performance_enable = default_cfg.clk_cfg.clock_pll_high_performance_enable; // TODO
+
+	// clock_config.clock_pll_power_mode
+	clock_config.clock_pll_power_mode = default_cfg.clk_cfg.clock_pll_power_mode; // TODO
+
+	// clock_config.processor_clock_divider
+	clock_config.processor_clock_divider = default_cfg.clk_cfg.processor_clock_divider; // TODO
+
+	cfg->clk_cfg = clock_config;
+
+	return 0;
+iio_error:
+	profile_gen_set_debug_info(data, message);
+	return ret == 0 ? -1 : ret;
+}
+
+static void populate_combo_box(GtkComboBoxText *combo_box, char **list, guint len, bool has_entry, char *entry_default)
+{
+	gtk_combo_box_text_remove_all(combo_box);
+
+	if(len) {
+		bool present = false;
+		guint i;
+		for(i = 0; i < len; ++i) {
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combo_box), list[i]);
+			if(strcmp(gtk_combo_box_text_get_active_text(combo_box), list[i]) == 0) {
+				present = true;
+			}
+		}
+
+		// if current value is not found in list, set it to list[0]
+		if(!present) {
+			gtk_entry_set_text(GTK_ENTRY(gtk_bin_get_child(GTK_BIN(GTK_COMBO_BOX(combo_box)))), list[0]);
+		}
+	}
+
+	gtk_widget_set_sensitive(GTK_WIDGET(gtk_bin_get_child(GTK_BIN(combo_box))), has_entry);
+	if(has_entry) {
+		gtk_entry_set_text(GTK_ENTRY(gtk_bin_get_child(GTK_BIN(combo_box))), entry_default);
+	}
+}
+
+static void set_all_cb_to_same_text(char *cb_name_list[], guint len, char *text, gpointer data)
+{
+	struct plugin_private *priv = data;
+
+	guint i;
+	for(i = 0; i < len; i++) {
+		GtkComboBoxText *obj = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, cb_name_list[i]));
+		gtk_entry_set_text(GTK_ENTRY(gtk_bin_get_child(GTK_BIN(obj))), text);
+	}
+}
+
+static int profile_gen_config_set_live_device(struct adrv9002_config *cfg, gpointer data, bool reset_preset)
+{
+	struct plugin_private *priv = data;
+	int ret = profile_gen_config_get_from_device(cfg, data);
+
+	if(ret != 0)
+		return ret;
+	if(!reset_preset)
+		return 0;
+
+	char widget_str[256];
+	char value[256];
+	int chann = 0;
+	char str_value[25];
+
+	// Radio
+	// ssi_lanes
+	switch(cfg->radio_cfg.ssi_lanes) {
+	case 1:
+		sprintf(str_value, "CMOS/LVDS");
+		break;
+
+	case 2:
+		sprintf(str_value, "LVDS");
+		break;
+	case 4:
+		sprintf(str_value, "CMOS");
+		break;
+	default:
+		profile_gen_append_debug_info(priv, "\nFailed to get ssi_lanes!");
+		sprintf(str_value, "failed to read");
+		break;
+	}
+	gtk_label_set_label(GTK_LABEL(gtk_builder_get_object(priv->builder, "label_radio_ssi")), str_value);
+
+	// duplex mode
+	sprintf(str_value, "%d", cfg->radio_cfg.fdd);
+	gtk_combo_box_set_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_radio_duplex")), str_value);
+
+	// RX and TX
+	size_t ch_type;
+	char *ch_types[2] = {"rx", "tx"};
+	for(ch_type = 0; ch_type < ARRAY_SIZE(ch_types); ch_type++) {
+		for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+			// channel_bandwidth_hz
+			sprintf(widget_str, "cb_%s_chan%d_bw", ch_types[ch_type], chann + 1);
+			sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].channel_bandwidth_hz);
+			populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)), NULL, 0, TRUE,
+					   value);
+
+			// sample_rate_hz
+			sprintf(widget_str, "cb_%s_chan%d_interface", ch_types[ch_type], chann + 1);
+			sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].sample_rate_hz);
+			populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)), NULL, 0, TRUE,
+					   value);
+
+			// enabled
+			sprintf(widget_str, "cb_%s_chan%d_en", ch_types[ch_type], chann + 1);
+			if(reset_preset) {
+				gtk_toggle_button_set_active(
+					GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)),
+					cfg->radio_cfg.rx_config[chann].enabled);
+			}
+
+			// frequency_offset_correction_enable
+			sprintf(widget_str, "cb_%s_chan%d_correction", ch_types[ch_type], chann + 1);
+			if(reset_preset) {
+				gtk_toggle_button_set_active(
+					GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)),
+					cfg->radio_cfg.rx_config[chann].frequency_offset_correction_enable);
+			}
+		}
+	}
+
+	// RX specific
+	// rf_port
+	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		sprintf(widget_str, "cb_rx_chan%d_rf_port", chann + 1);
+		sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].rf_port);
+		if(reset_preset) {
+			gtk_combo_box_set_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, widget_str)),
+						    value);
+		}
+	}
+
+	// update duplex state
+	profile_gen_update_orx(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_radio_duplex")), priv);
+
+	return 0;
+}
+
+static int get_index_of_string(char **list, guint len, char *string)
+{
+	guint i;
+	for(i = 0; i < len; i++) {
+		if(strcmp(list[i], string) == 0) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static int profile_gen_config_set_LTE(struct adrv9002_config *cfg, gpointer data, bool reset_preset)
+{
+	struct plugin_private *priv = data;
+	char widget_str[256] = "";
+	char value[256] = "";
+	char str_value[25] = "";
+	char *value_list[10];
+	int value_count = 0;
+	guint chann;
+	struct adrv9002_config lte_default_config = lte_defaults();
+	cfg = &lte_default_config;
+	size_t ch_type;
+	const char *ch_types[2] = {"rx", "tx"};
+
+	// col 1 is sample rate and col 2 is bandwidth
+	guint freq_table_len = 6;
+	char *freq_table[2][6] = {{"1920000", "3840000", "7680000", "12360000", "30720000", "61440000"},
+				  {"1008000", "2700000", "4500000", "90000000", "18000000", "38000000"}};
+
+	// get current device SSI Interface
+	profile_gen_get_ssi_lanes_from_device(data, &cfg->radio_cfg.ssi_lanes);
+
+	// overwrite with LTE default config
+	cfg = &lte_default_config;
+	cfg->radio_cfg.ssi_lanes = cfg->radio_cfg.ssi_lanes;
+
+	if(cfg->radio_cfg.ssi_lanes == 1) { // 1 (CMOS/LVDS)
+		value_count = 0;
+	} else if(cfg->radio_cfg.ssi_lanes == 2) { // 2 (LVDS)
+		int j;
+		value_count = 6;
+		for(j = 0; j < value_count; j++) {
+			value_list[j] = freq_table[0][j];
+		}
+	} else if(cfg->radio_cfg.ssi_lanes == 4) { // 4 (CMOS)
+		value_list[0] = freq_table[0][0];
+		value_count = 1;
+	}
+
+	// sample_rate_hz
+	for(ch_type = 0; ch_type < ARRAY_SIZE(ch_types); ch_type++) {
+		for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+			sprintf(widget_str, "cb_%s_chan%d_interface", ch_types[ch_type], chann + 1);
+			populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)),
+					   value_list, value_count, false, NULL);
+			if(reset_preset) {
+				// default value from config
+				sprintf(value, "%d",
+					ch_type ? cfg->radio_cfg.tx_config[chann].sample_rate_hz
+						: cfg->radio_cfg.rx_config[chann].sample_rate_hz);
+				gtk_entry_set_text(GTK_ENTRY(gtk_bin_get_child(GTK_BIN(GTK_COMBO_BOX(
+							   gtk_builder_get_object(priv->builder, widget_str))))),
+						   value);
+			}
+		}
+	}
+
+	// channel_bandwidth_hz
+	for(ch_type = 0; ch_type < ARRAY_SIZE(ch_types); ch_type++) {
+		for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+			sprintf(widget_str, "cb_%s_chan%d_interface", ch_types[ch_type], chann + 1);
+			char *current_sample_rate = gtk_combo_box_text_get_active_text(
+				GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)));
+			sprintf(value, "%d",
+				atoi(freq_table[1][get_index_of_string(freq_table[0], freq_table_len,
+								       current_sample_rate)]));
+			value_list[0] = value;
+			value_count = 1;
+
+			sprintf(widget_str, "cb_%s_chan%d_bw", ch_types[ch_type], chann + 1);
+			populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)),
+					   value_list, value_count, false, NULL);
+			if(reset_preset) {
+				// default value from config
+				sprintf(value, "%d",
+					ch_type ? cfg->radio_cfg.tx_config[chann].channel_bandwidth_hz
+						: cfg->radio_cfg.rx_config[chann].channel_bandwidth_hz);
+				gtk_entry_set_text(GTK_ENTRY(gtk_bin_get_child(GTK_BIN(GTK_COMBO_BOX(
+							   gtk_builder_get_object(priv->builder, widget_str))))),
+						   value);
+			}
+		}
+	}
+
+	// Radio
+	// ssi_lanes
+	switch(cfg->radio_cfg.ssi_lanes) {
+	case 1:
+		sprintf(str_value, "CMOS/LVDS");
+		break;
+
+	case 2:
+		sprintf(str_value, "LVDS");
+		break;
+	case 4:
+		sprintf(str_value, "CMOS");
+		break;
+	default:
+		profile_gen_set_debug_info(priv, "\nFailed to get ssi_lanes!");
+		sprintf(str_value, "failed to read");
+		break;
+	}
+	gtk_label_set_label(GTK_LABEL(gtk_builder_get_object(priv->builder, "label_radio_ssi")), str_value);
+
+	// duplex mode
+	sprintf(str_value, "%d", cfg->radio_cfg.fdd);
+	if(reset_preset) {
+		gtk_combo_box_set_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_radio_duplex")),
+					    str_value);
+	}
+
+	// RX and TX
+	for(ch_type = 0; ch_type < ARRAY_SIZE(ch_types); ch_type++) {
+		for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+			// enabled
+			sprintf(widget_str, "cb_%s_chan%d_en", ch_types[ch_type], chann + 1);
+			if(reset_preset) {
+				gtk_toggle_button_set_active(
+					GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)),
+					cfg->radio_cfg.rx_config[chann].enabled);
+			}
+
+			// frequency_offset_correction_enable
+			sprintf(widget_str, "cb_%s_chan%d_correction", ch_types[ch_type], chann + 1);
+			if(reset_preset) {
+				gtk_toggle_button_set_active(
+					GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)),
+					cfg->radio_cfg.rx_config[chann].frequency_offset_correction_enable);
+			}
+		}
+	}
+
+	// RX specific
+	// ft_port
+	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		sprintf(widget_str, "cb_rx_chan%d_rf_port", chann + 1);
+		sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].rf_port);
+		if(reset_preset) {
+			gtk_combo_box_set_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, widget_str)),
+						    value);
+		}
+	}
+
+	// update duplex state
+	profile_gen_update_orx(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_radio_duplex")), priv);
+
+	return 0;
+}
+
+static int profile_gen_config_init(struct adrv9002_config *cfg, gpointer data)
+{
+	struct plugin_private *priv = data;
+	int preset =
+		atoi(gtk_combo_box_get_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_preset"))));
+	bool reset_preset = priv->current_preset != preset;
+	priv->current_preset = preset;
+
+	switch(preset) {
+	case 0:
+		return profile_gen_config_set_live_device(cfg, data, reset_preset);
+
+	case 1:
+		return profile_gen_config_set_LTE(cfg, data, reset_preset);
+	default:
+		printf("\nInvalid preset!");
+		return -1;
+	}
+}
+
+static int profile_gen_config_get_default(struct adrv9002_config *cfg, gpointer data)
+{
+	struct plugin_private *priv = data;
+	int preset =
+		atoi(gtk_combo_box_get_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_preset"))));
+
+	if(preset == 0) {
+		return profile_gen_config_get_from_device(cfg, data);
+	} else if(preset == 1) {
+		struct adrv9002_config tmp_cfg = lte_defaults();
+		cfg = &tmp_cfg;
+		return 0;
+	} else {
+		printf("\nInvalid preset!");
+		return -1;
+	}
+}
+
+static int profile_gen_config_populate_from_ui(struct adrv9002_config *cfg, gpointer data)
+{
+	struct plugin_private *priv = data;
+	char widget_str[256];
+	guint chann = 0;
+
+	// Radio Config
+	sprintf(widget_str, "label_radio_ssi");
+	char interface[25];
+	sprintf(interface, "%s", gtk_label_get_label(GTK_LABEL(gtk_builder_get_object(priv->builder, widget_str))));
+
+	if(strcmp(interface, "CMOS/LVDS") == 0)
+		cfg->radio_cfg.ssi_lanes = 1;
+	else if(strcmp(interface, "LVDS") == 0)
+		cfg->radio_cfg.ssi_lanes = 2;
+	else if(strcmp(interface, "CMOS") == 0)
+		cfg->radio_cfg.ssi_lanes = 4;
+	else {
+		profile_gen_set_debug_info(priv, "\nFailed to get ssi_lanes!");
+		return -1;
+	}
+
+	sprintf(widget_str, "cb_radio_duplex");
+	cfg->radio_cfg.fdd =
+		atoi(gtk_combo_box_get_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, widget_str))));
+
+	// RX
+	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		sprintf(widget_str, "cb_rx_chan%d_bw", chann + 1);
+		cfg->radio_cfg.rx_config[chann].channel_bandwidth_hz =
+			(uint32_t)atoi(gtk_combo_box_text_get_active_text(
+				GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str))));
+
+		sprintf(widget_str, "cb_rx_chan%d_interface", chann + 1);
+		cfg->radio_cfg.rx_config[chann].sample_rate_hz = (uint32_t)atoi(gtk_combo_box_text_get_active_text(
+			GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str))));
+
+		sprintf(widget_str, "cb_rx_chan%d_correction", chann + 1);
+		cfg->radio_cfg.rx_config[chann].frequency_offset_correction_enable = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)));
+
+		sprintf(widget_str, "cb_rx_chan%d_en", chann + 1);
+		cfg->radio_cfg.rx_config[chann].enabled = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)));
+
+		sprintf(widget_str, "cb_rx_chan%d_rf_port", chann + 1);
+		cfg->radio_cfg.rx_config[chann].rf_port = (uint8_t)atoi(
+			gtk_combo_box_get_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, widget_str))));
+	}
+
+	// TX
+	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		sprintf(widget_str, "cb_tx_chan%d_bw", chann + 1);
+		cfg->radio_cfg.tx_config[chann].channel_bandwidth_hz =
+			(uint32_t)atoi(gtk_combo_box_text_get_active_text(
+				GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str))));
+
+		sprintf(widget_str, "cb_tx_chan%d_interface", chann + 1);
+		cfg->radio_cfg.tx_config[chann].sample_rate_hz = (uint32_t)atoi(gtk_combo_box_text_get_active_text(
+			GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str))));
+
+		sprintf(widget_str, "cb_tx_chan%d_en", chann + 1);
+		cfg->radio_cfg.tx_config[chann].enabled = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)));
+
+		sprintf(widget_str, "cb_radio_orx%d_en", chann + 1);
+		cfg->radio_cfg.tx_config[chann].orx_enabled = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)));
+
+		sprintf(widget_str, "cb_tx_chan%d_correction", chann + 1);
+		cfg->radio_cfg.tx_config[chann].frequency_offset_correction_enable = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)));
+	}
+
+	return 0;
+}
+
+static int profile_gen_config_get_current(struct adrv9002_config *cfg, gpointer data)
+{
+	int ret = profile_gen_config_get_default(cfg, data);
+	if(ret < 0)
+		return ret;
+
+	ret = profile_gen_config_populate_from_ui(cfg, data);
+	if(ret < 0)
+		return ret;
+
+	return 0;
+}
+
+static void profile_gen_preset_update(GtkComboBoxText *self, struct plugin_private *priv)
+{
+	if(gtk_combo_box_get_active(GTK_COMBO_BOX(self)) == -1)
+		return;
+
+	profile_gen_config_init(NULL, priv);
+}
+
+static void profile_gen_on_ch_interface_changed(GtkComboBoxText *self, struct plugin_private *priv)
+{
+	// if statement is only true if changed by user or cleared combobox, since comboboxes with entries are always on
+	// index -1
+	if(gtk_combo_box_get_active(GTK_COMBO_BOX(self)) == -1)
+		return;
+
+	char *cb_name_list[4] = {"cb_rx_chan1_interface", "cb_rx_chan2_interface", "cb_tx_chan1_interface",
+				 "cb_tx_chan2_interface"};
+
+	set_all_cb_to_same_text(cb_name_list, ARRAY_SIZE(cb_name_list), gtk_combo_box_text_get_active_text(self), priv);
+
+	profile_gen_preset_update(self, priv);
+}
+
+static char *profile_gen_config_to_str(struct adrv9002_config *cfg)
+{
+	cJSON *config, *radio_cfg, *clk_cfg, *rx_config, *tx_config, *tmp_object;
+	int chann;
+
+	config = cJSON_CreateObject();
+
+	// radio_cfg
+	radio_cfg = cJSON_CreateObject();
+	cJSON_AddItemToObject(config, "radio_cfg", radio_cfg);
+	cJSON_AddNumberToObject(radio_cfg, "ssi_lanes", cfg->radio_cfg.ssi_lanes);
+	cJSON_AddNumberToObject(radio_cfg, "ddr", cfg->radio_cfg.ddr);
+	cJSON_AddNumberToObject(radio_cfg, "short_strobe", cfg->radio_cfg.short_strobe);
+	cJSON_AddNumberToObject(radio_cfg, "lvds", cfg->radio_cfg.lvds);
+	cJSON_AddNumberToObject(radio_cfg, "adc_rate_mode", cfg->radio_cfg.adc_rate_mode);
+	cJSON_AddNumberToObject(radio_cfg, "fdd", cfg->radio_cfg.fdd);
+
+	// radio_cfg.rx_config
+	cJSON_AddItemToObject(radio_cfg, "rx_config", rx_config = cJSON_CreateArray());
+	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		cJSON_AddItemToArray(rx_config, tmp_object = cJSON_CreateObject());
+		cJSON_AddNumberToObject(tmp_object, "enabled", cfg->radio_cfg.rx_config[chann].enabled);
+		cJSON_AddNumberToObject(tmp_object, "adc_high_performance_mode",
+					cfg->radio_cfg.rx_config[chann].adc_high_performance_mode);
+		cJSON_AddNumberToObject(tmp_object, "frequency_offset_correction_enable",
+					cfg->radio_cfg.rx_config[chann].frequency_offset_correction_enable);
+		cJSON_AddNumberToObject(tmp_object, "analog_filter_power_mode",
+					cfg->radio_cfg.rx_config[chann].analog_filter_power_mode);
+		cJSON_AddNumberToObject(tmp_object, "analog_filter_biquad",
+					cfg->radio_cfg.rx_config[chann].analog_filter_biquad);
+		cJSON_AddNumberToObject(tmp_object, "analog_filter_bandwidth_hz",
+					cfg->radio_cfg.rx_config[chann].analog_filter_bandwidth_hz);
+		cJSON_AddNumberToObject(tmp_object, "channel_bandwidth_hz",
+					cfg->radio_cfg.rx_config[chann].channel_bandwidth_hz);
+		cJSON_AddNumberToObject(tmp_object, "sample_rate_hz", cfg->radio_cfg.rx_config[chann].sample_rate_hz);
+		cJSON_AddNumberToObject(tmp_object, "nco_enable", cfg->radio_cfg.rx_config[chann].nco_enable);
+		cJSON_AddNumberToObject(tmp_object, "nco_frequency_hz",
+					cfg->radio_cfg.rx_config[chann].nco_frequency_hz);
+		cJSON_AddNumberToObject(tmp_object, "rf_port", cfg->radio_cfg.rx_config[chann].rf_port);
+	}
+
+	// radio_cfg.tx_config
+	cJSON_AddItemToObject(radio_cfg, "tx_config", tx_config = cJSON_CreateArray());
+	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		cJSON_AddItemToArray(tx_config, tmp_object = cJSON_CreateObject());
+		cJSON_AddNumberToObject(tmp_object, "enabled", cfg->radio_cfg.tx_config[chann].enabled);
+		cJSON_AddNumberToObject(tmp_object, "sample_rate_hz", cfg->radio_cfg.tx_config[chann].sample_rate_hz);
+		cJSON_AddNumberToObject(tmp_object, "frequency_offset_correction_enable",
+					cfg->radio_cfg.tx_config[chann].frequency_offset_correction_enable);
+		cJSON_AddNumberToObject(tmp_object, "analog_filter_power_mode",
+					cfg->radio_cfg.tx_config[chann].analog_filter_power_mode);
+		cJSON_AddNumberToObject(tmp_object, "channel_bandwidth_hz",
+					cfg->radio_cfg.tx_config[chann].channel_bandwidth_hz);
+		cJSON_AddNumberToObject(tmp_object, "orx_enabled", cfg->radio_cfg.tx_config[chann].orx_enabled);
+		cJSON_AddNumberToObject(tmp_object, "elb_type", cfg->radio_cfg.tx_config[chann].elb_type);
+	}
+
+	// clk_cfg
+	clk_cfg = cJSON_CreateObject();
+	cJSON_AddItemToObject(config, "clk_cfg", clk_cfg);
+	cJSON_AddNumberToObject(clk_cfg, "device_clock_frequency_khz", cfg->clk_cfg.device_clock_frequency_khz);
+	cJSON_AddNumberToObject(clk_cfg, "device_clock_output_enable", cfg->clk_cfg.device_clock_output_enable);
+	cJSON_AddNumberToObject(clk_cfg, "device_clock_output_divider", cfg->clk_cfg.device_clock_output_divider);
+	cJSON_AddNumberToObject(clk_cfg, "clock_pll_high_performance_enable",
+				cfg->clk_cfg.clock_pll_high_performance_enable);
+	cJSON_AddNumberToObject(clk_cfg, "clock_pll_power_mode", cfg->clk_cfg.clock_pll_power_mode);
+	cJSON_AddNumberToObject(clk_cfg, "processor_clock_divider", cfg->clk_cfg.processor_clock_divider);
+
+	char *json_str = cJSON_Print(config);
+	cJSON_Delete(config);
+
+	return json_str;
+}
+
+static int profile_gen_write_config_to_file(gchar *filename, struct adrv9002_config *cfg)
+{
+	char *json_str = profile_gen_config_to_str(cfg);
+	FILE *file = fopen(filename, "w");
+
+	if(file == NULL) {
+		return 1;
+	}
+
+	fputs(json_str, file);
+	fclose(file);
+	return 0;
+}
+
+static char *profile_gen_cli_get_cmd(void)
+{
+	FILE *file;
+	char *command;
+	command = malloc(sizeof(char) * 24);
+	sprintf(command, "adrv9002-iio-cli");
+
+	// Open the command for reading
+	file = popen(command, "r");
+	if(file == NULL) {
+		goto err;
+	}
+	fflush(file);
+	char out[BUFSIZ];
+	int ret = fread(out, sizeof(char), sizeof(out), file);
+	pclose(file);
+
+	if(ret == 0) {
+		goto err;
+	}
+
+	return command;
+
+err:
+	return NULL;
+}
+
+static int profile_gen_save_to_file(gchar *filename, struct adrv9002_config *cfg, gpointer data, bool file_type)
+{
+	// run profile gen cli command
+	FILE *file;
+	int ret = 0;
+	char command[BUFSIZ];
+	char *config_filename = g_build_filename(getenv("TEMP") ?: P_tmpdir, "adrv9002_config.json", NULL);
+
+	profile_gen_write_config_to_file(config_filename, cfg);
+
+	if(file_type) { // profile
+		sprintf(command, "%s --config %s --profile %s", profile_gen_cli_get_cmd(), config_filename, filename);
+	} else { // stream image
+		sprintf(command, "%s --config %s --stream %s", profile_gen_cli_get_cmd(), config_filename, filename);
+	}
+
+	// Open the command for reading
+	file = popen(command, "r");
+	if(file == NULL) {
+		profile_gen_set_debug_info(data, "\nFailed to run command!");
+		ret = 1;
+		goto err;
+	}
+
+	// Read the output
+	char out[1024], message[BUFSIZ] = "\0";
+	while(fgets(out, sizeof(out), file) != NULL) {
+		strcat(message, out);
+	}
+	remove(config_filename);
+	pclose(file);
+
+	profile_gen_set_debug_info(data, message);
+
+	return 0;
+err:
+	return ret;
+}
+
+static void profile_gen_save_dialog_response(GtkDialog *dialog, gint response_id, gpointer data)
+{
+	struct plugin_private *priv = data;
+	GtkFileChooser *chooser = GTK_FILE_CHOOSER(gtk_builder_get_object(priv->builder, "save_panel"));
+	struct adrv9002_config cfg = lte_lvs_3072_MHz_10();
+	gchar *filename = gtk_file_chooser_get_filename(chooser);
+
+	int ret = profile_gen_config_get_current(&cfg, data);
+	if(ret < 0 || response_id != GTK_RESPONSE_ACCEPT) {
+		gtk_widget_hide(GTK_WIDGET(chooser));
+		return;
+	}
+
+	// 0 if stream image
+	// 1 if profile
+	bool file_type =
+		atoi(gtk_combo_box_get_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_save_type"))));
+	profile_gen_save_to_file(filename, &cfg, data, file_type);
+
+	gtk_widget_hide(GTK_WIDGET(chooser));
+}
+
+static char *profile_gen_cli_get_api(void)
+{
+	// run profile gen cli command
+	FILE *file;
+	char out[BUFSIZ], command[BUFSIZ];
+
+	sprintf(command, "%s --version", profile_gen_cli_get_cmd());
+
+	// open the command for reading
+	file = popen(command, "r");
+	if(file == NULL) {
+		return NULL;
+	}
+
+	// read the output
+	fflush(file);
+	int ret = fread(out, sizeof(char), sizeof(out), file);
+	pclose(file);
+	if(ret == 0) {
+		return NULL;
+	}
+
+	// command output may contain characters after the API version
+	char *version = extract_value_between(out, "Profile generator API: ", "\n");
+	if(version == NULL) {
+		return extract_value_between(out, "Profile generator API: ", "");
+	}
+
+	return version;
+}
+
+static bool profile_gen_check_api(gpointer data)
+{
+	struct plugin_private *priv = data;
+	char version[256], message[BUFSIZ];
+
+	if(iio_device_debug_attr_read(priv->adrv9002, "api_version", version, sizeof(version)) < 0) {
+		sprintf(message, "\nCould not read API version!");
+		profile_gen_set_debug_info(data, message);
+		goto err;
+	}
+
+	char *supported_version = profile_gen_cli_get_api();
+	if(supported_version == NULL) {
+		sprintf(message, "\nFailed to get profile generator API!");
+		profile_gen_set_debug_info(data, message);
+		goto err;
+	}
+
+	if(strcmp(version, supported_version) != 0) {
+		sprintf(message, "\nOnly API version %s is supported, the device uses %s!", supported_version, version);
+		profile_gen_set_debug_info(data, message);
+		free(supported_version);
+		goto err;
+	}
+
+	free(supported_version);
+	return true;
+err:
+	return false;
+}
+
+static void profile_gen_load_config_to_device(GtkButton *self, gpointer data)
+{
+	struct plugin_private *priv = data;
+	struct adrv9002_config cfg = lte_lvs_3072_MHz_10();
+	char message[BUFSIZ] = "\0", fail_message[BUFSIZ];
+	int ret;
+
+	// get config struct
+	ret = profile_gen_config_get_current(&cfg, data);
+	if(ret < 0) {
+		return;
+	}
+
+	// check api version
+	ret = profile_gen_check_api(priv);
+	if(!ret) {
+		return;
+	}
+
+	// run profile gen cli command
+	FILE *file;
+	char command[BUFSIZ];
+	char *config_filename = g_build_filename(getenv("TEMP") ?: P_tmpdir, "adrv9002_config.json", NULL);
+	char *profile_filename = g_build_filename(getenv("TEMP") ?: P_tmpdir, "adrv9002_profile.json", NULL);
+	char *stream_filename = g_build_filename(getenv("TEMP") ?: P_tmpdir, "adrv9002_stream.json", NULL);
+
+	profile_gen_write_config_to_file(config_filename, &cfg);
+	sprintf(command, "%s --config %s --profile %s --stream %s", profile_gen_cli_get_cmd(), config_filename,
+		profile_filename, stream_filename);
+
+	// open the command for reading
+	file = popen(command, "r");
+	if(file == NULL) {
+		profile_gen_set_debug_info(data, "\nFailed to run command!");
+		return;
+	}
+
+	// read the output
+	char out[BUFSIZ];
+	while(fgets(out, sizeof(out), file) != NULL) {
+		strcat(message, out);
+	}
+	remove(config_filename);
+	pclose(file);
+
+	if(ret == 0) {
+		strcat(message, "\nFailed to read the command output!");
+		goto err;
+	}
+
+	// load profile and stream to device
+	char *buf;
+	ssize_t size;
+
+	// write profile
+	buf = read_file(profile_filename, &size);
+	remove(profile_filename);
+	if(!buf) {
+		strcat(message, "\nFailed to read the generated profile file!");
+		goto err;
+	}
+	iio_context_set_timeout(priv->ctx, 30000);
+	ret = iio_device_attr_write_raw(priv->adrv9002, "profile_config", buf, size);
+	if(ret < 0) {
+		sprintf(fail_message, "\nFailed to write the generated profile to device with error code: %d", ret);
+		strcat(message, fail_message);
+		goto err;
+	}
+	free(buf);
+
+	// write stream image
+	buf = read_file(stream_filename, &size);
+	remove(stream_filename);
+	if(!buf) {
+		strcat(message, "\nFailed to read the generated stream image file!");
+		goto err;
+	}
+	iio_context_set_timeout(priv->ctx, 30000);
+	ret = iio_device_attr_write_raw(priv->adrv9002, "stream_config", buf, size);
+	if(ret < 0) {
+		sprintf(fail_message, "\nFailed to write the generated stream image to device with error code: %d",
+			ret);
+		strcat(message, fail_message);
+		goto err;
+	}
+	free(buf);
+
+	iio_context_set_timeout(priv->ctx, 5000);
+	strcat(message, "\nSuccessfully loaded profile and stream image to device!");
+err:
+	profile_gen_set_debug_info(data, message);
+	return;
+}
+
+static int profile_gen_ui_refresh(GtkButton *self, struct plugin_private *priv)
+{
+	struct adrv9002_config cfg = lte_lvs_3072_MHz_10();
+	priv->current_preset = -1;
+	if(profile_gen_config_init(&cfg, priv) != 0) {
+		profile_gen_append_debug_info(priv, "\nFailed to initialize adrv9002 config!");
+		return -1;
+	}
+	profile_gen_set_debug_info(priv, profile_gen_config_to_str(&cfg));
+
+	return 0;
+}
+
 static void adrv9002_combo_box_init(struct iio_widget *combo, const char *w_str,
 				    const char *attr, const char *attr_avail,
 				    struct plugin_private *priv, struct iio_channel *chann)
@@ -1525,6 +2956,64 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	gtk_file_chooser_set_current_folder(
 		GTK_FILE_CHOOSER(gtk_builder_get_object(priv->builder, "stream_config")),
 		OSC_FILTER_FILE_PATH"/adrv9002");
+
+	if (profile_gen_cli_get_cmd()) {
+		/* save profile or stream image*/
+		g_builder_connect_signal(priv->builder, "btn_save", "clicked",
+					 G_CALLBACK(profile_gen_save_dialog_show), priv);
+
+		g_builder_connect_signal(priv->builder, "save_panel", "response",
+					 G_CALLBACK(profile_gen_save_dialog_response), priv);
+
+		g_builder_connect_signal(priv->builder, "cb_save_type", "changed",
+					 G_CALLBACK(profile_gen_save_type_changed), priv);
+
+		/* set profile*/
+		g_builder_connect_signal(priv->builder, "btn_load_to_device", "clicked",
+					 G_CALLBACK(profile_gen_load_config_to_device), priv);
+
+		/* refresh profile */
+		g_builder_connect_signal(priv->builder, "btn_refresh_profile", "clicked",
+					 G_CALLBACK(profile_gen_ui_refresh), priv);
+
+		/* init ui */
+		profile_gen_ui_refresh(NULL, priv);
+
+		/* update orx state on duplex mode changed */
+		g_builder_connect_signal(priv->builder, "cb_radio_duplex", "changed",
+					 G_CALLBACK(profile_gen_update_orx), priv);
+
+		/* update preset signals ==================================================== */
+
+		char widget_str[25];
+		for (i = 0; i < 4; i++) {
+			sprintf(widget_str, "cb_%s_chan%d_interface", i<2? "tx": "rx", i<2? i + 1: i - 1);
+			g_builder_connect_signal(priv->builder, widget_str, "changed",
+						 G_CALLBACK(profile_gen_on_ch_interface_changed), priv);
+		}
+
+		/* ========================================================================== */
+
+		/* update orx state on tx1 toggled */
+		g_builder_connect_signal(priv->builder, "cb_tx_chan1_en", "toggled",
+					 G_CALLBACK(profile_gen_update_orx), priv);
+
+		/* update orx state on tx2 toggled */
+		g_builder_connect_signal(priv->builder, "cb_tx_chan2_en", "toggled",
+					 G_CALLBACK(profile_gen_update_orx), priv);
+
+		/* refresh on preset changed */
+		g_builder_connect_signal(priv->builder, "cb_preset", "changed",
+					 G_CALLBACK(profile_gen_ui_refresh), priv);
+
+	} else {
+		gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(priv->builder, "boxProfileGen")), false);
+		gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(priv->builder, "labelProfileGen")), false);
+
+		gtk_label_set_text(GTK_LABEL(gtk_builder_get_object(priv->builder, "label_profile_gen_message")),
+				   "Profile generation is only available with profile generator CLI installed!");
+		gtk_widget_set_visible(GTK_WIDGET(gtk_builder_get_object(priv->builder, "label_profile_gen_message")), true);
+	}
 
 	/* init temperature label */
 	temp = iio_device_find_channel(priv->adrv9002, "temp0", false);
