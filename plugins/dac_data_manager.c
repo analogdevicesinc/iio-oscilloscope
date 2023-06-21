@@ -1033,8 +1033,9 @@ static GtkWidget *gui_dac_create(struct dds_dac *ddac)
 	gtk_container_add(GTK_CONTAINER(dac_frm), dac_table);
 	for (i = 0; i < ddac->tx_count; i++)
 		gtk_grid_attach(GTK_GRID(dac_table), gui_tx_create(&ddac->txs[i]),
-				0 + i, 0, 1, 1);
+				i % 4, i / 4, 1, 1);
 
+	gtk_grid_set_column_spacing(GTK_GRID(dac_table), 5);
 	ddac->frame = dac_frm;
 	gtk_widget_show(dac_frm);
 
