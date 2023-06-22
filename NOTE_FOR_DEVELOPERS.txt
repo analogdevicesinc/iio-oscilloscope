@@ -1,2 +1,2 @@
-1. Please use Glade for GTK2 (v3.8) when adding new glade files or when editing files that were created with Glade for GTK2.
-2. When a glade file has already been created/edited with Glade for GTK3 (versions 3.9, 3.10, 3.11, etc.) and you need to edit it, use the fixup scripts from dev-tools on the modified glade file. If Glade 3.8 is used the fixup scripts are no longer required.
+1. Glade files should be created using Glade for GTK3(versions 3.9 and up -- preferably version 3.38) and will no longer require editing using the fix-up scripts.
+2. If the glade file was created using Glade for GTK2, the file needs to be opened with the Glade app (v3.9 and up --preferably version 3.38) and saved.
