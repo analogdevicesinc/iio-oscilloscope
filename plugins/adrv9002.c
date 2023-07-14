@@ -37,6 +37,7 @@
 #define NUM_MAX_ORX_WIDGETS 3
 #define NUM_MAX_DDS	2
 #define NUM_MAX_ADC	2
+#define NUM_DEVICE_MAX_WIDGETS 1
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -111,6 +112,8 @@ struct plugin_private {
 	char last_profile[PATH_MAX];
 	char last_stream[PATH_MAX];
 	struct adrv9002_gtklabel temperature;
+	struct iio_widget device_w[NUM_DEVICE_MAX_WIDGETS];
+	int num_widgets;
 	/* rx */
 	struct adrv9002_rx rx_widgets[ADRV9002_NUM_CHANNELS];
 	/* tx */
@@ -390,6 +393,24 @@ static void adrv9002_save_carrier_freq(GtkWidget *widget, struct adrv9002_common
 		iio_widget_update_block_signals_by_data(&priv->rx_widgets[other].rx.carrier);
 
 	iio_widget_update_block_signals_by_data(&chan->carrier);
+}
+
+static void adrv9002_show_help(GtkWidget *widget, void *unused)
+{
+	dialog_box_message_info(widget, "Initial Calibrations Help",
+"<b>off:</b> Initial calibrations won't run automatically.\n"
+"<b>auto:</b> Initial calibrations will run automatically for Carrier changes bigger or equal to 100MHz.\n\n"
+"<b>To manually run the calibrations, press the \"Calibrate now\" button!</b>");
+}
+
+static void adrv9002_run_cals(GtkWidget *widget, struct plugin_private *priv)
+{
+	ssize_t ret;
+
+	ret = iio_device_attr_write(priv->adrv9002, "initial_calibrations", "run");
+	if (ret < 0)
+		dialog_box_message_error(widget, "Initial Calibrations",
+					 "Failed to re-run Initial Calibrations");
 }
 
 static double adrv9002_bbdc_loop_gain_convert(double val, bool updating)
@@ -1382,6 +1403,28 @@ static void adrv9002_api_version_report(struct plugin_private *priv)
 	gtk_label_set_label(gapi, api_version);
 }
 
+static void adrv9002_initial_calibrations_init(struct plugin_private *priv)
+{
+	GObject *run = gtk_builder_get_object(priv->builder, "initial_calibrations_run");
+	GObject *help = gtk_builder_get_object(priv->builder, "initial_calibrations_help");
+	int n_w = priv->num_widgets;
+
+	/* initial calibrations */
+	adrv9002_combo_box_init(&priv->device_w[priv->num_widgets++], "initial_calibrations",
+				"initial_calibrations", "initial_calibrations_available", priv, NULL);
+
+	/*
+	 * This will remove the "run" option from the list. Let's provide a dedicated button for
+	 * it since the driver never reads back "run" from the attribute and that would make for
+	 * a poor user experience. With a dedicated button, we can also tell if some error occurred
+	 * or not...
+	 */
+	gtk_combo_box_text_remove(GTK_COMBO_BOX_TEXT(priv->device_w[n_w].widget), 2);
+
+	g_signal_connect(run, "clicked", G_CALLBACK(adrv9002_run_cals), priv);
+	g_signal_connect(help, "clicked", G_CALLBACK(adrv9002_show_help), NULL);
+}
+
 static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 				const char *ini_fn)
 {
@@ -1490,6 +1533,8 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	adrv9002_gtk_label_init(priv, &priv->temperature, temp, "input", "temperature", 1000);
 
+	adrv9002_initial_calibrations_init(priv);
+
 	/* init dds container */
 	ret = adrv9002_dds_init(priv);
 	if (ret)
@@ -1519,6 +1564,12 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 						     priv->tx_widgets[i].num_widgets,
 						     G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
 	}
+
+	/* device widgets */
+	iio_update_widgets(priv->device_w, priv->num_widgets);
+	iio_make_widgets_update_signal_based(priv->device_w, priv->num_widgets,
+					     G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
+
 	/* update dac */
 	for (i = 0; i < priv->n_dacs; i++)
 		dac_data_manager_update_iio_widgets(priv->dac_manager[i].dac_tx_manager);
