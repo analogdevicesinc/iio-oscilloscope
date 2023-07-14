@@ -138,6 +138,7 @@ struct plugin_private {
 					msg);						\
 											\
 		gtk_window_set_title(GTK_WINDOW(dialog), title);			\
+		gtk_window_set_icon_name(GTK_WINDOW(dialog), "dialog-error-symbolic");	\
 		gtk_dialog_run(GTK_DIALOG(dialog));					\
 		gtk_widget_destroy (dialog);						\
 	} else {									\
