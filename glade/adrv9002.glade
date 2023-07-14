@@ -92,6 +92,16 @@
     <property name="step-increment">1</property>
     <property name="page-increment">10</property>
   </object>
+  <object class="GtkImage" id="image1">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="stock">gtk-help</property>
+  </object>
+  <object class="GtkImage" id="image2">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="stock">gtk-media-play</property>
+  </object>
   <object class="GtkVBox" id="adrv9002_panel">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
@@ -343,6 +353,8 @@
                                               <object class="GtkFrame" id="frame7">
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">False</property>
+                                                <property name="margin-left">5</property>
+                                                <property name="margin-top">5</property>
                                                 <property name="label-xalign">0</property>
                                                 <property name="shadow-type">in</property>
                                                 <child>
@@ -372,6 +384,106 @@
                                                 <property name="expand">False</property>
                                                 <property name="fill">False</property>
                                                 <property name="position">0</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkFrame" id="frame6">
+                                                <property name="visible">True</property>
+                                                <property name="can-focus">False</property>
+                                                <property name="margin-left">15</property>
+                                                <property name="margin-top">5</property>
+                                                <property name="margin-bottom">5</property>
+                                                <property name="label-xalign">0</property>
+                                                <property name="shadow-type">in</property>
+                                                <child>
+                                                  <object class="GtkTable">
+                                                    <property name="visible">True</property>
+                                                    <property name="can-focus">False</property>
+                                                    <property name="n-rows">2</property>
+                                                    <property name="n-columns">3</property>
+                                                    <child>
+                                                      <object class="GtkLabel" id="label72">
+                                                        <property name="visible">True</property>
+                                                        <property name="can-focus">False</property>
+                                                        <property name="label" translatable="yes">Calibrations Mode:</property>
+                                                        <property name="xalign">1</property>
+                                                      </object>
+                                                      <packing>
+                                                        <property name="x-options">GTK_FILL</property>
+                                                        <property name="y-options">GTK_FILL</property>
+                                                      </packing>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkComboBoxText" id="initial_calibrations">
+                                                        <property name="visible">True</property>
+                                                        <property name="can-focus">False</property>
+                                                      </object>
+                                                      <packing>
+                                                        <property name="left-attach">1</property>
+                                                        <property name="right-attach">2</property>
+                                                        <property name="x-padding">5</property>
+                                                      </packing>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkLabel" id="label73">
+                                                        <property name="visible">True</property>
+                                                        <property name="can-focus">False</property>
+                                                        <property name="label" translatable="yes">Calibrate Now:</property>
+                                                        <property name="xalign">1</property>
+                                                      </object>
+                                                      <packing>
+                                                        <property name="top-attach">1</property>
+                                                        <property name="bottom-attach">2</property>
+                                                        <property name="x-options">GTK_FILL</property>
+                                                        <property name="y-options">GTK_FILL</property>
+                                                      </packing>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkButton" id="initial_calibrations_run">
+                                                        <property name="visible">True</property>
+                                                        <property name="can-focus">True</property>
+                                                        <property name="receives-default">True</property>
+                                                        <property name="image">image2</property>
+                                                      </object>
+                                                      <packing>
+                                                        <property name="left-attach">1</property>
+                                                        <property name="right-attach">2</property>
+                                                        <property name="top-attach">1</property>
+                                                        <property name="bottom-attach">2</property>
+                                                        <property name="x-padding">5</property>
+                                                      </packing>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkButton" id="initial_calibrations_help">
+                                                        <property name="visible">True</property>
+                                                        <property name="can-focus">True</property>
+                                                        <property name="receives-default">True</property>
+                                                        <property name="image">image1</property>
+                                                      </object>
+                                                      <packing>
+                                                        <property name="left-attach">2</property>
+                                                        <property name="right-attach">3</property>
+                                                        <property name="x-padding">5</property>
+                                                      </packing>
+                                                    </child>
+                                                    <child>
+                                                      <placeholder/>
+                                                    </child>
+                                                  </object>
+                                                </child>
+                                                <child type="label">
+                                                  <object class="GtkLabel" id="label70">
+                                                    <property name="visible">True</property>
+                                                    <property name="can-focus">False</property>
+                                                    <property name="label" translatable="yes">&lt;b&gt;Initial Calibrations&lt;/b&gt;</property>
+                                                    <property name="use-markup">True</property>
+                                                  </object>
+                                                </child>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">False</property>
+                                                <property name="fill">True</property>
+                                                <property name="position">1</property>
                                               </packing>
                                             </child>
                                           </object>
