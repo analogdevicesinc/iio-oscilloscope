@@ -126,25 +126,36 @@ struct plugin_private {
 	int n_adcs;
 };
 
-#define dialog_box_message(widget, title, msg) { 					\
+#define dialog_box_message(widget, title, level, msg) { 				\
 	GtkWidget *toplevel = gtk_widget_get_toplevel(widget);				\
 											\
 	if (gtk_widget_is_toplevel(toplevel)) {						\
 		GtkWidget *dialog;							\
+		const char *icon;							\
 											\
-		dialog = gtk_message_dialog_new(GTK_WINDOW(toplevel),			\
+		dialog = gtk_message_dialog_new_with_markup(GTK_WINDOW(toplevel),	\
 					GTK_DIALOG_DESTROY_WITH_PARENT,			\
-					GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,		\
+					level, GTK_BUTTONS_CLOSE,			\
 					msg);						\
 											\
 		gtk_window_set_title(GTK_WINDOW(dialog), title);			\
-		gtk_window_set_icon_name(GTK_WINDOW(dialog), "dialog-error-symbolic");	\
+		if (level == GTK_MESSAGE_INFO)						\
+			icon = "dialog-information-symbolic";				\
+		else									\
+			icon = "dialog-error-symbolic";					\
+		gtk_window_set_icon_name(GTK_WINDOW(dialog), icon);			\
 		gtk_dialog_run(GTK_DIALOG(dialog));					\
 		gtk_widget_destroy (dialog);						\
 	} else {									\
 		printf("Cannot display dialog: Toplevel wigdet not found\n");		\
 	}										\
 }
+
+#define dialog_box_message_error(widget, title, msg, ...) \
+	dialog_box_message(widget, title, GTK_MESSAGE_ERROR, msg)
+
+#define dialog_box_message_info(widget, title, msg, ...) \
+	dialog_box_message(widget, title, GTK_MESSAGE_INFO, msg)
 
 static void save_gain_ctl(GtkWidget *widget, struct adrv9002_common *chann)
 {
@@ -176,8 +187,8 @@ static void save_intf_gain(GtkWidget *widget, struct adrv9002_rx *rx)
 			GTK_COMBO_BOX_TEXT(rx->rx.ensm.widget));
 
 	if (ensm && strcmp(ensm, "rf_enabled")) {
-		dialog_box_message(widget, "Interface Gain Set Failed",
-				   "ENSM must be rf_enabled to change the interface gain");
+		dialog_box_message_error(widget, "Interface Gain Set Failed",
+					 "ENSM must be rf_enabled to change the interface gain");
 		iio_widget_update_block_signals_by_data(&rx->intf_gain);
 	} else {
 		iio_widget_save_block_signals_by_data(&rx->intf_gain);
@@ -309,13 +320,13 @@ static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
 	 * state transitions break ORx and we can't recover from it without toggling the ORx button.
 	 */
 	if (rx->rx.enabled && r_ensm && !strcmp(r_ensm, "rf_enabled") && !en) {
-		dialog_box_message(widget, "ORX Enable failed",
-				   "RX ENSM cannot be in rf_enabled in order to enable ORX");
+		dialog_box_message_error(widget, "ORX Enable failed",
+					 "RX ENSM cannot be in rf_enabled in order to enable ORX");
 		/* restore widget value */
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), true);
 	} else if (t_ensm && strcmp(t_ensm, "rf_enabled") && !en) {
-		dialog_box_message(widget, "ORX Enable failed",
-				   "TX ENSM must be in rf_enabled in order to enable ORX");
+		dialog_box_message_error(widget, "ORX Enable failed",
+					 "TX ENSM must be in rf_enabled in order to enable ORX");
 		/* restore widget value */
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), true);
 	} else {
@@ -845,8 +856,8 @@ static void load_stream(GtkFileChooser *chooser, gpointer data)
 	return;
 err:
 	g_free(file_name);
-	dialog_box_message(GTK_WIDGET(chooser), "Stream Loading Failed",
-			   "Failed to load stream using the selected file!");
+	dialog_box_message_error(GTK_WIDGET(chooser), "Stream Loading Failed",
+				 "Failed to load stream using the selected file!");
 
 	if (priv->last_stream[0])
 		gtk_file_chooser_set_filename(chooser, priv->last_stream);
@@ -886,8 +897,8 @@ static void load_profile(GtkFileChooser *chooser, gpointer data)
 	return;
 err:
 	g_free(file_name);
-	dialog_box_message(GTK_WIDGET(chooser), "Profile Configuration Failed",
-			   "Failed to load profile using the selected file!");
+	dialog_box_message_error(GTK_WIDGET(chooser), "Profile Configuration Failed",
+				 "Failed to load profile using the selected file!");
 
 	if (priv->last_profile[0])
 		gtk_file_chooser_set_filename(chooser, priv->last_profile);
