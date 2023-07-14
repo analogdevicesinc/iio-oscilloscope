@@ -39,7 +39,6 @@
 #define NUM_MAX_ADC	2
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
-#define ADRV9002_LO_INV	255
 
 const gdouble mhz_scale = 1000000.0;
 
@@ -69,7 +68,6 @@ struct adrv9002_common {
 	struct iio_widget w[NUM_MAX_WIDGETS];
 	uint16_t num_widgets;
 	bool enabled;
-	uint8_t lo;
 	uint8_t idx;
 };
 
@@ -360,149 +358,24 @@ static void save_port_en(GtkWidget *widget, struct adrv9002_common *chann)
 	g_free(port_en);
 }
 
-/*
- * helper struct to save the ensm of all ports that are on the same LO as the one
- * we are changing the carrier.
- */
-struct carrier_helper {
-	struct {
-		struct iio_widget *ensm;
-		gchar *old;
-	} s[3]; /* can't have more than 3 other ports on the same LO */
-	int n_restore;
-};
-
-/* helper API to move all ports on the same LO to the calibrated state */
-static int carrier_helper_move_to_calibrated(struct adrv9002_common *c, struct carrier_helper *helper)
-{
-	int ret;
-	GtkComboBoxText *w;
-
-	ret = iio_channel_attr_write(c->ensm.chn, c->ensm.attr_name, "calibrated");
-	if (ret < 0)
-		return ret;
-
-	helper->s[helper->n_restore].ensm = &c->ensm;
-	w = GTK_COMBO_BOX_TEXT(c->ensm.widget);
-	helper->s[helper->n_restore++].old = gtk_combo_box_text_get_active_text(w);
-	return 0;
-}
-
-/* helper API to move the other port of the same type to the same carrier */
-static int carrier_helper_move_other_port(struct adrv9002_common *c, int other, bool tx)
-{
-	struct iio_widget *carrier;
-	gdouble freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON(c->carrier.widget));
-	int ret;
-
-	if (tx) {
-		/* nothing to do if the other TX is not on the same LO */
-		if (c->lo != c->priv->tx_widgets[other].lo)
-			return 0;
-		carrier = &c->priv->tx_widgets[other].carrier;
-	} else {
-		/* nothing to do if the other RX is not on the same LO */
-		if (c->lo != c->priv->rx_widgets[other].rx.lo)
-			return 0;
-		carrier = &c->priv->rx_widgets[other].rx.carrier;
-	}
-
-	freq *= mhz_scale;
-	ret = iio_channel_attr_write_longlong(carrier->chn, carrier->attr_name, freq);
-	if (ret)
-		return ret;
-
-	/* we do not want to get here when setting the carrier on the other port */
-	iio_widget_update_block_signals_by_data(carrier);
-
-	return 0;
-}
-
-/*
- * Handle changing the carrier frequency. Handling the carrier frequency is not really
- * straight because it looks like we have 4 independent controls when in reality they are not
- * as the device only has 2 LOs. It all the depends on the LO mappings present in the
- * current profile. First, the only way a carrier is actually applied (PLL re-tunes) is
- * if all ports on the same LO, are moved into the calibrated state before changing it. Not
- * doing so means that we may end up in an inconsistent state. For instance, consider the
- * following steps in a FDD profile where RX1=RX2=LO1 (assuming both ports start at 2.4GHz):
- *   1) Move RX1 carrier to 2.45GHz -> LO1 re-tunes
- *   2) Move RX1 back to 2.4GHz -> LO1 does not re-tune and our carrier is at 2.45GHz
- * With the above steps we are left with both ports, __apparently__, at 2.45GHz but in __reality__
- * our carrier is at 2.4GHz.
- *
- * Secondly, when both ports of the same type are at the same LO, which happens on FDD and TTD
- * (with diversity) profiles, we should move the carrier of these ports together, because it's
- * just not possible to have both ports enabled with different carriers (they are on the same LO!).
- * On TDD profiles, we never move TX/RX ports together even being on the same LO. The assumption
- * is that we might have time to re-tune between RX and TX frames. If we don't, we need to manually
- * set TX and RX carriers to the same value before starting operating...
- */
 static void adrv9002_save_carrier_freq(GtkWidget *widget, struct adrv9002_common *chan)
 {
-	int c;
 	struct plugin_private *priv = chan->priv;
-	int ret;
 	int other = ~chan->idx & 0x1;
-	struct carrier_helper ensm_restore = {0};
 	/* we can use whatever attr as the iio channel is the same (naturally not for the LOs) */
 	bool tx = iio_channel_is_output(chan->ensm.chn);
 
-	if (chan->lo == ADRV9002_LO_INV) {
-		/* fallback to independent LOs */
-		iio_widget_save(&chan->carrier);
-		return;
-	}
-
-	for (c = 0; c < ADRV9002_NUM_CHANNELS; c++) {
-		/* let's move all ports on the same LO to the calibrated state */
-		if (chan == &priv->tx_widgets[c] || priv->tx_widgets[c].lo != chan->lo)
-			goto rx;
-
-		ret = carrier_helper_move_to_calibrated(&priv->tx_widgets[c], &ensm_restore);
-		if (ret)
-			goto ensm_restore;
-rx:
-		if (chan == &priv->rx_widgets[c].rx || priv->rx_widgets[c].rx.lo != chan->lo)
-			continue;
-
-		ret = carrier_helper_move_to_calibrated(&priv->rx_widgets[c].rx, &ensm_restore);
-		if (ret)
-			goto ensm_restore;
-	}
-
-	ret = carrier_helper_move_other_port(chan, other, tx);
-	if (ret)
-		goto ensm_restore;
-
-	/*
-	 * This is needed so that we are sure that the port where we are changing the
-	 * carrier is the last one to transition state. This might matter in TDD profiles
-	 * because a transition from calibrated to prime also causes the PLL to re-lock
-	 * to the port carrier. So let's say that RX1 and TX1 are both on LO1 and start:
-	 *	1. TX1 carrier set to 2.45GHz and primed
-	 *	2. RX1 carrier set to 2.4GHz and primed
-	 *	3. Change TX1 to rf_enabled and set carrier to 2.5GHz
-	 * With the last steps we end up with 2.4GHz on LO1 which is not expected. The
-	 * reason is that we will move RX1 from calibrated to prime after changing TX1
-	 * which causes a re-lock.
-	 */
-	ret = carrier_helper_move_to_calibrated(chan, &ensm_restore);
-	if (ret)
-		goto ensm_restore;
-
 	chan->carrier.save(&chan->carrier);
-ensm_restore:
-	/* restore the ensm_mode */
-	for (c = 0; c < ensm_restore.n_restore; c++) {
-		iio_channel_attr_write(ensm_restore.s[c].ensm->chn,
-				       ensm_restore.s[c].ensm->attr_name,
-				       ensm_restore.s[c].old);
-		/* update the UI */
-		usleep(2000);
-		iio_widget_update_block_signals_by_data(ensm_restore.s[c].ensm);
-		g_free(ensm_restore.s[c].old);
-	}
+	/*
+	 * Carriers are only moved together for ports of the same type so just update the
+	 * value of the @other channel. In cases like TDD, that won't be the case so we could
+	 * actually skip updating the widget but doing it unconditionally it's just much
+	 * simpler and allow us to drop all the code to keep the LO mappings.
+	 */
+	if (tx)
+		iio_widget_update_block_signals_by_data(&priv->tx_widgets[other].carrier);
+	else
+		iio_widget_update_block_signals_by_data(&priv->rx_widgets[other].rx.carrier);
 
 	iio_widget_update_block_signals_by_data(&chan->carrier);
 }
@@ -758,46 +631,6 @@ static void adrv9002_profile_read(struct plugin_private *priv)
 		strcpy(profile, "error\n");
 
 	gtk_label_set_text(label, profile);
-
-	/* lets get the LO mappings used when setting carriers */
-	for (c = 0; c < ADRV9002_NUM_CHANNELS; c++) {
-		int ret = 0, lo = 0;
-		char port[8], *p;
-
-		/* init LO mapping to an invalid value */
-		priv->rx_widgets[c].rx.lo = ADRV9002_LO_INV;
-		priv->tx_widgets[c].lo = ADRV9002_LO_INV;
-
-		if (!priv->rx_widgets[c].rx.enabled)
-			goto tx;
-
-		/* look for RX */
-		sprintf(port, "RX%d", c + 1);
-		p = strstr(profile, port);
-		if (!p)
-			continue;
-
-		ret = sscanf(p, "RX%*d LO: L0%d", &lo);
-		if (ret != 1)
-			continue;
-
-		priv->rx_widgets[c].rx.lo = lo;
-tx:
-		if (!priv->tx_widgets[c].enabled)
-			continue;
-
-		/* look for TX */
-		sprintf(port, "TX%d", c + 1);
-		p = strstr(profile, port);
-		if (!p)
-			continue;
-
-		ret = sscanf(p, "TX%*d LO: L0%d", &lo);
-		if (ret != 1)
-			continue;
-
-		priv->tx_widgets[c].lo = lo;
-	}
 }
 
 static void adrv9002_check_orx_status(struct plugin_private *priv, struct adrv9002_orx *orx)
