@@ -35,7 +35,7 @@ jobs:
                 -e BRANCH=%GITHUB_REF_NAME% ^
                 -e HEAD_BRANCH=%GITHUB_HEAD_REF% ^
                 -e OSC_BUILD_VER=%TAG% ^
-                -e LIBIIO_BRANCH=v0.24 ^
+                -e LIBIIO_BRANCH=v0.25-rc.1 ^
                 -e LIBAD9361_BRANCH=master ^
                 -e LIBAD9166_BRANCH=master ^
                 shooteu/iio-oscilloscope C:\msys64\usr\bin\bash.exe -c '/home/docker/iio-oscilloscope/CI/docker/inside_docker.sh'
