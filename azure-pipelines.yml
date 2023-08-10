@@ -1,7 +1,7 @@
 variables:
   libiioPipelineId: 9
   libad9361iioPipelineId: 10
-  libad9166iioPipelineId: 11
+  libad9166iioPipelineId: 41
 
 trigger:
 - main
@@ -85,6 +85,67 @@ jobs:
       runBranch: 'refs/heads/master'
       path: '$(Agent.BuildDirectory)/s/build/'
   - script: ./CI/travis/before_install_linux
+    displayName: "Install Dependencies"
+  - script: ./CI/travis/make_linux
+    displayName: "Build"
+
+- job: rpiBuilds
+  workspace:
+      clean: all
+  strategy:
+      matrix:
+        rpi_arm:
+          poolName: 'Default'
+          vmImage: 
+          agentName: 'iio-osc_rpi'
+          OS_TYPE: 'arm32v7/debian_docker'
+          OS_VERSION: 'buster'
+          artifactName: 'Linux-RPI-ARM'
+  pool:
+      name: $(poolName)
+      vmImage: $(vmImage)
+      demands:
+        - agent.name -equals $(agentName)
+  steps:
+  - checkout: self
+    fetchDepth: 1
+    clean: true
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Get libiio artifacts'
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: $(libiioPipelineId)
+      artifact: 'Ubuntu-arm32v7'
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/master'
+      path: '$(Agent.BuildDirectory)/s/build/'
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Get libad9361-iio artifacts'
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: $(libad9361iioPipelineId)
+      artifact: 'Ubuntu-arm32v7'
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/master'
+      path: '$(Agent.BuildDirectory)/s/build/'
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Get libad9166-iio artifacts'
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: $(libad9166iioPipelineId)
+      artifact: 'Ubuntu-arm32v7'
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/master'
+      path: '$(Agent.BuildDirectory)/s/build/'
+  - script: |
+      set -x
+      ls -al $(Agent.BuildDirectory)/s/build
+      sudo dpkg -i $(Agent.BuildDirectory)/s/build/libiio*.deb
+      sudo dpkg -i $(Agent.BuildDirectory)/s/build/libad9361*.deb
+      sudo dpkg -i $(Agent.BuildDirectory)/s/build/libad9166*.deb
     displayName: "Install Dependencies"
   - script: ./CI/travis/make_linux
     displayName: "Build"
