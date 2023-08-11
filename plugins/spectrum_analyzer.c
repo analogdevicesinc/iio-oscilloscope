@@ -389,9 +389,8 @@ static bool configure_data_capture(plugin_setup *setup)
 	device_set_rx_sampling_freq(dev, sampling_rate);
 	rate = device_get_rx_sampling_freq(cap);
 	if (rate != sampling_rate) {
-		fprintf(stderr, "Failed to set the rx sampling rate to %lld"
-			"in %s\n", sampling_rate, __func__);
-		return false;
+		fprintf(stderr, "Failed to set the rx sampling rate to %lld "
+			"(actual rate is %lld) in %s\n", sampling_rate, rate, __func__);
 	}
 
 	dev_info = iio_device_get_data(cap);
