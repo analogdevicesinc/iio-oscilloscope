@@ -94,6 +94,63 @@ stages:
 
   #######################################
 
+  - job: RPIBuilds
+    pool:
+      name: Default
+      demands:
+        - agent.name -equals iio-osc_rpi
+    workspace:
+      clean: all
+    steps:
+    - checkout: self
+      fetchDepth: 1
+      clean: true
+      persistCredentials: true
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        source: 'specific'
+        project: '$(System.TeamProjectId)'
+        pipeline: $(libiioPipelineId)
+        artifact: 'Ubuntu-arm32v7'
+        runVersion: 'latestFromBranch'
+        runBranch: 'refs/heads/master'
+        path: '$(Agent.BuildDirectory)/s/download/'
+      displayName: 'Get libiio artifacts'
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        source: 'specific'
+        project: '$(System.TeamProjectId)'
+        pipeline: $(libad9361iioPipelineId)
+        artifact: 'Ubuntu-arm32v7'
+        runVersion: 'latestFromBranch'
+        runBranch: 'refs/heads/master'
+        path: '$(Agent.BuildDirectory)/s/download/'
+      displayName: 'Get libad9361-iio artifacts'
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        source: 'specific'
+        project: '$(System.TeamProjectId)'
+        pipeline: $(libad9166iioPipelineId)
+        artifact: 'Ubuntu-arm32v7'
+        runVersion: 'latestFromBranch'
+        runBranch: 'refs/heads/master'
+        path: '$(Agent.BuildDirectory)/s/download/'
+      displayName: 'Get libad9166-iio artifacts'
+    - script: |
+        sudo dpkg -i ./download/*.deb
+      displayName: 'Install Dependencies'
+    - script: |
+        mkdir build && cd build
+        cmake ../
+        make -j9
+      displayName: 'Build'
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'RPI4-Bullseye'
+
+  #######################################
+
   - job: ARMBuilds
     # Host Box
     pool:
