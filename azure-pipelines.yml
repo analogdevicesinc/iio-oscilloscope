@@ -174,9 +174,9 @@ stages:
           image: tfcollins/libiio_ubuntu_18_04-ci-arm-ppc:latest
           arch: aarch64
           artifactName: 'Ubuntu-arm64v8'
-        bullseye:
+        debian_bullseye_arm64v8:
           image: tfcollins/libiio_debian_bullseye-ci:latest
-          arch: x86_64
+          arch: linux/arm64
           artifactName: 'Linux-Debian-11'
     steps:
     - checkout: self
