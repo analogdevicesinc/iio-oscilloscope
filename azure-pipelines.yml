@@ -106,16 +106,13 @@ stages:
       fetchDepth: 1
       clean: true
       persistCredentials: true
-    - task: DownloadPipelineArtifact@2
-      inputs:
-        source: 'specific'
-        project: '$(System.TeamProjectId)'
-        pipeline: $(libiioPipelineId)
-        artifact: 'Ubuntu-arm32v7'
-        runVersion: 'latestFromBranch'
-        runBranch: 'refs/heads/master'
-        path: '$(Agent.BuildDirectory)/s/download/'
-      displayName: 'Get libiio artifacts'
+    - script: |
+        git clone https://github.com/analogdevicesinc/libiio.git
+        cd libiio
+        mkdir build && cd build
+        cmake .. -Werror=dev -DCOMPILE_WARNING_AS_ERROR=ON -DENABLE_PACKAGING=ON -DPYTHON_BINDINGS=ON -DWITH_DOC=ON -DWITH_SERIAL_BACKEND=ON -DWITH_MAN=ON
+        make
+      displayName: 'Build libiio'
     - task: DownloadPipelineArtifact@2
       inputs:
         source: 'specific'
