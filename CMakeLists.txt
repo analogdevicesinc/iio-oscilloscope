@@ -20,7 +20,7 @@ cmake_minimum_required(VERSION 3.13.0)
 # needed to use VERSION in 'project()'
 cmake_policy(SET CMP0048 NEW)
 set(OSC_VERSION_MAJOR 0)
-set(OSC_VERSION_MINOR 8)
+set(OSC_VERSION_MINOR 15)
 set(OSC_VERSION "${OSC_VERSION_MAJOR}.${OSC_VERSION_MINOR}")
 project(iio-oscilloscope
 	VERSION ${OSC_VERSION}
@@ -32,6 +32,12 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 endif()
 
 include(GNUInstallDirs)
+
+if(ENABLE_PACKAGING AND ${CMAKE_INSTALL_FULL_LIBDIR} STREQUAL /usr/local/lib)
+       # /usr/local/lib might not be in LD_LIBRAY_PATH
+	   set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}")
+       set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
 
 # Get the GIT hash of the latest commit
 include(FindGit OPTIONAL)
@@ -337,3 +343,10 @@ if(NOT EXISTS "${TARGET_PATH}")
 endif()
 
 add_subdirectory(plugins)
+option(ENABLE_PACKAGING "Create .deb/.rpm/.tar.gz packages via 'make package'" OFF)
+
+if(ENABLE_PACKAGING)
+	if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+		include(cmake/LinuxPackaging.cmake)
+	endif()
+endif()
