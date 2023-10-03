@@ -348,7 +348,7 @@ static void cn0540_get_channels()
 {
 	gboolean direction = TRUE;
 	int idx = -1;
-	char label[9] = "voltage0";
+	char label[10] = "voltage0";
 
 	adc_ch = iio_device_find_channel(iio_adc, ADC_DEVICE_CH, FALSE);
 	dac_ch = iio_device_find_channel(iio_dac, DAC_DEVICE_CH, TRUE);
@@ -385,6 +385,7 @@ static void cn0540_get_channels()
 			if (label[7] == ':') {
 				label[7] = '1';
 				label[8] = '0';
+				label[9] = 0;
 			}
 		}
 	}
