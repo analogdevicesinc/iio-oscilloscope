@@ -2201,12 +2201,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 				"Device %s needs an impulse generator", name);
 		gtk_widget_set_tooltip_text(priv->capture_button, warning_text);
 		return false;
-	} else {
-		fprintf(stderr, "Failed to check if device: %s has trigger. Error:"
-			"%s\n", iio_device_get_name(dev) ?: iio_device_get_id(dev),
-			strerror(-ret));
 	}
-
 	/* Additional validation rules provided by the plugin of the device */
 	if (num_enabled != 2 || plot_type == TIME_PLOT)
 		return true;
@@ -6775,10 +6770,6 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEvent *event)
 		has_trigger = false;
 		if (ret == 0 && trigger) {
 			has_trigger = true;
-		} else {
-			fprintf(stderr, "Failed to check if device: %s has trigger. Error:"
-				"%s\n", iio_device_get_name(dev) ?: iio_device_get_id(dev),
-				strerror(-ret));
 		}
 
 		gtk_widget_set_sensitive(priv->device_trigger_menuitem,
