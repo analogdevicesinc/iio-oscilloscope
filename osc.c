@@ -1430,10 +1430,6 @@ static double read_sampling_frequency(const struct iio_device *dev)
 					sizeof(buf));
 			else
 				ret = -ENOENT;
-		} else {
-			fprintf(stderr, "Failed to check if device: %s has trigger. Error:"
-				"%s\n", iio_device_get_name(dev) ?: iio_device_get_id(dev),
-				strerror(-ret));
 		}
 	}
 
