@@ -36,7 +36,7 @@
 #define CALIB_MAX_ITER		  	20
 #define XADC_VREF			3.3
 #define XADC_RES			12
-#define NUM_GPIOS			8
+#define MAX_NUM_GPIOS			64
 #define NUM_ANALOG_PINS		 	6
 
 struct iio_gpio {
@@ -52,7 +52,7 @@ static struct iio_context *ctx;
 static struct iio_channel *adc_ch;
 static struct iio_channel *dac_ch;
 static struct iio_channel *analog_in[NUM_ANALOG_PINS];
-static struct iio_gpio gpio_ch[NUM_GPIOS];
+static struct iio_gpio gpio_ch[MAX_NUM_GPIOS];
 static struct iio_widget iio_widgets[25];
 static unsigned int num_widgets;
 
@@ -102,7 +102,7 @@ static gboolean cn0540_get_gpio_state(const char* gpio_name)
 	long long readback = -1;
 	int idx;
 
-	for(idx = 0; idx < NUM_GPIOS; idx++) {
+	for(idx = 0; idx < MAX_NUM_GPIOS; idx++) {
 		if(strstr(gpio_ch[idx].label, gpio_name)) {
 			iio_channel_attr_read_longlong(gpio_ch[idx].gpio, "raw",
 				&readback);
@@ -120,7 +120,7 @@ static void cn0540_set_gpio_state(const char* gpio_name, gboolean state)
 {
 	int idx;
 
-	for(idx = 0; idx < NUM_GPIOS; idx++) {
+	for(idx = 0; idx < MAX_NUM_GPIOS; idx++) {
 		if (strstr(gpio_ch[idx].label, gpio_name)) {
 			iio_channel_attr_write_longlong(gpio_ch[idx].gpio,
 				"raw", (long long)state);
@@ -354,6 +354,11 @@ static void cn0540_get_channels()
 	dac_ch = iio_device_find_channel(iio_dac, DAC_DEVICE_CH, TRUE);
 
 	while(1) {
+		if (idx == MAX_NUM_GPIOS) {
+			fprintf(stderr, "CN0540 plugin supports 64 GPIOs max\n");
+			break;
+		}
+
 		gpio_ch[++idx].gpio = iio_device_find_channel(iio_gpio, label,
 								  direction);
 		if (gpio_ch[idx].gpio != NULL){
