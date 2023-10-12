@@ -4436,13 +4436,15 @@ static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 static GdkPixbuf * window_get_screenshot_pixbuf(GtkWidget *window)
 {
 	GdkWindow *gdk_w;
+	GtkAllocation allocation;
 	gint width, height;
 
 	gdk_w = gtk_widget_get_window(window);
+	gtk_widget_get_allocation(window, &allocation);
 	width = gdk_window_get_width(gdk_w);
 	height = gdk_window_get_height(gdk_w);
 
-	return gdk_pixbuf_get_from_window(gdk_w, 0, 0, width, height);
+	return gdk_pixbuf_get_from_window(gdk_w, allocation.x, allocation.y, width, height);
 }
 
 static void screenshot_saveas_png(OscPlot *plot)
