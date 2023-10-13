@@ -129,7 +129,7 @@ stages:
         pipeline: $(libiioPipelineId)
         artifact: '$(artifactName)'
         runVersion: 'latestFromBranch'
-        runBranch: 'refs/heads/main'
+        runBranch: 'refs/heads/libiio-v0'
         path: '$(Agent.BuildDirectory)/s/download/'
       displayName: 'Get libiio artifacts'
     - task: DownloadPipelineArtifact@2
@@ -139,7 +139,7 @@ stages:
         pipeline: $(libad9361iioPipelineId)
         artifact: '$(artifactName)'
         runVersion: 'latestFromBranch'
-        runBranch: 'refs/heads/master'
+        runBranch: 'refs/heads/libad9361-iio-v0'
         path: '$(Agent.BuildDirectory)/s/download/'
       displayName: 'Get libad9361-iio artifacts'
     - task: DownloadPipelineArtifact@2
@@ -149,7 +149,7 @@ stages:
         pipeline: $(libad9166iioPipelineId)
         artifact: '$(artifactName)'
         runVersion: 'latestFromBranch'
-        runBranch: 'refs/heads/master'
+        runBranch: 'refs/heads/libad9166-iio-v0'
         path: '$(Agent.BuildDirectory)/s/download/'
       displayName: 'Get libad9166-iio artifacts'
     - script: |
