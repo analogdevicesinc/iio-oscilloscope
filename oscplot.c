@@ -4504,7 +4504,7 @@ static void copy_channel_state_to_selection_channel(GtkTreeModel *model,
 	for (node = ch_checkbtns; node; node = g_list_next(node)) {
 		btn = (GtkToggleButton *)node->data;
 		g_object_get(btn, "label", &btn_label, NULL);
-		if (!strcmp(ch_name, btn_label)) {
+		if (!strcmp(ch_name, btn_label) && !iio_channel_is_output(chn)) {
 			gtk_toggle_button_set_active(btn, active_state);
 			g_free(btn_label);
 			break;
