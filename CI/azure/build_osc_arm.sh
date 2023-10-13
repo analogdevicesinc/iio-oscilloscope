@@ -23,6 +23,7 @@ install_apt_pkgs() {
         	autotools-dev \
         	autoconf \
         "
+	apt-get update
 	apt-get install -y $APT_PKGS
 	git config --global --add safe.directory /ci
 }
