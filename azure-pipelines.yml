@@ -10,7 +10,6 @@ trigger:
     - master
     - staging/*
     - 20*
-    - fix-azure-ci
   tags:
     include:
     - v*
