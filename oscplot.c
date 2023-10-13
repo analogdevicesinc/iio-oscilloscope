@@ -4021,10 +4021,14 @@ static void saveas_device_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 
 	for (i = 0; i < channels->len; ++i) {
 		struct iio_channel *chn = g_array_index(channels, struct iio_channel *, i);
-		const char *name = iio_channel_get_name(chn) ?:
-			iio_channel_get_id(chn);
-		ch_checkbtn = gtk_check_button_new_with_label(name);
-		gtk_box_pack_start(GTK_BOX(priv->saveas_channels_list), ch_checkbtn, FALSE, TRUE, 0);
+
+		if (!iio_channel_is_output(chn) && iio_channel_is_scan_element(chn)) {
+
+			const char *name = iio_channel_get_name(chn) ?:
+				iio_channel_get_id(chn);
+			ch_checkbtn = gtk_check_button_new_with_label(name);
+			gtk_box_pack_start(GTK_BOX(priv->saveas_channels_list), ch_checkbtn, FALSE, TRUE, 0);
+		}
 	}
 	g_array_free(channels, FALSE);
 	gtk_widget_show_all(priv->saveas_channels_list);
@@ -4525,7 +4529,7 @@ static void channel_selection_set_default(OscPlot *plot)
 	g_free(device_name);
 }
 
-static int * get_user_saveas_channel_selection(OscPlot *plot, unsigned int nb_channels)
+static int * get_user_saveas_channel_selection(OscPlot *plot, unsigned int *nb_channels)
 {
 	OscPlotPrivate *priv = plot->priv;
 	GList *ch_checkbtns;
@@ -4533,11 +4537,13 @@ static int * get_user_saveas_channel_selection(OscPlot *plot, unsigned int nb_ch
 	GtkToggleButton *btn;
 	int *mask;
 
-	/* Create masks for all channels */
-	mask = malloc(sizeof(int) * nb_channels);
-
 	/* Get user channel selection from GUI widgets */
 	ch_checkbtns = gtk_container_get_children(GTK_CONTAINER(priv->saveas_channels_list));
+
+	/* Create masks for all channels */
+	mask = malloc(sizeof(int) * g_list_length(ch_checkbtns));
+	*nb_channels = g_list_length(ch_checkbtns);
+
 	for (node = ch_checkbtns; node; node = g_list_next(node)) {
 		btn = (GtkToggleButton *)node->data;
 
@@ -4624,10 +4630,9 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 				break;
 			dev = iio_context_get_device(ctx, d);
 			dev_info = iio_device_get_data(dev);
-			nb_channels = iio_device_get_channels_count(dev);
 
 			/* Find which channel need to be saved */
-			save_channels_mask = get_user_saveas_channel_selection(plot, nb_channels);
+			save_channels_mask = get_user_saveas_channel_selection(plot, &nb_channels);
 
 			/* Make a VSA file header */
 			fprintf(fp, "InputZoom\tTRUE\n");
@@ -4681,10 +4686,9 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 
 				dev = iio_context_get_device(ctx, d);
 				dev_info = iio_device_get_data(dev);
-				nb_channels = iio_device_get_channels_count(dev);
 
 				/* Find which channel need to be saved */
-				save_channels_mask = get_user_saveas_channel_selection(plot, nb_channels);
+				save_channels_mask = get_user_saveas_channel_selection(plot, &nb_channels);
 
 				dev_sample_count = dev_info->sample_count;
 				if (dev_info->channel_trigger_enabled)
@@ -4743,12 +4747,11 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 
 			dev = iio_context_get_device(ctx, d);
 			dev_info = iio_device_get_data(dev);
-			nb_channels = iio_device_get_channels_count(dev);
 			dev_name = iio_device_get_name(dev) ?:
 				iio_device_get_id(dev);
 
 			/* Find which channel need to be saved */
-			save_channels_mask = get_user_saveas_channel_selection(plot, nb_channels);
+			save_channels_mask = get_user_saveas_channel_selection(plot, &nb_channels);
 
 			dev_sample_count = dev_info->sample_count;
 			if (dev_info->channel_trigger_enabled)
@@ -5270,15 +5273,20 @@ static int channel_find_by_name(struct iio_context *ctx, int device_index,
 		return -1;
 
 	dev = iio_context_get_device(ctx, device_index);
+
 	if (dev)
 		nb_channels = iio_device_get_channels_count(dev);
 
 	for (i = 0; i < nb_channels; i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
-		const char *id = iio_channel_get_name(chn) ?:
-			iio_channel_get_id(chn);
-		if (!strcmp(id, name))
-			return i;
+
+		if (!iio_channel_is_output(chn) && iio_channel_is_scan_element(chn)) {
+
+			const char *id = iio_channel_get_name(chn) ?:
+				iio_channel_get_id(chn);
+			if (!strcmp(id, name))
+				return i;
+		}
 	}
 	return -1;
 }
