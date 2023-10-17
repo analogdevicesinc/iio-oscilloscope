@@ -475,7 +475,7 @@ struct carrier_helper {
 	struct {
 		struct adrv9002_combo_box *ensm;
 		gchar *old;
-	} s[3]; /* can't have more than 3 other ports on the same LO */
+	} s[ADRV9002_NUM_CHANNELS * 2];
 	int n_restore;
 };
 
