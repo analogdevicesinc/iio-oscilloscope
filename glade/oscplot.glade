@@ -887,7 +887,7 @@
                           <object class="GtkTable" id="grid1">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="n-rows">6</property>
+                            <property name="n-rows">7</property>
                             <property name="n-columns">2</property>
                             <property name="column-spacing">2</property>
                             <property name="row-spacing">2</property>
@@ -903,8 +903,8 @@
                               <packing>
                                 <property name="left-attach">1</property>
                                 <property name="right-attach">2</property>
-                                <property name="top-attach">5</property>
-                                <property name="bottom-attach">6</property>
+                                <property name="top-attach">6</property>
+                                <property name="bottom-attach">7</property>
                                 <property name="x-options">GTK_FILL</property>
                                 <property name="y-options">GTK_FILL</property>
                               </packing>
@@ -997,8 +997,8 @@
                               <packing>
                                 <property name="left-attach">1</property>
                                 <property name="right-attach">2</property>
-                                <property name="top-attach">4</property>
-                                <property name="bottom-attach">5</property>
+                                <property name="top-attach">5</property>
+                                <property name="bottom-attach">6</property>
                                 <property name="x-options">GTK_FILL</property>
                                 <property name="y-options">GTK_FILL</property>
                               </packing>
@@ -1017,8 +1017,8 @@
                               <packing>
                                 <property name="left-attach">1</property>
                                 <property name="right-attach">2</property>
-                                <property name="top-attach">5</property>
-                                <property name="bottom-attach">6</property>
+                                <property name="top-attach">6</property>
+                                <property name="bottom-attach">7</property>
                                 <property name="x-options">GTK_FILL</property>
                                 <property name="y-options">GTK_FILL</property>
                               </packing>
@@ -1031,8 +1031,8 @@
                                 <property name="xalign">0</property>
                               </object>
                               <packing>
-                                <property name="top-attach">5</property>
-                                <property name="bottom-attach">6</property>
+                                <property name="top-attach">6</property>
+                                <property name="bottom-attach">7</property>
                                 <property name="x-options">GTK_FILL</property>
                                 <property name="y-options">GTK_FILL</property>
                               </packing>
@@ -1070,8 +1070,8 @@
                                 <property name="xalign">0</property>
                               </object>
                               <packing>
-                                <property name="top-attach">4</property>
-                                <property name="bottom-attach">5</property>
+                                <property name="top-attach">5</property>
+                                <property name="bottom-attach">6</property>
                                 <property name="x-options">GTK_FILL</property>
                                 <property name="y-options">GTK_FILL</property>
                               </packing>
@@ -1083,8 +1083,8 @@
                                 <property name="xalign">0</property>
                               </object>
                               <packing>
-                                <property name="top-attach">5</property>
-                                <property name="bottom-attach">6</property>
+                                <property name="top-attach">6</property>
+                                <property name="bottom-attach">7</property>
                                 <property name="x-options">GTK_FILL</property>
                                 <property name="y-options">GTK_FILL</property>
                               </packing>
@@ -1132,6 +1132,31 @@
                                 <property name="bottom-attach">2</property>
                                 <property name="x-options">GTK_FILL</property>
                                 <property name="y-options">GTK_FILL</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="fft_win_correction">
+                                <property name="label" translatable="yes">Enable/ Disable</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="draw-indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="left-attach">1</property>
+                                <property name="right-attach">2</property>
+                                <property name="top-attach">4</property>
+                                <property name="bottom-attach">5</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="fft_win_cor_lbl">
+                                <property name="can-focus">False</property>
+                                <property name="label" translatable="yes">Window Correction:</property>
+                                <property name="xalign">0</property>
+                              </object>
+                              <packing>
+                                <property name="top-attach">4</property>
+                                <property name="bottom-attach">5</property>
                               </packing>
                             </child>
                           </object>
