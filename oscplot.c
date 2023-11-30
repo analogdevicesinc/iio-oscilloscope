@@ -290,6 +290,7 @@ struct _OscPlotPrivate
 	GtkWidget *fft_size_widget;
 	GtkWidget *fft_win_widget;
 	GtkWidget *fft_avg_widget;
+	GtkWidget *fft_pwr_offset_check;
 	GtkWidget *fft_pwr_offset_widget;
 	GtkWidget *device_settings_menu;
 	GtkWidget *math_settings_menu;
@@ -2404,7 +2405,6 @@ static struct iio_device * transform_get_device_parent(Transform *transform)
 
 	if (!transform || !transform->plot_channels)
 		return NULL;
-
 	plot_ch = transform->plot_channels->data;
 	if (plot_ch)
 		iio_dev = plot_ch->get_iio_parent(plot_ch);
@@ -6088,6 +6088,20 @@ static void fft_pwr_offset_value_changed_cb(GtkSpinButton *button, OscPlot *plot
 	}
 }
 
+static void fft_pwr_offset_check_cb(GtkCheckButton *button, OscPlot *plot)
+{
+	OscPlotPrivate *priv = plot->priv;
+
+	if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)))
+	    gtk_widget_set_sensitive(priv->fft_pwr_offset_widget, true);
+	else {
+	    gtk_widget_set_sensitive(priv->fft_pwr_offset_widget, false);
+	    gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->fft_pwr_offset_widget), 0);
+
+	  }
+
+}
+
 static gboolean tree_get_selected_row_iter(GtkTreeView *treeview, GtkTreeIter *iter)
 {
 	GtkTreeSelection *selection;
@@ -6632,7 +6646,7 @@ static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 static void channel_color_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
           // TO DO : update glade files to match new ColorChooserDialog
-		  OscPlotPrivate *priv = plot->priv;
+          OscPlotPrivate *priv = plot->priv;
           PlotChn *settings;
           GtkWidget *color_dialog;
           //GtkWidget *colorsel;
@@ -7013,6 +7027,7 @@ static void create_plot(OscPlot *plot)
 	priv->fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	priv->fft_win_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_win"));
 	priv->fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
+	priv->fft_pwr_offset_check = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset_check"));
 	priv->fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
 	priv->math_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_math_settings"));
 	priv->capture_options_box = GTK_WIDGET(gtk_builder_get_object(builder, "box_capture_options"));
@@ -7205,6 +7220,8 @@ static void create_plot(OscPlot *plot)
 		G_CALLBACK(min_y_axis_cb), plot);
 	g_signal_connect(priv->fft_avg_widget, "value-changed",
 		G_CALLBACK(fft_avg_value_changed_cb), plot);
+	g_signal_connect(priv->fft_pwr_offset_check, "toggled",
+		G_CALLBACK(fft_pwr_offset_check_cb), plot);
 	g_signal_connect(priv->fft_pwr_offset_widget, "value-changed",
 		G_CALLBACK(fft_pwr_offset_value_changed_cb), plot);
 	g_signal_connect(priv->new_plot_button, "clicked",
@@ -7338,11 +7355,18 @@ static void create_plot(OscPlot *plot)
 	 g_object_bind_property_full(priv->plot_domain, "active", priv->fft_avg_widget, "visible",
 		0, domain_is_xcorr_fft, NULL, NULL, NULL);
 
+	 tmp = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset_check_label"));
+	  g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
+		 0, domain_is_fft, NULL, NULL, NULL);
+	  g_object_bind_property_full(priv->plot_domain, "active", priv->fft_pwr_offset_check, "visible",
+		 0, domain_is_fft, NULL, NULL, NULL);
+
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset_label"));
 	 g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
 		0, domain_is_fft, NULL, NULL, NULL);
 	 g_object_bind_property_full(priv->plot_domain, "active", priv->fft_pwr_offset_widget, "visible",
 		0, domain_is_fft, NULL, NULL, NULL);
+	 gtk_widget_set_sensitive(priv->fft_pwr_offset_widget, false);
 
 	g_object_bind_property_full(priv->plot_domain, "active", priv->hor_units, "visible",
 		0, domain_is_time, NULL, NULL, NULL);
