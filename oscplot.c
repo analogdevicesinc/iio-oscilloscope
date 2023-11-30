@@ -289,6 +289,7 @@ struct _OscPlotPrivate
 	unsigned int sample_count;
 	GtkWidget *fft_size_widget;
 	GtkWidget *fft_win_widget;
+	GtkWidget *fft_win_correction;
 	GtkWidget *fft_avg_widget;
 	GtkWidget *fft_pwr_offset_widget;
 	GtkWidget *device_settings_menu;
@@ -1073,8 +1074,10 @@ static void do_fft(Transform *tr)
 	avg = (double)settings->fft_avg;
 	if (avg && avg != 128 )
 		avg = 1.0f / avg;
-
-	pwr_offset = settings->fft_pwr_off + window_function_offset(settings->fft_win);
+	if(settings->window_correction)
+	        pwr_offset = settings->fft_pwr_off + window_function_offset(settings->fft_win);
+	else
+	        pwr_offset = settings->fft_pwr_off;
 
 	for (j = 0; j <= MAX_MARKERS; j++) {
 		maxX[j] = 0;
@@ -1308,7 +1311,10 @@ static void do_fft_for_spectrum(Transform *tr)
 	if (avg && avg != 128 )
 		avg = 1.0f / avg;
 
-	pwr_offset = settings->fft_pwr_off + window_function_offset(settings->fft_win);
+	if(settings->window_correction)
+	         pwr_offset = settings->fft_pwr_off + window_function_offset(settings->fft_win);
+	else
+                 pwr_offset = settings->fft_pwr_off;
 
 	for (i = 0, k = 0; i < fft->m; ++i) {
 		if ((unsigned)i < settings->fft_lower_clipping_limit || (unsigned)i >= settings->fft_upper_clipping_limit)
@@ -2496,10 +2502,13 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 	struct _freq_spectrum_settings *freq_spectrum_settings;
 	GSList *node;
 
+	gboolean window_correction = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(plot->priv->fft_win_correction));
+
 	transform = Transform_new(tr_type);
 	transform->graph_color = &color_graph[priv->transform_list->size];
 	transform->plot_channels = g_slist_copy(channels);
 	transform->plot_channels_type = PLOT_CHN(channels->data)->type;
+
 
 	/* Enable iio channels used by the transform */
 	for (node = channels; node; node = g_slist_next(node)) {
@@ -2520,6 +2529,7 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 	case FFT_TRANSFORM:
 		Transform_attach_function(transform, fft_transform_function);
 		fft_settings = (struct _fft_settings *)calloc(sizeof(struct _fft_settings), 1);
+		fft_settings->window_correction = window_correction;
 		Transform_attach_settings(transform, fft_settings);
 		break;
 	case CONSTELLATION_TRANSFORM:
@@ -2530,6 +2540,7 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 	case COMPLEX_FFT_TRANSFORM:
 		Transform_attach_function(transform, fft_transform_function);
 		fft_settings = (struct _fft_settings *)calloc(sizeof(struct _fft_settings), 1);
+		fft_settings->window_correction = window_correction;
 		Transform_attach_settings(transform, fft_settings);
 		break;
 	case CROSS_CORRELATION_TRANSFORM:
@@ -7012,6 +7023,7 @@ static void create_plot(OscPlot *plot)
 	priv->sample_count_widget = GTK_WIDGET(gtk_builder_get_object(builder, "sample_count"));
 	priv->fft_size_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_size"));
 	priv->fft_win_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_win"));
+	priv->fft_win_correction = GTK_WIDGET(gtk_builder_get_object(builder, "fft_win_correction"));
 	priv->fft_avg_widget = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg"));
 	priv->fft_pwr_offset_widget = GTK_WIDGET(gtk_builder_get_object(builder, "pwr_offset"));
 	priv->math_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_math_settings"));
@@ -7330,6 +7342,12 @@ static void create_plot(OscPlot *plot)
 	 g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
 		0, domain_is_fft, NULL, plot, NULL);
 	 g_object_bind_property_full(priv->plot_domain, "active", priv->fft_win_widget, "visible",
+		0, domain_is_fft, NULL, NULL, NULL);
+
+	 tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_win_cor_lbl"));
+	 g_object_bind_property_full(priv->plot_domain, "active", tmp, "visible",
+		0, domain_is_fft, NULL, plot, NULL);
+	 g_object_bind_property_full(priv->plot_domain, "active", priv->fft_win_correction, "visible",
 		0, domain_is_fft, NULL, NULL, NULL);
 
 	tmp = GTK_WIDGET(gtk_builder_get_object(builder, "fft_avg_label"));
