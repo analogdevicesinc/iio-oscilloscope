@@ -143,6 +143,7 @@ struct _fft_settings {
 	struct marker_type **markers_copy;
 	GMutex *marker_lock;
 	enum marker_types *marker_type;
+	bool window_correction;
 };
 
 struct _constellation_settings {
@@ -194,6 +195,7 @@ struct _freq_spectrum_settings {
 	struct marker_type **markers_copy;
 	GMutex *marker_lock;
 	enum marker_types *marker_type;
+	bool window_correction;
 };
 
 Transform* Transform_new(int tr_type);
