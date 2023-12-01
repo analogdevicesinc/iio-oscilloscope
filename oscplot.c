@@ -2428,6 +2428,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 	if (plot_type == FFT_PLOT) {
 		FFT_SETTINGS(transform)->fft_size = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 		FFT_SETTINGS(transform)->fft_win = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->fft_win_widget));
+		FFT_SETTINGS(transform)->window_correction = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->fft_win_correction));
 		FFT_SETTINGS(transform)->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
 		FFT_SETTINGS(transform)->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_pwr_offset_widget));
 		FFT_SETTINGS(transform)->fft_alg_data.cached_fft_size = -1;
@@ -2479,6 +2480,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 		FREQ_SPECTRUM_SETTINGS(transform)->filter_bandwidth = priv->filter_bw;
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_size = comboboxtext_get_active_text_as_int(GTK_COMBO_BOX_TEXT(priv->fft_size_widget));
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_win = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(priv->fft_win_widget));
+		FREQ_SPECTRUM_SETTINGS(transform)->window_correction = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->fft_win_correction));
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_avg = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_avg_widget));
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_pwr_off = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->fft_pwr_offset_widget));
 		FREQ_SPECTRUM_SETTINGS(transform)->maxXaxis = malloc(sizeof(unsigned int) * (MAX_MARKERS + 1));
@@ -2502,7 +2504,7 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 	struct _freq_spectrum_settings *freq_spectrum_settings;
 	GSList *node;
 
-	gboolean window_correction = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(plot->priv->fft_win_correction));
+	bool window_correction = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(plot->priv->fft_win_correction));
 
 	transform = Transform_new(tr_type);
 	transform->graph_color = &color_graph[priv->transform_list->size];
@@ -5355,6 +5357,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 					priv->read_scale_params = 0;
 				}
 				check_valid_setup(plot);
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(priv->fft_win_correction), false);
 				priv->profile_loaded_scale = TRUE;
 				gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(priv->capture_button), atoi(value));
 				priv->profile_loaded_scale = FALSE;
@@ -7311,6 +7314,8 @@ static void create_plot(OscPlot *plot)
 		"capture_domain", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
 		"fft_size", "sensitive", G_BINDING_INVERT_BOOLEAN);
+	g_builder_bind_property(builder, "capture_button", "active",
+		"fft_win_correction", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
 		"fft_win", "sensitive", G_BINDING_INVERT_BOOLEAN);
 	g_builder_bind_property(builder, "capture_button", "active",
