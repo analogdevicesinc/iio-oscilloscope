@@ -926,7 +926,6 @@ static void adrv9002_profile_read(struct plugin_private *priv)
 	char profile[512];
 	ssize_t ret;
 	GtkLabel *label = GTK_LABEL(gtk_builder_get_object(priv->builder, "profile_config_read"));
-	int c;
 
 	ret = iio_device_attr_read(priv->adrv9002, "profile_config", profile, sizeof(profile));
 	if (ret < 0)
@@ -1018,7 +1017,6 @@ static void adrv9002_update_rx_intf_gain_attr_available(struct adrv9002_rx *rx)
 	struct iio_widget *w = &rx->intf_gain;
 	gchar **saved_list, **available;
 	char text[512];
-	gint idx;
 	int ret;
 
 	ret = iio_channel_attr_read(w->chn, w->attr_name_avail, text,
