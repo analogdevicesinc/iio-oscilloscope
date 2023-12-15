@@ -362,7 +362,6 @@ void iio_combo_box_init_no_avail_flush(struct iio_widget *widget, struct iio_dev
 	if (attr_name_avail) {
 		int ret, item;
 		char text[1024];
-		GtkTreeModel *model = gtk_combo_box_get_model(GTK_COMBO_BOX(combo_box));
 		gchar **items_avail = NULL;
 
 		if (chn)
