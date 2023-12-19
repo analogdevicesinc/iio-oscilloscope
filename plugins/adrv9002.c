@@ -1727,7 +1727,7 @@ static int profile_gen_config_set_LTE(struct adrv9002_config *cfg, gpointer data
 
 	// col 1 is sample rate and col 2 is bandwidth
 	guint freq_table_len = 6;
-	char *freq_table[2][6] = {{"1920000", "3840000", "7680000", "12360000", "30720000", "61440000"},
+	char *freq_table[2][6] = {{"1920000", "3840000", "7680000", "15360000", "30720000", "61440000"},
 				  {"1008000", "2700000", "4500000", "90000000", "18000000", "38000000"}};
 
 	// get current device SSI Interface
