@@ -151,3 +151,14 @@ const char *get_iio_device_label_or_name(const struct iio_device *dev)
 
 	return iio_device_get_name(dev);
 }
+
+bool iio_attr_not_found(struct iio_device *dev, struct iio_channel *chn, const char *attr_name)
+{
+	if (!attr_name || !dev)
+		return false;
+
+	if (!chn)
+		return !iio_device_find_attr(dev, attr_name);
+
+	return !iio_channel_find_attr(chn, attr_name);
+}
