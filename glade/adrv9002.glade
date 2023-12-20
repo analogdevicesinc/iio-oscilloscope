@@ -387,7 +387,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkFrame" id="frame6">
+                                              <object class="GtkFrame" id="frame_calibrations">
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">False</property>
                                                 <property name="margin-left">15</property>
