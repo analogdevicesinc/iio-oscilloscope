@@ -1407,7 +1407,13 @@ static void adrv9002_initial_calibrations_init(struct plugin_private *priv)
 	GObject *help = gtk_builder_get_object(priv->builder, "initial_calibrations_help");
 	int n_w = priv->num_widgets;
 
-	/* initial calibrations */
+	if (iio_attr_not_found(priv->adrv9002, NULL, "initial_calibrations")) {
+		GObject *init_frame = gtk_builder_get_object(priv->builder, "frame_calibrations");
+
+		gtk_widget_hide(GTK_WIDGET(init_frame));
+		return;
+	}
+
 	adrv9002_combo_box_init(&priv->device_w[priv->num_widgets++], "initial_calibrations",
 				"initial_calibrations", "initial_calibrations_available", priv, NULL);
 
