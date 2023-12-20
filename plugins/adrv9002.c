@@ -656,7 +656,7 @@ static void adrv9002_save_carrier_freq(GtkWidget *widget, struct adrv9002_common
 	 * actually skip updating the widget but doing it unconditionally it's just much
 	 * simpler and allow us to drop all the code to keep the LO mappings.
 	 */
-	if (tx)
+	if (tx && other < priv->n_txs)
 		iio_widget_update_block_signals_by_data(&priv->tx_widgets[other].carrier);
 	else
 		iio_widget_update_block_signals_by_data(&priv->rx_widgets[other].rx.carrier);
