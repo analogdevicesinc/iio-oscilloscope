@@ -1127,18 +1127,22 @@ static void instrument_type_cb (GtkComboBox *box)
 
 static void scpi_text_entry_cb (GtkEntry *box, int data)
 {
-	GdkRGBA green = {
-		.red = 0,
-		.green = 0xFFFF,
-		.blue = 0,
-		.alpha = 1.0
-	};
-	GdkRGBA red = {
-		.red = 0xFFFF,
-		.green = 0,
-		.blue = 0,
-		.alpha = 1.0
-	};
+	// use css style provider to set box color
+	GtkStyleContext *style_context;
+	GdkDisplay *display;
+	GdkScreen *screen;
+	GError *err = NULL;
+	display = gdk_display_get_default ();
+	screen = gdk_display_get_default_screen (display);
+	GtkCssProvider *provider;
+	provider = gtk_css_provider_new ();
+	gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(provider),OSC_STYLE_FILE_PATH"styles.css",&err);
+	if ( err ) {
+		g_error_free(err);
+		gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(provider),"./styles.css",NULL);
+	}
+	gtk_style_context_add_provider_for_screen (screen, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+	style_context = gtk_widget_get_style_context(GTK_WIDGET(box));
 
 	switch (data) {
 		case 0:
@@ -1163,9 +1167,9 @@ static void scpi_text_entry_cb (GtkEntry *box, int data)
 			current_instrument->id_regex = strdup(gtk_entry_get_text(box));
 
 			if (strstr(gtk_label_get_text(GTK_LABEL(scpi_id)), current_instrument->id_regex))
-				gtk_widget_override_color(GTK_WIDGET(box), GTK_STATE_FLAG_NORMAL, &green);
+				gtk_style_context_add_class(style_context,"spci_box_g");
 			else
-				gtk_widget_override_color(GTK_WIDGET(box), GTK_STATE_FLAG_NORMAL, &red);
+				gtk_style_context_add_class(style_context,"spci_box_r");
 			break;
 		case 4:
 			if (cmd_to_send)
@@ -1177,6 +1181,7 @@ static void scpi_text_entry_cb (GtkEntry *box, int data)
 				__FILE__, __func__, data);
 			break;
 	}
+	g_object_unref(provider);
 }
 
 static void init_scpi_device(struct scpi_instrument *device)
