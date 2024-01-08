@@ -6876,11 +6876,11 @@ static void fullscreen_changed_cb(GtkWidget *widget, OscPlot *plot)
 
      if (priv->fullscreen_state) {
          gtk_window_unfullscreen(GTK_WINDOW(priv->window));
-         gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-fullscreen");
+         gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-fullscreen");
          gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Fullscreen");
      } else {
          gtk_window_fullscreen(GTK_WINDOW(priv->window));
-         gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-leave-fullscreen");
+         gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(priv->fullscreen_button), "gtk-leave-fullscreen");
          gtk_menu_item_set_label(GTK_MENU_ITEM(priv->menu_fullscreen), "Leave Fullscreen");
      }
 }
