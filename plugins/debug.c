@@ -1000,11 +1000,18 @@ static void draw_reg_map(int valid_register)
 	const gchar *label_str;
 	char buf[12];
 	GtkRequisition r;
+	GtkWidget *parent;
 
 	block_bit_option_signals();
 	/* Reset all bits to the "reseverd" status and clear all options */
 	for (i = (reg_bit_width - 1); i >= 0; i--){
-		gtk_widget_reparent(lbl_bits[i], hboxes[i]);
+		parent = gtk_widget_get_parent(GTK_WIDGET(lbl_bits[i]));
+		gtk_widget_hide(GTK_WIDGET(lbl_bits[i]));
+		g_object_ref(GTK_WIDGET(lbl_bits[i]));
+		gtk_container_remove(GTK_CONTAINER(parent), GTK_WIDGET(lbl_bits[i]));
+		gtk_container_add(GTK_CONTAINER(hboxes[i]), GTK_WIDGET(lbl_bits[i]));
+		g_object_unref(GTK_WIDGET(lbl_bits[i]));
+		gtk_widget_show(GTK_WIDGET(lbl_bits[i]));
 		gtk_label_set_text((GtkLabel *)bit_descrip_list[i], "Reserved");
 		gtk_label_set_width_chars((GtkLabel *)bit_descrip_list[i], 13);
 		gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(bit_comboboxes[i]));
@@ -1046,8 +1053,14 @@ static void draw_reg_map(int valid_register)
 	for (i = 0; i < p_reg->bgroup_cnt; i++){
 		p_bit = &p_reg->bgroup_list[i];
 		for (j = (p_bit->width - 1); j >= 0 ; j--){
-			gtk_widget_reparent(lbl_bits[p_bit->offset + j], hboxes[p_bit->offset]);
-			gtk_box_reorder_child((GtkBox *)hboxes[p_bit->offset], lbl_bits[p_bit->offset + j], -1);
+			parent = gtk_widget_get_parent(GTK_WIDGET(lbl_bits[p_bit->offset + j]));
+			gtk_widget_hide(GTK_WIDGET(lbl_bits[p_bit->offset + j]));
+			g_object_ref(GTK_WIDGET(lbl_bits[p_bit->offset + j]));
+			gtk_container_remove(GTK_CONTAINER(parent), GTK_WIDGET(lbl_bits[p_bit->offset + j]));
+			gtk_container_add(GTK_CONTAINER(hboxes[p_bit->offset]), GTK_WIDGET(lbl_bits[p_bit->offset + j]));
+			g_object_unref(GTK_WIDGET(lbl_bits[p_bit->offset + j]));
+			gtk_box_reorder_child(GTK_BOX(hboxes[p_bit->offset]), GTK_WIDGET(lbl_bits[p_bit->offset + j]), -1);
+			gtk_widget_show(GTK_WIDGET(lbl_bits[p_bit->offset + j]));
 			if (j > 0)
 				gtk_widget_hide(elem_frames[p_bit->offset + j]);
 		}
@@ -1101,7 +1114,7 @@ static void draw_reg_map(int valid_register)
 	}
 
 	/* Set the height of the regmap scrolled window. */
-	gtk_widget_size_request(reg_map_container, &r);
+	gtk_widget_get_preferred_size(reg_map_container, NULL, &r);
 	gtk_widget_set_size_request(scrollwin_regmap, -1, r.height);
 
 	unblock_bit_option_signals();
@@ -1196,7 +1209,8 @@ static void create_reg_map(void)
 		gtk_widget_set_size_request(lbl_bits[i], 50, -1);
 		gtk_box_pack_start((GtkBox *)hboxes[i], lbl_bits[i], TRUE, FALSE,
 									0);
-		gtk_misc_set_alignment((GtkMisc *)lbl_bits[i], 0.5, 0.0);
+		gtk_widget_set_halign((GtkWidget*)lbl_bits[i], 0.5);
+		gtk_widget_set_valign((GtkWidget*)lbl_bits[i], 0.5);
 		bit_descrip_list[i] = gtk_label_new("Reserved");
 		gtk_box_pack_start((GtkBox *)vboxes[i], bit_descrip_list[i], TRUE, TRUE,
 									0);
@@ -1217,11 +1231,18 @@ static void create_reg_map(void)
 		gtk_widget_set_size_request(bit_no_read_lbl[i], 50, -1);
 		gtk_box_pack_start((GtkBox *)vboxes[i], bit_no_read_lbl[i],
 							FALSE, FALSE, 0);
-		gtk_misc_set_padding((GtkMisc *)bit_no_read_lbl[i], 0, 10);
+		gtk_widget_set_margin_start((GtkWidget *)bit_no_read_lbl[i], 0);
+		gtk_widget_set_margin_end((GtkWidget *)bit_no_read_lbl[i], 0);
+		gtk_widget_set_margin_top((GtkWidget *)bit_no_read_lbl[i], 10);
+		gtk_widget_set_margin_bottom((GtkWidget *)bit_no_read_lbl[i], 10);
 
 		gtk_label_set_line_wrap((GtkLabel *)bit_descrip_list[i], TRUE);
-		gtk_misc_set_alignment((GtkMisc *)bit_descrip_list[i], 0.5, 0.5);
-		gtk_misc_set_padding((GtkMisc *)bit_descrip_list[i], 0, 10);
+		gtk_widget_set_halign((GtkWidget*)bit_descrip_list[i], 0.5);
+		gtk_widget_set_valign((GtkWidget*)bit_descrip_list[i], 0.5);
+		gtk_widget_set_margin_start((GtkWidget *)bit_descrip_list[i], 0);
+		gtk_widget_set_margin_end((GtkWidget *)bit_descrip_list[i], 0);
+		gtk_widget_set_margin_top((GtkWidget *)bit_descrip_list[i], 10);
+		gtk_widget_set_margin_bottom((GtkWidget *)bit_descrip_list[i], 10);
 
 		combo_hid_list[i] = g_signal_connect(G_OBJECT(bit_comboboxes[i]),
 			"changed", G_CALLBACK(spin_or_combo_changed_cb), NULL);
