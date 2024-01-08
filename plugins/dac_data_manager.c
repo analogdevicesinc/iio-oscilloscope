@@ -895,8 +895,10 @@ static GtkWidget *gui_tone_create(struct dds_tone *tone)
 	tone->freq = spin_button_create(0.0, 100.0, 1.0, FREQUENCY_SPIN_DIGITS);
 	tone->phase = spin_button_create(0.0, 360.0, 1.0, PHASE_SPIN_DIGITS);
 
-	gtk_misc_set_alignment(GTK_MISC(freq), 0.0, 0.5);
-	gtk_misc_set_alignment(GTK_MISC(phase), 0.0, 0.5);
+	gtk_widget_set_halign((GtkWidget*)freq, 0.5);
+	gtk_widget_set_valign((GtkWidget*)freq, 0.0);
+	gtk_widget_set_halign((GtkWidget*)phase, 0.5);
+	gtk_widget_set_valign((GtkWidget*)phase, 0.0);
 
 	if (combobox_scales) {
 		scale = gtk_label_new("Scale:");
@@ -904,7 +906,8 @@ static GtkWidget *gui_tone_create(struct dds_tone *tone)
 	} else {
 		scale = gtk_label_new("Scale(dBFS):");
 		tone->scale = spin_button_create(-91.0, 0.0, 1.0, SCALE_SPIN_DIGITS);
-		gtk_misc_set_alignment(GTK_MISC(scale), 0.0, 0.5);
+		gtk_widget_set_halign((GtkWidget*)scale, 0.5);
+		gtk_widget_set_valign((GtkWidget*)scale, 0.0);
 		gtk_spin_button_set_numeric(GTK_SPIN_BUTTON(tone->scale), FALSE);
 	}
 
