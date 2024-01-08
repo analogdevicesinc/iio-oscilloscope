@@ -471,8 +471,12 @@ void move_gtk_window_on_screen(GtkWindow   *window,
 	// get screen dimensions
 	GdkWindow *gdk_window = gtk_widget_get_window(GTK_WIDGET(window));
 	GdkScreen *screen = gdk_window_get_screen(gdk_window);
-	gint screen_w = gdk_screen_get_width(screen);
-	gint screen_h = gdk_screen_get_height(screen);
+	GdkDisplay *display = gdk_screen_get_display(screen);
+	GdkMonitor *monitor = gdk_display_get_monitor_at_window(display, gdk_window);
+	GdkRectangle geometry;
+	gdk_monitor_get_geometry(monitor, &geometry);
+	gint screen_w = geometry.width;
+	gint screen_h = geometry.height;
 
 	gint window_w;
 	gint window_h;
