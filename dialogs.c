@@ -302,6 +302,7 @@ static bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
 {
 	GdkCursor *watchCursor;
 	GdkWindow *gdkWindow;
+	GdkDisplay *display;
 
 	g_return_val_if_fail(widget, false);
 
@@ -313,7 +314,8 @@ static bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
 
 	g_return_val_if_fail(gdkWindow, false);
 
-	watchCursor = gdk_cursor_new(type);
+	display = gdk_window_get_display(gdkWindow);
+	watchCursor = gdk_cursor_new_for_display(display, type);
 	gdk_window_set_cursor(gdkWindow, watchCursor);
 
 	while (gtk_events_pending())
