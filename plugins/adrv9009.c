@@ -1083,7 +1083,13 @@ void buildTabsInContainer(GtkBox *container_box, enum plugin_section section, bo
 		if (!gtk_widget_get_parent(content_widget)) {
 			gtk_box_pack_start(GTK_BOX(page_container), content_widget, FALSE, TRUE, 0);
 		} else {
-			gtk_widget_reparent(content_widget, page_container);
+			GtkWidget *parent = gtk_widget_get_parent(GTK_WIDGET(content_widget));
+			gtk_widget_hide(GTK_WIDGET(content_widget));
+			g_object_ref(GTK_WIDGET(content_widget));
+			gtk_container_remove(GTK_CONTAINER(parent), GTK_WIDGET(content_widget));
+			gtk_container_add(GTK_CONTAINER(page_container), GTK_WIDGET(content_widget));
+			g_object_unref(GTK_WIDGET(content_widget));
+			gtk_widget_show(GTK_WIDGET(content_widget));
 		}
 	}
 
