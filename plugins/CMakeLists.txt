@@ -17,7 +17,6 @@
 
 set(PLUGINS
 	generic_dac
-	fmcomms1
 	fmcomms2
 	fmcomms2_adv
 	fmcomms5
