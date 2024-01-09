@@ -1075,6 +1075,11 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 #endif
 		snprintf(buf, sizeof(buf), "%s/%s", plugin_dir, ent->d_name);
 
+		/* Don't load obsolete plugins to avoid any potential issues */
+		if (!strncmp("fmcomms1.", ent->d_name, strlen("fmcomms1."))) {
+			continue;
+		}
+
 		lib = dlopen(buf, RTLD_LOCAL | RTLD_LAZY);
 		if (!lib) {
 			fprintf(stderr, "Failed to load plugin \"%s\": %s\n",
