@@ -150,6 +150,9 @@ struct _constellation_settings {
 	gfloat *x_source;
 	gfloat *y_source;
 	unsigned int num_samples;
+	void (*xy_transform)(gfloat *x_in, gfloat *y_in, gfloat *x_out, gfloat *y_out,
+			unsigned int length, void *user_data); /* optional */
+	void *xy_transform_user_data; /* optional */
 };
 
 struct _cross_correlation_settings {

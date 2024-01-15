@@ -418,6 +418,9 @@ struct _OscPlotPrivate
 
 	void (*quit_callback)(void *user_data);
 	void *qcb_user_data;
+	void (*xy_transform)(gfloat *x_in, gfloat *y_in, gfloat *x_out,
+		gfloat *y_out, unsigned int length, void *user_data);
+	void *xy_transform_user_data;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
@@ -867,6 +870,16 @@ void osc_plot_spect_set_filter_bw(OscPlot *plot, double bw)
 	g_return_if_fail(plot);
 
 	plot->priv->filter_bw = bw;
+}
+
+void osc_plot_set_xy_transform(OscPlot *plot, void (*xy_transform)(gfloat *x_in,
+		gfloat *y_in, gfloat *x_out, gfloat *y_out, unsigned int length,
+		void *user_data), void *user_data)
+{
+	g_return_if_fail(plot);
+
+	plot->priv->xy_transform = xy_transform;
+	plot->priv->xy_transform_user_data = user_data;
 }
 
 static void osc_plot_dispose(GObject *object)
@@ -1862,20 +1875,30 @@ bool constellation_transform_function(Transform *tr, gboolean init_transform)
 		/* Initialize axis */
 		tr->x_axis_size = axis_length;
 		tr->y_axis_size = axis_length;
-		tr->x_axis = settings->x_source;
-		tr->y_axis = settings->y_source;
+		if (settings->xy_transform) {
+			Transform_resize_x_axis(tr, axis_length);
+			Transform_resize_y_axis(tr, axis_length);
+		} else {
+			tr->x_axis = settings->x_source;
+			tr->y_axis = settings->y_source;
+		}
 
 		return true;
 	}
 
 	GSList *node;
 
-	if (tr->plot_channels_type == PLOT_MATH_CHANNEL)
+	if (tr->plot_channels_type == PLOT_MATH_CHANNEL) {
 		for (node = tr->plot_channels; node; node = g_slist_next(node)) {
 			PlotMathChn *m = node->data;
 			m->math_expression(m->iio_channels_data,
 				m->data_ref, settings->num_samples);
 		}
+	} else if (settings->xy_transform) {
+		settings->xy_transform(
+			plot_channels_get_nth_data_ref(tr->plot_channels, 0), plot_channels_get_nth_data_ref(tr->plot_channels, 1),
+			tr->x_axis, tr->y_axis, settings->num_samples, settings->xy_transform_user_data);
+	}
 
 	return true;
 }
@@ -2457,6 +2480,8 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 		}
 	} else if (plot_type == XY_PLOT){
 		CONSTELLATION_SETTINGS(transform)->num_samples = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
+		CONSTELLATION_SETTINGS(transform)->xy_transform = priv->xy_transform;
+		CONSTELLATION_SETTINGS(transform)->xy_transform_user_data = priv->xy_transform_user_data;
 	} else if (plot_type == XCORR_PLOT){
 		int dev_samples = plot_get_sample_count_for_transform(plot, transform);
 		if (dev_samples < 0)
@@ -7426,6 +7451,9 @@ static void create_plot(OscPlot *plot)
 	priv->off_mrk.string_obj = OFF_MRK;
 
 	priv->line_thickness = 1;
+
+	priv->xy_transform = NULL;
+	priv->xy_transform_user_data = NULL;
 
 	gtk_window_set_modal(GTK_WINDOW(priv->saveas_dialog), FALSE);
 	gtk_widget_show_all(priv->capture_graph);

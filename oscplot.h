@@ -76,6 +76,8 @@ void          osc_plot_spect_mode       (OscPlot *plot, bool enable);
 void          osc_plot_spect_set_start_f(OscPlot *plot, double freq_mhz);
 void          osc_plot_spect_set_len    (OscPlot *plot, unsigned fft_count);
 void          osc_plot_spect_set_filter_bw(OscPlot *plot, double bw);
+void          osc_plot_set_xy_transform (OscPlot *plot, void (*xy_transform)(gfloat *x_in, gfloat *y_in,
+				gfloat *x_out, gfloat *y_out, unsigned int length, void *user_data), void *user_data);
 
 G_END_DECLS
 
