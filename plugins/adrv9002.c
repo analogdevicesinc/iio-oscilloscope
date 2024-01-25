@@ -951,9 +951,7 @@ static void adrv9002_check_orx_status(struct plugin_private *priv, struct adrv90
 	}
 }
 
-static void adrv9002_check_channel_status(struct plugin_private *priv,
-					  struct adrv9002_common *chan,
-					  const char *gtk_str)
+static bool adrv9002_channel_is_enabled(struct adrv9002_common *chan)
 {
 	int ret;
 	double dummy;
@@ -965,7 +963,20 @@ static void adrv9002_check_channel_status(struct plugin_private *priv,
 	 * widget as the channel is the same for all widgets on this port...
 	 */
 	ret = iio_channel_attr_read_double(chan->w[0].chn, "rf_bandwidth", &dummy);
-	if (ret == -ENODEV) {
+
+	if(ret < 0 && ret != -ENODEV) {
+		printf("Warning: iio channel returned an error when reading it: %d. We assume the channel is enabled\n",
+		       ret);
+	}
+
+	return ret == 0;
+}
+
+static void adrv9002_check_channel_status(struct plugin_private *priv,
+					  struct adrv9002_common *chan,
+					  const char *gtk_str)
+{
+	if (!adrv9002_channel_is_enabled(chan)) {
 		chan->enabled = false;
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder,
 								  gtk_str)));
