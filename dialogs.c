@@ -342,13 +342,15 @@ static bool widget_use_parent_cursor(GtkWidget *widget)
 
 static struct iio_context * get_context(Dialogs *data)
 {
+	int err;
+
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_net))) {
 		const char *hostname = gtk_entry_get_text(GTK_ENTRY(dialogs.net_ip));
 		struct iio_context *ctx = get_context_from_osc();
 
 		if (ctx && !g_strcmp0(hostname, iio_context_get_attr_value(ctx, "uri")))
 			return ctx;
-		return iio_create_context_from_uri(hostname);
+		return iio_create_context(NULL, hostname);
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb))) {
 		struct iio_context *ctx, *ctx2;
 		char *uri , *uri2, *uri3;
@@ -388,17 +390,18 @@ static struct iio_context * get_context(Dialogs *data)
 			return ctx2;
 		}
 
-		ctx = iio_create_context_from_uri(uri2);
+		ctx = iio_create_context(NULL, uri2);
+		err = iio_err(ctx);
 		/* If you are looking up ip: with zeroconf, without bonjour installed,
 		 * try the IP number too
 		 */
-		if (!ctx && strncmp(uri2, "ip:", sizeof("ip:"))) {
+		if (err && strncmp(uri2, "ip:", sizeof("ip:"))) {
 			uri3 = strdup(usb_pids[gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd))]);
 			if (uri3) {
 				if (strchr(uri3, ' ')) {
 					uri2 = strchr(uri3, ' ');
 					*uri2 = 0;
-					ctx = iio_create_network_context(uri3);
+					ctx = iio_create_context(NULL, uri3);
 				}
 				free(uri3);
 			}
@@ -418,15 +421,17 @@ static struct iio_context * get_context(Dialogs *data)
 		g_free(port);
 		g_free(baud_rate);
 
-		ctx = iio_create_context_from_uri(result);
+		ctx = iio_create_context(NULL, result);
 		g_free(result);
-		if (!ctx && errno == EBUSY &&
+
+		err = iio_err(ctx);
+		if (err && err == -EBUSY &&
 				!strcmp("serial", iio_context_get_name(get_context_from_osc()))) {
 			return get_context_from_osc();
 		}
 		return ctx;
 	} else {
-		return iio_create_local_context();
+		return iio_create_context(NULL, "local:");
 	}
 }
 

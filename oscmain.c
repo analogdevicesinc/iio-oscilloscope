@@ -1,7 +1,7 @@
 #include <errno.h>
 #include <glib.h>
 #include <gtk/gtk.h>
-#include <iio.h>
+#include <iio/iio.h>
 #include <string.h>
 #include <unistd.h>
 
