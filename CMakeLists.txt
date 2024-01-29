@@ -93,6 +93,7 @@ add_compile_options(-Wall -Wextra -Werror
 	-Wno-unused-parameter
 	-Wno-error=unused-but-set-variable
 	-Wno-error=unused-function
+	-Wno-error=deprecated
 	-Wimplicit-fallthrough
 	-Wvla
 	-std=gnu90
