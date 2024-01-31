@@ -1498,10 +1498,10 @@ static int capture_setup(void)
 
 		freq = read_sampling_frequency(dev);
 		if (freq > 0) {
-			/* 2 x capture time + 1s */
+			/* 5 x capture time + 1s */
 			timeout = sample_count * 1000 / freq;
 			if (dev_info->channel_trigger_enabled)
-				timeout *= 2;
+				timeout *= 5;
 			timeout += 1000;
 			if (timeout > min_timeout)
 				min_timeout = timeout;
