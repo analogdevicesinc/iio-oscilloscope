@@ -2400,6 +2400,21 @@ static int profile_gen_ui_refresh(GtkButton *self, struct plugin_private *priv)
 	return 0;
 }
 
+static void profile_gen_update_channels(GtkComboBox *self, struct plugin_private *priv)
+{
+	GtkWidget *channel_frame;
+	bool channel_en;
+	unsigned long i;
+	char *ch_frames[4] = {"frame_tx1_controls", "frame_tx2_controls", "frame_rx1_controls", "frame_rx2_controls"};
+	char *ch_buttons[4] = {"cb_tx_chan1_en", "cb_tx_chan2_en", "cb_rx_chan1_en", "cb_rx_chan2_en"};
+
+	for (i = 0; i < ARRAY_SIZE(ch_frames); i++) {
+		channel_frame = GTK_WIDGET(gtk_builder_get_object(priv->builder, ch_frames[i]));
+		channel_en = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, ch_buttons[i])));
+		gtk_widget_set_sensitive(channel_frame, channel_en);
+	}
+}
+
 static void adrv9002_combo_box_init(struct iio_widget *combo, const char *w_str,
 				    const char *attr, const char *attr_avail,
 				    struct plugin_private *priv, struct iio_channel *chann)
@@ -3053,6 +3068,19 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		/* refresh on preset changed */
 		g_builder_connect_signal(priv->builder, "cb_preset", "changed",
 					 G_CALLBACK(profile_gen_ui_refresh), priv);
+
+		/* update channel controls sensitivity */
+		g_builder_connect_signal(priv->builder, "cb_tx_chan1_en", "toggled",
+					 G_CALLBACK(profile_gen_update_channels), priv);
+
+		g_builder_connect_signal(priv->builder, "cb_tx_chan2_en", "toggled",
+					 G_CALLBACK(profile_gen_update_channels), priv);
+
+		g_builder_connect_signal(priv->builder, "cb_rx_chan1_en", "toggled",
+					 G_CALLBACK(profile_gen_update_channels), priv);
+
+		g_builder_connect_signal(priv->builder, "cb_rx_chan2_en", "toggled",
+					 G_CALLBACK(profile_gen_update_channels), priv);
 
 	} else {
 		gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(priv->builder, "boxProfileGen")), false);
