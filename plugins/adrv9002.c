@@ -807,6 +807,7 @@ static void update_all(struct plugin_private *priv)
 		adrv9002_update_tx_widgets(priv, i);
 	}
 
+	iio_update_widgets_block_signals_by_data(priv->device_w, priv->num_widgets);
 	adrv9002_profile_read(priv);
 	update_label(&priv->temperature);
 	update_dac_manager(priv);
