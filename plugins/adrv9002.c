@@ -1668,44 +1668,68 @@ static int profile_gen_config_set_live_device(struct adrv9002_config *cfg, gpoin
 	sprintf(str_value, "%d", cfg->radio_cfg.fdd);
 	gtk_combo_box_set_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_radio_duplex")), str_value);
 
-	// RX and TX
-	size_t ch_type;
-	char *ch_types[2] = {"rx", "tx"};
-	for(ch_type = 0; ch_type < ARRAY_SIZE(ch_types); ch_type++) {
-		for(chann = 0; chann < CHANNEL_COUNT; chann++) {
-			// channel_bandwidth_hz
-			sprintf(widget_str, "cb_%s_chan%d_bw", ch_types[ch_type], chann + 1);
-			sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].channel_bandwidth_hz);
-			populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)), NULL, 0, TRUE,
-					   value);
+	// TX
+	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		// channel_bandwidth_hz
+		sprintf(widget_str, "cb_tx_chan%d_bw", chann + 1);
+		sprintf(value, "%d", cfg->radio_cfg.tx_config[chann].channel_bandwidth_hz);
+		populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)), NULL, 0, TRUE,
+				   value);
 
-			// sample_rate_hz
-			sprintf(widget_str, "cb_%s_chan%d_interface", ch_types[ch_type], chann + 1);
-			sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].sample_rate_hz);
-			populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)), NULL, 0, TRUE,
-					   value);
+		// sample_rate_hz
+		sprintf(widget_str, "cb_tx_chan%d_interface", chann + 1);
+		sprintf(value, "%d", cfg->radio_cfg.tx_config[chann].sample_rate_hz);
+		populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)), NULL, 0, TRUE,
+				   value);
 
-			// enabled
-			sprintf(widget_str, "cb_%s_chan%d_en", ch_types[ch_type], chann + 1);
-			if(reset_preset) {
-				gtk_toggle_button_set_active(
-					GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)),
-					cfg->radio_cfg.rx_config[chann].enabled);
-			}
+		// enabled
+		sprintf(widget_str, "cb_tx_chan%d_en", chann + 1);
+		if(reset_preset) {
+			gtk_toggle_button_set_active(
+				GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)),
+				cfg->radio_cfg.tx_config[chann].enabled);
+		}
 
-			// frequency_offset_correction_enable
-			sprintf(widget_str, "cb_%s_chan%d_correction", ch_types[ch_type], chann + 1);
-			if(reset_preset) {
-				gtk_toggle_button_set_active(
-					GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)),
-					cfg->radio_cfg.rx_config[chann].frequency_offset_correction_enable);
-			}
+		// frequency_offset_correction_enable
+		sprintf(widget_str, "cb_tx_chan%d_correction", chann + 1);
+		if(reset_preset) {
+			gtk_toggle_button_set_active(
+				GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)),
+				cfg->radio_cfg.tx_config[chann].frequency_offset_correction_enable);
 		}
 	}
 
-	// RX specific
-	// rf_port
+	// RX
 	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		// channel_bandwidth_hz
+		sprintf(widget_str, "cb_rx_chan%d_bw", chann + 1);
+		sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].channel_bandwidth_hz);
+		populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)), NULL, 0, TRUE,
+				   value);
+
+		// sample_rate_hz
+		sprintf(widget_str, "cb_rx_chan%d_interface", chann + 1);
+		sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].sample_rate_hz);
+		populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)), NULL, 0, TRUE,
+				   value);
+
+		// enabled
+		sprintf(widget_str, "cb_rx_chan%d_en", chann + 1);
+		if(reset_preset) {
+			gtk_toggle_button_set_active(
+				GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)),
+				cfg->radio_cfg.rx_config[chann].enabled);
+		}
+
+		// frequency_offset_correction_enable
+		sprintf(widget_str, "cb_rx_chan%d_correction", chann + 1);
+		if(reset_preset) {
+			gtk_toggle_button_set_active(
+				GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)),
+				cfg->radio_cfg.rx_config[chann].frequency_offset_correction_enable);
+		}
+
+		// rf_port
 		sprintf(widget_str, "cb_rx_chan%d_rf_port", chann + 1);
 		sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].rf_port);
 		if(reset_preset) {
