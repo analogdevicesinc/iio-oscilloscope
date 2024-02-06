@@ -1393,48 +1393,50 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 		sprintf(chann_str, "voltage%d", chann);
 		struct iio_channel *tx = iio_device_find_channel(priv->adrv9002, chann_str, true);
 		if(tx == NULL) {
-			sprintf(message, "\nFailed to find channel: %s!", chann_str);
+			sprintf(message, "\nFailed to find tx channel: %s!", chann_str);
 			ret = -EINVAL;
 			goto iio_error;
 		}
 
 		// tx.enabled
-		ret = iio_channel_attr_read(tx, "en", buf, sizeof(buf));
-		if(ret < 0) {
-			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str, "en",
-				ret);
-			goto iio_error;
+		tx_config[chann].enabled = adrv9002_channel_is_enabled(&priv->tx_widgets[chann]);
+		if(tx_config[chann].enabled) {
+			// tx.sample_rate_hz
+			ret = iio_channel_attr_read(tx, "sampling_frequency", buf, sizeof(buf));
+			if(ret < 0) {
+				sprintf(message, "\nFailed to get tx channel: %s attr: %s! error code: %d", chann_str,
+					"sampling_frequency", ret);
+				goto iio_error;
+			}
+			tx_config[chann].sample_rate_hz = atoi(buf);
+
+			// tx.frequency_offset_correction_enable
+			tx_config[chann].frequency_offset_correction_enable =
+				default_cfg.radio_cfg.tx_config[chann].frequency_offset_correction_enable; // TODO
+
+			// tx.analog_filter_power_mode
+			tx_config[chann].analog_filter_power_mode =
+				default_cfg.radio_cfg.tx_config[chann].analog_filter_power_mode; // TODO
+
+			// tx.channel_bandwidth_hz
+			ret = iio_channel_attr_read(tx, "rf_bandwidth", buf, sizeof(buf));
+			if(ret < 0) {
+				sprintf(message, "\nFailed to get tx channel: %s attr: %s! error code: %d", chann_str,
+					"rf_bandwidth", ret);
+				goto iio_error;
+			}
+			tx_config[chann].channel_bandwidth_hz = atoi(buf);
+
+			// tx.elb_type
+			tx_config[chann].elb_type = default_cfg.radio_cfg.tx_config[chann].elb_type; // TODO
+
+		} else {
+			tx_config[chann].sample_rate_hz = 0;
+			tx_config[chann].frequency_offset_correction_enable = 0;
+			tx_config[chann].analog_filter_power_mode = 0;
+			tx_config[chann].channel_bandwidth_hz = 0;
+			tx_config[chann].elb_type = 0;
 		}
-		tx_config[chann].enabled = atoi(buf);
-
-		// tx.sample_rate_hz
-		ret = iio_channel_attr_read(tx, "sampling_frequency", buf, sizeof(buf));
-		if(ret < 0) {
-			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
-				"sampling_frequency", ret);
-			goto iio_error;
-		}
-		tx_config[chann].sample_rate_hz = atoi(buf);
-
-		// tx.frequency_offset_correction_enable
-		tx_config[chann].frequency_offset_correction_enable =
-			default_cfg.radio_cfg.tx_config[chann].frequency_offset_correction_enable; // TODO
-
-		// tx.analog_filter_power_mode
-		tx_config[chann].analog_filter_power_mode =
-			default_cfg.radio_cfg.tx_config[chann].analog_filter_power_mode; // TODO
-
-		// tx.channel_bandwidth_hz
-		ret = iio_channel_attr_read(tx, "rf_bandwidth", buf, sizeof(buf));
-		if(ret < 0) {
-			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
-				"rf_bandwidth", ret);
-			goto iio_error;
-		}
-		tx_config[chann].channel_bandwidth_hz = atoi(buf);
-
-		// tx.elb_type
-		tx_config[chann].elb_type = default_cfg.radio_cfg.tx_config[chann].elb_type; // TODO
 
 		radio_config.tx_config[chann] = tx_config[chann];
 	}
@@ -1452,93 +1454,99 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 		}
 
 		// rx.enabled
-		ret = iio_channel_attr_read(rx, "en", buf, sizeof(buf));
-		if(ret < 0) {
-			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str, "en",
-				ret);
-			goto iio_error;
-		}
-		rx_config[chann].enabled = atoi(buf);
-
-		// rx.sample_rate_hz
-		ret = iio_channel_attr_read(rx, "sampling_frequency", buf, sizeof(buf));
-		if(ret < 0) {
-			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
-				"sampling_frequency", ret);
-			goto iio_error;
-		}
-		rx_config[chann].sample_rate_hz = atoi(buf);
-
-		// rx.frequency_offset_correction_enable
-		rx_config[chann].frequency_offset_correction_enable =
-			default_cfg.radio_cfg.rx_config[chann].frequency_offset_correction_enable; // TODO
-
-		// rx.analog_filter_power_mode
-		rx_config[chann].analog_filter_power_mode =
-			default_cfg.radio_cfg.rx_config[chann].analog_filter_power_mode; // TODO
-
-		// rx.channel_bandwidth_hz
-		ret = iio_channel_attr_read(rx, "rf_bandwidth", buf, sizeof(buf));
-		if(ret < 0) {
-			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
-				"rf_bandwidth", ret);
-			goto iio_error;
-		}
-		rx_config[chann].channel_bandwidth_hz = atoi(buf);
-
-		// rx.adc_high_performance_mode
-		ret = iio_device_debug_attr_read(priv->adrv9002, chann == 0 ? "rx0_adc_type" : "rx1_adc_type",
-						       buf, sizeof(buf));
-		if(ret < 0) {
-			sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
-				chann == 0 ? "rx0_adc_type" : "rx1_adc_type", ret);
-			goto iio_error;
-		}
-		rx_config[chann].adc_high_performance_mode = strstr(buf, "HP") != NULL;
-
-		// rx.analog_filter_biquad
-		rx_config[chann].analog_filter_biquad =
-			default_cfg.radio_cfg.rx_config[chann].analog_filter_biquad; // TODO
-
-		// rx.analog_filter_bandwidth_hz
-		rx_config[chann].analog_filter_bandwidth_hz =
-			default_cfg.radio_cfg.rx_config[chann].analog_filter_bandwidth_hz; // TODO
-
-		// rx.nco_enable
-		rx_config[chann].nco_enable = default_cfg.radio_cfg.rx_config[chann].nco_enable; // TODO
-
-		// rx.nco_frequency_hz
-		ret = iio_channel_attr_read(rx, "nco_frequency", buf, sizeof(buf));
-		if(ret < 0) {
-			if(ret == -ENOTSUPP) {
-				rx_config[chann].nco_frequency_hz = 0;
-			} else {
-				sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
-					"nco_frequency", ret);
+		rx_config[chann].enabled = adrv9002_channel_is_enabled(&priv->rx_widgets[chann].rx);
+		if(rx_config[chann].enabled) {
+			// rx.sample_rate_hz
+			ret = iio_channel_attr_read(rx, "sampling_frequency", buf, sizeof(buf));
+			if(ret < 0) {
+				sprintf(message, "\nFailed to get rx channel: %s attr: %s! error code: %d", chann_str,
+					"sampling_frequency", ret);
 				goto iio_error;
 			}
+			rx_config[chann].sample_rate_hz = atoi(buf);
+
+			// rx.frequency_offset_correction_enable
+			rx_config[chann].frequency_offset_correction_enable =
+				default_cfg.radio_cfg.rx_config[chann].frequency_offset_correction_enable; // TODO
+
+			// rx.analog_filter_power_mode
+			rx_config[chann].analog_filter_power_mode =
+				default_cfg.radio_cfg.rx_config[chann].analog_filter_power_mode; // TODO
+
+			// rx.channel_bandwidth_hz
+			ret = iio_channel_attr_read(rx, "rf_bandwidth", buf, sizeof(buf));
+			if(ret < 0) {
+				sprintf(message, "\nFailed to get rx channel: %s attr: %s! error code: %d", chann_str,
+					"rf_bandwidth", ret);
+				goto iio_error;
+			}
+			rx_config[chann].channel_bandwidth_hz = atoi(buf);
+
+			// rx.adc_high_performance_mode
+			ret = iio_device_debug_attr_read(priv->adrv9002, chann == 0 ? "rx0_adc_type" : "rx1_adc_type",
+							 buf, sizeof(buf));
+			if(ret < 0) {
+				sprintf(message, "\nFailed to get rx channel: %s attr: %s! error code: %d", chann_str,
+					chann == 0 ? "rx0_adc_type" : "rx1_adc_type", ret);
+				goto iio_error;
+			}
+			rx_config[chann].adc_high_performance_mode = strstr(buf, "HP") != NULL;
+
+			// rx.analog_filter_biquad
+			rx_config[chann].analog_filter_biquad =
+				default_cfg.radio_cfg.rx_config[chann].analog_filter_biquad; // TODO
+
+			// rx.analog_filter_bandwidth_hz
+			rx_config[chann].analog_filter_bandwidth_hz =
+				default_cfg.radio_cfg.rx_config[chann].analog_filter_bandwidth_hz; // TODO
+
+			// rx.nco_enable
+			rx_config[chann].nco_enable = default_cfg.radio_cfg.rx_config[chann].nco_enable; // TODO
+
+			// rx.nco_frequency_hz
+			ret = iio_channel_attr_read(rx, "nco_frequency", buf, sizeof(buf));
+			if(ret < 0) {
+				if(ret == -ENOTSUPP) {
+					rx_config[chann].nco_frequency_hz = 0;
+				} else {
+					sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d",
+						chann_str, "nco_frequency", ret);
+					goto iio_error;
+				}
+			} else {
+				rx_config[chann].nco_frequency_hz = atoi(buf);
+			}
+
+			// rx.rf_port
+			rx_config[chann].rf_port = default_cfg.radio_cfg.rx_config[chann].rf_port; // TODO
+
 		} else {
-			rx_config[chann].nco_frequency_hz = atoi(buf);
+			rx_config[chann].sample_rate_hz = 0;
+			rx_config[chann].frequency_offset_correction_enable = 0;
+			rx_config[chann].analog_filter_power_mode = 0;
+			rx_config[chann].channel_bandwidth_hz = 0;
+			rx_config[chann].adc_high_performance_mode = 0;
+			rx_config[chann].analog_filter_biquad = 0;
+			rx_config[chann].analog_filter_bandwidth_hz = 0;
+			rx_config[chann].nco_enable = 0;
+			rx_config[chann].nco_frequency_hz = 0;
+			rx_config[chann].rf_port = 0;
 		}
-
-		// rx.rf_port
-		rx_config[chann].rf_port = default_cfg.radio_cfg.rx_config[chann].rf_port; // TODO
-
 		radio_config.rx_config[chann] = rx_config[chann];
 
 		// tx.orx_enabled
 		ret = iio_channel_attr_read(rx, "orx_en", buf, sizeof(buf));
 		if(ret < 0) {
 			if(ret == -ENODEV) {
-				tx_config[chann].orx_enabled =
+				radio_config.tx_config[chann].orx_enabled =
 					default_cfg.radio_cfg.tx_config[chann].orx_enabled; // Temporary fix
 			} else {
-				sprintf(message, "\nFailed to get channel: %s attr: %s! error code: %d", chann_str,
+				sprintf(message, "\nFailed to get rx channel: %s attr: %s! error code: %d", chann_str,
 					"orx_en", ret);
 				goto iio_error;
 			}
 		} else {
-			tx_config[chann].orx_enabled = atoi(buf);
+			radio_config.tx_config[chann].orx_enabled = atoi(buf);
 		}
 	}
 
