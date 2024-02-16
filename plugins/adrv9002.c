@@ -67,7 +67,6 @@ typedef struct rx_radio_channel_config
 
 } rx_radio_channel_config;
 
-#define CHANNEL_COUNT 2
 
 /**
  * @struct tx_radio_channel_config
@@ -1262,7 +1261,7 @@ static void profile_gen_update_orx(GtkComboBox *self, struct plugin_private *pri
 
 	tdd_en = atoi(gtk_combo_box_get_active_id(
 			 GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_radio_duplex")))) == 0;
-	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+	for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 		sprintf(widget_str, "cb_tx_chan%d_en", chann + 1);
 		tx_en = gtk_toggle_button_get_active(
 			GTK_TOGGLE_BUTTON(gtk_builder_get_object(priv->builder, widget_str)));
@@ -1391,7 +1390,7 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 
 	int chann;
 	char chann_str[32];
-	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+	for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 		sprintf(chann_str, "voltage%d", chann);
 		struct iio_channel *tx = iio_device_find_channel(priv->adrv9002, chann_str, true);
 		if(tx == NULL) {
@@ -1446,7 +1445,7 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 	// radio_config.rx_config
 	rx_radio_channel_config rx_config[2];
 
-	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+	for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 		sprintf(chann_str, "voltage%d", chann);
 		struct iio_channel *rx = iio_device_find_channel(priv->adrv9002, chann_str, false);
 		if(rx == NULL) {
@@ -1671,7 +1670,7 @@ static int profile_gen_config_set_live_device(struct adrv9002_config *cfg, gpoin
 	gtk_combo_box_set_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, "cb_radio_duplex")), str_value);
 
 	// TX
-	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+	for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 		// channel_bandwidth_hz
 		sprintf(widget_str, "cb_tx_chan%d_bw", chann + 1);
 		sprintf(value, "%d", cfg->radio_cfg.tx_config[chann].channel_bandwidth_hz);
@@ -1702,7 +1701,7 @@ static int profile_gen_config_set_live_device(struct adrv9002_config *cfg, gpoin
 	}
 
 	// RX
-	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+	for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 		// channel_bandwidth_hz
 		sprintf(widget_str, "cb_rx_chan%d_bw", chann + 1);
 		sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].channel_bandwidth_hz);
@@ -1798,7 +1797,7 @@ static int profile_gen_config_set_LTE(struct adrv9002_config *cfg, gpointer data
 
 	// sample_rate_hz
 	for(ch_type = 0; ch_type < ARRAY_SIZE(ch_types); ch_type++) {
-		for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 			sprintf(widget_str, "cb_%s_chan%d_interface", ch_types[ch_type], chann + 1);
 			populate_combo_box(GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)),
 					   value_list, value_count, false, NULL);
@@ -1816,7 +1815,7 @@ static int profile_gen_config_set_LTE(struct adrv9002_config *cfg, gpointer data
 
 	// channel_bandwidth_hz
 	for(ch_type = 0; ch_type < ARRAY_SIZE(ch_types); ch_type++) {
-		for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 			sprintf(widget_str, "cb_%s_chan%d_interface", ch_types[ch_type], chann + 1);
 			char *current_sample_rate = gtk_combo_box_text_get_active_text(
 				GTK_COMBO_BOX_TEXT(gtk_builder_get_object(priv->builder, widget_str)));
@@ -1870,7 +1869,7 @@ static int profile_gen_config_set_LTE(struct adrv9002_config *cfg, gpointer data
 
 	// RX and TX
 	for(ch_type = 0; ch_type < ARRAY_SIZE(ch_types); ch_type++) {
-		for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+		for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 			// enabled
 			sprintf(widget_str, "cb_%s_chan%d_en", ch_types[ch_type], chann + 1);
 			if(reset_preset) {
@@ -1891,7 +1890,7 @@ static int profile_gen_config_set_LTE(struct adrv9002_config *cfg, gpointer data
 
 	// RX specific
 	// ft_port
-	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+	for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 		sprintf(widget_str, "cb_rx_chan%d_rf_port", chann + 1);
 		sprintf(value, "%d", cfg->radio_cfg.rx_config[chann].rf_port);
 		if(reset_preset) {
@@ -1971,7 +1970,7 @@ static int profile_gen_config_populate_from_ui(struct adrv9002_config *cfg, gpoi
 		atoi(gtk_combo_box_get_active_id(GTK_COMBO_BOX(gtk_builder_get_object(priv->builder, widget_str))));
 
 	// RX
-	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+	for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 		sprintf(widget_str, "cb_rx_chan%d_bw", chann + 1);
 		cfg->radio_cfg.rx_config[chann].channel_bandwidth_hz =
 			(uint32_t)atoi(gtk_combo_box_text_get_active_text(
@@ -1995,7 +1994,7 @@ static int profile_gen_config_populate_from_ui(struct adrv9002_config *cfg, gpoi
 	}
 
 	// TX
-	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+	for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 		sprintf(widget_str, "cb_tx_chan%d_bw", chann + 1);
 		cfg->radio_cfg.tx_config[chann].channel_bandwidth_hz =
 			(uint32_t)atoi(gtk_combo_box_text_get_active_text(
@@ -2076,7 +2075,7 @@ static char *profile_gen_config_to_str(struct adrv9002_config *cfg)
 
 	// radio_cfg.rx_config
 	cJSON_AddItemToObject(radio_cfg, "rx_config", rx_config = cJSON_CreateArray());
-	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+	for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 		cJSON_AddItemToArray(rx_config, tmp_object = cJSON_CreateObject());
 		cJSON_AddNumberToObject(tmp_object, "enabled", cfg->radio_cfg.rx_config[chann].enabled);
 		cJSON_AddNumberToObject(tmp_object, "adc_high_performance_mode",
@@ -2100,7 +2099,7 @@ static char *profile_gen_config_to_str(struct adrv9002_config *cfg)
 
 	// radio_cfg.tx_config
 	cJSON_AddItemToObject(radio_cfg, "tx_config", tx_config = cJSON_CreateArray());
-	for(chann = 0; chann < CHANNEL_COUNT; chann++) {
+	for(chann = 0; chann < ADRV9002_NUM_CHANNELS; chann++) {
 		cJSON_AddItemToArray(tx_config, tmp_object = cJSON_CreateObject());
 		cJSON_AddNumberToObject(tmp_object, "enabled", cfg->radio_cfg.tx_config[chann].enabled);
 		cJSON_AddNumberToObject(tmp_object, "sample_rate_hz", cfg->radio_cfg.tx_config[chann].sample_rate_hz);
@@ -2407,8 +2406,8 @@ static void profile_gen_update_channels(GtkComboBox *self, struct plugin_private
 	GtkWidget *channel_frame;
 	bool channel_en;
 	unsigned long i;
-	char *ch_frames[4] = {"frame_tx1_controls", "frame_tx2_controls", "frame_rx1_controls", "frame_rx2_controls"};
-	char *ch_buttons[4] = {"cb_tx_chan1_en", "cb_tx_chan2_en", "cb_rx_chan1_en", "cb_rx_chan2_en"};
+	char *ch_frames[] = {"frame_tx1_controls", "frame_tx2_controls", "frame_rx1_controls", "frame_rx2_controls"};
+	char *ch_buttons[] = {"cb_tx_chan1_en", "cb_tx_chan2_en", "cb_rx_chan1_en", "cb_rx_chan2_en"};
 
 	for (i = 0; i < ARRAY_SIZE(ch_frames); i++) {
 		channel_frame = GTK_WIDGET(gtk_builder_get_object(priv->builder, ch_frames[i]));
