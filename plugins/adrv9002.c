@@ -173,120 +173,6 @@ typedef struct adrv9002_config
 	clock_config clk_cfg;
 } adrv9002_config;
 
-static adrv9002_config lte_defaults(void)
-{
-	radio_config radio_config;
-	radio_config.ssi_lanes = 2;
-	radio_config.ddr = true; // needs logic
-	radio_config.short_strobe = true;
-	radio_config.lvds = true;
-	radio_config.adc_rate_mode = 3;
-	radio_config.fdd = false;
-
-	tx_radio_channel_config tx_config[2];
-	int i;
-	for(i = 0; i < CHANNEL_COUNT; i++) {
-		tx_config[i].enabled = true;
-		tx_config[i].sample_rate_hz = 61440000;
-		tx_config[i].frequency_offset_correction_enable = false;
-		tx_config[i].analog_filter_power_mode = 2;
-		tx_config[i].channel_bandwidth_hz = 38000000;
-		tx_config[i].elb_type = 0;
-		tx_config[i].orx_enabled = false;
-
-		radio_config.tx_config[i] = tx_config[i];
-	}
-
-	rx_radio_channel_config rx_config[2];
-	for(i = 0; i < CHANNEL_COUNT; i++) {
-		rx_config[i].enabled = true;
-		rx_config[i].sample_rate_hz = 61440000;
-		rx_config[i].frequency_offset_correction_enable = false;
-		rx_config[i].analog_filter_power_mode = 2;
-		rx_config[i].channel_bandwidth_hz = 38000000;
-		rx_config[i].adc_high_performance_mode = true;
-		rx_config[i].analog_filter_biquad = false;	    // got from default cfg
-		rx_config[i].analog_filter_bandwidth_hz = 18000000; // got from default cfg
-		rx_config[i].nco_enable = false;
-		rx_config[i].nco_frequency_hz = 0;
-		rx_config[i].rf_port = 0;
-
-		radio_config.rx_config[i] = rx_config[i];
-	}
-	adrv9002_config cfg;
-	cfg.radio_cfg = radio_config;
-
-	clock_config clock_config;
-	clock_config.device_clock_frequency_khz = 38400;
-	clock_config.device_clock_output_enable = true;
-	clock_config.device_clock_output_divider = 2;
-	clock_config.clock_pll_high_performance_enable = false;
-	clock_config.clock_pll_power_mode = 2;
-	clock_config.processor_clock_divider = 1;
-
-	cfg.clk_cfg = clock_config;
-	return cfg;
-}
-
-static adrv9002_config lte_lvs_3072_MHz_10(void)
-{
-	rx_radio_channel_config rx1;
-	rx1.enabled = 1;
-	rx1.adc_high_performance_mode = true;
-	rx1.frequency_offset_correction_enable = false;
-	rx1.analog_filter_power_mode = 2; // High power/performance
-	rx1.analog_filter_biquad = false;
-	rx1.channel_bandwidth_hz = 18000000;
-	rx1.sample_rate_hz = 30720000;
-	rx1.nco_enable = false;
-	rx1.nco_frequency_hz = 0;
-	rx1.rf_port = 0;		    // RX-A
-	rx1.analog_filter_bandwidth_hz = 0; // TODO: not used?
-
-	// Copy rx1 to rx2
-	rx_radio_channel_config rx2 = rx1;
-	rx2.rf_port = 0; // RX-B
-
-	// TX side
-	tx_radio_channel_config tx1;
-	tx1.enabled = 1;
-	tx1.sample_rate_hz = 30720000;
-	tx1.frequency_offset_correction_enable = false;
-	tx1.analog_filter_power_mode = 2; // High power/performance
-	tx1.channel_bandwidth_hz = 18000000;
-	tx1.orx_enabled = true;
-	tx1.elb_type = 2;
-
-	// Copy tx1 to tx2
-	tx_radio_channel_config tx2 = tx1;
-
-	radio_config r_cfg;
-	r_cfg.adc_rate_mode = 3; // High Performance
-	r_cfg.fdd = false;
-	r_cfg.lvds = true;
-	r_cfg.ssi_lanes = 2;
-	r_cfg.ddr = true;
-	r_cfg.adc_rate_mode = 3; // High Performance
-	r_cfg.short_strobe = true;
-	r_cfg.rx_config[0] = rx1;
-	r_cfg.rx_config[1] = rx2;
-	r_cfg.tx_config[0] = tx1;
-	r_cfg.tx_config[1] = tx2;
-
-	clock_config clk_cfg;
-	clk_cfg.device_clock_frequency_khz = 38400;
-	clk_cfg.clock_pll_high_performance_enable = true;
-	clk_cfg.clock_pll_power_mode = 2; // High power/performance
-	clk_cfg.processor_clock_divider = 1;
-	clk_cfg.device_clock_output_divider = 0; // TODO: not used?
-	clk_cfg.device_clock_output_enable = 0;
-
-	adrv9002_config adrv_cfg;
-	adrv_cfg.clk_cfg = clk_cfg;
-	adrv_cfg.radio_cfg = r_cfg;
-
-	return adrv_cfg;
-}
 /*---------------------------------------------------------------------------*/
 
 #ifndef ENOTSUPP
@@ -1204,6 +1090,122 @@ err:
 		gtk_file_chooser_set_filename(chooser, priv->last_profile);
 	else
 		gtk_file_chooser_set_filename(chooser, "(None)");
+}
+
+// profile generator default config structures
+static adrv9002_config lte_defaults(void)
+{
+	tx_radio_channel_config tx1;
+	tx1.enabled = true;
+	tx1.sample_rate_hz = 61440000;
+	tx1.frequency_offset_correction_enable = false;
+	tx1.analog_filter_power_mode = 2;
+	tx1.channel_bandwidth_hz = 38000000;
+	tx1.elb_type = 0;
+	tx1.orx_enabled = false;
+
+	tx_radio_channel_config tx2 = tx1;
+
+	rx_radio_channel_config rx1;
+	rx1.enabled = true;
+	rx1.sample_rate_hz = 61440000;
+	rx1.frequency_offset_correction_enable = false;
+	rx1.analog_filter_power_mode = 2;
+	rx1.channel_bandwidth_hz = 38000000;
+	rx1.adc_high_performance_mode = true;
+	rx1.analog_filter_biquad = false;	    // got from default cfg
+	rx1.analog_filter_bandwidth_hz = 18000000; // got from default cfg
+	rx1.nco_enable = false;
+	rx1.nco_frequency_hz = 0;
+	rx1.rf_port = 0;
+
+	rx_radio_channel_config rx2 = rx1;
+
+	radio_config radio_config;
+	radio_config.ssi_lanes = 2;
+	radio_config.ddr = true; // needs logic
+	radio_config.short_strobe = true;
+	radio_config.lvds = true;
+	radio_config.adc_rate_mode = 3;
+	radio_config.fdd = false;
+	radio_config.tx_config[0] = tx1;
+	radio_config.tx_config[1] = tx2;
+	radio_config.rx_config[0] = rx1;
+	radio_config.rx_config[1] = rx2;
+
+	clock_config clock_config;
+	clock_config.device_clock_frequency_khz = 38400;
+	clock_config.device_clock_output_enable = true;
+	clock_config.device_clock_output_divider = 2;
+	clock_config.clock_pll_high_performance_enable = false;
+	clock_config.clock_pll_power_mode = 2;
+	clock_config.processor_clock_divider = 1;
+
+	adrv9002_config cfg;
+	cfg.radio_cfg = radio_config;
+	cfg.clk_cfg = clock_config;
+
+	return cfg;
+}
+
+static adrv9002_config lte_lvs_3072_MHz_10(void)
+{
+	rx_radio_channel_config rx1;
+	rx1.enabled = 1;
+	rx1.adc_high_performance_mode = true;
+	rx1.frequency_offset_correction_enable = false;
+	rx1.analog_filter_power_mode = 2; // High power/performance
+	rx1.analog_filter_biquad = false;
+	rx1.channel_bandwidth_hz = 18000000;
+	rx1.sample_rate_hz = 30720000;
+	rx1.nco_enable = false;
+	rx1.nco_frequency_hz = 0;
+	rx1.rf_port = 0;		    // RX-A
+	rx1.analog_filter_bandwidth_hz = 0; // TODO: not used?
+
+	// Copy rx1 to rx2
+	rx_radio_channel_config rx2 = rx1;
+	rx2.rf_port = 0; // RX-B
+
+	// TX side
+	tx_radio_channel_config tx1;
+	tx1.enabled = 1;
+	tx1.sample_rate_hz = 30720000;
+	tx1.frequency_offset_correction_enable = false;
+	tx1.analog_filter_power_mode = 2; // High power/performance
+	tx1.channel_bandwidth_hz = 18000000;
+	tx1.orx_enabled = true;
+	tx1.elb_type = 2;
+
+	// Copy tx1 to tx2
+	tx_radio_channel_config tx2 = tx1;
+
+	radio_config r_cfg;
+	r_cfg.adc_rate_mode = 3; // High Performance
+	r_cfg.fdd = false;
+	r_cfg.lvds = true;
+	r_cfg.ssi_lanes = 2;
+	r_cfg.ddr = true;
+	r_cfg.adc_rate_mode = 3; // High Performance
+	r_cfg.short_strobe = true;
+	r_cfg.rx_config[0] = rx1;
+	r_cfg.rx_config[1] = rx2;
+	r_cfg.tx_config[0] = tx1;
+	r_cfg.tx_config[1] = tx2;
+
+	clock_config clk_cfg;
+	clk_cfg.device_clock_frequency_khz = 38400;
+	clk_cfg.clock_pll_high_performance_enable = true;
+	clk_cfg.clock_pll_power_mode = 2; // High power/performance
+	clk_cfg.processor_clock_divider = 1;
+	clk_cfg.device_clock_output_divider = 0; // TODO: not used?
+	clk_cfg.device_clock_output_enable = 0;
+
+	adrv9002_config adrv_cfg;
+	adrv_cfg.clk_cfg = clk_cfg;
+	adrv_cfg.radio_cfg = r_cfg;
+
+	return adrv_cfg;
 }
 
 static void profile_gen_append_debug_info(gpointer data, char *string)
