@@ -57,6 +57,8 @@ GtkWidget *main_window;
 struct iio_context *ctx = NULL;
 static unsigned int num_devices = 0;
 bool ctx_destroyed_by_do_quit;
+bool ini_capture_timeout_loaded = FALSE;
+unsigned int ini_capture_timeout = 0;
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
 static void plugin_restore_ini_state(const char *plugin_name,
@@ -1514,8 +1516,12 @@ static int capture_setup(void)
 		rx_update_device_sampling_freq(iio_device_get_id(dev), freq);
 	}
 
-	if (ctx)
+	if (ctx) {
+		if (ini_capture_timeout_loaded) {
+			min_timeout = ini_capture_timeout;
+		}
 		iio_context_set_timeout(ctx, min_timeout);
+	}
 
 	return 0;
 }
@@ -2172,6 +2178,9 @@ static void capture_profile_save(const char *filename)
 				__func__, iio_context_get_name(ctx));
 		}
 	}
+	if (ini_capture_timeout_loaded) {
+		fprintf(fp, "capture_timeout=%d\n", ini_capture_timeout);
+	}
 
 	fclose(fp);
 
@@ -2453,6 +2462,13 @@ nope:
 	}
 
 	move_gtk_window_on_screen(GTK_WINDOW(main_window), x_pos, y_pos);
+
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "capture_timeout");
+	if (value) {
+		ini_capture_timeout_loaded = true;
+		ini_capture_timeout = atoi(value);
+		free(value);
+	}
 
 	foreach_in_ini(filename, capture_profile_handler);
 
