@@ -1892,7 +1892,7 @@ static PlotIioChn * plot_iio_channel_new(struct iio_context *ctx)
 {
 	PlotIioChn *obj;
 
-	obj = calloc(sizeof(PlotIioChn), 1);
+	obj = calloc(1, sizeof(PlotIioChn));
 	if (!obj) {
 		fprintf(stderr, "Error in %s: %s", __func__, strerror(errno));
 		return NULL;
@@ -1975,7 +1975,7 @@ static PlotMathChn * plot_math_channel_new(struct iio_context *ctx)
 {
 	PlotMathChn *obj;
 
-	obj = calloc(sizeof(PlotMathChn), 1);
+	obj = calloc(1, sizeof(PlotMathChn));
 	if (!obj) {
 		fprintf(stderr, "Error in %s: %s", __func__, strerror(errno));
 		return NULL;
@@ -2474,7 +2474,7 @@ static void update_transform_settings(OscPlot *plot, Transform *transform)
 		XCORR_SETTINGS(transform)->marker_type = NULL;
 		XCORR_SETTINGS(transform)->max_x_axis = gtk_spin_button_get_value(GTK_SPIN_BUTTON(priv->sample_count_widget));
 	} else if (plot_type == SPECTRUM_PLOT) {
-		FREQ_SPECTRUM_SETTINGS(transform)->ffts_alg_data = calloc(sizeof(struct _fft_alg_data), priv->fft_count);
+		FREQ_SPECTRUM_SETTINGS(transform)->ffts_alg_data = calloc(priv->fft_count, sizeof(struct _fft_alg_data));
 		FREQ_SPECTRUM_SETTINGS(transform)->fft_count = priv->fft_count;
 		FREQ_SPECTRUM_SETTINGS(transform)->freq_sweep_start = priv->start_freq + priv->filter_bw / 2;
 		FREQ_SPECTRUM_SETTINGS(transform)->filter_bandwidth = priv->filter_bw;
@@ -2524,35 +2524,35 @@ static Transform* add_transform_to_list(OscPlot *plot, int tr_type, GSList *chan
 	switch (tr_type) {
 	case TIME_TRANSFORM:
 		Transform_attach_function(transform, time_transform_function);
-		time_settings = (struct _time_settings *)calloc(sizeof(struct _time_settings), 1);
+		time_settings = (struct _time_settings *)calloc(1, sizeof(struct _time_settings));
 		Transform_attach_settings(transform, time_settings);
 		transform->graph_color = &PLOT_CHN(channels->data)->graph_color;
 		break;
 	case FFT_TRANSFORM:
 		Transform_attach_function(transform, fft_transform_function);
-		fft_settings = (struct _fft_settings *)calloc(sizeof(struct _fft_settings), 1);
+		fft_settings = (struct _fft_settings *)calloc(1, sizeof(struct _fft_settings));
 		fft_settings->window_correction = window_correction;
 		Transform_attach_settings(transform, fft_settings);
 		break;
 	case CONSTELLATION_TRANSFORM:
 		Transform_attach_function(transform, constellation_transform_function);
-		constellation_settings = (struct _constellation_settings *)calloc(sizeof(struct _constellation_settings), 1);
+		constellation_settings = (struct _constellation_settings *)calloc(1, sizeof(struct _constellation_settings));
 		Transform_attach_settings(transform, constellation_settings);
 		break;
 	case COMPLEX_FFT_TRANSFORM:
 		Transform_attach_function(transform, fft_transform_function);
-		fft_settings = (struct _fft_settings *)calloc(sizeof(struct _fft_settings), 1);
+		fft_settings = (struct _fft_settings *)calloc(1, sizeof(struct _fft_settings));
 		fft_settings->window_correction = window_correction;
 		Transform_attach_settings(transform, fft_settings);
 		break;
 	case CROSS_CORRELATION_TRANSFORM:
 		Transform_attach_function(transform, cross_correlation_transform_function);
-		xcross_settings = (struct _cross_correlation_settings *)calloc(sizeof(struct _cross_correlation_settings), 1);
+		xcross_settings = (struct _cross_correlation_settings *)calloc(1, sizeof(struct _cross_correlation_settings));
 		Transform_attach_settings(transform, xcross_settings);
 		break;
 	case FREQ_SPECTRUM_TRANSFORM:
 		Transform_attach_function(transform, freq_spectrum_transform_function);
-		freq_spectrum_settings = (struct _freq_spectrum_settings *)calloc(sizeof(struct _freq_spectrum_settings), 1);
+		freq_spectrum_settings = (struct _freq_spectrum_settings *)calloc(1, sizeof(struct _freq_spectrum_settings));
 		Transform_attach_settings(transform, freq_spectrum_settings);
 		break;
 	default:
@@ -2707,7 +2707,7 @@ static void transform_add_own_markers(OscPlot *plot, Transform *transform)
 	struct marker_type *markers;
 	int i;
 
-	markers = calloc(sizeof(struct marker_type), MAX_MARKERS + 2);
+	markers = calloc(MAX_MARKERS + 2, sizeof(struct marker_type));
 	if (!markers) {
 		fprintf(stderr,
 			"Error: could not alloc memory for markers in %s\n",
