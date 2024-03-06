@@ -202,7 +202,7 @@ fail:
 
 Release * release_new(void)
 {
-	return calloc(sizeof(Release), 1);
+	return calloc(1, sizeof(Release));
 }
 
 void release_dispose(Release *_this)
