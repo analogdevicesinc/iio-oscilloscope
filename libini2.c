@@ -469,7 +469,7 @@ static struct ini_loop * ini_loop_new(char *buf_with_loop, char *loop_name)
 	}
 
 	/* Store all necessary parameters of a loop */
-	loop = calloc(sizeof(struct ini_loop), 1);
+	loop = calloc(1, sizeof(struct ini_loop));
 	if (!loop) {
 		fprintf(stderr, "%s is %s", strerror(errno), __func__);
 		goto err_close;
