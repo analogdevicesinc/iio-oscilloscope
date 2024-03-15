@@ -1,0 +1,8 @@
+name: libad9166-iio
+buildsystem: cmake
+cleanup:
+  - /lib/ad9166-iio-*
+sources:
+  - type: git
+    url: https://github.com/analogdevicesinc/libad9166-iio
+    branch: master
