@@ -71,6 +71,7 @@ struct plugin_private {
 	gboolean has_once_updated;
 	const char *dac_name;
 	char last_pfir[PATH_MAX];
+	char last_cfir[PATH_MAX];
 };
 
 static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
@@ -141,15 +142,19 @@ static int ad9084_add_chan_widgets(GtkBuilder *builder,
 		char *main_nco;
 		char *nco_phase;
 		char *main_nco_phase;
+		char *en;
+		char *cfir_en;
+		char *cfir_profile;
 	} rx_widgets[NUM_MAX_CHANNEL] = {
-		{ "rx_nco_freq1", "rx_main_nco_freq1", "rx_nco_phase1", "rx_main_nco_phase1" },
-		{ "rx_nco_freq2", "rx_main_nco_freq2", "rx_nco_phase2", "rx_main_nco_phase2" },
-		{ "rx_nco_freq3", "rx_main_nco_freq3", "rx_nco_phase3", "rx_main_nco_phase3" },
-		{ "rx_nco_freq4", "rx_main_nco_freq4", "rx_nco_phase4", "rx_main_nco_phase4" },
-		{ "rx_nco_freq5", "rx_main_nco_freq5", "rx_nco_phase5", "rx_main_nco_phase5" },
-		{ "rx_nco_freq6", "rx_main_nco_freq6", "rx_nco_phase6", "rx_main_nco_phase6" },
-		{ "rx_nco_freq7", "rx_main_nco_freq7", "rx_nco_phase7", "rx_main_nco_phase7" },
-		{ "rx_nco_freq8", "rx_main_nco_freq8", "rx_nco_phase8", "rx_main_nco_phase8" },
+		{ "rx_nco_freq1", "rx_main_nco_freq1", "rx_nco_phase1", "rx_main_nco_phase1", "rx_enable1", "rx_cfir_enable1", "rx_cfir_profile1" },
+		{ "rx_nco_freq2", "rx_main_nco_freq2", "rx_nco_phase2", "rx_main_nco_phase2", "rx_enable2", "rx_cfir_enable2", "rx_cfir_profile2" },
+		{ "rx_nco_freq3", "rx_main_nco_freq3", "rx_nco_phase3", "rx_main_nco_phase3", "rx_enable3", "rx_cfir_enable3", "rx_cfir_profile3" },
+		{ "rx_nco_freq4", "rx_main_nco_freq4", "rx_nco_phase4", "rx_main_nco_phase4", "rx_enable4", "rx_cfir_enable4", "rx_cfir_profile4" },
+		{ "rx_nco_freq5", "rx_main_nco_freq5", "rx_nco_phase5", "rx_main_nco_phase5", "rx_enable5", "rx_cfir_enable5", "rx_cfir_profile5" },
+		{ "rx_nco_freq6", "rx_main_nco_freq6", "rx_nco_phase6", "rx_main_nco_phase6", "rx_enable6", "rx_cfir_enable6", "rx_cfir_profile6" },
+		{ "rx_nco_freq7", "rx_main_nco_freq7", "rx_nco_phase7", "rx_main_nco_phase7", "rx_enable7", "rx_cfir_enable7", "rx_cfir_profile7" },
+		{ "rx_nco_freq8", "rx_main_nco_freq8", "rx_nco_phase8", "rx_main_nco_phase8", "rx_enable8", "rx_cfir_enable8", "rx_cfir_profile8" },
+
 	};
 	struct {
 		char *nco;
@@ -162,39 +167,41 @@ static int ad9084_add_chan_widgets(GtkBuilder *builder,
 		char *test_tone_scale;
 		char *main_nco_test_tone_en;
 		char *main_nco_test_tone_scale;
+		char *cfir_en;
+		char *cfir_profile;
 	} tx_widgets[NUM_MAX_CHANNEL] = {
 		 {"tx_nco_freq1", "tx_main_nco_freq1", "tx_nco_phase1",
 		  "tx_main_nco_phase1", "tx_enable1", "tx_nco_gain_scale1",
 		  "tx_test_tone_en1", "tx_test_tone_scale1", "tx_main_test_tone_en1",
-		  "tx_main_test_tone_scale1"},
+		  "tx_main_test_tone_scale1",  "tx_cfir_enable1", "tx_cfir_profile1"},
 		 {"tx_nco_freq2", "tx_main_nco_freq2", "tx_nco_phase2",
 		  "tx_main_nco_phase2", "tx_enable2", "tx_nco_gain_scale2",
 		  "tx_test_tone_en2", "tx_test_tone_scale2", "tx_main_test_tone_en2",
-		  "tx_main_test_tone_scale2"},
+		  "tx_main_test_tone_scale2", "tx_cfir_enable2", "tx_cfir_profile2"},
 		 {"tx_nco_freq3", "tx_main_nco_freq3", "tx_nco_phase3",
 		  "tx_main_nco_phase3", "tx_enable3", "tx_nco_gain_scale3",
 		  "tx_test_tone_en3", "tx_test_tone_scale3", "tx_main_test_tone_en3",
-		  "tx_main_test_tone_scale3"},
+		  "tx_main_test_tone_scale3", "tx_cfir_enable3", "tx_cfir_profile3"},
 		 {"tx_nco_freq4", "tx_main_nco_freq4", "tx_nco_phase4",
 		  "tx_main_nco_phase4", "tx_enable4", "tx_nco_gain_scale4",
 		  "tx_test_tone_en4", "tx_test_tone_scale4", "tx_main_test_tone_en4",
-		  "tx_main_test_tone_scale4"},
+		  "tx_main_test_tone_scale4", "tx_cfir_enable4", "tx_cfir_profile4"},
 		 {"tx_nco_freq5", "tx_main_nco_freq5", "tx_nco_phase5",
 		  "tx_main_nco_phase5", "tx_enable5", "tx_nco_gain_scale5",
 		  "tx_test_tone_en5", "tx_test_tone_scale5", "tx_main_test_tone_en5",
-		  "tx_main_test_tone_scale5"},
+		  "tx_main_test_tone_scale5", "tx_cfir_enable5", "tx_cfir_profile5"},
 		 {"tx_nco_freq6", "tx_main_nco_freq6", "tx_nco_phase6",
 		  "tx_main_nco_phase6", "tx_enable6", "tx_nco_gain_scale6",
 		  "tx_test_tone_en6", "tx_test_tone_scale6", "tx_main_test_tone_en6",
-		  "tx_main_test_tone_scale6"},
+		  "tx_main_test_tone_scale6", "tx_cfir_enable6", "tx_cfir_profile6"},
 		 {"tx_nco_freq7", "tx_main_nco_freq7", "tx_nco_phase7",
 		  "tx_main_nco_phase7", "tx_enable7", "tx_nco_gain_scale7",
 		  "tx_test_tone_en7", "tx_test_tone_scale7", "tx_main_test_tone_en7",
-		  "tx_main_test_tone_scale7"},
+		  "tx_main_test_tone_scale7", "tx_cfir_enable7", "tx_cfir_profile7"},
 		 {"tx_nco_freq8", "tx_main_nco_freq8", "tx_nco_phase8",
 		  "tx_main_nco_phase8", "tx_enable8", "tx_nco_gain_scale8",
 		  "tx_test_tone_en8", "tx_test_tone_scale8", "tx_main_test_tone_en8",
-		  "tx_main_test_tone_scale8"},
+		  "tx_main_test_tone_scale8", "tx_cfir_enable8", "tx_cfir_profile8"},
 	};
 	const char *nco = output ? tx_widgets[chann_nr].nco :
 					rx_widgets[chann_nr].nco;
@@ -205,6 +212,16 @@ static int ad9084_add_chan_widgets(GtkBuilder *builder,
 					rx_widgets[chann_nr].nco_phase;
 	const char *main_nco_phase = output ? tx_widgets[chann_nr].main_nco_phase :
 						rx_widgets[chann_nr].main_nco_phase;
+
+	const char *en = output ? tx_widgets[chann_nr].en :
+						rx_widgets[chann_nr].en;
+
+	const char *cfir_en = output ? tx_widgets[chann_nr].cfir_en :
+						rx_widgets[chann_nr].cfir_en;
+
+	const char *cfir_profile = output ? tx_widgets[chann_nr].cfir_profile :
+						rx_widgets[chann_nr].cfir_profile;
+
 
 	iio_spin_button_int_init_from_builder(&iio_widgets[priv->num_widgets++],
 					      ad9084, voltage,
@@ -226,14 +243,23 @@ static int ad9084_add_chan_widgets(GtkBuilder *builder,
 					      "main_nco_phase",
 					      builder, main_nco_phase, &k_scale);
 
+	iio_toggle_button_init_from_builder(&iio_widgets[priv->num_widgets++],
+					    ad9084, voltage, "en", builder,
+					    en, FALSE);
+
+	iio_toggle_button_init_from_builder(&iio_widgets[priv->num_widgets++],
+					    ad9084, voltage, "cfir_en", builder,
+					    cfir_en, FALSE);
+
+	iio_combo_box_init_from_builder(&priv->iio_widgets[priv->num_widgets++],
+					ad9084, voltage, "cfir_profile_sel",
+					NULL, builder,
+					cfir_profile, NULL);
+
 	if (!output)
 		return 0;
 
 	/* add extra tx bindings */
-	iio_toggle_button_init_from_builder(&iio_widgets[priv->num_widgets++],
-					    ad9084, voltage,"en", builder,
-					    tx_widgets[chann_nr].en, FALSE);
-
 
 	iio_spin_button_init_from_builder(&iio_widgets[priv->num_widgets++],
 					  ad9084, voltage,
@@ -241,13 +267,11 @@ static int ad9084_add_chan_widgets(GtkBuilder *builder,
 					  tx_widgets[chann_nr].nco_gain_scale,
 					  NULL);
 
-
 	iio_toggle_button_init_from_builder(&iio_widgets[priv->num_widgets++],
 					    ad9084, voltage,
 					    "channel_nco_test_tone_en", builder,
 					    tx_widgets[chann_nr].test_tone_en,
 					    FALSE);
-
 
 	iio_spin_button_init_from_builder(&iio_widgets[priv->num_widgets++],
 					  ad9084, voltage,
@@ -256,13 +280,11 @@ static int ad9084_add_chan_widgets(GtkBuilder *builder,
 					  tx_widgets[chann_nr].test_tone_scale,
 					  NULL);
 
-
 	iio_toggle_button_init_from_builder(&iio_widgets[priv->num_widgets++],
 					    ad9084, voltage,
 					    "main_nco_test_tone_en", builder,
 					    tx_widgets[chann_nr].main_nco_test_tone_en,
 					    FALSE);
-
 
 	iio_spin_button_init_from_builder(&iio_widgets[priv->num_widgets++],
 					   ad9084, voltage,
@@ -369,7 +391,7 @@ static void load_pfir(GtkFileChooser *chooser, gpointer data)
 	if (!buf)
 		goto err;
 
-	ret = iio_device_attr_write_raw(priv->ad9084, "filter_fir_config", buf, size);
+	ret = iio_device_attr_write_raw(priv->ad9084, "pfilt_config", buf, size);
 	free(buf);
 	if (ret < 0)
 		goto err;
@@ -386,6 +408,40 @@ err:
 
 	if (priv->last_pfir[0])
 		gtk_file_chooser_set_filename(chooser, priv->last_pfir);
+	else
+		gtk_file_chooser_set_filename(chooser, "(None)");
+}
+
+
+static void load_cfir(GtkFileChooser *chooser, gpointer data)
+{
+	struct plugin_private *priv = data;
+	char *file_name = gtk_file_chooser_get_filename(chooser);
+	char *buf;
+	ssize_t size;
+	int ret;
+
+	buf = read_file(file_name, &size);
+	if (!buf)
+		goto err;
+
+	ret = iio_device_attr_write_raw(priv->ad9084, "cfir_config", buf, size);
+	free(buf);
+	if (ret < 0)
+		goto err;
+
+	gtk_file_chooser_set_filename(chooser, file_name);
+	strncpy(priv->last_cfir, file_name, sizeof(priv->last_cfir) - 1);
+	g_free(file_name);
+
+	return;
+err:
+	g_free(file_name);
+	dialog_box_message(GTK_WIDGET(chooser), "CFIR Loading Failed",
+			   "Failed to CFIR using the selected file!");
+
+	if (priv->last_cfir[0])
+		gtk_file_chooser_set_filename(chooser, priv->last_cfir);
 	else
 		gtk_file_chooser_set_filename(chooser, "(None)");
 }
@@ -645,6 +701,14 @@ tx_chann:
 
 	gtk_file_chooser_set_current_folder(
 		GTK_FILE_CHOOSER(gtk_builder_get_object(builder, "pfir_config")),
+		OSC_FILTER_FILE_PATH"/ad9084");
+
+	/* load cfir cb */
+	g_builder_connect_signal(builder, "cfir_config", "file-set",
+	                         G_CALLBACK(load_cfir), priv);
+
+	gtk_file_chooser_set_current_folder(
+		GTK_FILE_CHOOSER(gtk_builder_get_object(builder, "cfir_config")),
 		OSC_FILTER_FILE_PATH"/ad9084");
 
 	return ad9084_panel;
