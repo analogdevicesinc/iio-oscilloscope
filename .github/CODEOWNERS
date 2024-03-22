@@ -1,0 +1,20 @@
+# This document lists the code owners for iio-oscilloscope repo sources,
+# being used whenever new Pull Requests are created.
+#  - People listed in CODEOWNERS are automatically added as reviewers to the
+#    PRs open to branches containing this file, depending on the touched folders.
+#  - In addition to Code Owners, other reviewers can be added.
+#  - There can be set different code owners for different branches.
+#  - PRs will require the approval of at least one code owner.
+#
+# For more details, you can refer to
+# https://github.blog/2017-07-06-introducing-code-owners/
+#
+# The format of CODEOWNERS is: <pattern> + <mail address of one/more owners>
+# In case of multiple matches, the last pattern matched will take precedence.
+
+##### Global code owners (for folders with no later match) #####
+*    cristina.suteu@analog.com dan.nechita@analog.com michael.hennerich@analog.com
+
+##### Code owners for CI related files and folders #####
+/CI/	cristina.suteu@analog.com dan.nechita@analog.com michael.hennerich@analog.com stefan.raus@analog.com andreea.andrisan@analog.com
+azure-pipelines.yml	cristina.suteu@analog.com dan.nechita@analog.com michael.hennerich@analog.com stefan.raus@analog.com andreea.andrisan@analog.com
