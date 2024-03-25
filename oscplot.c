@@ -192,10 +192,10 @@ struct channel_settings {
 	unsigned type;
 	char *name;
 	char *parent_name;
+	struct iio_device *dev;
 	struct iio_context *ctx;
 	GdkRGBA graph_color;
 
-	struct iio_device * (*get_iio_parent)(PlotChn *);
 	gfloat * (*get_data_ref)(PlotChn *);
 	void (*assert_used_iio_channels)(PlotChn *, bool);
 	void (*destroy)(PlotChn *);
@@ -1883,12 +1883,11 @@ bool constellation_transform_function(Transform *tr, gboolean init_transform)
 
 /* Plot iio channel definitions */
 
-static struct iio_device * plot_iio_channel_get_iio_parent(PlotChn *obj);
 static gfloat* plot_iio_channel_get_data_ref(PlotChn *obj);
 static void plot_iio_channel_assert_channels(PlotChn *obj, bool assert);
 static void plot_iio_channel_destroy(PlotChn *obj);
 
-static PlotIioChn * plot_iio_channel_new(struct iio_context *ctx)
+static PlotIioChn * plot_iio_channel_new(struct iio_context *ctx, struct iio_device *dev)
 {
 	PlotIioChn *obj;
 
@@ -1899,28 +1898,13 @@ static PlotIioChn * plot_iio_channel_new(struct iio_context *ctx)
 	}
 
 	obj->base.type = PLOT_IIO_CHANNEL;
+	obj->base.dev = dev;
 	obj->base.ctx = ctx;
-	obj->base.get_iio_parent = *plot_iio_channel_get_iio_parent;
 	obj->base.get_data_ref = *plot_iio_channel_get_data_ref;
 	obj->base.assert_used_iio_channels = *plot_iio_channel_assert_channels;
 	obj->base.destroy = *plot_iio_channel_destroy;
 
 	return obj;
-}
-
-static struct iio_device *plot_iio_channel_get_iio_parent(PlotChn *obj)
-{
-	PlotIioChn *this = (PlotIioChn *)obj;
-	struct iio_device *iio_dev = NULL;
-	struct extra_info *ch_info;
-
-	if (this && this->iio_chn) {
-		ch_info = iio_channel_get_data(this->iio_chn);
-		if (ch_info)
-			iio_dev = ch_info->dev;
-	}
-
-	return iio_dev;
 }
 
 static gfloat* plot_iio_channel_get_data_ref(PlotChn *obj)
@@ -1966,7 +1950,6 @@ static void plot_iio_channel_destroy(PlotChn *obj)
 
 /* Plot math channel definitions */
 
-static struct iio_device * plot_math_channel_get_iio_parent(PlotChn *obj);
 static gfloat * plot_math_channel_get_data_ref(PlotChn *obj);
 static void plot_math_channel_assert_channels(PlotChn *obj, bool assert);
 static void plot_math_channel_destroy(PlotChn *obj);
@@ -1983,25 +1966,11 @@ static PlotMathChn * plot_math_channel_new(struct iio_context *ctx)
 
 	obj->base.type = PLOT_MATH_CHANNEL;
 	obj->base.ctx = ctx;
-	obj->base.get_iio_parent = *plot_math_channel_get_iio_parent;
 	obj->base.get_data_ref = *plot_math_channel_get_data_ref;
 	obj->base.assert_used_iio_channels = *plot_math_channel_assert_channels;
 	obj->base.destroy = *plot_math_channel_destroy;
 
 	return obj;
-}
-
-static struct iio_device *plot_math_channel_get_iio_parent(PlotChn *obj)
-{
-	PlotMathChn *this = (PlotMathChn *)obj;
-	struct iio_device *iio_dev = NULL;
-
-	if (this && this->iio_device_name) {
-		iio_dev = iio_context_find_device(this->base.ctx,
-				this->iio_device_name);
-	}
-
-	return iio_dev;
 }
 
 static gfloat * plot_math_channel_get_data_ref(PlotChn *obj)
@@ -2405,17 +2374,10 @@ static void notebook_info_set_page_visibility(GtkNotebook *nb, int page, bool vi
 
 static struct iio_device * transform_get_device_parent(Transform *transform)
 {
-	struct iio_device *iio_dev = NULL;
-	PlotChn *plot_ch;
-
-	if (!transform || !transform->plot_channels)
+	if (!transform || !transform->plot_channels || !transform->plot_channels->data)
 		return NULL;
 
-	plot_ch = transform->plot_channels->data;
-	if (plot_ch)
-		iio_dev = plot_ch->get_iio_parent(plot_ch);
-
-	return iio_dev;
+	return ((PlotChn *)transform->plot_channels->data)->dev;
 }
 
 static void update_transform_settings(OscPlot *plot, Transform *transform)
@@ -3981,7 +3943,7 @@ static void device_list_treeview_init(OscPlot *plot)
 				iio_channel_get_id(ch);
 			PlotIioChn *pic;
 
-			pic = plot_iio_channel_new(priv->ctx);
+			pic = plot_iio_channel_new(priv->ctx, dev);
 			if (!pic) {
 				fprintf(stderr, "Could not create an iio plot"
 					"channel with name %s in function %s\n",
@@ -6340,6 +6302,7 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 	bool invalid_channels;
 	const char *channel_name;
 	char *expression_name;
+	struct iio_device *dev;
 
 	math_device_cmb_changed_cb(GTK_COMBO_BOX_TEXT(priv->math_device_select), plot);
 
@@ -6347,6 +6310,13 @@ static int math_expression_get_settings(OscPlot *plot, PlotMathChn *pmc)
 	if (!active_device) {
 		fprintf(stderr, "Error: No device available in %s\n", __func__);
 		return -1;
+	}
+
+	dev = iio_context_find_device(priv->ctx, active_device);
+	if (dev) {
+		pmc->base.dev = dev;
+	} else {
+		fprintf(stderr, "Error: Failed to get 'iio_device *' for %s\n", active_device);
 	}
 
 	if (pmc->txt_math_expression)
