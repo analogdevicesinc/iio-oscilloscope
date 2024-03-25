@@ -449,7 +449,7 @@ static const char * device_name_check(const char *name)
 	if (!dev)
 		return NULL;
 
-	return iio_device_get_name(dev) ?: iio_device_get_id(dev);
+	return get_iio_device_label_or_name(dev);
 }
 
 /*
@@ -1511,7 +1511,7 @@ static int capture_setup(void)
 				min_timeout = timeout;
 		}
 
-		rx_update_device_sampling_freq(iio_device_get_id(dev), freq);
+		rx_update_device_sampling_freq(get_iio_device_label_or_name(dev), freq);
 	}
 
 	if (ctx)
@@ -1818,8 +1818,8 @@ static void init_device_list(struct iio_context *_ctx)
 			iio_channel_set_data(ch, info);
 		}
 
-		rx_update_device_sampling_freq(iio_device_get_name(dev) ?:
-			iio_device_get_id(dev), USE_INTERN_SAMPLING_FREQ);
+		rx_update_device_sampling_freq(
+			get_iio_device_label_or_name(dev), USE_INTERN_SAMPLING_FREQ);
 	}
 }
 
