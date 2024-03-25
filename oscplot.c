@@ -646,8 +646,7 @@ const char * osc_plot_get_active_device (OscPlot *plot)
 	while (next_iter) {
 		gtk_tree_model_get(model, &iter, ELEMENT_REFERENCE, &dev, DEVICE_ACTIVE, &active, -1);
 		if (active)
-			return iio_device_get_name(dev) ?:
-				iio_device_get_id(dev);
+			return get_iio_device_label_or_name(dev);
 		next_iter = gtk_tree_model_iter_next(model, &iter);
 	}
 
@@ -2361,9 +2360,7 @@ static int plot_get_sample_count_for_transform(OscPlot *plot, Transform *transfo
 	if (!iio_dev)
 		iio_dev = priv->current_device;
 
-	return plot_get_sample_count_of_device(plot,
-			iio_device_get_name(iio_dev) ?:
-			iio_device_get_id(iio_dev));
+	return plot_get_sample_count_of_device(plot, get_iio_device_label_or_name(iio_dev));
 }
 
 static void notebook_info_set_page_visibility(GtkNotebook *nb, int page, bool visbl)
@@ -2750,7 +2747,7 @@ static void collect_parameters_from_plot(OscPlot *plot)
 	for (i = 0; i < iio_context_get_devices_count(ctx); i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *info = iio_device_get_data(dev);
-		const char *dev_name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
+		const char *dev_name = get_iio_device_label_or_name(dev);
 
 		if (info->input_device == false)
 			continue;
@@ -2998,7 +2995,7 @@ static void device_rx_info_update(OscPlotPrivate *priv)
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(priv->ctx, i);
-		const char *name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
+		const char *name = get_iio_device_label_or_name(dev);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		double freq, percent, seconds;
 		char freq_prefix, sec_prefix;
@@ -3479,7 +3476,7 @@ static bool comboboxtext_input_devices_fill(struct iio_context *iio_ctx, GtkComb
 		if (dev_info->input_device == false)
 			continue;
 
-		name = iio_device_get_name(dev) ?: iio_device_get_id(dev);
+		name = get_iio_device_label_or_name(dev);
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(box), name);
 	}
 
@@ -3919,8 +3916,7 @@ static void device_list_treeview_init(OscPlot *plot)
 	for (i = 0; i < iio_context_get_devices_count(ctx); i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
-		const char *dev_name = iio_device_get_name(dev) ?:
-			iio_device_get_id(dev);
+		const char *dev_name = get_iio_device_label_or_name(dev);
 
 		if (dev_info->input_device == false)
 			continue;
@@ -4029,8 +4025,7 @@ static void saveas_channels_list_fill(OscPlot *plot)
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(priv->ctx, i);
-		const char *name = iio_device_get_name(dev) ?:
-			iio_device_get_id(dev);
+		const char *name = get_iio_device_label_or_name(dev);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 
 		if (dev_info->input_device == false)
@@ -4722,8 +4717,7 @@ static void save_as(OscPlot *plot, const char *filename, int type)
 
 			dev = iio_context_get_device(ctx, d);
 			dev_info = iio_device_get_data(dev);
-			dev_name = iio_device_get_name(dev) ?:
-				iio_device_get_id(dev);
+			dev_name = get_iio_device_label_or_name(dev);
 
 			/* Find which channel need to be saved */
 			save_channels_mask = get_user_saveas_channel_selection(plot, &nb_channels);
@@ -5228,8 +5222,7 @@ static int device_find_by_name(struct iio_context *ctx, const char *name)
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
-		const char *id = iio_device_get_name(dev) ?:
-			iio_device_get_id(dev);
+		const char *id = get_iio_device_label_or_name(dev);
 		if (!strcmp(id, name))
 			return i;
 	}
