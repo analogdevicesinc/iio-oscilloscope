@@ -17,6 +17,10 @@
 #include <dirent.h>
 #include <limits.h>
 
+#ifdef __APPLE__
+#include <strings.h>
+#endif
+
 #include <iio.h>
 
 #include "compat.h"
