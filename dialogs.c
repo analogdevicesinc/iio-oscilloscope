@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#ifdef __APPLE__
+#include <strings.h>
+#endif
 #include <errno.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>

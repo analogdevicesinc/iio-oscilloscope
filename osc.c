@@ -884,7 +884,9 @@ void * plugin_dlsym(const char *name, const char *symbol)
 	void *fcn;
 	char *buf;
 #ifndef __MINGW__
+#ifndef __APPLE__
 	Dl_info info;
+#endif
 #endif
 
 	for (node = plugin_list; node; node = g_slist_next(node)) {
@@ -897,8 +899,10 @@ void * plugin_dlsym(const char *name, const char *symbol)
 				fprintf(stderr, "%s:%s(): found plugin %s, error looking up %s\n"
 						"\t%s\n", __FILE__, __func__, name, symbol, buf);
 #ifndef __MINGW__
+#ifndef __APPLE__
 				if (dladdr(__builtin_return_address(0), &info))
 					fprintf(stderr, "\tcalled from %s:%s()\n", info.dli_fname, info.dli_sname);
+#endif
 #endif
 			}
 			return fcn;
@@ -907,8 +911,10 @@ void * plugin_dlsym(const char *name, const char *symbol)
 
 	fprintf(stderr, "%s:%s : No plugin with matching name %s\n", __FILE__, __func__, name);
 #ifndef __MINGW__
+#ifndef __APPLE__
 	if (dladdr(__builtin_return_address(0), &info))
 		fprintf(stderr, "\tcalled from %s:%s()\n", info.dli_fname, info.dli_sname);
+#endif
 #endif
 	return NULL;
 }

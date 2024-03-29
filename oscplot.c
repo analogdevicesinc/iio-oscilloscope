@@ -18,6 +18,9 @@
 #include <matio.h>
 #include <sys/time.h>
 #include <string.h>
+#ifdef __APPLE__
+#include <strings.h>
+#endif
 #include <sys/types.h>
 #include <dirent.h>
 
