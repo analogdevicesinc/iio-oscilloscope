@@ -21,6 +21,10 @@
 #include <sys/types.h>
 #include <dirent.h>
 
+#ifdef __APPLE__
+#include <strings.h>
+#endif
+
 #include <complex.h>
 #include <fftw3.h>
 #include <iio.h>
