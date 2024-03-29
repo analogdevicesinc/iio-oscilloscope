@@ -914,7 +914,11 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 			break;
 		default:
 			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
+#ifndef __APPLE__
 			fallthrough;
+#else
+			__fallthrough__;
+#endif
 		case GTK_RESPONSE_CANCEL:
 		case GTK_RESPONSE_DELETE_EVENT:
 			break;

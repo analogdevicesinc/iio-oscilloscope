@@ -379,7 +379,11 @@ static int tty_connect(struct scpi_instrument *scpi)
 #endif
 
 	ti.c_cflag |=  CLOCAL;
+#ifndef __APPLE__
 	ti.c_cflag &= ~CRTSCTS;
+#else
+	ti.c_cflag &= ~020000000000;
+#endif
 	ti.c_cflag &= ~PARENB;
 	ti.c_cflag &= ~PARODD;
 	ti.c_cflag &= ~CSIZE;

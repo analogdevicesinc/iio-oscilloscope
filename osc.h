@@ -71,7 +71,8 @@ extern void math_expression_objects_clean(void);
 #ifndef __APPLE__
 #define fallthrough	__attribute__((__fallthrough__))
 #else
-#define fallthrough __attribute__((fallthrough))
+// Clang 15
+#define __fallthrough__ (void)0
 #endif
 
 struct osc_plugin;
