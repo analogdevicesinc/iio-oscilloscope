@@ -4,6 +4,11 @@
  * Licensed under the GPL-2.
  *
  **/
+
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE
+#endif
+
 #include <gtk/gtk.h>
 #include <gtkdatabox.h>
 #include <gtkdatabox_grid.h>
