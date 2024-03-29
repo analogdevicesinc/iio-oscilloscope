@@ -68,7 +68,11 @@ extern void math_expression_objects_clean(void);
 #define DBG(D...)
 #endif
 
+#ifndef __APPLE__
 #define fallthrough	__attribute__((__fallthrough__))
+#else
+#define fallthrough __attribute__((fallthrough))
+#endif
 
 struct osc_plugin;
 
