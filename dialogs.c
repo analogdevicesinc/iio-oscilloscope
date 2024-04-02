@@ -498,6 +498,12 @@ static void refresh_usb(void)
 	if (!ctxs)
 		goto nope;
 
+#ifdef __APPLE__
+	// Scanning seems to be broken at the moment
+	goto nope;
+#endif
+
+
 	ret = iio_scan_context_get_info_list(ctxs, &info);
 	if (ret < 0)
 		goto err_free_ctxs;
