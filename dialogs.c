@@ -432,7 +432,8 @@ static struct iio_context * get_context(Dialogs *data)
 	}
 }
 
-static void refresh_usb(void)
+
+static void refresh_usb_thread(void)
 {
 	struct iio_scan_context *ctxs;
 	struct iio_context_info **info;
@@ -447,6 +448,7 @@ static void refresh_usb(void)
 	bool scan = false;
 	gchar *active_uri = NULL;
 
+	gdk_threads_enter();
 	widget_set_cursor(dialogs.connect, GDK_WATCH);
 
 	if (gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd)) != -1) {
@@ -565,6 +567,7 @@ nope:
 		gtk_widget_set_sensitive(dialogs.connect_usbd, false);
 		/* Force a clear */
 		connect_clear(dialogs.connect_net);
+		gdk_threads_leave();
 		return;
 	}
 
@@ -585,6 +588,14 @@ nope:
 
 	/* Fill things in */
 	connect_clear(dialogs.connect_usb);
+	gdk_threads_leave();
+
+}
+
+
+static void refresh_usb(void)
+{
+	g_thread_new("Scan thread", (void *) &refresh_usb_thread, NULL);
 }
 
 #ifdef SERIAL_BACKEND
