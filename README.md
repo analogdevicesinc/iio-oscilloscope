@@ -1,4 +1,5 @@
 [![windows-mingw build](https://github.com/analogdevicesinc/iio-oscilloscope/actions/workflows/buildmingw.yml/badge.svg?branch=master)](https://github.com/analogdevicesinc/iio-oscilloscope/actions/workflows/buildmingw.yml?query=branch%3Amaster+)
+[![flatpak build](https://github.com/analogdevicesinc/iio-oscilloscope/actions/workflows/buildflatpak.yml/badge.svg?branch=master)](https://github.com/analogdevicesinc/iio-oscilloscope/actions/workflows/buildflatpak.yml?query=branch%3Amaster+)
 
 IIO Oscilloscope [![GitHub Release](https://img.shields.io/github/release/analogdevicesinc/iio-oscilloscope.svg)](https://github.com/analogdevicesinc/iio-oscilloscope/releases/latest)  [![Application License](https://img.shields.io/badge/license-GPL2-blue.svg)](https://github.com/analogdevicesinc/libiio/blob/master/COPYING_GPL.txt)
 ================
