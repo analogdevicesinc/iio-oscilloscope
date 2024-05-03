@@ -83,61 +83,10 @@ static const char * ad9739a_driver_attribs[] = {
 	"dac_buf_filename",
 };
 
-static int compare_gain(const char *a, const char *b) __attribute__((unused));
-static int compare_gain(const char *a, const char *b)
-{
-	double val_a, val_b;
-	sscanf(a, "%lf", &val_a);
-	sscanf(b, "%lf", &val_b);
-
-	if (val_a < val_b)
-		return -1;
-	else if(val_a > val_b)
-		return 1;
-	else
-		return 0;
-}
-
-static void update_widgets(void)
-{
-	iio_update_widgets_of_device(tx_widgets, num_tx, dac);
-}
-
 static void reload_button_clicked(GtkButton *btn, gpointer data)
 {
-	update_widgets();
+	iio_update_widgets_block_signals_by_data(tx_widgets, num_tx);
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
-}
-static void save_widget_value(GtkWidget *widget, struct iio_widget *iio_w)
-{
-	iio_w->save(iio_w);
-}
-
-static void make_widget_update_signal_based(struct iio_widget *widgets,
-	unsigned int num_widgets)
-{
-	char signal_name[25];
-	unsigned int i;
-
-	for (i = 0; i < num_widgets; i++) {
-		if (GTK_IS_CHECK_BUTTON(widgets[i].widget))
-			sprintf(signal_name, "%s", "toggled");
-		else if (GTK_IS_TOGGLE_BUTTON(widgets[i].widget))
-			sprintf(signal_name, "%s", "toggled");
-		else if (GTK_IS_SPIN_BUTTON(widgets[i].widget))
-			sprintf(signal_name, "%s", "value-changed");
-		else if (GTK_IS_COMBO_BOX_TEXT(widgets[i].widget))
-			sprintf(signal_name, "%s", "changed");
-		else
-			printf("unhandled widget type, attribute: %s\n", widgets[i].attr_name);
-
-		if (GTK_IS_SPIN_BUTTON(widgets[i].widget) &&
-			widgets[i].priv_progress != NULL) {
-				iio_spin_button_progress_activate(&widgets[i]);
-		} else {
-			g_signal_connect(G_OBJECT(widgets[i].widget), signal_name, G_CALLBACK(save_widget_value), &widgets[i]);
-		}
-	}
 }
 
 static int ad9739a_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
@@ -233,9 +182,10 @@ static GtkWidget * ad9739a_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 		load_profile(NULL, ini_fn);
 
 	/* Update all widgets with current values */
-	update_widgets();
+	iio_update_widgets(tx_widgets, num_tx);
 
-	make_widget_update_signal_based(tx_widgets, num_tx);
+	iio_make_widgets_update_signal_based(tx_widgets, num_tx,
+					     G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
 	g_builder_connect_signal(builder, "ad9739a_settings_reload", "clicked",
 		G_CALLBACK(reload_button_clicked), NULL);
 
