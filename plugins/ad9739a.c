@@ -37,7 +37,7 @@
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
-static const char *DAC_DEVICE;
+static const char *dac_name;
 
 #define LPC_DAC_DEVICE "axi-ad9739a-lpc"
 #define HPC_DAC_DEVICE "axi-ad9739a-hpc"
@@ -144,14 +144,14 @@ static int ad9739a_handle_driver(struct osc_plugin *plugin, const char *attrib, 
 {
 	if (MATCH_ATTRIB("dds_mode")) {
 		dac_data_manager_set_dds_mode(dac_tx_manager,
-				DAC_DEVICE, 1, atoi(value));
+				dac_name, 1, atoi(value));
 	} else if (!strncmp(attrib, "tx_channel_", sizeof("tx_channel_") - 1)) {
 		int tx = atoi(attrib + sizeof("tx_channel_") - 1);
 		dac_data_manager_set_tx_channel_state(
 				dac_tx_manager, tx, !!atoi(value));
 	} else if (MATCH_ATTRIB("dac_buf_filename")) {
 		if (dac_data_manager_get_dds_mode(dac_tx_manager,
-					DAC_DEVICE, 1) == DDS_BUFFER)
+					dac_name, 1) == DDS_BUFFER)
 			dac_data_manager_set_buffer_chooser_filename(
 					dac_tx_manager, value);
 	} else if (MATCH_ATTRIB("SYNC_RELOAD")) {
@@ -201,7 +201,7 @@ static GtkWidget * ad9739a_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	if (!ctx)
 		return NULL;
 
-	dac = iio_context_find_device(ctx, DAC_DEVICE);
+	dac = iio_context_find_device(ctx, dac_name);
 	dac_tx_manager = dac_data_manager_new(dac, NULL, ctx);
 	if (!dac_tx_manager) {
 		osc_destroy_context(ctx);
@@ -255,7 +255,7 @@ static void save_widgets_to_ini(FILE *f)
 	fprintf(f, "dds_mode = %i\n"
 			"dac_buf_filename = %s\n"
 			"tx_channel_0 = %i\n",
-			dac_data_manager_get_dds_mode(dac_tx_manager, DAC_DEVICE, 1),
+			dac_data_manager_get_dds_mode(dac_tx_manager, dac_name, 1),
 			dac_data_manager_get_buffer_chooser_filename(dac_tx_manager),
 			dac_data_manager_get_tx_channel_state(dac_tx_manager, 0));
 }
@@ -284,25 +284,26 @@ static bool ad9739a_identify(const struct osc_plugin *plugin)
 {
 	/* Use the OSC's IIO context just to detect the devices */
 	struct iio_context *osc_ctx = get_context_from_osc();
-	if(iio_context_find_device(osc_ctx, LPC_DAC_DEVICE)){
-	    DAC_DEVICE = LPC_DAC_DEVICE;
-	    ad9739a_sr_attribs = lpc_ad9739a_sr_attribs;
-	    sr_attribs_array_size = ARRAY_SIZE(lpc_ad9739a_sr_attribs);
-	  } else if(iio_context_find_device(osc_ctx, HPC_DAC_DEVICE)) {
-	    DAC_DEVICE = HPC_DAC_DEVICE;
-	    ad9739a_sr_attribs = hpc_ad9739a_sr_attribs;
-	    sr_attribs_array_size = ARRAY_SIZE(hpc_ad9739a_sr_attribs);
-	  } else {
-	    DAC_DEVICE="";
-	  }
 
-	return !!iio_context_find_device(osc_ctx, DAC_DEVICE);
+	if (iio_context_find_device(osc_ctx, LPC_DAC_DEVICE)){
+		dac_name = LPC_DAC_DEVICE;
+		ad9739a_sr_attribs = lpc_ad9739a_sr_attribs;
+		sr_attribs_array_size = ARRAY_SIZE(lpc_ad9739a_sr_attribs);
+	} else if (iio_context_find_device(osc_ctx, HPC_DAC_DEVICE)) {
+		dac_name = HPC_DAC_DEVICE;
+		ad9739a_sr_attribs = hpc_ad9739a_sr_attribs;
+		sr_attribs_array_size = ARRAY_SIZE(hpc_ad9739a_sr_attribs);
+	} else {
+		dac_name="";
+	}
+
+	return !!iio_context_find_device(osc_ctx, dac_name);
 }
 
 GSList* get_dac_dev_names(const struct osc_plugin *plugin) {
 	GSList *list = NULL;
 
-	list = g_slist_append (list, (gpointer) DAC_DEVICE);
+	list = g_slist_append (list, (gpointer) dac_name);
 
 	return list;
 }
