@@ -2263,6 +2263,25 @@ static char *profile_gen_cli_get_api(void)
 	return version;
 }
 
+static char *strip_leading_and_trailing_nonnumeric_chars(char *string)
+{
+	int i;
+	char *str = (char *)malloc(strlen(string) * sizeof(char));
+	sprintf(str, "%s", string);
+
+	while((str[0] < '0' || str[0] > '9') && str[0] != '\0') {
+		str++;
+	}
+
+	i = strlen(str) - 1;
+	while((str[i] < '0' || str[i] > '9') && i > 0) {
+		str[i] = '\0';
+		i--;
+	}
+
+	return str;
+}
+
 static bool profile_gen_check_api(gpointer data)
 {
 	struct plugin_private *priv = data;
@@ -2281,7 +2300,8 @@ static bool profile_gen_check_api(gpointer data)
 		goto err;
 	}
 
-	if(strcmp(version, supported_version) != 0) {
+	if(strcmp(strip_leading_and_trailing_nonnumeric_chars(supported_version),
+		  strip_leading_and_trailing_nonnumeric_chars(version)) != 0) {
 		sprintf(message, "\nOnly API version %s is supported, the device uses %s!", supported_version, version);
 		profile_gen_set_debug_info(data, message);
 		free(supported_version);
