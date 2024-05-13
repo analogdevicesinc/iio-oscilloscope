@@ -2302,10 +2302,23 @@ static bool profile_gen_check_api(gpointer data)
 
 	if(strcmp(strip_leading_and_trailing_nonnumeric_chars(supported_version),
 		  strip_leading_and_trailing_nonnumeric_chars(version)) != 0) {
-		sprintf(message, "\nOnly API version %s is supported, the device uses %s!", supported_version, version);
-		profile_gen_set_debug_info(data, message);
-		free(supported_version);
-		goto err;
+		sprintf(message,
+			"\nDriver API - Profile generator API version mismatch\nDriver (%s)"
+			"\nProfile Generator (%s)",
+			supported_version, version);
+		GtkWidget *adrv9002_panel = GTK_WIDGET(gtk_builder_get_object(priv->builder, "adrv9002_panel"));
+		GtkWidget *dialog = gtk_message_dialog_new(
+					GTK_WINDOW(gtk_widget_get_toplevel(adrv9002_panel)),
+					GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_WARNING, GTK_BUTTONS_YES_NO,
+					"%s\n\nAre you sure you want to load the profile?", message);
+		gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+
+		if(response != GTK_RESPONSE_YES) {
+			profile_gen_set_debug_info(data, message);
+			free(supported_version);
+			goto err;
+		}
 	}
 
 	free(supported_version);
