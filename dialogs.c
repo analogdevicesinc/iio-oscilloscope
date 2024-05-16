@@ -17,7 +17,7 @@
 #include <dirent.h>
 #include <limits.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "compat.h"
 #include "fru.h"
@@ -344,13 +344,15 @@ static bool widget_use_parent_cursor(GtkWidget *widget)
 
 static struct iio_context * get_context(Dialogs *data)
 {
+	int err;
+
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_net))) {
 		const char *hostname = gtk_entry_get_text(GTK_ENTRY(dialogs.net_ip));
 		struct iio_context *ctx = get_context_from_osc();
 
 		if (ctx && !g_strcmp0(hostname, iio_context_get_attr_value(ctx, "uri")))
 			return ctx;
-		return iio_create_context_from_uri(hostname);
+		return iio_create_context(NULL, hostname);
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb))) {
 		struct iio_context *ctx, *ctx2;
 		char *uri , *uri2, *uri3;
@@ -390,17 +392,18 @@ static struct iio_context * get_context(Dialogs *data)
 			return ctx2;
 		}
 
-		ctx = iio_create_context_from_uri(uri2);
+		ctx = iio_create_context(NULL, uri2);
+		err = iio_err(ctx);
 		/* If you are looking up ip: with zeroconf, without bonjour installed,
 		 * try the IP number too
 		 */
-		if (!ctx && strncmp(uri2, "ip:", sizeof("ip:"))) {
+		if (err && strncmp(uri2, "ip:", sizeof("ip:"))) {
 			uri3 = strdup(usb_pids[gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd))]);
 			if (uri3) {
 				if (strchr(uri3, ' ')) {
 					uri2 = strchr(uri3, ' ');
 					*uri2 = 0;
-					ctx = iio_create_network_context(uri3);
+					ctx = iio_create_context(NULL, uri3);
 				}
 				free(uri3);
 			}
@@ -420,33 +423,35 @@ static struct iio_context * get_context(Dialogs *data)
 		g_free(port);
 		g_free(baud_rate);
 
-		ctx = iio_create_context_from_uri(result);
+		ctx = iio_create_context(NULL, result);
 		g_free(result);
-		if (!ctx && errno == EBUSY &&
+
+		err = iio_err(ctx);
+		if (err && err == -EBUSY &&
 				!strcmp("serial", iio_context_get_name(get_context_from_osc()))) {
 			return get_context_from_osc();
 		}
 		return ctx;
 	} else {
-		return iio_create_local_context();
+		return iio_create_context(NULL, "local:");
 	}
 }
 
 
 static void refresh_usb_thread(void)
 {
-	struct iio_scan_context *ctxs;
-	struct iio_context_info **info;
+	struct iio_scan *scan_ctx;
 	GtkListStore *liststore;
-	ssize_t ret;
-	unsigned int i = 0;
+	size_t i = 0;
 	gint index = 0;
 	gchar *tmp, *tmp1, *pid, *buf;
 	char *current = NULL;
-	char filter[sizeof("local:ip:usb:")];
+	char backends[sizeof("local,ip,usb")];
 	char *p;
 	bool scan = false;
 	gchar *active_uri = NULL;
+	int err;
+	size_t scan_results;
 
 	gdk_threads_enter();
 	widget_set_cursor(dialogs.connect, GDK_WATCH);
@@ -477,15 +482,15 @@ static void refresh_usb_thread(void)
 
 	p = filter;
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.filter_local))) {
-		p += sprintf(p, "local:");
+		p += sprintf(p, "local,");
 		scan = true;
 	}
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.filter_usb))) {
-		p += sprintf(p, "usb:");
+		p += sprintf(p, "usb,");
 		scan = true;
 	}
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.filter_ip))) {
-		p += sprintf(p, "ip:");
+		p += sprintf(p, "ip");
 		scan = true;
 	}
 
@@ -493,19 +498,21 @@ static void refresh_usb_thread(void)
 	if (!scan)
 		goto nope;
 
-	ctxs = iio_create_scan_context(filter, 0);
-	if (!ctxs)
+	scan_ctx = iio_scan(NULL, backends);
+	err = iio_err(scan_ctx);
+	if (err) {
+		prm_perrror(NUll, err, "Scanning for IIO contexts failed");
 		goto nope;
+	}
 
-	ret = iio_scan_context_get_info_list(ctxs, &info);
-	if (ret < 0)
+	scan_results = iio_scan_get_results_count(scan_ctx);
+	if (scan_results == 0) {
 		goto err_free_ctxs;
-	if (!ret)
-		goto err_free_info_list;
+	}	
 
-	for (i = 0; i < (size_t) ret; i++) {
-		tmp = strdup(iio_context_info_get_description(info[i]));
-		pid = strdup(iio_context_info_get_description(info[i]));
+	for (i = 0; i < scan_results; i++) {
+		tmp = strdup(iio_scan_get_description(scan_ctx, i));
+		pid = strdup(iio_scan_get_description(scan_ctx, i));
 
 		/* skip the PID/VID or IP Number, example descriptions are:
 		 * 0456:b673 (Analog Devices Inc. PlutoSDR (ADALM-PLUTO)), serial=104473541196000618001900241f1e6931
@@ -538,10 +545,8 @@ static void refresh_usb_thread(void)
 
 		if (!tmp1)
 			tmp1 = tmp;
-		buf = malloc(strlen(iio_context_info_get_uri(info[i])) +
-				strlen(tmp1) + 5);
-		sprintf(buf, "%s [%s]", tmp1,
-				iio_context_info_get_uri(info[i]));
+		buf = malloc(strlen(iio_scan_get_uri(scan_ctx, i)) + strlen(tmp1) + 5);
+		sprintf(buf, "%s [%s]", tmp1, iio_scan_get_uri(scan_ctx, i));
 		tmp1 = NULL;
 
 		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), buf);
@@ -553,10 +558,8 @@ static void refresh_usb_thread(void)
 		free(tmp);
 	}
 
-err_free_info_list:
-	iio_context_info_list_free(info);
 err_free_ctxs:
-	iio_scan_context_destroy(ctxs);
+	iio_scan_destroy(scan_ctx);
 nope:
 
 	widget_use_parent_cursor(dialogs.connect);

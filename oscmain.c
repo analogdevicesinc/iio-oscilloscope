@@ -1,7 +1,7 @@
 #include <errno.h>
 #include <glib.h>
 #include <gtk/gtk.h>
-#include <iio.h>
+#include <iio/iio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -204,16 +204,11 @@ gint main (int argc, char **argv)
 	while ((c = getopt (argc, argv, "c:p:u:")) != -1)
 		switch (c) {
 			case 'c':
-				ctx = iio_create_network_context(optarg);
-				if (!ctx) {
-					printf("Failed connecting to remote device: %s\n", optarg);
-					exit(-1);
-				}
-				break;
 			case 'u':
-				ctx = iio_create_context_from_uri(optarg);
-				if (!ctx) {
-					printf("Failed connecting to remote device: %s\n", optarg);
+				ctx = iio_create_context(NULL, optarg);
+				err = iio_err(ctx);
+				if (err) {
+					prm_perror(NULL, err, "Failed connecting to remote device: %s", optarg);
 					exit(-1);
 				}
 				break;

@@ -2358,7 +2358,10 @@ static int load_profile(const char *filename, bool load_plugins)
 	 * override profile settings.
 	 */
 	if (value && !(ctx && !strcmp(iio_context_get_name(ctx), "network"))) {
-		struct iio_context *new_ctx = iio_create_network_context(value);
+		char *ip_with_suffix = g_new(char, strlen("ip:") + strlen(value) + sizeof('\0'));
+		struct iio_context *new_ctx = iio_create_context(NULL, ip_with_suffix);
+		g_free(ip_with_suffix);
+		ip_with_suffix = NULL;
 		if (new_ctx) {
 			application_reload(new_ctx, false);
 		} else {
@@ -2378,12 +2381,12 @@ static int load_profile(const char *filename, bool load_plugins)
 	 */
 	if (value && !(ctx && (!strcmp(iio_context_get_name(ctx), "uri")))) {
 		struct iio_context *new_ctx;
-		struct iio_scan_context *ctxs = iio_create_scan_context(NULL, 0);
-		struct iio_context_info **info;
+		struct iio_scan *scan_ctx = iio_scan(NULL, NULL);
+		size_t scan_results;
 		char *pid_vid = value;
 		char *serial = strchr(value, ' ');
 		const char *tmp;
-		int i;
+		int i, err;
 
 		if (!serial)
 			goto nope;
@@ -2392,20 +2395,21 @@ static int load_profile(const char *filename, bool load_plugins)
 		pid_vid[serial - pid_vid] = 0;
 		serial++;
 
-		if (!ctxs)
+		err = iio_err(scan_ctx);
+		if (err) {
+			prm_perrror(NUll, err, "Scanning for IIO contexts failed");
 			goto nope;
-		ret = iio_scan_context_get_info_list(ctxs, &info);
-		if (ret < 0)
-			goto nope_ctxs;
-		if (!ret)
-			goto nope_list;
+		}
 
-		for (i = 0; i < ret; i++) {
-			tmp = iio_context_info_get_description(info[i]);
+		scan_results = iio_scan_get_results_count(scan_ctx);
+		if (ret <= 0)
+			goto nope_ctxs;
+
+		for (i = 0; i < scan_results; i++) {
+			tmp = iio_scan_get_description(i);
 			/* find the correct PID/VID plus serial number*/
 			if (strstr(tmp, pid_vid) && strstr(tmp, serial)) {
-				new_ctx = iio_create_context_from_uri(
-						iio_context_info_get_uri(info[i]));
+				new_ctx = iio_create_context(NULL, iio_scan_get_uri(scan_ctx, i));
 				if (new_ctx) {
 					application_reload(new_ctx, false);
 					break;
@@ -2417,10 +2421,8 @@ static int load_profile(const char *filename, bool load_plugins)
 			}
 
 		}
-nope_list:
-		iio_context_info_list_free(info);
 nope_ctxs:
-		iio_scan_context_destroy(ctxs);
+		iio_scan_destroy(ctxs);
 nope:
 		free(value);
 		ret = 0;
