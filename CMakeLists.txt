@@ -120,8 +120,8 @@ pkg_check_modules(LIBCURL REQUIRED libcurl)
 pkg_check_modules(JANSSON REQUIRED jansson)
 pkg_check_modules(MATIO REQUIRED matio)
 
-find_library(LIBIIO_LIBRARIES iio)
-find_path(LIBIIO_INCLUDE_DIRS iio.h)
+find_library(LIBIIO_LIBRARIES iio HINTS /home/dan/repos/github/libiio/build_v1_0/install/lib)
+find_path(LIBIIO_INCLUDE_DIRS iio.h HINTS /home/dan/repos/github/libiio/build_v1_0/install/include/iio)
 
 find_library(LIBAD9361_LIBRARIES ad9361)
 find_path(LIBAD9361_INCLUDE_DIRS ad9361.h)
