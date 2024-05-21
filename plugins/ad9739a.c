@@ -41,6 +41,7 @@ static const char *dac_name;
 
 #define LPC_DAC_DEVICE "axi-ad9739a-lpc"
 #define HPC_DAC_DEVICE "axi-ad9739a-hpc"
+#define DAC_DEVICE "ad9739a"
 
 static struct dac_data_manager *dac_tx_manager;
 
@@ -77,6 +78,16 @@ static const char *hpc_ad9739a_sr_attribs[] = {
 	HPC_DAC_DEVICE".out_altvoltage1_1B_phase",
 };
 
+static const char *ad9739a_attribs[] = {
+	DAC_DEVICE".out_voltage0_operating_mode",
+	DAC_DEVICE".out_altvoltage0_frequency0",
+	DAC_DEVICE".out_altvoltage0_frequency1",
+	DAC_DEVICE".out_altvoltage0_scale0",
+	DAC_DEVICE".out_altvoltage0_scale1",
+	DAC_DEVICE".out_altvoltage0_phase0",
+	DAC_DEVICE".out_altvoltage0_phase1",
+};
+
 static const char * ad9739a_driver_attribs[] = {
 	"dds_mode",
 	"tx_channel_0",
@@ -91,6 +102,7 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 
 static int ad9739a_handle_driver(struct osc_plugin *plugin, const char *attrib, const char *value)
 {
+
 	if (MATCH_ATTRIB("dds_mode")) {
 		dac_data_manager_set_dds_mode(dac_tx_manager,
 				dac_name, 1, atoi(value));
@@ -135,9 +147,26 @@ static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 
 	update_from_ini(ini_fn, THIS_DRIVER, dac, ad9739a_sr_attribs,
 			sr_attribs_array_size);
-
 	if (can_update_widgets)
 		reload_button_clicked(NULL, NULL);
+}
+
+static void ad9739a_new_driver_handle(GtkBuilder *builder)
+{
+	struct iio_channel *chan;
+
+	chan = iio_device_find_channel(dac, "voltage0", true);
+	if (!chan) {
+		printf("[ERROR]: Could not find voltage0 channel\n");
+		return;
+	}
+
+	iio_combo_box_init_no_avail_flush_from_builder(&tx_widgets[num_tx++], dac, chan,
+						       "operating_mode", "operating_mode_available",
+						       builder, "operation_modes_combo", NULL);
+
+	gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "full_scale_spin")));
+	gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "full_scale_current_label")));
 }
 
 static GtkWidget * ad9739a_init(struct osc_plugin *plugin, GtkWidget *notebook, const char *ini_fn)
@@ -168,15 +197,18 @@ static GtkWidget * ad9739a_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 	gtk_container_add(GTK_CONTAINER(dds_container), dac_data_manager_get_gui_container(dac_tx_manager));
 	gtk_widget_show_all(dds_container);
 
-	/* Bind the IIO device files to the GUI widgets */
-
-	iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
-		dac, NULL, "operation_mode", "operation_modes_available",
-		 builder, "operation_modes_combo", NULL);
-
-	iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
-		dac, NULL, "full_scale_current", builder,
-		"full_scale_spin", NULL);
+	/* Handle the new driver ABI as is in upstream linux */
+	if (!strcmp(dac_name, DAC_DEVICE)) {
+		ad9739a_new_driver_handle(builder);
+	} else {
+		/* Bind the IIO device files to the GUI widgets */
+		iio_spin_button_int_init_from_builder(&tx_widgets[num_tx++],
+						      dac, NULL, "full_scale_current", builder,
+						      "full_scale_spin", NULL);
+		iio_combo_box_init_from_builder(&tx_widgets[num_tx++],
+						dac, NULL, "operation_mode", "operation_modes_available",
+						builder, "operation_modes_combo", NULL);
+	}
 
 	if (ini_fn)
 		load_profile(NULL, ini_fn);
@@ -190,11 +222,8 @@ static GtkWidget * ad9739a_init(struct osc_plugin *plugin, GtkWidget *notebook, 
 		G_CALLBACK(reload_button_clicked), NULL);
 
 	dac_data_manager_freq_widgets_range_update(dac_tx_manager, 2E15 / 2);
-
 	dac_data_manager_update_iio_widgets(dac_tx_manager);
-
 	dac_data_manager_set_buffer_chooser_current_folder(dac_tx_manager, OSC_WAVEFORM_FILE_PATH);
-
 	can_update_widgets = true;
 
 	return ad9739a_panel;
@@ -243,6 +272,10 @@ static bool ad9739a_identify(const struct osc_plugin *plugin)
 		dac_name = HPC_DAC_DEVICE;
 		ad9739a_sr_attribs = hpc_ad9739a_sr_attribs;
 		sr_attribs_array_size = ARRAY_SIZE(hpc_ad9739a_sr_attribs);
+	} else if (iio_context_find_device(osc_ctx, DAC_DEVICE)) {
+		dac_name = DAC_DEVICE;
+		ad9739a_sr_attribs = ad9739a_attribs;
+		sr_attribs_array_size = ARRAY_SIZE(ad9739a_attribs);
 	} else {
 		dac_name="";
 	}

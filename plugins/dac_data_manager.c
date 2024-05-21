@@ -1,3 +1,4 @@
+#include <iio.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -1259,10 +1260,13 @@ static char * get_tone_name(struct iio_channel *ch)
 	char *name;
 	char tone_index;
 
+	printf("name %s %s\n", iio_channel_get_id(ch), iio_channel_get_name(ch) );
 	name = g_strdup( iio_channel_get_name(ch));
+	if (!name)
+		return NULL;
 
 	/* If name convention "TX*_I|Q_F* is missing */
-	if (name && strncmp(name, "TX", 2) != 0) {
+	if (strncmp(name, "TX", 2) != 0) {
 		g_free(name);
 		name = g_strdup(iio_channel_get_id(ch));
 		if (name && !strncmp(name, TONE_ID, TONE_ID_SIZE)) {
@@ -1294,6 +1298,25 @@ static unsigned get_iio_tones_count(struct iio_device *dev)
 	}
 
 	return count;
+}
+
+static unsigned int get_iio_tones_count_new(struct iio_device *dev)
+{
+	struct iio_channel *chn;
+	unsigned int c, attr, count;
+	const char *id;
+
+	/*
+ 	 * new upstream ABI is altvoltageX_frequency[0|1]. There's still no
+	 * usecase for I/Q channels so not sure how it will look like...
+	 */
+	for (c = 0, count = 0; c < iio_device_get_channels_count(dev); i++) {
+		chn = iio_device_get_channel(dev, i);
+		id = iio_channel_get_id(chn);
+		if (strncmp(id, "altvoltage", TONE_ID_SIZE))
+			continue;
+		for (attr = 0; attr < )
+	}
 }
 
 static int dac_channels_assign(struct dds_dac *ddac)
@@ -1947,8 +1970,13 @@ static int dds_dac_init(struct dac_data_manager *manager,
 	ddac->name = iio_device_get_name(iio_dac);
 	ddac->tones_count = get_iio_tones_count(iio_dac);
 
-	if(!ddac->tones_count)
-		return 0;
+	printf("tone count: %d\n", ddac->tones_count);
+
+	if(!ddac->tones_count) {
+		ddac->tones_count = get_iio_tones_count_new(iio_dac);
+		if (!ddac->tones_count)
+			return 0;
+	}
 
 	guint tx_count = ddac->tones_count / TX_NB_TONES;
 	guint extra_tones = ddac->tones_count % TX_NB_TONES;
