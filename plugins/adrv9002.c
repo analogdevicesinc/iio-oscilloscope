@@ -489,7 +489,7 @@ static void update_label(const struct adrv9002_gtklabel *label)
 	gtk_label_set_text(label->labels, attr_val);
 }
 
-static void update_special_widgets(struct adrv9002_common *chann)
+static void update_special_widgets(struct adrv9002_common *chann, const char *ensm, size_t len)
 {
 	char *gain_ctl = gtk_combo_box_text_get_active_text(
 		GTK_COMBO_BOX_TEXT(chann->gain_ctrl.widget));
@@ -499,8 +499,8 @@ static void update_special_widgets(struct adrv9002_common *chann)
 	if (gain_ctl && strcmp(gain_ctl, "spi"))
 		iio_widget_update_block_signals_by_data(&chann->gain);
 
-	if (port_en && strcmp(port_en, "spi"))
-		iio_widget_update_block_signals_by_data(&chann->ensm);
+	if (port_en && strcmp(port_en, "spi") && ensm)
+		iio_widget_update_value(&chann->ensm, ensm, len);
 
 	g_free(gain_ctl);
 	g_free(port_en);
@@ -513,13 +513,25 @@ static void update_special_rx_widgets(struct adrv9002_rx *rx, const int n_widget
 	for (i = 0; i < n_widgets; i++) {
 		char *digital_gain = gtk_combo_box_text_get_active_text(
 			GTK_COMBO_BOX_TEXT(rx[i].digital_gain_ctl.widget));
+		char ensm[32] = {0};
 
 		if (!rx[i].rx.enabled)
 			goto nex_widget;
 
-		update_label(&rx[i].rssi);
+		/*
+		 * There was a change in the driver API where an error is returned if we try to read
+		 * the RSSI level if the channel is not enabled. Hence, make sure we only update it
+		 * if the channel is enabled.
+		 */
+		if (iio_channel_attr_read(rx[i].rx.ensm.chn, rx[i].rx.ensm.attr_name, ensm,
+					  sizeof(ensm)) > 0 && !strcmp(ensm, "rf_enabled"))
+			update_label(&rx[i].rssi);
 		update_label(&rx[i].decimated_power);
-		update_special_widgets(&rx[i].rx);
+		/*
+		 * Pass in ensm as we already got it and so no need for another possible
+		 * remote call into the device.
+		 */
+		update_special_widgets(&rx[i].rx, ensm, sizeof(ensm));
 
 		if (digital_gain && strstr(digital_gain, "automatic"))
 			iio_widget_update_block_signals_by_data(&rx[i].intf_gain);
@@ -536,7 +548,7 @@ static void update_special_tx_widgets(struct adrv9002_common *tx, const int n_wi
 		if (!tx[i].enabled)
 			continue;
 
-		update_special_widgets(&tx[i]);
+		update_special_widgets(&tx[i], NULL, 0);
 	}
 }
 
