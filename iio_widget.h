@@ -44,6 +44,7 @@ void iio_make_widget_update_signal_based(struct iio_widget *widget, GCallback ha
 void iio_update_widgets(struct iio_widget *widgets, unsigned int num_widgets);
 void iio_update_widgets_block_signals_by_data(struct iio_widget *widgets, unsigned int num_widgets);
 void iio_widget_update(struct iio_widget *widget);
+void iio_widget_update_value(struct iio_widget *widget, const char *ensm, size_t len);
 void iio_update_widgets_of_device(struct iio_widget *widgets,
 		unsigned int num_widgets, struct iio_device *dev);
 void iio_widget_update_block_signals_by_data(struct iio_widget *widget);
