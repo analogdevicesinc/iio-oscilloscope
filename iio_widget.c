@@ -495,6 +495,18 @@ static gboolean iio_widget_signal_unblock(gpointer arg)
 	return FALSE;
 }
 
+void iio_widget_update_value(struct iio_widget *widget, const char *ensm, size_t len)
+{
+	guint sig = 0;
+
+	if (widget->sig_handler_data)
+		sig = g_signal_handlers_block_matched(G_OBJECT(widget->widget), G_SIGNAL_MATCH_DATA,
+						      0, 0, NULL, NULL, widget->sig_handler_data);
+	widget->update_value(widget, ensm, len);
+
+	if (sig)
+		g_timeout_add(1, (GSourceFunc)iio_widget_signal_unblock, widget);
+}
 /*
 * The point of these is that when we update a widget, we can receive a different value from the
 * iio dev from the one in the GUI (eg: a failed call to widget->save() or an autonomous update).
