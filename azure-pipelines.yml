@@ -173,47 +173,47 @@ stages:
 
   #########################################
 
-  - job: macOSBuilds
-    strategy:
-      matrix:
-        macOS_12:
-          imageName: 'macOS-12'
-          artifactName: 'macOS-12'
-    pool:
-      vmImage: $(imageName)
-    steps:
-    - checkout: self
-      fetchDepth: 1
-      clean: true
-    - task: DownloadPipelineArtifact@2
-      inputs:
-        source: 'specific'
-        project: '$(System.TeamProjectId)'
-        pipeline: $(libad9361iioPipelineId)
-        artifact: '$(artifactName)'
-        runVersion: 'latestFromBranch'
-        runBranch: 'refs/heads/master'
-        path: '$(Agent.BuildDirectory)/s/download/'
-      displayName: 'Get libad9361-iio artifacts'
-    - task: DownloadPipelineArtifact@2
-      inputs:
-        source: 'specific'
-        project: '$(System.TeamProjectId)'
-        pipeline: $(libad9166iioPipelineId)
-        artifact: '$(artifactName)'
-        runVersion: 'latestFromBranch'
-        runBranch: 'refs/heads/master'
-        path: '$(Agent.BuildDirectory)/s/download/'
-      displayName: 'Get libad9166-iio artifacts'
-    - script: |
-        echo ${CMAKE_CXX_COMPILER_VERSION}
-        ./CI/azure/build_osc_darwin.sh install_deps
-        ./CI/azure/build_osc_darwin.sh install_adi_pkgs
-      displayName: "Install Dependencies"
-    - script: ./CI/azure/build_osc_darwin.sh build_osc
-      displayName: "Build"
-    - task: PublishPipelineArtifact@1
-      condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
-      inputs:
-        targetPath: '$(Build.ArtifactStagingDirectory)'
-        artifactName: '$(artifactName)'
+  # - job: macOSBuilds
+  #   strategy:
+  #     matrix:
+  #       macOS_12:
+  #         imageName: 'macOS-12'
+  #         artifactName: 'macOS-12'
+  #   pool:
+  #     vmImage: $(imageName)
+  #   steps:
+  #   - checkout: self
+  #     fetchDepth: 1
+  #     clean: true
+  #   - task: DownloadPipelineArtifact@2
+  #     inputs:
+  #       source: 'specific'
+  #       project: '$(System.TeamProjectId)'
+  #       pipeline: $(libad9361iioPipelineId)
+  #       artifact: '$(artifactName)'
+  #       runVersion: 'latestFromBranch'
+  #       runBranch: 'refs/heads/master'
+  #       path: '$(Agent.BuildDirectory)/s/download/'
+  #     displayName: 'Get libad9361-iio artifacts'
+  #   - task: DownloadPipelineArtifact@2
+  #     inputs:
+  #       source: 'specific'
+  #       project: '$(System.TeamProjectId)'
+  #       pipeline: $(libad9166iioPipelineId)
+  #       artifact: '$(artifactName)'
+  #       runVersion: 'latestFromBranch'
+  #       runBranch: 'refs/heads/master'
+  #       path: '$(Agent.BuildDirectory)/s/download/'
+  #     displayName: 'Get libad9166-iio artifacts'
+  #   - script: |
+  #       echo ${CMAKE_CXX_COMPILER_VERSION}
+  #       ./CI/azure/build_osc_darwin.sh install_deps
+  #       ./CI/azure/build_osc_darwin.sh install_adi_pkgs
+  #     displayName: "Install Dependencies"
+  #   - script: ./CI/azure/build_osc_darwin.sh build_osc
+  #     displayName: "Build"
+  #   - task: PublishPipelineArtifact@1
+  #     condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+  #     inputs:
+  #       targetPath: '$(Build.ArtifactStagingDirectory)'
+  #       artifactName: '$(artifactName)'
