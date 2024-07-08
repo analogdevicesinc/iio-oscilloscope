@@ -176,9 +176,6 @@ stages:
   - job: macOSBuilds
     strategy:
       matrix:
-        macOS_11:
-          imageName: 'macOS-11'
-          artifactName: 'macOS-11'
         macOS_12:
           imageName: 'macOS-12'
           artifactName: 'macOS-12'
