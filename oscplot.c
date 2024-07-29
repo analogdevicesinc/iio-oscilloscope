@@ -6750,17 +6750,17 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEvent *event)
 		/* Check if device needs a trigger */
 		struct iio_device *dev = ref;
 		const struct iio_device *trigger;
-		bool has_trigger;
+		bool needs_trigger;
 		int ret;
 
 		ret = iio_device_get_trigger(dev, &trigger);
-		has_trigger = false;
-		if (ret == 0 && trigger) {
-			has_trigger = true;
+		needs_trigger = false;
+		if (ret == 0) {
+			needs_trigger = true;
 		}
 
 		gtk_widget_set_sensitive(priv->device_trigger_menuitem,
-				has_trigger);
+				needs_trigger);
 
 		gtk_menu_popup_at_pointer(GTK_MENU(priv->device_settings_menu), event);
 		return true;
