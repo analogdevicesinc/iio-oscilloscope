@@ -653,8 +653,12 @@ static void update_special_widgets(struct adrv9002_common *chann, const char *en
 	if (gain_ctl && strcmp(gain_ctl, "spi"))
 		iio_widget_update_block_signals_by_data(&chann->gain);
 
-	if (port_en && strcmp(port_en, "spi") && ensm)
-		iio_widget_update_value(&chann->ensm, ensm, len);
+	if (port_en && strcmp(port_en, "spi")) {
+		if (ensm)
+			iio_widget_update_value(&chann->ensm, ensm, len);
+		else
+			iio_widget_update_block_signals_by_data(&chann->ensm);
+	}
 
 	g_free(gain_ctl);
 	g_free(port_en);
