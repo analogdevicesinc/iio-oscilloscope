@@ -495,14 +495,14 @@ static gboolean iio_widget_signal_unblock(gpointer arg)
 	return FALSE;
 }
 
-void iio_widget_update_value(struct iio_widget *widget, const char *ensm, size_t len)
+void iio_widget_update_value(struct iio_widget *widget, const char *attr_name, size_t len)
 {
 	guint sig = 0;
 
 	if (widget->sig_handler_data)
 		sig = g_signal_handlers_block_matched(G_OBJECT(widget->widget), G_SIGNAL_MATCH_DATA,
 						      0, 0, NULL, NULL, widget->sig_handler_data);
-	widget->update_value(widget, ensm, len);
+	widget->update_value(widget, attr_name, len);
 
 	if (sig)
 		g_timeout_add(1, (GSourceFunc)iio_widget_signal_unblock, widget);
