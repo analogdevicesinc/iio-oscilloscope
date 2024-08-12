@@ -221,6 +221,7 @@ struct adrv9002_common {
 	struct iio_widget w[NUM_MAX_WIDGETS];
 	uint16_t num_widgets;
 	bool enabled;
+	bool enable_gpio;
 	uint8_t idx;
 };
 
@@ -499,15 +500,28 @@ static void save_orx_powerdown(GtkWidget *widget, struct adrv9002_orx *orx)
 	g_free(t_ensm);
 }
 
-static void save_ensm(GtkWidget *w, struct iio_widget *widget)
+static void save_ensm(GtkWidget *w, struct adrv9002_common *chann)
 {
-	widget->save(widget);
+	gchar *ensm = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(chann->ensm.widget));
+	gchar *port_en = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(chann->port_en.widget));
+
+	if (!strcmp(port_en, "pin") && !strcmp(ensm, "calibrated")) {
+		dialog_box_message_error(chann->ensm.widget, "Enable State Mode",
+					 "Only primed or rf_enabled possible when pin mode is enabled");
+		goto out_free;
+	}
+
+	chann->ensm.save(&chann->ensm);
 	/*
 	 * If it is a transition to rf_enabled, it can take some time and so, we
 	 * can still get the old value if we do not wait a bit...
 	 */
 	usleep(2000);
-	iio_widget_update_block_signals_by_data(widget);
+
+out_free:
+	iio_widget_update_block_signals_by_data(&chann->ensm);
+	g_free(ensm);
+	g_free(port_en);
 }
 
 static void save_port_en(GtkWidget *widget, struct adrv9002_common *chann)
@@ -515,8 +529,17 @@ static void save_port_en(GtkWidget *widget, struct adrv9002_common *chann)
 	char *port_en;
 
 	iio_widget_save_block_signals_by_data(&chann->port_en);
-	port_en = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
+	if (chann->enable_gpio) {
+		/*
+		 * If we can control RF state when in pin mode, there's no need to
+		 * control the sensitivity. Hence, just update the RF state widget (as
+		 * it can change when moving from pin to spi and vice versa) and bail out.
+		 */
+		iio_widget_update_block_signals_by_data(&chann->ensm);
+		return;
+	}
 
+	port_en = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget));
 	if (port_en && strcmp(port_en, "spi")) {
 		gtk_widget_set_sensitive(chann->ensm.widget, false);
 	} else {
@@ -653,7 +676,7 @@ static void update_special_widgets(struct adrv9002_common *chann, const char *en
 	if (gain_ctl && strcmp(gain_ctl, "spi"))
 		iio_widget_update_block_signals_by_data(&chann->gain);
 
-	if (port_en && strcmp(port_en, "spi")) {
+	if (port_en && strcmp(port_en, "spi") && !chann->enable_gpio) {
 		if (ensm)
 			iio_widget_update_value(&chann->ensm, ensm, len);
 		else
@@ -2777,7 +2800,7 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 					    &priv->rx_widgets[chann].rx.nco_freq);
 	/* ensm mode and port en */
 	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.ensm,
-					    G_CALLBACK(save_ensm), &priv->rx_widgets[chann].rx.ensm);
+					    G_CALLBACK(save_ensm), &priv->rx_widgets[chann].rx);
 	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.port_en,
 					    G_CALLBACK(save_port_en), &priv->rx_widgets[chann].rx);
 	/* digital gain control */
@@ -2805,7 +2828,7 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 					    &priv->tx_widgets[chann].gain);
 	/* ensm mode and port en */
 	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].ensm,
-					    G_CALLBACK(save_ensm), &priv->tx_widgets[chann].ensm);
+					    G_CALLBACK(save_ensm), &priv->tx_widgets[chann]);
 	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].port_en,
 					    G_CALLBACK(save_port_en), &priv->tx_widgets[chann]);
 	/* carrier frequency */
@@ -2929,15 +2952,59 @@ free_dac:
 	return ret;
 }
 
-static void adrv9002_update_port_en_mode(const struct plugin_private *priv, const struct adrv9002_common *chan)
+static void adrv9002_update_port_en_mode(const struct plugin_private *priv, struct adrv9002_common *chan)
 {
 	gchar *port_en = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(chan->port_en.widget));
+	char pin_ensm[32];
+	int ret;
 
 	if (!port_en)
 		return;
-	if (!strcmp(port_en, "pin"))
+	if (!strcmp(port_en, "pin")) {
 		gtk_widget_set_sensitive(chan->ensm.widget, false);
+	} else {
+		/*
+		 * Let's check if we can control the RF enable state mode even in pin mode. For
+		 * that, we check which mode we're and if not in pin mode, we move to that mode
+		 * and try to change the state. If we succeed, then it means the driver is
+		 * in full control of the pin controlling the RF state.
+		 */
+		ret = iio_channel_attr_write(chan->port_en.chn, "port_en_mode", "pin");
+		if (ret < 0) {
+			printf("Could not set port to to pin (%d)\n", ret);
+			goto out;
+		}
+	}
 
+	ret = iio_channel_attr_read(chan->ensm.chn, "ensm_mode", pin_ensm, sizeof(pin_ensm));
+	if (ret < 0)
+		goto out;
+
+	/*
+	 * If we get an error just assume we can't control the state and try to bring the device
+	 * to the initial state.
+	 */
+	ret = iio_channel_attr_write(chan->ensm.chn, "ensm_mode", "primed");
+	if (ret > 0)
+		chan->enable_gpio = true;
+
+	/*
+	 * Go back to the previous state and to spi mode if that was the port mode
+	 * Not much to do in case of error, hence ignore them...
+	 */
+	if (chan->enable_gpio) {
+		iio_channel_attr_write(chan->ensm.chn, "ensm_mode", pin_ensm);
+		if (!strcmp(port_en, "pin"))
+			gtk_widget_set_sensitive(chan->ensm.widget, true);
+	}
+	/*
+	 * If spi mode had a different ensm state than pin, it will automatically move to
+	 * that state after changing port modes.
+	 */
+	if (strcmp(port_en, "pin"))
+		iio_channel_attr_write(chan->port_en.chn, "port_en_mode", "spi");
+
+out:
 	g_free(port_en);
 }
 
