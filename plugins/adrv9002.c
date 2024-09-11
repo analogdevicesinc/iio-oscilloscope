@@ -770,6 +770,7 @@ static void adrv9002_update_orx_widgets(struct plugin_private *priv, const int c
 static void adrv9002_update_rx_widgets(struct plugin_private *priv, const int chann)
 {
 	struct adrv9002_rx *rx = &priv->rx_widgets[chann];
+	gchar *ensm;
 
 	/* rx */
 	if (!rx->rx.enabled)
@@ -786,7 +787,9 @@ static void adrv9002_update_rx_widgets(struct plugin_private *priv, const int ch
 	/* generic widgets */
 	iio_update_widgets_block_signals_by_data(rx->rx.w, rx->rx.num_widgets);
 	/* labels */
-	update_label(&rx->rssi);
+	ensm = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(&rx->rx.ensm.widget));
+	if (ensm && !strcmp(ensm, "rf_enabled"))
+		update_label(&rx->rssi);
 	update_label(&rx->decimated_power);
 	update_label(&rx->rx.rf_bandwidth);
 	update_label(&rx->rx.sampling_rate);
