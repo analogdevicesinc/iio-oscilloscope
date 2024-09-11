@@ -2929,6 +2929,18 @@ free_dac:
 	return ret;
 }
 
+static void adrv9002_update_port_en_mode(const struct plugin_private *priv, const struct adrv9002_common *chan)
+{
+	gchar *port_en = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(chan->port_en.widget));
+
+	if (!port_en)
+		return;
+	if (!strcmp(port_en, "pin"))
+		gtk_widget_set_sensitive(chan->ensm.widget, false);
+
+	g_free(port_en);
+}
+
 static void adrv9002_api_version_report(struct plugin_private *priv)
 {
 	GtkWidget *api_frame = GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_api"));
@@ -3166,8 +3178,10 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	for (i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
 		connect_special_signal_widgets(priv, i);
 		adrv9002_update_rx_widgets(priv, i);
+		adrv9002_update_port_en_mode(priv, &priv->rx_widgets[i].rx);
 		adrv9002_update_orx_widgets(priv, i);
 		adrv9002_update_tx_widgets(priv, i);
+		adrv9002_update_port_en_mode(priv, &priv->tx_widgets[i]);
 		iio_make_widgets_update_signal_based(priv->rx_widgets[i].rx.w,
 						     priv->rx_widgets[i].rx.num_widgets,
 						     G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
