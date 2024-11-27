@@ -129,13 +129,15 @@ static void iio_spin_button_update(struct iio_widget *widget)
 {
 	ssize_t ret;
 	char buf[0x100];
-
-	if (widget->chn)
-		ret = iio_channel_attr_read(widget->chn,
-				widget->attr_name, buf, sizeof(buf));
-	else
-		ret = iio_device_attr_read(widget->dev,
-				widget->attr_name, buf, sizeof(buf));
+	const struct iio_attr *attr = NULL;
+	if (widget->chn) {
+		attr = iio_channel_find_attr(widget->chn, widget->attr_name);
+		ret = iio_attr_read_raw(attr, buf, sizeof(buf));
+	}
+	else {
+		attr = iio_device_find_attr(widget->dev, widget->attr_name);
+		ret = iio_attr_read_raw(attr, buf, sizeof(buf));
+	}
 	if (ret > 0)
 		iio_spin_button_update_value(widget, buf, ret);
 	else if (ret == -ENODEV)
@@ -146,6 +148,7 @@ static void spin_button_save(struct iio_widget *widget, bool is_double)
 {
 	gdouble freq, min;
 	gdouble scale = widget->priv ? *(gdouble *)widget->priv : 1.0;
+	const struct iio_attr *attr = NULL;
 
 	freq = gtk_spin_button_get_value(GTK_SPIN_BUTTON (widget->widget));
 	min = gtk_adjustment_get_lower(gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(widget->widget)));
@@ -158,19 +161,18 @@ static void spin_button_save(struct iio_widget *widget, bool is_double)
 		freq = ((double (*)(double, bool))widget->priv_convert_function)(freq, false);
 
 	if (widget->chn) {
+		attr = iio_channel_find_attr(widget->chn, widget->attr_name);
 		if (is_double)
-			iio_channel_attr_write_double(widget->chn,
-					widget->attr_name, freq);
+			iio_attr_write_double(attr, freq);
 		else
-			iio_channel_attr_write_longlong(widget->chn,
-					widget->attr_name, (long long) freq);
+			iio_attr_write_longlong(attr, (long long)freq);
 	} else {
+
+		attr = iio_device_find_attr(widget->dev, widget->attr_name);
 		if (is_double)
-			iio_device_attr_write_double(widget->dev,
-					widget->attr_name, freq);
+			iio_attr_write_double(attr, freq);
 		else
-			iio_device_attr_write_longlong(widget->dev,
-					widget->attr_name, (long long) freq);
+			iio_attr_write_longlong(attr, (long long) freq);
 	}
 }
 
@@ -215,13 +217,16 @@ static void iio_toggle_button_save(struct iio_widget *widget)
 {
 	bool active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (widget->widget));
 	active = widget->priv ? !active : active;
+	const struct iio_attr *attr = NULL;
 
-	if (widget->chn)
-		iio_channel_attr_write_bool(widget->chn,
-				widget->attr_name, active);
-	else
-		iio_device_attr_write_bool(widget->dev,
-				widget->attr_name, active);
+	if (widget->chn) {
+
+		attr = iio_channel_find_attr(widget->chn, widget->attr_name);
+		iio_attr_write_bool(attr, active);
+	} else {
+		attr = iio_device_find_attr(widget->dev, widget->attr_name);
+		iio_attr_write_bool(attr, active);
+	}
 }
 
 static void iio_toggle_button_update_value(struct iio_widget *widget,
@@ -241,13 +246,15 @@ static void iio_toggle_button_update(struct iio_widget *widget)
 {
 	char buf[0x100];
 	ssize_t ret;
+	const struct iio_attr *attr = NULL;
 
-	if (widget->chn)
-		ret = iio_channel_attr_read(widget->chn,
-				widget->attr_name, buf, sizeof(buf));
-	else
-		ret = iio_device_attr_read(widget->dev,
-				widget->attr_name, buf, sizeof(buf));
+	if (widget->chn) {
+		attr = iio_channel_find_attr(widget->chn, widget->attr_name);
+		ret = iio_attr_read_raw(attr, buf, sizeof(buf));
+	} else {
+		attr = iio_device_find_attr(widget->dev, widget->attr_name);
+		ret = iio_attr_read_raw(attr, buf, sizeof(buf));
+	}
 	if (ret > 0)
 		iio_toggle_button_update_value(widget, buf, ret);
 	else if (ret == -ENODEV)
@@ -265,12 +272,14 @@ static void iio_toggle_button_init(struct iio_widget *widget,
 
 static void iio_button_save(struct iio_widget *widget)
 {
-	if (widget->chn)
-		iio_channel_attr_write_bool(widget->chn,
-					    widget->attr_name, 1);
-	else
-		iio_device_attr_write_bool(widget->dev,
-						   widget->attr_name, 1);
+	const struct iio_attr *attr = NULL;
+	if (widget->chn) {
+		attr = iio_channel_find_attr(widget->chn, widget->attr_name);
+		iio_attr_write_bool(attr, 1);
+	} else {
+		attr = iio_device_find_attr(widget->dev, widget->attr_name);
+		iio_attr_write_bool(attr, 1);
+	}
 }
 
 static void iio_button_update_value(struct iio_widget *widget,
@@ -296,15 +305,20 @@ static void iio_button_init(struct iio_widget *widget,
 static void iio_combo_box_save(struct iio_widget *widget)
 {
 	gchar *text;
+	const struct iio_attr *attr = NULL;
 
 	text = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->widget));
 	if (text == NULL)
 		return;
 
-	if (widget->chn)
-		iio_channel_attr_write(widget->chn, widget->attr_name, text);
-	else
-		iio_device_attr_write(widget->dev, widget->attr_name, text);
+	if (widget->chn) {
+
+		attr = iio_channel_find_attr(widget->chn, widget->attr_name);
+		iio_attr_write(attr, text);
+	} else {
+		attr = iio_device_find_attr(widget->dev, widget->attr_name);
+		iio_attr_write(attr, text);
+	}
 	g_free(text);
 }
 
@@ -341,11 +355,15 @@ static void iio_combo_box_no_avail_flush_update(struct iio_widget *widget)
 {
 	ssize_t len;
 	char text[256];
+	const struct iio_attr *attr = NULL;
 
-	if (widget->chn)
-		len = iio_channel_attr_read(widget->chn, widget->attr_name, text, sizeof(text));
-	else
-		len = iio_device_attr_read(widget->dev, widget->attr_name, text, sizeof(text));
+	if (widget->chn) {
+		attr = iio_channel_find_attr(widget->chn, widget->attr_name);
+		len = iio_attr_read_raw(attr, text, sizeof(text));
+	} else {
+		attr = iio_device_find_attr(widget->dev, widget->attr_name);
+		len = iio_attr_read_raw(attr, text, sizeof(text));
+	}
 
 	if (len > 0)
 		iio_combo_box_no_avail_flush_update_value(widget, text, len);
@@ -363,13 +381,15 @@ void iio_combo_box_init_no_avail_flush(struct iio_widget *widget, struct iio_dev
 		int ret, item;
 		char text[1024];
 		gchar **items_avail = NULL;
+		const struct iio_attr *attr = NULL;
 
-		if (chn)
-			ret = iio_channel_attr_read(chn, attr_name_avail, text,
-						    sizeof(text));
-		else
-			ret = iio_device_attr_read(dev, attr_name_avail, text,
-						   sizeof(text));
+		if (chn) {
+			attr = iio_channel_find_attr(chn, attr_name_avail);
+			ret = iio_attr_read_raw(attr, text, sizeof(text));
+		} else {
+			attr = iio_device_find_attr(dev, attr_name_avail);
+			ret = iio_attr_read_raw(attr, text, sizeof(text));
+		}
 
 		if (ret < 0)
 			return;
@@ -406,17 +426,19 @@ static void iio_combo_box_update_value(struct iio_widget *widget,
 	gchar **items_avail = NULL, **saveditems_avail;
 	gboolean has_iter;
 	ssize_t ret;
+	const struct iio_attr *attr = NULL;
 
 	combo_box = GTK_COMBO_BOX(widget->widget);
 	model = gtk_combo_box_get_model(combo_box);
 
 	if (widget->attr_name_avail) {
-		if (widget->chn)
-			ret = iio_channel_attr_read(widget->chn,
-					widget->attr_name_avail, text2, sizeof(text2));
-		else
-			ret = iio_device_attr_read(widget->dev,
-					widget->attr_name_avail, text2, sizeof(text2));
+		if (widget->chn) {
+			attr = iio_channel_find_attr(widget->chn, widget->attr_name_avail);
+			ret = iio_attr_read_raw(attr, text2, sizeof(text2));
+		} else {
+			attr = iio_device_find_attr(widget->dev, widget->attr_name_avail);
+			ret = iio_attr_read_raw(attr, text2, sizeof(text2));
+		}
 		if (ret < 0)
 			return;
 
@@ -457,13 +479,15 @@ static void iio_combo_box_update(struct iio_widget *widget)
 {
 	ssize_t len;
 	char text[1024];
+	const struct iio_attr *attr = NULL;
 
-	if (widget->chn)
-		len = iio_channel_attr_read(widget->chn,
-				widget->attr_name, text, sizeof(text));
-	else
-		len = iio_device_attr_read(widget->dev,
-				widget->attr_name, text, sizeof(text));
+	if (widget->chn) {
+		attr = iio_channel_find_attr(widget->chn, widget->attr_name);
+		len = iio_attr_read_raw(attr, text, sizeof(text));
+	} else {
+		attr = iio_device_find_attr(widget->dev, widget->attr_name);
+		len = iio_attr_read_raw(attr, text, sizeof(text));
+	}
 	if (len > 0)
 		iio_combo_box_update_value(widget, text, len);
 }
@@ -671,11 +695,12 @@ void iio_update_widgets_of_device(struct iio_widget *widgets,
 		.nb = num_widgets,
 	};
 
-	iio_device_attr_read_all(dev, __cb_dev_update, &params);
+	// !!!!!!!!
+//	iio_device_attr_read_all(dev, __cb_dev_update, &params);
 
-	for (i = 0; i < iio_device_get_channels_count(dev); i++)
-		iio_channel_attr_read_all(iio_device_get_channel(dev, i),
-				__cb_chn_update, &params);
+//	for (i = 0; i < iio_device_get_channels_count(dev); i++)
+//		iio_channel_attr_read_all(iio_device_get_channel(dev, i),
+//				__cb_chn_update, &params);
 }
 
 void iio_save_widgets(struct iio_widget *widgets, unsigned int num_widgets)

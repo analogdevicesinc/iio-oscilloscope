@@ -1,7 +1,7 @@
-#include <errno.h>
+﻿#include <errno.h>
 #include <glib.h>
 #include <gtk/gtk.h>
-#include <iio.h>
+#include <iio/iio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -21,12 +21,14 @@ extern void version_check_start(void *_dialogs);
 
 static void infobar_hide_cb(GtkButton *btn, gpointer user_data)
 {
-	gtk_widget_set_visible(infobar, false);
+        gtk_widget_set_visible(infobar, false);
 }
 
 static void infobar_reconnect_cb(GtkMenuItem *btn, gpointer user_data)
 {
-	struct iio_context *new_ctx = iio_context_clone(ctx);
+	const struct iio_attr *ctx_uri = iio_context_find_attr(ctx, "uri");
+	const char *uri_val = iio_attr_get_static_value(ctx_uri);
+	struct iio_context *new_ctx = iio_create_context(NULL, uri_val);
 	if (new_ctx) {
 		application_reload(new_ctx, true);
 		gtk_widget_set_visible(infobar, false);
@@ -102,7 +104,7 @@ static void init_application ()
 	GtkWidget  *vcheck_dont_show;
 	GtkAboutDialog *about = NULL;
 	unsigned int major, minor;
-	char patch[9];
+	const char* patch;
 	const gchar *tmp;
 	gchar tmp2[1024];
 
@@ -132,7 +134,9 @@ static void init_application ()
 	if (!about)
 		about = GTK_ABOUT_DIALOG(gtk_builder_get_object(builder, "About_dialog"));
 	gtk_about_dialog_set_version(about, OSC_VERSION);
-	iio_library_get_version(&major, &minor, patch);
+	major = iio_context_get_version_major(ctx);
+	minor = iio_context_get_version_minor(ctx);
+	patch = iio_context_get_version_tag(ctx);
 	tmp = gtk_label_get_label(GTK_LABEL(gtk_builder_get_object(builder, "libiio_title")));
 	sprintf(tmp2, "%s\nlibiio version : %u.%u-%s\n", tmp, major, minor, patch);
 	gtk_label_set_label(GTK_LABEL(gtk_builder_get_object(builder, "libiio_title")),
@@ -151,7 +155,7 @@ static void init_application ()
 
 	/* Connect signals. */
 	g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(application_quit), NULL);
-	g_signal_connect(G_OBJECT(btn_capture), "activate", G_CALLBACK(new_plot_cb), NULL);
+	//g_signal_connect(G_OBJECT(btn_capture), "activate", G_CALLBACK(new_plot_cb), NULL);
 	g_signal_connect(G_OBJECT(tooltips_en), "toggled", G_CALLBACK(tooltips_enable_cb), NULL);
 	g_signal_connect(G_OBJECT(versioncheck_en), "toggled", G_CALLBACK(versioncheck_en_cb), vcheck_dont_show);
 	g_signal_connect(G_OBJECT(vcheck_dont_show), "toggled", G_CALLBACK(vcheck_dont_show_cb), versioncheck_en);
@@ -204,14 +208,16 @@ gint main (int argc, char **argv)
 	while ((c = getopt (argc, argv, "c:p:u:")) != -1)
 		switch (c) {
 			case 'c':
-				ctx = iio_create_network_context(optarg);
+				//ctx = iio_create_network_context(optarg);
+				ctx = iio_create_context(NULL, optarg);
 				if (!ctx) {
 					printf("Failed connecting to remote device: %s\n", optarg);
 					exit(-1);
 				}
 				break;
 			case 'u':
-				ctx = iio_create_context_from_uri(optarg);
+				//ctx = iio_create_context_from_uri(optarg);
+				ctx = iio_create_context(NULL, optarg);
 				if (!ctx) {
 					printf("Failed connecting to remote device: %s\n", optarg);
 					exit(-1);
@@ -248,8 +254,8 @@ gint main (int argc, char **argv)
 	if (!ctx_destroyed_by_do_quit) {
 		if (!ctx)
 			connect_dialog(false);
-
-		create_default_plot();
+		// !!!!!!!
+		//create_default_plot();
 		if (c == 0) {
 			if (gtk_check_menu_item_get_active(
 					GTK_CHECK_MENU_ITEM(versioncheck_en)))

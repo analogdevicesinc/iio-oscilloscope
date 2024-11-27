@@ -7,7 +7,7 @@
 #ifndef __IIO_UTILS__
 #define __IIO_UTILS__
 
-#include "iio.h"
+#include "iio/iio.h"
 #include <gmodule.h>
 
 struct _GtkToggleToolButton;

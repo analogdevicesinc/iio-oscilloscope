@@ -24,7 +24,7 @@
 #include <string.h>
 #include <dirent.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "compat.h"
 #include "libini2.h"
@@ -63,12 +63,12 @@ unsigned int ini_capture_timeout = 0;
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data);
 static void plugin_restore_ini_state(const char *plugin_name,
 		const char *attribute, int value);
-static void plot_init(GtkWidget *plot);
-static void plot_destroyed_cb(OscPlot *plot);
+//static void plot_init(GtkWidget *plot);
+//static void plot_destroyed_cb(OscPlot *plot);
 static void capture_profile_save(const char *filename);
 static int load_profile(const char *filename, bool load_plugins);
-static int capture_setup(void);
-static void capture_start(void);
+//static int capture_setup(void);
+//static void capture_start(void);
 static void stop_sampling(void);
 
 static char * dma_devices[] = {
@@ -162,17 +162,18 @@ bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_cou
 	return ret;
 }
 
-unsigned global_enabled_channels_mask(struct iio_device *dev)
+unsigned global_enabled_channels_mask(struct iio_device *dev, struct iio_channels_mask *ch_mask)
 {
 	unsigned mask = 0;
 	int scan_i = 0;
 	unsigned int i = 0;
+	//struct iio_channels_mask *ch_mask = iio_get_channels_mask(iio_device_get_channels_count(dev));
 
 	for (; i < iio_device_get_channels_count(dev); i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
 
 		if (iio_channel_is_scan_element(chn)) {
-			if (iio_channel_is_enabled(chn))
+			if (iio_channel_is_enabled(chn, ch_mask))
 				mask |= 1 << scan_i;
 			scan_i++;
 		}
@@ -209,34 +210,34 @@ static void gfunc_restart_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
 
-	osc_plot_restart(OSC_PLOT(plot));
+	//osc_plot_restart(OSC_PLOT(plot));
 }
 
 static void gfunc_close_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
 
-	osc_plot_draw_stop(OSC_PLOT(plot));
+	//osc_plot_draw_stop(OSC_PLOT(plot));
 }
 
 static void gfunc_destroy_plot(gpointer data, gpointer user_data)
 {
 	GtkWidget *plot = data;
 
-	osc_plot_destroy(OSC_PLOT(plot));
+	//osc_plot_destroy(OSC_PLOT(plot));
 }
 
 static void update_plot(struct iio_buffer *buf)
 {
 	GList *node;
 
-	for (node = plot_list; node; node = g_list_next(node)) {
-		OscPlot *plot = (OscPlot *) node->data;
+//	for (node = plot_list; node; node = g_list_next(node)) {
+//		OscPlot *plot = (OscPlot *) node->data;
 
-		if (osc_plot_get_buffer(plot) == buf) {
-			osc_plot_data_update(plot);
-		}
-	}
+//		if (osc_plot_get_buffer(plot) == buf) {
+//			osc_plot_data_update(plot);
+//		}
+//	}
 }
 
 static void restart_all_running_plots(void)
@@ -254,33 +255,33 @@ static void destroy_all_plots(void)
 	g_list_foreach(plot_list, gfunc_destroy_plot, NULL);
 }
 
-static void disable_all_channels(struct iio_device *dev)
+static void disable_all_channels(struct iio_device *dev, struct iio_channels_mask *ch_mask)
 {
 	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
 	for (i = 0; i < nb_channels; i++)
-		iio_channel_disable(iio_device_get_channel(dev, i));
+		iio_channel_disable(iio_device_get_channel(dev, i), ch_mask);
 }
 
-static void close_active_buffers(void)
-{
-	unsigned int i;
+//static void close_active_buffers(void)
+//{
+//	unsigned int i;
 
-	for (i = 0; i < num_devices; i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
-		struct extra_dev_info *info = iio_device_get_data(dev);
-		if (info->buffer) {
-			iio_buffer_destroy(info->buffer);
-			info->buffer = NULL;
-		}
+//	for (i = 0; i < num_devices; i++) {
+//		struct iio_device *dev = iio_context_get_device(ctx, i);
+//		struct extra_dev_info *info = iio_device_get_data(dev);
+//		if (info->buffer) {
+//			iio_buffer_destroy(info->buffer);
+//			info->buffer = NULL;
+//		}
 
-		disable_all_channels(dev);
-	}
-}
+//		disable_all_channels(dev);
+//	}
+//}
 
 static void stop_sampling(void)
 {
 	stop_capture = TRUE;
-	close_active_buffers();
+	//close_active_buffers();
 	G_TRYLOCK(buffer_full);
 	G_UNLOCK(buffer_full);
 }
@@ -460,7 +461,7 @@ static const char * device_name_check(const char *name)
 
 struct iio_context *get_context_from_osc(void)
 {
-	return ctx;
+        return ctx;
 }
 
 /*
@@ -498,265 +499,265 @@ const void * plugin_get_device_by_reference(const char * device_name)
 	return device_name_check(device_name);
 }
 
-OscPlot * plugin_find_plot_with_domain(int domain)
-{
-	OscPlot *plot;
-	GList *node;
+//OscPlot * plugin_find_plot_with_domain(int domain)
+//{
+//	OscPlot *plot;
+//	GList *node;
 
-	if (!plot_list)
-		return NULL;
+//	if (!plot_list)
+//		return NULL;
 
-	for (node = plot_list; node; node = g_list_next(node)) {
-		plot = node->data;
-		if (osc_plot_get_plot_domain(plot) == domain)
-			return plot;
-	}
+//	for (node = plot_list; node; node = g_list_next(node)) {
+//		plot = node->data;
+//		if (osc_plot_get_plot_domain(plot) == domain)
+//			return plot;
+//	}
 
-	return NULL;
-}
+//	return NULL;
+//}
 
-enum marker_types plugin_get_plot_marker_type(OscPlot *plot, const char *device)
-{
-	if (!plot || !device)
-		return MARKER_NULL;
+//enum marker_types plugin_get_plot_marker_type(OscPlot *plot, const char *device)
+//{
+//	if (!plot || !device)
+//		return MARKER_NULL;
 
-	if (!strcmp(osc_plot_get_active_device(plot), device))
-		return MARKER_NULL;
+//	if (!strcmp(osc_plot_get_active_device(plot), device))
+//		return MARKER_NULL;
 
-	return osc_plot_get_marker_type(plot);
-}
+//	return osc_plot_get_marker_type(plot);
+//}
 
-void plugin_set_plot_marker_type(OscPlot *plot, const char *device, enum marker_types type)
-{
-	int plot_domain;
+//void plugin_set_plot_marker_type(OscPlot *plot, const char *device, enum marker_types type)
+//{
+//	int plot_domain;
 
-	if (!plot || !device)
-		return;
+//	if (!plot || !device)
+//		return;
 
-	plot_domain = osc_plot_get_plot_domain(plot);
-	if (plot_domain == FFT_PLOT || plot_domain == XY_PLOT)
-		if (!strcmp(osc_plot_get_active_device(plot), device))
-			return;
+//	plot_domain = osc_plot_get_plot_domain(plot);
+//	if (plot_domain == FFT_PLOT || plot_domain == XY_PLOT)
+//		if (!strcmp(osc_plot_get_active_device(plot), device))
+//			return;
 
-	osc_plot_set_marker_type(plot, type);
-}
+//	osc_plot_set_marker_type(plot, type);
+//}
 
-gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device)
-{
-	if (!plot || !device)
-		return 0;
+//gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device)
+//{
+//	if (!plot || !device)
+//		return 0;
 
-	if (!strcmp(osc_plot_get_active_device(plot), device))
-		return 0;
+//	if (!strcmp(osc_plot_get_active_device(plot), device))
+//		return 0;
 
-	return osc_plot_get_fft_avg(plot);
-}
+//	return osc_plot_get_fft_avg(plot);
+//}
 
-int plugin_data_capture_size(const char *device)
-{
-	struct extra_dev_info *info;
-	struct iio_device *dev;
+//int plugin_data_capture_size(const char *device)
+//{
+//	struct extra_dev_info *info;
+//	struct iio_device *dev;
 
-	if (!device)
-		return 0;
+//	if (!device)
+//		return 0;
 
-	dev = iio_context_find_device(ctx, device);
-	if (!dev)
-		return 0;
+//	dev = iio_context_find_device(ctx, device);
+//	if (!dev)
+//		return 0;
 
-	info = iio_device_get_data(dev);
-	return info->sample_count * iio_device_get_sample_size(dev);
-}
+//	info = iio_device_get_data(dev);
+//	return info->sample_count * iio_device_get_sample_size(dev);
+//}
 
-int plugin_data_capture_num_active_channels(const char *device)
-{
-	int nb_active = 0;
-	unsigned int i, nb_channels;
-	struct iio_device *dev;
+//int plugin_data_capture_num_active_channels(const char *device)
+//{
+//	int nb_active = 0;
+//	unsigned int i, nb_channels;
+//	struct iio_device *dev;
 
-	if (!device)
-		return 0;
+//	if (!device)
+//		return 0;
 
-	dev = iio_context_find_device(ctx, device);
-	if (!dev)
-		return 0;
+//	dev = iio_context_find_device(ctx, device);
+//	if (!dev)
+//		return 0;
 
-	nb_channels = iio_device_get_channels_count(dev);
-	for (i = 0; i < nb_channels; i++) {
-		struct iio_channel *chn = iio_device_get_channel(dev, i);
-		if (iio_channel_is_enabled(chn))
-			nb_active++;
-	}
+//	nb_channels = iio_device_get_channels_count(dev);
+//	for (i = 0; i < nb_channels; i++) {
+//		struct iio_channel *chn = iio_device_get_channel(dev, i);
+//		if (iio_channel_is_enabled(chn))
+//			nb_active++;
+//	}
 
-	return nb_active;
-}
+//	return nb_active;
+//}
 
-int plugin_data_capture_bytes_per_sample(const char *device)
-{
-	struct iio_device *dev;
+//int plugin_data_capture_bytes_per_sample(const char *device)
+//{
+//	struct iio_device *dev;
 
-	if (!device)
-		return 0;
+//	if (!device)
+//		return 0;
 
-	dev = iio_context_find_device(ctx, device);
-	if (!dev)
-		return 0;
+//	dev = iio_context_find_device(ctx, device);
+//	if (!dev)
+//		return 0;
 
-	return iio_device_get_sample_size(dev);
-}
+//	return iio_device_get_sample_size(dev);
+//}
 
-int plugin_data_capture_of_plot(OscPlot *plot, const char *device, gfloat ***cooked_data,
-			struct marker_type **markers_cp)
-{
-	struct iio_device *dev, *tmp_dev = NULL;
-	struct extra_dev_info *dev_info;
-	struct marker_type *markers_copy = NULL;
-	GMutex *markers_lock;
-	unsigned int i, j;
-	bool new = FALSE;
-	const char *tmp = NULL;
+//int plugin_data_capture_of_plot(OscPlot *plot, const char *device, gfloat ***cooked_data,
+//			struct marker_type **markers_cp)
+//{
+//	struct iio_device *dev, *tmp_dev = NULL;
+//	struct extra_dev_info *dev_info;
+//	struct marker_type *markers_copy = NULL;
+//	GMutex *markers_lock;
+//	unsigned int i, j;
+//	bool new = FALSE;
+//	const char *tmp = NULL;
 
-	if (device == NULL)
-		dev = NULL;
-	else
-		dev = iio_context_find_device(ctx, device);
+//	if (device == NULL)
+//		dev = NULL;
+//	else
+//		dev = iio_context_find_device(ctx, device);
 
-	if (plot) {
-		tmp = osc_plot_get_active_device(plot);
-		tmp_dev = iio_context_find_device(ctx, tmp);
-	}
+//	if (plot) {
+//		tmp = osc_plot_get_active_device(plot);
+//		tmp_dev = iio_context_find_device(ctx, tmp);
+//	}
 
-	/* if there isn't anything to send, clear everything */
-	if (dev == NULL) {
-		if (cooked_data && *cooked_data) {
-			if (tmp_dev)
-				for (i = 0; i < iio_device_get_channels_count(tmp_dev); i++)
-					if ((*cooked_data)[i]) {
-						g_free((*cooked_data)[i]);
-						(*cooked_data)[i] = NULL;
-					}
-			g_free(*cooked_data);
-			*cooked_data = NULL;
-		}
-		if (markers_cp && *markers_cp) {
-			if (*markers_cp)
-				g_free(*markers_cp);
-			*markers_cp = NULL;
-		}
-		return -ENXIO;
-	}
+//	/* if there isn't anything to send, clear everything */
+//	if (dev == NULL) {
+//		if (cooked_data && *cooked_data) {
+//			if (tmp_dev)
+//				for (i = 0; i < iio_device_get_channels_count(tmp_dev); i++)
+//					if ((*cooked_data)[i]) {
+//						g_free((*cooked_data)[i]);
+//						(*cooked_data)[i] = NULL;
+//					}
+//			g_free(*cooked_data);
+//			*cooked_data = NULL;
+//		}
+//		if (markers_cp && *markers_cp) {
+//			if (*markers_cp)
+//				g_free(*markers_cp);
+//			*markers_cp = NULL;
+//		}
+//		return -ENXIO;
+//	}
 
-	if (!dev)
-		return -ENXIO;
-	if (osc_plot_running_state(plot) == FALSE)
-		return -ENXIO;
-	if (osc_plot_get_marker_type(plot) == MARKER_OFF ||
-			osc_plot_get_marker_type(plot) == MARKER_NULL)
-		return -ENXIO;
+//	if (!dev)
+//		return -ENXIO;
+//	if (osc_plot_running_state(plot) == FALSE)
+//		return -ENXIO;
+//	if (osc_plot_get_marker_type(plot) == MARKER_OFF ||
+//			osc_plot_get_marker_type(plot) == MARKER_NULL)
+//		return -ENXIO;
 
-	if (cooked_data) {
-		dev_info = iio_device_get_data(dev);
+//	if (cooked_data) {
+//		dev_info = iio_device_get_data(dev);
 
-		/* One consumer at a time */
-		if (dev_info->channels_data_copy)
-			return -EBUSY;
+//		/* One consumer at a time */
+//		if (dev_info->channels_data_copy)
+//			return -EBUSY;
 
-		/* make sure space is allocated */
-		if (*cooked_data) {
-			*cooked_data = g_renew(gfloat *, *cooked_data,
-					iio_device_get_channels_count(dev));
-			new = false;
-		} else {
-			*cooked_data = g_new(gfloat *, iio_device_get_channels_count(dev));
-			new = true;
-		}
+//		/* make sure space is allocated */
+//		if (*cooked_data) {
+//			*cooked_data = g_renew(gfloat *, *cooked_data,
+//					iio_device_get_channels_count(dev));
+//			new = false;
+//		} else {
+//			*cooked_data = g_new(gfloat *, iio_device_get_channels_count(dev));
+//			new = true;
+//		}
 
-		if (!*cooked_data)
-			goto capture_malloc_fail;
+//		if (!*cooked_data)
+//			goto capture_malloc_fail;
 
-		for (i = 0; i < iio_device_get_channels_count(dev); i++) {
-			if (new)
-				(*cooked_data)[i] = g_new(gfloat,
-						dev_info->sample_count);
-			else
-				(*cooked_data)[i] = g_renew(gfloat,
-						(*cooked_data)[i],
-						dev_info->sample_count);
-			if (!(*cooked_data)[i])
-				goto capture_malloc_fail;
+//		for (i = 0; i < iio_device_get_channels_count(dev); i++) {
+//			if (new)
+//				(*cooked_data)[i] = g_new(gfloat,
+//						dev_info->sample_count);
+//			else
+//				(*cooked_data)[i] = g_renew(gfloat,
+//						(*cooked_data)[i],
+//						dev_info->sample_count);
+//			if (!(*cooked_data)[i])
+//				goto capture_malloc_fail;
 
-			for (j = 0; j < dev_info->sample_count; j++)
-				(*cooked_data)[i][j] = 0.0f;
-		}
+//			for (j = 0; j < dev_info->sample_count; j++)
+//				(*cooked_data)[i][j] = 0.0f;
+//		}
 
-		/* where to put the copy */
-		dev_info->channels_data_copy = *cooked_data;
+//		/* where to put the copy */
+//		dev_info->channels_data_copy = *cooked_data;
 
-		/* Wait til the buffer is full */
-		G_LOCK(buffer_full);
+//		/* Wait til the buffer is full */
+//		G_LOCK(buffer_full);
 
-		/* if the lock is released, but the copy is still there
-		 * that's because someone else broke the lock
-		 */
-		if (dev_info->channels_data_copy) {
-			dev_info->channels_data_copy = NULL;
-			return -EINTR;
-		}
-	}
+//		/* if the lock is released, but the copy is still there
+//		 * that's because someone else broke the lock
+//		 */
+//		if (dev_info->channels_data_copy) {
+//			dev_info->channels_data_copy = NULL;
+//			return -EINTR;
+//		}
+//	}
 
-	if (plot) {
-		markers_copy = (struct marker_type *)osc_plot_get_markers_copy(plot);
-		markers_lock = osc_plot_get_marker_lock(plot);
-	}
+//	if (plot) {
+//		markers_copy = (struct marker_type *)osc_plot_get_markers_copy(plot);
+//		markers_lock = osc_plot_get_marker_lock(plot);
+//	}
 
-	if (markers_cp) {
-		if (!plot) {
-			if (*markers_cp) {
-				g_free(*markers_cp);
-				*markers_cp = NULL;
-			}
-			return 0;
+//	if (markers_cp) {
+//		if (!plot) {
+//			if (*markers_cp) {
+//				g_free(*markers_cp);
+//				*markers_cp = NULL;
+//			}
+//			return 0;
 
-		}
+//		}
 
-		/* One consumer at a time */
-		if (markers_copy)
-			return -EBUSY;
+//		/* One consumer at a time */
+//		if (markers_copy)
+//			return -EBUSY;
 
-		/* make sure space is allocated */
-		if (*markers_cp)
-			*markers_cp = g_renew(struct marker_type, *markers_cp, MAX_MARKERS + 2);
-		else
-			*markers_cp = g_new(struct marker_type, MAX_MARKERS + 2);
+//		/* make sure space is allocated */
+//		if (*markers_cp)
+//			*markers_cp = g_renew(struct marker_type, *markers_cp, MAX_MARKERS + 2);
+//		else
+//			*markers_cp = g_new(struct marker_type, MAX_MARKERS + 2);
 
-		if (!*markers_cp)
-			goto capture_malloc_fail;
+//		if (!*markers_cp)
+//			goto capture_malloc_fail;
 
-		/* where to put the copy */
-		osc_plot_set_markers_copy(plot, *markers_cp);
+//		/* where to put the copy */
+//		osc_plot_set_markers_copy(plot, *markers_cp);
 
-		/* Wait til the copy is complete */
-		g_mutex_lock(markers_lock);
+//		/* Wait til the copy is complete */
+//		g_mutex_lock(markers_lock);
 
-		/* if the lock is released, but the copy is still here
-		 * that's because someone else broke the lock
-		 */
-		 if (markers_copy) {
-			osc_plot_set_markers_copy(plot, NULL);
-			 return -EINTR;
-		 }
-	}
- 	return 0;
+//		/* if the lock is released, but the copy is still here
+//		 * that's because someone else broke the lock
+//		 */
+//		 if (markers_copy) {
+//			osc_plot_set_markers_copy(plot, NULL);
+//			 return -EINTR;
+//		 }
+//	}
+//	return 0;
 
-capture_malloc_fail:
-	fprintf(stderr, "%s:%s malloc failed\n", __FILE__, __func__);
-	return -ENOMEM;
-}
+//capture_malloc_fail:
+//	fprintf(stderr, "%s:%s malloc failed\n", __FILE__, __func__);
+//	return -ENOMEM;
+//}
 
-OscPlot * plugin_get_new_plot(void)
-{
-	return OSC_PLOT(new_plot_cb(NULL, NULL));
-}
+//OscPlot * plugin_get_new_plot(void)
+//{
+//	return OSC_PLOT(new_plot_cb(NULL, NULL));
+//}
 
 void plugin_osc_stop_capture(void)
 {
@@ -765,8 +766,8 @@ void plugin_osc_stop_capture(void)
 
 void plugin_osc_start_capture(void)
 {
-	capture_setup();
-	capture_start();
+	//capture_setup();
+	//capture_start();
 }
 
 bool plugin_osc_running_state(void)
@@ -1222,24 +1223,24 @@ static ssize_t demux_sample(const struct iio_channel *chn,
 	return size;
 }
 
-static off_t get_trigger_offset(const struct iio_channel *chn,
-		bool falling_edge, float trigger_value)
-{
-	struct extra_info *info = iio_channel_get_data(chn);
-	size_t i;
+//static off_t get_trigger_offset(const struct iio_channel *chn,
+//		bool falling_edge, float trigger_value)
+//{
+//	struct extra_info *info = iio_channel_get_data(chn);
+//	size_t i;
 
-	if (iio_channel_is_enabled(chn)) {
-		for (i = info->offset / 2; i >= 1; i--) {
-			if (!falling_edge && info->data_ref[i - 1] < trigger_value &&
-					info->data_ref[i] >= trigger_value)
-				return i * sizeof(gfloat);
-			if (falling_edge && info->data_ref[i - 1] >= trigger_value &&
-					info->data_ref[i] < trigger_value)
-				return i * sizeof(gfloat);
-		}
-	}
-	return 0;
-}
+//	if (iio_channel_is_enabled(chn)) {
+//		for (i = info->offset / 2; i >= 1; i--) {
+//			if (!falling_edge && info->data_ref[i - 1] < trigger_value &&
+//					info->data_ref[i] >= trigger_value)
+//				return i * sizeof(gfloat);
+//			if (falling_edge && info->data_ref[i - 1] >= trigger_value &&
+//					info->data_ref[i] < trigger_value)
+//				return i * sizeof(gfloat);
+//		}
+//	}
+//	return 0;
+//}
 
 static void apply_trigger_offset(const struct iio_channel *chn, off_t offset)
 {
@@ -1261,133 +1262,133 @@ static bool device_is_oneshot(struct iio_device *dev)
 	return false;
 }
 
-static gboolean capture_process(void *data)
-{
-	unsigned int i;
+//static gboolean capture_process(void *data)
+//{
+//	unsigned int i;
 
-	if (stop_capture == TRUE)
-		goto capture_stop_check;
+//	if (stop_capture == TRUE)
+//		goto capture_stop_check;
 
-	for (i = 0; i < num_devices; i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
-		struct extra_dev_info *dev_info = iio_device_get_data(dev);
-		unsigned int i, sample_size = iio_device_get_sample_size(dev);
-		unsigned int nb_channels = iio_device_get_channels_count(dev);
-		ssize_t sample_count = dev_info->sample_count;
-		struct iio_channel *chn;
-		off_t offset = 0;
+//	for (i = 0; i < num_devices; i++) {
+//		struct iio_device *dev = iio_context_get_device(ctx, i);
+//		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+//		unsigned int i, sample_size = iio_device_get_sample_size(dev);
+//		unsigned int nb_channels = iio_device_get_channels_count(dev);
+//		ssize_t sample_count = dev_info->sample_count;
+//		struct iio_channel *chn;
+//		off_t offset = 0;
 
-		if (dev_info->input_device == false)
-			continue;
+//		if (dev_info->input_device == false)
+//			continue;
 
-		if (sample_size == 0)
-			continue;
+//		if (sample_size == 0)
+//			continue;
 
-		if (dev_info->buffer == NULL || device_is_oneshot(dev)) {
-			dev_info->buffer_size = sample_count;
-			dev_info->buffer = iio_device_create_buffer(dev,
-				sample_count, false);
-			if (!dev_info->buffer) {
-				fprintf(stderr, "Error: Unable to create buffer: %s\n", strerror(errno));
-				goto capture_stop_check;
-			}
-		}
+//		if (dev_info->buffer == NULL || device_is_oneshot(dev)) {
+//			dev_info->buffer_size = sample_count;
+//			dev_info->buffer = iio_device_create_buffer(dev,
+//				sample_count, false);
+//			if (!dev_info->buffer) {
+//				fprintf(stderr, "Error: Unable to create buffer: %s\n", strerror(errno));
+//				goto capture_stop_check;
+//			}
+//		}
 
-		/* Reset the data offset for all channels */
-		for (i = 0; i < nb_channels; i++) {
-			struct iio_channel *ch = iio_device_get_channel(dev, i);
-			struct extra_info *info = iio_channel_get_data(ch);
-			info->offset = 0;
-		}
+//		/* Reset the data offset for all channels */
+//		for (i = 0; i < nb_channels; i++) {
+//			struct iio_channel *ch = iio_device_get_channel(dev, i);
+//			struct extra_info *info = iio_channel_get_data(ch);
+//			info->offset = 0;
+//		}
 
-		while (true) {
-			ssize_t ret = iio_buffer_refill(dev_info->buffer);
-			if (ret < 0) {
-				fprintf(stderr, "Error while reading data: %s\n", strerror(-ret));
-				if (ret == -EPIPE) {
-					restart_capture = true;
-				}
-				stop_sampling();
-				goto capture_stop_check;
-			}
+//		while (true) {
+//			ssize_t ret = iio_buffer_refill(dev_info->buffer);
+//			if (ret < 0) {
+//				fprintf(stderr, "Error while reading data: %s\n", strerror(-ret));
+//				if (ret == -EPIPE) {
+//					restart_capture = true;
+//				}
+//				stop_sampling();
+//				goto capture_stop_check;
+//			}
 
-			ret /= iio_buffer_step(dev_info->buffer);
-			if (ret >= sample_count) {
-				iio_buffer_foreach_sample(
-						dev_info->buffer, demux_sample, NULL);
+//			ret /= iio_buffer_step(dev_info->buffer);
+//			if (ret >= sample_count) {
+//				iio_buffer_foreach_sample(
+//						dev_info->buffer, demux_sample, NULL);
 
-				if (ret >= sample_count * 2) {
-					printf("Decreasing buffer size\n");
-					iio_buffer_destroy(dev_info->buffer);
-					dev_info->buffer_size /= 2;
-					dev_info->buffer = iio_device_create_buffer(dev,
-							dev_info->buffer_size, false);
-				}
-				break;
-			}
+//				if (ret >= sample_count * 2) {
+//					printf("Decreasing buffer size\n");
+//					iio_buffer_destroy(dev_info->buffer);
+//					dev_info->buffer_size /= 2;
+//					dev_info->buffer = iio_device_create_buffer(dev,
+//							dev_info->buffer_size, false);
+//				}
+//				break;
+//			}
 
-			printf("Increasing buffer size\n");
-			iio_buffer_destroy(dev_info->buffer);
-			dev_info->buffer_size *= 2;
-			dev_info->buffer = iio_device_create_buffer(dev,
-					dev_info->buffer_size, false);
-		}
+//			printf("Increasing buffer size\n");
+//			iio_buffer_destroy(dev_info->buffer);
+//			dev_info->buffer_size *= 2;
+//			dev_info->buffer = iio_device_create_buffer(dev,
+//					dev_info->buffer_size, false);
+//		}
 
-		if (dev_info->channel_trigger_enabled) {
-			chn = iio_device_get_channel(dev, dev_info->channel_trigger);
-			if (!iio_channel_is_enabled(chn))
-				dev_info->channel_trigger_enabled = false;
-		}
+//		if (dev_info->channel_trigger_enabled) {
+//			chn = iio_device_get_channel(dev, dev_info->channel_trigger);
+//			if (!iio_channel_is_enabled(chn))
+//				dev_info->channel_trigger_enabled = false;
+//		}
 
-		/* We find the sample that meets the trigger condition, then we grab samples
-		   before and after it so that the trigger sample gets to be displayed in the
-		   middle of the plot. When that's not possible, we display the sample as the
-		   first sample of the plot. */
-		if (dev_info->channel_trigger_enabled) {
-			struct extra_info *info = iio_channel_get_data(chn);
-			offset = get_trigger_offset(chn, dev_info->trigger_falling_edge,
-					dev_info->trigger_value);
-			const off_t quatter_of_capture_interval = info->offset / 4;
-			if (offset / (off_t)sizeof(gfloat) < quatter_of_capture_interval) {
-				offset = 0;
-			} else if (offset) {
-				offset -= quatter_of_capture_interval * sizeof(gfloat);
-				for (i = 0; i < nb_channels; i++) {
-					chn = iio_device_get_channel(dev, i);
-					if (iio_channel_is_enabled(chn))
-						apply_trigger_offset(chn, offset);
-				}
-			}
-		}
+//		/* We find the sample that meets the trigger condition, then we grab samples
+//		   before and after it so that the trigger sample gets to be displayed in the
+//		   middle of the plot. When that's not possible, we display the sample as the
+//		   first sample of the plot. */
+//		if (dev_info->channel_trigger_enabled) {
+//			struct extra_info *info = iio_channel_get_data(chn);
+//			offset = get_trigger_offset(chn, dev_info->trigger_falling_edge,
+//					dev_info->trigger_value);
+//			const off_t quatter_of_capture_interval = info->offset / 4;
+//			if (offset / (off_t)sizeof(gfloat) < quatter_of_capture_interval) {
+//				offset = 0;
+//			} else if (offset) {
+//				offset -= quatter_of_capture_interval * sizeof(gfloat);
+//				for (i = 0; i < nb_channels; i++) {
+//					chn = iio_device_get_channel(dev, i);
+//					if (iio_channel_is_enabled(chn))
+//						apply_trigger_offset(chn, offset);
+//				}
+//			}
+//		}
 
-		if (dev_info->channels_data_copy) {
-			for (i = 0; i < nb_channels; i++) {
-				struct iio_channel *ch = iio_device_get_channel(dev, i);
-				struct extra_info *info = iio_channel_get_data(ch);
-				memcpy(dev_info->channels_data_copy[i], info->data_ref,
-					sample_count * sizeof(gfloat));
-			}
-			dev_info->channels_data_copy = NULL;
-			G_UNLOCK(buffer_full);
-		}
+//		if (dev_info->channels_data_copy) {
+//			for (i = 0; i < nb_channels; i++) {
+//				struct iio_channel *ch = iio_device_get_channel(dev, i);
+//				struct extra_info *info = iio_channel_get_data(ch);
+//				memcpy(dev_info->channels_data_copy[i], info->data_ref,
+//					sample_count * sizeof(gfloat));
+//			}
+//			dev_info->channels_data_copy = NULL;
+//			G_UNLOCK(buffer_full);
+//		}
 
-		if (device_is_oneshot(dev)) {
-			iio_buffer_destroy(dev_info->buffer);
-			dev_info->buffer = NULL;
-		}
+//		if (device_is_oneshot(dev)) {
+//			iio_buffer_destroy(dev_info->buffer);
+//			dev_info->buffer = NULL;
+//		}
 
-		if (!dev_info->channel_trigger_enabled || offset)
-			update_plot(dev_info->buffer);
-	}
+//		if (!dev_info->channel_trigger_enabled || offset)
+//			update_plot(dev_info->buffer);
+//	}
 
-	update_plot(NULL);
+//	update_plot(NULL);
 
-capture_stop_check:
-	if (stop_capture == TRUE)
-		capture_function = 0;
+//capture_stop_check:
+//	if (stop_capture == TRUE)
+//		capture_function = 0;
 
-	return !stop_capture;
-}
+//	return !stop_capture;
+//}
 
 static unsigned int max_sample_count_from_plots(struct extra_dev_info *info)
 {
@@ -1405,221 +1406,221 @@ static unsigned int max_sample_count_from_plots(struct extra_dev_info *info)
 	return max_count;
 }
 
-static double read_sampling_frequency(const struct iio_device *dev)
-{
-	double freq = 400.0;
-	int ret = -1;
-	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
-	const char *attr;
-	char buf[1024];
+//static double read_sampling_frequency(const struct iio_device *dev)
+//{
+//	double freq = 400.0;
+//	int ret = -1;
+//	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
+//	const char *attr;
+//	char buf[1024];
+//	const struct iio_attr *attribute;
 
-	for (i = 0; i < nb_channels; i++) {
-		struct iio_channel *ch = iio_device_get_channel(dev, i);
+//	for (i = 0; i < nb_channels; i++) {
+//		struct iio_channel *ch = iio_device_get_channel(dev, i);
 
-		if (iio_channel_is_output(ch) || strncmp(iio_channel_get_id(ch),
-					"voltage", sizeof("voltage") - 1))
-			continue;
+//		if (iio_channel_is_output(ch) || strncmp(iio_channel_get_id(ch),
+//					"voltage", sizeof("voltage") - 1))
+//			continue;
+//		attribute = iio_channel_find_attr(ch, "sampling_frequency");
+//		ret = iio_attr_read_raw(attribute, buf, sizeof(buf));
+//		if (ret > 0)
+//			break;
+//	}
 
-		ret = iio_channel_attr_read(ch, "sampling_frequency",
-				buf, sizeof(buf));
-		if (ret > 0)
-			break;
-	}
+//	if (ret < 0)
+//		ret = iio_device_attr_read(dev, "sampling_frequency",
+//				buf, sizeof(buf));
+//	if (ret < 0) {
+//		const struct iio_device *trigger;
+//		ret = iio_device_get_trigger(dev, &trigger);
+//		if (ret == 0 && trigger) {
+//			attr = iio_device_find_attr(trigger, "sampling_frequency");
+//			if (!attr)
+//				attr = iio_device_find_attr(trigger, "frequency");
+//			if (attr)
+//				ret = iio_device_attr_read(trigger, attr, buf,
+//					sizeof(buf));
+//			else
+//				ret = -ENOENT;
+//		}
+//	}
 
-	if (ret < 0)
-		ret = iio_device_attr_read(dev, "sampling_frequency",
-				buf, sizeof(buf));
-	if (ret < 0) {
-		const struct iio_device *trigger;
-		ret = iio_device_get_trigger(dev, &trigger);
-		if (ret == 0 && trigger) {
-			attr = iio_device_find_attr(trigger, "sampling_frequency");
-			if (!attr)
-				attr = iio_device_find_attr(trigger, "frequency");
-			if (attr)
-				ret = iio_device_attr_read(trigger, attr, buf,
-					sizeof(buf));
-			else
-				ret = -ENOENT;
-		}
-	}
+//	if (ret > 0)
+//		sscanf(buf, "%lf", &freq);
 
-	if (ret > 0)
-		sscanf(buf, "%lf", &freq);
+//	if (freq < 0)
+//		freq += 4294967296.0;
 
-	if (freq < 0)
-		freq += 4294967296.0;
+//	return freq;
+//}
 
-	return freq;
-}
+//static int capture_setup(void)
+//{
+//	unsigned int i, j;
+//	unsigned int min_timeout = 1000;
+//	unsigned int timeout;
+//	double freq;
 
-static int capture_setup(void)
-{
-	unsigned int i, j;
-	unsigned int min_timeout = 1000;
-	unsigned int timeout;
-	double freq;
+//	for (i = 0; i < num_devices; i++) {
+//		struct iio_device *dev = iio_context_get_device(ctx, i);
+//		struct extra_dev_info *dev_info = iio_device_get_data(dev);
+//		unsigned int nb_channels = iio_device_get_channels_count(dev);
+//		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info);
 
-	for (i = 0; i < num_devices; i++) {
-		struct iio_device *dev = iio_context_get_device(ctx, i);
-		struct extra_dev_info *dev_info = iio_device_get_data(dev);
-		unsigned int nb_channels = iio_device_get_channels_count(dev);
-		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info);
+//		/* We capture a double amount o data. Then we look for a trigger
+//		   condition in a half of this interval. This way, no matter where
+//		   the trigger sample is we have enough samples after the triggered
+//		   one to display on the plot. */
+//		if (dev_info->channel_trigger_enabled)
+//			sample_count *= 2;
 
-		/* We capture a double amount o data. Then we look for a trigger
-		   condition in a half of this interval. This way, no matter where
-		   the trigger sample is we have enough samples after the triggered
-		   one to display on the plot. */
-		if (dev_info->channel_trigger_enabled)
-			sample_count *= 2;
+//		for (j = 0; j < nb_channels; j++) {
+//			struct iio_channel *ch = iio_device_get_channel(dev, j);
+//			struct extra_info *info = iio_channel_get_data(ch);
+//			if (info->shadow_of_enabled > 0)
+//				iio_channel_enable(ch);
+//			else
+//				iio_channel_disable(ch);
+//		}
 
-		for (j = 0; j < nb_channels; j++) {
-			struct iio_channel *ch = iio_device_get_channel(dev, j);
-			struct extra_info *info = iio_channel_get_data(ch);
-			if (info->shadow_of_enabled > 0)
-				iio_channel_enable(ch);
-			else
-				iio_channel_disable(ch);
-		}
+//		sample_size = iio_device_get_sample_size(dev);
+//		if (sample_size == 0 || sample_count == 0)
+//			continue;
 
-		sample_size = iio_device_get_sample_size(dev);
-		if (sample_size == 0 || sample_count == 0)
-			continue;
+//		for (j = 0; j < nb_channels; j++) {
+//			struct iio_channel *ch = iio_device_get_channel(dev, j);
+//			struct extra_info *info = iio_channel_get_data(ch);
 
-		for (j = 0; j < nb_channels; j++) {
-			struct iio_channel *ch = iio_device_get_channel(dev, j);
-			struct extra_info *info = iio_channel_get_data(ch);
+//			if (info->data_ref)
+//				g_free(info->data_ref);
+//			info->data_ref = (gfloat *) g_new0(gfloat, sample_count);
+//		}
 
-			if (info->data_ref)
-				g_free(info->data_ref);
-			info->data_ref = (gfloat *) g_new0(gfloat, sample_count);
-		}
+//		if (dev_info->buffer)
+//			iio_buffer_destroy(dev_info->buffer);
+//		dev_info->buffer = NULL;
+//		dev_info->sample_count = sample_count;
 
-		if (dev_info->buffer)
-			iio_buffer_destroy(dev_info->buffer);
-		dev_info->buffer = NULL;
-		dev_info->sample_count = sample_count;
+//		iio_device_set_data(dev, dev_info);
 
-		iio_device_set_data(dev, dev_info);
+//		freq = read_sampling_frequency(dev);
+//		if (freq > 0) {
+//			/* 2 x capture time + 1s */
+//			timeout = sample_count * 1000 / freq;
+//			if (dev_info->channel_trigger_enabled)
+//				timeout *= 2;
+//			timeout += 1000;
+//			if (timeout > min_timeout)
+//				min_timeout = timeout;
+//		}
 
-		freq = read_sampling_frequency(dev);
-		if (freq > 0) {
-			/* 2 x capture time + 1s */
-			timeout = sample_count * 1000 / freq;
-			if (dev_info->channel_trigger_enabled)
-				timeout *= 2;
-			timeout += 1000;
-			if (timeout > min_timeout)
-				min_timeout = timeout;
-		}
+//		rx_update_device_sampling_freq(get_iio_device_label_or_name(dev), freq);
+//	}
 
-		rx_update_device_sampling_freq(get_iio_device_label_or_name(dev), freq);
-	}
+//	if (ctx) {
+//		if (ini_capture_timeout_loaded) {
+//			min_timeout = ini_capture_timeout;
+//		}
+//		iio_context_set_timeout(ctx, min_timeout);
+//	}
 
-	if (ctx) {
-		if (ini_capture_timeout_loaded) {
-			min_timeout = ini_capture_timeout;
-		}
-		iio_context_set_timeout(ctx, min_timeout);
-	}
+//	return 0;
+//}
 
-	return 0;
-}
+//static void capture_process_ended(gpointer data)
+//{
+//	if (restart_capture == true) {
+//		fprintf(stderr, "Sample acquisition stopped\n");
+//		restart_capture = false;
 
-static void capture_process_ended(gpointer data)
-{
-	if (restart_capture == true) {
-		fprintf(stderr, "Sample acquisition stopped\n");
-		restart_capture = false;
+//		/* Wait 100 msec then restart acquisition */
+//		g_usleep(G_USEC_PER_SEC * 0.1);
 
-		/* Wait 100 msec then restart acquisition */
-		g_usleep(G_USEC_PER_SEC * 0.1);
+//		capture_setup();
+//		fprintf(stderr, "Restarting acquisition\n");
+//		capture_start();
+//	}
+//}
 
-		capture_setup();
-		fprintf(stderr, "Restarting acquisition\n");
-		capture_start();
-	}
-}
+//static void capture_start(void)
+//{
+//	if (capture_function) {
+//		stop_capture = FALSE;
+//	}
+//	else {
+//		stop_capture = FALSE;
+//		capture_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, capture_process, NULL, capture_process_ended);
+//	}
+//}
 
-static void capture_start(void)
-{
-	if (capture_function) {
-		stop_capture = FALSE;
-	}
-	else {
-		stop_capture = FALSE;
-		capture_function = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 50, capture_process, NULL, capture_process_ended);
-	}
-}
+//static void start(OscPlot *plot, gboolean start_event)
+//{
+//	if (start_event) {
+//		num_capturing_plots++;
+//		/* Stop the capture process to allow settings to be updated */
+//		stop_capture = TRUE;
 
-static void start(OscPlot *plot, gboolean start_event)
-{
-	if (start_event) {
-		num_capturing_plots++;
-		/* Stop the capture process to allow settings to be updated */
-		stop_capture = TRUE;
+//		G_TRYLOCK(buffer_full);
 
-		G_TRYLOCK(buffer_full);
+//		/* Make sure the capture process in the Spectrum Analyzer plugin
+//		 * is not running */
+//		if (spect_analyzer_plugin)
+//			spect_analyzer_plugin->handle_external_request(spect_analyzer_plugin, "Stop");
 
-		/* Make sure the capture process in the Spectrum Analyzer plugin
-		 * is not running */
-		if (spect_analyzer_plugin)
-			spect_analyzer_plugin->handle_external_request(spect_analyzer_plugin, "Stop");
+//		/* Start the capture process */
+//		capture_setup();
+//		capture_start();
+//		restart_all_running_plots();
+//	} else {
+//		G_TRYLOCK(buffer_full);
+//		G_UNLOCK(buffer_full);
+//		num_capturing_plots--;
+//		if (num_capturing_plots == 0) {
+//			stop_capture = TRUE;
+//			close_active_buffers();
+//		}
+//	}
+//}
 
-		/* Start the capture process */
-		capture_setup();
-		capture_start();
-		restart_all_running_plots();
-	} else {
-		G_TRYLOCK(buffer_full);
-		G_UNLOCK(buffer_full);
-		num_capturing_plots--;
-		if (num_capturing_plots == 0) {
-			stop_capture = TRUE;
-			close_active_buffers();
-		}
-	}
-}
+//static void plot_destroyed_cb(OscPlot *plot)
+//{
+//	plot_list = g_list_remove(plot_list, plot);
+//	stop_sampling();
+//	capture_setup();
+//	if (num_capturing_plots)
+//		capture_start();
+//	restart_all_running_plots();
+//}
 
-static void plot_destroyed_cb(OscPlot *plot)
-{
-	plot_list = g_list_remove(plot_list, plot);
-	stop_sampling();
-	capture_setup();
-	if (num_capturing_plots)
-		capture_start();
-	restart_all_running_plots();
-}
+//static void new_plot_created_cb(OscPlot *plot, OscPlot *new_plot, gpointer data)
+//{
+//	//plot_init(GTK_WIDGET(new_plot));
+//}
 
-static void new_plot_created_cb(OscPlot *plot, OscPlot *new_plot, gpointer data)
-{
-	plot_init(GTK_WIDGET(new_plot));
-}
+//static void plot_init(GtkWidget *plot)
+//{
+//	plot_list = g_list_append(plot_list, plot);
+//	g_signal_connect(plot, "osc-capture-event", G_CALLBACK(start), NULL);
+//	g_signal_connect(plot, "osc-destroy-event", G_CALLBACK(plot_destroyed_cb), NULL);
+//	g_signal_connect(plot, "osc-newplot-event", G_CALLBACK(new_plot_created_cb), NULL);
+//	osc_plot_set_quit_callback(OSC_PLOT(plot), (void (*)(void *))application_quit, NULL);
+//	gtk_widget_show(plot);
+//}
 
-static void plot_init(GtkWidget *plot)
-{
-	plot_list = g_list_append(plot_list, plot);
-	g_signal_connect(plot, "osc-capture-event", G_CALLBACK(start), NULL);
-	g_signal_connect(plot, "osc-destroy-event", G_CALLBACK(plot_destroyed_cb), NULL);
-	g_signal_connect(plot, "osc-newplot-event", G_CALLBACK(new_plot_created_cb), NULL);
-	osc_plot_set_quit_callback(OSC_PLOT(plot), (void (*)(void *))application_quit, NULL);
-	gtk_widget_show(plot);
-}
+//GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data)
+//{
+//	GtkWidget *new_plot;
 
-GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data)
-{
-	GtkWidget *new_plot;
+//	if (osc_preferences && osc_preferences->plot_preferences)
+//		new_plot = osc_plot_new_with_pref(ctx, osc_preferences->plot_preferences);
+//	else
+//		new_plot = osc_plot_new(ctx);
 
-	if (osc_preferences && osc_preferences->plot_preferences)
-		new_plot = osc_plot_new_with_pref(ctx, osc_preferences->plot_preferences);
-	else
-		new_plot = osc_plot_new(ctx);
+//	osc_plot_set_visible(OSC_PLOT(new_plot), true);
+//	plot_init(new_plot);
 
-	osc_plot_set_visible(OSC_PLOT(new_plot), true);
-	plot_init(new_plot);
-
-	return new_plot;
-}
+//	return new_plot;
+//}
 
 struct plugin_check_fct {
 	void *fct_pointer;
@@ -1677,7 +1678,8 @@ static gboolean idle_timeout_check(gpointer ptr)
 	dev = iio_context_get_device(new_ctx, 0);
 	/* We use iio_device_get_trigger here just as a way to ping the
 	 * IIOD server. */
-	ret = iio_device_get_trigger(dev, &trig);
+	trig = iio_device_get_trigger(dev);
+	ret = iio_err(trig);
 	if (ret == -EPIPE) {
 		gtk_widget_set_visible(infobar, true);
 		return FALSE;
@@ -1707,14 +1709,14 @@ static void do_quit(bool reload)
 	stop_capture = TRUE;
 	G_TRYLOCK(buffer_full);
 	G_UNLOCK(buffer_full);
-	close_active_buffers();
+	//close_active_buffers();
 
 	close_all_plots();
 	destroy_all_plots();
 
 	g_list_free(plot_list);
 	free_setup_check_fct_list();
-	osc_plot_reset_numbering();
+	//osc_plot_reset_numbering();
 
 	if (!reload && gtk_main_level())
 		gtk_main_quit();
@@ -1741,7 +1743,7 @@ static void do_quit(bool reload)
 		ctx_destroyed_by_do_quit = true;
 	}
 
-	math_expression_objects_clean();
+	//math_expression_objects_clean();
 
 	if (osc_preferences) {
 		osc_preferences_delete(osc_preferences);
@@ -1768,7 +1770,7 @@ void application_reload(struct iio_context *new_ctx, bool load_profile)
 
 void application_quit (void)
 {
-	do_quit(false);
+        do_quit(false);
 }
 
 /*
@@ -1871,7 +1873,7 @@ bool rx_update_device_sampling_freq(const char *device, double freq)
 	if (freq >= 0)
 		info->adc_freq = freq;
 	else
-		info->adc_freq = read_sampling_frequency(dev);
+		info->adc_freq = freq;// !!!!!! read_sampling_frequency(dev);
 
 	if (info->adc_freq >= 1000000) {
 		info->adc_scale = 'M';
@@ -1888,8 +1890,8 @@ bool rx_update_device_sampling_freq(const char *device, double freq)
 
 	GList *node;
 
-	for (node = plot_list; node; node = g_list_next(node))
-		osc_plot_update_rx_lbl(OSC_PLOT(node->data), NORMAL_UPDATE);
+//	for (node = plot_list; node; node = g_list_next(node))
+//		osc_plot_update_rx_lbl(OSC_PLOT(node->data), NORMAL_UPDATE);
 
 	return true;
 }
@@ -1903,7 +1905,7 @@ bool rx_update_device_sampling_freq(const char *device, double freq)
  * @lo_freq - value of the Local Oscillcator frequency (Hz)
  */
 bool rx_update_channel_lo_freq(const char *device, const char *channel,
-	double lo_freq)
+        double lo_freq)
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
@@ -2064,12 +2066,12 @@ static void window_size_readjust(GtkWindow *window, int width, int height)
 	gtk_window_set_default_size(window, w, h);
 }
 
-void create_default_plot(void)
-{
-	if (ctx && !!iio_context_get_devices_count(ctx) &&
-			g_list_length(plot_list) == 0)
-		new_plot_cb(NULL, NULL);
-}
+//void create_default_plot(void)
+//{
+//	if (ctx && !!iio_context_get_devices_count(ctx) &&
+//			g_list_length(plot_list) == 0)
+//		new_plot_cb(NULL, NULL);
+//}
 
 void do_init(struct iio_context *new_ctx)
 {
@@ -2088,28 +2090,28 @@ void do_init(struct iio_context *new_ctx)
 				idle_timeout_check, new_ctx, NULL);
 	}
 
-	spect_analyzer_plugin = get_plugin_from_name("Spectrum Analyzer");
+	//spect_analyzer_plugin = get_plugin_from_name("Spectrum Analyzer");
 }
 
-OscPlot * osc_find_plot_by_id(int id)
-{
-	GList *node;
+//OscPlot * osc_find_plot_by_id(int id)
+//{
+//	GList *node;
 
-	for (node = plot_list; node; node = g_list_next(node))
-		if (id == osc_plot_get_id((OscPlot *) node->data))
-			return (OscPlot *) node->data;
+//	for (node = plot_list; node; node = g_list_next(node))
+//		if (id == osc_plot_get_id((OscPlot *) node->data))
+//			return (OscPlot *) node->data;
 
-	return NULL;
-}
+//	return NULL;
+//}
 
 /*
  * Check for settings in sections [MultiOsc_Capture_Configuration1,2,..]
  * Handler should return zero on success, a negative number on error.
  */
 static int capture_profile_handler(int line, const char *section,
-		const char *name, const char *value)
+                const char *name, const char *value)
 {
-	OscPlot *plot;
+	//OscPlot *plot;
 	int plot_id;
 
 	if (strncmp(section, CAPTURE_INI_SECTION, sizeof(CAPTURE_INI_SECTION) - 1))
@@ -2120,23 +2122,24 @@ static int capture_profile_handler(int line, const char *section,
 
 	plot_id = atoi(section + sizeof(CAPTURE_INI_SECTION) - 1);
 
-	plot = osc_find_plot_by_id(plot_id);
-	if (!plot) {
-		plot = plugin_get_new_plot();
-		osc_plot_set_id(plot, plot_id);
-		osc_plot_set_visible(plot, false);
-	}
+//	plot = osc_find_plot_by_id(plot_id);
+//	if (!plot) {
+//		plot = plugin_get_new_plot();
+//		osc_plot_set_id(plot, plot_id);
+//		osc_plot_set_visible(plot, false);
+//	}
 
-	/* Parse the line from ini file */
-	return osc_plot_ini_read_handler(plot, line, section, name, value);
+//	/* Parse the line from ini file */
+//	return osc_plot_ini_read_handler(plot, line, section, name, value);
+	return 0;
 }
 
 static void gfunc_save_plot_data_to_ini(gpointer data, gpointer user_data)
 {
-	OscPlot *plot = OSC_PLOT(data);
+	//OscPlot *plot = OSC_PLOT(data);
 	char *filename = (char *)user_data;
 
-	osc_plot_save_to_ini(plot, filename);
+	//osc_plot_save_to_ini(plot, filename);
 }
 
 static void capture_profile_save(const char *filename)
@@ -2358,7 +2361,7 @@ static int load_profile(const char *filename, bool load_plugins)
 	 * override profile settings.
 	 */
 	if (value && !(ctx && !strcmp(iio_context_get_name(ctx), "network"))) {
-		struct iio_context *new_ctx = iio_create_network_context(value);
+		struct iio_context *new_ctx = iio_create_context(NULL, value);
 		if (new_ctx) {
 			application_reload(new_ctx, false);
 		} else {
@@ -2378,12 +2381,13 @@ static int load_profile(const char *filename, bool load_plugins)
 	 */
 	if (value && !(ctx && (!strcmp(iio_context_get_name(ctx), "uri")))) {
 		struct iio_context *new_ctx;
-		struct iio_scan_context *ctxs = iio_create_scan_context(NULL, 0);
-		struct iio_context_info **info;
+		struct iio_scan *ctxs = iio_scan(NULL, NULL);
+		//struct iio_context_info **info;
 		char *pid_vid = value;
 		char *serial = strchr(value, ' ');
 		const char *tmp;
 		int i;
+		int ctxs_nb;
 
 		if (!serial)
 			goto nope;
@@ -2394,18 +2398,19 @@ static int load_profile(const char *filename, bool load_plugins)
 
 		if (!ctxs)
 			goto nope;
-		ret = iio_scan_context_get_info_list(ctxs, &info);
+		ctxs_nb = iio_scan_get_results_count(ctxs);
+		ret = iio_err(ctxs);
 		if (ret < 0)
 			goto nope_ctxs;
-		if (!ret)
-			goto nope_list;
+		// !!!!!!! if (!ret)
+		//	goto nope_list;
 
-		for (i = 0; i < ret; i++) {
-			tmp = iio_context_info_get_description(info[i]);
+		for (i = 0; i < ctxs_nb; i++) {
+			tmp = iio_scan_get_description(ctxs, i);
 			/* find the correct PID/VID plus serial number*/
 			if (strstr(tmp, pid_vid) && strstr(tmp, serial)) {
-				new_ctx = iio_create_context_from_uri(
-						iio_context_info_get_uri(info[i]));
+				new_ctx = iio_create_context(NULL,
+						iio_scan_get_uri(ctxs, i));
 				if (new_ctx) {
 					application_reload(new_ctx, false);
 					break;
@@ -2417,10 +2422,10 @@ static int load_profile(const char *filename, bool load_plugins)
 			}
 
 		}
-nope_list:
-		iio_context_info_list_free(info);
+//nope_list:
+//		iio_context_info_list_free(info);
 nope_ctxs:
-		iio_scan_context_destroy(ctxs);
+		iio_scan_destroy(ctxs);
 nope:
 		free(value);
 		ret = 0;
@@ -2499,9 +2504,15 @@ void load_complete_profile(const char *filename)
 struct iio_context * osc_create_context(void)
 {
 	if (!ctx)
-		return iio_create_default_context();
-	else
-		return iio_context_clone(ctx) ?: ctx;
+		return iio_create_context(NULL, NULL);
+	else {
+		// !!!! context clone bolfosag
+		// const struct iio_context_params * ctx_params = iio_context_get_params(ctx);
+		//const struct iio_attr *ctx_uri = iio_context_find_attr(ctx, "uri");
+		//const char *uri_val = iio_attr_get_static_value(ctx_uri);
+		//ctx = iio_create_context(ctx_params, uri_val);
+		return ctx;
+		}
 }
 
 void osc_destroy_context(struct iio_context *_ctx)
@@ -2532,11 +2543,12 @@ void osc_process_gtk_events(unsigned int msecs)
  * test.device.attribute.type = min max
  */
 int osc_test_value(struct iio_context *_ctx, int line,
-		const char *attribute, const char *value)
+                const char *attribute, const char *value)
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
 	const char *attr;
+	const char *filename;
 	long long min_i = -1, max_i = -1, val_i;
 	double min_d, max_d, val_d;
 	unsigned int i;
@@ -2559,7 +2571,10 @@ int osc_test_value(struct iio_context *_ctx, int line,
 		goto cleanup;
 	}
 
-	ret = iio_device_identify_filename(dev, elems[2], &chn, &attr);
+	const struct iio_attr *attrib = iio_device_find_attr(dev, elems[2]);
+	filename = iio_attr_get_filename(attrib);
+	ret = iio_err(filename);
+	//ret = iio_device_identify_filename(dev, elems[2], &chn, &attr);
 	if (ret < 0)
 		goto cleanup;
 
@@ -2570,10 +2585,13 @@ int osc_test_value(struct iio_context *_ctx, int line,
 			goto cleanup;
 		}
 
-		if (chn)
-			ret = iio_channel_attr_read_longlong(chn, attr, &val_i);
-		else
-			ret = iio_device_attr_read_longlong(dev, attr, &val_i);
+		//attrib = iio_channel_find_attr()
+		//ret = iio_attr_read_longlong()
+		ret = iio_attr_read_longlong(attrib, &val_i);
+//		if (chn)
+//			ret = iio_channel_attr_read_longlong(chn, attr, &val_i);
+//		else
+//			ret = iio_device_attr_read_longlong(dev, attr, &val_i);
 		if (ret < 0)
 			goto cleanup;
 
@@ -2602,10 +2620,11 @@ int osc_test_value(struct iio_context *_ctx, int line,
 			goto cleanup;
 		}
 
-		if (chn)
-			ret = iio_channel_attr_read_double(chn, attr, &val_d);
-		else
-			ret = iio_device_attr_read_double(dev, attr, &val_d);
+		ret = iio_attr_read_double(attrib, &val_d);
+//		if (chn)
+//			ret = iio_channel_attr_read_double(chn, attr, &val_d);
+//		else
+//			ret = iio_device_attr_read_double(dev, attr, &val_d);
 		if (ret < 0)
 			goto cleanup;
 
@@ -2658,6 +2677,7 @@ int osc_identify_attrib(struct iio_context *_ctx, const char *attrib,
 	int i;
 	bool is_debug;
 	int ret = -EINVAL;
+	const char *file;
 
 	gchar *dev_name, *filename, **elems = g_strsplit(attrib, ".", 3);
 	if (!elems)
@@ -2682,8 +2702,10 @@ int osc_identify_attrib(struct iio_context *_ctx, const char *attrib,
 		ret = -ENODEV;
 		goto cleanup;
 	}
-
-	ret = iio_device_identify_filename(device, filename, chn, attr);
+	const struct iio_attr *attribute = iio_channel_find_attr(*chn, *attr);
+	file = iio_attr_get_filename(attribute);
+	ret = iio_err(file);
+	//ret = iio_device_identify_filename(device, filename, chn, attr);
 	if (!ret) {
 		*debug = is_debug;
 		*dev = device;
@@ -2713,13 +2735,15 @@ static int osc_read_nonenclosed_value(struct iio_context *_ctx,
 	}
 	if (ret < 0)
 		return ret;
-
-	if (chn)
-		ret = iio_channel_attr_read_longlong(chn, attr, out);
-	else if (debug)
-		ret = iio_device_debug_attr_read_longlong(dev, attr, out);
-	else
-		ret = iio_device_attr_read_longlong(dev, attr, out);
+	const struct iio_attr *attribute;
+	attribute = iio_device_find_attr(dev, attr);
+	ret = iio_attr_read_longlong(attribute, out);
+//	if (chn)
+//		ret = iio_channel_attr_read_longlong(chn, attr, out);
+//	else if (debug)
+//		ret = iio_device_debug_attr_read_longlong(dev, attr, out);
+//	else
+//		ret = iio_device_attr_read_longlong(dev, attr, out);
 	return ret < 0 ? ret : 0;
 }
 
@@ -2807,11 +2831,12 @@ FILE * osc_get_log_file(const char *path)
  * log.device.filename = output_file
  */
 int osc_log_value(struct iio_context *_ctx,
-		const char *attribute, const char *value)
+                const char *attribute, const char *value)
 {
 	int ret;
 	struct iio_device *dev;
 	struct iio_channel *chn;
+	const struct iio_attr *attrib;
 	const char *attr;
 	char buf[1024];
 	bool debug;
@@ -2828,12 +2853,18 @@ int osc_log_value(struct iio_context *_ctx,
 	if (ret < 0)
 		goto err_ret;
 
-	if (chn)
-		ret = iio_channel_attr_read(chn, attr, buf, sizeof(buf));
-	else if (debug)
-		ret = iio_device_debug_attr_read(dev, attr, buf, sizeof(buf));
-	else
-		ret = iio_device_attr_read(dev, attr, buf, sizeof(buf));
+	if (chn) {
+		attrib = iio_channel_find_attr(chn, attr);
+		ret = iio_attr_read_raw(attrib, buf, sizeof(buf));
+	}
+	else if (debug) {
+		attrib = iio_device_find_debug_attr(dev, attr);
+		ret = iio_attr_read_raw(attrib, buf, sizeof(buf));
+	}
+	else {
+		attrib = iio_device_find_attr(dev, attr);
+		ret = iio_attr_read_raw(attrib, buf, sizeof(buf));
+		}
 	if (ret < 0)
 		goto err_ret;
 
@@ -2891,19 +2922,21 @@ int osc_plugin_default_handle(struct iio_context *_ctx,
 			return ret;
 		}
 
-		if (chn)
-			ret = iio_channel_attr_write_longlong(chn, attr, lval);
-		else if (debug)
-			ret = iio_device_debug_attr_write_longlong(dev, attr, lval);
-		else
-			ret = iio_device_attr_write_longlong(dev, attr, lval);
-	} else if (chn)
+//		if (chn)
+//			ret = iio_channel_attr_write_longlong(chn, attr, lval);
+//		else if (debug)
+//			ret = iio_device_debug_attr_write_longlong(dev, attr, lval);
+//		else
+		const struct iio_attr *attrib = iio_device_find_attr(dev, attr);
+		ret = iio_attr_write_longlong(attrib, lval);
+	} /*else if (chn)
 		ret = iio_channel_attr_write(chn, attr, value);
 	else if (debug)
-		ret = iio_device_debug_attr_write(dev, attr, value);
-	else
-		ret = iio_device_attr_write(dev, attr, value);
-
+		ret = iio_device_debug_attr_write(dev, attr, value);*/
+	else {
+		const struct iio_attr *attrib = iio_device_find_attr(dev, attr);
+		ret = iio_attr_write(attrib,value);
+	  }
 	if (ret < 0) {
 		fprintf(stderr, "Unable to write '%s' to %s:%s\n", value,
 				chn ? iio_channel_get_name(chn) : iio_device_get_name(dev),

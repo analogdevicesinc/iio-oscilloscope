@@ -21,7 +21,7 @@
 #include <sys/stat.h>
 #include <string.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "../libini2.h"
 #include "../osc.h"
@@ -137,6 +137,8 @@ static GtkWidget * generic_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	GSList * dac_dev_names;
 	const char *crt_dev_name;
 
+	if(ctx)
+	        iio_context_destroy(ctx);
 	ctx = osc_create_context();
 	if (!ctx)
 		return NULL;

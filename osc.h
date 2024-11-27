@@ -11,9 +11,9 @@
 
 #include <gtkdatabox.h>
 #include <complex.h>
-#include <iio.h>
+#include <iio/iio.h>
 
-#include "oscplot.h"
+//#include "oscplot.h"
 
 #ifdef __APPLE__
 /*
@@ -37,7 +37,7 @@ const void *memrchr(const void *src, int c, size_t length);
 extern GtkWidget *capture_graph;
 extern gint capture_function;
 extern bool str_endswith(const char *str, const char *needle);
-extern void math_expression_objects_clean(void);
+//extern void math_expression_objects_clean(void);
 
 /* Max 1 Meg (2^20) */
 #define MAX_SAMPLES 1048576
@@ -112,7 +112,7 @@ void trigger_settings_for_device(GtkBuilder *builder, const char *device);
 void application_quit (void);
 
 bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
-unsigned global_enabled_channels_mask(struct iio_device *dev);
+unsigned global_enabled_channels_mask(struct iio_device *dev, struct iio_channels_mask *ch_mask);
 void add_ch_setup_check_fct(char *device_name, void *fp);
 void *find_setup_check_fct_by_devname(const char *dev_name);
 bool is_input_device(const struct iio_device *dev);
@@ -122,15 +122,15 @@ struct iio_context * get_context_from_osc(void);
 void move_gtk_window_on_screen(GtkWindow *window, gint x, gint y);
 const void * plugin_get_device_by_reference(const char *device_name);
 int plugin_data_capture_size(const char *device);
-int plugin_data_capture_of_plot(OscPlot *plot, const char *device,
-			gfloat ***cooked_data, struct marker_type **markers_cp);
+//int plugin_data_capture_of_plot(OscPlot *plot, const char *device,
+//			gfloat ***cooked_data, struct marker_type **markers_cp);
 int plugin_data_capture_num_active_channels(const char *device);
 int plugin_data_capture_bytes_per_sample(const char *device);
-OscPlot * plugin_find_plot_with_domain(int domain);
-enum marker_types plugin_get_plot_marker_type(OscPlot *plot, const char *device);
-void plugin_set_plot_marker_type(OscPlot *plot, const char *device, enum marker_types type);
-gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device);
-OscPlot * plugin_get_new_plot(void);
+//OscPlot * plugin_find_plot_with_domain(int domain);
+//enum marker_types plugin_get_plot_marker_type(OscPlot *plot, const char *device);
+//void plugin_set_plot_marker_type(OscPlot *plot, const char *device, enum marker_types type);
+//gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device);
+//OscPlot * plugin_get_new_plot(void);
 void plugin_osc_stop_capture(void);
 void plugin_osc_start_capture(void);
 bool plugin_osc_running_state(void);
@@ -172,7 +172,7 @@ GArray* get_data_for_possible_plugin_instances_helper(const char *dev_id, const 
 extern int load_default_profile(char *filename, bool load_plugins);
 extern void do_init(struct iio_context *new_ctx);
 extern void create_default_plot(void);
-extern GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
+//extern GtkWidget * new_plot_cb(GtkMenuItem *item, gpointer user_data);
 extern bool check_inifile(const char *filepath);
 extern int osc_load_glade_file(GtkBuilder *builder, const char *fname);
 extern int osc_load_objects_from_glade_file(GtkBuilder *builder, const char *fname, gchar **object_ids);

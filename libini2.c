@@ -3,7 +3,7 @@
 #include "libini/ini.h"
 
 #include <errno.h>
-#include <iio.h>
+#include <iio/iio.h>
 #include <stdio.h>
 #include <string.h>
 #include <glib.h>
@@ -100,8 +100,10 @@ static ssize_t update_from_ini_chn_cb(struct iio_channel *chn,
 	const char *dev_name = iio_device_get_name(params->dev);
 	size_t name_len = dev_name ? strlen(dev_name) : 0;
 	bool is_hardwaregain = !strncmp(attr, "hardwaregain", len);
+	const struct iio_attr *attribute;
 
-	attr = iio_channel_attr_get_filename(chn, attr);
+	attribute = iio_channel_find_attr(chn, attr);
+	attr = iio_attr_get_filename(attribute);
 	if (attr_in_whitelist(attr, dev_name, name_len, false,
 				params->whitelist, params->list_len)) {
 		ssize_t ret = read_from_ini(params,
@@ -157,15 +159,16 @@ void update_from_ini(const char *ini_file,
 
 	params.section_top = name + nlen + 1;
 
-	for (i = 0; i < iio_device_get_channels_count(dev); i++)
+	/*for (i = 0; i < iio_device_get_channels_count(dev); i++) {
 		iio_channel_attr_write_all(iio_device_get_channel(dev, i),
 				update_from_ini_chn_cb, &params);
-
+		iio_attr_write()
+		}
 	if (iio_device_get_attrs_count(dev))
 		iio_device_attr_write_all(dev, update_from_ini_dev_cb, &params);
 
 	params.is_debug = true;
-	iio_device_debug_attr_write_all(dev, update_from_ini_dev_cb, &params);
+	iio_device_debug_attr_write_all(dev, update_from_ini_dev_cb, &params);*/
 
 	ini_close(ini);
 }
@@ -233,8 +236,9 @@ static int save_to_ini_chn_cb(struct iio_channel *chn,
 	struct load_store_params *params = (struct load_store_params *) d;
 	const char *dev_name = iio_device_get_name(params->dev);
 	size_t name_len = dev_name ? strlen(dev_name) : 0;
-
-	attr = iio_channel_attr_get_filename(chn, attr);
+	const struct iio_attr *attrib;
+	attrib = iio_channel_find_attr(chn, attr);
+	attr = iio_attr_get_filename(attrib);
 	if (attr_in_whitelist(attr, dev_name, name_len, false,
 				params->whitelist, params->list_len))
 		write_to_ini(params, dev_name, name_len, attr, val, len);
@@ -255,13 +259,13 @@ void save_to_ini(FILE *f, const char *driver_name, struct iio_device *dev,
 
 	write_driver_name_to_ini(f, driver_name);
 
-	for (i = 0; i < iio_device_get_channels_count(dev); i++)
+	/*for (i = 0; i < iio_device_get_channels_count(dev); i++)
 		iio_channel_attr_read_all(iio_device_get_channel(dev, i),
 				save_to_ini_chn_cb, &params);
 	iio_device_attr_read_all(dev, save_to_ini_dev_cb, &params);
 
 	params.is_debug = true;
-	iio_device_debug_attr_read_all(dev, save_to_ini_dev_cb, &params);
+	iio_device_debug_attr_read_all(dev, save_to_ini_dev_cb, &params);*/
 }
 
 int foreach_in_ini(const char *ini_file,

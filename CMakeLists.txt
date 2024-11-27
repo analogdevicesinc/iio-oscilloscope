@@ -91,6 +91,7 @@ add_definitions(-D_GNU_SOURCE
 
 add_compile_options(-Wall -Wextra -Werror
 	-Wno-unused-parameter
+	-Wno-error=unused-variable
 	-Wno-error=unused-but-set-variable
 	-Wno-error=unused-function
 	-Wno-error=deprecated
@@ -104,10 +105,14 @@ if(UNIX)
 	add_definitions(-Dlinux -DFRU_FILES="${CMAKE_PREFIX_PATH}/lib/fmc-tools/")
 endif()
 
-set(OSC_SRC osc.c oscplot.c datatypes.c iio_widget.c iio_utils.c
-	fru.c dialogs.c trigger_dialog.c xml_utils.c libini/libini.c
-        libini2.c phone_home.c plugins/dac_data_manager.c
-        plugins/fir_filter.c eeprom.c osc_preferences.c cJSON/cJSON.c)
+#set(OSC_SRC osc.c oscplot.c datatypes.c iio_widget.c iio_utils.c
+# 	fru.c dialogs.c trigger_dialog.c xml_utils.c libini/libini.c
+#         libini2.c phone_home.c plugins/dac_data_manager.c
+#         plugins/fir_filter.c eeprom.c osc_preferences.c cJSON/cJSON.c)
+set(OSC_SRC osc.c datatypes.c iio_widget.c iio_utils.c
+ 	fru.c dialogs.c trigger_dialog.c xml_utils.c libini/libini.c
+         libini2.c phone_home.c plugins/dac_data_manager.c
+         plugins/fir_filter.c eeprom.c osc_preferences.c cJSON/cJSON.c)
 
 find_package(PkgConfig)
 pkg_check_modules(GLIB REQUIRED glib-2.0)
@@ -121,7 +126,7 @@ pkg_check_modules(JANSSON REQUIRED jansson)
 pkg_check_modules(MATIO REQUIRED matio)
 
 find_library(LIBIIO_LIBRARIES iio)
-find_path(LIBIIO_INCLUDE_DIRS iio.h)
+find_path(LIBIIO_INCLUDE_DIRS iio/iio.h)
 
 find_library(LIBAD9361_LIBRARIES ad9361)
 find_path(LIBAD9361_INCLUDE_DIRS ad9361.h)
@@ -301,7 +306,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps)
 	install(FILES icons/osc.svg RENAME adi-osc.svg
 		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
-	
+
 	install(FILES ./styles.css DESTINATION ${SHARE_DEST})
 
 	# This is a bit "ugly". It makes sure that the hicolor theme directory updates

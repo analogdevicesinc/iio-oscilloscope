@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #include <fftw3.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #define INITIAL_UPDATE TRUE
 #define NORMAL_UPDATE FALSE

@@ -9,7 +9,7 @@
 #define __IIO_WIDGET_H__
 
 #include <gtk/gtk.h>
-#include <iio.h>
+#include <iio/iio.h>
 
 struct iio_widget {
 	struct iio_device *dev;

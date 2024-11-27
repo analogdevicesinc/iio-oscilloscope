@@ -23,7 +23,7 @@
 
 #include <complex.h>
 #include <fftw3.h>
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "osc.h"
 #include "oscplot.h"
@@ -1690,12 +1690,14 @@ bool freq_spectrum_transform_function(Transform *tr, gboolean init_transform)
 	int ret;
 	double sampling_freq;
 	bool complete_transform = false;
+	const struct iio_attr *attr = NULL;
 
 	if (init_transform) {
 		fft_size = settings->fft_size;
 		chn = PLOT_IIO_CHN(tr->plot_channels->data)->iio_chn;
-		ret = iio_channel_attr_read_double(chn, "sampling_frequency",
-				&sampling_freq);
+		attr = iio_channel_find_attr(chn, "sampling_frequency");
+
+		ret = iio_attr_read_double(attr, &sampling_freq);
 		if (ret < 0)
 			return false;
 		sampling_freq /= 1000000; /* Hz to MHz*/
@@ -5361,7 +5363,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 					gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "labelYMax")));
 					gtk_widget_hide(priv->y_axis_min);
 					gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "labelYMin")));
-				} 
+				}
 			} else if (MATCH_NAME("user_y_axis_max"))
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_max), atof(value));
 			else if (MATCH_NAME("user_y_axis_min"))
@@ -7039,7 +7041,7 @@ static void create_plot(OscPlot *plot)
 		g_error_free(err);
 		gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(plot->priv->provider),OSC_STYLE_FILE_PATH"styles.css",NULL);
 	}
-	
+
 	//gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(plot->priv->provider),"styles.css",NULL);
 	gtk_style_context_add_provider_for_screen (screen, GTK_STYLE_PROVIDER(plot->priv->provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
 	style_context = gtk_widget_get_style_context(GTK_WIDGET(priv->databox));

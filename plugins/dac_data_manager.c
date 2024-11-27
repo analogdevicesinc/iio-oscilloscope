@@ -95,6 +95,9 @@ struct dds_dac {
 	unsigned index;
 	const char *name;
 	struct iio_device *iio_dac;
+	struct iio_buffer *iio_dac_buffer;
+	struct iio_channels_mask *iio_dac_mask;
+	struct iio_stream *iio_dac_stream;
 	unsigned tx_count;
 	struct dds_tx *txs;
 	int dds_mode;
@@ -131,7 +134,9 @@ struct dac_data_manager {
 	double lowest_scale_point;
 	bool dds_activated;
 	bool dds_disabled;
-	struct iio_buffer *dds_buffer;
+	struct iio_buffer *dac_buffer;
+	struct iio_stream *dac_stream;
+	struct iio_channels_mask *dac_mask;
 	bool is_local;
 	bool is_cyclic_buffer;
 
@@ -589,11 +594,15 @@ static void enable_dds_channels(struct dac_buffer *db)
 			TX_CHANNEL_REF_INDEX, &ch_index, -1);
 
 		struct iio_channel *channel = iio_device_get_channel(db->dac_with_scanelems, ch_index);
+		//db->parent->dds_mask = iio_
+		//struct iio_channels_mask *mask = iio_buffer_get_channels_mask(db->dac_buf_filename);
+		if(!db->parent->dac_mask)
+		        db->parent->dac_mask = iio_create_channels_mask(iio_device_get_channels_count(db->dac_with_scanelems));
 
 		if (enabled)
-			iio_channel_enable(channel);
+			iio_channel_enable(channel, db->parent->dac_mask);
 		else
-			iio_channel_disable(channel);
+			iio_channel_disable(channel, db->parent->dac_mask);
 
 		next_iter = gtk_tree_model_iter_next(model, &iter);
 	}
@@ -604,27 +613,30 @@ static void enable_dds(struct dac_data_manager *manager, bool on_off)
 	struct iio_device *dac1 = NULL;
 	struct iio_device *dac2 = NULL;
 	int ret;
+	const struct iio_attr *attr = NULL;
 
 	if (on_off == manager->dds_activated && !manager->dds_disabled)
 		return;
 	manager->dds_activated = on_off;
 
-	if (manager->dds_buffer) {
-		iio_buffer_destroy(manager->dds_buffer);
-		manager->dds_buffer = NULL;
+	if (manager->dac_buffer) {
+		iio_buffer_destroy(manager->dac_buffer);
+		manager->dac_buffer = NULL;
 	}
 
 	dac1 = manager->dac1.iio_dac;
 	if (manager->dacs_count == 2)
 		dac2 = manager->dac2.iio_dac;
 
-	ret = iio_channel_attr_write_bool(iio_device_find_channel(dac1, "altvoltage0", true), "raw", on_off);
+	attr = iio_channel_find_attr(iio_device_find_channel(dac1,"altvoltage0", true), "raw");
+	ret = iio_attr_write_bool(attr, on_off);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to toggle DDS: %d\n", ret);
 		return;
 	}
 	if (dac2) {
-		ret = iio_channel_attr_write_bool(iio_device_find_channel(dac2, "altvoltage0", true), "raw", on_off);
+		attr = iio_channel_find_attr(iio_device_find_channel(dac1,"altvoltage0", true), "raw");
+		ret = iio_attr_write_bool(attr, on_off);
 		if (ret < 0) {
 			fprintf(stderr, "Failed to toggle DDS: %d\n", ret);
 			return;
@@ -645,9 +657,9 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 	*/
 	unsigned int buffer_channels = 0;
 
-	if (manager->dds_buffer) {
-		iio_buffer_destroy(manager->dds_buffer);
-		manager->dds_buffer = NULL;
+	if (manager->dac_buffer) {
+		iio_buffer_destroy(manager->dac_buffer);
+		manager->dac_buffer = NULL;
 	}
 
 	if (manager->is_local) {
@@ -711,8 +723,10 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 	enable_dds_channels(&manager->dac_buffer_module);
 
 	struct iio_device *dac = manager->dac_buffer_module.dac_with_scanelems;
+	if(!manager->dac_mask)
+	        manager->dac_mask = iio_create_channels_mask(iio_device_get_channels_count(dac));
 
-	s_size = iio_device_get_sample_size(dac);
+	s_size = iio_device_get_sample_size(dac, manager->dac_mask);
 	if (!s_size) {
 		fprintf(stderr, "Unable to create buffer due to sample size");
 		if (stat_msg)
@@ -729,8 +743,8 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		return -EINVAL;
 	}
 
-	manager->dds_buffer = iio_device_create_buffer(dac, size / s_size, manager->is_cyclic_buffer);
-	if (!manager->dds_buffer) {
+	manager->dac_buffer = iio_device_create_buffer(dac, 0, manager->dac_mask);
+	if (!manager->dac_buffer) {
 		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
 		if (stat_msg)
 			*stat_msg = g_strdup_printf("Unable to create iio buffer: %s", strerror(errno));
@@ -738,10 +752,12 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		return -errno;
 	}
 
-	memcpy(iio_buffer_start(manager->dds_buffer), buf,
-			iio_buffer_end(manager->dds_buffer) - iio_buffer_start(manager->dds_buffer));
+	manager->dac_stream = iio_buffer_create_stream(manager->dac_buffer, 4, size /s_size);
+	const struct iio_block *block = iio_stream_get_next_block(manager->dac_stream);
 
-	iio_buffer_push(manager->dds_buffer);
+	memcpy(iio_block_start(block), buf, iio_block_end(block) - iio_block_start(block));
+
+	//iio_buffer_push(manager->dds_buffer);
 	free(buf);
 
 	tmp = strdup(file_name);
@@ -815,9 +831,9 @@ static void waveform_load_button_clicked_cb (GtkButton *btn, struct dac_buffer *
 
 static void stop_buffer_tx_button_clicked_cb (GtkButton *btn, struct dac_buffer *dbuf)
 {
-	if (dbuf->parent->dds_buffer) {
-		iio_buffer_destroy(dbuf->parent->dds_buffer);
-		dbuf->parent->dds_buffer = NULL;
+	if (dbuf->parent->dac_buffer) {
+		iio_buffer_destroy(dbuf->parent->dac_buffer);
+		dbuf->parent->dac_buffer = NULL;
 	}
 }
 
@@ -1083,6 +1099,8 @@ static GtkWidget *gui_dac_channels_tree_create(struct dac_buffer *d_buffer)
 	struct iio_device *dac = d_buffer->dac_with_scanelems;
 	GtkTreeIter iter;
 	unsigned int i;
+	if (!d_buffer->parent->dac_mask)
+	         d_buffer->parent->dac_mask = iio_create_channels_mask(iio_device_get_channels_count(dac));
 
 	for (i = 0; i < iio_device_get_channels_count(dac); i++) {
 		struct iio_channel *ch = iio_device_get_channel(dac, i);
@@ -1093,7 +1111,7 @@ static GtkWidget *gui_dac_channels_tree_create(struct dac_buffer *d_buffer)
 		gtk_tree_store_append(treestore, &iter, NULL);
 		gtk_tree_store_set(treestore, &iter,
 				TX_CHANNEL_NAME, iio_channel_get_id(ch),
-				TX_CHANNEL_ACTIVE, iio_channel_is_enabled(ch),
+				TX_CHANNEL_ACTIVE, iio_channel_is_enabled(ch, d_buffer->parent->dac_mask),
 				TX_CHANNEL_REF_INDEX, i, -1);
 	}
 
@@ -1400,10 +1418,14 @@ static void save_scale_widget_value(void *data)
 	struct iio_widget *scale_w = &tone->iio_scale;
 	struct iio_widget *scale_pair_w = (tone->number == 1) ? &dds_ch->t2.iio_scale : &dds_ch->t1.iio_scale;
 	double old_val, val1, val2;
+	const struct iio_attr *attr = NULL;
+	//const struct iio_attr *attr_w_pair =
 
 	val1 = db_full_scale_convert(gtk_spin_button_get_value(GTK_SPIN_BUTTON(scale_w->widget)), false);
-	iio_channel_attr_read_double(scale_w->chn, scale_w->attr_name, &old_val);
-	iio_channel_attr_read_double(scale_pair_w->chn, scale_pair_w->attr_name, &val2);
+	attr = iio_channel_find_attr(scale_w->chn, scale_w->attr_name);
+	iio_attr_read_double(attr, &old_val);
+	attr = iio_channel_find_attr(scale_pair_w->chn, scale_pair_w->attr_name);
+	iio_attr_read_double(attr, &val2);
 
 	if (val1 + val2 > 1)
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(scale_w->widget), db_full_scale_convert(old_val, true));
@@ -1619,9 +1641,9 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 			}
 		}
 
-		if (!manager->dds_activated && manager->dds_buffer) {
-			iio_buffer_destroy(manager->dds_buffer);
-			manager->dds_buffer = NULL;
+		if (!manager->dds_activated && manager->dac_buffer) {
+			iio_buffer_destroy(manager->dac_buffer);
+			manager->dac_buffer = NULL;
 		}
 		manager->dds_disabled = true;
 		enable_dds(manager, start_dds);
@@ -1946,6 +1968,12 @@ static int dds_dac_init(struct dac_data_manager *manager,
 	ddac->iio_dac = iio_dac;
 	ddac->name = iio_device_get_name(iio_dac);
 	ddac->tones_count = get_iio_tones_count(iio_dac);
+	ddac->iio_dac_mask = iio_create_channels_mask(iio_device_get_channels_count(iio_dac));
+	ddac->iio_dac_buffer = iio_device_create_buffer(iio_dac, 0, ddac->iio_dac_mask);
+	int ret = iio_err(ddac->iio_dac_buffer);
+	char error_string[300];
+	iio_strerror(ret, error_string, sizeof(error_string));
+	printf("error %s", error_string);
 
 	if(!ddac->tones_count)
 		return 0;
@@ -2013,6 +2041,7 @@ static int dac_manager_init(struct dac_data_manager *manager,
 {
 	long long alignment;
 	int ret = 0;
+	const struct iio_attr *attr = NULL;
 
 	manager->is_cyclic_buffer = true;
 
@@ -2035,10 +2064,13 @@ static int dac_manager_init(struct dac_data_manager *manager,
 
 	manager->is_local = strcmp(iio_context_get_name(ctx), "local") ? false : true;
 	manager->ctx = ctx;
+	manager->dac_mask = manager->dac1.iio_dac_mask; //iio_create_channels_mask(iio_device_get_channels_count(dac));
+	manager->dac_buffer = manager->dac1.iio_dac_buffer;//iio_device_create_buffer(dac, 0, manager->dac_mask);
 
-	if (iio_device_buffer_attr_read_longlong(manager->dac_buffer_module.dac_with_scanelems,
-						 "length_align_bytes",
-						 &alignment) == 0) {
+	attr = iio_buffer_find_attr(manager->dac_buffer, "length_align_bytes");
+	ret = iio_err(attr);
+
+	if (iio_attr_read_longlong(attr, &alignment) == 0) {
 		manager->alignment = alignment;
 		manager->hw_reported_alignment = true;
 	 } else {
@@ -2089,9 +2121,9 @@ void dac_data_manager_free(struct dac_data_manager *manager)
 			free(manager->dac2.txs);
 			g_slist_free(manager->dds_tones);
 		}
-		if (manager->dds_buffer) {
-			iio_buffer_destroy(manager->dds_buffer);
-			manager->dds_buffer = NULL;
+		if (manager->dac_buffer) {
+			iio_buffer_destroy(manager->dac_buffer);
+			manager->dac_buffer = NULL;
 		}
 		free(manager);
 	}
