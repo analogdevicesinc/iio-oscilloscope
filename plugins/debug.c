@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <ctype.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "../osc.h"
 #include "../iio_utils.h"
@@ -184,6 +184,7 @@ static void scanel_read_clicked(GtkButton *btn, gpointer data)
 {
 	char *attr;
 	char *attr_val = NULL;
+	const struct iio_attr *attribute = NULL;
 	int ret;
 
 	attr = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel));
@@ -194,13 +195,18 @@ static void scanel_read_clicked(GtkButton *btn, gpointer data)
 	if (!attr_val)
 		goto abort_read;
 
-	if (current_ch)
-		ret = iio_channel_attr_read(current_ch, attr, attr_val, IIO_ATTR_MAX_BYTES);
-	else
-		if (debugfs_attr)
-			ret = iio_device_debug_attr_read(dev, attr, attr_val, IIO_ATTR_MAX_BYTES);
-		else
-			ret = iio_device_attr_read(dev, attr, attr_val, IIO_ATTR_MAX_BYTES);
+	if (current_ch) {
+		attribute = iio_channel_find_attr(current_ch, attr);
+		ret = iio_attr_read_raw(attribute, attr_val, IIO_ATTR_MAX_BYTES);
+	} else
+		if (debugfs_attr) {
+			attribute = iio_device_find_debug_attr(dev, attr);
+			ret = iio_attr_read_raw(attribute, attr_val, IIO_ATTR_MAX_BYTES);
+		} else {
+			attribute = iio_device_find_attr(dev, attr);
+			ret = iio_attr_read_raw(attribute, attr_val, IIO_ATTR_MAX_BYTES);
+
+		}
 
 	if (ret <= 0)
 		goto abort_read;
@@ -225,6 +231,7 @@ static void scanel_write_clicked(GtkButton *btn, gpointer data)
 {
 	char *attr_name;
 	char *attr_val;
+	const struct iio_attr *attribute = NULL;
 
 	attr_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel));
 	if (attribute_has_options)
@@ -232,14 +239,17 @@ static void scanel_write_clicked(GtkButton *btn, gpointer data)
 	else
 		attr_val = (char *)gtk_entry_get_text(GTK_ENTRY(scanel_value));
 
-	if (current_ch)
-		iio_channel_attr_write(current_ch, attr_name, attr_val);
-	else
-		if (debugfs_attr)
-			iio_device_debug_attr_write(dev, attr_name, attr_val);
-		else
-			iio_device_attr_write(dev, attr_name, attr_val);
-
+	if (current_ch) {
+		attribute = iio_channel_find_attr(current_ch, attr_name);
+		iio_attr_write(attribute, attr_val);
+	} else
+		if (debugfs_attr) {
+			attribute = iio_device_find_debug_attr(dev, attr_name);
+			iio_attr_write(attribute, attr_val);
+		} else {
+			attribute = iio_device_find_attr(dev, attr_name);
+			iio_attr_write(attribute, attr_val);
+		}
 	g_free(attr_name);
 
 	if (attribute_has_options)
@@ -251,15 +261,17 @@ static void scanel_write_clicked(GtkButton *btn, gpointer data)
 static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 {
 	char *options_attr_val;
-	const char *options_attr;
+	//const char *options_attr;
 	char *attr;
 	char buf[256];
+	const struct iio_attr *options_attr = NULL;
 
 	attr = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(cmbText));
 	sprintf(buf, "%s_available", attr);
-	if (current_ch)
+	if (current_ch) {
 		options_attr = iio_channel_find_attr(current_ch, buf);
-	else
+		//iio_attr_read_raw(attribute, options_attr, sizeof(options_attr));
+	} else
 		if (debugfs_attr)
 			options_attr = iio_device_find_debug_attr(dev, buf);
 		else
@@ -275,16 +287,13 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 			goto cleanup;
 
 		attribute_has_options = true;
-		if (current_ch)
-			iio_channel_attr_read(current_ch, options_attr, options_attr_val,
-						IIO_ATTR_MAX_BYTES);
-		else
+		if (current_ch) {
+			iio_attr_read_raw(options_attr, options_attr_val, IIO_ATTR_MAX_BYTES);
+		} else
 			if (debugfs_attr)
-				iio_device_debug_attr_read(dev, options_attr, options_attr_val,
-							   IIO_ATTR_MAX_BYTES);
+				iio_attr_read_raw(options_attr, options_attr_val, IIO_ATTR_MAX_BYTES);
 			else
-				iio_device_attr_read(dev, options_attr, options_attr_val,
-						     IIO_ATTR_MAX_BYTES);
+				iio_attr_read_raw(options_attr, options_attr_val, IIO_ATTR_MAX_BYTES);
 
 		if (options_attr_val[0] == '[') {
 			/* Don't treat [min step max] as combobox items */
@@ -311,10 +320,11 @@ static void debug_scanel_changed_cb(GtkComboBoxText *cmbText, gpointer data)
 		gtk_widget_hide(scanel_options);
 	}
 
-	if (current_ch)
+	if (current_ch) {
+		const struct iio_attr *at = iio_channel_find_attr(current_ch, attr);
 		gtk_entry_set_text(GTK_ENTRY(scanel_filename),
-				iio_channel_attr_get_filename(current_ch, attr));
-	else
+				iio_attr_get_filename(at));
+	} else
 		gtk_entry_set_text(GTK_ENTRY(scanel_filename), attr);
 
 	scanel_read_clicked(GTK_BUTTON(scanel_read), NULL);
@@ -328,6 +338,7 @@ static void attribute_type_changed_cb(GtkComboBoxText *cmbtext, gpointer data)
 	int i, nb_attrs;
 	struct iio_channel *ch;
 	const char *attr;
+	const struct iio_attr *attribute = NULL;
 	bool is_output_ch = false;
 	bool global_attr;
 	char *ch_id = NULL;
@@ -361,7 +372,8 @@ static void attribute_type_changed_cb(GtkComboBoxText *cmbtext, gpointer data)
 		current_ch = NULL;
 		nb_attrs = iio_device_get_attrs_count(dev);
 		for (i = 0; i < nb_attrs; i++) {
-			attr = iio_device_get_attr(dev, i);
+			attribute = iio_device_get_attr(dev, i);
+			attr = iio_attr_get_name(attribute);
 			if (g_strstr_len(attr, -1, "_available\0"))
 				continue;
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel), attr);
@@ -370,7 +382,8 @@ static void attribute_type_changed_cb(GtkComboBoxText *cmbtext, gpointer data)
 		current_ch = NULL;
 		nb_attrs = iio_device_get_debug_attrs_count(dev);
 		for (i = 0; i < nb_attrs; i++) {
-			attr = iio_device_get_debug_attr(dev, i);
+			attribute = iio_device_get_debug_attr(dev, i);
+			attr = iio_attr_get_name(attribute);
 			if (g_strstr_len(attr, -1, "_available\0"))
 				continue;
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel), attr);
@@ -384,7 +397,8 @@ static void attribute_type_changed_cb(GtkComboBoxText *cmbtext, gpointer data)
 		current_ch = ch;
 		nb_attrs = iio_channel_get_attrs_count(ch);
 		for (i = 0; i < nb_attrs; i++) {
-			attr = iio_channel_get_attr(ch, i);
+			attribute = iio_channel_get_attr(ch, i);
+			attr = iio_attr_get_name(attribute);
 			if (g_strstr_len(attr, -1, "_available\0"))
 				continue;
 			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combobox_debug_scanel), attr);
