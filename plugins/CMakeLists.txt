@@ -42,7 +42,7 @@ set(PLUGINS
 	#pr_config
 	#motor_control
 	#lidar
-	#dmm
+	dmm
 	debug
 	scpi
 	#ad9081
