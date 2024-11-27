@@ -22,7 +22,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "../osc.h"
 #include "../iio_widget.h"
@@ -79,7 +79,9 @@ static struct iio_channel * get_channel(const struct iio_device *dev,
 static double read_double_attr(const struct iio_channel *chn, const char *name)
 {
 	double val;
-	int ret = iio_channel_attr_read_double(chn, name, &val);
+	const struct iio_attr *attr = NULL;
+	attr = iio_channel_find_attr(chn, name);
+	int ret = iio_attr_read_double(attr, &val);
 	return ret < 0 ? -1.0 : val;
 }
 
@@ -138,7 +140,8 @@ static void build_channel_list(void)
 					iio_device_get_channel(dev, i);
 				const char *name, *id, *devid;
 				char label[32];
-				int has_label;
+				int has_label = 0;
+				//int error = 0;
 
 				/* Must be input */
 				if (!is_valid_dmm_channel(chn))
@@ -148,9 +151,14 @@ static void build_channel_list(void)
 				devid = iio_device_get_id(dev);
 				name = iio_channel_get_name(chn);
 				id = iio_channel_get_id(chn);
-				has_label = iio_channel_attr_read(chn, "label", label, sizeof(label));
-
-
+				// !!!!!! label not a channel attribute ?
+				//const struct iio_attr *attribute = NULL;
+				//attribute = iio_channel_find_attr(chn, "label");
+				//error = iio_err(attribute);
+				//if(error == 0)
+				//        has_label = iio_attr_read_raw(attribute, label, sizeof(label));
+				//label = iio_c
+				//has_label = iio_attr_read_raw(attribute, label, sizeof(label));
 				if (!name)
 					name = id;
 
