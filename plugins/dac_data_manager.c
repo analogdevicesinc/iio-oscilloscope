@@ -96,7 +96,6 @@ struct dds_dac {
 	const char *name;
 	struct iio_device *iio_dac;
 	struct iio_buffer *iio_dac_buffer;
-	struct iio_channels_mask *iio_dac_mask;
 	struct iio_stream *iio_dac_stream;
 	unsigned tx_count;
 	struct dds_tx *txs;
@@ -579,7 +578,7 @@ static int tx_enabled_channels_count(GtkTreeView *treeview, unsigned *enabled_ma
 	return num_enabled;
 }
 
-static void enable_dds_channels(struct dac_buffer *db)
+static int enable_dds_channels(struct dac_buffer *db)
 {
 	GtkTreeView *treeview = GTK_TREE_VIEW(db->tx_channels_view);
 	GtkTreeIter iter;
@@ -589,15 +588,16 @@ static void enable_dds_channels(struct dac_buffer *db)
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
 	gboolean next_iter = gtk_tree_model_get_iter_first(model, &iter);
 
+	if (!db->parent->dac_mask) {
+		fprintf(stderr, "No existing iio_channels_mask! It should have has been created by now!\n");
+		return -1;
+	}
+
 	while (next_iter) {
 		gtk_tree_model_get(model, &iter, TX_CHANNEL_ACTIVE, &enabled,
 			TX_CHANNEL_REF_INDEX, &ch_index, -1);
 
 		struct iio_channel *channel = iio_device_get_channel(db->dac_with_scanelems, ch_index);
-		//db->parent->dds_mask = iio_
-		//struct iio_channels_mask *mask = iio_buffer_get_channels_mask(db->dac_buf_filename);
-		if(!db->parent->dac_mask)
-		        db->parent->dac_mask = iio_create_channels_mask(iio_device_get_channels_count(db->dac_with_scanelems));
 
 		if (enabled)
 			iio_channel_enable(channel, db->parent->dac_mask);
@@ -606,6 +606,8 @@ static void enable_dds_channels(struct dac_buffer *db)
 
 		next_iter = gtk_tree_model_iter_next(model, &iter);
 	}
+
+	return 0;
 }
 
 static void enable_dds(struct dac_data_manager *manager, bool on_off)
@@ -684,6 +686,62 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		buffer_channels = tx_enabled_channels_count(GTK_TREE_VIEW(manager->dac_buffer_module.tx_channels_view), NULL);
 	}
 
+	enable_dds(manager, false);
+	ret = enable_dds_channels(&manager->dac_buffer_module);
+	if (ret != 0) {
+		fprintf(stderr, "Cannot enable/disable the dds channels.\n");
+		return -1;
+	}
+
+	struct iio_device *dac = manager->dac_buffer_module.dac_with_scanelems;
+	if(!manager->dac_mask)
+	        manager->dac_mask = iio_create_channels_mask(iio_device_get_channels_count(dac));
+
+	s_size = iio_device_get_sample_size(dac, manager->dac_mask);
+	if (!s_size) {
+		fprintf(stderr, "Unable to create buffer due to sample size");
+		if (stat_msg)
+			*stat_msg = g_strdup_printf("Unable to create buffer due to sample size");
+		free(buf);
+		return -EINVAL;
+	}
+
+	if (size % s_size != 0) {
+		fprintf(stderr, "Unable to create buffer due to sample size");
+		if (stat_msg)
+			*stat_msg = g_strdup_printf("Unable to create buffer due to sample size");
+		free(buf);
+		return -EINVAL;
+	}
+
+	manager->dac_buffer = iio_device_create_buffer(dac, 0, manager->dac_mask);
+	if (!manager->dac_buffer) {
+		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
+		if (stat_msg)
+			*stat_msg = g_strdup_printf("Unable to create iio buffer: %s", strerror(errno));
+		free(buf);
+		return -errno;
+	}
+
+	const struct iio_attr *attr;
+	long long alignment;
+	attr = iio_buffer_find_attr(manager->dac_buffer, "length_align_bytes");
+	if (attr && iio_attr_read_longlong(attr, &alignment) == 0) {
+		manager->alignment = alignment;
+		manager->hw_reported_alignment = true;
+	 }
+
+	if (size % manager->alignment != 0) {
+		fprintf(stderr, "Unable to create buffer due to number of samples");
+		if (stat_msg)
+			*stat_msg = g_strdup_printf("Unable to create buffer due to number of samples");
+		free(buf);
+		iio_buffer_destroy(manager->dac_buffer);
+		manager->dac_buffer = NULL;
+
+		return -EINVAL;
+	}
+
 
 	if (g_str_has_suffix(file_name, ".bin")) {
 		FILE *infile;
@@ -718,39 +776,6 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 	}
 
 	usleep(1000); /* FIXME: Temp Workaround needs some investigation */
-
-	enable_dds(manager, false);
-	enable_dds_channels(&manager->dac_buffer_module);
-
-	struct iio_device *dac = manager->dac_buffer_module.dac_with_scanelems;
-	if(!manager->dac_mask)
-	        manager->dac_mask = iio_create_channels_mask(iio_device_get_channels_count(dac));
-
-	s_size = iio_device_get_sample_size(dac, manager->dac_mask);
-	if (!s_size) {
-		fprintf(stderr, "Unable to create buffer due to sample size");
-		if (stat_msg)
-			*stat_msg = g_strdup_printf("Unable to create buffer due to sample size");
-		free(buf);
-		return -EINVAL;
-	}
-
-	if (size % manager->alignment != 0 || size % s_size != 0) {
-		fprintf(stderr, "Unable to create buffer due to sample size and number of samples");
-		if (stat_msg)
-			*stat_msg = g_strdup_printf("Unable to create buffer due to sample size and number of samples");
-		free(buf);
-		return -EINVAL;
-	}
-
-	manager->dac_buffer = iio_device_create_buffer(dac, 0, manager->dac_mask);
-	if (!manager->dac_buffer) {
-		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
-		if (stat_msg)
-			*stat_msg = g_strdup_printf("Unable to create iio buffer: %s", strerror(errno));
-		free(buf);
-		return -errno;
-	}
 
 	manager->dac_stream = iio_buffer_create_stream(manager->dac_buffer, 4, size /s_size);
 	const struct iio_block *block = iio_stream_get_next_block(manager->dac_stream);
@@ -1968,12 +1993,6 @@ static int dds_dac_init(struct dac_data_manager *manager,
 	ddac->iio_dac = iio_dac;
 	ddac->name = iio_device_get_name(iio_dac);
 	ddac->tones_count = get_iio_tones_count(iio_dac);
-	ddac->iio_dac_mask = iio_create_channels_mask(iio_device_get_channels_count(iio_dac));
-	ddac->iio_dac_buffer = iio_device_create_buffer(iio_dac, 0, ddac->iio_dac_mask);
-	int ret = iio_err(ddac->iio_dac_buffer);
-	char error_string[300];
-	iio_strerror(ret, error_string, sizeof(error_string));
-	printf("error %s", error_string);
 
 	if(!ddac->tones_count)
 		return 0;
@@ -2039,7 +2058,6 @@ static void dac_buffer_init(struct dac_data_manager *manager, struct dac_buffer 
 static int dac_manager_init(struct dac_data_manager *manager,
 		struct iio_device *dac, struct iio_device *second_dac, struct iio_context *ctx)
 {
-	long long alignment;
 	int ret = 0;
 	const struct iio_attr *attr = NULL;
 
@@ -2064,19 +2082,8 @@ static int dac_manager_init(struct dac_data_manager *manager,
 
 	manager->is_local = strcmp(iio_context_get_name(ctx), "local") ? false : true;
 	manager->ctx = ctx;
-	manager->dac_mask = manager->dac1.iio_dac_mask; //iio_create_channels_mask(iio_device_get_channels_count(dac));
-	manager->dac_buffer = manager->dac1.iio_dac_buffer;//iio_device_create_buffer(dac, 0, manager->dac_mask);
-
-	attr = iio_buffer_find_attr(manager->dac_buffer, "length_align_bytes");
-	ret = iio_err(attr);
-
-	if (iio_attr_read_longlong(attr, &alignment) == 0) {
-		manager->alignment = alignment;
-		manager->hw_reported_alignment = true;
-	 } else {
-		manager->alignment = 8;
-		manager->hw_reported_alignment = false;
-	}
+	manager->alignment = 8; // A default value. Can be updated later with hardware specifics.
+	manager->hw_reported_alignment = false;
 
 	return ret;
 }
