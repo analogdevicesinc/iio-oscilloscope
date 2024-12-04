@@ -26,4 +26,26 @@ void handle_toggle_section_cb(struct _GtkToggleToolButton *btn, struct _GtkWidge
 const char *get_iio_device_label_or_name(const struct iio_device *dev);
 bool iio_attr_not_found(struct iio_device *dev, struct iio_channel *chn, const char *attr_name);
 
+/* Helpers to read from iio attributes of devices */
+inline int dev_attr_read_raw(struct iio_device *dev, const char *attr_name, char *dst, size_t len);
+inline int dev_attr_read_double(struct iio_device *dev, const char *attr_name, double *value);
+inline int dev_attr_read_longlong(struct iio_device *dev, const char *attr_name, long long *value);
+
+/* Helpers to write to iio attributes of devices */
+inline int dev_attr_write_double(struct iio_device *dev, const char *attr_name, double value);
+inline int dev_attr_write_longlong(struct iio_device *dev, const char *attr_name, long long value);
+inline int dev_debug_attr_write_longlong(struct iio_device *dev, const char *attr_name, long long value);
+
+/* Helpers to read from iio attributes of channels */
+inline int chn_attr_read_raw(struct iio_channel *chn, const char *attr_name, char *dst, size_t len);
+inline int chn_attr_read_bool(struct iio_channel *chn, const char *attr_name, bool *value);
+inline int chn_attr_read_double(struct iio_channel *chn, const char *attr_name, double *value);
+inline int chn_attr_read_longlong(struct iio_channel *chn, const char *attr_name, long long *value);
+
+/* Helpers to write to iio attributes of channels */
+inline int chn_attr_write_string(struct iio_channel *chn, const char *attr_name, const char *string);
+inline int chn_attr_write_bool(struct iio_channel *chn, const char *attr_name, bool value);
+inline int chn_attr_write_double(struct iio_channel *chn, const char *attr_name, double value);
+inline int chn_attr_write_longlong(struct iio_channel *chn, const char *attr_name, long long value);
+
 #endif  /* __IIO_UTILS__ */
