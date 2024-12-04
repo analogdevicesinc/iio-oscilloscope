@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <gtk/gtk.h>
+#include <errno.h>
 
 #define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
 
@@ -349,4 +350,204 @@ out_free_buffer:
 	free(buf);
 
 	return ret;
+}
+
+int dev_attr_read_raw(struct iio_device *dev, const char *attr_name, char *dst, size_t len)
+{
+	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_read_raw(attr, dst, len);
+
+	return -ENOENT;
+}
+
+int dev_attr_read_bool(struct iio_device *dev, const char *attr_name, bool *value)
+{
+	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_read_bool(attr, value);
+
+	return -ENOENT;
+}
+
+int dev_attr_read_double(struct iio_device *dev, const char *attr_name, double *value)
+{
+	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_read_double(attr, value);
+
+	return -ENOENT;
+}
+
+int dev_attr_read_longlong(struct iio_device *dev, const char *attr_name, long long *value)
+{
+	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_read_longlong(attr, value);
+
+	return -ENOENT;
+}
+
+int dev_debug_attr_read_raw(struct iio_device *dev, const char *attr_name, char *dst, size_t len)
+{
+	const struct iio_attr *attr = iio_device_find_debug_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_read_raw(attr, dst, len);
+
+	return -ENOENT;
+}
+
+int dev_debug_attr_read_longlong(struct iio_device *dev, const char *attr_name, long long *value)
+{
+	const struct iio_attr *attr = iio_device_find_debug_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_read_longlong(attr, value);
+
+	return -ENOENT;
+}
+
+int dev_attr_write_raw(struct iio_device *dev, const char *attr_name, const char *src, size_t len)
+{
+	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_write_raw(attr, src, len);
+
+	return -ENOENT;
+}
+
+int dev_attr_write_bool(struct iio_device *dev, const char *attr_name, bool value)
+{
+	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_write_bool(attr, value);
+
+	return -ENOENT;
+}
+
+int dev_attr_write_double(struct iio_device *dev, const char *attr_name, double value)
+{
+	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_write_double(attr, value);
+
+	return -ENOENT;
+}
+
+int dev_attr_write_longlong(struct iio_device *dev, const char *attr_name, long long value)
+{
+	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_write_longlong(attr, value);
+
+	return -ENOENT;
+}
+
+int dev_debug_attr_write_string(struct iio_device *dev, const char *attr_name, const char *value)
+{
+	const struct iio_attr *attr = iio_device_find_debug_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_write_string(attr, value);
+
+	return -ENOENT;
+}
+
+int dev_debug_attr_write_longlong(struct iio_device *dev, const char *attr_name, long long value)
+{
+	const struct iio_attr *attr = iio_device_find_debug_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_write_longlong(attr, value);
+
+	return -ENOENT;
+}
+
+int chn_attr_read_raw(struct iio_channel *chn, const char *attr_name, char *dst, size_t len)
+{
+	const struct iio_attr *attr = iio_channel_find_attr(chn, attr_name);
+
+	if (attr)
+		return iio_attr_read_raw(attr, dst, len);
+
+	return -ENOENT;
+}
+
+int chn_attr_read_bool(struct iio_channel *chn, const char *attr_name, bool *value)
+{
+	const struct iio_attr *attr = iio_channel_find_attr(chn, attr_name);
+
+	if (attr)
+		return iio_attr_read_bool(attr, value);
+
+	return -ENOENT;
+}
+
+int chn_attr_read_double(struct iio_channel *chn, const char *attr_name, double *value)
+{
+	const struct iio_attr *attr = iio_channel_find_attr(chn, attr_name);
+
+	if (attr)
+		return iio_attr_read_double(attr, value);
+
+	return -ENOENT;
+}
+
+int chn_attr_read_longlong(struct iio_channel *chn, const char *attr_name, long long *value)
+{
+	const struct iio_attr *attr = iio_channel_find_attr(chn, attr_name);
+
+	if (attr)
+		return iio_attr_read_longlong(attr, value);
+
+	return -ENOENT;
+}
+
+int chn_attr_write_string(struct iio_channel *chn, const char *attr_name, const char *string)
+{
+	const struct iio_attr *attr = iio_channel_find_attr(chn, attr_name);
+
+	if (attr)
+		return iio_attr_write_string(attr, string);
+
+	return -ENOENT;
+}
+
+int chn_attr_write_bool(struct iio_channel *chn, const char *attr_name, bool value)
+{
+	const struct iio_attr *attr = iio_channel_find_attr(chn, attr_name);
+
+	if (attr)
+		return iio_attr_write_bool(attr, value);
+
+	return -ENOENT;
+}
+
+int chn_attr_write_double(struct iio_channel *chn, const char *attr_name, double value)
+{
+	const struct iio_attr *attr = iio_channel_find_attr(chn, attr_name);
+
+	if (attr)
+		return iio_attr_write_double(attr, value);
+
+	return -ENOENT;
+}
+
+int chn_attr_write_longlong(struct iio_channel *chn, const char *attr_name, long long value)
+{
+	const struct iio_attr *attr = iio_channel_find_attr(chn, attr_name);
+
+	if (attr)
+		return iio_attr_write_longlong(attr, value);
+
+	return -ENOENT;
 }
