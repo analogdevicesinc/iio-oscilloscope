@@ -20,7 +20,7 @@ pkg_check_modules(LIBAD9166 libad9166)
 
 set(PLUGINS
 	#generic_dac
-	#fmcomms2
+	fmcomms2
 	#fmcomms2_adv
 	#fmcomms5
 	#fmcomms6
@@ -57,7 +57,7 @@ set(LIBAD9166_PLUGINS #cn0511
 
 set(LIBAD9361_PLUGINS
 	fmcomms2
-	fmcomms2_adv
+	#fmcomms2_adv
 )
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
