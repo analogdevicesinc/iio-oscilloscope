@@ -326,3 +326,24 @@ void dev_attr_read_all(struct iio_device *dev,
 		}
 	}
 }
+
+void chn_attr_read_all(struct iio_channel *chn,
+    int (*cb)(struct iio_channel *chn, const char *attr, const char *value, size_t len, void *d),
+    void *data)
+{
+	unsigned int i, attr_cnt = iio_channel_get_attrs_count(chn);
+	const struct iio_attr *attr;
+	char local_value[8192];
+	int ret;
+
+	for (i = 0; i < attr_cnt; ++i) {
+		attr = iio_channel_get_attr(chn, i);
+		ret = iio_attr_read_raw(attr, local_value, ARRAY_SIZE(local_value));
+		if (ret < 0) {
+			fprintf(stderr, "Failed to read attribute: %s\n", iio_attr_get_name(attr));
+			continue;
+		} else {
+			cb(chn, iio_attr_get_name(attr), local_value, strlen(local_value), data);
+		}
+	}
+}

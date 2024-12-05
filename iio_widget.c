@@ -696,12 +696,11 @@ void iio_update_widgets_of_device(struct iio_widget *widgets,
 		.nb = num_widgets,
 	};
 
-	// !!!!!!!!
 	dev_attr_read_all(dev, __cb_dev_update, &params);
 
-//	for (i = 0; i < iio_device_get_channels_count(dev); i++)
-//		iio_channel_attr_read_all(iio_device_get_channel(dev, i),
-//				__cb_chn_update, &params);
+	for (i = 0; i < iio_device_get_channels_count(dev); i++)
+		chn_attr_read_all(iio_device_get_channel(dev, i),
+				__cb_chn_update, &params);
 }
 
 void iio_save_widgets(struct iio_widget *widgets, unsigned int num_widgets)
