@@ -5,6 +5,8 @@
 #include <gtk/gtk.h>
 #include <errno.h>
 
+#define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
+
 static gint iio_chn_cmp_by_name(gconstpointer ptr_a, gconstpointer ptr_b)
 {
 	struct iio_channel *ch_a = *(struct iio_channel **)ptr_a;
@@ -302,4 +304,25 @@ int chn_attr_write_longlong(struct iio_channel *chn, const char *attr_name, long
 		return iio_attr_write_longlong(attr, value);
 	else
 		return -ENOENT;
+}
+
+void dev_attr_read_all(struct iio_device *dev,
+    int (*cb)(struct iio_device *dev, const char *attr, const char *value, size_t len, void *d),
+    void *data)
+{
+	unsigned int i, attr_cnt = iio_device_get_attrs_count(dev);
+	const struct iio_attr *attr;
+	char local_value[8192];
+	int ret;
+
+	for (i = 0; i < attr_cnt; ++i) {
+		attr = iio_device_get_attr(dev, i);
+		ret = iio_attr_read_raw(attr, local_value, ARRAY_SIZE(local_value));
+		if (ret < 0) {
+			fprintf(stderr, "Failed to read attribute: %s\n", iio_attr_get_name(attr));
+			continue;
+		} else {
+			cb(dev, iio_attr_get_name(attr), local_value, strlen(local_value), data);
+		}
+	}
 }
