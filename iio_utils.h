@@ -48,4 +48,9 @@ inline int chn_attr_write_bool(struct iio_channel *chn, const char *attr_name, b
 inline int chn_attr_write_double(struct iio_channel *chn, const char *attr_name, double value);
 inline int chn_attr_write_longlong(struct iio_channel *chn, const char *attr_name, long long value);
 
+/* Helpers to iterate through all attributes */
+inline void dev_attr_read_all(struct iio_device *dev,
+    int (*cb)(struct iio_device *dev, const char *attr, const char *value, size_t len, void *d),
+    void *data);
+
 #endif  /* __IIO_UTILS__ */

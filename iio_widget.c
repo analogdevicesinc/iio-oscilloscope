@@ -14,6 +14,7 @@
 #include <math.h>
 
 #include "iio_widget.h"
+#include "iio_utils.h"
 
 struct update_widgets_params {
 	struct iio_widget *widgets;
@@ -696,7 +697,7 @@ void iio_update_widgets_of_device(struct iio_widget *widgets,
 	};
 
 	// !!!!!!!!
-//	iio_device_attr_read_all(dev, __cb_dev_update, &params);
+	dev_attr_read_all(dev, __cb_dev_update, &params);
 
 //	for (i = 0; i < iio_device_get_channels_count(dev); i++)
 //		iio_channel_attr_read_all(iio_device_get_channel(dev, i),
