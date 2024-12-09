@@ -28,6 +28,7 @@
 #include "../iio_widget.h"
 #include "../osc_plugin.h"
 #include "../config.h"
+#include "../iio_utils.h"
 
 #define THIS_DRIVER "CN0357"
 
@@ -105,7 +106,7 @@ static int get_adc_voltage(double *out_data)
 	long long raw;
 	int ret;
 
-	ret = iio_channel_attr_read_longlong(adc_ch, "raw", &raw);
+	ret = chn_attr_read_longlong(adc_ch, "raw", &raw);
 	if (!ret)
 		*out_data = V_TO_MV(ad7790_voltage_conversion(raw, V_REF_ADC, GAIN_ADC));
 
@@ -117,7 +118,7 @@ static int get_adc_power_supply(double *out_data)
 	long long raw;
 	int ret;
 
-	ret = iio_channel_attr_read_longlong(pwr_ch, "raw", &raw);
+	ret = chn_attr_read_longlong(pwr_ch, "raw", &raw);
 	if (!ret)
 		*out_data = ad7790_voltage_conversion(raw, V_REF_PWR, GAIN_PWR);
 
@@ -230,7 +231,7 @@ static void program_rdac_clicked_cb(GtkButton *btn, gpointer data)
 	if (!rdac_ch)
 		return;
 
-	iio_channel_attr_write(rdac_ch, "raw", gtk_entry_get_text(GTK_ENTRY(rdac_val)));
+	chn_attr_write_string(rdac_ch, "raw", gtk_entry_get_text(GTK_ENTRY(rdac_val)));
 }
 
 static gboolean update_display(gpointer foo)

@@ -32,10 +32,10 @@ set(PLUGINS
 	#ad9739a
 	#AD5628_1
 	#AD7303
-	#cn0357
-	#cn0508
-	#cn0511
-	#cn0540
+	cn0357
+	cn0508
+	cn0511
+	cn0540
 	#pr_config
 	#motor_control
 	#lidar
