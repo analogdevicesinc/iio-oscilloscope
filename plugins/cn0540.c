@@ -19,6 +19,7 @@
 #include "../iio_widget.h"
 #include "../config.h"
 #include "./block_diagram.h"
+#include "../iio_utils.h"
 
 #define THIS_DRIVER			"CN0540"
 #define ADC_DEVICE			"ad7768-1"
@@ -52,6 +53,7 @@ static struct iio_context *ctx;
 static struct iio_channel *adc_ch;
 static struct iio_channel *dac_ch;
 static struct iio_channel *analog_in[NUM_ANALOG_PINS];
+static struct iio_channels_mask *adc_mask;
 static struct iio_gpio gpio_ch[MAX_NUM_GPIOS];
 static struct iio_widget iio_widgets[25];
 static unsigned int num_widgets;
@@ -104,7 +106,7 @@ static gboolean cn0540_get_gpio_state(const char* gpio_name)
 
 	for(idx = 0; idx < MAX_NUM_GPIOS; idx++) {
 		if(strstr(gpio_ch[idx].label, gpio_name)) {
-			iio_channel_attr_read_longlong(gpio_ch[idx].gpio, "raw",
+			chn_attr_read_longlong(gpio_ch[idx].gpio, "raw",
 				&readback);
 			break;
 		}
@@ -122,7 +124,7 @@ static void cn0540_set_gpio_state(const char* gpio_name, gboolean state)
 
 	for(idx = 0; idx < MAX_NUM_GPIOS; idx++) {
 		if (strstr(gpio_ch[idx].label, gpio_name)) {
-			iio_channel_attr_write_longlong(gpio_ch[idx].gpio,
+			chn_attr_write_longlong(gpio_ch[idx].gpio,
 				"raw", (long long)state);
 			break;
 		}
@@ -134,14 +136,14 @@ static void monitor_shutdown(GtkCheckButton *btn)
 	struct extra_dev_info *info;
 
 	/* If the buffer is enabled */
-	if (iio_channel_is_enabled(adc_ch)) {
+	if (iio_channel_is_enabled(adc_ch, adc_mask)) {
 		info = iio_device_get_data(iio_adc);
 		if (info->buffer) {
 			iio_buffer_destroy(info->buffer);
 			info->buffer = NULL;
 		}
 
-		iio_channel_disable(adc_ch);
+		iio_channel_disable(adc_ch, adc_mask);
 	}
 	/* Shutdown pin is tied to active-low inputs */
 	cn0540_set_gpio_state("cn0540_shutdown_gpio",
@@ -149,7 +151,7 @@ static void monitor_shutdown(GtkCheckButton *btn)
 	gtk_text_buffer_set_text(shutdown_buffer, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn))?
 		"ENABLED" : "DISABLED", -1);
 	/* Enable back the channel */
-	iio_channel_enable(adc_ch);
+	iio_channel_enable(adc_ch, adc_mask);
 }
 
 static void monitor_sw_ff(GtkButton *btn)
@@ -165,21 +167,21 @@ static void monitor_fda(GtkCheckButton *btn)
 	struct extra_dev_info *info;
 
 	/* If the buffer is enabled */
-	if (iio_channel_is_enabled(adc_ch)) {
+	if (iio_channel_is_enabled(adc_ch, adc_mask)) {
 		info = iio_device_get_data(iio_adc);
 		if (info->buffer) {
 			iio_buffer_destroy(info->buffer);
 			info->buffer = NULL;
 		}
 
-		iio_channel_disable(adc_ch);
+		iio_channel_disable(adc_ch, adc_mask);
 	}
 	/* FDA_DIS pin is tied to active-low inputs */
 	cn0540_set_gpio_state("cn0540_FDA_DIS",!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)));
 	gtk_text_buffer_set_text(fda_buffer, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)) ?
 		"ENABLED" : "DISABLED", -1);
 	/* Enable back the channel */
-	iio_channel_enable(adc_ch);
+	iio_channel_enable(adc_ch, adc_mask);
 }
 
 static void monitor_cc(GtkCheckButton *btn)
@@ -194,20 +196,20 @@ static void monitor_fda_mode(GtkCheckButton *btn)
 	struct extra_dev_info *info;
 
 	/* If the buffer is enabled */
-	if (iio_channel_is_enabled(adc_ch)) {
+	if (iio_channel_is_enabled(adc_ch, adc_mask)) {
 		info = iio_device_get_data(iio_adc);
 		if (info->buffer) {
 			iio_buffer_destroy(info->buffer);
 			info->buffer = NULL;
 		}
 
-		iio_channel_disable(adc_ch);
+		iio_channel_disable(adc_ch, adc_mask);
 	}
 	cn0540_set_gpio_state("cn0540_FDA_MODE",gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)));
 	gtk_text_buffer_set_text(fda_mode_buffer, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(btn)) ?
 		"FULL POWER" : "LOW POWER", -1);
 	/* Enable back the channel */
-	iio_channel_enable(adc_ch);
+	iio_channel_enable(adc_ch, adc_mask);
 }
 
 static gboolean update_voltages(struct iio_device *voltage_mon)
@@ -218,8 +220,8 @@ static gboolean update_voltages(struct iio_device *voltage_mon)
 	int idx;
 
 	for(idx = 0; idx < NUM_ANALOG_PINS; idx++) {
-		iio_channel_attr_read_longlong(analog_in[idx], "raw", &raw);
-		iio_channel_attr_read_double(analog_in[idx], "scale", &scale);
+		chn_attr_read_longlong(analog_in[idx], "raw", &raw);
+		chn_attr_read_double(analog_in[idx], "scale", &scale);
 		result = raw * scale;
 		if(!strcmp(iio_device_get_name(voltage_mon),VOLTAGE_MONITOR_1))
 			result *= XADC_VREF;
@@ -235,8 +237,8 @@ static double get_voltage(struct iio_channel *ch)
 	double scale;
 	long long raw;
 
-	iio_channel_attr_read_longlong(ch,"raw",&raw);
-	iio_channel_attr_read_double(ch,"scale",&scale);
+	chn_attr_read_longlong(ch,"raw",&raw);
+	chn_attr_read_double(ch,"scale",&scale);
 	return raw * scale;
 }
 
@@ -244,8 +246,8 @@ static void set_voltage(struct iio_channel *ch, double voltage_mv)
 {
 	double scale;
 
-	iio_channel_attr_read_double(ch,"scale",&scale);
-	iio_channel_attr_write_longlong(ch,"raw",
+	chn_attr_read_double(ch,"scale",&scale);
+	chn_attr_write_longlong(ch,"raw",
 					(long long)(voltage_mv / scale));
 }
 
@@ -350,6 +352,8 @@ static void cn0540_get_channels()
 	int idx = -1;
 	char label[10] = "voltage0";
 
+	adc_mask = iio_create_channels_mask(1);
+
 	adc_ch = iio_device_find_channel(iio_adc, ADC_DEVICE_CH, FALSE);
 	dac_ch = iio_device_find_channel(iio_dac, DAC_DEVICE_CH, TRUE);
 
@@ -362,7 +366,7 @@ static void cn0540_get_channels()
 		gpio_ch[++idx].gpio = iio_device_find_channel(iio_gpio, label,
 								  direction);
 		if (gpio_ch[idx].gpio != NULL){
-			iio_channel_attr_read(gpio_ch[idx].gpio, "label",
+			chn_attr_read_raw(gpio_ch[idx].gpio, "label",
 						  gpio_ch[idx].label, 30);
 			label[7]++;
 		} else if (direction && (gpio_ch[idx].gpio == NULL)) {
@@ -570,6 +574,7 @@ static bool cn0540_identify(const struct osc_plugin *plugin)
 
 static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
+	iio_channels_mask_destroy(adc_mask);
 	g_source_remove_by_user_data(iio_voltage_mon);
 	osc_destroy_context(ctx);
 }
