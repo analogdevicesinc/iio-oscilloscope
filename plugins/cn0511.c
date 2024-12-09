@@ -10,11 +10,12 @@
 #include <math.h>
 
 #include <ad9166.h>
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "../osc.h"
 #include "../osc_plugin.h"
 #include "../iio_widget.h"
+#include "../iio_utils.h"
 
 #define THIS_DRIVER	"CN0511"
 #define DAC_DEVICE	"ad9166"
@@ -146,12 +147,12 @@ static GtkWidget *cn0511_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	dac_ch = iio_device_find_channel(dac, "altvoltage0", true);
 
-	ret = iio_device_attr_write_longlong(dac, "fir85_enable", 1);
+	ret = dev_attr_write_longlong(dac, "fir85_enable", 1);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to enable FIR85. Error: %d\n", ret);
 	}
 
-	ret = iio_device_attr_write_longlong(dac, "sampling_frequency", 6000000000);
+	ret = dev_attr_write_longlong(dac, "sampling_frequency", 6000000000);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to set sampling frequency. Error: %d\n", ret);
 	}
