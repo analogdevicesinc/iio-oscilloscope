@@ -24,6 +24,7 @@
 #include "../iio_widget.h"
 #include "../osc_plugin.h"
 #include "../config.h"
+#include "../iio_utils.h"
 
 #define THIS_DRIVER "CN0508"
 
@@ -96,7 +97,7 @@ static int get_adc_voltage(struct iio_channel *adc_ch, double *out_data)
 	long long raw;
 	int ret;
 
-	ret = iio_channel_attr_read_longlong(adc_ch, "raw", &raw);
+	ret = chn_attr_read_longlong(adc_ch, "raw", &raw);
 	if (!ret)
 		*out_data = ad7124_voltage_conversion(raw, V_REF_ADC, GAIN_ADC);
 
@@ -263,17 +264,17 @@ static GtkWidget* cn0508_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	current_pot_pos_ch = iio_device_find_channel(adc, "voltage5-voltage19", false);
 	voltage_pot_pos_ch = iio_device_find_channel(adc, "voltage6-voltage19", false);
 
-	iio_channel_attr_write(u2_temp_ch, "sampling_frequency", "9600");
-	iio_channel_attr_write(u3_temp_ch, "sampling_frequency", "9600");
-	iio_channel_attr_write(out_current_ch, "sampling_frequency", "9600");
-	iio_channel_attr_write(in_v_attenuator_ch, "sampling_frequency", "9600");
-	iio_channel_attr_write(out_v_attenuator_ch, "sampling_frequency", "9600");
-	iio_channel_attr_write(current_pot_pos_ch, "sampling_frequency", "9600");
-	iio_channel_attr_write(voltage_pot_pos_ch, "sampling_frequency", "9600");
+	chn_attr_write_string(u2_temp_ch, "sampling_frequency", "9600");
+	chn_attr_write_string(u3_temp_ch, "sampling_frequency", "9600");
+	chn_attr_write_string(out_current_ch, "sampling_frequency", "9600");
+	chn_attr_write_string(in_v_attenuator_ch, "sampling_frequency", "9600");
+	chn_attr_write_string(out_v_attenuator_ch, "sampling_frequency", "9600");
+	chn_attr_write_string(current_pot_pos_ch, "sampling_frequency", "9600");
+	chn_attr_write_string(voltage_pot_pos_ch, "sampling_frequency", "9600");
 
 	dac_ch = iio_device_find_channel(dac, "voltage0", true);
 
-	iio_channel_attr_read_double(dac_ch, "scale", &val);
+	chn_attr_read_double(dac_ch, "scale", &val);
 
 	iio_spin_button_int_init_from_builder(&iio_widgets[num_widgets++], dac,
 					      dac_ch, "raw", builder,
