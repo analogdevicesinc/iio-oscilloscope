@@ -29,7 +29,7 @@ set(PLUGINS
 	ad6676
 	fmcadc3
 	daq2
-	#ad9739a
+	ad9739a
 	AD5628_1
 	#AD7303
 	cn0357
