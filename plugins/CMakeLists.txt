@@ -43,7 +43,7 @@ set(PLUGINS
 	#debug
 	#spectrum_analyzer
 	#scpi
-	#ad9081
+	ad9081
 	#ad9084
 	#adrv9002
 	#cf_axi_tdd
