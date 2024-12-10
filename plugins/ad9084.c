@@ -333,7 +333,7 @@ static void ad9084_label_writer(GtkBuilder *builder, struct iio_channel *voltage
 	if (!voltage)
 		return;
 
-	ret = iio_channel_attr_read(voltage, "label", buf, sizeof(buf));
+	ret = chn_attr_read_raw(voltage, "label", buf, sizeof(buf));
 	if (ret > 0) {
 		GtkWidget *label;
 		gchar *text, *id;
@@ -391,7 +391,7 @@ static void load_pfir(GtkFileChooser *chooser, gpointer data)
 	if (!buf)
 		goto err;
 
-	ret = iio_device_attr_write_raw(priv->ad9084, "pfilt_config", buf, size);
+	ret = dev_attr_write_raw(priv->ad9084, "pfilt_config", buf, size);
 	free(buf);
 	if (ret < 0)
 		goto err;
@@ -425,7 +425,7 @@ static void load_cfir(GtkFileChooser *chooser, gpointer data)
 	if (!buf)
 		goto err;
 
-	ret = iio_device_attr_write_raw(priv->ad9084, "cfir_config", buf, size);
+	ret = dev_attr_write_raw(priv->ad9084, "cfir_config", buf, size);
 	free(buf);
 	if (ret < 0)
 		goto err;
@@ -521,7 +521,7 @@ static GtkWidget *ad9084_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	if (!ch0)
 		ch0 = iio_device_find_channel(ad9084_dev, "voltage0", FALSE);
 
-	if (ch0 && iio_channel_attr_read_longlong(ch0, "adc_frequency", &adc_freq) == 0)
+	if (ch0 && chn_attr_read_longlong(ch0, "adc_frequency", &adc_freq) == 0)
 		snprintf(attr_val, sizeof(attr_val), "%.2f",
 			 (double)(adc_freq / 1000000ul));
 	else
@@ -552,7 +552,7 @@ static GtkWidget *ad9084_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	if (!ch0)
 		ch0 = iio_device_find_channel(ad9084_dev, "voltage0", TRUE);
 
-	if (ch0 && iio_channel_attr_read_longlong(ch0, "dac_frequency", &dac_freq) == 0)
+	if (ch0 && chn_attr_read_longlong(ch0, "dac_frequency", &dac_freq) == 0)
 		snprintf(attr_val, sizeof(attr_val), "%.2f",
 			 (double)(dac_freq / 1000000ul));
 	else
@@ -647,7 +647,7 @@ tx_chann:
 		gtk_widget_show_all(dds_container);
 
 		ch0 = iio_device_find_channel(dac, "altvoltage0", true);
-		if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &dac_freq) == 0)
+		if (chn_attr_read_longlong(ch0, "sampling_frequency", &dac_freq) == 0)
 			dac_tx_sampling_freq = (double)(dac_freq / 1000000ul);
 
 		dac_data_manager_freq_widgets_range_update(priv->dac_tx_manager,
