@@ -23,7 +23,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "../libini2.h"
 #include "../osc.h"
@@ -791,7 +791,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 		val = (long long) gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
 
 		if (item->lut_len) {
-			iio_device_debug_attr_read_longlong(plugin->priv->dev, item->name, &mask);
+			dev_debug_attr_read_longlong(plugin->priv->dev, item->name, &mask);
 			mask &= ~((1 << item->lut_len) - 1);
 			mask |= val & ((1 << item->lut_len) - 1);
 			val = mask;
@@ -815,7 +815,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 		if (ret != 2)
 			return;
 
-		iio_device_debug_attr_read_longlong(plugin->priv->dev, str, &mask);
+		dev_debug_attr_read_longlong(plugin->priv->dev, str, &mask);
 
 		if (val) {
 			mask |= (1 << bit);
@@ -823,7 +823,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 			mask &= ~(1 << bit);
 		}
 
-		iio_device_debug_attr_write_longlong(plugin->priv->dev, str, mask);
+		dev_debug_attr_write_longlong(plugin->priv->dev, str, mask);
 
 		return;
 
@@ -831,7 +831,7 @@ static void signal_handler_cb(GtkWidget *widget, gpointer data)
 		return;
 	}
 
-	iio_device_debug_attr_write_longlong(plugin->priv->dev, item->name, val);
+	dev_debug_attr_write_longlong(plugin->priv->dev, item->name, val);
 
 	if (!strcmp(item->name, "initialize")) {
 		reload_settings();
@@ -854,8 +854,8 @@ static void bist_tone_cb(GtkWidget *widget, gpointer data)
 
 	sprintf(temp, "%u %u %u", enable, tx1_freq, tx2_freq);
 
-	iio_device_debug_attr_write(plugin->priv->dev, "bist_tone", "0 0 0");
-	iio_device_debug_attr_write(plugin->priv->dev, "bist_tone", temp);
+	dev_debug_attr_write_string(plugin->priv->dev, "bist_tone", "0 0 0");
+	dev_debug_attr_write_string(plugin->priv->dev, "bist_tone", temp);
 }
 
 static char *set_widget_value(GtkWidget *widget, struct w_info *item, long long val)
@@ -990,12 +990,12 @@ static int __update_widget(struct iio_device *dev, const char *attr,
 
 static int connect_widgets(struct osc_plugin *plugin)
 {
-	return iio_device_debug_attr_read_all(plugin->priv->dev, __connect_widget, plugin);
+	return dev_debug_attr_read_all(plugin->priv->dev, __connect_widget, plugin);
 }
 
 static int update_widgets(struct osc_plugin *plugin)
 {
-	return iio_device_debug_attr_read_all(plugin->priv->dev, __update_widget, plugin->priv->builder);
+	return dev_debug_attr_read_all(plugin->priv->dev, __update_widget, plugin->priv->builder);
 }
 
 static void change_page_cb(GtkNotebook *notebook, GtkNotebookTab *page,
