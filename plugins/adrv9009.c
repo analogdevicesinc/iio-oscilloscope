@@ -248,7 +248,7 @@ static void multichip_sync()
 		return;
 
 	/* Check for and skip in case of JESD204-FSM support */
-	ret = iio_device_attr_write_longlong(subcomponents[0].iio_dev, "multichip_sync", 424242);
+	ret = dev_attr_write_longlong(subcomponents[0].iio_dev, "multichip_sync", 424242);
 	if (ret != -EINVAL)
 		return;
 
@@ -272,7 +272,7 @@ static void multichip_sync()
 	for (; i <= 11; i++) {
 		guint n = 0;
 		for (; n < phy_devs_count; n++) {
-			iio_device_attr_write_longlong(subcomponents[n].iio_dev, "multichip_sync", i);
+			dev_attr_write_longlong(subcomponents[n].iio_dev, "multichip_sync", i);
 		}
 	}
 }
@@ -287,7 +287,7 @@ static void update_label_from(GtkWidget *label, struct iio_device *dev, const ch
 
 	ch = iio_device_find_channel(dev, channel, output);
 	if (ch) {
-		ret = iio_channel_attr_read_longlong(ch, attribute, &val);
+		ret = chn_attr_read_longlong(ch, attribute, &val);
 
 		if (scale == 1)
 			snprintf(buf, sizeof(buf), "%lld %s", val, unit);
@@ -362,7 +362,7 @@ int load_tal_profile(const char *file_name,
 		ret = INT_MAX;
 		guint i = 0;
 		for (; i < phy_devs_count; i++) {
-			ret2 = iio_device_attr_write_raw(subcomponents[i].iio_dev, "profile_config", buf, len);
+			ret2 = dev_attr_write_raw(subcomponents[i].iio_dev, "profile_config", buf, len);
 			ret = (ret > ret2) ? ret2 : ret;
 		}
 
@@ -422,7 +422,7 @@ static void glb_settings_update_labels(void)
 
 	/* Get ensm_mode from all devices. Notify user if any of devices has a different mode than the others. */
 	for (; i < phy_devs_count; i++) {
-		ret = iio_device_attr_read(subcomponents[i].iio_dev, "ensm_mode", buf, sizeof(buf));
+		ret = dev_attr_read_raw(subcomponents[i].iio_dev, "ensm_mode", buf, sizeof(buf));
 		if (ret > 0) {
 			if (i > 0) {
 				if (strncmp(buf, gtk_label_get_text(GTK_LABEL(ensm_mode)), sizeof(buf))) {
@@ -441,7 +441,7 @@ static void glb_settings_update_labels(void)
 	for (i = 0; i < phy_devs_count; i++) {
 		ch = iio_device_find_channel(subcomponents[i].iio_dev, "voltage0", false);
 		if (ch) {
-			ret = iio_channel_attr_read(ch, "gain_control_mode", buf, sizeof(buf));
+			ret = chn_attr_read_raw(ch, "gain_control_mode", buf, sizeof(buf));
 		} else {
 			ret = 0;
 		}
@@ -453,7 +453,7 @@ static void glb_settings_update_labels(void)
 
 		ch = iio_device_find_channel(subcomponents[i].iio_dev, "voltage1", false);
 		if (ch) {
-			ret = iio_channel_attr_read(ch, "gain_control_mode", buf, sizeof(buf));
+			ret = chn_attr_read_raw(ch, "gain_control_mode", buf, sizeof(buf));
 		} else {
 			ret = 0;
 		}
@@ -496,7 +496,7 @@ static void set_ensm_mode_of_all_devices(const char *mode)
 	guint i = 0;
 
 	for (; i < phy_devs_count; i++) {
-		iio_device_attr_write_raw(subcomponents[i].iio_dev, "ensm_mode", mode, strlen(mode));
+		dev_attr_write_raw(subcomponents[i].iio_dev, "ensm_mode", mode, strlen(mode));
 	}
 }
 
@@ -568,7 +568,7 @@ static void int_dec_freq_update(void)
 		return;
 
 	ch = iio_device_find_channel(cap, "voltage0_i", false);
-	iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
+	chn_attr_read_double(ch, "sampling_frequency", &freq);
 	text = g_strdup_printf ("%f", freq / mhz_scale);
 
 	guint i = 0;
@@ -581,7 +581,7 @@ static void int_dec_freq_update(void)
 
 	ch = iio_device_find_channel(dds, "voltage0", true);
 	text = g_strdup_printf ("%f", freq / mhz_scale);
-	iio_channel_attr_read_double(ch, "sampling_frequency", &freq);
+	chn_attr_read_double(ch, "sampling_frequency", &freq);
 
 	for (i = 0; i < phy_devs_count; i++)
 		gtk_label_set_text(GTK_LABEL(subcomponents[i].label_sampling_freq_tx), text);
@@ -603,7 +603,7 @@ static void rssi_update_label(GtkWidget *label, struct iio_channel *ch)
 	if (!gtk_widget_is_drawable(GTK_WIDGET(label)))
 		return;
 
-	ret = iio_channel_attr_read(ch, "rssi", buf, sizeof(buf));
+	ret = chn_attr_read_raw(ch, "rssi", buf, sizeof(buf));
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(label), buf);
 	else
@@ -666,10 +666,10 @@ static void rx_phase_rotation_update()
 		struct iio_channel *i_chn = g_array_index(out, struct iio_channel*, i);
 		struct iio_channel *q_chn = g_array_index(out, struct iio_channel*, i + 1);
 
-		iio_channel_attr_read_double(i_chn, "calibscale", &val[0]);
-		iio_channel_attr_read_double(i_chn, "calibphase", &val[1]);
-		iio_channel_attr_read_double(q_chn, "calibscale", &val[2]);
-		iio_channel_attr_read_double(q_chn, "calibphase", &val[3]);
+		chn_attr_read_double(i_chn, "calibscale", &val[0]);
+		chn_attr_read_double(i_chn, "calibphase", &val[1]);
+		chn_attr_read_double(q_chn, "calibscale", &val[2]);
+		chn_attr_read_double(q_chn, "calibphase", &val[3]);
 
 		val[0] = acos(val[0]) * 360.0 / (2.0 * M_PI);
 		val[1] = asin(-1.0 * val[1]) * 360.0 / (2.0 * M_PI);
@@ -836,10 +836,10 @@ static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
 	}
 
 	if (out1 && out0) {
-		iio_channel_attr_write_double(out0, "calibscale", (double) cos(phase));
-		iio_channel_attr_write_double(out0, "calibphase", (double)(-1 * sin(phase)));
-		iio_channel_attr_write_double(out1, "calibscale", (double) cos(phase));
-		iio_channel_attr_write_double(out1, "calibphase", (double) sin(phase));
+		chn_attr_write_double(out0, "calibscale", (double) cos(phase));
+		chn_attr_write_double(out0, "calibphase", (double)(-1 * sin(phase)));
+		chn_attr_write_double(out1, "calibscale", (double) cos(phase));
+		chn_attr_write_double(out1, "calibphase", (double) sin(phase));
 	}
 }
 
@@ -1032,7 +1032,7 @@ static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 		g_free(attrib_name);
 
 		if (ch && value) {
-			iio_channel_attr_write(ch, "gain_control_mode", value);
+			chn_attr_write_string(ch, "gain_control_mode", value);
 			free(value);
 		}
 
@@ -1042,7 +1042,7 @@ static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 		g_free(attrib_name);
 
 		if (ch && value) {
-			iio_channel_attr_write(ch, "gain_control_mode", value);
+			chn_attr_write_string(ch, "gain_control_mode", value);
 			free(value);
 		}
 
