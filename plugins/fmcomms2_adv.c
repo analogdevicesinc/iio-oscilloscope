@@ -24,7 +24,7 @@
 #include <unistd.h>
 
 #include <ad9361.h>
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "../libini2.h"
 #include "../osc.h"
@@ -32,6 +32,7 @@
 #include "../config.h"
 #include "../iio_widget.h"
 #include "../datatypes.h"
+#include "../iio_utils.h"
 
 #define PHY_DEVICE	"ad9361-phy"
 #define PHY_SLAVE_DEVICE	"ad9361-phy-B"
@@ -452,7 +453,7 @@ static void signal_handler_cb (GtkWidget *widget, gpointer data)
 			if (ret != 2)
 				return;
 
-			iio_device_debug_attr_read_longlong(dev, str, &mask);
+			dev_debug_attr_read_longlong(dev, str, &mask);
 
 			if (val) {
 				mask |= (1 << bit);
@@ -460,19 +461,19 @@ static void signal_handler_cb (GtkWidget *widget, gpointer data)
 				mask &= ~(1 << bit);
 			}
 
-			iio_device_debug_attr_write_longlong(dev, str, mask);
+			dev_debug_attr_write_longlong(dev, str, mask);
 
 			if (dev_slave)
-				iio_device_debug_attr_write_longlong(dev_slave, str, mask);
+				dev_debug_attr_write_longlong(dev_slave, str, mask);
 			return;
 		default:
 			return;
 	}
 
-	iio_device_debug_attr_write_longlong(dev, item->name, val);
+	dev_debug_attr_write_longlong(dev, item->name, val);
 
 	if (dev_slave)
-		iio_device_debug_attr_write_longlong(dev_slave, item->name, val);
+		dev_debug_attr_write_longlong(dev_slave, item->name, val);
 
 	if (!strcmp(item->name, "initialize")) {
 		reload_settings();
@@ -549,10 +550,10 @@ static void trx_phase_rotation(struct iio_device *dev, gdouble val)
 		}
 
 		if (out1 && out0) {
-			iio_channel_attr_write_double(out0, "calibscale", (double) vcos);
-			iio_channel_attr_write_double(out0, "calibphase", (double) (-1.0 * vsin));
-			iio_channel_attr_write_double(out1, "calibscale", (double) vcos);
-			iio_channel_attr_write_double(out1, "calibphase", (double) vsin);
+			chn_attr_write_double(out0, "calibscale", (double) vcos);
+			chn_attr_write_double(out0, "calibphase", (double) (-1.0 * vsin));
+			chn_attr_write_double(out1, "calibscale", (double) vcos);
+			chn_attr_write_double(out1, "calibphase", (double) vsin);
 		}
 	}
 }
@@ -579,10 +580,10 @@ static void dds_tx_phase_rotation(struct iio_device *dev, gdouble val)
 			case 1:
 			case 4:
 			case 5:
-				iio_channel_attr_write_longlong(dds_out[d][j], "phase", i);
+				chn_attr_write_longlong(dds_out[d][j], "phase", i);
 				break;
 			default:
-				iio_channel_attr_write_longlong(dds_out[d][j], "phase", q);
+				chn_attr_write_longlong(dds_out[d][j], "phase", q);
 		}
 	}
 
@@ -594,8 +595,8 @@ static int default_dds(long long freq, double scale)
 
 	for (i = 0; i < 2; i++) {
 		for (j = 0; j < 8; j++) {
-			ret |= iio_channel_attr_write_longlong(dds_out[i][j], "frequency", freq);
-			ret |= iio_channel_attr_write_double(dds_out[i][j], "scale", scale);
+			ret |= chn_attr_write_longlong(dds_out[i][j], "frequency", freq);
+			ret |= chn_attr_write_double(dds_out[i][j], "scale", scale);
 		}
 
 		dds_tx_phase_rotation(i ? dev_dds_slave : dev_dds_master, 0.0);
@@ -707,8 +708,8 @@ static void __cal_switch_ports_enable_cb (unsigned val)
 
 
 #if 0
-	iio_device_debug_attr_write_bool(dev, "loopback", lp_master);
-	iio_device_debug_attr_write_bool(dev_slave, "loopback", lp_slave);
+	dev_debug_attr_write_string_bool(dev, "loopback", lp_master);
+	dev_debug_attr_write_string_bool(dev_slave, "loopback", lp_slave);
 #else
 	near_end_loopback_ctrl(0, lp_slave); /* HPC */
 	near_end_loopback_ctrl(1, lp_slave); /* HPC */
@@ -716,16 +717,16 @@ static void __cal_switch_ports_enable_cb (unsigned val)
 	near_end_loopback_ctrl(4, lp_master); /* LPC */
 	near_end_loopback_ctrl(5, lp_master); /* LPC */
 #endif
-	iio_device_debug_attr_write_longlong(dev, "calibration_switch_control", sw);
-	iio_channel_attr_write(iio_device_find_channel(dev, "voltage0", false),
+	dev_debug_attr_write_longlong(dev, "calibration_switch_control", sw);
+	chn_attr_write_string(iio_device_find_channel(dev, "voltage0", false),
 			       "rf_port_select", rx_port);
-	iio_channel_attr_write(iio_device_find_channel(dev, "voltage0", true),
+	chn_attr_write_string(iio_device_find_channel(dev, "voltage0", true),
 			       "rf_port_select", tx_port);
 
 	if (dev_slave) {
-		iio_channel_attr_write(iio_device_find_channel(dev_slave, "voltage0", false),
+		chn_attr_write_string(iio_device_find_channel(dev_slave, "voltage0", false),
 				"rf_port_select", rx_port);
-		iio_channel_attr_write(iio_device_find_channel(dev_slave, "voltage0", true),
+		chn_attr_write_string(iio_device_find_channel(dev_slave, "voltage0", true),
 				"rf_port_select", tx_port);
 	}
 
@@ -870,8 +871,8 @@ static void calibrate (gpointer button)
 		goto calibrate_fail;
 	}
 
-	iio_channel_attr_read_longlong(dds_out[0][0], "frequency", &cal_tone);
-	iio_channel_attr_read_longlong(dds_out[0][0], "sampling_frequency", &cal_freq);
+	chn_attr_read_longlong(dds_out[0][0], "frequency", &cal_tone);
+	chn_attr_read_longlong(dds_out[0][0], "sampling_frequency", &cal_freq);
 
 	samples = get_cal_samples(cal_tone, cal_freq);
 
@@ -883,8 +884,8 @@ static void calibrate (gpointer button)
 	gdk_threads_leave();
 
 	/* Turn off quadrature tracking while the sync is going on */
-	iio_channel_attr_write(in0, "quadrature_tracking_en", "0");
-	iio_channel_attr_write(in0_slave, "quadrature_tracking_en", "0");
+	chn_attr_write_string(in0, "quadrature_tracking_en", "0");
+	chn_attr_write_string(in0_slave, "quadrature_tracking_en", "0");
 
 	/* reset any Tx rotation to zero */
 	trx_phase_rotation(cf_ad9361_lpc, 0.0);
@@ -953,8 +954,8 @@ calibrate_fail:
 	__cal_switch_ports_enable_cb(0);
 
 	if (in0 && in0_slave) {
-		iio_channel_attr_write(in0, "quadrature_tracking_en", "1");
-		iio_channel_attr_write(in0_slave, "quadrature_tracking_en", "1");
+		chn_attr_write_string(in0, "quadrature_tracking_en", "1");
+		chn_attr_write_string(in0_slave, "quadrature_tracking_en", "1");
 	}
 
 	gdk_threads_enter();
@@ -1089,10 +1090,10 @@ static void bist_tone_cb (GtkWidget *widget, gpointer data)
 	sprintf(temp, "%u %u %u %u", mode, freq, level * 6,
 		(c2q << 3) | (c2i << 2) | (c1q << 1) | c1i);
 
-	iio_device_debug_attr_write(dev, "bist_tone", temp);
+	dev_debug_attr_write_string(dev, "bist_tone", temp);
 
 	if (dev_slave)
-		iio_device_debug_attr_write(dev_slave, "bist_tone", temp);
+		dev_debug_attr_write_string(dev_slave, "bist_tone", temp);
 
 }
 
@@ -1188,12 +1189,12 @@ static int __update_widget(struct iio_device *dev, const char *attr,
 
 static int connect_widgets(GtkBuilder *builder)
 {
-	return iio_device_debug_attr_read_all(dev, __connect_widget, builder);
+	return dev_debug_attr_read_all(dev, __connect_widget, builder);
 }
 
 static int update_widgets(GtkBuilder *builder)
 {
-	return iio_device_debug_attr_read_all(dev, __update_widget, builder);
+	return dev_debug_attr_read_all(dev, __update_widget, builder);
 }
 
 static void change_page_cb (GtkNotebook *notebook, GtkNotebookTab *page,
