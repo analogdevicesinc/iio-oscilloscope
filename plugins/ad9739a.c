@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include <string.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "../libini2.h"
 #include "../osc.h"
