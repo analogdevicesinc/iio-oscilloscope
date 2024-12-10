@@ -21,8 +21,9 @@
 #include <sys/stat.h>
 #include <string.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
+#include "../iio_utils.h"
 #include "../libini2.h"
 #include "../osc.h"
 #include "../iio_widget.h"
@@ -296,7 +297,7 @@ static GtkWidget * daq2_init(struct osc_plugin *plugin, GtkWidget *notebook, con
 	ch0 = iio_device_find_channel(adc, "voltage0", false);
 	ch1 = iio_device_find_channel(adc, "voltage1", false);
 
-	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
+	if (chn_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
 		snprintf(attr_val, sizeof(attr_val), "%.3f", (double)val / 1000000.0);
 	else
 		snprintf(attr_val, sizeof(attr_val), "%s", "error");
@@ -314,7 +315,7 @@ static GtkWidget * daq2_init(struct osc_plugin *plugin, GtkWidget *notebook, con
 	/* Tx Widgets */
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
 
-	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0) {
+	if (chn_attr_read_longlong(ch0, "sampling_frequency", &val) == 0) {
 		tx_sampling_freq = (double)val / 1000000.0;
 		snprintf(attr_val, sizeof(attr_val), "%.3f", tx_sampling_freq);
 	} else {
