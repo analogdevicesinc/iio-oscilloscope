@@ -24,8 +24,8 @@ set(PLUGINS
 	#fmcomms11
 	ad9371
 	ad9371_adv
-	#adrv9009
-	#adrv9009_adv
+	adrv9009
+	adrv9009_adv
 	#ad6676
 	#fmcadc3
 	#daq2
