@@ -589,7 +589,7 @@ static void adrv9002_run_cals(GtkWidget *widget, struct plugin_private *priv)
 {
 	ssize_t ret;
 
-	ret = iio_device_attr_write(priv->adrv9002, "initial_calibrations", "run");
+	ret = dev_attr_write_raw(priv->adrv9002, "initial_calibrations", "run", strlen("run"));
 	if (ret < 0)
 		dialog_box_message_error(widget, "Initial Calibrations",
 					 "Failed to re-run Initial Calibrations");
@@ -648,7 +648,7 @@ static void update_dac_manager(struct plugin_private *priv)
 		struct iio_channel *ch0 = priv->dac_manager[i].ch0;
 		long long dac_freq = 0;
 
-		if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &dac_freq) == 0)
+		if (chn_attr_read_longlong(ch0, "sampling_frequency", &dac_freq) == 0)
 			dac_tx_sampling_freq = (double)dac_freq / 1000000ul;
 
 		dac_data_manager_freq_widgets_range_update(priv->dac_manager[i].dac_tx_manager,
@@ -663,7 +663,7 @@ static void update_label(const struct adrv9002_gtklabel *label)
 	double val;
 	char attr_val[64];
 
-	if (iio_channel_attr_read_double(label->chann, label->iio_attr, &val) == 0)
+	if (chn_attr_read_double(label->chann, label->iio_attr, &val) == 0)
 		snprintf(attr_val, sizeof(attr_val), "%.4f", val / label->scale);
 	else
 		snprintf(attr_val, sizeof(attr_val), "%s", "error");
@@ -712,7 +712,7 @@ static void update_special_rx_widgets(struct adrv9002_rx *rx, const int n_widget
 		 * the RSSI level if the channel is not enabled. Hence, make sure we only update it
 		 * if the channel is enabled.
 		 */
-		if (iio_channel_attr_read(rx[i].rx.ensm.chn, rx[i].rx.ensm.attr_name, ensm,
+		if (chn_attr_read_raw(rx[i].rx.ensm.chn, rx[i].rx.ensm.attr_name, ensm,
 					  sizeof(ensm)) > 0 && !strcmp(ensm, "rf_enabled"))
 			update_label(&rx[i].rssi);
 		update_label(&rx[i].decimated_power);
@@ -774,7 +774,7 @@ static void adrv9002_update_orx_widgets(struct plugin_private *priv, const int c
 
 	/* can we actually enable/disable orx?! */
 	sprintf(label, "powerdown_en_label_orx%d", orx->idx + 1);
-	ret = iio_channel_attr_read_longlong(orx->orx_en.chn, "orx_en", &dummy);
+	ret = chn_attr_read_longlong(orx->orx_en.chn, "orx_en", &dummy);
 	/*
 	 * Lets' hide as this is not really supposed to change at runtime. However, we need
 	 * to do the check here as at the plugin initialization, the device might not have a
@@ -857,7 +857,7 @@ static void adrv9002_profile_read(struct plugin_private *priv)
 	ssize_t ret;
 	GtkLabel *label = GTK_LABEL(gtk_builder_get_object(priv->builder, "profile_config_read"));
 
-	ret = iio_device_attr_read(priv->adrv9002, "profile_config", profile, sizeof(profile));
+	ret = dev_attr_read_raw(priv->adrv9002, "profile_config", profile, sizeof(profile));
 	if (ret < 0)
 		strcpy(profile, "error\n");
 
@@ -871,7 +871,7 @@ static void adrv9002_check_orx_status(struct plugin_private *priv, struct adrv90
 	char gtk_str[32];
 
 	sprintf(gtk_str, "frame_orx%d", orx->idx + 1);
-	ret = iio_channel_attr_read_double(orx->w[0].chn, "orx_hardwaregain", &dummy);
+	ret = chn_attr_read_double(orx->w[0].chn, "orx_hardwaregain", &dummy);
 	if (ret == -ENODEV) {
 		orx->enabled = false;
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, gtk_str)));
@@ -892,7 +892,7 @@ static bool adrv9002_channel_is_enabled(struct adrv9002_common *chan)
 	 * wrong with the device). We can also just use the iio channel from the first
 	 * widget as the channel is the same for all widgets on this port...
 	 */
-	ret = iio_channel_attr_read_double(chan->w[0].chn, "rf_bandwidth", &dummy);
+	ret = chn_attr_read_double(chan->w[0].chn, "rf_bandwidth", &dummy);
 
 	if(ret < 0 && ret != -ENODEV) {
 		printf("Warning: iio channel returned an error when reading it: %d. We assume the channel is enabled\n",
@@ -939,7 +939,7 @@ static void adrv9002_check_nco_freq_support(struct plugin_private *priv, const i
 	if (!c->enabled)
 		return;
 
-	ret = iio_channel_attr_read_longlong(c->nco_freq.chn, "nco_frequency", &dummy);
+	ret = chn_attr_read_longlong(c->nco_freq.chn, "nco_frequency", &dummy);
 	if (ret == -ENOTSUPP) {
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder,
 								  label_str)));
@@ -967,7 +967,7 @@ static void adrv9002_check_tx_track_support(struct plugin_private *priv, struct 
 
 		/* only need to read one attr for this */
 		if (!checked) {
-			ret = iio_channel_attr_read(tx->w[w].chn, tx->w[w].attr_name, dummy, sizeof(dummy));
+			ret = chn_attr_read_raw(tx->w[w].chn, tx->w[w].attr_name, dummy, sizeof(dummy));
 			checked = true;
 		}
 
@@ -991,7 +991,7 @@ static void adrv9002_update_rx_intf_gain_attr_available(struct adrv9002_rx *rx)
 	char text[512];
 	int ret;
 
-	ret = iio_channel_attr_read(w->chn, w->attr_name_avail, text,
+	ret = chn_attr_read_raw(w->chn, w->attr_name_avail, text,
 				    sizeof(text));
 	if (ret < 0)
 		return;
@@ -1113,7 +1113,7 @@ static void load_stream(GtkFileChooser *chooser, gpointer data)
 	if (!buf)
 		goto err;
 
-	ret = iio_device_attr_write_raw(priv->adrv9002, "stream_config", buf, size);
+	ret = dev_attr_write_raw(priv->adrv9002, "stream_config", buf, size);
 	free(buf);
 	if (ret < 0)
 		goto err;
@@ -1147,7 +1147,7 @@ static void load_profile(GtkFileChooser *chooser, gpointer data)
 
 	g_source_remove(priv->refresh_timeout);
 	iio_context_set_timeout(priv->ctx, 30000);
-	ret = iio_device_attr_write_raw(priv->adrv9002, "profile_config", buf,
+	ret = dev_attr_write_raw(priv->adrv9002, "profile_config", buf,
 					size);
 	free(buf);
 	iio_context_set_timeout(priv->ctx, 5000);
@@ -1389,7 +1389,7 @@ static int profile_gen_get_ssi_lanes_from_device(gpointer data, uint8_t *ssi_lan
 	char profile_config[512];
 	int ret = 0;
 
-	ret = iio_device_attr_read(priv->adrv9002, "profile_config", profile_config, sizeof(profile_config));
+	ret = dev_attr_read_raw(priv->adrv9002, "profile_config", profile_config, sizeof(profile_config));
 	if(ret < 0) {
 		sprintf(message, "\nFailed to get device attr read %s! error code: %d", "profile_config", ret);
 		goto iio_error;
@@ -1430,7 +1430,7 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 	radio_config radio_config;
 	char buf[1024];
 	char profile_config[512];
-	ret = iio_device_attr_read(priv->adrv9002, "profile_config", profile_config, sizeof(profile_config));
+	ret = dev_attr_read_raw(priv->adrv9002, "profile_config", profile_config, sizeof(profile_config));
 	if(ret < 0) {
 		sprintf(message, "\nFailed to get device attr read %s! error code: %d", "profile_config", ret);
 		goto iio_error;
@@ -1486,7 +1486,7 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 		tx_config[chann].enabled = adrv9002_channel_is_enabled(&priv->tx_widgets[chann]);
 		if(tx_config[chann].enabled) {
 			// tx.sample_rate_hz
-			ret = iio_channel_attr_read(tx, "sampling_frequency", buf, sizeof(buf));
+			ret = chn_attr_read_raw(tx, "sampling_frequency", buf, sizeof(buf));
 			if(ret < 0) {
 				sprintf(message, "\nFailed to get tx channel: %s attr: %s! error code: %d", chann_str,
 					"sampling_frequency", ret);
@@ -1503,7 +1503,7 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 				default_cfg.radio_cfg.tx_config[chann].analog_filter_power_mode; // TODO
 
 			// tx.channel_bandwidth_hz
-			ret = iio_channel_attr_read(tx, "rf_bandwidth", buf, sizeof(buf));
+			ret = chn_attr_read_raw(tx, "rf_bandwidth", buf, sizeof(buf));
 			if(ret < 0) {
 				sprintf(message, "\nFailed to get tx channel: %s attr: %s! error code: %d", chann_str,
 					"rf_bandwidth", ret);
@@ -1541,7 +1541,7 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 		rx_config[chann].enabled = adrv9002_channel_is_enabled(&priv->rx_widgets[chann].rx);
 		if(rx_config[chann].enabled) {
 			// rx.sample_rate_hz
-			ret = iio_channel_attr_read(rx, "sampling_frequency", buf, sizeof(buf));
+			ret = chn_attr_read_raw(rx, "sampling_frequency", buf, sizeof(buf));
 			if(ret < 0) {
 				sprintf(message, "\nFailed to get rx channel: %s attr: %s! error code: %d", chann_str,
 					"sampling_frequency", ret);
@@ -1558,7 +1558,7 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 				default_cfg.radio_cfg.rx_config[chann].analog_filter_power_mode; // TODO
 
 			// rx.channel_bandwidth_hz
-			ret = iio_channel_attr_read(rx, "rf_bandwidth", buf, sizeof(buf));
+			ret = chn_attr_read_raw(rx, "rf_bandwidth", buf, sizeof(buf));
 			if(ret < 0) {
 				sprintf(message, "\nFailed to get rx channel: %s attr: %s! error code: %d", chann_str,
 					"rf_bandwidth", ret);
@@ -1567,7 +1567,7 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 			rx_config[chann].channel_bandwidth_hz = atoi(buf);
 
 			// rx.adc_high_performance_mode
-			ret = iio_device_debug_attr_read(priv->adrv9002, chann == 0 ? "rx0_adc_type" : "rx1_adc_type",
+			ret = dev_debug_attr_read_raw(priv->adrv9002, chann == 0 ? "rx0_adc_type" : "rx1_adc_type",
 							 buf, sizeof(buf));
 			if(ret < 0) {
 				sprintf(message, "\nFailed to get rx channel: %s attr: %s! error code: %d", chann_str,
@@ -1588,7 +1588,7 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 			rx_config[chann].nco_enable = default_cfg.radio_cfg.rx_config[chann].nco_enable; // TODO
 
 			// rx.nco_frequency_hz
-			ret = iio_channel_attr_read(rx, "nco_frequency", buf, sizeof(buf));
+			ret = chn_attr_read_raw(rx, "nco_frequency", buf, sizeof(buf));
 			if(ret < 0) {
 				if(ret == -ENOTSUPP) {
 					rx_config[chann].nco_frequency_hz = 0;
@@ -1619,7 +1619,7 @@ static int profile_gen_config_get_from_device(struct adrv9002_config *cfg, gpoin
 		radio_config.rx_config[chann] = rx_config[chann];
 
 		// tx.orx_enabled
-		ret = iio_channel_attr_read(rx, "orx_en", buf, sizeof(buf));
+		ret = chn_attr_read_raw(rx, "orx_en", buf, sizeof(buf));
 		if(ret < 0) {
 			if(ret == -ENODEV) {
 				radio_config.tx_config[chann].orx_enabled =
@@ -2370,7 +2370,7 @@ static bool profile_gen_check_api(gpointer data)
 	struct plugin_private *priv = data;
 	char version[256], message[BUFSIZ];
 
-	if(iio_device_debug_attr_read(priv->adrv9002, "api_version", version, sizeof(version)) < 0) {
+	if(dev_debug_attr_read_raw(priv->adrv9002, "api_version", version, sizeof(version)) < 0) {
 		sprintf(message, "\nCould not read API version!");
 		profile_gen_set_debug_info(data, message);
 		goto err;
@@ -2472,7 +2472,7 @@ static void profile_gen_load_config_to_device(GtkButton *self, gpointer data)
 		goto err;
 	}
 	iio_context_set_timeout(priv->ctx, 30000);
-	ret = iio_device_attr_write_raw(priv->adrv9002, "profile_config", buf, size);
+	ret = dev_attr_write_raw(priv->adrv9002, "profile_config", buf, size);
 	if(ret < 0) {
 		sprintf(fail_message, "\nFailed to write the generated profile to device with error code: %d", ret);
 		strcat(message, fail_message);
@@ -2488,7 +2488,7 @@ static void profile_gen_load_config_to_device(GtkButton *self, gpointer data)
 		goto err;
 	}
 	iio_context_set_timeout(priv->ctx, 30000);
-	ret = iio_device_attr_write_raw(priv->adrv9002, "stream_config", buf, size);
+	ret = dev_attr_write_raw(priv->adrv9002, "stream_config", buf, size);
 	if(ret < 0) {
 		sprintf(fail_message, "\nFailed to write the generated stream image to device with error code: %d",
 			ret);
@@ -3006,7 +3006,7 @@ static int adrv9002_dds_init(struct plugin_private *priv)
 			goto free_dac;
 		}
 		priv->dac_manager[i].ch0 = ch0;
-		if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &dac_freq) == 0)
+		if (chn_attr_read_longlong(ch0, "sampling_frequency", &dac_freq) == 0)
 			dac_tx_sampling_freq = (double)dac_freq / 1000000ul;
 
 		dac_data_manager_freq_widgets_range_update(priv->dac_manager[i].dac_tx_manager,
@@ -3051,14 +3051,14 @@ static void adrv9002_update_port_en_mode(const struct plugin_private *priv, stru
 		 * and try to change the state. If we succeed, then it means the driver is
 		 * in full control of the pin controlling the RF state.
 		 */
-		ret = iio_channel_attr_write(chan->port_en.chn, "port_en_mode", "pin");
+		ret = chn_attr_write_string(chan->port_en.chn, "port_en_mode", "pin");
 		if (ret < 0) {
 			printf("Could not set port to to pin (%d)\n", ret);
 			goto out;
 		}
 	}
 
-	ret = iio_channel_attr_read(chan->ensm.chn, "ensm_mode", pin_ensm, sizeof(pin_ensm));
+	ret = chn_attr_read_raw(chan->ensm.chn, "ensm_mode", pin_ensm, sizeof(pin_ensm));
 	if (ret < 0)
 		goto out;
 
@@ -3066,7 +3066,7 @@ static void adrv9002_update_port_en_mode(const struct plugin_private *priv, stru
 	 * If we get an error just assume we can't control the state and try to bring the device
 	 * to the initial state.
 	 */
-	ret = iio_channel_attr_write(chan->ensm.chn, "ensm_mode", "primed");
+	ret = chn_attr_write_string(chan->ensm.chn, "ensm_mode", "primed");
 	if (ret > 0)
 		chan->enable_gpio = true;
 
@@ -3075,7 +3075,7 @@ static void adrv9002_update_port_en_mode(const struct plugin_private *priv, stru
 	 * Not much to do in case of error, hence ignore them...
 	 */
 	if (chan->enable_gpio) {
-		iio_channel_attr_write(chan->ensm.chn, "ensm_mode", pin_ensm);
+		chn_attr_write_string(chan->ensm.chn, "ensm_mode", pin_ensm);
 		if (!strcmp(port_en, "pin"))
 			gtk_widget_set_sensitive(chan->ensm.widget, true);
 	}
@@ -3084,7 +3084,7 @@ static void adrv9002_update_port_en_mode(const struct plugin_private *priv, stru
 	 * that state after changing port modes.
 	 */
 	if (strcmp(port_en, "pin"))
-		iio_channel_attr_write(chan->port_en.chn, "port_en_mode", "spi");
+		chn_attr_write_string(chan->port_en.chn, "port_en_mode", "spi");
 
 out:
 	g_free(port_en);
@@ -3096,7 +3096,7 @@ static void adrv9002_api_version_report(struct plugin_private *priv)
 	GtkLabel *gapi = GTK_LABEL(gtk_builder_get_object(priv->builder, "api_version"));
 	char api_version[16];
 
-	if (iio_device_debug_attr_read(priv->adrv9002, "api_version", api_version,
+	if (dev_debug_attr_read_raw(priv->adrv9002, "api_version", api_version,
 				       sizeof(api_version)) < 0) {
 		gtk_widget_hide(api_frame);
 		return;
