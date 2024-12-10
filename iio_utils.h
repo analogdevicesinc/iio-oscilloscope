@@ -30,10 +30,14 @@ bool iio_attr_not_found(struct iio_device *dev, struct iio_channel *chn, const c
 inline int dev_attr_read_raw(struct iio_device *dev, const char *attr_name, char *dst, size_t len);
 inline int dev_attr_read_double(struct iio_device *dev, const char *attr_name, double *value);
 inline int dev_attr_read_longlong(struct iio_device *dev, const char *attr_name, long long *value);
+inline int dev_debug_attr_read_raw(struct iio_device *dev, const char *attr_name, char *dst, size_t len);
+inline int dev_debug_attr_read_longlong(struct iio_device *dev, const char *attr_name, long long *value);
 
 /* Helpers to write to iio attributes of devices */
+inline int dev_attr_write_raw(struct iio_device *dev, const char *attr_name, const char *src, size_t len);
 inline int dev_attr_write_double(struct iio_device *dev, const char *attr_name, double value);
 inline int dev_attr_write_longlong(struct iio_device *dev, const char *attr_name, long long value);
+inline int dev_debug_attr_write_string(struct iio_device *dev, const char *attr_name, const char *value);
 inline int dev_debug_attr_write_longlong(struct iio_device *dev, const char *attr_name, long long value);
 
 /* Helpers to read from iio attributes of channels */
@@ -50,6 +54,9 @@ inline int chn_attr_write_longlong(struct iio_channel *chn, const char *attr_nam
 
 /* Helpers to iterate through all attributes */
 inline void dev_attr_read_all(struct iio_device *dev,
+    int (*cb)(struct iio_device *dev, const char *attr, const char *value, size_t len, void *d),
+    void *data);
+inline int dev_debug_attr_read_all(struct iio_device *dev,
     int (*cb)(struct iio_device *dev, const char *attr, const char *value, size_t len, void *d),
     void *data);
 inline void chn_attr_read_all(struct iio_channel *chn,
