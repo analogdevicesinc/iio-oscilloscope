@@ -45,7 +45,7 @@ set(PLUGINS
 	#scpi
 	ad9081
 	ad9084
-	#adrv9002
+	adrv9002
 	#cf_axi_tdd
 	#xmw
 )
