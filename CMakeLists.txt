@@ -105,11 +105,7 @@ if(UNIX)
 	add_definitions(-Dlinux -DFRU_FILES="${CMAKE_PREFIX_PATH}/lib/fmc-tools/")
 endif()
 
-#set(OSC_SRC osc.c oscplot.c datatypes.c iio_widget.c iio_utils.c
-# 	fru.c dialogs.c trigger_dialog.c xml_utils.c libini/libini.c
-#         libini2.c phone_home.c plugins/dac_data_manager.c
-#         plugins/fir_filter.c eeprom.c osc_preferences.c cJSON/cJSON.c)
-set(OSC_SRC osc.c datatypes.c iio_widget.c iio_utils.c
+set(OSC_SRC osc.c oscplot.c datatypes.c iio_widget.c iio_utils.c
  	fru.c dialogs.c trigger_dialog.c xml_utils.c libini/libini.c
          libini2.c phone_home.c plugins/dac_data_manager.c
          plugins/fir_filter.c eeprom.c osc_preferences.c cJSON/cJSON.c)
