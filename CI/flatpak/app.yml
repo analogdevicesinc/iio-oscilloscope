@@ -1,6 +1,6 @@
 app-id: org.adi.IIO-Oscilloscope
 runtime: org.gnome.Platform
-runtime-version: '43'
+runtime-version: '47'
 command: osc
 sdk: org.gnome.Sdk
 rename-desktop-file: adi-osc.desktop

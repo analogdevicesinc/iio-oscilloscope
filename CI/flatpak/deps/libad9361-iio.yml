@@ -5,4 +5,4 @@ cleanup:
 sources:
   - type: git
     url: https://github.com/analogdevicesinc/libad9361-iio
-    branch: master
+    branch: main
