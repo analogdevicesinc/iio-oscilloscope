@@ -68,6 +68,16 @@ struct _Dialogs
 	GtkWidget *ver_progress_bar;
 };
 
+/* Container for the contents of the iio context selection menu, passed when
+ * refreshing the list asynchronously.
+ * Allocated by caller, freed by callee. Strings are strdup-ed and not referenced
+ * anywhere else, so must be freed as well. */
+struct refresh_usb_info {
+	int num_devices;
+	gint index; // Index of active item
+	char **device_list;
+};
+
 static Dialogs dialogs;
 static GtkWidget *serial_num;
 static GtkWidget *fru_date;
@@ -318,10 +328,6 @@ static bool widget_set_cursor(GtkWidget *widget, GdkCursorType type)
 	watchCursor = gdk_cursor_new_for_display(display, type);
 	gdk_window_set_cursor(gdkWindow, watchCursor);
 
-	while (gtk_events_pending())
-		gtk_main_iteration();
-
-
 	return true;
 }
 
@@ -432,6 +438,52 @@ static struct iio_context * get_context(Dialogs *data)
 	}
 }
 
+/* Change UI state to indicate the USB device list is being refreshed.
+ * Not thread safe by itself - should be queued using gdk_threads_add_idle(), not g_idle_add_full() */
+static bool refresh_usb_clear(void *UNUSED(param))
+{
+	gtk_list_store_clear(GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(dialogs.connect_usbd))));
+	widget_set_cursor(dialogs.connect, GDK_WATCH);
+
+	return false;
+}
+
+/* Update UI with refreshed USB device list. Assumes refresh_usb_clear was called befrehand.
+ * Not thread safe by itself - should be queued using gdk_threads_add_idle(), not g_idle_add_full() */
+static bool refresh_usb_update_list(struct refresh_usb_info *info)
+{
+	int i;
+
+	widget_use_parent_cursor(dialogs.connect);
+
+	if (info->num_devices)
+	{
+		for(i = 0; i < info->num_devices; i++)
+		{
+			gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), info->device_list[i]);
+			free(info->device_list[i]);
+		}
+		free(info->device_list);
+
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd), info->index);
+		gtk_widget_set_sensitive(dialogs.connect_usb, true);
+		gtk_widget_set_sensitive(dialogs.connect_usbd,true);
+	}
+	else
+	{
+		// There are no devices
+		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), NO_DEVICES);
+
+		gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd),0);
+		gtk_widget_set_sensitive(dialogs.connect_usbd, false);
+	}
+
+	gdk_threads_add_idle(G_SOURCE_FUNC(connect_clear), dialogs.connect_usb);
+
+	free(info);
+
+	return false;
+}
 
 static void refresh_usb_thread(void)
 {
@@ -440,17 +492,19 @@ static void refresh_usb_thread(void)
 	GtkListStore *liststore;
 	ssize_t ret;
 	unsigned int i = 0;
-	gint index = 0;
 	gchar *tmp, *tmp1, *pid, *buf;
 	char *current = NULL;
 	char filter[sizeof("local:ip:usb:")];
 	char *p;
 	bool scan = false;
 	gchar *active_uri = NULL;
+	struct refresh_usb_info *usb_devices_info = malloc(sizeof(struct refresh_usb_info));
 
-	gdk_threads_enter();
-	widget_set_cursor(dialogs.connect, GDK_WATCH);
+	usb_devices_info->device_list = NULL;
+	usb_devices_info->num_devices = 0;
+	usb_devices_info->index = 0;
 
+	gdk_threads_add_idle(G_SOURCE_FUNC(refresh_usb_clear), NULL);
 	if (gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_usbd)) != -1) {
 		active_uri = gtk_combo_box_text_get_active_text(
 				GTK_COMBO_BOX_TEXT(dialogs.connect_usbd));
@@ -471,9 +525,7 @@ static void refresh_usb_thread(void)
 		g_signal_handler_block(GTK_COMBO_BOX(dialogs.connect_usbd), dialogs.usbd_signals);
 	}
 
-	/* clear everything, and scan again */
-	liststore = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(dialogs.connect_usbd)));
-	gtk_list_store_clear(liststore);
+	/* Scan again */
 
 	p = filter;
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.filter_local))) {
@@ -500,8 +552,13 @@ static void refresh_usb_thread(void)
 	ret = iio_scan_context_get_info_list(ctxs, &info);
 	if (ret < 0)
 		goto err_free_ctxs;
+
+	usb_devices_info->num_devices = ret;
+	
 	if (!ret)
 		goto err_free_info_list;
+
+	usb_devices_info->device_list = calloc(ret, sizeof(char *));
 
 	for (i = 0; i < (size_t) ret; i++) {
 		tmp = strdup(iio_context_info_get_description(info[i]));
@@ -531,7 +588,7 @@ static void refresh_usb_thread(void)
 			}
 		}
 		if (active_pid != -1 && current && !strcmp(pid, current)) {
-			index = i;
+			usb_devices_info->index = i;
 		}
 
 		usb_pids[i]=pid;
@@ -539,17 +596,17 @@ static void refresh_usb_thread(void)
 		if (!tmp1)
 			tmp1 = tmp;
 		buf = malloc(strlen(iio_context_info_get_uri(info[i])) +
-				strlen(tmp1) + 5);
+				strlen(tmp1) + 5); // will be freed by `refresh_usb_update_list`
 		sprintf(buf, "%s [%s]", tmp1,
 				iio_context_info_get_uri(info[i]));
 		tmp1 = NULL;
 
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), buf);
+		usb_devices_info->device_list[i] = buf;
+
 		if (active_uri && !g_strcmp0(active_uri, buf)) {
-			index = i;
+			usb_devices_info->index = i;
 		}
 
-		free(buf);
 		free(tmp);
 	}
 
@@ -559,37 +616,16 @@ err_free_ctxs:
 	iio_scan_context_destroy(ctxs);
 nope:
 
-	widget_use_parent_cursor(dialogs.connect);
-
-	if (!i) {
-		gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialogs.connect_usbd), NO_DEVICES);
-		gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd),0);
-		gtk_widget_set_sensitive(dialogs.connect_usbd, false);
-		/* Force a clear */
-		connect_clear(dialogs.connect_net);
-		gdk_threads_leave();
-		return;
-	}
-
-	gtk_widget_set_sensitive(dialogs.connect_usb, true);
-	gtk_widget_set_sensitive(dialogs.connect_usbd,true);
-
-	gtk_combo_box_set_active(GTK_COMBO_BOX(dialogs.connect_usbd), index);
+	gdk_threads_add_idle(G_SOURCE_FUNC(refresh_usb_update_list), usb_devices_info);
 
 	if (dialogs.usbd_signals) {
 		g_signal_handler_unblock(GTK_COMBO_BOX(dialogs.connect_usbd), dialogs.usbd_signals);
 	}
 
-
 	if (current) {
 		free(current);
 		current = NULL;
 	}
-
-	/* Fill things in */
-	connect_clear(dialogs.connect_usb);
-	gdk_threads_leave();
-
 }
 
 
@@ -839,7 +875,7 @@ static bool connect_clear(GtkWidget *widget)
 
 	if (!widget) {
 		printf("nope - not callback\n");
-		return true;
+		return false;
 	}
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
 		/* set - fill in */
@@ -865,7 +901,7 @@ static bool connect_clear(GtkWidget *widget)
 		g_object_unref(buf);
 	}
 
-	return true;
+	return false;
 }
 
 static bool refresh_connect_attributes()
@@ -1129,7 +1165,6 @@ static gboolean version_info_show(gpointer data)
 	if (!release && !data)
 		return false;
 
-	gdk_threads_enter();
 	internal_vbox = GTK_WIDGET(gtk_builder_get_object(builder,
 				"msg_dialog_vbox"));
 
@@ -1195,8 +1230,6 @@ static gboolean version_info_show(gpointer data)
 	gtk_widget_hide(_dialogs->latest_version);
 
 end:
-	gdk_threads_leave();
-
 	return false;
 }
 
@@ -1223,7 +1256,7 @@ static gpointer version_check(gpointer data)
 
 /*
  * Periodically animate the progress bar as long as the version checking thread
- * is still working. When the thread has finished, signal (using g_idle_add())
+ * is still working. When the thread has finished, signal (using gdk_threads_add_idle())
  * the GUI to run the dialog that contains latest version information.
  */
 static gboolean version_progress_update(gpointer data)
@@ -1235,7 +1268,7 @@ static gboolean version_progress_update(gpointer data)
 	if (ver_check_done) {
 		if (_dialogs)
 			gtk_widget_hide(_dialogs->ver_progress_window);
-		g_idle_add(version_info_show, (gpointer)_dialogs);
+		gdk_threads_add_idle(version_info_show, (gpointer)_dialogs);
 	}
 
 	return !ver_check_done;
