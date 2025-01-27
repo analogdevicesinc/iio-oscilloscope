@@ -1,0 +1,7 @@
+name: gtkdatabox
+cleanup:
+  - /lib/gtkdatabox-*
+sources:
+  - type: archive
+    url: https://download.sourceforge.net/project/gtkdatabox/gtkdatabox-1/gtkdatabox-1.0.0.tar.gz
+    sha256: 8bee70206494a422ecfec9a88d32d914c50bb7a0c0e8fedc4512f5154aa9d3e3

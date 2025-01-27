@@ -22,3 +22,5 @@ adi-osc.desktop
 org.adi.pkexec.osc.policy
 osc-wrapper
 .vscode
+.flatpak-builder
+CI/flatpak/repo
