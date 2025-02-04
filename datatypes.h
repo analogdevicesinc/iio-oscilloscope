@@ -71,6 +71,7 @@ struct extra_dev_info {
 	char adc_scale;
 	gfloat **channels_data_copy;
 	GSList *plots_sample_counts;
+	struct iio_stream *stream;
 };
 
 struct buffer {
