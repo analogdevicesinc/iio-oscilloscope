@@ -167,7 +167,6 @@ unsigned global_enabled_channels_mask(struct iio_device *dev, struct iio_channel
 	unsigned mask = 0;
 	int scan_i = 0;
 	unsigned int i = 0;
-	//struct iio_channels_mask *ch_mask = iio_create_channels_mask(iio_device_get_channels_count(dev));
 
 	for (; i < iio_device_get_channels_count(dev); i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
@@ -756,7 +755,7 @@ int plugin_data_capture_of_plot(OscPlot *plot, const char *device, gfloat ***coo
 		 if (markers_copy) {
 			osc_plot_set_markers_copy(plot, NULL);
 			 return -EINTR;
-		 }
+		}
 	}
 	return 0;
 
@@ -1630,7 +1629,6 @@ static void plot_destroyed_cb(OscPlot *plot)
 {
 	plot_list = g_list_remove(plot_list, plot);
 	stop_sampling();
-	// !!! capture_setup();
 	if (num_capturing_plots)
 		capture_start();
 	restart_all_running_plots();
@@ -2543,14 +2541,8 @@ struct iio_context * osc_create_context(void)
 {
 	if (!ctx)
 		return iio_create_context(NULL, NULL);
-	else {
-		// !!!! context clone causes seg fault
-//		const struct iio_context_params * ctx_params = iio_context_get_params(ctx);
-//		const struct iio_attr *ctx_uri = iio_context_find_attr(ctx, "uri");
-//		const char *uri_val = iio_attr_get_static_value(ctx_uri);
-//		ctx = iio_create_context(ctx_params, uri_val);
+	else
 		return ctx;
-		}
 }
 
 void osc_destroy_context(struct iio_context *_ctx)
@@ -2577,29 +2569,36 @@ void osc_process_gtk_events(unsigned int msecs)
 	}
 }
 
-/* Test something, according to:
+/* The format below no longer works
+ * with libiio v1.0 API for channel attrs
+ * Test something, according to:
  * test.device.attribute.type = min max
+ * A channel attr should be tested :
+ * test.device.ch-(id/index/name).0/1.attribute.type = min max
  */
 int osc_test_value(struct iio_context *_ctx, int line,
                 const char *attribute, const char *value)
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
-	const char *attr;
-	const char *filename;
+	const struct iio_attr *attrib;
+	const char *attr = attribute;
 	long long min_i = -1, max_i = -1, val_i;
 	double min_d, max_d, val_d;
-	unsigned int i;
+	int i,j;
 	int ret = -EINVAL;
 
-	gchar **elems = g_strsplit(attribute, ".", 4);
+	for (j=0; attr[j]; attr[j]=='.' ? j++ : *attr++);
+
+
+	gchar **elems = g_strsplit(attribute, ".", j+1);
 	if (!elems)
 		goto err_popup;
 
 	if (!elems[0] || strcmp(elems[0], "test"))
 		goto cleanup;
 
-	for (i = 1; i < 4; i++)
+	for (i = 1; i < j+1; i++)
 		if (!elems[i])
 			goto cleanup;
 
@@ -2609,27 +2608,25 @@ int osc_test_value(struct iio_context *_ctx, int line,
 		goto cleanup;
 	}
 
-	const struct iio_attr *attrib = iio_device_find_attr(dev, elems[2]);
-	filename = iio_attr_get_filename(attrib);
-	ret = iio_err(filename);
-	//ret = iio_device_identify_filename(dev, elems[2], &chn, &attr);
+	if(j == 3) {
+	    attrib = iio_device_find_attr(dev, elems[2]);
+	} else if(j == 5) {
+	    chn = iio_device_find_channel(dev, elems[2],elems[3]);
+	    attrib = iio_channel_find_attr(chn, elems[4]);
+	}
+
 	if (ret < 0)
 		goto cleanup;
 
-	if (!strcmp(elems[3], "int")) {
+	if (!strcmp(elems[j-1], "int")) {
 		ret = sscanf(value, "%lli %lli", &min_i, &max_i);
 		if (ret != 2) {
 			ret = -EINVAL;
 			goto cleanup;
 		}
 
-		//attrib = iio_channel_find_attr()
-		//ret = iio_attr_read_longlong()
 		ret = iio_attr_read_longlong(attrib, &val_i);
-//		if (chn)
-//			ret = iio_channel_attr_read_longlong(chn, attr, &val_i);
-//		else
-//			ret = iio_device_attr_read_longlong(dev, attr, &val_i);
+
 		if (ret < 0)
 			goto cleanup;
 
@@ -2644,7 +2641,7 @@ int osc_test_value(struct iio_context *_ctx, int line,
 					"Value read = %lli\n",
 					line, attribute, min_i, max_i, val_i);
 
-	} else if (!strcmp(elems[3], "double")) {
+	} else if (!strcmp(elems[j-1], "double")) {
 		gchar *end1, *end2;
 		min_d = g_ascii_strtod(value, &end1);
 		if (end1 == value) {
@@ -2659,10 +2656,7 @@ int osc_test_value(struct iio_context *_ctx, int line,
 		}
 
 		ret = iio_attr_read_double(attrib, &val_d);
-//		if (chn)
-//			ret = iio_channel_attr_read_double(chn, attr, &val_d);
-//		else
-//			ret = iio_device_attr_read_double(dev, attr, &val_d);
+
 		if (ret < 0)
 			goto cleanup;
 
@@ -2741,10 +2735,8 @@ int osc_identify_attrib(struct iio_context *_ctx, const char *attrib,
 		goto cleanup;
 	}
 	const struct iio_attr *attribute = iio_channel_find_attr(*chn, *attr);
-	file = iio_attr_get_filename(attribute);
-	ret = iio_err(file);
-	//ret = iio_device_identify_filename(device, filename, chn, attr);
-	if (!ret) {
+	ret = iio_err(attribute);
+	if (ret == 0) {
 		*debug = is_debug;
 		*dev = device;
 	}
@@ -2759,6 +2751,7 @@ static int osc_read_nonenclosed_value(struct iio_context *_ctx,
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
+	const struct iio_attr *attribute;
 	const char *attr;
 	char *pend;
 	bool debug;
@@ -2773,15 +2766,17 @@ static int osc_read_nonenclosed_value(struct iio_context *_ctx,
 	}
 	if (ret < 0)
 		return ret;
-	const struct iio_attr *attribute;
-	attribute = iio_device_find_attr(dev, attr);
-	ret = iio_attr_read_longlong(attribute, out);
-//	if (chn)
-//		ret = iio_channel_attr_read_longlong(chn, attr, out);
-//	else if (debug)
-//		ret = iio_device_debug_attr_read_longlong(dev, attr, out);
-//	else
-//		ret = iio_device_attr_read_longlong(dev, attr, out);
+
+	if (chn) {
+	    attribute = iio_channel_find_attr(chn, attr);
+	    ret = iio_attr_read_longlong(attribute, out);
+	} else if (debug) {
+	    attribute = iio_channel_find_attr(chn, attr);
+	    ret = iio_attr_read_longlong(attribute, out);
+	} else {
+	    attribute = iio_device_find_attr(dev, attr);
+	    ret = iio_attr_read_longlong(attribute, out);
+	}
 	return ret < 0 ? ret : 0;
 }
 
@@ -2929,6 +2924,7 @@ int osc_plugin_default_handle(struct iio_context *_ctx,
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
+	const struct iio_attr *attribute;
 	const char *attr;
 	bool debug;
 	int ret;
@@ -2960,21 +2956,26 @@ int osc_plugin_default_handle(struct iio_context *_ctx,
 			return ret;
 		}
 
-//		if (chn)
-//			ret = iio_channel_attr_write_longlong(chn, attr, lval);
-//		else if (debug)
-//			ret = iio_device_debug_attr_write_longlong(dev, attr, lval);
-//		else
-		const struct iio_attr *attrib = iio_device_find_attr(dev, attr);
-		ret = iio_attr_write_longlong(attrib, lval);
-	} /*else if (chn)
-		ret = iio_channel_attr_write(chn, attr, value);
-	else if (debug)
-		ret = iio_device_debug_attr_write(dev, attr, value);*/
-	else {
-		const struct iio_attr *attrib = iio_device_find_attr(dev, attr);
-		ret = iio_attr_write(attrib,value);
-	  }
+		if (chn) {
+			attribute = iio_channel_find_attr(chn, attr);
+			ret = iio_attr_write_longlong(attribute, lval);
+		} else if (debug) {
+			attribute = iio_device_find_debug_attr(dev, attr);
+			ret = iio_attr_write_longlong(attribute, lval);
+		} else {
+		        attribute = iio_device_find_attr(dev, attr);
+			ret = iio_attr_write_longlong(attribute, lval);
+		}
+	} else if (chn) {
+		attribute = iio_channel_find_attr(chn, attr);
+		ret = iio_attr_write(attribute, value);
+	} else if (debug) {
+		attribute = iio_device_find_debug_attr(dev, attr);
+		ret = iio_attr_write(attribute, value);
+	} else {
+		attribute = iio_device_find_attr(dev, attr);
+		ret = iio_attr_write(attribute,value);
+	}
 	if (ret < 0) {
 		fprintf(stderr, "Unable to write '%s' to %s:%s\n", value,
 				chn ? iio_channel_get_name(chn) : iio_device_get_name(dev),
