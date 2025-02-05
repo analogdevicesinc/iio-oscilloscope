@@ -70,6 +70,7 @@ static int load_profile(const char *filename, bool load_plugins);
 static int capture_setup(void);
 static void capture_start(void);
 static void stop_sampling(void);
+static void cleanup_device_list(struct iio_context *_ctx);
 
 static char * dma_devices[] = {
 	"ad9122",
@@ -1759,6 +1760,8 @@ static void do_quit(bool reload)
 	g_list_free(plot_list);
 	free_setup_check_fct_list();
 	osc_plot_reset_numbering();
+	if (ctx)
+		cleanup_device_list(ctx);
 
 	if (!reload && gtk_main_level())
 		gtk_main_quit();
@@ -1870,6 +1873,33 @@ static void init_device_list(struct iio_context *_ctx)
 
 		rx_update_device_sampling_freq(
 		get_iio_device_label_or_name(dev), USE_INTERN_SAMPLING_FREQ);
+	}
+}
+
+static void cleanup_device_list(struct iio_context *_ctx)
+{
+	unsigned int d, c, nb_channels;
+	struct iio_device *dev;
+	struct iio_channel *chn;
+	struct extra_dev_info *dev_info;
+	struct extra_info *chn_info;
+
+	for (d = 0; d < num_devices; d++) {
+		dev = iio_context_get_device(_ctx, d);
+		nb_channels = iio_device_get_channels_count(dev);
+
+		for (c = 0; c < nb_channels; c++) {
+			chn = iio_device_get_channel(dev, c);
+			chn_info = iio_channel_get_data(chn);
+			if (chn_info) {
+				free(chn_info);
+				iio_channel_set_data(chn, NULL);
+			}
+		}
+
+		dev_info = iio_device_get_data(dev);
+		free(dev_info);
+		iio_device_set_data(dev, NULL);
 	}
 }
 
