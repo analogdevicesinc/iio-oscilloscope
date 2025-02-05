@@ -1863,6 +1863,7 @@ static void init_device_list(struct iio_context *_ctx)
 		struct extra_dev_info *dev_info = calloc(1, sizeof(*dev_info));
 		iio_device_set_data(dev, dev_info);
 		dev_info->input_device = is_input_device(dev);
+		dev_info->channels_mask = iio_create_channels_mask(nb_channels);
 
 		for (j = 0; j < nb_channels; j++) {
 			struct iio_channel *ch = iio_device_get_channel(dev, j);
@@ -1898,6 +1899,8 @@ static void cleanup_device_list(struct iio_context *_ctx)
 		}
 
 		dev_info = iio_device_get_data(dev);
+		if (dev_info->channels_mask)
+			iio_channels_mask_destroy(dev_info->channels_mask);
 		free(dev_info);
 		iio_device_set_data(dev, NULL);
 	}
