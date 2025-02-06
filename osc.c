@@ -163,17 +163,25 @@ bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_cou
 	return ret;
 }
 
-unsigned global_enabled_channels_mask(struct iio_device *dev, struct iio_channels_mask *ch_mask)
+unsigned global_enabled_channels_mask(struct iio_device *dev)
 {
 	unsigned mask = 0;
 	int scan_i = 0;
 	unsigned int i = 0;
+	struct extra_dev_info *dev_info;
+
+	dev_info = iio_device_get_data(dev);
+	if (!dev_info || !dev_info->channels_mask) {
+		fprintf(stderr, "error! Cannot retrieve channels mask of device: %s\n",
+			iio_device_get_id(dev));
+		return 0;
+	}
 
 	for (; i < iio_device_get_channels_count(dev); i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
 
 		if (iio_channel_is_scan_element(chn)) {
-			if (iio_channel_is_enabled(chn, ch_mask))
+			if (iio_channel_is_enabled(chn, dev_info->channels_mask))
 				mask |= 1 << scan_i;
 			scan_i++;
 		}
@@ -255,25 +263,25 @@ static void destroy_all_plots(void)
 	g_list_foreach(plot_list, gfunc_destroy_plot, NULL);
 }
 
-static void disable_all_channels(struct iio_device *dev, struct iio_channels_mask *ch_mask)
+static void disable_all_channels(struct iio_device *dev)
 {
 	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
+	struct extra_dev_info *info = iio_device_get_data(dev);
+
 	for (i = 0; i < nb_channels; i++)
-		iio_channel_disable(iio_device_get_channel(dev, i), ch_mask);
+		iio_channel_disable(iio_device_get_channel(dev, i), info->channels_mask);
 }
 
 static void close_active_buffers(void)
 {
 	unsigned int i;
-	const struct iio_channels_mask *mask = NULL;
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *info = iio_device_get_data(dev);
 
 		if (info->buffer) {
-			mask = iio_buffer_get_channels_mask(info->buffer);
-			disable_all_channels(dev,(struct iio_channels_mask *) mask);
+			disable_all_channels(dev);
 			iio_buffer_destroy(info->buffer);
 			info->buffer = NULL;
 		}
@@ -557,9 +565,26 @@ gdouble plugin_get_plot_fft_avg(OscPlot *plot, const char *device)
 
 int plugin_data_capture_size(const char *device)
 {
-	struct extra_dev_info *info;
 	struct iio_device *dev;
-	const struct iio_channels_mask *mask;
+	struct extra_dev_info *info;
+
+	if (!device)
+		return 0;
+
+	dev = iio_context_find_device(ctx, device);
+	if (!dev)
+		return 0;
+	info = iio_device_get_data(dev);
+
+	return info->sample_count * iio_device_get_sample_size(dev, info->channels_mask);
+}
+
+int plugin_data_capture_num_active_channels(const char *device)
+{
+	int nb_active = 0;
+	unsigned int i, nb_channels;
+	struct iio_device *dev;
+	struct extra_dev_info *info;
 
 	if (!device)
 		return 0;
@@ -569,29 +594,10 @@ int plugin_data_capture_size(const char *device)
 		return 0;
 
 	info = iio_device_get_data(dev);
-	mask = iio_buffer_get_channels_mask(info->buffer);
-	return info->sample_count * iio_device_get_sample_size(dev, mask);
-}
-
-int plugin_data_capture_num_active_channels(const char *device)
-{
-	int nb_active = 0;
-	unsigned int i, nb_channels;
-	struct iio_device *dev;
-	const struct iio_channels_mask *mask;
-
-	if (!device)
-		return 0;
-
-	dev = iio_context_find_device(ctx, device);
-	if (!dev)
-		return 0;
-
 	nb_channels = iio_device_get_channels_count(dev);
-	mask = iio_create_channels_mask(nb_channels);
 	for (i = 0; i < nb_channels; i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
-		if (iio_channel_is_enabled(chn, mask))
+		if (iio_channel_is_enabled(chn, info->channels_mask))
 			nb_active++;
 	}
 
@@ -601,7 +607,7 @@ int plugin_data_capture_num_active_channels(const char *device)
 int plugin_data_capture_bytes_per_sample(const char *device)
 {
 	struct iio_device *dev;
-	const struct iio_channels_mask *mask;
+	struct extra_dev_info *dev_info;
 	int nb_channels;
 
 	if (!device)
@@ -612,9 +618,9 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 	if (!dev)
 		return 0;
 	nb_channels = iio_device_get_channels_count(dev);
-	mask = iio_create_channels_mask(nb_channels);
+	dev_info = iio_device_get_data(dev);
 
-	return iio_device_get_sample_size(dev, mask);
+	return iio_device_get_sample_size(dev, dev_info->channels_mask);
 }
 
 int plugin_data_capture_of_plot(OscPlot *plot, const char *device, gfloat ***cooked_data,
@@ -1240,11 +1246,10 @@ static off_t get_trigger_offset(const struct iio_channel *chn,
 	struct extra_info *info = iio_channel_get_data(chn);
 	size_t i;
 	const struct iio_device *dev = iio_channel_get_device(chn);
+	struct extra_dev_info *dev_info = iio_device_get_data(dev);
 	int nb_channels = iio_device_get_channels_count(dev);
-	const struct iio_channels_mask *mask = iio_create_channels_mask(nb_channels);
 
-
-	if (iio_channel_is_enabled(chn, mask)) {
+	if (iio_channel_is_enabled(chn, dev_info->channels_mask)) {
 		for (i = info->offset / 2; i >= 1; i--) {
 			if (!falling_edge && info->data_ref[i - 1] < trigger_value &&
 					info->data_ref[i] >= trigger_value)
@@ -1288,14 +1293,7 @@ static gboolean capture_process(void *data)
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
-		const struct iio_channels_mask *mask = NULL;
-		if(dev_info->buffer == NULL)
-		  mask = iio_create_channels_mask(nb_channels);
-		else
-		  mask = iio_buffer_get_channels_mask(dev_info->buffer);
-
-
-		unsigned int i, sample_size = iio_device_get_sample_size(dev, mask);
+		unsigned int i, sample_size = iio_device_get_sample_size(dev, dev_info->channels_mask);
 		ssize_t sample_count = dev_info->sample_count;
 		struct iio_channel *chn;
 		off_t offset = 0;
@@ -1310,7 +1308,7 @@ static gboolean capture_process(void *data)
 
 		if (dev_info->buffer == NULL || device_is_oneshot(dev)) {
 			dev_info->buffer_size = sample_count;
-			dev_info->buffer = iio_device_create_buffer(dev, 0, mask);
+			dev_info->buffer = iio_device_create_buffer(dev, 0, dev_info->channels_mask);
 			if (!dev_info->buffer) {
 				fprintf(stderr, "Error: Unable to create buffer: %s\n", strerror(errno));
 				goto capture_stop_check;
@@ -1342,7 +1340,7 @@ static gboolean capture_process(void *data)
 			ret /= sample_size;
 			if (ret >= sample_count) {
 
-				iio_block_foreach_sample(block, mask, demux_sample, NULL);
+				iio_block_foreach_sample(block, dev_info->channels_mask, demux_sample, NULL);
 				if (ret >= sample_count * 2) {
 					printf("Decreasing block size\n");
 					iio_stream_destroy(dev_info->stream);
@@ -1366,7 +1364,7 @@ static gboolean capture_process(void *data)
 
 		if (dev_info->channel_trigger_enabled) {
 			chn = iio_device_get_channel(dev, dev_info->channel_trigger);
-			if (!iio_channel_is_enabled(chn, mask))
+			if (!iio_channel_is_enabled(chn, dev_info->channels_mask))
 				dev_info->channel_trigger_enabled = false;
 		}
 
@@ -1385,7 +1383,7 @@ static gboolean capture_process(void *data)
 				offset -= quatter_of_capture_interval * sizeof(gfloat);
 				for (i = 0; i < nb_channels; i++) {
 					chn = iio_device_get_channel(dev, i);
-					if (iio_channel_is_enabled(chn, mask))
+					if (iio_channel_is_enabled(chn, dev_info->channels_mask))
 						apply_trigger_offset(chn, offset);
 				}
 			}
@@ -1500,7 +1498,6 @@ static int capture_setup(void)
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info);
-		const struct iio_channels_mask *mask = iio_create_channels_mask(nb_channels);
 
 
 		/* We capture a double amount o data. Then we look for a trigger
@@ -1514,13 +1511,13 @@ static int capture_setup(void)
 			struct iio_channel *ch = iio_device_get_channel(dev, j);
 			struct extra_info *info = iio_channel_get_data(ch);
 			if (info->shadow_of_enabled > 0)
-				iio_channel_enable(ch, (struct iio_channels_mask *)mask);
+				iio_channel_enable(ch, dev_info->channels_mask);
 			else
-				iio_channel_disable(ch, (struct iio_channels_mask *)mask);
+				iio_channel_disable(ch, dev_info->channels_mask);
 		}
 
 
-		sample_size = iio_device_get_sample_size(dev, mask);
+		sample_size = iio_device_get_sample_size(dev, dev_info->channels_mask);
 		if (sample_size == 0 || sample_count == 0)
 			continue;
 
@@ -1538,7 +1535,7 @@ static int capture_setup(void)
 		dev_info->buffer = NULL;
 		dev_info->sample_count = sample_count;
 		dev_info->buffer_size = sample_count;
-		dev_info->buffer = iio_device_create_buffer(dev, 0, mask);
+		dev_info->buffer = iio_device_create_buffer(dev, 0, dev_info->channels_mask);
 		dev_info->stream = iio_buffer_create_stream(dev_info->buffer, 4, dev_info->sample_count);
 		if (!dev_info->buffer) {
 		        fprintf(stderr, "Error: Unable to create buffer: %s\n", strerror(errno));
