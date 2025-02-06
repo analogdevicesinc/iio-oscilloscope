@@ -340,25 +340,25 @@ static void glb_settings_update_labels(void)
 	ssize_t ret;
 	int i;
 
-	ret = iio_device_attr_read(dev1, "ensm_mode", buf, sizeof(buf));
+	ret = dev_attr_read_raw(dev1, "ensm_mode", buf, sizeof(buf));
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(ensm_mode), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(ensm_mode), "<error>");
 
-	ret = iio_device_attr_read(dev1, "calib_mode", buf, sizeof(buf));
+	ret = dev_attr_read_raw(dev1, "calib_mode", buf, sizeof(buf));
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(calib_mode), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(calib_mode), "<error>");
 
-	ret = iio_device_attr_read(dev1, "trx_rate_governor", buf, sizeof(buf));
+	ret = dev_attr_read_raw(dev1, "trx_rate_governor", buf, sizeof(buf));
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(trx_rate_governor), buf);
 	else
 		gtk_label_set_text(GTK_LABEL(trx_rate_governor), "<error>");
 
-	ret = iio_channel_attr_read(
+	ret = chn_attr_read_raw(
 			iio_device_find_channel(dev1, "voltage0", false),
 			"gain_control_mode", buf, sizeof(buf));
 	if (ret > 0)
@@ -366,7 +366,7 @@ static void glb_settings_update_labels(void)
 	else
 		gtk_label_set_text(GTK_LABEL(rx_gain_control[1]), "<error>");
 
-	ret = iio_channel_attr_read(
+	ret = chn_attr_read_raw(
 			iio_device_find_channel(dev1, "voltage1", false),
 			"gain_control_mode", buf, sizeof(buf));
 	if (ret > 0)
@@ -374,7 +374,7 @@ static void glb_settings_update_labels(void)
 	else
 		gtk_label_set_text(GTK_LABEL(rx_gain_control[2]), "<error>");
 
-	ret = iio_channel_attr_read(
+	ret = chn_attr_read_raw(
 			iio_device_find_channel(dev2, "voltage0", false),
 			"gain_control_mode", buf, sizeof(buf));
 	if (ret > 0)
@@ -382,7 +382,7 @@ static void glb_settings_update_labels(void)
 	else
 		gtk_label_set_text(GTK_LABEL(rx_gain_control[3]), "<error>");
 
-	ret = iio_channel_attr_read(
+	ret = chn_attr_read_raw(
 			iio_device_find_channel(dev2, "voltage1", false),
 			"gain_control_mode", buf, sizeof(buf));
 	if (ret > 0)
@@ -390,7 +390,7 @@ static void glb_settings_update_labels(void)
 	else
 		gtk_label_set_text(GTK_LABEL(rx_gain_control[4]), "<error>");
 
-	ret = iio_device_attr_read(dev1, "rx_path_rates", buf, sizeof(buf));
+	ret = dev_attr_read_raw(dev1, "rx_path_rates", buf, sizeof(buf));
 	if (ret > 0) {
 		sscanf(buf, "BBPLL:%f ADC:%f R2:%f R1:%f RF:%f RXSAMP:%f",
 		        &rates[0], &rates[1], &rates[2], &rates[3], &rates[4],
@@ -404,7 +404,7 @@ static void glb_settings_update_labels(void)
 		gtk_label_set_text(GTK_LABEL(rx_path_rates), "<error>");
 	}
 
-	ret = iio_device_attr_read(dev1, "tx_path_rates", buf, sizeof(buf));
+	ret = dev_attr_read_raw(dev1, "tx_path_rates", buf, sizeof(buf));
 	if (ret > 0) {
 		sscanf(buf, "BBPLL:%f DAC:%f T2:%f T1:%f TF:%f TXSAMP:%f",
 		        &rates[0], &rates[1], &rates[2], &rates[3], &rates[4],
@@ -481,7 +481,7 @@ static void rssi_update_label(GtkWidget *label, struct iio_device *dev,
 	if (!gtk_widget_is_drawable(GTK_WIDGET(label)))
 		return;
 
-	ret = iio_channel_attr_read(
+	ret = chn_attr_read_raw(
 			iio_device_find_channel(dev, chn, is_tx),
 			"rssi", buf, sizeof(buf));
 	if (ret > 0)
@@ -534,14 +534,14 @@ static void filter_fir_update(void)
 	bool rx = false, tx = false, rxtx = false;
 	struct iio_channel *chn;
 
-	iio_device_attr_read_bool(dev1, "in_out_voltage_filter_fir_en", &rxtx);
+	dev_attr_read_bool(dev1, "in_out_voltage_filter_fir_en", &rxtx);
 
 	chn = iio_device_find_channel(dev1, "voltage0", false);
 	if (chn)
-		iio_channel_attr_read_bool(chn, "filter_fir_en", &rx);
+		chn_attr_read_bool(chn, "filter_fir_en", &rx);
 	chn = iio_device_find_channel(dev1, "voltage0", true);
 	if (chn)
-		iio_channel_attr_read_bool(chn, "filter_fir_en", &tx);
+		chn_attr_read_bool(chn, "filter_fir_en", &tx);
 
 	if (rxtx) {
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON (enable_fir_filter_rx_tx), rxtx);
@@ -567,25 +567,25 @@ static void filter_fir_enable(GtkToggleButton *button, gpointer data)
 	disable = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON (disable_all_fir_filters));
 
 	if (rxtx || disable) {
-		iio_device_attr_write_bool(dev1,
+		dev_attr_write_bool(dev1,
 				"in_out_voltage_filter_fir_en", rxtx);
-		iio_device_attr_write_bool(dev2,
+		dev_attr_write_bool(dev2,
 				"in_out_voltage_filter_fir_en", rxtx);
 	} else {
 		struct iio_channel *chn;
 		chn = iio_device_find_channel(dev1, "voltage0", true);
 		if (chn)
-			iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
+			chn_attr_write_bool(chn, "filter_fir_en", tx);
 		chn = iio_device_find_channel(dev2, "voltage0", true);
 		if (chn)
-			iio_channel_attr_write_bool(chn, "filter_fir_en", tx);
+			chn_attr_write_bool(chn, "filter_fir_en", tx);
 
 		chn = iio_device_find_channel(dev1, "voltage0", false);
 		if (chn)
-			iio_channel_attr_write_bool(chn, "filter_fir_en", rx);
+			chn_attr_write_bool(chn, "filter_fir_en", rx);
 		chn = iio_device_find_channel(dev2, "voltage0", false);
 		if (chn)
-			iio_channel_attr_write_bool(chn, "filter_fir_en", rx);
+			chn_attr_write_bool(chn, "filter_fir_en", rx);
 	}
 
 	filter_fir_update();
@@ -613,10 +613,10 @@ static void rx_phase_rotation_update()
 	out[7] = iio_device_find_channel(cap2, "voltage3", false);
 
 	for (i = 0; i < 8; i += 2) {
-		iio_channel_attr_read_double(out[i], "calibscale", &val[0]);
-		iio_channel_attr_read_double(out[i], "calibphase", &val[1]);
-		iio_channel_attr_read_double(out[i + 1], "calibscale", &val[2]);
-		iio_channel_attr_read_double(out[i + 1], "calibphase", &val[3]);
+		chn_attr_read_double(out[i], "calibscale", &val[0]);
+		chn_attr_read_double(out[i], "calibphase", &val[1]);
+		chn_attr_read_double(out[i + 1], "calibscale", &val[2]);
+		chn_attr_read_double(out[i + 1], "calibphase", &val[3]);
 
 		val[0] = acos(val[0]) * 360.0 / (2.0 * M_PI);
 		val[1] = asin(-1.0 * val[1]) * 360.0 / (2.0 * M_PI);
@@ -662,10 +662,10 @@ static void dcxo_widgets_update(void)
 	char val[64];
 	int ret;
 
-	ret = iio_device_attr_read(dev1, "dcxo_tune_coarse", val, sizeof(val));
+	ret = dev_attr_read_raw(dev1, "dcxo_tune_coarse", val, sizeof(val));
 	if (ret > 0)
 		gtk_widget_show(glb_widgets[dcxo_coarse_num].widget);
-	ret = iio_device_attr_read(dev1, "dcxo_tune_fine", val, sizeof(val));
+	ret = dev_attr_read_raw(dev1, "dcxo_tune_fine", val, sizeof(val));
 	if (ret > 0)
 		gtk_widget_show(glb_widgets[dcxo_fine_num].widget);
 }
@@ -702,7 +702,7 @@ static void hide_section_cb(GtkToggleToolButton *btn, GtkWidget *section)
 
 static int write_int(struct iio_channel *chn, const char *attr, int val)
 {
-	return iio_channel_attr_write_longlong(chn, attr, (long long) val);
+	return chn_attr_write_longlong(chn, attr, (long long) val);
 }
 
 static void fastlock_clicked(GtkButton *btn, gpointer data)
@@ -793,10 +793,10 @@ static void rx_phase_rotation_set(GtkSpinButton *spinbutton, gpointer user_data)
 	}
 
 	if (out1 && out0) {
-		iio_channel_attr_write_double(out0, "calibscale", (double) cos(phase));
-		iio_channel_attr_write_double(out0, "calibphase", (double) (-1 * sin(phase)));
-		iio_channel_attr_write_double(out1, "calibscale", (double) cos(phase));
-		iio_channel_attr_write_double(out1, "calibphase", (double) sin(phase));
+		chn_attr_write_double(out0, "calibscale", (double) cos(phase));
+		chn_attr_write_double(out0, "calibphase", (double) (-1 * sin(phase)));
+		chn_attr_write_double(out1, "calibscale", (double) cos(phase));
+		chn_attr_write_double(out1, "calibphase", (double) sin(phase));
 	}
 }
 
@@ -1061,7 +1061,7 @@ static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 	value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				PHY_DEVICE1".in_voltage0_gain_control_mode");
 	if (ch && value) {
-		iio_channel_attr_write(ch, "gain_control_mode", value);
+		chn_attr_write_string(ch, "gain_control_mode", value);
 		free(value);
 	}
 
@@ -1069,7 +1069,7 @@ static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 	value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				PHY_DEVICE1".in_voltage1_gain_control_mode");
 	if (ch && value) {
-		iio_channel_attr_write(ch, "gain_control_mode", value);
+		chn_attr_write_string(ch, "gain_control_mode", value);
 		free(value);
 	}
 
@@ -1077,7 +1077,7 @@ static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 	value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				PHY_DEVICE2".in_voltage0_gain_control_mode");
 	if (ch && value) {
-		iio_channel_attr_write(ch, "gain_control_mode", value);
+		chn_attr_write_string(ch, "gain_control_mode", value);
 		free(value);
 	}
 
@@ -1085,7 +1085,7 @@ static void load_profile(struct osc_plugin *plugin, const char *ini_fn)
 	value = read_token_from_ini(ini_fn, THIS_DRIVER,
 				PHY_DEVICE2".in_voltage1_gain_control_mode");
 	if (ch && value) {
-		iio_channel_attr_write(ch, "gain_control_mode", value);
+		chn_attr_write_string(ch, "gain_control_mode", value);
 		free(value);
 	}
 
