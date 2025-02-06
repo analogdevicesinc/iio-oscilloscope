@@ -112,7 +112,7 @@ void trigger_settings_for_device(GtkBuilder *builder, const char *device);
 void application_quit (void);
 
 bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_count);
-unsigned global_enabled_channels_mask(struct iio_device *dev, struct iio_channels_mask *ch_mask);
+unsigned global_enabled_channels_mask(struct iio_device *dev);
 void add_ch_setup_check_fct(char *device_name, void *fp);
 void *find_setup_check_fct_by_devname(const char *dev_name);
 bool is_input_device(const struct iio_device *dev);
