@@ -176,6 +176,16 @@ int dev_attr_read_raw(struct iio_device *dev, const char *attr_name, char *dst, 
 		return -ENOENT;
 }
 
+int dev_attr_read_bool(struct iio_device *dev, const char *attr_name, bool *value)
+{
+	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_read_bool(attr, value);
+	else
+		return -ENOENT;
+}
+
 int dev_attr_read_double(struct iio_device *dev, const char *attr_name, double *value)
 {
 	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
@@ -222,6 +232,16 @@ int dev_attr_write_raw(struct iio_device *dev, const char *attr_name, const char
 
 	if (attr)
 		return iio_attr_write_raw(attr, src, len);
+	else
+		return -ENOENT;
+}
+
+int dev_attr_write_bool(struct iio_device *dev, const char *attr_name, bool value)
+{
+	const struct iio_attr *attr = iio_device_find_attr(dev, attr_name);
+
+	if (attr)
+		return iio_attr_write_bool(attr, value);
 	else
 		return -ENOENT;
 }
