@@ -2113,7 +2113,6 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	struct iio_device *dev;
 	unsigned int nb_channels = num_of_channels_of_device(treeview, name);
 	unsigned enabled_channels_mask;
-	const struct iio_channels_mask *mask = NULL;
 
 	GtkTreeModel *model;
 	GtkTreeIter iter;
@@ -2133,9 +2132,6 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	if (!dev)
 		return TRUE;
 	num_enabled = enabled_channels_of_device(treeview, name, &enabled_channels_mask);
-	mask = iio_create_channels_mask(iio_device_get_channels_count(dev));
-
-
 
 	/* Basic validation rules */
 	if (plot_type == FFT_PLOT) {
@@ -2156,7 +2152,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 				"Time Domain needs at least one channel");
 			return false;
 		} else if (dev && !dma_valid_selection(name, enabled_channels_mask |
-		global_enabled_channels_mask(dev, (struct iio_channels_mask *) mask), nb_channels)) {
+		global_enabled_channels_mask(dev), nb_channels)) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
 				"Channel selection not supported");
 			return false;
