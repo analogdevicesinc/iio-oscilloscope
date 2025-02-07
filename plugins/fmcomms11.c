@@ -21,7 +21,7 @@
 #include <sys/stat.h>
 #include <string.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "../libini2.h"
 #include "../osc.h"
@@ -31,6 +31,7 @@
 #include "../eeprom.h"
 //#include "./block_diagram.h"
 #include "dac_data_manager.h"
+#include "../iio_utils.h"
 
 #define THIS_DRIVER "FMCOMMS11"
 
@@ -265,7 +266,7 @@ static GtkWidget * fmcomms11_init(struct osc_plugin *plugin, GtkWidget *notebook
 
 	ch0 = iio_device_find_channel(adc, "voltage0", false);
 
-	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
+	if (chn_attr_read_longlong(ch0, "sampling_frequency", &val) == 0)
 		snprintf(attr_val, sizeof(attr_val), "%.2f", (double)(val / 1000000ul));
 	else
 		snprintf(attr_val, sizeof(attr_val), "%s", "error");
@@ -285,7 +286,7 @@ static GtkWidget * fmcomms11_init(struct osc_plugin *plugin, GtkWidget *notebook
 	/* Tx Widgets */
 	ch0 = iio_device_find_channel(dac, "altvoltage0", true);
 
-	if (iio_channel_attr_read_longlong(ch0, "sampling_frequency", &val) == 0) {
+	if (chn_attr_read_longlong(ch0, "sampling_frequency", &val) == 0) {
 		tx_sampling_freq = (double)(val / 1000000ul);
 		snprintf(attr_val, sizeof(attr_val), "%.2f", tx_sampling_freq);
 	} else {
