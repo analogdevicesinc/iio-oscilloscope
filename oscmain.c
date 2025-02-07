@@ -208,7 +208,6 @@ gint main (int argc, char **argv)
 	while ((c = getopt (argc, argv, "c:p:u:")) != -1)
 		switch (c) {
 			case 'c':
-				//ctx = iio_create_network_context(optarg);
 				ctx = iio_create_context(NULL, optarg);
 				if (!ctx) {
 					printf("Failed connecting to remote device: %s\n", optarg);
@@ -216,7 +215,6 @@ gint main (int argc, char **argv)
 				}
 				break;
 			case 'u':
-				//ctx = iio_create_context_from_uri(optarg);
 				ctx = iio_create_context(NULL, optarg);
 				if (!ctx) {
 					printf("Failed connecting to remote device: %s\n", optarg);
@@ -254,7 +252,6 @@ gint main (int argc, char **argv)
 	if (!ctx_destroyed_by_do_quit) {
 		if (!ctx)
 			connect_dialog(false);
-		// !!!!!!!
 		create_default_plot();
 		if (c == 0) {
 			if (gtk_check_menu_item_get_active(
