@@ -456,12 +456,10 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 
 			*count = size * tx_channels * 2;
 
-			unsigned long long *sample = *((unsigned long long **) buf);
-			unsigned int *sample_32 = *((unsigned int **) buf);
 			unsigned short *sample_16 = *((unsigned short **) buf);
+			struct _complex_ref *tx_data = calloc(tx_channels, sizeof(struct _complex_ref));
 
-			struct _complex_ref tx_data[4] = {{NULL, NULL}, {NULL, NULL}, {NULL, NULL}, {NULL, NULL}};
-			mat_complex_split_t *complex_data[4];
+			mat_complex_split_t *complex_data[64];
 
 			if (complex_format) {
 				for (i = 0; i <= (unsigned int) rep; i++) {
@@ -479,44 +477,28 @@ static int analyse_wavefile(struct dac_data_manager *manager,
 			}
 			replicate_tx_data_channels(tx_data, tx_channels);
 
-			switch (tx_channels) {
-			case 1:
-				for (i = 0 ; i < size; i++) {
-					sample_16[i] = convert(scale, tx_data[0].re[i], offset);
+			unsigned int ch = 0;
+			unsigned int sample_i = 0;
+			unsigned int tx_data_end = (tx_channels % 2 == 0) ? (tx_channels / 2) : tx_channels;
+
+			for (i = 0 ; i < size; i++) {
+				for (ch = 0; ch < tx_data_end; ch++) {
+					if (tx_channels % 2 == 0) {
+						sample_16[sample_i++] = ((unsigned int) convert(scale, tx_data[ch].re[i], offset));
+						sample_16[sample_i++] = ((unsigned int) convert(scale, tx_data[ch].im[i], offset));
+					} else {
+						sample_16[sample_i++] = ((unsigned int) convert(scale, tx_data[ch].re[i], offset));
+					}
 				}
-				break;
-			case 2:
-				for (i = 0 ; i < size; i++) {
-					sample_32[i] = ((unsigned int) convert(scale, tx_data[0].im[i], offset) << 16) |
-						       ((unsigned int) convert(scale, tx_data[0].re[i], offset) << 0);
-				}
-				break;
-			case 4:
-				for (i = 0 ; i < size; i++) {
-					sample[i] = ((unsigned long long) convert(scale, tx_data[1].im[i], offset) << 48) |
-						    ((unsigned long long) convert(scale, tx_data[1].re[i], offset) << 32) |
-							((unsigned long long) convert(scale, tx_data[0].im[i], offset) << 16) |
-							((unsigned long long) convert(scale, tx_data[0].re[i], offset) << 0);
-				 }
-				break;
-			case 8:
-				for (i = 0, j = 0; i < size; i++) {
-					sample[j++] = ((unsigned long long) convert(scale, tx_data[3].im[i], offset) << 48) |
-						    ((unsigned long long) convert(scale, tx_data[3].re[i], offset) << 32) |
-							((unsigned long long) convert(scale, tx_data[2].im[i], offset) << 16) |
-							((unsigned long long) convert(scale, tx_data[2].re[i], offset) << 0);
-					sample[j++] = ((unsigned long long) convert(scale, tx_data[1].im[i], offset) << 48) |
-						    ((unsigned long long) convert(scale, tx_data[1].re[i], offset) << 32) |
-							((unsigned long long) convert(scale, tx_data[0].im[i], offset) << 16) |
-							((unsigned long long) convert(scale, tx_data[0].re[i], offset) << 0);
-				}
-				break;
 			}
 
 			for (j = 0; j <= (unsigned int) rep; j++) {
 				Mat_VarFree(matvars[j]);
 			}
+			free(tx_data);
+			tx_data = NULL;
 			free(matvars);
+
 			Mat_Close(matfp);
 			return ret;
 		}
