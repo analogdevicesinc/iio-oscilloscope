@@ -20,8 +20,8 @@ set(PLUGINS
 	fmcomms2
 	fmcomms2_adv
 	fmcomms5
-	#fmcomms6
-	#fmcomms11
+	fmcomms6
+	fmcomms11
 	ad9371
 	ad9371_adv
 	adrv9009
