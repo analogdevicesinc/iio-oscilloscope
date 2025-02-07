@@ -40,7 +40,7 @@ jobs:
                 -e LIBAD9166_BRANCH=main ^
                 shooteu/iio-oscilloscope C:\msys64\usr\bin\bash.exe -c '/home/docker/iio-oscilloscope/CI/docker/inside_docker.sh'
             
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: adi-osc-setup
         path: ${{ github.workspace }}\artifacts\adi-osc-setup.exe
