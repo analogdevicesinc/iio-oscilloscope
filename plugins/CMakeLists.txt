@@ -40,7 +40,7 @@ set(PLUGINS
 	cn0511
 	cn0540
 	pr_config
-	#motor_control
+	motor_control
 	lidar
 	dmm
 	debug
