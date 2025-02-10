@@ -24,6 +24,7 @@
 #include "../osc_plugin.h"
 #include "../config.h"
 #include "../libini2.c"
+#include "../iio_utils.h"
 
 #define THIS_DRIVER "Motor Control"
 #define AD_MC_CTRL "ad-mc-ctrl"
@@ -166,7 +167,7 @@ static gboolean update_display(gpointer foo)
 	iio_chn = iio_device_find_channel(resolver_dev, "angl0", false);
 	if (!iio_chn)
 		goto end;
-	ret = iio_channel_attr_read(iio_chn, "raw", buf, sizeof(buf));
+	ret = chn_attr_read_raw(iio_chn, "raw", buf, sizeof(buf));
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(resolver_angle), buf);
 	else
@@ -176,7 +177,7 @@ static gboolean update_display(gpointer foo)
 			false);
 	if (!iio_chn)
 		goto end;
-	ret = iio_channel_attr_read(iio_chn, "raw", buf, sizeof(buf));
+	ret = chn_attr_read_raw(iio_chn, "raw", buf, sizeof(buf));
 	if (ret > 0)
 		gtk_label_set_text(GTK_LABEL(resolver_angle_veloc),
 			buf);
@@ -276,23 +277,23 @@ static void gpo_toggled_cb(GtkToggleButton *btn, gpointer data)
 	long long value;
 
 	if (pid_devs[PID_1ST_DEV]) {
-		iio_device_attr_read_longlong(pid_devs[PID_1ST_DEV],
+		dev_attr_read_longlong(pid_devs[PID_1ST_DEV],
 				"mc_ctrl_gpo", &value);
 		if (gtk_toggle_button_get_active(btn))
 			value |= (1ul << id);
 		else
 			value &= ~(1ul << id);
-		iio_device_attr_write_longlong(pid_devs[PID_1ST_DEV],
+		dev_attr_write_longlong(pid_devs[PID_1ST_DEV],
 				"mc_ctrl_gpo", value & gpo_mask);
 	}
 	if (adv_dev) {
-		iio_device_attr_read_longlong(adv_dev,
+		dev_attr_read_longlong(adv_dev,
 				"mc_adv_ctrl_gpo", &value);
 		if (gtk_toggle_button_get_active(btn))
 			value |= (1ul << id);
 		else
 			value &= ~(1ul << id);
-		iio_device_attr_write_longlong(adv_dev,
+		dev_attr_write_longlong(adv_dev,
 				"mc_adv_ctrl_gpo", value & gpo_mask);
 	}
 }
@@ -306,7 +307,7 @@ static void resolver_resolution_update_val(GtkBuilder *builder)
 
 	box = GTK_COMBO_BOX(gtk_builder_get_object(builder,
 				"comboboxtext_resolver_resolution"));
-	ret = iio_device_attr_read(resolver_dev, "bits", buf,
+	ret = dev_attr_read_raw(resolver_dev, "bits", buf,
 			sizeof(buf));
 	if (ret > 0) {
 		resolution = atoi(buf);
@@ -329,7 +330,7 @@ static void resolver_resolution_changed_cb(GtkComboBoxText *box,
 
 	buf = gtk_combo_box_text_get_active_text(box);
 	if (buf) {
-		ret = iio_device_attr_write(resolver_dev, "bits", buf);
+		ret = dev_attr_write_raw(resolver_dev, "bits", buf, strlen(buf));
 		if (ret < 0)
 			printf("write to <bits> attribute failed:%zd\n", ret);
 		g_free(buf);
