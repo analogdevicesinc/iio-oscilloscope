@@ -41,7 +41,7 @@ set(PLUGINS
 	cn0540
 	pr_config
 	#motor_control
-	#lidar
+	lidar
 	dmm
 	debug
 	scpi

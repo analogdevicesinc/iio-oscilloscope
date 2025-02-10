@@ -12,13 +12,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "../config.h"
 #include "../osc.h"
 #include "../iio_widget.h"
 #include "../osc_plugin.h"
 #include "../datatypes.h"
+#include "../iio_utils.h"
 
 #define THIS_DRIVER "LIDAR"
 
@@ -89,7 +90,7 @@ static void manual_ch_set_cb(void)
 		gtk_spin_button_get_value_as_int(manual_ch_btns[2]),
 		gtk_spin_button_get_value_as_int(manual_ch_btns[3]));
 
-	iio_device_attr_write_raw(pulse_dev,
+	dev_attr_write_raw(pulse_dev,
 		"sequencer_manual_chsel", ch_config, sizeof(ch_config));
 }
 
@@ -103,7 +104,7 @@ static void auto_cfg_set_cb(void)
 		gtk_spin_button_get_value_as_int(auto_cfg_btns[2]),
 		gtk_spin_button_get_value_as_int(auto_cfg_btns[3]));
 
-	iio_device_attr_write_raw(pulse_dev,
+	dev_attr_write_raw(pulse_dev,
 		"sequencer_auto_cfg", ch_config, sizeof(ch_config));
 }
 
@@ -186,19 +187,19 @@ static double tilt_volts_to_raw_convert(double value, bool inverse)
 
 static void set_all_iio_atributes_to_default_values()
 {
-	iio_device_attr_write_bool(pulse_dev, "sequencer_en", false);
-	iio_device_attr_write_raw(pulse_dev, "sequencer_mode", "auto", 5);
-	iio_device_attr_write_raw(pulse_dev,
+	dev_attr_write_bool(pulse_dev, "sequencer_en", false);
+	dev_attr_write_raw(pulse_dev, "sequencer_mode", "auto", 5);
+	dev_attr_write_raw(pulse_dev,
 		"sequencer_manual_chsel", "0, 0, 0, 0", 9);
-	iio_device_attr_write_raw(pulse_dev,
+	dev_attr_write_raw(pulse_dev,
 		"sequencer_auto_cfg", "0, 1, 2, 3", 9);
-	iio_device_attr_write_longlong(pulse_dev, "sequencer_pulse_delay_ns", 248);
-	iio_channel_attr_write_bool(pulse_ch0, "en", false);
-	iio_channel_attr_write_longlong(pulse_ch0, "frequency", 50000);
-	iio_channel_attr_write_longlong(pulse_ch0, "pulse_width_ns", 20);
-	iio_channel_attr_write_longlong(afe_ch0, "raw",
+	dev_attr_write_longlong(pulse_dev, "sequencer_pulse_delay_ns", 248);
+	chn_attr_write_bool(pulse_ch0, "en", false);
+	chn_attr_write_longlong(pulse_ch0, "frequency", 50000);
+	chn_attr_write_longlong(pulse_ch0, "pulse_width_ns", 20);
+	chn_attr_write_longlong(afe_ch0, "raw",
 		adp_bias_volts_to_raw_convert(-160, false));
-	iio_channel_attr_write_longlong(afe_ch1, "raw",
+	chn_attr_write_longlong(afe_ch1, "raw",
 		tilt_volts_to_raw_convert(0, false));
 }
 
