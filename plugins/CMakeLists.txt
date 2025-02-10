@@ -42,7 +42,7 @@ set(PLUGINS
 	dmm
 	debug
 	#spectrum_analyzer
-	#scpi
+	scpi
 	ad9081
 	ad9084
 	adrv9002
