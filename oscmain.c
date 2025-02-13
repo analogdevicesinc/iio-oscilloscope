@@ -229,11 +229,6 @@ gint main (int argc, char **argv)
 				break;
 		}
 
-#ifndef __MINGW__
-	/* XXX: Enabling threading when compiling for Windows will lock the UI
-	 * as soon as the main window is moved. */
-	gdk_threads_init();
-#endif
 	gtk_init(&argc, &argv);
 
 	signal(SIGTERM, sigterm);
@@ -242,7 +237,6 @@ gint main (int argc, char **argv)
 	signal(SIGHUP, sigterm);
 #endif
 
-	gdk_threads_enter();
 	init_application();
 	c = load_default_profile(profile, true);
 	if (!ctx_destroyed_by_do_quit) {
@@ -258,7 +252,6 @@ gint main (int argc, char **argv)
 		} else
 			application_quit();
 	}
-	gdk_threads_leave();
 
 	if (profile)
 	    free(profile);

@@ -85,6 +85,14 @@ struct w_info {
 	const char * const name;
 };
 
+/* Container for passing both the progress bar and fraction to
+ * set_calibration_progress_ui.
+ * Allocated by caller, freed by callee. */
+struct set_calibration_progress_params {
+	GtkProgressBar *pbar;
+	float fraction;
+};
+
 static struct w_info attrs[] = {
 	{SPINBUTTON, "adi,agc-adc-large-overload-exceed-counter"},
 	{SPINBUTTON, "adi,agc-adc-large-overload-inc-steps"},
@@ -814,17 +822,76 @@ static int get_cal_samples(long long cal_tone, long long cal_freq)
 	return env_samples;
 }
 
-static void set_calibration_progress(GtkProgressBar *pbar, float fraction)
-{
-	if (gtk_widget_get_visible(GTK_WIDGET(pbar))) {
+static bool set_calibration_progress_ui(struct set_calibration_progress_params *params) {
+	if (gtk_widget_get_visible(GTK_WIDGET(params->pbar))) {
 		char ptext[64];
 
-		gdk_threads_enter();
-		snprintf(ptext, sizeof(ptext), "Calibration Progress (%.2f %%)", fraction * 100);
-		gtk_progress_bar_set_text(pbar, ptext);
-		gtk_progress_bar_set_fraction(pbar, fraction);
-		gdk_threads_leave();
+		snprintf(ptext, sizeof(ptext), "Calibration Progress (%.2f %%)", params->fraction * 100);
+		gtk_progress_bar_set_text(params->pbar, ptext);
+		gtk_progress_bar_set_fraction(params->pbar, params->fraction);
 	}
+
+	free(params);
+
+	return false;
+}
+
+static void set_calibration_progress(GtkProgressBar *pbar, float fraction)
+{
+	struct set_calibration_progress_params *params = malloc(sizeof(struct set_calibration_progress_params));
+	params->pbar = pbar;
+	params->fraction = fraction;
+
+	gdk_threads_add_idle(G_SOURCE_FUNC(set_calibration_progress_ui), params);
+}
+
+struct calibration_failed_ui_param {
+	gpointer button;
+	int ret;
+};
+
+/* UI actions after a failed calibration
+   Parameter struct is allocated by caller and freed by callee
+   Not thread safe by itself - should be queued using gdk_threads_add_idle(), not g_idle_add_full() */
+static gboolean calibration_failed_ui(gpointer p) {
+	struct calibration_failed_ui_param *param = (struct calibration_failed_ui_param *) p;
+	
+	reload_settings();
+
+	if (param->ret) {
+		create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
+			"FMCOMMS5", "Calibration failed");
+		auto_calibrate = -1;
+	} else {
+		/* set completed flag for testing */
+		auto_calibrate = 1;
+	}
+
+	osc_plot_destroy(plot_xcorr_4ch);
+	if (param->button)
+		gtk_widget_show(GTK_WIDGET(param->button));
+	
+	free(p);
+
+	return false;
+}
+
+struct calibration_prepare_plot_param {
+	int samples;
+};
+
+/* Prepare xcorr_4ch plot
+   Parameter struct is allocated by caller and freed by callee
+   Not thread safe by itself - should be queued using gdk_threads_add_idle(), not g_idle_add_full() */
+static gboolean calibration_prepare_plot(gpointer p) {
+	struct calibration_prepare_plot_param *param = (struct calibration_prepare_plot_param *) p;
+
+	osc_plot_set_sample_count(plot_xcorr_4ch, param->samples);
+	osc_plot_draw_start(plot_xcorr_4ch);
+
+	free(p);
+
+	return false;
 }
 
 static void calibrate (gpointer button)
@@ -834,6 +901,8 @@ static void calibrate (gpointer button)
 	struct iio_channel *in0, *in0_slave;
 	long long cal_tone, cal_freq;
 	int ret, samples;
+	struct calibration_prepare_plot_param *calib_prep_param;
+	struct calibration_failed_ui_param *calib_failed_param;
 
 	in0 = iio_device_find_channel(dev, "voltage0", false);
 	in0_slave = iio_device_find_channel(dev_slave, "voltage0", false);
@@ -877,10 +946,9 @@ static void calibrate (gpointer button)
 
 	DBG("cal_tone %lld cal_freq %lld samples %d", cal_tone, cal_freq, samples);
 
-	gdk_threads_enter();
-	osc_plot_set_sample_count(plot_xcorr_4ch, samples);
-	osc_plot_draw_start(plot_xcorr_4ch);
-	gdk_threads_leave();
+	calib_prep_param = malloc(sizeof(struct calibration_prepare_plot_param));
+	calib_prep_param->samples = samples;
+	gdk_threads_add_idle(calibration_prepare_plot, (gpointer) calib_prep_param);
 
 	/* Turn off quadrature tracking while the sync is going on */
 	iio_channel_attr_write(in0, "quadrature_tracking_en", "0");
@@ -957,22 +1025,10 @@ calibrate_fail:
 		iio_channel_attr_write(in0_slave, "quadrature_tracking_en", "1");
 	}
 
-	gdk_threads_enter();
-	reload_settings();
-
-	if (ret) {
-		create_blocking_popup(GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE,
-			"FMCOMMS5", "Calibration failed");
-		auto_calibrate = -1;
-	} else {
-		/* set completed flag for testing */
-		auto_calibrate = 1;
-	}
-
-	osc_plot_destroy(plot_xcorr_4ch);
-	if (button)
-		gtk_widget_show(GTK_WIDGET(button));
-	gdk_threads_leave();
+	calib_failed_param = malloc(sizeof(struct calibration_failed_ui_param));
+	calib_failed_param->button = button;
+	calib_failed_param->ret = ret;
+	gdk_threads_add_idle(calibration_failed_ui, (gpointer) calib_failed_param);
 
 	/* reset progress bar */
 	gtk_progress_bar_set_fraction(calib_progress, 0.0);
