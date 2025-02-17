@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.2 -->
+<!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.0"/>
   <object class="GtkAdjustment" id="adj_add_to_sample">
@@ -1608,19 +1608,16 @@
       </object>
     </child>
   </object>
-  <object class="GtkFileChooserDialog" id="saveas_dialog">
+  <object class="GtkDialog" id="saveas_dialog">
     <property name="can-focus">False</property>
-    <property name="border-width">5</property>
     <property name="title" translatable="yes">ADI IIO oscilloscope - Save As</property>
-    <property name="role">GtkFileChooserDialog</property>
     <property name="modal">True</property>
     <property name="icon-name">adi-osc</property>
     <property name="type-hint">dialog</property>
-    <property name="action">save</property>
-    <property name="do-overwrite-confirmation">True</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="filechooserdialog-vbox3">
         <property name="can-focus">False</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
           <object class="GtkButtonBox" id="filechooserdialog-action_area3">
@@ -1653,7 +1650,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">5</property>
+                <property name="position">1</property>
               </packing>
             </child>
           </object>
@@ -1661,6 +1658,20 @@
             <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkFileChooserWidget" id="saveas_filechooser_widget">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="action">select-folder</property>
+            <property name="do-overwrite-confirmation">True</property>
+            <property name="search-mode">True</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
           </packing>
         </child>
         <child>
