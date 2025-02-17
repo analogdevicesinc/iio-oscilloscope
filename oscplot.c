@@ -274,6 +274,7 @@ struct _OscPlotPrivate
 	GtkWidget *phase_label;
 	GtkWidget *saveas_button;
 	GtkWidget *saveas_dialog;
+	GtkFileChooser *saveas_filechooser;
 	GtkWidget *saveas_type_dialog;
 	GtkWidget *title_edit_dialog;
 	GtkWidget *fullscreen_button;
@@ -4550,14 +4551,14 @@ static void saveas_dialog_show(GtkWidget *w, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
 
-	gtk_file_chooser_set_action(GTK_FILE_CHOOSER (priv->saveas_dialog), GTK_FILE_CHOOSER_ACTION_SAVE);
-	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(priv->saveas_dialog), TRUE);
+	gtk_file_chooser_set_action(priv->saveas_filechooser, GTK_FILE_CHOOSER_ACTION_SAVE);
+	gtk_file_chooser_set_do_overwrite_confirmation(priv->saveas_filechooser, TRUE);
 
 	if (!priv->saveas_filename) {
-		gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->saveas_dialog), getenv("HOME"));
+		gtk_file_chooser_set_current_folder(priv->saveas_filechooser, getenv("HOME"));
 	} else {
-		if (!gtk_file_chooser_set_filename(GTK_FILE_CHOOSER (priv->saveas_dialog), priv->saveas_filename))
-			gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER (priv->saveas_dialog), getenv("HOME"));
+		if (!gtk_file_chooser_set_filename(priv->saveas_filechooser, priv->saveas_filename))
+			gtk_file_chooser_set_current_folder(priv->saveas_filechooser, getenv("HOME"));
 		g_free(priv->saveas_filename);
 		priv->saveas_filename = NULL;
 	}
@@ -4794,7 +4795,7 @@ void cb_saveas_response(GtkDialog *dialog, gint response_id, OscPlot *plot)
 	/* Save as Dialog */
 	OscPlotPrivate *priv = plot->priv;
 
-	priv->saveas_filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (priv->saveas_dialog));
+	priv->saveas_filename = gtk_file_chooser_get_filename(priv->saveas_filechooser);
 
 	if (response_id == GTK_RESPONSE_ACCEPT) {
 		gint type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->cmb_saveas_type));
@@ -6985,6 +6986,7 @@ static void create_plot(OscPlot *plot)
 	priv->phase_label = GTK_WIDGET(gtk_builder_get_object(builder, "phase_info"));
 	priv->saveas_button = GTK_WIDGET(gtk_builder_get_object(builder, "save_as"));
 	priv->saveas_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "saveas_dialog"));
+	priv->saveas_filechooser = GTK_FILE_CHOOSER(gtk_builder_get_object(builder, "saveas_filechooser_widget"));
 	priv->title_edit_dialog = GTK_WIDGET(gtk_builder_get_object(builder, "dialog_plot_title_edit"));
 	priv->fullscreen_button = GTK_WIDGET(gtk_builder_get_object(builder, "fullscreen"));
 	priv->menu_fullscreen = GTK_WIDGET(gtk_builder_get_object(builder, "menuitem_fullscreen"));
