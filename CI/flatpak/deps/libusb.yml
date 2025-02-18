@@ -1,0 +1,9 @@
+name: libusb
+config-opts:
+  - --disable-udev
+  - --prefix=/app
+sources:
+  - type: archive
+    url: https://downloads.sourceforge.net/project/libusb/libusb-1.0/libusb-1.0.26/libusb-1.0.26.tar.bz2
+    sha256: 12ce7a61fc9854d1d2a1ffe095f7b5fac19ddba095c259e6067a46500381b5a5
+
