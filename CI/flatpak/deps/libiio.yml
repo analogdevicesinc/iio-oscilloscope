@@ -1,0 +1,14 @@
+name: libiio
+builddir: true
+buildsystem: cmake
+config-opts:
+  - -DCMAKE_INSTALL_PREFIX:PATH=/app
+  - -DCMAKE_INSTALL_LIBDIR:STRING=lib
+  - -DWITH_TESTS:BOOL=OFF
+  - -DWITH_DOC:BOOL=OFF
+  - -DWITH_IIOD:BOOL=OFF
+  - -DINSTALL_UDEV_RULE:BOOL=OFF
+sources:
+  - type: git
+    url: https://github.com/analogdevicesinc/libiio
+    commit: v0.24

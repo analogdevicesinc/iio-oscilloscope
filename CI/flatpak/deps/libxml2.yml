@@ -1,0 +1,7 @@
+name: libxml2
+config-opts:
+  - --without-python
+sources:
+  - type: archive
+    url: https://download.gnome.org/sources/libxml2/2.9/libxml2-2.9.9.tar.xz
+    sha256: 58a5c05a2951f8b47656b676ce1017921a29f6b1419c45e3baed0d6435ba03f5
