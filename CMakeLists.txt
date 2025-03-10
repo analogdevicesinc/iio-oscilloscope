@@ -249,6 +249,11 @@ target_link_libraries(oscmain PRIVATE
 )
 set_target_properties(oscmain PROPERTIES OUTPUT_NAME osc)
 
+# Fix libosc.0.so not found
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(CMAKE_INSTALL_LIBDIR "/lib")
+endif()
+
 install(TARGETS osc
 	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
