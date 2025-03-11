@@ -251,8 +251,15 @@ set_target_properties(oscmain PROPERTIES OUTPUT_NAME osc)
 
 # Fix libosc.0.so not found
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(CMAKE_INSTALL_LIBDIR "/lib")
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(armv7|x86_64)$")
+    set(CMAKE_INSTALL_LIBDIR "/lib")
+  elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|ppc64le|s390x)$")
+    set(CMAKE_INSTALL_LIBDIR "/usr/local/lib")
+  else()
+    set(CMAKE_INSTALL_LIBDIR "/usr/local/lib")
+  endif()
 endif()
+
 
 install(TARGETS osc
 	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
