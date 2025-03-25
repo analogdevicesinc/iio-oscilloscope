@@ -729,8 +729,6 @@ static gboolean update_display(gpointer foo)
 			clgc_update_labels();
 			vswr_update_labels();
 		}
-
-		iio_widget_update(&rx_widgets[rx2_gain]);
 	}
 
 	return TRUE;
