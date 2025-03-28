@@ -6108,19 +6108,33 @@ static gint channel_compare(gconstpointer a, gconstpointer b)
 
 static GSList * math_expression_get_iio_channel_list(const char *expression, struct iio_context *ctx, const char *device, bool *has_invalid_ch)
 {
+
 	GSList *chn_list = NULL;
-	GRegex *regex;
+	GRegex *regex, *regex_i, *regex_q;
 	GMatchInfo *info;
 	gchar *chn_name;
 	struct iio_device *iio_dev;
 	struct iio_channel *iio_chn;
-	gboolean invalid_list = false, is_match;
+	gboolean invalid_list = false, is_match = true, match_q, match_i, match;
 
 	if (!device || !(iio_dev = iio_context_find_device(ctx, device)))
 		return NULL;
 
 	regex = g_regex_new("voltage[0-9]+", 0, 0, NULL);
-	is_match = g_regex_match(regex, expression, 0, &info);
+	regex_i = g_regex_new("voltage[0-9]+_i", 0, 0, NULL);
+	regex_q = g_regex_new("voltage[0-9]+_q", 0, 0, NULL);
+
+	match_i = g_regex_match(regex_i, expression, 0, &info);
+
+	if (!match_i) {
+		match_q = g_regex_match(regex_q, expression, 0, &info);
+		if (!match_q) {
+			match = g_regex_match(regex, expression, 0, &info);
+			if (!match)
+				is_match = false;
+		}
+	}
+
 	if (!is_match) {
 		invalid_list = true;
 	} else {
@@ -6138,6 +6152,8 @@ static GSList * math_expression_get_iio_channel_list(const char *expression, str
 	}
 	g_match_info_free(info);
 	g_regex_unref(regex);
+	g_regex_unref(regex_i);
+	g_regex_unref(regex_q);
 
 	if (invalid_list) {
 		if (chn_list)
