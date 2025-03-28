@@ -1407,7 +1407,7 @@ static unsigned int max_sample_count_from_plots(struct extra_dev_info *info)
 
 static double read_sampling_frequency(const struct iio_device *dev)
 {
-	double freq = 400.0;
+	double freq = 400.0, freq_sum = 0.0;
 	int ret = -1;
 	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
 	const char *attr;
@@ -1422,8 +1422,11 @@ static double read_sampling_frequency(const struct iio_device *dev)
 
 		ret = iio_channel_attr_read(ch, "sampling_frequency",
 				buf, sizeof(buf));
-		if (ret > 0)
-			break;
+		if (ret > 0 && iio_channel_is_enabled(ch)) {
+			sscanf(buf, "%lf", &freq);
+			freq_sum += 1 / freq;
+		}
+
 	}
 
 	if (ret < 0)
@@ -1446,6 +1449,8 @@ static double read_sampling_frequency(const struct iio_device *dev)
 
 	if (ret > 0)
 		sscanf(buf, "%lf", &freq);
+	else if (ret > 0 && freq_sum != 0)
+		freq = 1 / freq_sum;
 
 	if (freq < 0)
 		freq += 4294967296.0;
