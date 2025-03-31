@@ -1830,7 +1830,8 @@ static void init_device_list(struct iio_context *_ctx)
 		}
 
 		rx_update_device_sampling_freq(
-			get_iio_device_label_or_name(dev), USE_INTERN_SAMPLING_FREQ);
+			get_iio_device_label_or_name(dev) ?: iio_device_get_id(dev),
+			USE_INTERN_SAMPLING_FREQ);
 	}
 }
 
