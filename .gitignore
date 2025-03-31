@@ -22,3 +22,4 @@ adi-osc.desktop
 org.adi.pkexec.osc.policy
 osc-wrapper
 .vscode
+CI/appimage_x86_64/staging

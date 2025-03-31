@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Icon=osc
+Exec=osc
+Terminal=false
+Type=Application
+Categories=Science
+Name=ADI IIO Oscilloscope
+GenericName=ADI IIO Oscilloscope

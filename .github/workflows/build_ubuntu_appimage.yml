@@ -1,0 +1,40 @@
+name: Osc x86_64 AppImage Build
+
+on: [push, pull_request]
+
+env:
+  BUILD_HOST: ubuntu-22.04
+  USERNAME: github-actions
+
+jobs:
+
+  build_osc_x86-64_appimage:
+    runs-on: ubuntu-22.04
+    container:
+        image: cristianbindea/osc-ubuntu20:latest
+        options: --user root
+
+    steps:
+        - uses: actions/checkout@v4
+          with:
+                set-safe-directory: 'true'
+                fetch-depth: '0'
+
+        - name: Create Osc AppImage
+          shell: bash
+          run: |
+                cd $GITHUB_WORKSPACE
+                ./CI/appimage_x86_64/build_osc.sh
+                ./CI/appimage_x86_64/create_appimage.sh get_tools create_appdir create_appimage move_appimage
+
+        - name: Set short git commit SHA
+          shell: bash
+          run: |
+                cd $GITHUB_WORKSPACE
+                git config --global --add safe.directory $GITHUB_WORKSPACE
+                echo "commit_sha=$(git rev-parse --short ${{ github.sha }})" >> "$GITHUB_ENV"
+
+        - uses: actions/upload-artifact@v4
+          with:
+            name: osc-linux-x86_64-${{ env.commit_sha }}
+            path: ${{ github.workspace }}/ADI_IIO_Oscilloscope-x86_64.AppImage

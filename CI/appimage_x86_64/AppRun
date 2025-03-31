@@ -1,0 +1,6 @@
+#!/bin/bash
+export APPDIR="$(dirname "$(readlink -f "$0")")"
+export LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH"
+export PATH="$APPDIR/usr/bin/:$PATH"
+cd $APPDIR/usr/bin/
+exec osc
