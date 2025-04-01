@@ -1282,6 +1282,20 @@ static bool device_is_oneshot(struct iio_device *dev)
 	return false;
 }
 
+static bool capture_dev_buffer_capable(const struct iio_device *dev, unsigned int nb_channels)
+{
+	unsigned int chan;
+
+	for (chan = 0; chan < nb_channels; chan++) {
+		struct iio_channel *ch = iio_device_get_channel(dev, chan);
+
+		if (iio_channel_is_scan_element(ch))
+			return true;
+	}
+
+	return false;
+}
+
 static gboolean capture_process(void *data)
 {
 	unsigned int i;
@@ -1293,15 +1307,19 @@ static gboolean capture_process(void *data)
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
-		unsigned int i, sample_size = iio_device_get_sample_size(dev, dev_info->channels_mask);
+		unsigned int i, sample_size;
 		ssize_t sample_count = dev_info->sample_count;
 		struct iio_channel *chn;
 		off_t offset = 0;
 		const struct iio_block *block = NULL;
 
+		if (!capture_dev_buffer_capable(dev, nb_channels))
+			continue;
+
 		if (dev_info->input_device == false)
 			continue;
 
+		sample_size = iio_device_get_sample_size(dev, dev_info->channels_mask);
 		if (sample_size == 0)
 			continue;
 
@@ -1499,6 +1517,8 @@ static int capture_setup(void)
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info);
 
+		if (!capture_dev_buffer_capable(dev, nb_channels))
+			continue;
 
 		/* We capture a double amount o data. Then we look for a trigger
 		   condition in a half of this interval. This way, no matter where
