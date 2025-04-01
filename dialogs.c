@@ -434,7 +434,7 @@ static struct iio_context * get_context(Dialogs *data)
 	}
 }
 
-static void refresh_scan_ctx_thread(void)
+static void refresh_scan_ctx(void)
 {
 	struct iio_scan *ctxs;
 	GtkListStore *liststore;
@@ -448,7 +448,6 @@ static void refresh_scan_ctx_thread(void)
 	gchar *active_uri = NULL;
 	size_t ctxs_nb = 0;
 
-	gdk_threads_enter();
 	widget_set_cursor(dialogs.connect, GDK_WATCH);
 
 	if (gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_devices)) != -1) {
@@ -562,7 +561,6 @@ nope:
 		gtk_widget_set_sensitive(dialogs.connect_devices, false);
 		/* Force a clear */
 		connect_clear(dialogs.connect_manual);
-		gdk_threads_leave();
 		return;
 	}
 
@@ -584,13 +582,7 @@ nope:
 
 	/* Fill things in */
 	connect_clear(dialogs.connect_scan);
-	gdk_threads_leave();
 
-}
-
-static void refresh_scan_ctx(void)
-{
-       g_thread_new("Scan thread", (void *) &refresh_scan_ctx_thread, NULL);
 }
 
 #ifdef SERIAL_BACKEND
@@ -1128,7 +1120,6 @@ static gboolean version_info_show(gpointer data)
 	if (!release && !data)
 		return false;
 
-	gdk_threads_enter();
 	internal_vbox = GTK_WIDGET(gtk_builder_get_object(builder,
 				"msg_dialog_vbox"));
 
@@ -1194,8 +1185,6 @@ static gboolean version_info_show(gpointer data)
 	gtk_widget_hide(_dialogs->latest_version);
 
 end:
-	gdk_threads_leave();
-
 	return false;
 }
 
