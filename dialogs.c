@@ -888,6 +888,12 @@ static bool connect_clear(GtkWidget *widget)
 	return false;
 }
 
+static void connect_scan(GtkWidget *widget)
+{
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)))
+		refresh_scan_ctx();
+}
+
 static bool refresh_connect_attributes()
 {
 	bool has_context = false;
@@ -1429,9 +1435,8 @@ void dialogs_init(GtkBuilder *builder)
 				GTK_WIDGET(gtk_builder_get_object(builder, "scan_contexts_label")),
 				"sensitive", 0);
 
-		refresh_scan_ctx();
 		g_signal_connect(G_OBJECT(dialogs.connect_scan), "toggled",
-				(GCallback) connect_clear, NULL);
+				(GCallback) connect_scan, NULL);
 		gtk_widget_set_sensitive(dialogs.connect_devices, false);
 
 		dialogs.connect_devices_signals = g_signal_connect(G_OBJECT(dialogs.connect_devices),
