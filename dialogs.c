@@ -624,9 +624,9 @@ nope:
 	}
 }
 
-#ifdef SERIAL_BACKEND
 static void refresh_serial(GtkBuilder *builder)
 {
+#ifdef SERIAL_BACKEND
 	GtkListStore *liststore;
 	struct sp_port **ports;
 	int i, active = 0;
@@ -660,17 +660,8 @@ static void refresh_serial(GtkBuilder *builder)
 		gtk_widget_set_sensitive(dialogs.connect_serial, false);
 		gtk_widget_set_sensitive(dialogs.connect_serialbits, false);
 	}
-}
-#else
-static void refresh_serial(GtkBuilder *builder)
-{
-	/* Serial Backend - hide if not supported */
-	gtk_widget_hide(dialogs.connect_seriald);
-	gtk_widget_hide(dialogs.connect_serial);
-	gtk_widget_hide(dialogs.connect_serialbr);
-	gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "connect_serial_label")));
-}
 #endif
+}
 
 char * usb_get_serialnumber(struct iio_context *context)
 {
@@ -1376,6 +1367,7 @@ void dialogs_init(GtkBuilder *builder)
 
 		g_signal_connect(G_OBJECT(dialogs.connect_serial), "toggled",
 				(GCallback) connect_clear, NULL);
+		refresh_serial(builder);
 	} else {
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial), false);
 		gtk_widget_set_sensitive(GTK_WIDGET(dialogs.connect_serial), false);
@@ -1447,8 +1439,6 @@ void dialogs_init(GtkBuilder *builder)
 								   (GCallback) refresh_connect_attributes,
 								   NULL);
 	}
-
-	refresh_serial(builder);
 
 	g_signal_connect(dialogs.connect_uri, "key-press-event",
 			(GCallback) connect_key_press_cb, dialogs.connect);
