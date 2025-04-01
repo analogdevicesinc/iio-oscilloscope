@@ -182,7 +182,6 @@ static void usage(char *program)
 	/* please keep this list sorted in alphabetical order */
 	printf( "Command line options:\n"
 		"\t-p\tload specific profile (to skip profile loading use \"-\")\n"
-		"\t-c\tIP address of device to connect to (192.168.2.1)\n"
 		"\t-u\tUniform Resource Identifer (URI) of device to connect to ('usb:3.2.5')\n");
 
 	printf("\nEnvironmental variables:\n"
@@ -205,15 +204,8 @@ gint main (int argc, char **argv)
 	init_signal_handlers(argv[0]);
 
 	opterr = 0;
-	while ((c = getopt (argc, argv, "c:p:u:")) != -1)
+	while ((c = getopt (argc, argv, "p:u:")) != -1)
 		switch (c) {
-			case 'c':
-				ctx = iio_create_context(NULL, optarg);
-				if (!ctx) {
-					printf("Failed connecting to remote device: %s\n", optarg);
-					exit(-1);
-				}
-				break;
 			case 'u':
 				ctx = iio_create_context(NULL, optarg);
 				if (!ctx) {
