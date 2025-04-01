@@ -608,7 +608,6 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 {
 	struct iio_device *dev;
 	struct extra_dev_info *dev_info;
-	int nb_channels;
 
 	if (!device)
 		return 0;
@@ -617,7 +616,7 @@ int plugin_data_capture_bytes_per_sample(const char *device)
 
 	if (!dev)
 		return 0;
-	nb_channels = iio_device_get_channels_count(dev);
+
 	dev_info = iio_device_get_data(dev);
 
 	return iio_device_get_sample_size(dev, dev_info->channels_mask);
@@ -1247,7 +1246,6 @@ static off_t get_trigger_offset(const struct iio_channel *chn,
 	size_t i;
 	const struct iio_device *dev = iio_channel_get_device(chn);
 	struct extra_dev_info *dev_info = iio_device_get_data(dev);
-	int nb_channels = iio_device_get_channels_count(dev);
 
 	if (iio_channel_is_enabled(chn, dev_info->channels_mask)) {
 		for (i = info->offset / 2; i >= 1; i--) {
@@ -1535,7 +1533,6 @@ static int capture_setup(void)
 			else
 				iio_channel_disable(ch, dev_info->channels_mask);
 		}
-
 
 		sample_size = iio_device_get_sample_size(dev, dev_info->channels_mask);
 		if (sample_size == 0 || sample_count == 0)
@@ -2170,18 +2167,15 @@ void do_init(struct iio_context *new_ctx)
 	init_device_list(new_ctx);
 	load_plugins(notebook, NULL);
 	osc_preferences = aggregate_osc_preferences_from_plugins(plugin_list);
-
 	int width = -1, height = -1;
 	plugins_get_preferred_size(plugin_list, &width, &height);
 	window_size_readjust(GTK_WINDOW(main_window), width, height);
-
 	if (!strcmp(iio_context_get_name(new_ctx), "network") &&
 	    iio_context_get_devices_count(new_ctx)) {
 		gtk_widget_set_visible(infobar, false);
 		g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 1000,
 				idle_timeout_check, new_ctx, NULL);
 	}
-
 	spect_analyzer_plugin = get_plugin_from_name("Spectrum Analyzer");
 }
 
@@ -2759,9 +2753,8 @@ int osc_identify_attrib(struct iio_context *_ctx, const char *attrib,
 	int i;
 	bool is_debug;
 	int ret = -EINVAL;
-	const char *file;
+	gchar *dev_name, **elems = g_strsplit(attrib, ".", 3);
 
-	gchar *dev_name, *filename, **elems = g_strsplit(attrib, ".", 3);
 	if (!elems)
 		return -EINVAL;
 
@@ -2771,13 +2764,10 @@ int osc_identify_attrib(struct iio_context *_ctx, const char *attrib,
 		if (!elems[i])
 			goto cleanup;
 
-	if (is_debug) {
+	if (is_debug)
 		dev_name = elems[1];
-		filename = elems[2];
-	} else {
+	else
 		dev_name = elems[0];
-		filename = elems[1];
-	}
 
 	device = iio_context_find_device(_ctx, dev_name);
 	if (!device) {
