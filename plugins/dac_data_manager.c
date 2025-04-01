@@ -1,3 +1,4 @@
+#include <iio/iio.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -135,6 +136,7 @@ struct dac_data_manager {
 	bool dds_disabled;
 	struct iio_buffer *dac_buffer;
 	struct iio_stream *dac_stream;
+	struct iio_block *dac_block;
 	struct iio_channels_mask *dac_mask;
 	bool is_local;
 	bool is_cyclic_buffer;
@@ -610,6 +612,20 @@ static int enable_dds_channels(struct dac_buffer *db)
 	return 0;
 }
 
+static void buffer_cleanup(struct dac_data_manager *manager)
+{
+	if (!manager->dac_buffer)
+		return;
+
+	if (manager->dac_block) {
+		iio_block_destroy(manager->dac_block);
+		manager->dac_block = NULL;
+	}
+
+	iio_buffer_destroy(manager->dac_buffer);
+	manager->dac_buffer = NULL;
+}
+
 static void enable_dds(struct dac_data_manager *manager, bool on_off)
 {
 	struct iio_device *dac1 = NULL;
@@ -621,10 +637,7 @@ static void enable_dds(struct dac_data_manager *manager, bool on_off)
 		return;
 	manager->dds_activated = on_off;
 
-	if (manager->dac_buffer) {
-		iio_buffer_destroy(manager->dac_buffer);
-		manager->dac_buffer = NULL;
-	}
+	buffer_cleanup(manager);
 
 	dac1 = manager->dac1.iio_dac;
 	if (manager->dacs_count == 2)
@@ -659,10 +672,7 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 	*/
 	unsigned int buffer_channels = 0;
 
-	if (manager->dac_buffer) {
-		iio_buffer_destroy(manager->dac_buffer);
-		manager->dac_buffer = NULL;
-	}
+	buffer_cleanup(manager);
 
 	if (manager->is_local) {
 #ifdef __linux__
@@ -777,12 +787,23 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 
 	usleep(1000); /* FIXME: Temp Workaround needs some investigation */
 
-	manager->dac_stream = iio_buffer_create_stream(manager->dac_buffer, 4, size /s_size);
-	const struct iio_block *block = iio_stream_get_next_block(manager->dac_stream);
+	manager->dac_block = iio_buffer_create_block(manager->dac_buffer, size);
+	if (iio_err(manager->dac_block)) {
+		printf("Could not create block: %d\n", iio_err(manager->dac_block));
+		ret = iio_err(manager->dac_block);
+		goto out_free_iio_buffer;
+	}
 
-	memcpy(iio_block_start(block), buf, iio_block_end(block) - iio_block_start(block));
+	memcpy(iio_block_start(manager->dac_block), buf,
+	       iio_block_end(manager->dac_block) - iio_block_start(manager->dac_block));
 
-	//iio_buffer_push(manager->dds_buffer);
+	ret = iio_block_enqueue(manager->dac_block, 0, manager->is_cyclic_buffer);
+	if (ret) {
+		printf("Could not enqueue block: %d\n", ret);
+		goto out_destroy_block;
+	}
+
+	iio_buffer_enable(manager->dac_buffer);
 	free(buf);
 
 	tmp = strdup(file_name);
@@ -796,6 +817,16 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		*stat_msg = g_strdup_printf("Waveform loaded successfully.");
 
 	return 0;
+
+out_destroy_block:
+	iio_block_destroy(manager->dac_block);
+	manager->dac_block = NULL;
+out_free_iio_buffer:
+	iio_buffer_destroy(manager->dac_buffer);
+	manager->dac_buffer = NULL;
+	free(buf);
+	return ret;
+
 }
 
 static bool tx_channels_check_valid_setup(struct dac_buffer *dbuf)
@@ -856,10 +887,7 @@ static void waveform_load_button_clicked_cb (GtkButton *btn, struct dac_buffer *
 
 static void stop_buffer_tx_button_clicked_cb (GtkButton *btn, struct dac_buffer *dbuf)
 {
-	if (dbuf->parent->dac_buffer) {
-		iio_buffer_destroy(dbuf->parent->dac_buffer);
-		dbuf->parent->dac_buffer = NULL;
-	}
+	buffer_cleanup(dbuf->parent);
 }
 
 static void cyclic_buffer_button_clicked_cb (GtkButton *btn, struct dac_buffer *dbuf)
@@ -1666,10 +1694,9 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 			}
 		}
 
-		if (!manager->dds_activated && manager->dac_buffer) {
-			iio_buffer_destroy(manager->dac_buffer);
-			manager->dac_buffer = NULL;
-		}
+		if (!manager->dds_activated)
+			buffer_cleanup(manager);
+
 		manager->dds_disabled = true;
 		enable_dds(manager, start_dds);
 
@@ -2128,10 +2155,8 @@ void dac_data_manager_free(struct dac_data_manager *manager)
 			free(manager->dac2.txs);
 			g_slist_free(manager->dds_tones);
 		}
-		if (manager->dac_buffer) {
-			iio_buffer_destroy(manager->dac_buffer);
-			manager->dac_buffer = NULL;
-		}
+
+		buffer_cleanup(manager);
 		free(manager);
 	}
 }
