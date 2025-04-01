@@ -487,7 +487,7 @@ static bool refresh_usb_update_list(struct refresh_usb_info *info)
 	return false;
 }
 
-static void refresh_scan_ctx_thread(void)
+static void refresh_scan_ctx(void)
 {
 	struct iio_scan *ctxs;
 	GtkListStore *liststore;
@@ -622,11 +622,6 @@ nope:
 		free(current);
 		current = NULL;
 	}
-}
-
-static void refresh_scan_ctx(void)
-{
-       g_thread_new("Scan thread", (void *) &refresh_scan_ctx_thread, NULL);
 }
 
 #ifdef SERIAL_BACKEND
