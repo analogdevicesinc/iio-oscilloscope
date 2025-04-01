@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.2 -->
+<!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkAboutDialog" id="About_dialog">
@@ -631,7 +631,7 @@ A GUI for Linux IIO devices</property>
                                 <property name="can-focus">False</property>
                                 <property name="orientation">vertical</property>
                                 <child>
-                                  <object class="GtkRadioButton" id="connect_usb">
+                                  <object class="GtkRadioButton" id="scan">
                                     <property name="label" translatable="yes">Discoverable / Scan</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">True</property>
@@ -656,7 +656,7 @@ A GUI for Linux IIO devices</property>
                                         <property name="visible">True</property>
                                         <property name="can-focus">False</property>
                                         <child>
-                                          <object class="GtkLabel" id="connect_usb_label1">
+                                          <object class="GtkLabel" id="connect_scan_filter_label">
                                             <property name="visible">True</property>
                                             <property name="can-focus">False</property>
                                             <property name="label" translatable="yes">Filter: </property>
@@ -725,7 +725,7 @@ A GUI for Linux IIO devices</property>
                                         <property name="can-focus">False</property>
                                         <property name="spacing">5</property>
                                         <child>
-                                          <object class="GtkLabel" id="connect_usb_label">
+                                          <object class="GtkLabel" id="scan_contexts_label">
                                             <property name="visible">True</property>
                                             <property name="can-focus">False</property>
                                             <property name="label" translatable="yes">Context:</property>
@@ -737,7 +737,7 @@ A GUI for Linux IIO devices</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkComboBoxText" id="connect_usb_devices">
+                                          <object class="GtkComboBoxText" id="scan_contexts">
                                             <property name="visible">True</property>
                                             <property name="can-focus">False</property>
                                             <items>
@@ -773,7 +773,7 @@ A GUI for Linux IIO devices</property>
                                     <property name="xalign">0</property>
                                     <property name="active">True</property>
                                     <property name="draw-indicator">True</property>
-                                    <property name="group">connect_usb</property>
+                                    <property name="group">scan</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -858,7 +858,7 @@ A GUI for Linux IIO devices</property>
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkRadioButton" id="connect_net">
+                                  <object class="GtkRadioButton" id="manual">
                                     <property name="label" translatable="yes">Manual</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">True</property>
@@ -866,7 +866,7 @@ A GUI for Linux IIO devices</property>
                                     <property name="xalign">0</property>
                                     <property name="active">True</property>
                                     <property name="draw-indicator">True</property>
-                                    <property name="group">connect_usb</property>
+                                    <property name="group">scan</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -880,7 +880,7 @@ A GUI for Linux IIO devices</property>
                                     <property name="can-focus">False</property>
                                     <property name="spacing">5</property>
                                     <child>
-                                      <object class="GtkLabel" id="connect_net_label">
+                                      <object class="GtkLabel" id="connect_uri_label">
                                         <property name="visible">True</property>
                                         <property name="can-focus">False</property>
                                         <property name="label" translatable="yes">URI:</property>
@@ -893,7 +893,7 @@ A GUI for Linux IIO devices</property>
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkEntry" id="connect_net_IP">
+                                      <object class="GtkEntry" id="manual_uri">
                                         <property name="visible">True</property>
                                         <property name="sensitive">False</property>
                                         <property name="can-focus">True</property>
@@ -1110,8 +1110,8 @@ A GUI for Linux IIO devices</property>
   </object>
   <object class="GtkSizeGroup" id="connect_label_sizegroup">
     <widgets>
-      <widget name="connect_usb_label"/>
-      <widget name="connect_net_label"/>
+      <widget name="scan_contexts_label"/>
+      <widget name="connect_uril_label"/>
     </widgets>
   </object>
   <object class="GtkListStore" id="device_list">
