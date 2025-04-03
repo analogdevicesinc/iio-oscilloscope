@@ -587,6 +587,7 @@ nope:
 
 static void refresh_serial(GtkBuilder *builder)
 {
+#ifdef SERIAL_BACKEND
 	GtkListStore *liststore;
 	struct sp_port **ports;
 	int i, active = 0;
@@ -620,6 +621,7 @@ static void refresh_serial(GtkBuilder *builder)
 		gtk_widget_set_sensitive(dialogs.connect_serial, false);
 		gtk_widget_set_sensitive(dialogs.connect_serialbits, false);
 	}
+#endif
 }
 
 char * usb_get_serialnumber(struct iio_context *context)
