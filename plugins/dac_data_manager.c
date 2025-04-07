@@ -2086,7 +2086,6 @@ static int dac_manager_init(struct dac_data_manager *manager,
 		struct iio_device *dac, struct iio_device *second_dac, struct iio_context *ctx)
 {
 	int ret = 0;
-	const struct iio_attr *attr = NULL;
 
 	manager->is_cyclic_buffer = true;
 
