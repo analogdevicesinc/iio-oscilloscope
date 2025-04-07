@@ -208,7 +208,7 @@ gint main (int argc, char **argv)
 		switch (c) {
 			case 'u':
 				ctx = iio_create_context(NULL, optarg);
-				if (!ctx) {
+				if (iio_err(ctx)) {
 					printf("Failed connecting to remote device: %s\n", optarg);
 					exit(-1);
 				}
