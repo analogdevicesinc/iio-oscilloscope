@@ -1,4 +1,5 @@
 #include "libini2.h"
+#include "iio_utils.h"
 
 #include "libini/ini.h"
 
@@ -259,13 +260,14 @@ void save_to_ini(FILE *f, const char *driver_name, struct iio_device *dev,
 
 	write_driver_name_to_ini(f, driver_name);
 
-	/*for (i = 0; i < iio_device_get_channels_count(dev); i++)
-		iio_channel_attr_read_all(iio_device_get_channel(dev, i),
+	for (i = 0; i < iio_device_get_channels_count(dev); i++) {
+		chn_attr_read_all(iio_device_get_channel(dev, i),
 				save_to_ini_chn_cb, &params);
-	iio_device_attr_read_all(dev, save_to_ini_dev_cb, &params);
+	}
+	dev_attr_read_all(dev, save_to_ini_dev_cb, &params);
 
 	params.is_debug = true;
-	iio_device_debug_attr_read_all(dev, save_to_ini_dev_cb, &params);*/
+	dev_debug_attr_read_all(dev, save_to_ini_dev_cb, &params);
 }
 
 int foreach_in_ini(const char *ini_file,
