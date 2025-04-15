@@ -430,3 +430,124 @@ void chn_attr_read_all(struct iio_channel *chn,
 		}
 	}
 }
+
+int dev_attr_write_all(struct iio_device *dev,
+    ssize_t (*cb)(struct iio_device *dev, const char *attr, void *buf, size_t len, void *d),
+    void *data)
+{
+	const struct iio_attr *attr;
+	unsigned int i, nb_attrs;
+	size_t len = 0x100000;
+	const char *name;
+	char *buf;
+	ssize_t count;
+	int ret = 0;
+
+	buf = malloc(len);
+	if (!buf)
+		return -ENOMEM;
+
+	nb_attrs = iio_device_get_attrs_count(dev);
+
+	for (i = 0; i < nb_attrs; i++) {
+		attr = iio_device_get_attr(dev, i);
+		name = iio_attr_get_name(attr);
+
+		count = (*cb)(dev, name, buf, len, data);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+
+		count = iio_attr_write_raw(attr, buf, count);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+	}
+
+out_free_buffer:
+	free(buf);
+
+	return ret;
+}
+
+int dev_debug_attr_write_all(struct iio_device *dev,
+    ssize_t (*cb)(struct iio_device *dev, const char *attr, void *buf, size_t len, void *d),
+    void *data)
+{
+	const struct iio_attr *attr;
+	unsigned int i, nb_attrs;
+	size_t len = 0x100000;
+	const char *name;
+	char *buf;
+	ssize_t count;
+	int ret = 0;
+
+	buf = malloc(len);
+	if (!buf)
+		return -ENOMEM;
+
+	nb_attrs = iio_device_get_debug_attrs_count(dev);
+
+	for (i = 0; i < nb_attrs; i++) {
+		attr = iio_device_get_debug_attr(dev, i);
+		name = iio_attr_get_name(attr);
+
+		count = (*cb)(dev, name, buf, len, data);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+
+		count = iio_attr_write_raw(attr, buf, count);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+	}
+
+out_free_buffer:
+	free(buf);
+
+	return ret;
+}
+
+int chn_attr_write_all(struct iio_channel *chn,
+    ssize_t (*cb)(struct iio_channel *chn, const char *attr, void *buf, size_t len, void *d),
+    void *data)
+{
+	unsigned int i, attr_cnt = iio_channel_get_attrs_count(chn);
+	const struct iio_attr *attr;
+	const char *name;
+	ssize_t count;
+	size_t len = 0x100000;
+	char *buf;
+	int ret = 0;
+
+	buf = malloc(len);
+	if (!buf)
+		return -ENOMEM;
+
+	for (i = 0; i < attr_cnt; ++i) {
+		attr = iio_channel_get_attr(chn, i);
+		name = iio_attr_get_name(attr);
+
+		count = (*cb)(chn, name, buf, len, data);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+
+		count = iio_attr_write_raw(attr, buf, count);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+	}
+
+out_free_buffer:
+	free(buf);
+
+	return ret;
+}

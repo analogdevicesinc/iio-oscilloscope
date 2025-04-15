@@ -58,11 +58,20 @@ inline int chn_attr_write_longlong(struct iio_channel *chn, const char *attr_nam
 inline void dev_attr_read_all(struct iio_device *dev,
     int (*cb)(struct iio_device *dev, const char *attr, const char *value, size_t len, void *d),
     void *data);
+inline int dev_attr_write_all(struct iio_device *dev,
+        ssize_t (*cb)(struct iio_device *dev, const char *attr, void *buf, size_t len, void *d),
+        void *data);
 inline int dev_debug_attr_read_all(struct iio_device *dev,
     int (*cb)(struct iio_device *dev, const char *attr, const char *value, size_t len, void *d),
     void *data);
+inline int dev_debug_attr_write_all(struct iio_device *dev,
+        ssize_t (*cb)(struct iio_device *dev, const char *attr, void *buf, size_t len, void *d),
+        void *data);
 inline void chn_attr_read_all(struct iio_channel *chn,
-    int (*cb)(struct iio_channel *chn, const char *attr, const char *value, size_t len, void *d),
+        int (*cb)(struct iio_channel *chn, const char *attr, const char *value, size_t len, void *d),
     void *data);
+inline int chn_attr_write_all(struct iio_channel *chn,
+        ssize_t (*cb)(struct iio_channel *chn, const char *attr, void *buf, size_t len, void *d),
+        void *data);
 
 #endif  /* __IIO_UTILS__ */

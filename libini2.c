@@ -160,16 +160,15 @@ void update_from_ini(const char *ini_file,
 
 	params.section_top = name + nlen + 1;
 
-	/*for (i = 0; i < iio_device_get_channels_count(dev); i++) {
-		iio_channel_attr_write_all(iio_device_get_channel(dev, i),
+	for (i = 0; i < iio_device_get_channels_count(dev); i++) {
+		chn_attr_write_all(iio_device_get_channel(dev, i),
 				update_from_ini_chn_cb, &params);
-		iio_attr_write()
 		}
 	if (iio_device_get_attrs_count(dev))
-		iio_device_attr_write_all(dev, update_from_ini_dev_cb, &params);
+		dev_attr_write_all(dev, update_from_ini_dev_cb, &params);
 
 	params.is_debug = true;
-	iio_device_debug_attr_write_all(dev, update_from_ini_dev_cb, &params);*/
+	dev_debug_attr_write_all(dev, update_from_ini_dev_cb, &params);
 
 	ini_close(ini);
 }
