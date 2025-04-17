@@ -489,7 +489,6 @@ static void refresh_usb_thread(void)
 {
 	struct iio_scan_context *ctxs;
 	struct iio_context_info **info;
-	GtkListStore *liststore;
 	ssize_t ret;
 	unsigned int i = 0;
 	gchar *tmp, *tmp1, *pid, *buf;
@@ -554,7 +553,7 @@ static void refresh_usb_thread(void)
 		goto err_free_ctxs;
 
 	usb_devices_info->num_devices = ret;
-	
+
 	if (!ret)
 		goto err_free_info_list;
 
