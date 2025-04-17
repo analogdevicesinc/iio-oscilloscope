@@ -2492,6 +2492,21 @@ static void profile_gen_update_channels(GtkComboBox *self, struct plugin_private
 	}
 }
 
+static void adrv9002_set_device_ui(struct plugin_private *priv, const char *dev)
+{
+	GtkLabel *label_dev = GTK_LABEL(gtk_builder_get_object(priv->builder, "label_global_settings"));
+	GtkLabel *label_rx = GTK_LABEL(gtk_builder_get_object(priv->builder, "label_receive_chain"));
+	GtkLabel *label_tx = GTK_LABEL(gtk_builder_get_object(priv->builder, "label_transmit_chain"));
+	char label_str[256];
+
+	snprintf(label_str, sizeof(label_str), "<b>%s Global Settings</b>", dev);
+	gtk_label_set_markup(label_dev, label_str);
+	snprintf(label_str, sizeof(label_str), "<b>%s Receive Chain</b>", dev);
+	gtk_label_set_markup(label_rx, label_str);
+	snprintf(label_str, sizeof(label_str), "<b>%s Transmit Chain</b>", dev);
+	gtk_label_set_markup(label_tx, label_str);
+}
+
 static void adrv9002_combo_box_init(struct iio_widget *combo, const char *w_str,
 				    const char *attr, const char *attr_avail,
 				    struct plugin_private *priv, struct iio_channel *chann)
@@ -3113,6 +3128,7 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		priv->n_txs = 1;
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_tx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_orx2")));
+		adrv9002_set_device_ui(priv, "ADRV9003");
 		priv->id = ADRV9003;
 	} else {
 		priv->n_txs = ARRAY_SIZE(priv->tx_widgets);
