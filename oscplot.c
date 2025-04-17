@@ -3335,6 +3335,15 @@ static gboolean plot_redraw(OscPlotPrivate *priv)
 	bool show_diff_phase = false;
 	int i;
 
+	/*
+	 * First check if we need to stop as some objects might not be around if we get here
+	 * due to destroying the plot.
+	 */
+	if (priv->stop_redraw == TRUE) {
+		priv->redraw_function = 0;
+		goto out_redraw;
+	}
+
 	if (!GTK_IS_DATABOX(priv->databox))
 		return FALSE;
 
@@ -3353,9 +3362,8 @@ static gboolean plot_redraw(OscPlotPrivate *priv)
 			if (show_diff_phase)
 				markers_phase_diff_show(priv);
 	}
-	if (priv->stop_redraw == TRUE)
-		priv->redraw_function = 0;
 
+out_redraw:
 	priv->redraw = FALSE;
 	return !priv->stop_redraw;
 }
@@ -5361,7 +5369,7 @@ int osc_plot_ini_read_handler (OscPlot *plot, int line, const char *section,
 					gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "labelYMax")));
 					gtk_widget_hide(priv->y_axis_min);
 					gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "labelYMin")));
-				} 
+				}
 			} else if (MATCH_NAME("user_y_axis_max"))
 				gtk_spin_button_set_value(GTK_SPIN_BUTTON(priv->y_axis_max), atof(value));
 			else if (MATCH_NAME("user_y_axis_min"))
@@ -7055,7 +7063,7 @@ static void create_plot(OscPlot *plot)
 		g_error_free(err);
 		gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(plot->priv->provider),OSC_STYLE_FILE_PATH"styles.css",NULL);
 	}
-	
+
 	//gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(plot->priv->provider),"styles.css",NULL);
 	gtk_style_context_add_provider_for_screen (screen, GTK_STYLE_PROVIDER(plot->priv->provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
 	style_context = gtk_widget_get_style_context(GTK_WIDGET(priv->databox));
