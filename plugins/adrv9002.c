@@ -268,6 +268,7 @@ struct plugin_private {
 	struct iio_widget device_w[NUM_DEVICE_MAX_WIDGETS];
 	int num_widgets;
 	/* rx */
+	int n_rxs;
 	struct adrv9002_rx rx_widgets[ADRV9002_NUM_CHANNELS];
 	/* tx */
 	struct adrv9002_common tx_widgets[ADRV9002_NUM_CHANNELS];
@@ -567,7 +568,7 @@ static void adrv9002_save_carrier_freq(GtkWidget *widget, struct adrv9002_common
 	 */
 	if (tx && other < priv->n_txs)
 		iio_widget_update_block_signals_by_data(&priv->tx_widgets[other].carrier);
-	else
+	else if (!tx && other < priv->n_rxs)
 		iio_widget_update_block_signals_by_data(&priv->rx_widgets[other].rx.carrier);
 
 	iio_widget_update_block_signals_by_data(&chan->carrier);
@@ -693,12 +694,15 @@ static void update_special_rx_widgets(struct adrv9002_rx *rx, const int n_widget
 	int i;
 
 	for (i = 0; i < n_widgets; i++) {
-		char *digital_gain = gtk_combo_box_text_get_active_text(
-			GTK_COMBO_BOX_TEXT(rx[i].digital_gain_ctl.widget));
+		GtkComboBoxText *combo;
+		char *digital_gain;
 		char ensm[32] = {0};
 
 		if (!rx[i].rx.enabled)
-			goto nex_widget;
+			continue;
+
+		combo = GTK_COMBO_BOX_TEXT(rx[i].digital_gain_ctl.widget);
+		digital_gain = gtk_combo_box_text_get_active_text(combo);
 
 		/*
 		 * There was a change in the driver API where an error is returned if we try to read
@@ -717,7 +721,6 @@ static void update_special_rx_widgets(struct adrv9002_rx *rx, const int n_widget
 
 		if (digital_gain && strstr(digital_gain, "automatic"))
 			iio_widget_update_block_signals_by_data(&rx[i].intf_gain);
-nex_widget:
 		g_free(digital_gain);
 	}
 }
@@ -758,9 +761,6 @@ static void adrv9002_update_orx_widgets(struct plugin_private *priv, const int c
 	char label[32];
 
 	if (!orx->enabled) {
-		/* make sure the widget is initialized */
-		if (chann >= priv->n_txs)
-			return;
 		/*
 		 * This will make sure that we restore TX/RX widgets sensitivity if we had ORx
 		 * enabled before updating the profile
@@ -796,7 +796,6 @@ static void adrv9002_update_rx_widgets(struct plugin_private *priv, const int ch
 	struct adrv9002_rx *rx = &priv->rx_widgets[chann];
 	gchar *ensm;
 
-	/* rx */
 	if (!rx->rx.enabled)
 		return;
 
@@ -991,29 +990,35 @@ static void adrv9002_update_rx_intf_gain_attr_available(struct adrv9002_rx *rx)
 	g_strfreev(saved_list);
 }
 
+static void update_rx(struct plugin_private *priv, struct adrv9002_rx *rx)
+{
+	const char *gtk_str = rx->rx.idx ? "frame_rx2" : "frame_rx1";
+
+	adrv9002_check_channel_status(priv, &rx->rx, gtk_str);
+	adrv9002_check_nco_freq_support(priv, rx->rx.idx, false);
+	adrv9002_update_rx_intf_gain_attr_available(rx);
+	adrv9002_update_rx_widgets(priv, rx->rx.idx);
+}
+
+static void update_tx(struct plugin_private *priv, struct adrv9002_common *tx)
+{
+	const char *gtk_str = tx->idx ? "frame_tx2" : "frame_tx1";
+
+	adrv9002_check_orx_status(priv, &priv->orx_widgets[tx->idx]);
+	adrv9002_update_orx_widgets(priv, tx->idx);
+	adrv9002_check_channel_status(priv, tx, gtk_str);
+	adrv9002_check_nco_freq_support(priv, tx->idx, true);
+	adrv9002_update_tx_widgets(priv, tx->idx);
+}
+
 static void update_all(struct plugin_private *priv)
 {
 	int i;
-	char gtk_str[32];
 
-	for(i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
-		sprintf(gtk_str, "frame_rx%d", i + 1);
-		adrv9002_check_channel_status(priv, &priv->rx_widgets[i].rx, gtk_str);
-		adrv9002_check_nco_freq_support(priv, i, false);
-		/* intf gain available value might change on profile load */
-		adrv9002_update_rx_intf_gain_attr_available(&priv->rx_widgets[i]);
-		adrv9002_update_rx_widgets(priv, i);
-
-		if (i >= priv->n_txs)
-			continue;
-
-		adrv9002_check_orx_status(priv, &priv->orx_widgets[i]);
-		adrv9002_update_orx_widgets(priv, i);
-		sprintf(gtk_str, "frame_tx%d", i + 1);
-		adrv9002_check_channel_status(priv, &priv->tx_widgets[i], gtk_str);
-		adrv9002_check_nco_freq_support(priv, i, true);
-		adrv9002_update_tx_widgets(priv, i);
-	}
+	for (i = 0; i < priv->n_rxs; i++)
+		update_rx(priv, &priv->rx_widgets[i]);
+	for (i = 0; i < priv->n_txs; i++)
+		update_tx(priv, &priv->tx_widgets[i]);
 
 	iio_update_widgets_block_signals_by_data(priv->device_w, priv->num_widgets);
 	adrv9002_profile_read(priv);
@@ -2532,7 +2537,7 @@ static int adrv9002_tx_widgets_init(struct plugin_private *priv, const int chann
 		return -ENODEV;
 
 	/* LO goes from 0 to 3, the first 2 for RX and the other for TX */
-	sprintf(chann_str, "altvoltage%d", chann + 2);
+	sprintf(chann_str, "altvoltage%d", chann + priv->n_rxs);
 	tx_lo = iio_device_find_channel(priv->adrv9002, chann_str, true);
 	if (!tx_lo)
 		return -ENODEV;
@@ -2630,6 +2635,9 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 	const char *lo_attr = chann ? "RX2_LO_frequency" : "RX1_LO_frequency";
 	uint16_t *n_w = &priv->rx_widgets[chann].rx.num_widgets;
 	uint16_t *n_w_orx = &priv->orx_widgets[chann].num_widgets;
+
+	if (chann >= priv->n_rxs)
+		return 0;
 
 	sprintf(chann_str, "voltage%d", chann);
 	channel = iio_device_find_channel(priv->adrv9002, chann_str, false);
@@ -2833,9 +2841,6 @@ static void connect_rx_special_signal_widgets(struct plugin_private *priv, int c
 
 static void connect_tx_special_signal_widgets(struct plugin_private *priv, int chann)
 {
-	if (chann >= priv->n_txs)
-		return;
-
 	/* tx atten handling */
 	iio_make_widget_update_signal_based(&priv->tx_widgets[chann].gain_ctrl,
 					    G_CALLBACK(save_gain_ctl), &priv->tx_widgets[chann]);
@@ -3129,6 +3134,7 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 	/* lets check what device we have in hands */
 	name = iio_device_get_name(priv->adrv9002);
 	if (!strcmp(name, "adrv9003-phy")) {
+		priv->n_rxs = ARRAY_SIZE(priv->tx_widgets);
 		priv->n_txs = 1;
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_tx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_orx2")));
@@ -3136,6 +3142,7 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		priv->id = ADRV9003;
 	} else {
 		priv->n_txs = ARRAY_SIZE(priv->tx_widgets);
+		priv->n_rxs = ARRAY_SIZE(priv->tx_widgets);
 	}
 
 	for (i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
@@ -3283,20 +3290,19 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		goto error_free_ctx;
 
 	/* update widgets and connect signals */
-	for (i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
+	for (i = 0; i < priv->n_rxs; i++) {
 		connect_rx_special_signal_widgets(priv, i);
-		connect_tx_special_signal_widgets(priv, i);
 		adrv9002_update_rx_widgets(priv, i);
 		adrv9002_update_port_en_mode(priv, &priv->rx_widgets[i].rx);
-		adrv9002_update_orx_widgets(priv, i);
-		adrv9002_update_tx_widgets(priv, i);
 		iio_make_widgets_update_signal_based(priv->rx_widgets[i].rx.w,
 						     priv->rx_widgets[i].rx.num_widgets,
 						     G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
+	}
 
-		if (i >= priv->n_txs)
-			continue;
-
+	for (i = 0; i < priv->n_txs; i++) {
+		connect_tx_special_signal_widgets(priv, i);
+		adrv9002_update_orx_widgets(priv, i);
+		adrv9002_update_tx_widgets(priv, i);
 		adrv9002_update_port_en_mode(priv, &priv->tx_widgets[i]);
 		iio_make_widgets_update_signal_based(priv->orx_widgets[i].w,
 						     priv->orx_widgets[i].num_widgets,
