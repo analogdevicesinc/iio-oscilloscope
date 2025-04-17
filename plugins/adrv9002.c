@@ -177,10 +177,6 @@ typedef struct adrv9002_config
 #ifndef ENOTSUPP
 #define ENOTSUPP	524
 #endif
-#define THIS_DRIVER "ADRV9002"
-#define PHY_DEVICE "adrv9002-phy"
-#define DDS_DEVICE "axi-adrv9002-tx"
-#define CAP_DEVICE "axi-adrv9002-rx"
 
 #define ADRV9002_NUM_CHANNELS	2
 
@@ -199,6 +195,10 @@ const gdouble mhz_scale = 1000000.0;
 static const gdouble bbdc_adjust_min = 1.0 / BBDC_LOOP_GAIN_RES;
 static const gdouble bbdc_adjust_max = 1.0 / BBDC_LOOP_GAIN_RES * UINT32_MAX;
 
+enum adrv9002_id {
+	ADRV9002,
+	ADRV9003,
+};
 struct adrv9002_gtklabel {
 	GtkLabel *labels;
 	struct iio_channel *chann;
@@ -282,6 +282,7 @@ struct plugin_private {
 	int n_adcs;
 	/* profile generator */
 	int current_preset;
+	enum adrv9002_id id;
 };
 
 #define dialog_box_message(widget, title, level, msg) { 				\
@@ -2840,13 +2841,23 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 					    G_CALLBACK(save_orx_powerdown), &priv->orx_widgets[chann]);
 }
 
+static const char * const adrv9002_axi_adcs[] = {
+	"axi-adrv9002-rx", "axi-adrv9003-rx",
+};
+
 static int adrv9002_adc_get_name(struct plugin_private *priv)
 {
 	GArray *devices;
 	struct iio_device *adc;
 	unsigned int i;
 
-	devices = get_iio_devices_starting_with(priv->ctx, CAP_DEVICE);
+	devices = get_iio_devices_starting_with(priv->ctx, adrv9002_axi_adcs[priv->id]);
+	/*
+	 * If no devices, fallback and try to use axi-adrv9002-rx as some older kernels might
+	 * still have this.
+	 */
+	if (!devices->len)
+		devices = get_iio_devices_starting_with(priv->ctx, adrv9002_axi_adcs[0]);
 	if (devices->len < 1 || devices->len > 2) {
 		printf("Warning: Got %d CAP devices. We should have 1 or 2\n",
 		       devices->len);
@@ -2864,14 +2875,23 @@ static int adrv9002_adc_get_name(struct plugin_private *priv)
 	return 0;
 }
 
+static const char * const adrv9002_axi_dacs[] = {
+	"axi-adrv9002-tx", "axi-adrv9003-tx",
+};
+
 static int adrv9002_dds_init(struct plugin_private *priv)
 {
 	GArray *devices;
 	struct iio_device *dac;
 	int i, ret;
 
-	devices = get_iio_devices_starting_with(priv->ctx, DDS_DEVICE);
-
+	devices = get_iio_devices_starting_with(priv->ctx, adrv9002_axi_dacs[priv->id]);
+	/*
+	 * If no devices, fallback and try to use axi-adrv9002-tx as some older kernels might
+	 * still have this.
+	 */
+	if (!devices->len)
+		devices = get_iio_devices_starting_with(priv->ctx, adrv9002_axi_dacs[0]);
 	if (devices->len < 1 || devices->len > 2) {
 		printf("Warning: Got %d DDS devices. We should have 1 or 2\n",
 		       devices->len);
@@ -2896,7 +2916,7 @@ static int adrv9002_dds_init(struct plugin_private *priv)
 		 * the next condition should be fine as we will be calling @isdigit() on the NULL
 		 * terminating character (which is not a digit and not out of bounds)
 		 */
-		if (!isdigit(priv->dac_manager[i].dac_name[strlen(DDS_DEVICE)]))
+		if (!isdigit(priv->dac_manager[i].dac_name[strlen(adrv9002_axi_dacs[priv->id])]))
 			dds_str = "dds_transmit_block";
 		else
 			dds_str = "dds_transmit_block1";
@@ -3093,6 +3113,7 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		priv->n_txs = 1;
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_tx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_orx2")));
+		priv->id = ADRV9003;
 	} else {
 		priv->n_txs = ARRAY_SIZE(priv->tx_widgets);
 	}
@@ -3365,17 +3386,35 @@ struct osc_plugin *create_plugin(struct osc_plugin_context *plugin_ctx)
 	return plugin;
 }
 
+static const struct {
+	const char *dev_name;
+	const char *plugin_name;
+} devs[] = {
+	{ "adrv9002-phy", "ADRV9002" },
+	{ "adrv9003-phy", "ADRV9003" },
+};
+
 GArray* get_data_for_possible_plugin_instances(void)
 {
-	const char *dev = PHY_DEVICE;
 	struct iio_context *osc_ctx = get_context_from_osc();
-	GArray *devices = get_iio_devices_starting_with(osc_ctx, dev);
+	GArray *devices;
+	unsigned int i;
 
-	if (!devices->len)
-		/* then, let's try adrv9003 */
-		dev = "adrv9003-phy";
+	for (i = 0; i < ARRAY_SIZE(devs); i++) {
+		/*
+		 * Look for possible devices in the adrv9001 family. We assume there's no mix
+		 * of devices in one system. If there is, we will only return the first one
+		 * found.
+		 */
+		devices = get_iio_devices_starting_with(osc_ctx, devs[i].dev_name);
+		if (devices->len > 0)
+			break;
+	}
 
 	g_array_free(devices, FALSE);
 
-	return get_data_for_possible_plugin_instances_helper(dev, THIS_DRIVER);
+	if (i == ARRAY_SIZE(devs))
+		return NULL;
+
+	return get_data_for_possible_plugin_instances_helper(devs[i].dev_name, devs[i].plugin_name);
 }
