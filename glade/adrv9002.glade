@@ -2542,7 +2542,7 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <object class="GtkLabel" id="label19">
+                                                          <object class="GtkLabel" id="tx1_tracking_label">
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="label" translatable="yes">Tracking:</property>
@@ -2959,7 +2959,7 @@
                                                           </packing>
                                                         </child>
                                                         <child>
-                                                          <object class="GtkLabel" id="label61">
+                                                          <object class="GtkLabel" id="tx2_tracking_label">
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="label" translatable="yes">Tracking:</property>
@@ -3914,6 +3914,11 @@
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="has-entry">True</property>
+                                                            <child internal-child="entry">
+                                                            <object class="GtkEntry">
+                                                            <property name="can-focus">False</property>
+                                                            </object>
+                                                            </child>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>
@@ -3952,6 +3957,11 @@
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="has-entry">True</property>
+                                                            <child internal-child="entry">
+                                                            <object class="GtkEntry">
+                                                            <property name="can-focus">False</property>
+                                                            </object>
+                                                            </child>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>
@@ -4185,6 +4195,11 @@
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="has-entry">True</property>
+                                                            <child internal-child="entry">
+                                                            <object class="GtkEntry">
+                                                            <property name="can-focus">False</property>
+                                                            </object>
+                                                            </child>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>
@@ -4223,6 +4238,11 @@
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="has-entry">True</property>
+                                                            <child internal-child="entry">
+                                                            <object class="GtkEntry">
+                                                            <property name="can-focus">False</property>
+                                                            </object>
+                                                            </child>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>
@@ -4470,6 +4490,11 @@
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="has-entry">True</property>
+                                                            <child internal-child="entry">
+                                                            <object class="GtkEntry">
+                                                            <property name="can-focus">False</property>
+                                                            </object>
+                                                            </child>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>
@@ -4508,6 +4533,11 @@
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="has-entry">True</property>
+                                                            <child internal-child="entry">
+                                                            <object class="GtkEntry">
+                                                            <property name="can-focus">False</property>
+                                                            </object>
+                                                            </child>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>
@@ -4701,6 +4731,11 @@
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="has-entry">True</property>
+                                                            <child internal-child="entry">
+                                                            <object class="GtkEntry">
+                                                            <property name="can-focus">False</property>
+                                                            </object>
+                                                            </child>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>
@@ -4739,6 +4774,11 @@
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="has-entry">True</property>
+                                                            <child internal-child="entry">
+                                                            <object class="GtkEntry">
+                                                            <property name="can-focus">False</property>
+                                                            </object>
+                                                            </child>
                                                             </object>
                                                             <packing>
                                                             <property name="expand">False</property>

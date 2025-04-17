@@ -198,6 +198,9 @@ static const gdouble bbdc_adjust_max = 1.0 / BBDC_LOOP_GAIN_RES * UINT32_MAX;
 enum adrv9002_id {
 	ADRV9002,
 	ADRV9003,
+	ADRV9004,
+	ADRV9005,
+	ADRV9006,
 };
 struct adrv9002_gtklabel {
 	GtkLabel *labels;
@@ -950,6 +953,37 @@ static void adrv9002_check_nco_freq_support(struct plugin_private *priv, const i
 	}
 }
 
+static void adrv9002_check_tx_track_support(struct plugin_private *priv, struct adrv9002_common *tx)
+{
+	const char *track_label = tx->idx ? "tx2_tracking_label" : "tx1_tracking_label";
+	unsigned int w;
+	char dummy[16];
+	bool checked = false;
+	int ret = 0;
+
+	for (w = 0; w < tx->num_widgets; w++) {
+		if (!strstr(tx->w[w].attr_name, "_tracking_en"))
+			continue;
+
+		/* only need to read one attr for this */
+		if (!checked) {
+			ret = iio_channel_attr_read(tx->w[w].chn, tx->w[w].attr_name, dummy, sizeof(dummy));
+			checked = true;
+		}
+
+		if (ret == -ENOTSUP)
+			gtk_widget_hide(tx->w[w].widget);
+		else
+			gtk_widget_show(tx->w[w].widget);
+
+	}
+
+	if (ret == -ENOTSUP)
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, track_label)));
+	else
+		gtk_widget_show(GTK_WIDGET(gtk_builder_get_object(priv->builder, track_label)));
+}
+
 static void adrv9002_update_rx_intf_gain_attr_available(struct adrv9002_rx *rx)
 {
 	struct iio_widget *w = &rx->intf_gain;
@@ -1008,6 +1042,7 @@ static void update_tx(struct plugin_private *priv, struct adrv9002_common *tx)
 	adrv9002_update_orx_widgets(priv, tx->idx);
 	adrv9002_check_channel_status(priv, tx, gtk_str);
 	adrv9002_check_nco_freq_support(priv, tx->idx, true);
+	adrv9002_check_tx_track_support(priv, tx);
 	adrv9002_update_tx_widgets(priv, tx->idx);
 }
 
@@ -2619,6 +2654,7 @@ static int adrv9002_tx_widgets_init(struct plugin_private *priv, const int chann
 
 	sprintf(widget_str, "frame_tx%d", chann + 1);
 	adrv9002_check_channel_status(priv, &priv->tx_widgets[chann], widget_str);
+	adrv9002_check_tx_track_support(priv, &priv->tx_widgets[chann]);
 	adrv9002_check_nco_freq_support(priv, chann, true);
 
 	return 0;
@@ -2866,7 +2902,8 @@ static void connect_tx_special_signal_widgets(struct plugin_private *priv, int c
 }
 
 static const char * const adrv9002_axi_adcs[] = {
-	"axi-adrv9002-rx", "axi-adrv9003-rx",
+	"axi-adrv9002-rx", "axi-adrv9003-rx", "axi-adrv9004-rx",
+	"axi-adrv9005-rx", "axi-adrv9006-rx"
 };
 
 static int adrv9002_adc_get_name(struct plugin_private *priv)
@@ -2900,7 +2937,8 @@ static int adrv9002_adc_get_name(struct plugin_private *priv)
 }
 
 static const char * const adrv9002_axi_dacs[] = {
-	"axi-adrv9002-tx", "axi-adrv9003-tx",
+	"axi-adrv9002-tx", "axi-adrv9003-tx", "axi-adrv9004-tx",
+	"axi-adrv9005-tx", "axi-adrv9006-tx"
 };
 
 static int adrv9002_dds_init(struct plugin_private *priv)
@@ -3140,6 +3178,24 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_orx2")));
 		adrv9002_set_device_ui(priv, "ADRV9003");
 		priv->id = ADRV9003;
+	} else if (!strcmp(name, "adrv9004-phy")) {
+		priv->n_txs = ARRAY_SIZE(priv->tx_widgets);
+		priv->n_rxs = ARRAY_SIZE(priv->rx_widgets);
+		adrv9002_set_device_ui(priv, "ADRV9004");
+		priv->id = ADRV9004;
+	} else if (!strcmp(name, "adrv9005-phy")) {
+		priv->n_txs = 1;
+		priv->n_rxs = 1;
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_tx2")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_rx2")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(priv->builder, "frame_orx2")));
+		adrv9002_set_device_ui(priv, "ADRV9005");
+		priv->id = ADRV9005;
+	} else if (!strcmp(name, "adrv9006-phy")) {
+		priv->n_txs = ARRAY_SIZE(priv->tx_widgets);
+		priv->n_rxs = ARRAY_SIZE(priv->rx_widgets);
+		adrv9002_set_device_ui(priv, "ADRV9006");
+		priv->id = ADRV9006;
 	} else {
 		priv->n_txs = ARRAY_SIZE(priv->tx_widgets);
 		priv->n_rxs = ARRAY_SIZE(priv->tx_widgets);
@@ -3419,6 +3475,10 @@ static const struct {
 } devs[] = {
 	{ "adrv9002-phy", "ADRV9002" },
 	{ "adrv9003-phy", "ADRV9003" },
+	{ "adrv9004-phy", "ADRV9004" },
+	{ "adrv9005-phy", "ADRV9005" },
+	{ "adrv9006-phy", "ADRV9006" },
+
 };
 
 GArray* get_data_for_possible_plugin_instances(void)
