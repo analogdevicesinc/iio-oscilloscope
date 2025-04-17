@@ -2802,7 +2802,7 @@ static int adrv9002_rx_widgets_init(struct plugin_private *priv, const int chann
 	return 0;
 }
 
-static void connect_special_signal_widgets(struct plugin_private *priv, const int chann)
+static void connect_rx_special_signal_widgets(struct plugin_private *priv, int chann)
 {
 	/* rx gain handling */
 	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.gain_ctrl,
@@ -2829,6 +2829,10 @@ static void connect_special_signal_widgets(struct plugin_private *priv, const in
 	iio_make_widget_update_signal_based(&priv->rx_widgets[chann].rx.carrier,
 					    G_CALLBACK(adrv9002_save_carrier_freq),
 					    &priv->rx_widgets[chann].rx);
+}
+
+static void connect_tx_special_signal_widgets(struct plugin_private *priv, int chann)
+{
 	if (chann >= priv->n_txs)
 		return;
 
@@ -3280,7 +3284,8 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 
 	/* update widgets and connect signals */
 	for (i = 0; i < ADRV9002_NUM_CHANNELS; i++) {
-		connect_special_signal_widgets(priv, i);
+		connect_rx_special_signal_widgets(priv, i);
+		connect_tx_special_signal_widgets(priv, i);
 		adrv9002_update_rx_widgets(priv, i);
 		adrv9002_update_port_en_mode(priv, &priv->rx_widgets[i].rx);
 		adrv9002_update_orx_widgets(priv, i);
