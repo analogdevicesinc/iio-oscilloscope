@@ -3248,7 +3248,6 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		adrv9002_update_port_en_mode(priv, &priv->rx_widgets[i].rx);
 		adrv9002_update_orx_widgets(priv, i);
 		adrv9002_update_tx_widgets(priv, i);
-		adrv9002_update_port_en_mode(priv, &priv->tx_widgets[i]);
 		iio_make_widgets_update_signal_based(priv->rx_widgets[i].rx.w,
 						     priv->rx_widgets[i].rx.num_widgets,
 						     G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
@@ -3256,6 +3255,7 @@ static GtkWidget *adrv9002_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		if (i >= priv->n_txs)
 			continue;
 
+		adrv9002_update_port_en_mode(priv, &priv->tx_widgets[i]);
 		iio_make_widgets_update_signal_based(priv->orx_widgets[i].w,
 						     priv->orx_widgets[i].num_widgets,
 						     G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
