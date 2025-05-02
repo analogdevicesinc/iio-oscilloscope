@@ -182,8 +182,8 @@ int dev_attr_read_bool(struct iio_device *dev, const char *attr_name, bool *valu
 
 	if (attr)
 		return iio_attr_read_bool(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int dev_attr_read_double(struct iio_device *dev, const char *attr_name, double *value)
@@ -192,8 +192,8 @@ int dev_attr_read_double(struct iio_device *dev, const char *attr_name, double *
 
 	if (attr)
 		return iio_attr_read_double(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int dev_attr_read_longlong(struct iio_device *dev, const char *attr_name, long long *value)
@@ -202,8 +202,8 @@ int dev_attr_read_longlong(struct iio_device *dev, const char *attr_name, long l
 
 	if (attr)
 		return iio_attr_read_longlong(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int dev_debug_attr_read_raw(struct iio_device *dev, const char *attr_name, char *dst, size_t len)
@@ -212,8 +212,8 @@ int dev_debug_attr_read_raw(struct iio_device *dev, const char *attr_name, char 
 
 	if (attr)
 		return iio_attr_read_raw(attr, dst, len);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int dev_debug_attr_read_longlong(struct iio_device *dev, const char *attr_name, long long *value)
@@ -222,8 +222,8 @@ int dev_debug_attr_read_longlong(struct iio_device *dev, const char *attr_name, 
 
 	if (attr)
 		return iio_attr_read_longlong(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int dev_attr_write_raw(struct iio_device *dev, const char *attr_name, const char *src, size_t len)
@@ -232,8 +232,8 @@ int dev_attr_write_raw(struct iio_device *dev, const char *attr_name, const char
 
 	if (attr)
 		return iio_attr_write_raw(attr, src, len);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int dev_attr_write_bool(struct iio_device *dev, const char *attr_name, bool value)
@@ -242,8 +242,8 @@ int dev_attr_write_bool(struct iio_device *dev, const char *attr_name, bool valu
 
 	if (attr)
 		return iio_attr_write_bool(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int dev_attr_write_double(struct iio_device *dev, const char *attr_name, double value)
@@ -252,8 +252,8 @@ int dev_attr_write_double(struct iio_device *dev, const char *attr_name, double 
 
 	if (attr)
 		return iio_attr_write_double(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int dev_attr_write_longlong(struct iio_device *dev, const char *attr_name, long long value)
@@ -262,8 +262,8 @@ int dev_attr_write_longlong(struct iio_device *dev, const char *attr_name, long 
 
 	if (attr)
 		return iio_attr_write_longlong(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int dev_debug_attr_write_string(struct iio_device *dev, const char *attr_name, const char *value)
@@ -272,8 +272,8 @@ int dev_debug_attr_write_string(struct iio_device *dev, const char *attr_name, c
 
 	if (attr)
 		return iio_attr_write_string(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int dev_debug_attr_write_longlong(struct iio_device *dev, const char *attr_name, long long value)
@@ -282,8 +282,8 @@ int dev_debug_attr_write_longlong(struct iio_device *dev, const char *attr_name,
 
 	if (attr)
 		return iio_attr_write_longlong(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int chn_attr_read_raw(struct iio_channel *chn, const char *attr_name, char *dst, size_t len)
@@ -292,8 +292,8 @@ int chn_attr_read_raw(struct iio_channel *chn, const char *attr_name, char *dst,
 
 	if (attr)
 		return iio_attr_read_raw(attr, dst, len);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int chn_attr_read_bool(struct iio_channel *chn, const char *attr_name, bool *value)
@@ -302,8 +302,8 @@ int chn_attr_read_bool(struct iio_channel *chn, const char *attr_name, bool *val
 
 	if (attr)
 		return iio_attr_read_bool(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int chn_attr_read_double(struct iio_channel *chn, const char *attr_name, double *value)
@@ -312,8 +312,8 @@ int chn_attr_read_double(struct iio_channel *chn, const char *attr_name, double 
 
 	if (attr)
 		return iio_attr_read_double(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int chn_attr_read_longlong(struct iio_channel *chn, const char *attr_name, long long *value)
@@ -322,8 +322,8 @@ int chn_attr_read_longlong(struct iio_channel *chn, const char *attr_name, long 
 
 	if (attr)
 		return iio_attr_read_longlong(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int chn_attr_write_string(struct iio_channel *chn, const char *attr_name, const char *string)
@@ -332,8 +332,8 @@ int chn_attr_write_string(struct iio_channel *chn, const char *attr_name, const 
 
 	if (attr)
 		return iio_attr_write_string(attr, string);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int chn_attr_write_bool(struct iio_channel *chn, const char *attr_name, bool value)
@@ -342,8 +342,8 @@ int chn_attr_write_bool(struct iio_channel *chn, const char *attr_name, bool val
 
 	if (attr)
 		return iio_attr_write_bool(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int chn_attr_write_double(struct iio_channel *chn, const char *attr_name, double value)
@@ -352,8 +352,8 @@ int chn_attr_write_double(struct iio_channel *chn, const char *attr_name, double
 
 	if (attr)
 		return iio_attr_write_double(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 int chn_attr_write_longlong(struct iio_channel *chn, const char *attr_name, long long value)
@@ -362,8 +362,8 @@ int chn_attr_write_longlong(struct iio_channel *chn, const char *attr_name, long
 
 	if (attr)
 		return iio_attr_write_longlong(attr, value);
-	else
-		return -ENOENT;
+
+	return -ENOENT;
 }
 
 void dev_attr_read_all(struct iio_device *dev,
@@ -381,9 +381,9 @@ void dev_attr_read_all(struct iio_device *dev,
 		if (ret < 0) {
 			fprintf(stderr, "Failed to read attribute: %s\n", iio_attr_get_name(attr));
 			continue;
-		} else {
-			cb(dev, iio_attr_get_name(attr), local_value, strlen(local_value), data);
 		}
+
+		cb(dev, iio_attr_get_name(attr), local_value, strlen(local_value), data);
 	}
 }
 
@@ -402,9 +402,9 @@ int dev_debug_attr_read_all(struct iio_device *dev,
 		if (ret < 0) {
 			fprintf(stderr, "Failed to read attribute: %s\n", iio_attr_get_name(attr));
 			return ret;
-		} else {
-			cb(dev, iio_attr_get_name(attr), local_value, strlen(local_value), data);
 		}
+
+		cb(dev, iio_attr_get_name(attr), local_value, strlen(local_value), data);
 	}
 
 	return 0;
@@ -425,8 +425,8 @@ void chn_attr_read_all(struct iio_channel *chn,
 		if (ret < 0) {
 			fprintf(stderr, "Failed to read attribute: %s\n", iio_attr_get_name(attr));
 			continue;
-		} else {
-			cb(chn, iio_attr_get_name(attr), local_value, strlen(local_value), data);
 		}
+
+		cb(chn, iio_attr_get_name(attr), local_value, strlen(local_value), data);
 	}
 }
