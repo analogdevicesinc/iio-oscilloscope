@@ -54,17 +54,33 @@ static void reload_settings(GtkButton *btn, struct plugin_private *priv)
 	iio_update_widgets_block_signals_by_data(priv->w, priv->n_w);
 }
 
-static int cf_axi_tdd_chann_widgets_init(struct plugin_private *priv, struct iio_device *dev)
+static int cf_axi_tdd_v1_widgets_init(struct plugin_private *priv, struct iio_device *dev)
 {
 	const unsigned int n_channels = iio_device_get_channels_count(dev);
 	struct iio_channel *chan;
 	unsigned int i;
 	char widget_str[32];
+	GtkWidget *global, *primary, *secondary;
+	GtkToggleToolButton *global_btn, *primary_btn, *secondary_btn;
 
 	if (!n_channels) {
 		printf("Could not find any iio channel\n");
 		return -ENODEV;
 	}
+
+	iio_spin_button_int_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "counter_int",
+		priv->builder, "counter_int", NULL);
+	iio_combo_box_init_no_avail_flush_from_builder(&priv->w[priv->n_w++], dev, NULL,"dma_gateing_mode",
+		"dma_gateing_mode_available", priv->builder,
+		"dma_gateing_mode", NULL);
+	iio_combo_box_init_no_avail_flush_from_builder(&priv->w[priv->n_w++], dev, NULL, "en_mode",
+		"en_mode_available", priv->builder, "enable_mode", NULL);
+	iio_toggle_button_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "sync_terminal_type",
+		priv->builder, "sync_terminal_type", false);
+	iio_toggle_button_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "en", priv->builder,
+		"enable", false);
+	iio_toggle_button_init_from_builder(&priv->secondary, dev, NULL, "secondary", priv->builder,
+						"secondary_frame", false);
 
 	for (i = 0; i < n_channels; i++) {
 		chan = iio_device_get_channel(dev, i);
@@ -97,6 +113,32 @@ static int cf_axi_tdd_chann_widgets_init(struct plugin_private *priv, struct iio
 						      "vco_off_ms", priv->builder, widget_str, NULL);
 	}
 
+	/* handle sections buttons and reload settings */
+	global = GTK_WIDGET(gtk_builder_get_object(priv->builder, "global_settings"));
+	global_btn = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(priv->builder,
+						"global_settings_toggle"));
+	primary = GTK_WIDGET(gtk_builder_get_object(priv->builder, "tdd_primary"));
+	primary_btn = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(priv->builder,
+						"tdd_primary_toggle"));
+	secondary = GTK_WIDGET(gtk_builder_get_object(priv->builder, "tdd_secondary"));
+	secondary_btn = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(priv->builder,
+						"tdd_secondary_toggle"));
+	priv->secondary_frame = GTK_WIDGET(gtk_builder_get_object(priv->builder,
+						"tdd_secondary_frame"));
+
+	g_signal_connect(G_OBJECT(global_btn), "clicked", G_CALLBACK(handle_toggle_section_cb),
+			global);
+	g_signal_connect(G_OBJECT(primary_btn), "clicked", G_CALLBACK(handle_toggle_section_cb),
+			primary);
+	g_signal_connect(G_OBJECT(secondary_btn), "clicked", G_CALLBACK(handle_toggle_section_cb),
+			secondary);
+
+	iio_update_widgets(priv->w, priv->n_w);
+	iio_widget_update(&priv->secondary);
+	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->secondary.widget)))
+		gtk_widget_set_sensitive(priv->secondary_frame, false);
+	iio_make_widget_update_signal_based(&priv->secondary, G_CALLBACK(save_secondary), priv);
+
 	return 0;
 }
 
@@ -106,13 +148,8 @@ static int cf_axi_tdd_v2_widgets_init(struct plugin_private *priv, struct iio_de
 	struct iio_channel *chan;
 	unsigned int i;
 	char widget_str[32];
-	GtkButton *reload_btn;
 
-	iio_spin_button_int_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "burst_count",
-		priv->builder, "burst_count", NULL);
-	iio_spin_button_int_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "frame_length_ms",
-		priv->builder, "frame_length", NULL);
-	iio_spin_button_int_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "startup_delay_ms",
+	iio_spin_button_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "startup_delay_ms",
 		priv->builder, "startup_delay", NULL);
 	iio_toggle_button_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "enable",
 		priv->builder, "global_enable", false);
@@ -132,10 +169,10 @@ static int cf_axi_tdd_v2_widgets_init(struct plugin_private *priv, struct iio_de
 			return -ENODEV;
 
 		sprintf(widget_str, "%s_on", iio_channel_get_id(chan));
-		iio_spin_button_int_init_from_builder(&priv->w[priv->n_w++], dev, chan,
+		iio_spin_button_init_from_builder(&priv->w[priv->n_w++], dev, chan,
 						      "on_ms", priv->builder, widget_str, NULL);
 		sprintf(widget_str, "%s_off", iio_channel_get_id(chan));
-		iio_spin_button_int_init_from_builder(&priv->w[priv->n_w++], dev, chan,
+		iio_spin_button_init_from_builder(&priv->w[priv->n_w++], dev, chan,
 						      "off_ms", priv->builder, widget_str, NULL);
 		sprintf(widget_str, "%s_polarity", iio_channel_get_id(chan));
 		iio_toggle_button_init_from_builder(&priv->w[priv->n_w++], dev, chan,
@@ -144,13 +181,6 @@ static int cf_axi_tdd_v2_widgets_init(struct plugin_private *priv, struct iio_de
 		iio_toggle_button_init_from_builder(&priv->w[priv->n_w++], dev, chan,
 						      "enable", priv->builder, widget_str, false);
 	}
-
-	reload_btn = GTK_BUTTON(gtk_builder_get_object(priv->builder, "settings_reload"));
-	g_signal_connect(G_OBJECT(reload_btn), "clicked", G_CALLBACK(reload_settings),
-			     priv);
-	iio_update_widgets(priv->w, priv->n_w);
-	iio_make_widgets_update_signal_based(priv->w, priv->n_w,
-						 G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
 
 	return 0;
 }
@@ -162,8 +192,6 @@ static GtkWidget *cf_axi_tdd_init(struct osc_plugin *plugin, GtkWidget *notebook
 	struct plugin_private *priv = plugin->priv;
 	struct iio_device *dev;
 	const char *dev_name = g_list_first(priv->plugin_ctx.required_devices)->data;
-	GtkWidget *global, *primary, *secondary;
-	GtkToggleToolButton *global_btn, *primary_btn, *secondary_btn;
 	GtkButton *reload_btn;
 	int ret;
 
@@ -183,89 +211,43 @@ static GtkWidget *cf_axi_tdd_init(struct osc_plugin *plugin, GtkWidget *notebook
 	 * if the attribute is not found , load the previous version of the tdd plugin */
 
 	if(!iio_device_find_attr(dev, "version")) {
-	    if (osc_load_glade_file(priv->builder, "cf_axi_tdd") < 0)
-	      goto context_destroy;
+		if (osc_load_glade_file(priv->builder, "cf_axi_tdd") < 0)
+			goto context_destroy;
 
-	    cf_axi_tdd_panel = GTK_WIDGET(gtk_builder_get_object(priv->builder, "cf_axi_tdd_panel"));
-	    if (!cf_axi_tdd_panel)
-	      goto context_destroy;
+		cf_axi_tdd_panel = GTK_WIDGET(gtk_builder_get_object(priv->builder, "cf_axi_tdd_panel"));
+		if (!cf_axi_tdd_panel)
+			goto context_destroy;
 
-	    /* init device widgets */
-	    iio_spin_button_int_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "burst_count",
-		priv->builder, "burst_count", NULL);
-	    iio_spin_button_int_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "frame_length_ms",
-		priv->builder, "frame_length", NULL);
-	    iio_spin_button_int_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "counter_int",
-		priv->builder, "counter_int", NULL);
-	    iio_combo_box_init_no_avail_flush_from_builder(&priv->w[priv->n_w++], dev, NULL,"dma_gateing_mode",
-		"dma_gateing_mode_available", priv->builder,
-		"dma_gateing_mode", NULL);
-	    iio_combo_box_init_no_avail_flush_from_builder(&priv->w[priv->n_w++], dev, NULL, "en_mode",
-		"en_mode_available", priv->builder, "enable_mode", NULL);
-	    iio_toggle_button_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "sync_terminal_type",
-		priv->builder, "sync_terminal_type", false);
-	    iio_toggle_button_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "en", priv->builder,
-		"enable", false);
-	    iio_toggle_button_init_from_builder(&priv->secondary, dev, NULL, "secondary", priv->builder,
-						"secondary_frame", false);
-	    /* init channel widgets */
-	    ret = cf_axi_tdd_chann_widgets_init(priv, dev);
-	    if (ret)
-	      goto context_destroy;
-
-	    /* handle sections buttons and reload settings */
-	    global = GTK_WIDGET(gtk_builder_get_object(priv->builder, "global_settings"));
-	    global_btn = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(priv->builder,
-								       "global_settings_toggle"));
-	    primary = GTK_WIDGET(gtk_builder_get_object(priv->builder, "tdd_primary"));
-	    primary_btn = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(priv->builder,
-									"tdd_primary_toggle"));
-	    secondary = GTK_WIDGET(gtk_builder_get_object(priv->builder, "tdd_secondary"));
-	    secondary_btn = GTK_TOGGLE_TOOL_BUTTON(gtk_builder_get_object(priv->builder,
-									  "tdd_secondary_toggle"));
-
-	    reload_btn = GTK_BUTTON(gtk_builder_get_object(priv->builder, "settings_reload"));
-	    priv->secondary_frame = GTK_WIDGET(gtk_builder_get_object(priv->builder,
-								      "tdd_secondary_frame"));
-
-	    g_signal_connect(G_OBJECT(global_btn), "clicked", G_CALLBACK(handle_toggle_section_cb),
-			     global);
-	    g_signal_connect(G_OBJECT(primary_btn), "clicked", G_CALLBACK(handle_toggle_section_cb),
-			     primary);
-	    g_signal_connect(G_OBJECT(secondary_btn), "clicked", G_CALLBACK(handle_toggle_section_cb),
-			     secondary);
-	    g_signal_connect(G_OBJECT(reload_btn), "clicked", G_CALLBACK(reload_settings),
-			     priv);
-
-	    iio_update_widgets(priv->w, priv->n_w);
-	    iio_widget_update(&priv->secondary);
-	    if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(priv->secondary.widget)))
-	      gtk_widget_set_sensitive(priv->secondary_frame, false);
-
-	    iio_make_widgets_update_signal_based(priv->w, priv->n_w,
-						 G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
-	    iio_make_widget_update_signal_based(&priv->secondary, G_CALLBACK(save_secondary), priv);
-
-	    return cf_axi_tdd_panel;
+		/* init channel widgets */
+		ret = cf_axi_tdd_v1_widgets_init(priv, dev);
+		if (ret)
+			goto context_destroy;
 	}
 	else {
+		if (osc_load_glade_file(priv->builder, "cf_axi_tdd_v2") < 0)
+			goto context_destroy;
 
-	    if (osc_load_glade_file(priv->builder, "cf_axi_tdd_v2") < 0)
-	      goto context_destroy;
+		cf_axi_tdd_panel = GTK_WIDGET(gtk_builder_get_object(priv->builder, "cf_axi_tdd_panel_v2"));
+		if (!cf_axi_tdd_panel)
+			goto context_destroy;
+		/* init widgets */
 
-	    cf_axi_tdd_panel = GTK_WIDGET(gtk_builder_get_object(priv->builder, "cf_axi_tdd_panel_v2"));
-	    if (!cf_axi_tdd_panel)
-	      goto context_destroy;
-
-	    /* init widgets */
-
-	    ret = cf_axi_tdd_v2_widgets_init(priv, dev);
-	    if (ret)
-	      goto context_destroy;
-
-	    return cf_axi_tdd_panel;
-
-	  }
+		ret = cf_axi_tdd_v2_widgets_init(priv, dev);
+		if (ret)
+			goto context_destroy;
+	}
+	/* init common device widgets */
+	iio_spin_button_int_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "burst_count",
+		priv->builder, "burst_count", NULL);
+	iio_spin_button_init_from_builder(&priv->w[priv->n_w++], dev, NULL, "frame_length_ms",
+		priv->builder, "frame_length", NULL);
+	reload_btn = GTK_BUTTON(gtk_builder_get_object(priv->builder, "settings_reload"));
+	g_signal_connect(G_OBJECT(reload_btn), "clicked", G_CALLBACK(reload_settings),
+			     priv);
+	iio_update_widgets(priv->w, priv->n_w);
+	iio_make_widgets_update_signal_based(priv->w, priv->n_w,
+						 G_CALLBACK(iio_widget_save_block_signals_by_data_cb));
+	return cf_axi_tdd_panel;
 
 context_destroy:
 	osc_destroy_context(priv->ctx);
