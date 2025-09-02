@@ -41,7 +41,6 @@ set(PLUGINS
 	lidar
 	dmm
 	debug
-	spectrum_analyzer
 	scpi
 	ad9081
 	ad9084
