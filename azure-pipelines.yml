@@ -30,12 +30,6 @@ stages:
   - job: LinuxBuilds
     strategy:
       matrix:
-        ubuntu_20_04_x86_64:
-          imageName: 'ubuntu-20.04'
-          OS_TYPE: 'ubuntu_docker'
-          OS_VERSION: focal
-          artifactName: 'Linux-Ubuntu-20.04'
-          PACKAGE_TO_INSTALL: 'download/*.deb'
         ubuntu_22_04_x86_64:
           imageName: 'ubuntu-22.04'
           OS_TYPE: 'ubuntu_docker'
