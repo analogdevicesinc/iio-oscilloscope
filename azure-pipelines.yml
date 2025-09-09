@@ -95,10 +95,6 @@ stages:
     # Docker Images
     strategy:
       matrix:
-        ubuntu-ppc64le:
-          image: tfcollins/libiio_ubuntu_18_04-ci-arm-ppc:latest
-          arch: ppc64le
-          artifactName: 'Ubuntu-ppc64le'
         ubuntu-x390x:
           image: tfcollins/libiio_ubuntu_18_04-ci-arm-ppc:latest
           arch: s390x
