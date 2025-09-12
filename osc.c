@@ -2254,16 +2254,14 @@ static void capture_profile_save(const char *filename)
 	fprintf(fp, "startup_version_check=%d\n",
 		gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(versioncheck_en)));
 	if (ctx) {
-		if (!strcmp(iio_context_get_name(ctx), "network")) {
-			char *ip_addr = (char *) iio_context_get_description(ctx);
-			ip_addr = strtok(ip_addr, " ");
-			fprintf(fp, "remote_ip_addr=%s\n", ip_addr);
-		} else if (!strcmp(iio_context_get_name(ctx), "usb")) {
-			if (usb_get_serialnumber(ctx))
-				fprintf(fp, "uri=%s\n", usb_get_serialnumber(ctx));
-		} else {
-			fprintf(stderr, "%s: unknown context %s\n",
-				__func__, iio_context_get_name(ctx));
+		const struct iio_attr *uri_attr;
+		char buf[128];
+		int ret;
+		uri_attr = iio_context_find_attr(ctx, "uri");
+		if (uri_attr) {
+			ret = iio_attr_read_raw(uri_attr, buf, sizeof(buf));
+			if (ret > 0)
+				fprintf(fp, "uri=%s\n", buf);
 		}
 	}
 	if (ini_capture_timeout_loaded) {
@@ -2346,7 +2344,7 @@ static int handle_osc_param(int line, const char *name, const char *value)
 	}
 
 	if (!strcmp(name, "test") || !strcmp(name, "window_x_pos") ||
-			!strcmp(name, "window_y_pos") || !strcmp(name, "remote_ip_addr")) {
+			!strcmp(name, "window_y_pos") || !strcmp(name, "uri")) {
 		printf("Ignoring token \'%s\' when loading sequentially\n", name);
 		return 0;
 	}
@@ -2441,11 +2439,11 @@ static int load_profile(const char *filename, bool load_plugins)
 	close_all_plots();
 	destroy_all_plots();
 
-	value = read_token_from_ini(filename, OSC_INI_SECTION, "remote_ip_addr");
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "uri");
 	/* IP addresses specified on the command line via the -c option
 	 * override profile settings.
 	 */
-	if (value && !(ctx && !strcmp(iio_context_get_name(ctx), "network"))) {
+	if (value) {
 		struct iio_context *new_ctx = iio_create_context(NULL, value);
 		if (new_ctx) {
 			application_reload(new_ctx, false);
@@ -2464,7 +2462,7 @@ static int load_profile(const char *filename, bool load_plugins)
 	/* URI addresses specified on the command line via the -u option
 	 * override profile settings
 	 */
-	if (value && !(ctx && (!strcmp(iio_context_get_name(ctx), "uri")))) {
+	if (value) {
 		struct iio_context *new_ctx;
 		struct iio_scan *ctxs = iio_scan(NULL, NULL);
 		char *pid_vid = value;
