@@ -50,7 +50,7 @@ stages:
         pipeline: $(libiioPipelineId)
         artifact: '$(artifactName)'
         runVersion: 'latestFromBranch'
-        runBranch: 'refs/heads/libiio-v0'
+        runBranch: 'refs/heads/main'
         path: '$(Agent.BuildDirectory)/s/download/'
       displayName: 'Get libiio artifacts'
     - task: DownloadPipelineArtifact@2
