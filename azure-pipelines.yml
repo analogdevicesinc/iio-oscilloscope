@@ -60,7 +60,7 @@ stages:
         pipeline: $(libad9361iioPipelineId)
         artifact: '$(artifactName)'
         runVersion: 'latestFromBranch'
-        runBranch: 'refs/heads/libad9361-iio-v0'
+        runBranch: 'refs/heads/staging/libiio1-support'
         path: '$(Agent.BuildDirectory)/s/download/'
       displayName: 'Get libad9361-iio artifacts'
     - task: DownloadPipelineArtifact@2
