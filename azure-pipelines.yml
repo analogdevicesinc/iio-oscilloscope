@@ -63,6 +63,7 @@ stages:
         runBranch: 'refs/heads/staging/libiio1-support'
         path: '$(Agent.BuildDirectory)/s/download/'
       displayName: 'Get libad9361-iio artifacts'
+      continueOnError: true
     - task: DownloadPipelineArtifact@2
       inputs:
         source: 'specific'
@@ -73,6 +74,7 @@ stages:
         runBranch: 'refs/heads/staging/libiio1-support'
         path: '$(Agent.BuildDirectory)/s/download/'
       displayName: 'Get libad9166-iio artifacts'
+      continueOnError: true
     - script: |
         ./CI/azure/build_osc_ubuntu.sh install_apt_pkgs
         ./CI/azure/build_osc_ubuntu.sh install_adi_debs
@@ -131,6 +133,7 @@ stages:
         runBranch: 'refs/heads/libad9361-iio-v0'
         path: '$(Agent.BuildDirectory)/s/download/'
       displayName: 'Get libad9361-iio artifacts'
+      continueOnError: true
     - task: DownloadPipelineArtifact@2
       inputs:
         source: 'specific'
@@ -141,6 +144,7 @@ stages:
         runBranch: 'refs/heads/libad9166-iio-v0'
         path: '$(Agent.BuildDirectory)/s/download/'
       displayName: 'Get libad9166-iio artifacts'
+      continueOnError: true
     - script: |
         set -e
         sudo apt-get update
