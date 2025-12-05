@@ -17,7 +17,7 @@
 #include <dirent.h>
 #include <limits.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "compat.h"
 #include "fru.h"
@@ -353,10 +353,11 @@ static struct iio_context * get_context(Dialogs *data)
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_net))) {
 		const char *hostname = gtk_entry_get_text(GTK_ENTRY(dialogs.net_ip));
 		struct iio_context *ctx = get_context_from_osc();
+		const struct iio_attr *uri_attr = iio_context_find_attr(ctx, "uri");
 
-		if (ctx && !g_strcmp0(hostname, iio_context_get_attr_value(ctx, "uri")))
+		if (ctx && !g_strcmp0(hostname, iio_attr_get_static_value(uri_attr)))
 			return ctx;
-		return iio_create_context_from_uri(hostname);
+		return iio_create_context(NULL, hostname);
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_usb))) {
 		struct iio_context *ctx, *ctx2;
 		char *uri , *uri2, *uri3;
@@ -391,12 +392,13 @@ static struct iio_context * get_context(Dialogs *data)
 
 		/* are we the same URI? */
 		ctx2 = get_context_from_osc();
-		if (ctx2 && !g_strcmp0(uri2, iio_context_get_attr_value(ctx2, "uri"))) {
+		const struct iio_attr *uri_attr = iio_context_find_attr(ctx2, "uri");
+		if (ctx2 && !g_strcmp0(uri2, iio_attr_get_static_value(uri_attr))) {
 			g_free(uri);
 			return ctx2;
 		}
 
-		ctx = iio_create_context_from_uri(uri2);
+		ctx = iio_create_context(NULL, uri2);
 		/* If you are looking up ip: with zeroconf, without bonjour installed,
 		 * try the IP number too
 		 */
@@ -406,7 +408,7 @@ static struct iio_context * get_context(Dialogs *data)
 				if (strchr(uri3, ' ')) {
 					uri2 = strchr(uri3, ' ');
 					*uri2 = 0;
-					ctx = iio_create_network_context(uri3);
+					ctx = iio_create_context(NULL, uri3);
 				}
 				free(uri3);
 			}
@@ -426,7 +428,7 @@ static struct iio_context * get_context(Dialogs *data)
 		g_free(port);
 		g_free(baud_rate);
 
-		ctx = iio_create_context_from_uri(result);
+		ctx = iio_create_context(NULL, result);
 		g_free(result);
 		if (!ctx && errno == EBUSY &&
 				!strcmp("serial", iio_context_get_name(get_context_from_osc()))) {
@@ -434,7 +436,7 @@ static struct iio_context * get_context(Dialogs *data)
 		}
 		return ctx;
 	} else {
-		return iio_create_local_context();
+		return iio_create_context(NULL, "local:");
 	}
 }
 
@@ -487,17 +489,19 @@ static bool refresh_usb_update_list(struct refresh_usb_info *info)
 
 static void refresh_usb_thread(void)
 {
-	struct iio_scan_context *ctxs;
-	struct iio_context_info **info;
-	ssize_t ret;
+	struct iio_scan *ctxs;
+	//struct iio_context_info **info;
+	GtkListStore *liststore;
+	//ssize_t ret;
 	unsigned int i = 0;
 	gchar *tmp, *tmp1, *pid, *buf;
 	char *current = NULL;
-	char filter[sizeof("local:ip:usb:")];
+	char filter[sizeof("local:,ip:,usb:")];
 	char *p;
 	bool scan = false;
 	gchar *active_uri = NULL;
 	struct refresh_usb_info *usb_devices_info = malloc(sizeof(struct refresh_usb_info));
+	size_t ctxs_nb = 0;
 
 	usb_devices_info->device_list = NULL;
 	usb_devices_info->num_devices = 0;
@@ -528,15 +532,15 @@ static void refresh_usb_thread(void)
 
 	p = filter;
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.filter_local))) {
-		p += sprintf(p, "local:");
+		p += sprintf(p, "local,");
 		scan = true;
 	}
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.filter_usb))) {
-		p += sprintf(p, "usb:");
+		p += sprintf(p, "usb,");
 		scan = true;
 	}
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.filter_ip))) {
-		p += sprintf(p, "ip:");
+		p += sprintf(p, "ip,");
 		scan = true;
 	}
 
@@ -544,24 +548,29 @@ static void refresh_usb_thread(void)
 	if (!scan)
 		goto nope;
 
-	ctxs = iio_create_scan_context(filter, 0);
+	ctxs = iio_scan(NULL, filter);
 	if (!ctxs)
 		goto nope;
 
-	ret = iio_scan_context_get_info_list(ctxs, &info);
+	ctxs_nb = iio_scan_get_results_count(ctxs);
+
+	/*ret = iio_scan_context_get_info_list(ctxs, &info);
 	if (ret < 0)
 		goto err_free_ctxs;
 
 	usb_devices_info->num_devices = ret;
 
 	if (!ret)
-		goto err_free_info_list;
+		goto err_free_info_list;*/
 
-	usb_devices_info->device_list = calloc(ret, sizeof(char *));
+	usb_devices_info->device_list = calloc(ctxs_nb, sizeof(char *));
 
-	for (i = 0; i < (size_t) ret; i++) {
-		tmp = strdup(iio_context_info_get_description(info[i]));
-		pid = strdup(iio_context_info_get_description(info[i]));
+	for (i = 0; i < (size_t) ctxs_nb; i++) {
+		//tmp = strdup(iio_context_info_get_description(info[i]));
+		//pid = strdup(iio_context_info_get_description(info[i]));
+	
+		tmp = strdup(iio_scan_get_description(ctxs, i));
+		pid = strdup(iio_scan_get_description(ctxs, i));
 
 		/* skip the PID/VID or IP Number, example descriptions are:
 		 * 0456:b673 (Analog Devices Inc. PlutoSDR (ADALM-PLUTO)), serial=104473541196000618001900241f1e6931
@@ -594,10 +603,10 @@ static void refresh_usb_thread(void)
 
 		if (!tmp1)
 			tmp1 = tmp;
-		buf = malloc(strlen(iio_context_info_get_uri(info[i])) +
+		buf = malloc(strlen(iio_scan_get_uri(ctxs, i)) +
 				strlen(tmp1) + 5); // will be freed by `refresh_usb_update_list`
 		sprintf(buf, "%s [%s]", tmp1,
-				iio_context_info_get_uri(info[i]));
+				iio_scan_get_uri(ctxs, i));
 		tmp1 = NULL;
 
 		usb_devices_info->device_list[i] = buf;
@@ -607,12 +616,11 @@ static void refresh_usb_thread(void)
 		}
 
 		free(tmp);
-	}
 
-err_free_info_list:
-	iio_context_info_list_free(info);
-err_free_ctxs:
-	iio_scan_context_destroy(ctxs);
+	}
+	iio_scan_destroy(ctxs);
+//err_free_ctxs:
+//	iio_scan_destroy(ctxs);
 nope:
 
 	gdk_threads_add_idle(G_SOURCE_FUNC(refresh_usb_update_list), usb_devices_info);
@@ -717,6 +725,7 @@ static bool connect_fillin(Dialogs *data)
 	char text[256];
 	size_t i;
 	struct iio_context *ctx;
+	const struct iio_attr *attr;
 	const char *desc;
 	unsigned int n_devs, attr_cnt;
 
@@ -760,10 +769,12 @@ static bool connect_fillin(Dialogs *data)
 	attr_cnt = iio_context_get_attrs_count(ctx);
 	for (i = 0; i < attr_cnt; i++) {
 		const char *key, *value;
-		ssize_t ret;
+		//ssize_t ret;
 
-		ret = iio_context_get_attr(ctx, i, &key, &value);
-		if (!ret) {
+		attr = iio_context_get_attr(ctx, i);
+		if (attr) {
+			key = iio_attr_get_name(attr);
+			value = iio_attr_get_static_value(attr);
 			snprintf(text, sizeof(text), "%s = %s\n", key, value);
 			gtk_text_buffer_insert(buf, &iter, text, -1);
 		}
@@ -927,7 +938,8 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 	ctx = get_context_from_osc();
 
 	if (ctx) {
-		ip_addr = iio_context_get_attr_value(ctx, "uri");
+		const struct iio_attr *ctx_uri = iio_context_find_attr(ctx, "uri");
+		ip_addr = iio_attr_get_static_value(ctx_uri);
 		if (ip_addr) {
 			gtk_entry_set_text(GTK_ENTRY(dialogs.net_ip), ip_addr);
 			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dialogs.connect_net), true);
@@ -1362,7 +1374,7 @@ void dialogs_init(GtkBuilder *builder)
 	gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "connect_usb_label")),
 			false);
 
-	if (iio_has_backend("serial")) {
+	if (iio_has_backend(NULL, "serial")) {
 		g_object_bind_property(dialogs.connect_serial, "active",
 				GTK_WIDGET(gtk_builder_get_object(builder,
 						"connect_serial_label")), "sensitive", 0);
@@ -1391,7 +1403,7 @@ void dialogs_init(GtkBuilder *builder)
 
 
 	/* test discoverable backends & hide if it's not supported */
-	if (iio_has_backend("usb")) {
+	if (iio_has_backend(NULL, "usb")) {
 		scan = true;
 		g_object_bind_property(dialogs.connect_usb, "active", dialogs.filter_usb,
 				"sensitive", G_BINDING_DEFAULT);
@@ -1402,7 +1414,7 @@ void dialogs_init(GtkBuilder *builder)
 		gtk_widget_set_sensitive(dialogs.filter_usb, false);
 	}
 
-	if(iio_has_backend("ip")) {
+	if(iio_has_backend(NULL, "ip")) {
 		scan = true;
 		g_object_bind_property(dialogs.connect_usb, "active", dialogs.filter_ip,
 				"sensitive", G_BINDING_DEFAULT);
@@ -1413,8 +1425,8 @@ void dialogs_init(GtkBuilder *builder)
 		gtk_widget_set_sensitive(dialogs.filter_ip, false);
 	}
 
-	if (iio_has_backend("local")) {
-		ctx = iio_create_local_context();
+	if (iio_has_backend(NULL, "local")) {
+		ctx = iio_create_context(NULL, "local:");
 		if (ctx) {
 			scan = true;
 			iio_context_destroy(ctx);

@@ -7,7 +7,7 @@
 #ifndef __IIO_UTILS__
 #define __IIO_UTILS__
 
-#include "iio.h"
+#include "iio/iio.h"
 #include <gmodule.h>
 
 struct _GtkToggleToolButton;
@@ -26,4 +26,28 @@ void handle_toggle_section_cb(struct _GtkToggleToolButton *btn, struct _GtkWidge
 const char *get_iio_device_label_or_name(const struct iio_device *dev);
 bool iio_attr_not_found(struct iio_device *dev, struct iio_channel *chn, const char *attr_name);
 
+/* Helpers to iterate through all attributes */
+void dev_attr_read_all(struct iio_device *dev,
+                       int (*cb)(struct iio_device *dev, const char *attr, const char *value, size_t len, void *d),
+                       void *data);
+
+int dev_attr_write_all(struct iio_device *dev, ssize_t (*cb)(struct iio_device *dev, const char *attr,
+                                                             void *buf, size_t len, void *d),
+                       void *data);
+
+int dev_debug_attr_read_all(struct iio_device *dev, int (*cb)(struct iio_device *dev, const char *attr,
+                                                              const char *value, size_t len, void *d),
+                            void *data);
+
+int dev_debug_attr_write_all(struct iio_device *dev, ssize_t (*cb)(struct iio_device *dev, const char *attr,
+                                                                 void *buf, size_t len, void *d),
+                            void *data);
+
+int chn_attr_write_all(struct iio_channel *chn, ssize_t (*cb)(struct iio_channel *chn, const char *attr,
+                                                             void *buf, size_t len, void *d),
+                       void *data);
+
+void chn_attr_read_all(struct iio_channel *chn, int (*cb)(struct iio_channel *chn, const char *attr,
+                                                        const char *value, size_t len, void *d),
+                       void *data);
 #endif  /* __IIO_UTILS__ */

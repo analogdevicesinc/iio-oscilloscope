@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #include <fftw3.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #define INITIAL_UPDATE TRUE
 #define NORMAL_UPDATE FALSE
@@ -71,6 +71,7 @@ struct extra_dev_info {
 	char adc_scale;
 	gfloat **channels_data_copy;
 	GSList *plots_sample_counts;
+	struct iio_stream *stream;
 };
 
 struct buffer {

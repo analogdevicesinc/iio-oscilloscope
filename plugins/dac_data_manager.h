@@ -10,7 +10,7 @@
 
 #include <gtk/gtk.h>
 #include <stdarg.h>
-#include <iio.h>
+#include <iio/iio.h>
 
 enum dds_tone_type {
 	TONE_I,

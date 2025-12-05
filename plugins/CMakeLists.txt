@@ -19,40 +19,41 @@ pkg_check_modules(LIBAD9361 libad9361)
 pkg_check_modules(LIBAD9166 libad9166)
 
 set(PLUGINS
-	generic_dac
-	fmcomms2
-	fmcomms2_adv
-	fmcomms5
-	fmcomms6
-	fmcomms11
-	ad9371
-	ad9371_adv
-	adrv9009
-	adrv9009_adv
-	ad6676
-	fmcadc3
-	daq2
-	ad9739a
-	AD5628_1
+	#generic_dac
+	#fmcomms2
+	#fmcomms2_adv
+	#fmcomms5
+	#fmcomms6
+	#fmcomms11
+	#ad9371
+	#ad9371_adv
+	#adrv9009
+	#adrv9009_adv
+	#ad6676
+	#fmcadc3
+	#daq2
+	#ad9739a
+	#AD5628_1
 	#AD7303
-	cn0357
-	cn0508
-	cn0511
-	cn0540
-	pr_config
-	motor_control
-	lidar
-	dmm
-	debug
+	#cn0357
+	#cn0508
+	#cn0511
+	#cn0540
+	#pr_config
+	#motor_control
+	#lidar
+	#dmm
+	#debug
 	scpi
-	ad9081
-	ad9084
-	adrv9002
-	cf_axi_tdd
-	xmw
+	#ad9081
+	#ad9084
+	#adrv9002
+	#cf_axi_tdd
+	#xmw
 )
 
-set(LIBAD9166_PLUGINS cn0511)
+set(LIBAD9166_PLUGINS #cn0511
+    )
 
 set(LIBAD9361_PLUGINS
 	fmcomms2

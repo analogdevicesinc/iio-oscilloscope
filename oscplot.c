@@ -23,7 +23,7 @@
 
 #include <complex.h>
 #include <fftw3.h>
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "osc.h"
 #include "oscplot.h"
@@ -1690,12 +1690,14 @@ bool freq_spectrum_transform_function(Transform *tr, gboolean init_transform)
 	int ret;
 	double sampling_freq;
 	bool complete_transform = false;
+	const struct iio_attr *attr = NULL;
 
 	if (init_transform) {
 		fft_size = settings->fft_size;
 		chn = PLOT_IIO_CHN(tr->plot_channels->data)->iio_chn;
-		ret = iio_channel_attr_read_double(chn, "sampling_frequency",
-				&sampling_freq);
+		attr = iio_channel_find_attr(chn, "sampling_frequency");
+
+		ret = iio_attr_read_double(attr, &sampling_freq);
 		if (ret < 0)
 			return false;
 		sampling_freq /= 1000000; /* Hz to MHz*/
@@ -2111,6 +2113,7 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	struct iio_device *dev;
 	unsigned int nb_channels = num_of_channels_of_device(treeview, name);
 	unsigned enabled_channels_mask;
+	const struct iio_channels_mask *mask = NULL;
 
 	GtkTreeModel *model;
 	GtkTreeIter iter;
@@ -2126,7 +2129,13 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	if (!device_enabled && plot_type != TIME_PLOT)
 		return true;
 
+	/* No additional checking is needed for non iio devices */
+	if (!dev)
+		return TRUE;
 	num_enabled = enabled_channels_of_device(treeview, name, &enabled_channels_mask);
+	mask = iio_create_channels_mask(iio_device_get_channels_count(dev));
+
+
 
 	/* Basic validation rules */
 	if (plot_type == FFT_PLOT) {
@@ -2146,7 +2155,8 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 			gtk_widget_set_tooltip_text(priv->capture_button,
 				"Time Domain needs at least one channel");
 			return false;
-		} else if (dev && !dma_valid_selection(name, enabled_channels_mask | global_enabled_channels_mask(dev), nb_channels)) {
+		} else if (dev && !dma_valid_selection(name, enabled_channels_mask |
+		global_enabled_channels_mask(dev, (struct iio_channels_mask *) mask), nb_channels)) {
 			gtk_widget_set_tooltip_text(priv->capture_button,
 				"Channel selection not supported");
 			return false;
@@ -2159,9 +2169,8 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 		}
 	}
 
-	/* No additional checking is needed for non iio devices */
-	if (!dev)
-		return TRUE;
+
+
 
 	char warning_text[100];
 
@@ -2169,7 +2178,8 @@ static gboolean check_valid_setup_of_device(OscPlot *plot, const char *name)
 	const struct iio_device *trigger;
 	int ret;
 
-	ret = iio_device_get_trigger(dev, &trigger);
+	trigger = iio_device_get_trigger(dev);
+	ret = iio_err(trigger);
 	if (ret == 0 && trigger == NULL && num_enabled > 0) {
 		snprintf(warning_text, sizeof(warning_text),
 				"Device %s needs an impulse generator", name);
@@ -6777,7 +6787,8 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEvent *event)
 		bool needs_trigger;
 		int ret;
 
-		ret = iio_device_get_trigger(dev, &trigger);
+		trigger = iio_device_get_trigger(dev);
+		ret = iio_err(trigger);
 		needs_trigger = false;
 		if (ret == 0) {
 			needs_trigger = true;

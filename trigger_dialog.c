@@ -26,7 +26,7 @@ static void trigger_change_trigger(GtkComboBox *box, GtkBuilder *builder)
 	GtkLabel *label_freq;
 	gchar *current_trigger;
 	gboolean has_frequency = false;
-	const char *attr;
+	const struct iio_attr *attribute = NULL;
 
 	trigger_combobox = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(builder,
 			"comboboxtext_triggers"));
@@ -43,16 +43,16 @@ static void trigger_change_trigger(GtkComboBox *box, GtkBuilder *builder)
 		trigger = iio_context_find_device(ctx, current_trigger);
 		if (!trigger)
 			goto abort;
-		attr = iio_device_find_attr(trigger, "sampling_frequency");
+		attribute = iio_device_find_attr(trigger, "sampling_frequency");
 
 		/* "frequency" was used for the sampling frequency by some non ABI
 		 * compliant drivers. Drop this at some point */
-		if (!attr)
-			attr = iio_device_find_attr(trigger, "frequency");
-		if (!attr)
+		if (!attribute)
+			attribute = iio_device_find_attr(trigger, "frequency");
+		if (!attribute)
 			goto abort;
 
-		if (iio_device_attr_read_longlong(trigger, attr, &trigger_freq))
+		if (iio_attr_read_longlong(attribute, &trigger_freq))
 			goto abort;
 
 		has_frequency = true;
@@ -92,7 +92,8 @@ static void trigger_load_settings(GtkBuilder *builder, const char *device)
 	if (!dev)
 		return;
 
-	ret = iio_device_get_trigger(dev, &trigger);
+	trigger = iio_device_get_trigger(dev);
+	ret = iio_err(trigger);
 	if (ret < 0)
 		trigger = NULL;
 
@@ -123,7 +124,7 @@ static void trigger_save_settings(GtkBuilder *builder, const char *device)
 	GtkSpinButton *spinbtn_freq;
 	gchar *current_trigger;
 	const char *dev_name;
-	const char *attr;
+	const struct iio_attr *attr = NULL;
 
 	trigger_combobox = GTK_COMBO_BOX_TEXT(gtk_builder_get_object(builder,
 			"comboboxtext_triggers"));
@@ -148,8 +149,7 @@ static void trigger_save_settings(GtkBuilder *builder, const char *device)
 				attr = iio_device_find_attr(trigger, "frequency");
 
 			if (attr) {
-				iio_device_attr_write_longlong(trigger, attr,
-					(long long)gtk_spin_button_get_value(spinbtn_freq));
+				iio_attr_write_longlong(attr, (long long)gtk_spin_button_get_value(spinbtn_freq));
 			}
 
 			iio_device_set_trigger(dev, trigger);

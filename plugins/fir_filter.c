@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <glib.h>
 #include <gtk/gtk.h>
-#include <iio.h>
+#include <iio/iio.h>
 #include <string.h>
 
 #include "../config.h"
@@ -44,6 +44,7 @@ int load_fir_filter(const char *file_name,
 		ssize_t len;
 		char line[80];
 		int ret2;
+		const struct iio_attr *attr = NULL;
 
 		while (fgets(line, 80, f) != NULL && line[0] == '#');
 		if (!strncmp(line, "RX", strlen("RX")))
@@ -64,11 +65,12 @@ int load_fir_filter(const char *file_name,
 		len = fread(buf, 1, len, f);
 		fclose(f);
 
-		ret = iio_device_attr_write_raw(dev1,
-				"filter_fir_config", buf, len);
+		attr = iio_device_find_attr(dev1, "filter_fir_config");
+		ret = iio_attr_write_raw(attr, buf, len);
 		if (dev2) {
-			ret2 = iio_device_attr_write_raw(dev2,
-					"filter_fir_config", buf, len);
+
+			attr = iio_device_find_attr(dev2, "filter_fir_config");
+			ret2 = iio_attr_write_raw(attr, buf, len);
 			ret = (ret > ret2) ? ret2 : ret;
 		}
 		free(buf);

@@ -24,7 +24,7 @@
 #include <string.h>
 #include <dirent.h>
 
-#include <iio.h>
+#include <iio/iio.h>
 
 #include "compat.h"
 #include "libini2.h"
@@ -162,7 +162,7 @@ bool dma_valid_selection(const char *device, unsigned mask, unsigned channel_cou
 	return ret;
 }
 
-unsigned global_enabled_channels_mask(struct iio_device *dev)
+unsigned global_enabled_channels_mask(struct iio_device *dev, struct iio_channels_mask *ch_mask)
 {
 	unsigned mask = 0;
 	int scan_i = 0;
@@ -172,7 +172,7 @@ unsigned global_enabled_channels_mask(struct iio_device *dev)
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
 
 		if (iio_channel_is_scan_element(chn)) {
-			if (iio_channel_is_enabled(chn))
+			if (iio_channel_is_enabled(chn, ch_mask))
 				mask |= 1 << scan_i;
 			scan_i++;
 		}
@@ -254,26 +254,28 @@ static void destroy_all_plots(void)
 	g_list_foreach(plot_list, gfunc_destroy_plot, NULL);
 }
 
-static void disable_all_channels(struct iio_device *dev)
+static void disable_all_channels(struct iio_device *dev, struct iio_channels_mask *ch_mask)
 {
 	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
 	for (i = 0; i < nb_channels; i++)
-		iio_channel_disable(iio_device_get_channel(dev, i));
+		iio_channel_disable(iio_device_get_channel(dev, i), ch_mask);
 }
 
 static void close_active_buffers(void)
 {
 	unsigned int i;
+	const struct iio_channels_mask *mask = NULL;
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *info = iio_device_get_data(dev);
+
 		if (info->buffer) {
+			mask = iio_buffer_get_channels_mask(info->buffer);
+			disable_all_channels(dev,(struct iio_channels_mask *) mask);
 			iio_buffer_destroy(info->buffer);
 			info->buffer = NULL;
 		}
-
-		disable_all_channels(dev);
 	}
 }
 
@@ -460,7 +462,7 @@ static const char * device_name_check(const char *name)
 
 struct iio_context *get_context_from_osc(void)
 {
-	return ctx;
+        return ctx;
 }
 
 /*
@@ -556,6 +558,7 @@ int plugin_data_capture_size(const char *device)
 {
 	struct extra_dev_info *info;
 	struct iio_device *dev;
+	const struct iio_channels_mask *mask;
 
 	if (!device)
 		return 0;
@@ -565,7 +568,8 @@ int plugin_data_capture_size(const char *device)
 		return 0;
 
 	info = iio_device_get_data(dev);
-	return info->sample_count * iio_device_get_sample_size(dev);
+	mask = iio_buffer_get_channels_mask(info->buffer);
+	return info->sample_count * iio_device_get_sample_size(dev, mask);
 }
 
 int plugin_data_capture_num_active_channels(const char *device)
@@ -573,6 +577,7 @@ int plugin_data_capture_num_active_channels(const char *device)
 	int nb_active = 0;
 	unsigned int i, nb_channels;
 	struct iio_device *dev;
+	const struct iio_channels_mask *mask;
 
 	if (!device)
 		return 0;
@@ -582,9 +587,10 @@ int plugin_data_capture_num_active_channels(const char *device)
 		return 0;
 
 	nb_channels = iio_device_get_channels_count(dev);
+	mask = iio_create_channels_mask(nb_channels);
 	for (i = 0; i < nb_channels; i++) {
 		struct iio_channel *chn = iio_device_get_channel(dev, i);
-		if (iio_channel_is_enabled(chn))
+		if (iio_channel_is_enabled(chn, mask))
 			nb_active++;
 	}
 
@@ -594,15 +600,20 @@ int plugin_data_capture_num_active_channels(const char *device)
 int plugin_data_capture_bytes_per_sample(const char *device)
 {
 	struct iio_device *dev;
+	const struct iio_channels_mask *mask;
+	int nb_channels;
 
 	if (!device)
 		return 0;
 
 	dev = iio_context_find_device(ctx, device);
+
 	if (!dev)
 		return 0;
+	nb_channels = iio_device_get_channels_count(dev);
+	mask = iio_create_channels_mask(nb_channels);
 
-	return iio_device_get_sample_size(dev);
+	return iio_device_get_sample_size(dev, mask);
 }
 
 int plugin_data_capture_of_plot(OscPlot *plot, const char *device, gfloat ***cooked_data,
@@ -744,9 +755,9 @@ int plugin_data_capture_of_plot(OscPlot *plot, const char *device, gfloat ***coo
 		 if (markers_copy) {
 			osc_plot_set_markers_copy(plot, NULL);
 			 return -EINTR;
-		 }
+		}
 	}
- 	return 0;
+	return 0;
 
 capture_malloc_fail:
 	fprintf(stderr, "%s:%s malloc failed\n", __FILE__, __func__);
@@ -1113,7 +1124,7 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 				dlclose(lib);
 				continue;
 			}
- 
+
 			if (plugin_info->len == 0) {
 				dlclose(lib);
 				continue;
@@ -1234,8 +1245,12 @@ static off_t get_trigger_offset(const struct iio_channel *chn,
 {
 	struct extra_info *info = iio_channel_get_data(chn);
 	size_t i;
+	const struct iio_device *dev = iio_channel_get_device(chn);
+	int nb_channels = iio_device_get_channels_count(dev);
+	const struct iio_channels_mask *mask = iio_create_channels_mask(nb_channels);
 
-	if (iio_channel_is_enabled(chn)) {
+
+	if (iio_channel_is_enabled(chn, mask)) {
 		for (i = info->offset / 2; i >= 1; i--) {
 			if (!falling_edge && info->data_ref[i - 1] < trigger_value &&
 					info->data_ref[i] >= trigger_value)
@@ -1268,6 +1283,20 @@ static bool device_is_oneshot(struct iio_device *dev)
 	return false;
 }
 
+static bool capture_dev_buffer_capable(const struct iio_device *dev, unsigned int nb_channels)
+{
+	unsigned int chan;
+
+	for (chan = 0; chan < nb_channels; chan++) {
+		struct iio_channel *ch = iio_device_get_channel(dev, chan);
+
+		if (iio_channel_is_scan_element(ch))
+			return true;
+	}
+
+	return false;
+}
+
 static gboolean capture_process(void *data)
 {
 	unsigned int i;
@@ -1278,22 +1307,34 @@ static gboolean capture_process(void *data)
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
-		unsigned int i, sample_size = iio_device_get_sample_size(dev);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
+		const struct iio_channels_mask *mask = NULL;
+		if(dev_info->buffer == NULL)
+		  mask = iio_create_channels_mask(nb_channels);
+		else
+		  mask = iio_buffer_get_channels_mask(dev_info->buffer);
+
+
+		unsigned int i, sample_size = iio_device_get_sample_size(dev, mask);
 		ssize_t sample_count = dev_info->sample_count;
 		struct iio_channel *chn;
 		off_t offset = 0;
+		const struct iio_block *block = NULL;
+
+		if (!capture_dev_buffer_capable(dev, nb_channels))
+			continue;
 
 		if (dev_info->input_device == false)
 			continue;
 
+		sample_size = iio_device_get_sample_size(dev, mask);
 		if (sample_size == 0)
 			continue;
 
+
 		if (dev_info->buffer == NULL || device_is_oneshot(dev)) {
 			dev_info->buffer_size = sample_count;
-			dev_info->buffer = iio_device_create_buffer(dev,
-				sample_count, false);
+			dev_info->buffer = iio_device_create_buffer(dev, 0, mask);
 			if (!dev_info->buffer) {
 				fprintf(stderr, "Error: Unable to create buffer: %s\n", strerror(errno));
 				goto capture_stop_check;
@@ -1307,8 +1348,11 @@ static gboolean capture_process(void *data)
 			info->offset = 0;
 		}
 
+
+
 		while (true) {
-			ssize_t ret = iio_buffer_refill(dev_info->buffer);
+	                block = iio_stream_get_next_block(dev_info->stream);
+	                ssize_t ret = iio_err(block);
 			if (ret < 0) {
 				fprintf(stderr, "Error while reading data: %s\n", strerror(-ret));
 				if (ret == -EPIPE) {
@@ -1318,31 +1362,35 @@ static gboolean capture_process(void *data)
 				goto capture_stop_check;
 			}
 
-			ret /= iio_buffer_step(dev_info->buffer);
+			ret = iio_block_end(block) - iio_block_start(block);
+			ret /= sample_size;
 			if (ret >= sample_count) {
-				iio_buffer_foreach_sample(
-						dev_info->buffer, demux_sample, NULL);
 
+				iio_block_foreach_sample(block, mask, demux_sample, NULL);
 				if (ret >= sample_count * 2) {
-					printf("Decreasing buffer size\n");
-					iio_buffer_destroy(dev_info->buffer);
+					printf("Decreasing block size\n");
+					iio_stream_destroy(dev_info->stream);
 					dev_info->buffer_size /= 2;
-					dev_info->buffer = iio_device_create_buffer(dev,
-							dev_info->buffer_size, false);
+					dev_info->stream = iio_buffer_create_stream(dev_info->buffer,
+							4, dev_info->buffer_size);
 				}
 				break;
 			}
 
-			printf("Increasing buffer size\n");
-			iio_buffer_destroy(dev_info->buffer);
+			printf("Increasing block size\n");
+			iio_stream_destroy(dev_info->stream);
 			dev_info->buffer_size *= 2;
-			dev_info->buffer = iio_device_create_buffer(dev,
-					dev_info->buffer_size, false);
+			dev_info->stream = iio_buffer_create_stream(dev_info->buffer, 4,
+					dev_info->buffer_size);
+			ret = iio_err(dev_info->stream);
+			if (ret < 0) {
+				fprintf(stderr, "Unable to create stream: %s\n", strerror(-ret));
+			}
 		}
 
 		if (dev_info->channel_trigger_enabled) {
 			chn = iio_device_get_channel(dev, dev_info->channel_trigger);
-			if (!iio_channel_is_enabled(chn))
+			if (!iio_channel_is_enabled(chn, mask))
 				dev_info->channel_trigger_enabled = false;
 		}
 
@@ -1361,7 +1409,7 @@ static gboolean capture_process(void *data)
 				offset -= quatter_of_capture_interval * sizeof(gfloat);
 				for (i = 0; i < nb_channels; i++) {
 					chn = iio_device_get_channel(dev, i);
-					if (iio_channel_is_enabled(chn))
+					if (iio_channel_is_enabled(chn, mask))
 						apply_trigger_offset(chn, offset);
 				}
 			}
@@ -1414,11 +1462,13 @@ static unsigned int max_sample_count_from_plots(struct extra_dev_info *info)
 
 static double read_sampling_frequency(const struct iio_device *dev)
 {
-	double freq = 400.0, freq_sum = 0.0;
+	double freq = 400.0 , freq_sum = 0.0;
 	int ret = -1;
 	unsigned int i, nb_channels = iio_device_get_channels_count(dev);
-	const char *attr;
 	char buf[1024];
+	const struct iio_attr *attribute;
+	const struct iio_channels_mask *chn_mask = NULL;
+	struct extra_dev_info *dev_info = NULL;
 
 	for (i = 0; i < nb_channels; i++) {
 		struct iio_channel *ch = iio_device_get_channel(dev, i);
@@ -1426,33 +1476,46 @@ static double read_sampling_frequency(const struct iio_device *dev)
 		if (iio_channel_is_output(ch) || strncmp(iio_channel_get_id(ch),
 					"voltage", sizeof("voltage") - 1))
 			continue;
+		attribute = iio_channel_find_attr(ch, "sampling_frequency");
+		if (!attribute)
+		        break;
 
-		ret = iio_channel_attr_read(ch, "sampling_frequency",
-				buf, sizeof(buf));
-		if (ret > 0 && iio_channel_is_enabled(ch)) {
-			sscanf(buf, "%lf", &freq);
-			freq_sum += 1 / freq;
+		ret = iio_attr_read_raw(attribute, buf, sizeof(buf));
+		if (ret > 0) {
+			dev_info = iio_device_get_data(dev);
+			if (dev_info && dev_info->buffer) {
+				chn_mask = iio_buffer_get_channels_mask(dev_info->buffer);
+				if (chn_mask && iio_channel_is_enabled(ch, chn_mask)) {
+					sscanf(buf, "%lf", &freq);
+					freq_sum += 1 / freq;
+				}
+			}
 		}
-
 	}
 
-	if (ret < 0)
-		ret = iio_device_attr_read(dev, "sampling_frequency",
-				buf, sizeof(buf));
+	if (ret < 0) {
+		attribute = iio_device_find_attr(dev, "sampling_frequency");
+		if(!attribute)
+		  return freq;
+		ret = iio_attr_read_raw(attribute, buf, sizeof(buf));
+	}
 	if (ret < 0) {
 		const struct iio_device *trigger;
-		ret = iio_device_get_trigger(dev, &trigger);
+		trigger = iio_device_get_trigger(dev);
+		ret = iio_err(trigger);
 		if (ret == 0 && trigger) {
-			attr = iio_device_find_attr(trigger, "sampling_frequency");
-			if (!attr)
-				attr = iio_device_find_attr(trigger, "frequency");
-			if (attr)
-				ret = iio_device_attr_read(trigger, attr, buf,
-					sizeof(buf));
+			attribute = iio_device_find_attr(trigger, "sampling_frequency");
+			if (!attribute)
+				attribute = iio_device_find_attr(trigger, "frequency");
+			if (attribute)
+				ret = iio_attr_read_raw(attribute, buf, sizeof(buf));
 			else
 				ret = -ENOENT;
 		}
 	}
+
+	if (ret > 0)
+		sscanf(buf, "%lf", &freq);
 
 	if (ret > 0)
 		sscanf(buf, "%lf", &freq);
@@ -1477,6 +1540,10 @@ static int capture_setup(void)
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		unsigned int nb_channels = iio_device_get_channels_count(dev);
 		unsigned int sample_size, sample_count = max_sample_count_from_plots(dev_info);
+		const struct iio_channels_mask *mask = iio_create_channels_mask(nb_channels);
+
+		if (!capture_dev_buffer_capable(dev, nb_channels))
+			continue;
 
 		/* We capture a double amount o data. Then we look for a trigger
 		   condition in a half of this interval. This way, no matter where
@@ -1489,12 +1556,13 @@ static int capture_setup(void)
 			struct iio_channel *ch = iio_device_get_channel(dev, j);
 			struct extra_info *info = iio_channel_get_data(ch);
 			if (info->shadow_of_enabled > 0)
-				iio_channel_enable(ch);
+				iio_channel_enable(ch, (struct iio_channels_mask *)mask);
 			else
-				iio_channel_disable(ch);
+				iio_channel_disable(ch, (struct iio_channels_mask *)mask);
 		}
 
-		sample_size = iio_device_get_sample_size(dev);
+
+		sample_size = iio_device_get_sample_size(dev, mask);
 		if (sample_size == 0 || sample_count == 0)
 			continue;
 
@@ -1511,6 +1579,13 @@ static int capture_setup(void)
 			iio_buffer_destroy(dev_info->buffer);
 		dev_info->buffer = NULL;
 		dev_info->sample_count = sample_count;
+		dev_info->buffer_size = sample_count;
+		dev_info->buffer = iio_device_create_buffer(dev, 0, mask);
+		dev_info->stream = iio_buffer_create_stream(dev_info->buffer, 4, dev_info->sample_count);
+		if (!dev_info->buffer) {
+		        fprintf(stderr, "Error: Unable to create buffer: %s\n", strerror(errno));
+		}
+
 
 		iio_device_set_data(dev, dev_info);
 
@@ -1597,7 +1672,6 @@ static void plot_destroyed_cb(OscPlot *plot)
 {
 	plot_list = g_list_remove(plot_list, plot);
 	stop_sampling();
-	capture_setup();
 	if (num_capturing_plots)
 		capture_start();
 	restart_all_running_plots();
@@ -1689,7 +1763,8 @@ static gboolean idle_timeout_check(gpointer ptr)
 	dev = iio_context_get_device(new_ctx, 0);
 	/* We use iio_device_get_trigger here just as a way to ping the
 	 * IIOD server. */
-	ret = iio_device_get_trigger(dev, &trig);
+	trig = iio_device_get_trigger(dev);
+	ret = iio_err(trig);
 	if (ret == -EPIPE) {
 		gtk_widget_set_visible(infobar, true);
 		return FALSE;
@@ -1780,7 +1855,7 @@ void application_reload(struct iio_context *new_ctx, bool load_profile)
 
 void application_quit (void)
 {
-	do_quit(false);
+        do_quit(false);
 }
 
 /*
@@ -1916,7 +1991,7 @@ bool rx_update_device_sampling_freq(const char *device, double freq)
  * @lo_freq - value of the Local Oscillcator frequency (Hz)
  */
 bool rx_update_channel_lo_freq(const char *device, const char *channel,
-	double lo_freq)
+        double lo_freq)
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
@@ -2120,7 +2195,7 @@ OscPlot * osc_find_plot_by_id(int id)
  * Handler should return zero on success, a negative number on error.
  */
 static int capture_profile_handler(int line, const char *section,
-		const char *name, const char *value)
+                const char *name, const char *value)
 {
 	OscPlot *plot;
 	int plot_id;
@@ -2179,16 +2254,14 @@ static void capture_profile_save(const char *filename)
 	fprintf(fp, "startup_version_check=%d\n",
 		gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(versioncheck_en)));
 	if (ctx) {
-		if (!strcmp(iio_context_get_name(ctx), "network")) {
-			char *ip_addr = (char *) iio_context_get_description(ctx);
-			ip_addr = strtok(ip_addr, " ");
-			fprintf(fp, "remote_ip_addr=%s\n", ip_addr);
-		} else if (!strcmp(iio_context_get_name(ctx), "usb")) {
-			if (usb_get_serialnumber(ctx))
-				fprintf(fp, "uri=%s\n", usb_get_serialnumber(ctx));
-		} else {
-			fprintf(stderr, "%s: unknown context %s\n",
-				__func__, iio_context_get_name(ctx));
+		const struct iio_attr *uri_attr;
+		char buf[128];
+		int ret;
+		uri_attr = iio_context_find_attr(ctx, "uri");
+		if (uri_attr) {
+			ret = iio_attr_read_raw(uri_attr, buf, sizeof(buf));
+			if (ret > 0)
+				fprintf(fp, "uri=%s\n", buf);
 		}
 	}
 	if (ini_capture_timeout_loaded) {
@@ -2271,7 +2344,7 @@ static int handle_osc_param(int line, const char *name, const char *value)
 	}
 
 	if (!strcmp(name, "test") || !strcmp(name, "window_x_pos") ||
-			!strcmp(name, "window_y_pos") || !strcmp(name, "remote_ip_addr")) {
+			!strcmp(name, "window_y_pos") || !strcmp(name, "uri")) {
 		printf("Ignoring token \'%s\' when loading sequentially\n", name);
 		return 0;
 	}
@@ -2366,12 +2439,12 @@ static int load_profile(const char *filename, bool load_plugins)
 	close_all_plots();
 	destroy_all_plots();
 
-	value = read_token_from_ini(filename, OSC_INI_SECTION, "remote_ip_addr");
+	value = read_token_from_ini(filename, OSC_INI_SECTION, "uri");
 	/* IP addresses specified on the command line via the -c option
 	 * override profile settings.
 	 */
-	if (value && !(ctx && !strcmp(iio_context_get_name(ctx), "network"))) {
-		struct iio_context *new_ctx = iio_create_network_context(value);
+	if (value) {
+		struct iio_context *new_ctx = iio_create_context(NULL, value);
 		if (new_ctx) {
 			application_reload(new_ctx, false);
 		} else {
@@ -2389,14 +2462,14 @@ static int load_profile(const char *filename, bool load_plugins)
 	/* URI addresses specified on the command line via the -u option
 	 * override profile settings
 	 */
-	if (value && !(ctx && (!strcmp(iio_context_get_name(ctx), "uri")))) {
+	if (value) {
 		struct iio_context *new_ctx;
-		struct iio_scan_context *ctxs = iio_create_scan_context(NULL, 0);
-		struct iio_context_info **info;
+		struct iio_scan *ctxs = iio_scan(NULL, NULL);
 		char *pid_vid = value;
 		char *serial = strchr(value, ' ');
 		const char *tmp;
 		int i;
+		int ctxs_nb;
 
 		if (!serial)
 			goto nope;
@@ -2407,18 +2480,17 @@ static int load_profile(const char *filename, bool load_plugins)
 
 		if (!ctxs)
 			goto nope;
-		ret = iio_scan_context_get_info_list(ctxs, &info);
+		ctxs_nb = iio_scan_get_results_count(ctxs);
+		ret = iio_err(ctxs);
 		if (ret < 0)
 			goto nope_ctxs;
-		if (!ret)
-			goto nope_list;
 
-		for (i = 0; i < ret; i++) {
-			tmp = iio_context_info_get_description(info[i]);
+		for (i = 0; i < ctxs_nb; i++) {
+			tmp = iio_scan_get_description(ctxs, i);
 			/* find the correct PID/VID plus serial number*/
 			if (strstr(tmp, pid_vid) && strstr(tmp, serial)) {
-				new_ctx = iio_create_context_from_uri(
-						iio_context_info_get_uri(info[i]));
+				new_ctx = iio_create_context(NULL,
+						iio_scan_get_uri(ctxs, i));
 				if (new_ctx) {
 					application_reload(new_ctx, false);
 					break;
@@ -2428,12 +2500,9 @@ static int load_profile(const char *filename, bool load_plugins)
 					return 0;
 				}
 			}
-
-		}
-nope_list:
-		iio_context_info_list_free(info);
+			}
 nope_ctxs:
-		iio_scan_context_destroy(ctxs);
+		iio_scan_destroy(ctxs);
 nope:
 		free(value);
 		ret = 0;
@@ -2504,6 +2573,7 @@ nope:
 	return ret;
 }
 
+
 void load_complete_profile(const char *filename)
 {
 	load_profile(filename, true);
@@ -2512,9 +2582,9 @@ void load_complete_profile(const char *filename)
 struct iio_context * osc_create_context(void)
 {
 	if (!ctx)
-		return iio_create_default_context();
+		return iio_create_context(NULL, NULL);
 	else
-		return iio_context_clone(ctx) ?: ctx;
+		return ctx;
 }
 
 void osc_destroy_context(struct iio_context *_ctx)
@@ -2541,28 +2611,36 @@ void osc_process_gtk_events(unsigned int msecs)
 	}
 }
 
-/* Test something, according to:
+/* The format below no longer works
+ * with libiio v1.0 API for channel attrs
+ * Test something, according to:
  * test.device.attribute.type = min max
+ * A channel attr should be tested :
+ * test.device.ch-(id/index/name).0/1.attribute.type = min max
  */
 int osc_test_value(struct iio_context *_ctx, int line,
-		const char *attribute, const char *value)
+                const char *attribute, const char *value)
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
-	const char *attr;
+	const struct iio_attr *attrib;
+	const char *attr = attribute;
 	long long min_i = -1, max_i = -1, val_i;
 	double min_d, max_d, val_d;
-	unsigned int i;
+	int i,j;
 	int ret = -EINVAL;
 
-	gchar **elems = g_strsplit(attribute, ".", 4);
+	for (j=0; attr[j]; attr[j]=='.' ? j++ : *attr++);
+
+
+	gchar **elems = g_strsplit(attribute, ".", j+1);
 	if (!elems)
 		goto err_popup;
 
 	if (!elems[0] || strcmp(elems[0], "test"))
 		goto cleanup;
 
-	for (i = 1; i < 4; i++)
+	for (i = 1; i < j+1; i++)
 		if (!elems[i])
 			goto cleanup;
 
@@ -2572,21 +2650,25 @@ int osc_test_value(struct iio_context *_ctx, int line,
 		goto cleanup;
 	}
 
-	ret = iio_device_identify_filename(dev, elems[2], &chn, &attr);
+	if(j == 3) {
+	    attrib = iio_device_find_attr(dev, elems[2]);
+	} else if(j == 5) {
+	    chn = iio_device_find_channel(dev, elems[2],elems[3]);
+	    attrib = iio_channel_find_attr(chn, elems[4]);
+	}
+
 	if (ret < 0)
 		goto cleanup;
 
-	if (!strcmp(elems[3], "int")) {
+	if (!strcmp(elems[j-1], "int")) {
 		ret = sscanf(value, "%lli %lli", &min_i, &max_i);
 		if (ret != 2) {
 			ret = -EINVAL;
 			goto cleanup;
 		}
 
-		if (chn)
-			ret = iio_channel_attr_read_longlong(chn, attr, &val_i);
-		else
-			ret = iio_device_attr_read_longlong(dev, attr, &val_i);
+		ret = iio_attr_read_longlong(attrib, &val_i);
+
 		if (ret < 0)
 			goto cleanup;
 
@@ -2601,7 +2683,7 @@ int osc_test_value(struct iio_context *_ctx, int line,
 					"Value read = %lli\n",
 					line, attribute, min_i, max_i, val_i);
 
-	} else if (!strcmp(elems[3], "double")) {
+	} else if (!strcmp(elems[j-1], "double")) {
 		gchar *end1, *end2;
 		min_d = g_ascii_strtod(value, &end1);
 		if (end1 == value) {
@@ -2615,10 +2697,8 @@ int osc_test_value(struct iio_context *_ctx, int line,
 			goto cleanup;
 		}
 
-		if (chn)
-			ret = iio_channel_attr_read_double(chn, attr, &val_d);
-		else
-			ret = iio_device_attr_read_double(dev, attr, &val_d);
+		ret = iio_attr_read_double(attrib, &val_d);
+
 		if (ret < 0)
 			goto cleanup;
 
@@ -2671,6 +2751,7 @@ int osc_identify_attrib(struct iio_context *_ctx, const char *attrib,
 	int i;
 	bool is_debug;
 	int ret = -EINVAL;
+	const char *file;
 
 	gchar *dev_name, *filename, **elems = g_strsplit(attrib, ".", 3);
 	if (!elems)
@@ -2695,9 +2776,9 @@ int osc_identify_attrib(struct iio_context *_ctx, const char *attrib,
 		ret = -ENODEV;
 		goto cleanup;
 	}
-
-	ret = iio_device_identify_filename(device, filename, chn, attr);
-	if (!ret) {
+	const struct iio_attr *attribute = iio_channel_find_attr(*chn, *attr);
+	ret = iio_err(attribute);
+	if (ret == 0) {
 		*debug = is_debug;
 		*dev = device;
 	}
@@ -2712,6 +2793,7 @@ static int osc_read_nonenclosed_value(struct iio_context *_ctx,
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
+	const struct iio_attr *attribute;
 	const char *attr;
 	char *pend;
 	bool debug;
@@ -2727,12 +2809,16 @@ static int osc_read_nonenclosed_value(struct iio_context *_ctx,
 	if (ret < 0)
 		return ret;
 
-	if (chn)
-		ret = iio_channel_attr_read_longlong(chn, attr, out);
-	else if (debug)
-		ret = iio_device_debug_attr_read_longlong(dev, attr, out);
-	else
-		ret = iio_device_attr_read_longlong(dev, attr, out);
+	if (chn) {
+	    attribute = iio_channel_find_attr(chn, attr);
+	    ret = iio_attr_read_longlong(attribute, out);
+	} else if (debug) {
+	    attribute = iio_channel_find_attr(chn, attr);
+	    ret = iio_attr_read_longlong(attribute, out);
+	} else {
+	    attribute = iio_device_find_attr(dev, attr);
+	    ret = iio_attr_read_longlong(attribute, out);
+	}
 	return ret < 0 ? ret : 0;
 }
 
@@ -2820,11 +2906,12 @@ FILE * osc_get_log_file(const char *path)
  * log.device.filename = output_file
  */
 int osc_log_value(struct iio_context *_ctx,
-		const char *attribute, const char *value)
+                const char *attribute, const char *value)
 {
 	int ret;
 	struct iio_device *dev;
 	struct iio_channel *chn;
+	const struct iio_attr *attrib;
 	const char *attr;
 	char buf[1024];
 	bool debug;
@@ -2841,12 +2928,18 @@ int osc_log_value(struct iio_context *_ctx,
 	if (ret < 0)
 		goto err_ret;
 
-	if (chn)
-		ret = iio_channel_attr_read(chn, attr, buf, sizeof(buf));
-	else if (debug)
-		ret = iio_device_debug_attr_read(dev, attr, buf, sizeof(buf));
-	else
-		ret = iio_device_attr_read(dev, attr, buf, sizeof(buf));
+	if (chn) {
+		attrib = iio_channel_find_attr(chn, attr);
+		ret = iio_attr_read_raw(attrib, buf, sizeof(buf));
+	}
+	else if (debug) {
+		attrib = iio_device_find_debug_attr(dev, attr);
+		ret = iio_attr_read_raw(attrib, buf, sizeof(buf));
+	}
+	else {
+		attrib = iio_device_find_attr(dev, attr);
+		ret = iio_attr_read_raw(attrib, buf, sizeof(buf));
+		}
 	if (ret < 0)
 		goto err_ret;
 
@@ -2873,6 +2966,7 @@ int osc_plugin_default_handle(struct iio_context *_ctx,
 {
 	struct iio_device *dev;
 	struct iio_channel *chn;
+	const struct iio_attr *attribute;
 	const char *attr;
 	bool debug;
 	int ret;
@@ -2904,19 +2998,26 @@ int osc_plugin_default_handle(struct iio_context *_ctx,
 			return ret;
 		}
 
-		if (chn)
-			ret = iio_channel_attr_write_longlong(chn, attr, lval);
-		else if (debug)
-			ret = iio_device_debug_attr_write_longlong(dev, attr, lval);
-		else
-			ret = iio_device_attr_write_longlong(dev, attr, lval);
-	} else if (chn)
-		ret = iio_channel_attr_write(chn, attr, value);
-	else if (debug)
-		ret = iio_device_debug_attr_write(dev, attr, value);
-	else
-		ret = iio_device_attr_write(dev, attr, value);
-
+		if (chn) {
+			attribute = iio_channel_find_attr(chn, attr);
+			ret = iio_attr_write_longlong(attribute, lval);
+		} else if (debug) {
+			attribute = iio_device_find_debug_attr(dev, attr);
+			ret = iio_attr_write_longlong(attribute, lval);
+		} else {
+		        attribute = iio_device_find_attr(dev, attr);
+			ret = iio_attr_write_longlong(attribute, lval);
+		}
+	} else if (chn) {
+		attribute = iio_channel_find_attr(chn, attr);
+		ret = iio_attr_write(attribute, value);
+	} else if (debug) {
+		attribute = iio_device_find_debug_attr(dev, attr);
+		ret = iio_attr_write(attribute, value);
+	} else {
+		attribute = iio_device_find_attr(dev, attr);
+		ret = iio_attr_write(attribute,value);
+	}
 	if (ret < 0) {
 		fprintf(stderr, "Unable to write '%s' to %s:%s\n", value,
 				chn ? iio_channel_get_name(chn) : iio_device_get_name(dev),
