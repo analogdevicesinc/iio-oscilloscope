@@ -121,8 +121,6 @@ pkg_check_modules(JANSSON REQUIRED jansson)
 pkg_check_modules(MATIO REQUIRED matio)
 
 pkg_check_modules(LIBIIO REQUIRED libiio)
-pkg_check_modules(LIBAD9361 libad9361)
-pkg_check_modules(LIBAD9166 libad9166)
 
 find_library(LIBSERIALPORT_LIBRARIES serialport)
 find_path(LIBSERIALPORT_INCLUDE_DIR libserialport.h)
@@ -152,8 +150,6 @@ set(LIBOSC_LIBS
 	${LIBSERIALPORT_LIBRARIES}
 	${JANSSON_LIBRARIES}
 	${MATIO_LIBRARIES}
-	${LIBAD9361_LIBRARIES}
-	${LIBAD9166_LIBRARIES}
 	dl
 )
 
@@ -214,8 +210,6 @@ target_include_directories(osc PRIVATE
 	${JANSSON_INCLUDE_DIRS}
 	${MATIO_INCLUDE_DIRS}
 	${HDF5_INCLUDE_DIRS}
-	${LIBAD9361_INCLUDE_DIRS}
-	${LIBAD9166_INCLUDE_DIRS}
 )
 target_link_libraries(osc PRIVATE ${LIBOSC_LIBS})
 set_target_properties(osc PROPERTIES
@@ -288,7 +282,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps)
 	install(FILES icons/osc.svg RENAME adi-osc.svg
 		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
-	
+
 	install(FILES ./styles.css DESTINATION ${SHARE_DEST})
 
 	# This is a bit "ugly". It makes sure that the hicolor theme directory updates
