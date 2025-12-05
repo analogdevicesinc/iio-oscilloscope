@@ -15,6 +15,9 @@
 #  the Free Software Foundation, Inc., 51 Franklin Street,
 #  Boston, MA 02110-1301, USA.
 
+pkg_check_modules(LIBAD9361 libad9361)
+pkg_check_modules(LIBAD9166 libad9166)
+
 set(PLUGINS
 	generic_dac
 	fmcomms2
