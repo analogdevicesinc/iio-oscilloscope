@@ -4,6 +4,8 @@
 #include <ctype.h>
 #include <gtk/gtk.h>
 
+#define ARRAY_SIZE(x) (!sizeof(x) ?: sizeof(x) / sizeof((x)[0]))
+
 static gint iio_chn_cmp_by_name(gconstpointer ptr_a, gconstpointer ptr_b)
 {
 	struct iio_channel *ch_a = *(struct iio_channel **)ptr_a;
@@ -161,4 +163,190 @@ bool iio_attr_not_found(struct iio_device *dev, struct iio_channel *chn, const c
 		return !iio_device_find_attr(dev, attr_name);
 
 	return !iio_channel_find_attr(chn, attr_name);
+}
+
+void dev_attr_read_all(struct iio_device *dev, int (*cb)(struct iio_device *dev, const char *attr,
+                                                         const char *value, size_t len, void *d),
+		       void *data)
+{
+	unsigned int i, attr_cnt = iio_device_get_attrs_count(dev);
+	const struct iio_attr *attr;
+	char local_value[8192];
+	int ret;
+
+	for (i = 0; i < attr_cnt; ++i) {
+		attr = iio_device_get_attr(dev, i);
+		ret = iio_attr_read_raw(attr, local_value, ARRAY_SIZE(local_value));
+		if (ret < 0) {
+			fprintf(stderr, "Failed to read attribute: %s\n", iio_attr_get_name(attr));
+			continue;
+		}
+
+		cb(dev, iio_attr_get_name(attr), local_value, strlen(local_value), data);
+	}
+}
+
+void chn_attr_read_all(struct iio_channel *chn, int (*cb)(struct iio_channel *chn, const char *attr,
+							  const char *value, size_t len, void *d),
+                       void *data)
+{
+	unsigned int i, attr_cnt = iio_channel_get_attrs_count(chn);
+	const struct iio_attr *attr;
+	char local_value[8192];
+	int ret;
+
+	for (i = 0; i < attr_cnt; ++i) {
+		attr = iio_channel_get_attr(chn, i);
+		ret = iio_attr_read_raw(attr, local_value, ARRAY_SIZE(local_value));
+		if (ret < 0) {
+			fprintf(stderr, "Failed to read attribute: %s\n", iio_attr_get_name(attr));
+			continue;
+		} else {
+			cb(chn, iio_attr_get_name(attr), local_value, strlen(local_value), data);
+		}
+	}
+}
+
+int dev_attr_write_all(struct iio_device *dev, ssize_t (*cb)(struct iio_device *dev, const char *attr,
+							     void *buf, size_t len, void *d),
+		       void *data)
+{
+	const struct iio_attr *attr;
+	unsigned int i, nb_attrs;
+	size_t len = 0x100000;
+	const char *name;
+	char *buf;
+	ssize_t count;
+	int ret = 0;
+
+	buf = malloc(len);
+	if (!buf)
+		return -ENOMEM;
+
+	nb_attrs = iio_device_get_attrs_count(dev);
+
+	for (i = 0; i < nb_attrs; i++) {
+		attr = iio_device_get_attr(dev, i);
+		name = iio_attr_get_name(attr);
+
+		count = (*cb)(dev, name, buf, len, data);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+
+		count = iio_attr_write_raw(attr, buf, count);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+	}
+
+out_free_buffer:
+	free(buf);
+
+	return ret;
+}
+
+int dev_debug_attr_write_all(struct iio_device *dev, ssize_t (*cb)(struct iio_device *dev, const char *attr,
+								   void *buf, size_t len, void *d),
+			     void *data)
+{
+	const struct iio_attr *attr;
+	unsigned int i, nb_attrs;
+	size_t len = 0x100000;
+	const char *name;
+	char *buf;
+	ssize_t count;
+	int ret = 0;
+
+	buf = malloc(len);
+	if (!buf)
+		return -ENOMEM;
+
+	nb_attrs = iio_device_get_debug_attrs_count(dev);
+
+	for (i = 0; i < nb_attrs; i++) {
+		attr = iio_device_get_debug_attr(dev, i);
+		name = iio_attr_get_name(attr);
+
+		count = (*cb)(dev, name, buf, len, data);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+
+		count = iio_attr_write_raw(attr, buf, count);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+	}
+
+out_free_buffer:
+	free(buf);
+
+	return ret;
+}
+
+int dev_debug_attr_read_all(struct iio_device *dev, int (*cb)(struct iio_device *dev, const char *attr,
+							      const char *value, size_t len, void *d),
+			    void *data)
+{
+	unsigned int i, attr_cnt = iio_device_get_debug_attrs_count(dev);
+	const struct iio_attr *attr;
+	char local_value[8192];
+	int ret;
+
+	for (i = 0; i < attr_cnt; ++i) {
+		attr = iio_device_get_debug_attr(dev, i);
+		ret = iio_attr_read_raw(attr, local_value, ARRAY_SIZE(local_value));
+		if (ret < 0) {
+			fprintf(stderr, "Failed to read attribute: %s\n", iio_attr_get_name(attr));
+			return ret;
+		}
+
+		cb(dev, iio_attr_get_name(attr), local_value, strlen(local_value), data);
+	}
+
+	return 0;
+}
+
+int chn_attr_write_all(struct iio_channel *chn, ssize_t (*cb)(struct iio_channel *chn, const char *attr,
+							      void *buf, size_t len, void *d),
+		       void *data)
+{
+	unsigned int i, attr_cnt = iio_channel_get_attrs_count(chn);
+	const struct iio_attr *attr;
+	const char *name;
+	ssize_t count;
+	size_t len = 0x100000;
+	char *buf;
+	int ret = 0;
+
+	buf = malloc(len);
+	if (!buf)
+		return -ENOMEM;
+
+	for (i = 0; i < attr_cnt; ++i) {
+		attr = iio_channel_get_attr(chn, i);
+		name = iio_attr_get_name(attr);
+
+		count = (*cb)(chn, name, buf, len, data);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+
+		count = iio_attr_write_raw(attr, buf, count);
+		if (count < 0) {
+			ret = (int)count;
+			goto out_free_buffer;
+		}
+	}
+
+out_free_buffer:
+	free(buf);
+
+	return ret;
 }

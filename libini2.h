@@ -1,7 +1,7 @@
 #ifndef __LIBINI2_H__
 #define __LIBINI2_H__
 
-#include <iio.h>
+#include <iio/iio.h>
 #include <stdio.h>
 #include <stdint.h>
 
