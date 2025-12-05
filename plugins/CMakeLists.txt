@@ -19,7 +19,7 @@ pkg_check_modules(LIBAD9361 libad9361)
 pkg_check_modules(LIBAD9166 libad9166)
 
 set(PLUGINS
-	#generic_dac
+	generic_dac
 	fmcomms2
 	#fmcomms2_adv
 	#fmcomms5
