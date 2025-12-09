@@ -359,9 +359,12 @@ static gboolean dmm_update(gpointer foo)
 					sprintf(tmp, "%s = %f Gauss\n", name, value);
 				else if (!strncmp(channel, "in", 2))
 					sprintf(tmp, "%s = %f Volts\n", name, value / 1000);
-				else if (!strncmp(channel, "power", 4))
-					sprintf(tmp, "%s = %f Milliwatts\n", name, value / 1000);
-				else
+				else if (!strncmp(channel, "power", 4)) {
+					// HWMON uses micro-Watts while IIO uses milli-Watts
+					if (iio_device_is_hwmon(dev))
+						value /= 1000;
+					sprintf(tmp, "%s = %f Milliwatts\n", name, value);
+				} else
 					sprintf(tmp, "%s = %f\n", name, value);
 
 				gtk_text_buffer_insert(buf, &text_iter, tmp, -1);
