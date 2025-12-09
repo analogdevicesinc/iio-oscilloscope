@@ -57,11 +57,10 @@ set(LIBAD9166_PLUGINS cn0511)
 set(LIBAD9361_PLUGINS
 	fmcomms2
 	fmcomms2_adv
-	spectrum_analyzer
 )
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	list(REMOVE_ITEM PLUGINS spectrum_analyzer scpi)
+	list(REMOVE_ITEM PLUGINS scpi)
 	set(EXTRA_WIN_LIBRARIES winpthread)
 endif()
 
