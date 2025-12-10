@@ -353,10 +353,13 @@ static struct iio_context * get_context(Dialogs *data)
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_manual))) {
 		const char *hostname = gtk_entry_get_text(GTK_ENTRY(dialogs.connect_uri));
 		struct iio_context *ctx = get_context_from_osc();
-		const struct iio_attr *uri_attr = iio_context_find_attr(ctx, "uri");
+		const struct iio_attr *uri_attr = NULL;
 
-		if (ctx && !g_strcmp0(hostname, iio_attr_get_static_value(uri_attr)))
+		if (ctx) {
+			uri_attr = iio_context_find_attr(ctx, "uri");
+			if (!g_strcmp0(hostname, iio_attr_get_static_value(uri_attr)))
 			return ctx;
+		}
 		return iio_create_context(NULL, hostname);
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_scan))) {
 		struct iio_context *ctx, *ctx2;
