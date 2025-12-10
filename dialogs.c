@@ -358,7 +358,7 @@ static struct iio_context * get_context(Dialogs *data)
 		if (ctx) {
 			uri_attr = iio_context_find_attr(ctx, "uri");
 			if (!g_strcmp0(hostname, iio_attr_get_static_value(uri_attr)))
-			return ctx;
+				return ctx;
 		}
 		return iio_create_context(NULL, hostname);
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_scan))) {
@@ -700,15 +700,20 @@ static bool connect_fillin(Dialogs *data)
 	GtkTextBuffer *buf;
 	GtkTextIter iter;
 	char text[256];
+	char err_msg[200];
 	size_t i;
 	struct iio_context *ctx;
 	const struct iio_attr *attr;
 	const char *desc;
 	unsigned int n_devs, attr_cnt;
+	int err;
 
 	ctx = get_context(data);
-	if (!ctx) {
-		snprintf(text, sizeof(text), "Could not get IIO Context: %s...", strerror(errno));
+	err = iio_err(ctx);
+	if (err) {
+		ctx = NULL;
+		iio_strerror(err, err_msg, sizeof(err_msg));
+		snprintf(text, sizeof(text), "Could not get IIO Context: %s...", err_msg);
 		desc = text;
 	} else {
 		desc = iio_context_get_description(ctx);
@@ -915,6 +920,7 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 	gint ret;
 	struct iio_context *ctx;
 	const gchar *ip_addr;
+	int err;
 
 	/* Preload the device list and FRU info only if we can use the local
 	 * backend */
@@ -941,9 +947,10 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 			continue;
 		case GTK_RESPONSE_OK:
 			ctx = get_context(data);
+			err = iio_err(ctx);
 			widget_set_cursor(data->connect, GDK_WATCH);
 			widget_use_parent_cursor(data->connect);
-			if (!ctx)
+			if (err)
 				continue;
 
 			if (ctx != get_context_from_osc()) {
