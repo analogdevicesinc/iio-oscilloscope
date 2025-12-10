@@ -419,6 +419,7 @@ struct _OscPlotPrivate
 
 	void (*quit_callback)(void *user_data);
 	void *qcb_user_data;
+	bool destroy_initiated;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(OscPlot, osc_plot, GTK_TYPE_WIDGET)
@@ -3346,7 +3347,7 @@ static gboolean plot_redraw(OscPlotPrivate *priv)
 	 * First check if we need to stop as some objects might not be around if we get here
 	 * due to destroying the plot.
 	 */
-	if (priv->stop_redraw == TRUE) {
+	if (priv->destroy_initiated == TRUE) {
 		priv->redraw_function = 0;
 		goto out_redraw;
 	}
@@ -3368,6 +3369,10 @@ static gboolean plot_redraw(OscPlotPrivate *priv)
 			}
 			if (show_diff_phase)
 				markers_phase_diff_show(priv);
+	}
+
+	if (priv->stop_redraw == TRUE) {
+		priv->redraw_function = 0;
 	}
 
 out_redraw:
@@ -4414,6 +4419,7 @@ static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
 
 static void plot_destroyed (GtkWidget *object, OscPlot *plot)
 {
+	plot->priv->destroy_initiated = true;
 	osc_plot_draw_stop(plot);
 	g_slist_free_full(plot->priv->ch_settings_list, (GDestroyNotify)g_free);
 	g_mutex_trylock(&plot->priv->g_marker_copy_lock);
@@ -7043,6 +7049,7 @@ static void create_plot(OscPlot *plot)
 	/* Count every object that is being created */
 	object_count++;
 	priv->object_id = object_count;
+	priv->destroy_initiated = FALSE;
 
 	/* Set a different title for every plot */
 	snprintf(buf, sizeof(buf), "ADI IIO Oscilloscope - Capture%d", priv->object_id);
