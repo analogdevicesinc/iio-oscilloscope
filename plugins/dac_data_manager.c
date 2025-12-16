@@ -851,7 +851,7 @@ static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, struct dac_b
 static void waveform_load_button_clicked_cb (GtkButton *btn, struct dac_buffer *dbuf)
 {
 	gchar *filename = dbuf->dac_buf_filename;
-	gchar *status_msg;
+	gchar *status_msg = NULL;
 
 	if (!filename || g_str_has_suffix(filename, "(null)")) {
 		status_msg = g_strdup_printf("No file selected.");
