@@ -2813,7 +2813,7 @@ static int osc_read_nonenclosed_value(struct iio_context *_ctx,
 	struct iio_device *dev;
 	struct iio_channel *chn;
 	const struct iio_attr *attribute;
-	const char *attr;
+	const char *attr = NULL;
 	char *pend;
 	bool debug;
 	int ret = osc_identify_attrib(_ctx, value, &dev, &chn, &attr, &debug);
@@ -2931,7 +2931,7 @@ int osc_log_value(struct iio_context *_ctx,
 	struct iio_device *dev;
 	struct iio_channel *chn;
 	const struct iio_attr *attrib;
-	const char *attr;
+	const char *attr = NULL;
 	char buf[1024];
 	bool debug;
 	FILE *f;
@@ -2986,7 +2986,7 @@ int osc_plugin_default_handle(struct iio_context *_ctx,
 	struct iio_device *dev;
 	struct iio_channel *chn;
 	const struct iio_attr *attribute;
-	const char *attr;
+	const char *attr = NULL;
 	bool debug;
 	int ret;
 
