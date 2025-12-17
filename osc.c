@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <sys/types.h>
@@ -1521,10 +1522,15 @@ static int capture_setup(void)
 		rx_update_device_sampling_freq(get_iio_device_label_or_name(dev), freq);
 	}
 
+		printf("Before context\n");
 	if (ctx) {
+		printf("Enter context\n");
 		if (ini_capture_timeout_loaded) {
 			min_timeout = ini_capture_timeout;
 		}
+		printf("MIn timeout: %u\n", min_timeout);
+		min_timeout = 500000;
+		printf("MIn timeout: %u\n", min_timeout);
 		iio_context_set_timeout(ctx, min_timeout);
 	}
 
