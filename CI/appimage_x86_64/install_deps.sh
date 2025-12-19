@@ -9,8 +9,10 @@ STAGING_AREA=$SRC_SCRIPT/staging
 
 LIBSERIALPORT_BRANCH="master"
 LIBIIO_BRANCH="main"
-LIBAD9361_BRANCH="main"
-LIBAD9166_BRANCH="main"
+LIBAD9361_BRANCH="staging/libiio1-support"
+LIBAD9166_BRANCH="staging/libiio1-support"
+
+BUILD_STATUS_FILE=$SRC_SCRIPT/build-status-appimage-x86_64
 
 JOBS="-j14"
 
@@ -37,10 +39,16 @@ install_apt_pkgs() {
         	git \
         	libtool \
         	libfuse2 \
-        	dpkg-dev
+		dpkg-dev \
+		libzstd-dev \
+		libserialport-dev
         "
         sudo apt-get update
         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y $APT_PKGS
+
+	echo "apt packages installed" >> $BUILD_STATUS_FILE
+	apt list --installed >> $BUILD_STATUS_FILE
+	echo "" >> $BUILD_STATUS_FILE
 }
 
 install_gtkdatabox() {
@@ -53,6 +61,7 @@ install_gtkdatabox() {
         cd gtkdatabox-1.0.0
         ./configure
 	sudo make $JOBS install
+	echo "gtkdatabox-1.0.0: https://downloads.sourceforge.net/project/gtkdatabox/gtkdatabox-1/gtkdatabox-1.0.0.tar.gz" >> $BUILD_STATUS_FILE
 	popd
 }
 
@@ -63,9 +72,10 @@ install_libiio() {
 	cd libiio
 	mkdir -p build
 	cd build
-	cmake -DWITH_SERIAL_BACKEND=ON -DLIBIIO_COMPAT=on ../
+	cmake -DWITH_SERIAL_BACKEND=ON -DLIBIIO_COMPAT=ON ../
 	make $JOBS
 	sudo make install
+	echo "$(basename -a "$(git config --get remote.origin.url)") - $(git rev-parse --abbrev-ref HEAD) - $(git rev-parse --short HEAD)" >> $BUILD_STATUS_FILE
 	popd
 }
 
@@ -79,6 +89,7 @@ install_libad9361() {
 	cmake ../
 	make $JOBS
 	sudo make install
+	echo "$(basename -a "$(git config --get remote.origin.url)") - $(git rev-parse --abbrev-ref HEAD) - $(git rev-parse --short HEAD)" >> $BUILD_STATUS_FILE
 	popd
 	}
 
@@ -92,20 +103,21 @@ install_libad9166 () {
 	cmake ../
 	make $JOBS
 	sudo make install
+	echo "$(basename -a "$(git config --get remote.origin.url)") - $(git rev-parse --abbrev-ref HEAD) - $(git rev-parse --short HEAD)" >> $BUILD_STATUS_FILE
 	popd
 }
 
-install_libserialport() {
-	mkdir -p $STAGING_AREA
-	pushd $STAGING_AREA
-	[ -d 'libserialport' ] || git clone https://github.com/sigrokproject/libserialport -b $LIBSERIALPORT_BRANCH libserialport
-	cd libserialport
-	./autogen.sh
-        ./configure
-        make $JOBS
-        sudo make install
-	popd
-	
+move_build_status() {
+	sudo mv $BUILD_STATUS_FILE $HOME
+}
+
+build_all() {
+	install_apt_pkgs
+	install_gtkdatabox
+	install_libiio
+	install_libad9361
+	install_libad9166
+	move_build_status
 }
 
 for arg in $@; do

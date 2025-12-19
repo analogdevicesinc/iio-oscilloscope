@@ -26,7 +26,7 @@ USER $USER
 WORKDIR /home/${USER}/scripts
 COPY install_deps.sh .
 RUN sudo chown -R $USER:$USER /home/${USER}/scripts
-RUN ./install_deps.sh install_apt_pkgs install_gtkdatabox install_libserialport install_libiio install_libad9361 install_libad9166
+RUN ./install_deps.sh build_all
 WORKDIR /home/${USER}
 
 # Clean image

@@ -65,8 +65,23 @@ create_appdir()
 	cp -R $APP_DIR/usr/share/icons $APP_DIR/usr/bin
 	cp $SRC_DIR/build/styles.css $APP_DIR/usr/bin
 
-	cp /usr/local/lib/libad9361.so $APP_DIR/usr/lib
-	cp /usr/local/lib/libad9166.so $APP_DIR/usr/lib
+	cp /usr/local/lib/libad9361.so.0.2 $APP_DIR/usr/lib
+	cp /usr/local/lib/libad9166.so.0.2 $APP_DIR/usr/lib
+	cp /usr/lib/x86_64-linux-gnu/libiio.so.0 $APP_DIR/usr/lib
+
+	# Create the necessary symlinks
+	pushd $APP_DIR/usr/lib
+	ln -s libiio.so.1 libiio.so
+	ln -s libiio.so.1 libiio.so.1.0
+	ln -s libad9361.so.0.2 libad9361.so
+	ln -s libad9361.so.0.2 libad9361.so.0
+	ln -s libad9361.so.0.2 libad9361-iio.so
+	ln -s libad9361.so.0.2 libad9361-iio.so.0
+	ln -s libad9166.so.0.2 libad9166.so
+	ln -s libad9166.so.0.2 libad9166.so.0
+	ln -s libad9166.so.0.2 libad9166-iio.so
+	ln -s libad9166.so.0.2 libad9166-iio.so.0
+	popd
 
 	popd
 }
@@ -82,6 +97,12 @@ move_appimage(){
 	chmod +x $SRC_DIR/ADI_IIO_Oscilloscope-x86_64.AppImage
 }
 
+run_workflow(){
+	get_tools
+	create_appdir
+	create_appimage
+	move_appimage
+}
 for arg in $@; do
 	$arg
 done

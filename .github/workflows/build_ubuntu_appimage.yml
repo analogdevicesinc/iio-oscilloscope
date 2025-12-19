@@ -3,15 +3,15 @@ name: Osc x86_64 AppImage Build
 on: [push, pull_request]
 
 env:
-  BUILD_HOST: ubuntu-22.04
+  BUILD_HOST: ubuntu-24.04
   USERNAME: github-actions
 
 jobs:
 
   build_osc_x86-64_appimage:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
-        image: cristianbindea/osc-ubuntu20:latest
+        image: cristianbindea/osc-ubuntu20-libiio1:latest
         options: --user root
 
     steps:
@@ -25,7 +25,7 @@ jobs:
           run: |
                 cd $GITHUB_WORKSPACE
                 ./CI/appimage_x86_64/build_osc.sh
-                ./CI/appimage_x86_64/create_appimage.sh get_tools create_appdir create_appimage move_appimage
+                ./CI/appimage_x86_64/create_appimage.sh run_workflow
 
         - name: Set short git commit SHA
           shell: bash
