@@ -2861,7 +2861,7 @@ static int osc_read_enclosed_value(struct iio_context *_ctx,
 		return ret;
 	}
 
-	ptr = strchr(value + 1, '}');
+	ptr = (gchar *)strchr(value + 1, '}');
 	if (!ptr)
 		return -EINVAL;
 
@@ -2871,7 +2871,7 @@ static int osc_read_enclosed_value(struct iio_context *_ctx,
 	if (ret < 0)
 		return ret;
 
-	ptr = strchr(value + 2, '{');
+	ptr = (gchar *)strchr(value + 2, '{');
 	if (!ptr)
 		return -EINVAL;
 
