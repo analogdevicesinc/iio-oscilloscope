@@ -80,7 +80,7 @@ char **get_xml_list(char * buf_dir_name, int *list_size)
 	const struct dirent *ent;
 	DIR *d;
 	char **list = NULL, **list1 = NULL;
-	char *extension_ptr;
+	const char *extension_ptr;
 	int cnt = 0;
 	int n = 0;
 
