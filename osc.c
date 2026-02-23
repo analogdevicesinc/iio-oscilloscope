@@ -2729,7 +2729,8 @@ static int osc_read_enclosed_value(struct iio_context *_ctx,
 	const char *plus = strstr(value, " + "),
 	      *minus = strstr(value, " - ");
 	size_t len = strlen(value);
-	gchar *ptr, *val;
+	const gchar *ptr;
+	gchar *val;
 	long long val_left, val_right;
 	int ret;
 
@@ -2737,9 +2738,9 @@ static int osc_read_enclosed_value(struct iio_context *_ctx,
 		return -EINVAL;
 
 	if (!plus && !minus) {
-		ptr = g_strndup(value + 1, len - 2);
-		ret = osc_read_nonenclosed_value(_ctx, ptr, out);
-		g_free(ptr);
+		gchar *local_ptr = g_strndup(value + 1, len - 2);
+		ret = osc_read_nonenclosed_value(_ctx, local_ptr, out);
+		g_free(local_ptr);
 		return ret;
 	}
 
