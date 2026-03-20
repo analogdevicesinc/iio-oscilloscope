@@ -646,7 +646,7 @@ static void int_dec_spin_update_cb(GtkSpinButton *spin, gpointer data)
 
 static void update_widgets(void)
 {
-	iio_update_widgets_of_device(widgets, num_glb + num_tx + num_rx, dev);
+	iio_update_widgets(widgets, num_glb + num_tx + num_rx);
 	if (dds)
 		iio_update_widgets_of_device(fpga_widgets, num_fpga, dds);
 	if (cap)
@@ -2023,19 +2023,27 @@ static GtkWidget * fmcomms2_init(struct osc_plugin *plugin, GtkWidget *notebook,
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "frame_fpga_rx2")));
 		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "table_hw_gain_tx2")));
 	}
-	if (!tx_rssi_available) {
-		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx1")));
-		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx2")));
-		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "label_rssi_tx1")));
-		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "label_rssi_tx2")));
-	}
+	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
+	can_update_widgets = true;
+	update_widgets();
+
 	gtk_widget_set_visible(up_down_converter, has_udc_driver);
 
 	if (!dac_tx_manager)
 		gtk_widget_hide(gtk_widget_get_parent(section_setting[SECTION_FPGA]));
 
-	g_timeout_add(1000, (GSourceFunc) update_display, ctx);
-	can_update_widgets = true;
+	if (tx_rssi_available) {
+		gtk_widget_set_visible(tx1_rssi, true);
+		if (is_2rx_2tx)
+			gtk_widget_set_visible(tx2_rssi, true);
+	} else {
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx1")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "rssi_tx2")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "label_rssi_tx1")));
+		gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(builder, "label_rssi_tx2")));
+	}
+
+	rssi_update_labels();
 
 	return fmcomms2_panel;
 }
