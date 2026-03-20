@@ -61,7 +61,9 @@ build_appimage() {
 
     mkdir -p "$APPDIR/usr/lib"
     cp -a "$INSTALL_PREFIX/lib/." "$APPDIR/usr/lib/" 2>/dev/null || true
-
+    cp -a /usr/local/lib/libgtkdatabox*.so* "${APPDIR}/usr/lib/" 2>/dev/null || true
+    cp -a /lib/arm-linux-gnueabihf/libiio*.so* "${APPDIR}/usr/lib/" 2>/dev/null || true
+    cp -a /lib/arm-linux-gnueabihf/libad9*.so* "${APPDIR}/usr/lib/" 2>/dev/null || true
     ln -sf usr/lib/osc     "$APPDIR/plugins"  || true
     ln -sf usr/share/osc/glade "$APPDIR/glade" || true
 

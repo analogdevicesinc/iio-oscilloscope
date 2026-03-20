@@ -15,29 +15,6 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 log()  { echo -e "${GREEN}[+]${NC} $*"; }
 warn() { echo -e "${YELLOW}[!]${NC} $*"; }
 
-build_gtkdatabox() {
-    GTKDATABOX_VERSION="1.0.0"
-    local SRC="${BUILD_DIR}/src/gtkdatabox-${GTKDATABOX_VERSION}"
-    local TARBALL="${BUILD_DIR}/src/gtkdatabox-${GTKDATABOX_VERSION}.tar.gz"
-
-    mkdir -p "${BUILD_DIR}/src"
-
-    if [[ ! -d "${SRC}" ]]; then
-        wget -q --show-progress -O "${TARBALL}" "https://downloads.sourceforge.net/project/gtkdatabox/gtkdatabox-1/gtkdatabox-${GTKDATABOX_VERSION}.tar.gz"
-        tar -xzf "${TARBALL}" -C "${BUILD_DIR}/src"
-    else
-        warn "gtkdatabox source already present."
-    fi
-
-    pushd "${SRC}" > /dev/null
-    ./configure --disable-static
-    make -j"${JOBS}"
-    make install
-    ldconfig
-    popd > /dev/null
-    log "libgtkdatabox installed."
-}
-
 build_iio_oscilloscope() {
     log "Building iio-oscilloscope..."
     local SRC="${BUILD_DIR}/iio-oscilloscope"
@@ -86,9 +63,6 @@ build_iio_oscilloscope() {
     fi
 }
 
-# =============================================================================
-# 7. Fetch appimagetool
-# =============================================================================
 fetch_appimage_tools() {
     local TOOLS_DIR="${BUILD_DIR}/appimage-tools"
     mkdir -p "${TOOLS_DIR}"
@@ -102,9 +76,6 @@ fetch_appimage_tools() {
     fi
 }
 
-# =============================================================================
-# 8. Build AppImage
-# =============================================================================
 build_appimage() {
     local TOOLS_DIR="${BUILD_DIR}/appimage-tools"
     local APPIMAGETOOL="${TOOLS_DIR}/appimagetool-aarch64.AppImage"
@@ -115,21 +86,14 @@ build_appimage() {
 
     # 1. Copy everything under usr/ (osc binary, plugins, glade, etc.)
     cp -a "${INSTALL_PREFIX}/usr/." "${APPDIR}/usr/"
-
-    # 2. CRITICAL: Copy ALL libraries installed under install/lib/ (libiio.so.0, libad9361, etc.)
-    mkdir -p "${APPDIR}/usr/lib"
-    if [ -d "${INSTALL_PREFIX}/lib" ]; then
-        cp -a "${INSTALL_PREFIX}/lib/." "${APPDIR}/usr/lib/" 2>/dev/null || true
-        log "All libraries from install/lib/ copied into AppDir/usr/lib/"
-    fi
-
-    # 3. Copy gtkdatabox from /usr/local/lib (installed to system location)
+    cp -a "${INSTALL_PREFIX}/lib/." "${APPDIR}/usr/lib/" 2>/dev/null || true
     cp -a /usr/local/lib/libgtkdatabox*.so* "${APPDIR}/usr/lib/" 2>/dev/null || true
-    log "gtkdatabox libraries copied into AppDir/usr/lib/"
+    cp -a /lib/aarch64-linux-gnu/libiio*.so* "${APPDIR}/usr/lib/" 2>/dev/null || true
+    cp -a /lib/aarch64-linux-gnu/libad9*.so* "${APPDIR}/usr/lib/" 2>/dev/null || true
 
     # Symlinks for relative paths used by the original code
     ln -sf usr/lib/osc     "${APPDIR}/plugins" || true
-    ln -sf usr/share/osc/glade "${APPDIR}/glade"   || true
+    ln -sf usr/share/osc/glade "${APPDIR}/glade" || true
 
     # AppRun with cd + full library path
     cat > "${APPDIR}/AppRun" << 'APPRUN'
@@ -186,7 +150,6 @@ DESKTOP
 }
 
 main() {
-  build_gtkdatabox
   build_iio_oscilloscope
   fetch_appimage_tools
   build_appimage
