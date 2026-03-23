@@ -51,10 +51,10 @@ jobs:
             distro: debian13
             architecture: arm64
             platform_flag: ""
-          # - docker_image: arm32v7/debian:trixie
-          #   distro: debian13
-          #   architecture: armhf
-          #   platform_flag: "--platform linux/arm/v7"
+          - docker_image: arm32v7/debian:trixie
+            distro: debian13
+            architecture: armhf
+            platform_flag: "--platform linux/arm/v7"
 
     steps:
       - uses: actions/checkout@v6
@@ -72,13 +72,13 @@ jobs:
 
       - name: Create debian package
         run: |
-          docker exec ${{matrix.distro}}-${{matrix.architecture}} sh -c "./CI/debian_deb/create_deb.sh" 2>&1
+          docker exec ${{matrix.distro}}-${{matrix.architecture}} sh -c "./CI/debian_deb/create_deb.sh ${{matrix.architecture}}" 2>&1
 
-      - name: copy app image
+      - name: Copy app image
         run: |
-          docker cp ${{matrix.distro}}-${{matrix.architecture}}:/workspace/iio-oscilloscope-aarch64.AppImage ${{github.workspace}}/iio-oscilloscope-aarch64.AppImage
+          docker cp ${{matrix.distro}}-${{matrix.architecture}}:/workspace/iio-oscilloscope-${{matrix.architecture}}.AppImage ${{github.workspace}}/iio-oscilloscope-${{matrix.architecture}}.AppImage
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: osc-linux-aarch64
-          path: ${{ github.workspace }}/iio-oscilloscope-aarch64.AppImage
+          name: osc-linux-${{matrix.architecture}}
+          path: ${{ github.workspace }}/iio-oscilloscope-${{matrix.architecture}}.AppImage

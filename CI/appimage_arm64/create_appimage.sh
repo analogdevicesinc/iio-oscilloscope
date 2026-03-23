@@ -1,9 +1,10 @@
 #!/bin/bash
 
 set -xe
+set -euo pipefail
 
 # --- Configuration -----------------------------------------------------------
-TARGET_ARCH="aarch64"
+TARGET_ARCH="arm64"
 BUILD_DIR="/workspace"
 INSTALL_PREFIX="${BUILD_DIR}/install"
 APPDIR="${BUILD_DIR}/AppDir"
@@ -14,6 +15,7 @@ JOBS=$(nproc)
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 log()  { echo -e "${GREEN}[+]${NC} $*"; }
 warn() { echo -e "${YELLOW}[!]${NC} $*"; }
+die()  { echo -e "${RED}[x]${NC} $*" >&2; exit 1; }
 
 build_iio_oscilloscope() {
     log "Building iio-oscilloscope..."
@@ -95,35 +97,60 @@ build_appimage() {
     ln -sf usr/lib/osc     "${APPDIR}/plugins" || true
     ln -sf usr/share/osc/glade "${APPDIR}/glade" || true
 
-    # AppRun with cd + full library path
+    mkdir -p "${APPDIR}/usr/lib"
+    local ARCH_TRIPLET
+    ARCH_TRIPLET="$(uname -m)-linux-gnu"
+    local GTKDATABOX_LIBS
+    GTKDATABOX_LIBS=$(find "/usr/lib/${ARCH_TRIPLET}" -name "libgtkdatabox*.so*" 2>/dev/null)
+    [[ -n "${GTKDATABOX_LIBS}" ]] || die "libgtkdatabox not found in /usr/lib/${ARCH_TRIPLET} — is libgtkdatabox-dev installed?"
+    echo "${GTKDATABOX_LIBS}" | xargs -I{} cp -av {} "${APPDIR}/usr/lib/"
+
+        # Copy libiio, libad9361, libad9166 from system (installed via .deb)
+    for lib in libiio libad9361 libad9166; do
+        LIB_FILES=$(find "/usr/lib/${ARCH_TRIPLET}" -name "${lib}*.so*" 2>/dev/null)
+        if [[ -n "${LIB_FILES}" ]]; then
+            echo "${LIB_FILES}" | xargs -I{} cp -av {} "${APPDIR}/usr/lib/"
+            log "${lib} bundled into AppDir."
+        else
+            warn "${lib} not found in /usr/lib/${ARCH_TRIPLET}"
+        fi
+    done
+
     cat > "${APPDIR}/AppRun" << 'APPRUN'
 #!/bin/sh
 HERE="$(dirname "$(readlink -f "$0")")"
 cd "$HERE" || { echo "Failed to cd into AppImage"; exit 1; }
 
 export LD_LIBRARY_PATH="$HERE/usr/lib:${LD_LIBRARY_PATH:-}"
-
 export GTK_MODULES=""
 export JOURNAL_STREAM=""
 export SYSTEMD_LOG_TARGET=stderr
 export G_MESSAGES_DEBUG=""
-
 export XDG_DATA_DIRS="$HERE/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 
-export OSC_GLADE_FILE_PATH="$HERE/usr/share/osc/glade"
-export OSC_PLUGIN_PATH="$HERE/usr/lib/osc"
-export OSC_GLADE_DIR="$HERE/usr/share/osc/glade"
-export OSC_FILTER_PATH="$HERE/usr/share/osc/filters"
-export OSC_WAVEFORM_PATH="$HERE/usr/share/osc/waveforms"
-export OSC_PROFILE_PATH="$HERE/usr/share/osc/profiles"
-export OSC_BLOCK_DIAGRAM_PATH="$HERE/usr/share/osc/block_diagrams"
-export OSC_STYLE_PATH="$HERE/usr/share/osc/styles.css"
+OSC_SHARE="$HOME/.local/share/osc"
+OSC_LIB="$HOME/.local/lib/osc"
+
+mkdir -p "$OSC_SHARE" "$OSC_LIB"
+
+# share: glade, icons, block_diagrams, styles.css
+for dir in glade icons block_diagrams; do
+    [ -d "$OSC_SHARE/$dir" ] || cp -r "$HERE/usr/share/osc/$dir" "$OSC_SHARE/$dir"
+done
+[ -f "$OSC_SHARE/styles.css" ] || cp "$HERE/usr/share/osc/styles.css" "$OSC_SHARE/styles.css"
+
+# lib: filters, waveforms, profiles, xmls, block_diagrams
+# block_diagrams goes under BOTH share and lib because the binary looks it up
+# via CMAKE_INSTALL_FULL_LIBDIR (i.e. ~/.local/lib/osc/block_diagrams)
+for dir in filters waveforms profiles xmls block_diagrams; do
+    [ -d "$OSC_LIB/$dir" ] || cp -r "$HERE/usr/share/osc/$dir" "$OSC_LIB/$dir"
+done
 
 exec "$HERE/usr/bin/osc" "$@"
 APPRUN
     chmod +x "${APPDIR}/AppRun"
 
-    # Desktop file + icon
+    # Desktop file
     cat > "${APPDIR}/iio-oscilloscope.desktop" << 'DESKTOP'
 [Desktop Entry]
 Name=IIO Oscilloscope
@@ -134,7 +161,8 @@ Type=Application
 Categories=Science;Electronics;
 DESKTOP
 
-    local ICON_SRC=$(find "${INSTALL_PREFIX}" -name "*.png" 2>/dev/null | head -n 1)
+    local ICON_SRC
+    ICON_SRC=$(find "${INSTALL_PREFIX}" -name "*.png" 2>/dev/null | head -n 1)
     if [[ -n "$ICON_SRC" ]]; then
         cp "$ICON_SRC" "${APPDIR}/iio-oscilloscope.png"
     else
@@ -149,11 +177,23 @@ DESKTOP
     log "AppImage created → ${APPIMAGE_OUT}"
 }
 
-main() {
-  build_iio_oscilloscope
-  fetch_appimage_tools
-  build_appimage
-  log "All done! AppImage is ready."
+package_tarball() {
+    local TARBALL="${BUILD_DIR}/iio-oscilloscope-aarch64.tar.gz"
+    log "Creating tarball → ${TARBALL}"
+    tar -czf "${TARBALL}" -C "${INSTALL_PREFIX}" .
 }
 
-main
+main() {
+    log "==================================================="
+    log "         iio-oscilloscope aarch64 AppImage         "
+    log "==================================================="
+
+    build_iio_oscilloscope
+    fetch_appimage_tools
+    build_appimage
+    package_tarball
+
+    log "All done! AppImage is ready."
+}
+
+main "$@"
