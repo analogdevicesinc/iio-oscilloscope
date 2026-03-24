@@ -782,8 +782,6 @@ configuration:</property>
                                                   <packing>
                                                     <property name="left-attach">3</property>
                                                     <property name="right-attach">4</property>
-                                                    <property name="x-options">GTK_FILL</property>
-                                                    <property name="y-options">GTK_FILL</property>
                                                   </packing>
                                                 </child>
                                                 <child>
