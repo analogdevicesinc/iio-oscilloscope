@@ -710,7 +710,7 @@ static bool connect_fillin(Dialogs *data)
 
 	ctx = get_context(data);
 	err = iio_err(ctx);
-	if (err) {
+	if (err || !ctx) {
 		ctx = NULL;
 		iio_strerror(err, err_msg, sizeof(err_msg));
 		snprintf(text, sizeof(text), "Could not get IIO Context: %s...", err_msg);
