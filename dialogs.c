@@ -364,6 +364,7 @@ static struct iio_context * get_context(Dialogs *data)
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_scan))) {
 		struct iio_context *ctx, *ctx2;
 		char *uri , *uri2, *uri3;
+		int err;
 
 		if (gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_devices)) == -1)
 			return NULL;
@@ -405,13 +406,17 @@ static struct iio_context * get_context(Dialogs *data)
 		/* If you are looking up ip: with zeroconf, without bonjour installed,
 		 * try the IP number too
 		 */
-		if (!ctx && strncmp(uri2, "ip:", sizeof("ip:"))) {
+		err = iio_err(ctx);
+		if ((err || !ctx) && strncmp(uri2, "ip:", sizeof("ip:"))) {
 			uri3 = strdup(usb_pids[gtk_combo_box_get_active(GTK_COMBO_BOX(dialogs.connect_devices))]);
 			if (uri3) {
 				if (strchr(uri3, ' ')) {
 					uri2 = strchr(uri3, ' ');
 					*uri2 = 0;
-					ctx = iio_create_context(NULL, uri3);
+					gchar *tmp = g_strdup_printf("ip:%s", uri3);
+					ctx = iio_create_context(NULL, tmp);
+					fprintf(stderr, "creating context with URI: %s\n", tmp);
+					g_free(tmp);
 				}
 				free(uri3);
 			}
@@ -420,6 +425,7 @@ static struct iio_context * get_context(Dialogs *data)
 		return ctx;
 	} else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(dialogs.connect_serial))) {
 		struct iio_context *ctx;
+
 		gchar *port = gtk_combo_box_text_get_active_text(
 				GTK_COMBO_BOX_TEXT(dialogs.connect_seriald));
 		gchar *baud_rate = gtk_combo_box_text_get_active_text(
