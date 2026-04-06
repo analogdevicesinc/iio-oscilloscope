@@ -1,0 +1,54 @@
+#!/usr/bin/make -f
+
+# Package variables - will be set by environment from build script
+
+export DH_VERBOSE = 1
+
+# Disable auto-detection of build systems - we're only repackaging an AppImage
+export DEB_BUILD_OPTIONS = nocheck
+
+APPIMAGE_SOURCE_DIR = ../../iio-osc
+
+%:
+	dh $@ --no-auto
+
+override_dh_auto_build:
+	# Copy AppImage from local directory
+	cp $(APPIMAGE_SOURCE_DIR)/iio-oscilloscope-$(APPIMAGE_ARCH).AppImage $(IIO_OSC_APPIMAGE)
+
+	# Ensure AppImage is executable
+	chmod +x $(IIO_OSC_APPIMAGE)
+
+override_dh_auto_install:
+	# Install AppImage to /usr/bin
+	install -D -m 0755 $(IIO_OSC_APPIMAGE) debian/$(PACKAGE)/usr/bin/$(IIO_OSC_APPIMAGE)
+
+	# Install wrapper script
+	install -D -m 0755 debian/osc-wrapper debian/$(PACKAGE)/usr/bin/osc-wrapper
+
+	# Install desktop file
+	install -D -m 0644 debian/iio-oscilloscope.desktop debian/$(PACKAGE)/usr/share/applications/iio-oscilloscope.desktop
+
+	# Install polkit policy file
+	install -D -m 0644 debian/org.adi.pkexec.iio-oscilloscope.AppImage.policy debian/$(PACKAGE)/usr/share/polkit-1/actions/org.adi.pkexec.iio-oscilloscope.AppImage.policy
+
+	# Install icon from icons directory
+	install -D -m 0644 icons/osc128.png debian/$(PACKAGE)/usr/share/osc/osc128.png
+
+	# Install CSS file from debian directory
+	install -D -m 0644 debian/styles.css debian/$(PACKAGE)/usr/share/osc/styles.css
+
+	# Install copyright
+	install -D -m 0644 debian/copyright debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)/copyright
+
+override_dh_auto_test:
+	# No tests for AppImage repackaging
+	:
+
+override_dh_shlibdeps:
+	# Skip dependency analysis - AppImage is self-contained
+	:
+
+override_dh_strip:
+	# Skip stripping - AppImage is already compiled
+	:

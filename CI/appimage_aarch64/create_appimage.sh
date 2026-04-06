@@ -4,7 +4,7 @@ set -xe
 set -euo pipefail
 
 # --- Configuration -----------------------------------------------------------
-TARGET_ARCH="arm64"
+TARGET_ARCH="aarch64"
 BUILD_DIR="/workspace"
 INSTALL_PREFIX="${BUILD_DIR}/install"
 APPDIR="${BUILD_DIR}/AppDir"
@@ -162,7 +162,7 @@ Categories=Science;Electronics;
 DESKTOP
 
     local ICON_SRC
-    ICON_SRC=$(find "${INSTALL_PREFIX}" -name "*.png" 2>/dev/null | head -n 1)
+    ICON_SRC=$(find "${BUILD_DIR}/iio-oscilloscope/icons" "${INSTALL_PREFIX}" -name "osc128.png" 2>/dev/null | head -n 1)
     if [[ -n "$ICON_SRC" ]]; then
         cp "$ICON_SRC" "${APPDIR}/iio-oscilloscope.png"
     else

@@ -21,5 +21,6 @@ config.h
 adi-osc.desktop
 org.adi.pkexec.osc.policy
 osc-wrapper
+!CI/packaging/debian/osc-wrapper
 .vscode
 CI/appimage_x86_64/staging

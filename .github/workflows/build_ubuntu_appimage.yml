@@ -1,6 +1,14 @@
 name: Osc x86_64 AppImage Build
 
-on: [push, pull_request]
+on: 
+  push:
+    branches:
+      - main
+      - '20[1-9][0-9]_R[1-9]'
+  pull_request:
+    branches:
+      - main
+      - '20[1-9][0-9]_R[1-9]'
 
 permissions:
   contents: read
@@ -49,7 +57,7 @@ jobs:
         include:
           - docker_image: arm64v8/debian:trixie
             distro: debian13
-            architecture: arm64
+            architecture: aarch64
             platform_flag: ""
           - docker_image: arm32v7/debian:trixie
             distro: debian13

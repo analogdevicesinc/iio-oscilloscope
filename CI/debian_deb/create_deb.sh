@@ -38,3 +38,5 @@ apt-get install -y libad9361-dev libad9166-dev
 git config --global --add safe.directory /workspace/iio-oscilloscope
 ARCH="$1"
 ./CI/appimage_${ARCH}/create_appimage.sh
+./CI/packaging/build-iio-osc-deb.sh ${ARCH}
+ 
