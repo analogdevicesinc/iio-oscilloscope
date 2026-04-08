@@ -37,6 +37,8 @@ static struct iio_device *dev;
 static bool dev_opened;
 static struct iio_context *ctx, *thread_ctx;
 static struct iio_buffer *dac_buff;
+static struct iio_buffer_stream *dac_buf_stream;
+static struct iio_block *dac_block;
 
 static struct iio_widget tx_widgets[100];
 static struct iio_widget rx_widgets[100];
@@ -88,18 +90,50 @@ static int buffer_open(unsigned int length)
 {
 	struct iio_device *trigger = iio_context_find_device(ctx, "hrtimer-1");
 	struct iio_channel *ch0 = iio_device_find_channel(dev, "voltage0", true);
+	struct iio_channels_mask *mask;
 
 	iio_device_set_trigger(dev, trigger);
-	iio_channel_enable(ch0);
 
-	dac_buff = iio_device_create_buffer(dev, IIO_BUFFER_SIZE, false);
+	mask = iio_create_channels_mask(iio_device_get_channels_count(dev));
+	if (!mask)
+		return 1;
 
-	return (dac_buff) ? 0 : 1;
+	iio_channel_enable(ch0, mask);
+
+	dac_buff = iio_device_get_buffer(dev, 0);
+	if (!dac_buff) {
+		iio_channels_mask_destroy(mask);
+		return 1;
+	}
+
+	dac_buf_stream = iio_buffer_open(dac_buff, mask);
+	iio_channels_mask_destroy(mask);
+	if (iio_err(dac_buf_stream))
+		return 1;
+
+	dac_block = iio_buffer_stream_create_block(dac_buf_stream, IIO_BUFFER_SIZE);
+	if (iio_err(dac_block)) {
+		iio_buffer_close(dac_buf_stream);
+		dac_buf_stream = NULL;
+		return 1;
+	}
+
+	return 0;
 }
 
 static int buffer_close()
 {
-	iio_buffer_destroy(dac_buff);
+	if (dac_block) {
+		iio_block_destroy(dac_block);
+		dac_block = NULL;
+	}
+
+	if (dac_buf_stream) {
+		iio_buffer_stream_stop(dac_buf_stream);
+		iio_buffer_close(dac_buf_stream);
+		dac_buf_stream = NULL;
+	}
+
 	dac_buff = NULL;
 
 	return 0;
@@ -243,9 +277,10 @@ static gboolean fillBuffer(void)
 	unsigned int i;
 	uint8_t *buf;
 	int ret;
+	static bool stream_started = false;
 
 	while (true) {
-		buf = iio_buffer_start(dac_buff);
+		buf = (uint8_t *)iio_block_start(dac_block);
 		for (i = 0; i < IIO_BUFFER_SIZE; i++) {
 			buf[i] = soft_buffer_ch0[current_sample];
 			current_sample++;
@@ -253,9 +288,21 @@ static gboolean fillBuffer(void)
 				current_sample = 0;
 		}
 
-		ret = iio_buffer_push(dac_buff);
-		if (ret < 0)
-			printf("Error occured while writing to buffer: %d\n", ret);
+		ret = iio_block_enqueue(dac_block, IIO_BUFFER_SIZE, false);
+		if (ret < 0) {
+			printf("Error occurred while enqueuing block: %d\n", ret);
+			continue;
+		}
+
+		if (!stream_started) {
+			iio_buffer_stream_start(dac_buf_stream);
+			stream_started = true;
+		}
+
+		ret = iio_block_dequeue(dac_block, false);
+		if (ret < 0) {
+			printf("Error occurred while dequeuing block: %d\n", ret);
+		}
 	}
 
 	return TRUE;
@@ -395,10 +442,18 @@ destroy_ctx:
 
 static void context_destroy(struct osc_plugin *plugin, const char *ini_fn)
 {
-	if (dac_buff) {
-		iio_buffer_destroy(dac_buff);
-		dac_buff = NULL;
+	if (dac_block) {
+		iio_block_destroy(dac_block);
+		dac_block = NULL;
 	}
+
+	if (dac_buf_stream) {
+		iio_buffer_stream_stop(dac_buf_stream);
+		iio_buffer_close(dac_buf_stream);
+		dac_buf_stream = NULL;
+	}
+
+	dac_buff = NULL;
 
 	osc_destroy_context(ctx);
 	osc_destroy_context(thread_ctx);
