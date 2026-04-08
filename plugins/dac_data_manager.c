@@ -136,6 +136,7 @@ struct dac_data_manager {
 	bool dds_disabled;
 	struct iio_buffer *dac_buffer;
 	struct iio_stream *dac_stream;
+	struct iio_buffer_stream *dac_buf_stream;
 	struct iio_block *dac_block;
 	struct iio_channels_mask *dac_mask;
 	bool is_local;
@@ -596,7 +597,7 @@ static int enable_dds_channels(struct dac_buffer *db)
 
 static void buffer_cleanup(struct dac_data_manager *manager)
 {
-	if (!manager->dac_buffer)
+	if (!manager->dac_buffer && !manager->dac_buf_stream)
 		return;
 
 	if (manager->dac_block) {
@@ -604,7 +605,12 @@ static void buffer_cleanup(struct dac_data_manager *manager)
 		manager->dac_block = NULL;
 	}
 
-	iio_buffer_destroy(manager->dac_buffer);
+	if (manager->dac_buf_stream) {
+		iio_buffer_stream_stop(manager->dac_buf_stream);
+		iio_buffer_close(manager->dac_buf_stream);
+		manager->dac_buf_stream = NULL;
+	}
+
 	manager->dac_buffer = NULL;
 }
 
@@ -706,13 +712,22 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		return -EINVAL;
 	}
 
-	manager->dac_buffer = iio_device_create_buffer(dac, 0, manager->dac_mask);
+	manager->dac_buffer = iio_device_get_buffer(dac, 0);
 	if (!manager->dac_buffer) {
-		fprintf(stderr, "Unable to create buffer: %s\n", strerror(errno));
+		fprintf(stderr, "Unable to get buffer: %s\n", strerror(errno));
 		if (stat_msg)
-			*stat_msg = g_strdup_printf("Unable to create iio buffer: %s", strerror(errno));
+			*stat_msg = g_strdup_printf("Unable to get iio buffer: %s", strerror(errno));
 		free(buf);
 		return -errno;
+	}
+
+	manager->dac_buf_stream = iio_buffer_open(manager->dac_buffer, manager->dac_mask);
+	if (iio_err(manager->dac_buf_stream)) {
+		fprintf(stderr, "Unable to open buffer stream: %s\n", strerror(-iio_err(manager->dac_buf_stream)));
+		if (stat_msg)
+			*stat_msg = g_strdup_printf("Unable to open buffer stream: %s", strerror(-iio_err(manager->dac_buf_stream)));
+		free(buf);
+		return iio_err(manager->dac_buf_stream);
 	}
 
 	const struct iio_attr *attr;
@@ -728,7 +743,10 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		if (stat_msg)
 			*stat_msg = g_strdup_printf("Unable to create buffer due to number of samples");
 		free(buf);
-		iio_buffer_destroy(manager->dac_buffer);
+		if (manager->dac_buf_stream) {
+			iio_buffer_close(manager->dac_buf_stream);
+			manager->dac_buf_stream = NULL;
+		}
 		manager->dac_buffer = NULL;
 
 		return -EINVAL;
@@ -769,7 +787,7 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 
 	usleep(1000); /* FIXME: Temp Workaround needs some investigation */
 
-	manager->dac_block = iio_buffer_create_block(manager->dac_buffer, size);
+	manager->dac_block = iio_buffer_stream_create_block(manager->dac_buf_stream, size);
 	if (iio_err(manager->dac_block)) {
 		printf("Could not create block: %d\n", iio_err(manager->dac_block));
 		ret = iio_err(manager->dac_block);
@@ -785,7 +803,7 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		goto out_destroy_block;
 	}
 
-	iio_buffer_enable(manager->dac_buffer);
+	iio_buffer_stream_start(manager->dac_buf_stream);
 	free(buf);
 
 	tmp = strdup(file_name);
@@ -804,7 +822,10 @@ out_destroy_block:
 	iio_block_destroy(manager->dac_block);
 	manager->dac_block = NULL;
 out_free_iio_buffer:
-	iio_buffer_destroy(manager->dac_buffer);
+	if (manager->dac_buf_stream) {
+		iio_buffer_close(manager->dac_buf_stream);
+		manager->dac_buf_stream = NULL;
+	}
 	manager->dac_buffer = NULL;
 	free(buf);
 	return ret;
