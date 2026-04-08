@@ -138,8 +138,15 @@ static void monitor_shutdown(GtkCheckButton *btn)
 	/* If the buffer is enabled */
 	if (iio_channel_is_enabled(adc_ch, adc_mask)) {
 		info = iio_device_get_data(iio_adc);
-		if (info->buffer) {
-			iio_buffer_destroy(info->buffer);
+		if (info->stream || info->buf_stream || info->buffer) {
+			if (info->stream) {
+				iio_stream_destroy(info->stream);
+				info->stream = NULL;
+			}
+			if (info->buf_stream) {
+				iio_buffer_close(info->buf_stream);
+				info->buf_stream = NULL;
+			}
 			info->buffer = NULL;
 		}
 
@@ -169,8 +176,15 @@ static void monitor_fda(GtkCheckButton *btn)
 	/* If the buffer is enabled */
 	if (iio_channel_is_enabled(adc_ch, adc_mask)) {
 		info = iio_device_get_data(iio_adc);
-		if (info->buffer) {
-			iio_buffer_destroy(info->buffer);
+		if (info->stream || info->buf_stream || info->buffer) {
+			if (info->stream) {
+				iio_stream_destroy(info->stream);
+				info->stream = NULL;
+			}
+			if (info->buf_stream) {
+				iio_buffer_close(info->buf_stream);
+				info->buf_stream = NULL;
+			}
 			info->buffer = NULL;
 		}
 
@@ -198,8 +212,15 @@ static void monitor_fda_mode(GtkCheckButton *btn)
 	/* If the buffer is enabled */
 	if (iio_channel_is_enabled(adc_ch, adc_mask)) {
 		info = iio_device_get_data(iio_adc);
-		if (info->buffer) {
-			iio_buffer_destroy(info->buffer);
+		if (info->stream || info->buf_stream || info->buffer) {
+			if (info->stream) {
+				iio_stream_destroy(info->stream);
+				info->stream = NULL;
+			}
+			if (info->buf_stream) {
+				iio_buffer_close(info->buf_stream);
+				info->buf_stream = NULL;
+			}
 			info->buffer = NULL;
 		}
 
