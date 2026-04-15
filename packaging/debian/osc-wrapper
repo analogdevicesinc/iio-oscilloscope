@@ -1,0 +1,3 @@
+#!/bin/sh
+
+pkexec env DISPLAY="$DISPLAY" XAUTHORITY=$HOME/.Xauthority /usr/bin/iio-oscilloscope.AppImage "$@"
