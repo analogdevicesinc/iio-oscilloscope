@@ -1,40 +1,60 @@
-name: Osc x86_64 AppImage Build
+name: Build ARM AppImage and Debian packages
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 env:
-  BUILD_HOST: ubuntu-22.04
-  USERNAME: github-actions
+  APP_NAME: iio-oscilloscope
 
 jobs:
-
-  build_osc_x86-64_appimage:
-    runs-on: ubuntu-22.04
-    container:
-        image: cristianbindea/osc-ubuntu20:latest
-        options: --user root
+  build_debian_package:
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - docker_image: arm64v8/debian:trixie
+            distro: debian13
+            architecture: aarch64
+            platform_flag: ""
+          - docker_image: arm32v7/debian:trixie
+            distro: debian13
+            architecture: armhf
+            platform_flag: "--platform linux/arm/v7"
 
     steps:
-        - uses: actions/checkout@v4
-          with:
-                set-safe-directory: 'true'
-                fetch-depth: '0'
+      - uses: actions/checkout@v6
+        with:
+          path: ${{env.APP_NAME}}
 
-        - name: Create Osc AppImage
-          shell: bash
-          run: |
-                cd $GITHUB_WORKSPACE
-                ./CI/appimage_x86_64/build_osc.sh
-                ./CI/appimage_x86_64/create_appimage.sh get_tools create_appdir create_appimage move_appimage
+      - name: Start persistent container
+        run: |
+          docker run -d \
+              ${{matrix.platform_flag}} \
+              --name ${{matrix.distro}}-${{matrix.architecture}} \
+              -v "$GITHUB_WORKSPACE/${{env.APP_NAME}}:/workspace/${{env.APP_NAME}}" \
+              -w /workspace/${{env.APP_NAME}} \
+              ${{matrix.docker_image}} tail -f /dev/null
 
-        - name: Set short git commit SHA
-          shell: bash
-          run: |
-                cd $GITHUB_WORKSPACE
-                git config --global --add safe.directory $GITHUB_WORKSPACE
-                echo "commit_sha=$(git rev-parse --short ${{ github.sha }})" >> "$GITHUB_ENV"
+      - name: Create debian package
+        run: |
+          docker exec ${{matrix.distro}}-${{matrix.architecture}} sh -c "./CI/setup_and_build.sh ${{matrix.architecture}}" 2>&1
 
-        - uses: actions/upload-artifact@v4
-          with:
-            name: osc-linux-x86_64-${{ env.commit_sha }}
-            path: ${{ github.workspace }}/ADI_IIO_Oscilloscope-x86_64.AppImage
+      - name: List build artifacts
+        run: |
+          docker exec ${{matrix.distro}}-${{matrix.architecture}} ls -la /workspace/
+
+      - name: Copy artifacts
+        run: |
+          docker cp ${{matrix.distro}}-${{matrix.architecture}}:/workspace/iio-oscilloscope-${{matrix.architecture}}.AppImage ${{github.workspace}}/
+          docker exec ${{matrix.distro}}-${{matrix.architecture}} sh -c "mkdir -p /tmp/deb-artifacts && cp /workspace/iio-oscilloscope_* /tmp/deb-artifacts/"
+          docker cp ${{matrix.distro}}-${{matrix.architecture}}:/tmp/deb-artifacts/. ${{github.workspace}}/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: osc-linux-${{matrix.architecture}}
+          path: |
+            ${{github.workspace}}/iio-oscilloscope-${{matrix.architecture}}.AppImage
+            ${{github.workspace}}/iio-oscilloscope_*
