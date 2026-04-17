@@ -39,14 +39,14 @@ iio-osc-build/
 
 ```bash
 cd iio-osc-build
-./build-iio-osc-deb.sh iio-osc-aarch64
+./build-iio-osc-deb.sh aarch64
 ```
 
 ### Build for ARMHF
 
 ```bash
 cd iio-osc-build
-./build-iio-osc-deb.sh iio-osc-armhf
+./build-iio-osc-deb.sh armhf
 ```
 
 ### Specify a Different Release/Branch
