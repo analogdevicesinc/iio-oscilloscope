@@ -10,6 +10,9 @@ export DEB_BUILD_OPTIONS = nocheck
 %:
 	dh $@ --no-auto
 
+override_dh_auto_configure:
+	# No-op: binary is pre-built inside the AppImage
+
 override_dh_auto_build:
 	# Copy AppImage from local directory
 	cp ../iio-oscilloscope-$(APPIMAGE_ARCH).AppImage $(IIO_OSC_APPIMAGE)
@@ -20,6 +23,16 @@ override_dh_auto_build:
 override_dh_auto_install:
 	# Install AppImage to /usr/bin
 	install -D -m 0755 $(IIO_OSC_APPIMAGE) debian/$(PACKAGE)/usr/bin/$(IIO_OSC_APPIMAGE)
+
+	# Create libdir for resources
+	install -d debian/$(PACKAGE)/usr/lib/osc
+
+	# Copy resources
+	cp -r $(CURDIR)/waveforms      $(CURDIR)/debian/$(PACKAGE)/usr/lib/osc/
+	cp -r $(CURDIR)/profiles       $(CURDIR)/debian/$(PACKAGE)/usr/lib/osc/
+	cp -r $(CURDIR)/filters        $(CURDIR)/debian/$(PACKAGE)/usr/lib/osc/
+	cp -r $(CURDIR)/xmls           $(CURDIR)/debian/$(PACKAGE)/usr/lib/osc/
+	cp -r $(CURDIR)/block_diagrams $(CURDIR)/debian/$(PACKAGE)/usr/lib/osc/
 
 	# Install wrapper script
 	install -D -m 0755 debian/osc-wrapper debian/$(PACKAGE)/usr/bin/osc-wrapper
