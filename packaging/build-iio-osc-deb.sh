@@ -19,7 +19,8 @@ REPO_NAME=$(basename "${REPO_ROOT}")
 # Extract version from CMakeLists.txt
 OSC_VERSION_MAJOR=$(grep 'set(OSC_VERSION_MAJOR' "${REPO_ROOT}/CMakeLists.txt" | grep -o '[0-9]\+')
 OSC_VERSION_MINOR=$(grep 'set(OSC_VERSION_MINOR' "${REPO_ROOT}/CMakeLists.txt" | grep -o '[0-9]\+')
-export VERSION="${OSC_VERSION_MAJOR}.${OSC_VERSION_MINOR}"
+OSC_VERSION_PATCH=$(grep 'set(OSC_VERSION_PATCH' "${REPO_ROOT}/CMakeLists.txt" | grep -o '[0-9]\+')
+export VERSION="${OSC_VERSION_MAJOR}.${OSC_VERSION_MINOR}.${OSC_VERSION_PATCH}"
 export RELEASE="v${VERSION}"
 
 # Source the config file corresponding to the .deb package
