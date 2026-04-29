@@ -72,7 +72,6 @@ struct extra_dev_info {
 	gfloat **channels_data_copy;
 	GSList *plots_sample_counts;
 	struct iio_stream *stream;
-	struct iio_buffer_stream *buf_stream;
 	struct iio_channels_mask *channels_mask;
 };
 
