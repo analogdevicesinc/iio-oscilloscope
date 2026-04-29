@@ -280,16 +280,11 @@ static void close_active_buffers(void)
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *info = iio_device_get_data(dev);
 
-		if (info->stream || info->buf_stream || info->buffer) {
+		/* If we have a stream, we must have a buffer! */
+		if (info->stream) {
 			disable_all_channels(dev);
-			if (info->stream) {
-				iio_stream_destroy(info->stream);
-				info->stream = NULL;
-			}
-			if (info->buf_stream) {
-				iio_buffer_close(info->buf_stream);
-				info->buf_stream = NULL;
-			}
+			iio_stream_destroy(info->stream);
+			info->stream = NULL;
 			info->buffer = NULL;
 		}
 	}
@@ -1342,9 +1337,18 @@ static gboolean capture_process(void *data)
 				fprintf(stderr, "Error: Unable to get buffer: %s\n", strerror(errno));
 				goto capture_stop_check;
 			}
-			dev_info->buf_stream = iio_buffer_open(dev_info->buffer, dev_info->channels_mask);
-			if (iio_err(dev_info->buf_stream)) {
-				fprintf(stderr, "Error: Unable to open buffer stream: %s\n", strerror(-iio_err(dev_info->buf_stream)));
+
+			if (dev_info->stream) {
+				iio_stream_destroy(dev_info->stream);
+				dev_info->stream = NULL;
+			}
+
+			dev_info->stream = iio_buffer_create_stream(dev_info->buffer, 4,
+								    dev_info->buffer_size, dev_info->channels_mask);
+                        if (iio_err(dev_info->stream)) {
+                                fprintf(stderr, "Error: Unable to create stream: %s\n",
+                                        strerror(-iio_err(dev_info->stream)));
+                                dev_info->stream = NULL;
 				goto capture_stop_check;
 			}
 		}
@@ -1379,8 +1383,12 @@ static gboolean capture_process(void *data)
 					printf("Decreasing block size\n");
 					iio_stream_destroy(dev_info->stream);
 					dev_info->buffer_size /= 2;
-					dev_info->stream = iio_buffer_create_stream(dev_info->buffer,
-							4, dev_info->buffer_size, dev_info->channels_mask);
+					dev_info->stream = iio_buffer_create_stream(dev_info->buffer, 4,
+										    dev_info->buffer_size, dev_info->channels_mask);
+					ret = iio_err(dev_info->stream);
+					if (ret < 0) {
+						fprintf(stderr, "Unable to create stream: %s\n", strerror(-ret));
+					}
 				}
 				break;
 			}
@@ -1389,7 +1397,7 @@ static gboolean capture_process(void *data)
 			iio_stream_destroy(dev_info->stream);
 			dev_info->buffer_size *= 2;
 			dev_info->stream = iio_buffer_create_stream(dev_info->buffer, 4,
-					dev_info->buffer_size, dev_info->channels_mask);
+								    dev_info->buffer_size, dev_info->channels_mask);
 			ret = iio_err(dev_info->stream);
 			if (ret < 0) {
 				fprintf(stderr, "Unable to create stream: %s\n", strerror(-ret));
@@ -1438,10 +1446,6 @@ static gboolean capture_process(void *data)
 			if (dev_info->stream) {
 				iio_stream_destroy(dev_info->stream);
 				dev_info->stream = NULL;
-			}
-			if (dev_info->buf_stream) {
-				iio_buffer_close(dev_info->buf_stream);
-				dev_info->buf_stream = NULL;
 			}
 			dev_info->buffer = NULL;
 		}
@@ -1592,10 +1596,7 @@ static int capture_setup(void)
 			iio_stream_destroy(dev_info->stream);
 			dev_info->stream = NULL;
 		}
-		if (dev_info->buf_stream) {
-			iio_buffer_close(dev_info->buf_stream);
-			dev_info->buf_stream = NULL;
-		}
+
 		dev_info->buffer = NULL;
 		dev_info->sample_count = sample_count;
 		dev_info->buffer_size = sample_count;
@@ -1603,15 +1604,12 @@ static int capture_setup(void)
 		if (!dev_info->buffer) {
 		        fprintf(stderr, "Error: Unable to get buffer: %s\n", strerror(errno));
 		} else {
-			dev_info->buf_stream = iio_buffer_open(dev_info->buffer, dev_info->channels_mask);
-			if (iio_err(dev_info->buf_stream)) {
-				fprintf(stderr, "Error: Unable to open buffer stream: %s\n", strerror(-iio_err(dev_info->buf_stream)));
-			} else {
-				dev_info->stream = iio_buffer_create_stream(dev_info->buffer, 4, dev_info->sample_count, dev_info->channels_mask);
-				if (iio_err(dev_info->stream)) {
-					fprintf(stderr, "Error: Unable to create stream: %s\n", strerror(-iio_err(dev_info->stream)));
-				}
+			dev_info->stream = iio_buffer_create_stream(dev_info->buffer, 4, dev_info->sample_count,
+								    dev_info->channels_mask);
+			if (iio_err(dev_info->stream)) {
+				fprintf(stderr, "Error: Unable to create stream: %s\n", strerror(-iio_err(dev_info->stream)));
 			}
+
 		}
 
 
