@@ -499,7 +499,6 @@ static bool refresh_usb_update_list(struct refresh_usb_info *info)
 static void refresh_scan_ctx(void)
 {
 	struct iio_scan *ctxs;
-	GtkListStore *liststore;
 	unsigned int i = 0;
 	gchar *tmp, *tmp1, *pid, *buf;
 	char *current = NULL;
