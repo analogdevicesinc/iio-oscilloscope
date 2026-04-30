@@ -1,65 +1,71 @@
 #!/usr/bin/make -f
 
-# Package variables - will be set by environment from build script
-
 export DH_VERBOSE = 1
-
-# Disable auto-detection of build systems - we're only repackaging an AppImage
 export DEB_BUILD_OPTIONS = nocheck
+
+# Default values in case variables are not passed by build script
+PACKAGE ?= iio-oscilloscope
+APPIMAGE_ARCH ?= aarch64
+IIO_OSC_APPIMAGE ?= iio-oscilloscope-$(APPIMAGE_ARCH).AppImage
 
 %:
 	dh $@ --no-auto
 
 override_dh_auto_configure:
-	# No-op: binary is pre-built inside the AppImage
+	@echo "=== iio-oscilloscope Debian packaging ==="
+	@echo "PACKAGE          = $(PACKAGE)"
+	@echo "APPIMAGE_ARCH    = $(APPIMAGE_ARCH)"
+	@echo "IIO_OSC_APPIMAGE = $(IIO_OSC_APPIMAGE)"
+	@echo "========================================"
 
 override_dh_auto_build:
-	# Copy AppImage from local directory
-	cp ../iio-oscilloscope-$(APPIMAGE_ARCH).AppImage $(IIO_OSC_APPIMAGE)
-
-	# Ensure AppImage is executable
+	@echo "Looking for AppImage at: ../$(IIO_OSC_APPIMAGE)"
+	cp ../$(IIO_OSC_APPIMAGE) $(IIO_OSC_APPIMAGE) || \
+		(echo "ERROR: AppImage not found! Expected ../$(IIO_OSC_APPIMAGE)" && exit 1)
 	chmod +x $(IIO_OSC_APPIMAGE)
 
 override_dh_auto_install:
-	# Install AppImage to /usr/bin
-	install -D -m 0755 $(IIO_OSC_APPIMAGE) debian/$(PACKAGE)/usr/bin/$(IIO_OSC_APPIMAGE)
+	# Install the AppImage
+	install -D -m 0755 $(IIO_OSC_APPIMAGE) \
+		debian/$(PACKAGE)/usr/bin/$(IIO_OSC_APPIMAGE)
 
-	# Create libdir for resources
+	# Install resources
 	install -d debian/$(PACKAGE)/usr/lib/osc
 
-	# Copy resources
-	cp -r $(CURDIR)/waveforms      $(CURDIR)/debian/$(PACKAGE)/usr/lib/osc/
-	cp -r $(CURDIR)/profiles       $(CURDIR)/debian/$(PACKAGE)/usr/lib/osc/
-	cp -r $(CURDIR)/filters        $(CURDIR)/debian/$(PACKAGE)/usr/lib/osc/
-	cp -r $(CURDIR)/xmls           $(CURDIR)/debian/$(PACKAGE)/usr/lib/osc/
-	cp -r $(CURDIR)/block_diagrams $(CURDIR)/debian/$(PACKAGE)/usr/lib/osc/
+	cp -r waveforms      debian/$(PACKAGE)/usr/lib/osc/ 2>/dev/null || true
+	cp -r profiles       debian/$(PACKAGE)/usr/lib/osc/ 2>/dev/null || true
+	cp -r filters        debian/$(PACKAGE)/usr/lib/osc/ 2>/dev/null || true
+	cp -r xmls           debian/$(PACKAGE)/usr/lib/osc/ 2>/dev/null || true
+	cp -r block_diagrams debian/$(PACKAGE)/usr/lib/osc/ 2>/dev/null || true
 
-	# Install wrapper script
+	# Extra files if present
+	cp -f styles.css debian/$(PACKAGE)/usr/lib/osc/ 2>/dev/null || true
+
+	# Install wrapper
 	install -D -m 0755 debian/osc-wrapper debian/$(PACKAGE)/usr/bin/osc-wrapper
 
-	# Install desktop file
-	install -D -m 0644 debian/iio-oscilloscope.desktop debian/$(PACKAGE)/usr/share/applications/iio-oscilloscope.desktop
+	# Create convenient symlinks
+	ln -sf osc-wrapper debian/$(PACKAGE)/usr/bin/osc
+	ln -sf osc-wrapper debian/$(PACKAGE)/usr/bin/iio-oscilloscope
 
-	# Install polkit policy file
-	install -D -m 0644 debian/org.adi.pkexec.iio-oscilloscope.AppImage.policy debian/$(PACKAGE)/usr/share/polkit-1/actions/org.adi.pkexec.iio-oscilloscope.AppImage.policy
+	# Desktop file, polkit, icon, etc.
+	install -D -m 0644 debian/iio-oscilloscope.desktop \
+		debian/$(PACKAGE)/usr/share/applications/iio-oscilloscope.desktop
 
-	# Install icon from icons directory
-	install -D -m 0644 icons/osc128.png debian/$(PACKAGE)/usr/share/osc/osc128.png
+	install -D -m 0644 debian/org.adi.pkexec.iio-oscilloscope.AppImage.policy \
+		debian/$(PACKAGE)/usr/share/polkit-1/actions/org.adi.pkexec.iio-oscilloscope.AppImage.policy
 
-	# Install CSS file from debian directory
-	install -D -m 0644 debian/styles.css debian/$(PACKAGE)/usr/share/osc/styles.css
+	install -D -m 0644 icons/osc128.png \
+		debian/$(PACKAGE)/usr/share/osc/osc128.png 2>/dev/null || true
 
-	# Install copyright
-	install -D -m 0644 debian/copyright debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)/copyright
+	install -D -m 0644 debian/copyright \
+		debian/$(PACKAGE)/usr/share/doc/$(PACKAGE)/copyright
 
 override_dh_auto_test:
-	# No tests for AppImage repackaging
 	:
 
 override_dh_shlibdeps:
-	# Skip dependency analysis - AppImage is self-contained
 	:
 
 override_dh_strip:
-	# Skip stripping - AppImage is already compiled
 	:

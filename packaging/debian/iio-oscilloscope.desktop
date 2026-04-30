@@ -1,8 +1,10 @@
 [Desktop Entry]
-Exec=/usr/bin/osc-wrapper
-Icon=/usr/share/osc/osc128.png
+Version=1.0
+Name=IIO Oscilloscope
+Comment=Analog Devices IIO Oscilloscope Application
+Exec=osc %F
+Icon=osc128
 Terminal=false
 Type=Application
-Categories=Science
-Name=ADI IIO Oscilloscope
-GenericName=ADI IIO Oscilloscope
+Categories=Development;Electronics;Engineering;
+StartupNotify=true
