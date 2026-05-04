@@ -1128,7 +1128,6 @@ static void load_plugins(GtkWidget *notebook, const char *ini_fn)
 			GArray *plugin_info = get_plugins_info();
 
 			if (plugin_info == NULL) {
-				fprintf(stderr, "Failed to load plugin \"%s\"", ent->d_name);
 				dlclose(lib);
 				continue;
 			}
@@ -2134,6 +2133,20 @@ bool check_inifile(const char *filepath)
 	return TRUE;
 }
 
+char *get_profile_uri(const char *filename)
+{
+	const char *default_profile;
+
+	if (filename)
+		return read_token_from_ini(filename, OSC_INI_SECTION, "uri");
+
+	default_profile = get_default_profile_name();
+	if (default_profile && check_inifile(default_profile))
+		return read_token_from_ini(default_profile, OSC_INI_SECTION, "uri");
+
+	return NULL;
+}
+
 int load_default_profile(char *filename, bool load_plugins)
 {
 	int ret = 0;
@@ -2494,75 +2507,6 @@ static int load_profile(const char *filename, bool load_plugins)
 	close_all_plots();
 	destroy_all_plots();
 
-	value = read_token_from_ini(filename, OSC_INI_SECTION, "uri");
-	/* IP addresses specified on the command line via the -c option
-	 * override profile settings.
-	 */
-	if (value) {
-		struct iio_context *new_ctx = iio_create_context(NULL, value);
-		if (new_ctx) {
-			application_reload(new_ctx, false);
-		} else {
-			fprintf(stderr, "Failed connecting to remote device: %s\n", value);
-			/* Abort parsing the rest of the profile as there is
-			 * probably a lot of device specific stuff in it.
-			 */
-			free(value);
-			return 0;
-		}
-		free(value);
-	}
-
-	value = read_token_from_ini(filename, OSC_INI_SECTION, "uri");
-	/* URI addresses specified on the command line via the -u option
-	 * override profile settings
-	 */
-	if (value) {
-		struct iio_context *new_ctx;
-		struct iio_scan *ctxs = iio_scan(NULL, NULL);
-		char *pid_vid = value;
-		char *serial = strchr(value, ' ');
-		const char *tmp;
-		int i;
-		int ctxs_nb;
-
-		if (!serial)
-			goto nope;
-		usb_set_serialnumber(value);
-
-		pid_vid[serial - pid_vid] = 0;
-		serial++;
-
-		if (!ctxs)
-			goto nope;
-		ctxs_nb = iio_scan_get_results_count(ctxs);
-		ret = iio_err(ctxs);
-		if (ret < 0)
-			goto nope_ctxs;
-
-		for (i = 0; i < ctxs_nb; i++) {
-			tmp = iio_scan_get_description(ctxs, i);
-			/* find the correct PID/VID plus serial number*/
-			if (strstr(tmp, pid_vid) && strstr(tmp, serial)) {
-				new_ctx = iio_create_context(NULL,
-						iio_scan_get_uri(ctxs, i));
-				if (new_ctx) {
-					application_reload(new_ctx, false);
-					break;
-				} else {
-					fprintf(stderr, "Failed connecting to uri: %s\n", value);
-					free(value);
-					return 0;
-				}
-			}
-			}
-nope_ctxs:
-		iio_scan_destroy(ctxs);
-nope:
-		free(value);
-		ret = 0;
-	}
-
 	value = read_token_from_ini(filename, OSC_INI_SECTION, "test");
 	if (value) {
 		free(value);
@@ -2628,10 +2572,75 @@ nope:
 	return ret;
 }
 
+/* Return true if the profile is to be loaded, false otherwise */
+bool handle_profile_load_request(const char *filename, bool app_starting)
+{
+	char *uri_profile = get_profile_uri(filename);
+
+	if (!uri_profile) {
+		/* If there is no URI found in the profile, just blindly load it if it's
+		 * an explicit load request (through the UI). If the app is starting up, ignore
+		 * it.
+		 */
+		if (app_starting)
+			return false;
+
+		return true;
+	}
+
+	if (ctx) {
+		const struct iio_attr *ctx_uri = iio_context_find_attr(ctx, "uri");
+		const char *uri_val = iio_attr_get_static_value(ctx_uri);
+
+		if (strcmp(uri_profile, uri_val)) {
+			/* If the URI in the profile doesn't match the current context URI
+			 * reload the APP if not starting. We also tell application_reload()
+			 * to load the profile and hence we always return false given that
+			 * if we are starting up we won't load the profile on URI mismatch
+			 * (we favor the context passed through command line).
+			 */
+			struct iio_context *new_ctx;
+
+			if (app_starting) {
+				printf("URI mismatch, APP starting with different URI\n");
+				free(uri_profile);
+				return false;
+			}
+
+			new_ctx = iio_create_context(NULL, uri_profile);
+			free(uri_profile);
+			if (iio_err(new_ctx)) {
+				fprintf(stderr, "Failed to create new URI context: %d\n",
+					iio_err(new_ctx));
+				return false;
+			}
+
+			application_reload(new_ctx, true);
+			return false;
+		}
+
+		free(uri_profile);
+		return true;
+	}
+
+	ctx = iio_create_context(NULL, uri_profile);
+	free(uri_profile);
+	if (iio_err(ctx)) {
+		fprintf(stderr, "Failed to create new URI context: %d\n", iio_err(ctx));
+		ctx = NULL;
+		return false;
+	}
+
+	if (!app_starting)
+		do_init(ctx);
+
+	return true;
+}
 
 void load_complete_profile(const char *filename)
 {
-	load_profile(filename, true);
+	if (handle_profile_load_request(filename, false))
+		load_profile(filename, true);
 }
 
 struct iio_context * osc_create_context(void)

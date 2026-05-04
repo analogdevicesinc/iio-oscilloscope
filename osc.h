@@ -169,6 +169,8 @@ int osc_plugin_default_handle(struct iio_context *ctx,
 GArray* get_data_for_possible_plugin_instances_helper(const char *dev_id, const char *plugin);
 
 /* Private functions */
+char *get_profile_uri(const char *filename);
+bool handle_profile_load_request(const char *filename, bool app_starting);
 extern int load_default_profile(char *filename, bool load_plugins);
 extern void do_init(struct iio_context *new_ctx);
 extern void create_default_plot(void);

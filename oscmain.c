@@ -198,9 +198,8 @@ static void sigterm (int signum)
 gint main (int argc, char **argv)
 {
 	int c;
-
+	bool load_profile = true;
 	char *profile = NULL;
-
 	init_signal_handlers(argv[0]);
 
 	opterr = 0;
@@ -232,9 +231,12 @@ gint main (int argc, char **argv)
 #ifndef __MINGW__
 	signal(SIGHUP, sigterm);
 #endif
-
+	c = 0;
+	load_profile = handle_profile_load_request(profile, true);
 	init_application();
-	c = load_default_profile(profile, true);
+	if (load_profile)
+		c = load_default_profile(profile, true);
+
 	if (!ctx_destroyed_by_do_quit) {
 		if (!ctx)
 			connect_dialog(false);
