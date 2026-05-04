@@ -1179,13 +1179,12 @@ A GUI for Linux IIO devices</property>
                       </object>
                     </child>
                     <child>
-                      <object class="GtkImageMenuItem" id="imagemenuitem4">
+                      <object class="GtkImageMenuItem" id="load_save_profile">
                         <property name="label" translatable="yes">Load/Save Profile</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="image">image4</property>
                         <property name="use-stock">False</property>
-                        <signal name="activate" handler="load_save_profile_cb" swapped="no"/>
                       </object>
                     </child>
                     <child>

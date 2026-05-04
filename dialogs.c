@@ -997,7 +997,7 @@ G_MODULE_EXPORT void cb_show_about(GtkButton *button, Dialogs *data)
 	gtk_widget_hide(data->about);
 }
 
-G_MODULE_EXPORT void load_save_profile_cb(GtkButton *button, Dialogs *data)
+void load_save_profile_cb(GtkButton *button, Dialogs *data)
 {
 	/* Save as Dialog */
 	gint ret;
@@ -1317,13 +1317,14 @@ G_MODULE_EXPORT void cb_check_for_updates(GtkCheckMenuItem *item, Dialogs *_dial
 void dialogs_init(GtkBuilder *builder)
 {
 	struct iio_context *ctx;
+	GtkButton *load_save_button;
 	GtkWidget *tmp;
 	bool scan = false;
 
 	dialogs.builder = builder;
 	dialogs.connect_devices_signals = 0;
 
-	dialogs.load_save_profile = GTK_WIDGET(gtk_builder_get_object(builder, "load_save_profile"));
+	load_save_button = GTK_BUTTON(gtk_builder_get_object(builder, "load_save_profile"));
 	GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_OPEN;
 	dialogs.load_save_profile = GTK_WIDGET(gtk_file_chooser_dialog_new(
 		"Load/Save Profile", NULL, action, "Cancel", GTK_RESPONSE_CANCEL,
@@ -1365,7 +1366,7 @@ void dialogs_init(GtkBuilder *builder)
 	g_signal_connect(G_OBJECT(dialogs.connect_manual), "toggled",
 			(GCallback) connect_clear, NULL);
 
-
+	g_signal_connect(G_OBJECT(load_save_button), "activate", G_CALLBACK(load_save_profile_cb), &dialogs);
 	gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "scan_contexts_label")),
 			false);
 
