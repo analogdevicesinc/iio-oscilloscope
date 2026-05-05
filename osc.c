@@ -1387,6 +1387,9 @@ static gboolean capture_process(void *data)
 					ret = iio_err(dev_info->stream);
 					if (ret < 0) {
 						fprintf(stderr, "Unable to create stream: %s\n", strerror(-ret));
+						stop_sampling();
+						dev_info->stream = NULL;
+						goto capture_stop_check;
 					}
 				}
 				break;
@@ -1400,6 +1403,9 @@ static gboolean capture_process(void *data)
 			ret = iio_err(dev_info->stream);
 			if (ret < 0) {
 				fprintf(stderr, "Unable to create stream: %s\n", strerror(-ret));
+				stop_sampling();
+				dev_info->stream = NULL;
+				goto capture_stop_check;
 			}
 		}
 
@@ -1552,6 +1558,7 @@ static int capture_setup(void)
 	unsigned int min_timeout = 1000;
 	unsigned int timeout;
 	double freq;
+	int ret;
 
 	for (i = 0; i < num_devices; i++) {
 		struct iio_device *dev = iio_context_get_device(ctx, i);
@@ -1602,15 +1609,17 @@ static int capture_setup(void)
 		dev_info->buffer = iio_device_get_buffer(dev, 0);
 		if (!dev_info->buffer) {
 		        fprintf(stderr, "Error: Unable to get buffer: %s\n", strerror(errno));
-		} else {
-			dev_info->stream = iio_buffer_create_stream(dev_info->buffer, 4, dev_info->sample_count,
-								    dev_info->channels_mask);
-			if (iio_err(dev_info->stream)) {
-				fprintf(stderr, "Error: Unable to create stream: %s\n", strerror(-iio_err(dev_info->stream)));
-			}
-
+			return -ENODEV;
 		}
 
+		dev_info->stream = iio_buffer_create_stream(dev_info->buffer, 4, dev_info->sample_count,
+							    dev_info->channels_mask);
+		ret = iio_err(dev_info->stream);
+		if (ret) {
+			fprintf(stderr, "Error: Unable to create stream: %s\n", strerror(-ret));
+			dev_info->stream = NULL;
+			return ret;
+		}
 
 		iio_device_set_data(dev, dev_info);
 
@@ -1647,9 +1656,10 @@ static void capture_process_ended(gpointer data)
 		/* Wait 100 msec then restart acquisition */
 		g_usleep(G_USEC_PER_SEC * 0.1);
 
-		capture_setup();
-		fprintf(stderr, "Restarting acquisition\n");
-		capture_start();
+		if (!capture_setup()) {
+			fprintf(stderr, "Restarting acquisition\n");
+			capture_start();
+		}
 	}
 }
 
@@ -1678,8 +1688,10 @@ static void start(OscPlot *plot, gboolean start_event)
 		if (spect_analyzer_plugin)
 			spect_analyzer_plugin->handle_external_request(spect_analyzer_plugin, "Stop");
 
-		/* Start the capture process */
-		capture_setup();
+		/* Start the capture process but bail if setup fails */
+		if (capture_setup())
+			return;
+
 		capture_start();
 		restart_all_running_plots();
 	} else {
