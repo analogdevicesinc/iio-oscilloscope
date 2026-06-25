@@ -71,7 +71,7 @@ build_libiio() {
 	git checkout $LIBIIO_BRANCH
 	mkdir build
 	cd build
-	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" -DWITH_SERIAL_BACKEND=ON ../
+	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" -DWITH_SERIAL_BACKEND=ON -DLIBIIO_COMPAT=ON ../
 	$MAKE install
 	popd
 }

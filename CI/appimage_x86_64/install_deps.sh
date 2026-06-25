@@ -8,7 +8,7 @@ SRC_SCRIPT=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 STAGING_AREA=$SRC_SCRIPT/staging
 
 LIBSERIALPORT_BRANCH="master"
-LIBIIO_BRANCH="libiio-v0"
+LIBIIO_BRANCH="main"
 LIBAD9361_BRANCH="main"
 LIBAD9166_BRANCH="main"
 
