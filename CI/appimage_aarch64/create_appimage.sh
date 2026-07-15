@@ -28,6 +28,7 @@ build_iio_oscilloscope() {
 
     cmake -S "${SRC}" -B "${BLD}" \
         -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}" \
         -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON \
