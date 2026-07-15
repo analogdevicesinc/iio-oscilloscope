@@ -1,3 +1,3 @@
 #!/bin/sh
 
-pkexec env DISPLAY="$DISPLAY" XAUTHORITY=$HOME/.Xauthority HOME=$HOME /usr/bin/iio-oscilloscope.AppImage "$@"
+pkexec env DISPLAY="$DISPLAY" XAUTHORITY=$HOME/.Xauthority HOME=$HOME DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" NO_AT_BRIDGE=1 /usr/bin/iio-oscilloscope.AppImage "$@"
