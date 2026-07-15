@@ -1,3 +1,18 @@
 #!/bin/sh
+# osc-wrapper - Debian package wrapper for iio-oscilloscope
+#
+# This wrapper sets the APPDIR environment variable so that iio-oscilloscope
+# can correctly locate its resources (waveforms/, profiles/, filters/, xmls/,
+# block_diagrams/, etc.) when installed via apt/deb instead of running as
+# a native AppImage.
 
-pkexec env DISPLAY="$DISPLAY" XAUTHORITY=$HOME/.Xauthority /usr/bin/iio-oscilloscope.AppImage "$@"
+export APPDIR=/usr/lib/osc
+
+# Improve compatibility with desktop environments
+export XDG_DATA_DIRS="/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+
+# Optional: Uncomment for debugging
+# echo "osc-wrapper: APPDIR set to ${APPDIR}" >&2
+
+# Execute the actual AppImage
+exec /usr/bin/iio-oscilloscope.AppImage "$@"
