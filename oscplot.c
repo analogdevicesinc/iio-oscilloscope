@@ -6784,10 +6784,7 @@ static gboolean right_click_menu_show(OscPlot *plot, GdkEvent *event)
 		int ret;
 
 		ret = iio_device_get_trigger(dev, &trigger);
-		needs_trigger = false;
-		if (ret == 0) {
-			needs_trigger = true;
-		}
+		needs_trigger = (ret == 0 || ret == -ENOENT || ret == -ENODEV || ret == -EIO);
 
 		gtk_widget_set_sensitive(priv->device_trigger_menuitem,
 				needs_trigger);
