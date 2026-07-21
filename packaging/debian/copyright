@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: iio-oscilloscope
-Upstream-Contact: Analog Devices, Inc.
+Upstream-Contact: EngineerZone <https://ez.analog.com/sw-interface-tools/>
 Source: https://github.com/analogdevicesinc/iio-oscilloscope
 
 Files: *
