@@ -4405,7 +4405,7 @@ static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
 	}
 
 	for (i = 0; i < tr->x_axis_size; i++) {
-		fprintf(fp, "%g, %g,\n", tr_x_axis[i], tr_data[i]);
+		fprintf(fp, "%.9g, %.9g,\n", tr_x_axis[i], tr_data[i]);
 	}
 	fprintf(fp, "\n");
 }
