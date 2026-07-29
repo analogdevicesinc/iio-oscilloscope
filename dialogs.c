@@ -592,8 +592,11 @@ static void refresh_usb_thread(void)
 	usb_devices_info->device_list = calloc(ret, sizeof(char *));
 
 	for (i = 0; i < (size_t) ret; i++) {
-		tmp = strdup(iio_context_info_get_description(info[i]));
-		pid = strdup(iio_context_info_get_description(info[i]));
+		const char *desc = iio_context_info_get_description(info[i]);
+		if (!desc)
+			continue;
+		tmp = strdup(desc);
+		pid = strdup(desc);
 
 		/* skip the PID/VID or IP Number, example descriptions are:
 		 * 0456:b673 (Analog Devices Inc. PlutoSDR (ADALM-PLUTO)), serial=104473541196000618001900241f1e6931
@@ -750,13 +753,13 @@ static void fillin_result_free(struct fillin_result *res)
 
 	if (!res)
 		return;
-	free(res->desc);
+	g_free(res->desc);
 	if (res->dev_names) {
 		for (i = 0; i < res->n_devs; i++)
-			free(res->dev_names[i]);
+			g_free(res->dev_names[i]);
 		free(res->dev_names);
 	}
-	free(res->attrs_text);
+	g_free(res->attrs_text);
 	if (res->eeprom_paths) {
 		for (i = 0; i < res->n_eeproms; i++)
 			free(res->eeprom_paths[i]);
@@ -832,13 +835,13 @@ static gpointer fillin_thread_func(gpointer data)
 		res->desc = g_strdup_printf("Could not get IIO Context: %s...",
 					    strerror(res->saved_errno));
 	} else {
-		res->desc = strdup(iio_context_get_description(res->ctx));
+		res->desc = g_strdup(iio_context_get_description(res->ctx));
 		res->n_devs = iio_context_get_devices_count(res->ctx);
 		if (res->n_devs) {
 			res->dev_names = calloc(res->n_devs, sizeof(char *));
 			for (i = 0; i < res->n_devs; i++) {
 				struct iio_device *dev = iio_context_get_device(res->ctx, i);
-				res->dev_names[i] = strdup(get_iio_device_label_or_name(dev));
+				res->dev_names[i] = g_strdup(get_iio_device_label_or_name(dev));
 			}
 		}
 
