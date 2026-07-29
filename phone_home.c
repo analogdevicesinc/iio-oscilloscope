@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <curl/curl.h>
+#include <glib.h>
 #include <jansson.h>
 
 #include "phone_home.h"
@@ -210,16 +211,11 @@ void release_dispose(Release *_this)
 	if (!_this)
 		return;
 
-	if (_this->name)
-		free(_this->name);
-	if (_this->build_date)
-		free(_this->build_date);
-	if (_this->commit)
-		free(_this->commit);
-	if (_this->url)
-		free(_this->url);
-	if (_this->windows_dld_url)
-		free(_this->windows_dld_url);
+	g_free(_this->name);
+	g_free(_this->build_date);
+	g_free(_this->commit);
+	g_free(_this->url);
+	g_free(_this->windows_dld_url);
 }
 
 Release * release_get_latest(void)
@@ -247,9 +243,9 @@ Release * release_get_latest(void)
 		goto cleanup_and_fail;
 	}
 
-	release->name = strdup(json_string_value(json_object_get(j_release, "name")));
-	release->build_date = strdup(json_string_value(json_object_get(j_release, "created_at")));
-	release->url = strdup(json_string_value(json_object_get(j_release, "html_url")));
+	release->name = g_strdup(json_string_value(json_object_get(j_release, "name")));
+	release->build_date = g_strdup(json_string_value(json_object_get(j_release, "created_at")));
+	release->url = g_strdup(json_string_value(json_object_get(j_release, "html_url")));
 
 	/* Get the release SHA commit */
 	json_t *j_tags, *tag, *name, *commit;
@@ -275,7 +271,7 @@ Release * release_get_latest(void)
 			commit = json_object_get(tag, "commit");
 			if (!json_is_object(commit))
 				break;
-			release->commit = strdup(json_string_value(
+			release->commit = g_strdup(json_string_value(
 					json_object_get(commit, "sha")));
 		}
 	}
@@ -297,7 +293,7 @@ Release * release_get_latest(void)
 		release_abort = true;
 		goto cleanup_and_fail;
 	}
-	release->windows_dld_url = strdup(json_string_value(json_object_get(w_build, "browser_download_url")));
+	release->windows_dld_url = g_strdup(json_string_value(json_object_get(w_build, "browser_download_url")));
 
 cleanup_and_fail:
 	if (release_abort) {
