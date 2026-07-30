@@ -832,13 +832,13 @@ static gpointer fillin_thread_func(gpointer data)
 		res->desc = g_strdup_printf("Could not get IIO Context: %s...",
 					    strerror(res->saved_errno));
 	} else {
-		res->desc = strdup(iio_context_get_description(res->ctx));
+		res->desc = g_strdup(iio_context_get_description(res->ctx));
 		res->n_devs = iio_context_get_devices_count(res->ctx);
 		if (res->n_devs) {
 			res->dev_names = calloc(res->n_devs, sizeof(char *));
 			for (i = 0; i < res->n_devs; i++) {
 				struct iio_device *dev = iio_context_get_device(res->ctx, i);
-				res->dev_names[i] = strdup(get_iio_device_label_or_name(dev));
+				res->dev_names[i] = g_strdup(get_iio_device_label_or_name(dev));
 			}
 		}
 
