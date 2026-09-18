@@ -48,17 +48,17 @@ jobs:
               --method get_artifacts_from_location \
               --repo external \
               --package_version "libiio-v0~latest" \
-              --package_name --package_name "${{ matrix.artifact-name }}".deb
+              --package_name "${{ matrix.artifact-name }}".deb
           python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test9361-v0" \
-              --package_name --package_name "${{ matrix.artifact-name }}".deb
+              --package_name "${{ matrix.artifact-name }}".deb
           python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test-v0" \
-              --package_name --package_name "${{ matrix.artifact-name }}".deb
+              --package_name "${{ matrix.artifact-name }}".deb
 
 
       - name: Install dependencies
