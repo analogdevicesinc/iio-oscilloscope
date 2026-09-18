@@ -746,9 +746,8 @@ static void reload_button_clicked(GtkButton *btn, gpointer data)
 static int dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 {
 	unsigned coarse, fine;
-	char cmd[256];
+	char tuning[32];
 	const char *eeprom_path = find_eeprom(NULL);
-	FILE *fp = NULL;
 	const char *failure_msg = NULL;
 	int ret = 0;
 
@@ -759,13 +758,12 @@ static int dcxo_cal_to_eeprom_clicked(GtkButton *btn, gpointer data)
 
 	coarse = gtk_spin_button_get_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_coarse_num].widget));
 	fine = gtk_spin_button_get_value(GTK_SPIN_BUTTON(glb_widgets[dcxo_fine_num].widget));
-	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %.02x%.04x 2>&1", eeprom_path,
-			eeprom_path, coarse, fine);
-	fp = popen(cmd, "r");
+	snprintf(tuning, sizeof(tuning), "%.02x%.04x", coarse, fine);
 
-	if (!fp || pclose(fp) != 0) {
+	if (fru_dump_write_tuning(eeprom_path, tuning) != 0) {
 		failure_msg = "Error running fru-dump to write to EEPROM";
-		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
+		fprintf(stderr, "Error running fru-dump on %s (tuning %s)\n",
+			eeprom_path, tuning);
 		goto cleanup;
 	}
 
@@ -880,8 +878,8 @@ cleanup:
 static int xo_freq_to_eeprom(void)
 {
 	const char *eeprom_path = find_eeprom(NULL);
-	char cmd[256];
-	FILE *fp = NULL, *cmdfp = NULL;
+	char tuning[32];
+	FILE *fp = NULL;
 	const char *failure_msg = NULL;
 	double current_freq, target_freq;
 	int ret = 0;
@@ -920,13 +918,12 @@ static int xo_freq_to_eeprom(void)
 		goto cleanup;
 	}
 
-	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %x 2>&1", eeprom_path,
-		eeprom_path, (unsigned int)current_freq);
-	cmdfp = popen(cmd, "r");
+	snprintf(tuning, sizeof(tuning), "%x", (unsigned int)current_freq);
 
-	if (!cmdfp || pclose(cmdfp) != 0) {
+	if (fru_dump_write_tuning(eeprom_path, tuning) != 0) {
 		failure_msg = "Error running fru-dump to write to EEPROM";
-		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
+		fprintf(stderr, "Error running fru-dump on %s (tuning %s)\n",
+			eeprom_path, tuning);
 		goto cleanup;
 	}
 

@@ -2123,15 +2123,15 @@ bool check_inifile(const char *filepath)
 
 	buf[1023] = '\0';
 
-	if (stat(filepath, &sts) == -1)
-		return FALSE;
-
-	if (!S_ISREG(sts.st_mode))
-		return FALSE;
-
 	fd = fopen(filepath, "r");
 	if (!fd)
 		return FALSE;
+
+	/* Check the opened file rather than the path, to avoid a TOCTOU race */
+	if (fstat(fileno(fd), &sts) == -1 || !S_ISREG(sts.st_mode)) {
+		fclose(fd);
+		return FALSE;
+	}
 
 	i = fread(buf, 1, sizeof(buf) - 1, fd);
 	fclose(fd);
@@ -3091,9 +3091,11 @@ int osc_plugin_default_handle(struct iio_context *_ctx,
 		ret = iio_attr_write(attribute,value);
 	}
 	if (ret < 0) {
+		const char *name = chn ? iio_channel_get_name(chn) :
+					 iio_device_get_name(dev);
+
 		fprintf(stderr, "Unable to write '%s' to %s:%s\n", value,
-				chn ? iio_channel_get_name(chn) : iio_device_get_name(dev),
-				attr);
+				name, attr);
 	}
 
 	return ret < 0 ? ret : 0;
