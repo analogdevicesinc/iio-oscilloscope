@@ -443,7 +443,7 @@ struct BOARD_INFO * parse_board_area(unsigned char *data)
 	if (*p != 0xC1) {
 		printf_err("BOARD INFO not terminated properly, "
 				"offset %02i(0x%02x) : %02i(0x%02x) should be 0xC1\n",
-				p - data, p - data, *p, *p);
+				(int)(p - data), (unsigned int)(p - data), *p, *p);
 		goto err;
 	}
 
