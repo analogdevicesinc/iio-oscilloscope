@@ -7,8 +7,7 @@ install_apt_pkgs() {
         	libgtk-3-dev \
         	libmatio-dev \
         	libfftw3-dev \
-        	libxml2 \
-        	libxml2-dev\
+        	libxml2-dev \
         	bison \
         	flex \
         	libavahi-common-dev \
