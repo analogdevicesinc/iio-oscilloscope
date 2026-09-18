@@ -8,7 +8,6 @@ install_apt_pkgs() {
         	libmatio-dev \
         	libfftw3-dev \
         	libxml2 \
-			libxml2-16 \
         	libxml2-dev\
         	bison \
         	flex \
