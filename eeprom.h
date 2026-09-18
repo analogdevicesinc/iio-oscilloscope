@@ -21,6 +21,7 @@
 #define ADI_VERSION(v)	('0' + (v))
 
 const char *find_eeprom(const char *path);
+int fru_dump_write_tuning(const char *eeprom_path, const char *tuning);
 
 /* Version 0 */
 

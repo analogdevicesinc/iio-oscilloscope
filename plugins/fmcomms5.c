@@ -891,8 +891,8 @@ static int handle_external_request(struct osc_plugin *plugin, const char *reques
 static int dcxo_to_eeprom(void)
 {
 	const char *eeprom_path = find_eeprom(NULL);
-	char cmd[256];
-	FILE *fp = NULL, *cmdfp = NULL;
+	char tuning[32];
+	FILE *fp = NULL;
 	const char *failure_msg = NULL;
 	double current_freq, target_freq;
 	int ret = 0;
@@ -931,13 +931,12 @@ static int dcxo_to_eeprom(void)
 		goto cleanup;
 	}
 
-	sprintf(cmd, "fru-dump -i \"%s\" -o \"%s\" -t %x 2>&1", eeprom_path,
-			eeprom_path, (unsigned int)current_freq);
-	cmdfp = popen(cmd, "r");
+	snprintf(tuning, sizeof(tuning), "%x", (unsigned int)current_freq);
 
-	if (!cmdfp || pclose(cmdfp) != 0) {
+	if (fru_dump_write_tuning(eeprom_path, tuning) != 0) {
 		failure_msg = "Error running fru-dump to write to EEPROM";
-		fprintf(stderr, "Error running fru-dump: %s\n", cmd);
+		fprintf(stderr, "Error running fru-dump on %s (tuning %s)\n",
+			eeprom_path, tuning);
 		goto cleanup;
 	}
 
