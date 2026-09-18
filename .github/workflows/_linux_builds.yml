@@ -1,0 +1,79 @@
+# Reusable Linux build. Replaces the Azure "LinuxBuilds" job.
+# Dependencies (libiio / libad9361-iio / libad9166-iio) come from Cloudsmith
+# instead of Azure Pipeline artifacts. The build itself reuses the existing
+# CI/azure/build_osc_ubuntu.sh script, exactly as Azure did.
+name: Linux Builds
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  linux:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ${{ matrix.image }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu-22.04
+            artifact-name: Linux-Ubuntu-22.04
+          - image: ubuntu-24.04
+            artifact-name: Linux-Ubuntu-24.04
+          - image: ubuntu-26.04
+            artifact-name: Linux-Ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install requests
+
+      - name: Get ADI dependencies from Cloudsmith
+        env:
+          CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
+        run: |
+          set -e
+          wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
+            -O /tmp/cloudsmith_helper.py
+          mkdir -p download && cd download
+          python3 /tmp/cloudsmith_helper.py \
+              --method get_artifacts_from_location \
+              --repo external \
+              --package_version "libiio-v0~latest" \
+              --package_name --package_name "${{ matrix.artifact-name }}".deb
+          python3 /tmp/cloudsmith_helper.py \
+              --method get_artifacts_from_location \
+              --repo adi/test-alin-repo \
+              --package_version "test9361-v0" \
+              --package_name --package_name "${{ matrix.artifact-name }}".deb
+          python3 /tmp/cloudsmith_helper.py \
+              --method get_artifacts_from_location \
+              --repo adi/test-alin-repo \
+              --package_version "test-v0" \
+              --package_name --package_name "${{ matrix.artifact-name }}".deb
+
+
+      - name: Install dependencies
+        run: |
+          ./CI/azure/build_osc_ubuntu.sh install_apt_pkgs
+          ./CI/azure/build_osc_ubuntu.sh install_adi_debs
+          ./CI/azure/build_osc_ubuntu.sh install_gtkdatabox
+
+      - name: Build
+        run: ./CI/azure/build_osc_ubuntu.sh build_osc
+
+      - name: Upload build artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: error
