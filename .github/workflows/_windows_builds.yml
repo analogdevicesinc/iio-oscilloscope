@@ -1,0 +1,189 @@
+name: Windows Builds
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      libiio-version:
+        type: string
+        default: "libiio-v0~latest"
+      libad9361-version:
+        type: string
+        default: "test9361-v0"
+      libad9166-version:
+        type: string
+        default: "test-v0"
+jobs:
+  windows:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            artifact-name: Windows-2022-x64
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      # Mirrors CI/docker/inside_docker.sh (the legacy build). The prep steps
+      # (MSYS2 toolchain, Inno Setup, gtkdatabox) stand in for what the
+      # shooteu/iio-oscilloscope Docker image baked in via the Dockerfile; the
+      # runtime sequence (version -> libs -> osc -> install_prep -> iscc) then
+      # follows inside_docker.sh 1:1. Only difference: the 3 ADI libs come from
+      # Cloudsmith instead of build_libiio/build_libad9361/build_libad9166.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # tags needed for `git describe`
+
+      - name: Setup MSYS2 (MINGW64)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          # Match the legacy image's older toolchain: skip the bleeding-edge
+          # full-system upgrade so osc compiles like it did on the frozen 2021
+          # MSYS2 base, instead of against rolling gcc 16 / glib 2.90.
+          update: false
+          install: >-
+            git wget base-devel
+            mingw-w64-x86_64-gcc mingw-w64-x86_64-gdb
+            mingw-w64-x86_64-cmake mingw-w64-x86_64-make
+            mingw-w64-x86_64-autotools mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-dlfcn mingw-w64-x86_64-libserialport
+            mingw-w64-x86_64-libusb mingw-w64-x86_64-matio
+            mingw-w64-x86_64-fftw mingw-w64-x86_64-gtk3
+            mingw-w64-x86_64-glib2 mingw-w64-x86_64-jansson
+            mingw-w64-x86_64-python3 mingw-w64-x86_64-doxygen
+            mingw-w64-x86_64-tools
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Build gtkdatabox (from source)
+        run: |
+          export WORKDIR="${RUNNER_TEMP}"
+          ./CI/docker/build_mingw.sh build_gtkdatabox
+
+      - name: Set version
+        run: |
+          git config --global --add safe.directory '*'
+          OSC_BUILD_VER=$(git describe --tags --always HEAD)
+          sed "s/UNSET_VERSION/${OSC_BUILD_VER}/" osc.iss > updated-osc.iss
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+        shell: pwsh
+
+      - name: Fetch ADI libs from Cloudsmith (replaces build_libiio/9361/9166)
+        env:
+          CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py" `
+            -OutFile "$env:TEMP\cloudsmith_helper.py"
+          if (!(Test-Path build)) { mkdir build }
+          cd build
+
+          python "$env:TEMP\cloudsmith_helper.py" `
+            --method get_artifacts_from_location `
+            --repo external `
+            --package_version "${{ inputs.libiio-version }}" `
+            --package_name "Windows-MinGW-W64.zip"
+          7z e "Windows-MinGW-W64.zip" -o"." -y
+          Remove-Item "Windows-MinGW-W64.zip" -Force
+
+          python "$env:TEMP\cloudsmith_helper.py" `
+            --method get_artifacts_from_location `
+            --repo adi/test-alin-repo `
+            --package_version "${{ inputs.libad9361-version }}" `
+            --package_name "Windows-VS-2022-x64.zip"
+          7z e "Windows-VS-2022-x64.zip" -o"." -y
+          Remove-Item "Windows-VS-2022-x64.zip" -Force
+
+          python "$env:TEMP\cloudsmith_helper.py" `
+            --method get_artifacts_from_location `
+            --repo adi/test-alin-repo `
+            --package_version "${{ inputs.libad9166-version }}" `
+            --package_name "Windows-VS-2022-x64.zip"
+          7z e "Windows-VS-2022-x64.zip" -o"." -y
+          Remove-Item "Windows-VS-2022-x64.zip" -Force
+
+      - name: Install ADI libs into /mingw64
+        run: |
+          set -e
+          cd build
+          # libiio dev + runtime files (strict: fail early if the download is wrong)
+          cp -f libiio.dll   /mingw64/bin/
+          cp -f libiio.dll.a /mingw64/lib/
+          cp -f iio.h        /mingw64/include/
+          cp -f iio_*.exe    /mingw64/bin/ 2>/dev/null || true
+          # libad9361 / libad9166 come from Cloudsmith as VS-2022 (MSVC) builds:
+          # DLL + MSVC .lib + header, with no MinGW import lib and no pkg-config
+          # file. For each: install the header + DLL, generate a MinGW import lib
+          # (.dll.a) from the DLL via gendef+dlltool so gcc can link -lad936x, and
+          # synthesize the .pc so pkg_check_modules() finds it -- otherwise the
+          # fmcomms2/fmcomms2_adv/cn0511 plugins are silently dropped.
+          mkdir -p /mingw64/lib/pkgconfig
+          install_msvc_lib() {   # $1=module (libad936x)  $2=version  $3=header
+            cp -f "$1.dll" /mingw64/bin/
+            cp -f "$3"     /mingw64/include/
+            gendef "$1.dll"
+            dlltool -D "$1.dll" -d "$1.def" -l "/mingw64/lib/$1.dll.a"
+            printf '%s\n' \
+              'prefix=/mingw64' \
+              'exec_prefix=${prefix}' \
+              'libdir=${prefix}/lib' \
+              'includedir=${prefix}/include' \
+              '' \
+              "Name: $1" \
+              "Description: $1" \
+              "Version: $2" \
+              "Libs: -L\${libdir} -l${1#lib}" \
+              'Cflags: -I${includedir}' \
+              > "/mingw64/lib/pkgconfig/$1.pc"
+          }
+          install_msvc_lib libad9361 0.3 ad9361.h
+          install_msvc_lib libad9166 0.3 ad9166.h
+          # MSVC C/C++ runtime the above DLLs depend on (staged for install_prep.sh).
+          cp -f msvcp140.dll vcruntime140.dll /mingw64/bin/
+
+          # Synthesize the missing pkg-config file for libiio.
+          printf '%s\n' \
+            'prefix=/mingw64' \
+            'exec_prefix=${prefix}' \
+            'libdir=${prefix}/lib' \
+            'includedir=${prefix}/include' \
+            '' \
+            'Name: libiio' \
+            'Description: Library for interfacing with IIO devices' \
+            'Version: 0.25' \
+            'Libs: -L${libdir} -liio' \
+            'Cflags: -I${includedir}' \
+            > /mingw64/lib/pkgconfig/libiio.pc
+
+      - name: Build osc
+        run: |
+          export SRCDIR="$(pwd)"
+          ./CI/docker/build_mingw.sh build_osc
+
+      - name: Assemble install tree
+        run: |
+          export SRCDIR="$(pwd)"
+          ./CI/docker/install_prep.sh
+
+      - name: Package installer (Inno Setup)
+        shell: powershell
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /Qp updated-osc.iss'
+
+      - name: Upload build artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: artifact/adi-osc-setup.exe
+          if-no-files-found: error

@@ -1,0 +1,78 @@
+name: macOS Builds
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            artifact-name: macOS-15-arm64
+          - os: macos-15-large
+            artifact-name: macOS-15-x64
+          - os: macos-26
+            artifact-name: macOS-26-arm64
+          - os: macos-26-large
+            artifact-name: macOS-26-x64
+        #   - os: xcode-27
+        #     artifact-name: macOS-27-arm64
+    name: ${{ matrix.artifact-name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      ARTIFACTNAME: ${{ matrix.artifact-name }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+
+      - name: Get libad9166 and libad9361 from Cloudsmith
+        env:
+          CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
+        run: |
+          set -e
+          wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
+            -O /tmp/cloudsmith_helper.py
+          mkdir -p build && cd build
+          python3 /tmp/cloudsmith_helper.py \
+            --method get_artifacts_from_location \
+            --repo adi/test-alin-repo \
+            --package_version "test9361-v0" \
+            --package_name "${{matrix.artifact-name}}.pkg" 
+          python3 /tmp/cloudsmith_helper.py \
+            --method get_artifacts_from_location \
+            --repo adi/test-alin-repo \
+            --package_version "test-v0" \
+            --package_name "${{matrix.artifact-name}}.pkg"
+          python3 /tmp/cloudsmith_helper.py \
+            --method get_artifacts_from_location \
+            --repo external \
+            --package_version "libiio-v0~latest" \
+            --package_name "${{matrix.artifact-name}}.pkg" 
+      - name: Install dependencies
+        run: |
+          set -e
+          mkdir -p download
+          find download -name "*.tar" -exec tar xf {} -C download \;
+          ./CI/azure/build_osc_darwin.sh install_deps
+          ./CI/azure/build_osc_darwin.sh install_adi_pkgs
+
+      - name: Build
+        run: ./CI/azure/build_osc_darwin.sh build_osc
+
+      - name: Upload build artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: error

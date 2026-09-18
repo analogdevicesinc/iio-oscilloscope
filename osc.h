@@ -68,7 +68,12 @@ extern void math_expression_objects_clean(void);
 #define DBG(D...)
 #endif
 
-#define fallthrough	__attribute__((__fallthrough__))
+/*
+ * Project-scoped fall-through marker. Do NOT name this 'fallthrough': macOS SDK
+ * headers (os/base.h) use the bare token inside __has_attribute(fallthrough),
+ * and Apple Clang macro-expands that operand, breaking the SDK header.
+ */
+#define OSC_FALLTHROUGH	__attribute__((__fallthrough__))
 
 struct osc_plugin;
 

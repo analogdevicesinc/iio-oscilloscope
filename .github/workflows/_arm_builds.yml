@@ -1,0 +1,88 @@
+# Reusable ARM build. Replaces the Azure "ARMBuilds" job.
+# Each architecture is emulated with QEMU and built inside the same ADI CI
+# container Azure used, running the existing CI/azure/build_osc_arm.sh script.
+# Dependencies come from Cloudsmith instead of Azure Pipeline artifacts.
+name: ARM Builds
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+env:
+  DOCKER_IMAGE: tfcollins/libiio_ubuntu_18_04-ci-arm-ppc:latest
+
+jobs:
+  arm:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: s390x
+            artifact-name: Ubuntu-s390x
+          - arch: arm
+            artifact-name: Ubuntu-arm32v7
+          - arch: aarch64
+            artifact-name: Ubuntu-arm64v8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install requests
+
+      - name: Get ADI dependencies from Cloudsmith
+        env:
+          CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
+        run: |
+          set -e
+          wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
+            -O /tmp/cloudsmith_helper.py
+          mkdir -p download && cd download
+          for dep in libiio-v0 libad9361-iio-v0 libad9166-iio-v0; do
+            python3 /tmp/cloudsmith_helper.py \
+              --method get_artifacts_from_location \
+              --repo external \
+              --package_version "${dep}~latest" \
+              --package_name "${{ matrix.artifact-name }}.deb"
+          done
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Install dependencies + build
+        run: |
+          set -e
+          docker run --rm -m=4g \
+            --platform "linux/${{ matrix.arch }}" \
+            -e ARTIFACTNAME=${{ matrix.artifact-name }} \
+            -v "${{ github.workspace }}":/ci \
+            "${DOCKER_IMAGE}" \
+            /bin/bash -c "
+              set -e
+              cd /ci
+              chmod +x ./CI/azure/build_osc_arm.sh
+              ./CI/azure/build_osc_arm.sh install_apt_pkgs
+              ./CI/azure/build_osc_arm.sh install_gtkdatabox
+              ./CI/azure/build_osc_arm.sh install_adi_debs
+              ./CI/azure/build_osc_arm.sh build_osc
+            "
+
+      - name: Fix artifact permissions
+        run: sudo chown -R "$(id -u):$(id -g)" build
+
+      - name: Upload build artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: error

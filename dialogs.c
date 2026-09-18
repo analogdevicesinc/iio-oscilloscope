@@ -26,6 +26,8 @@
 #include "phone_home.h"
 #include "iio_utils.h"
 
+#include <strings.h>
+
 #ifndef GIT_VERSION
 #define GIT_VERSION	""
 #endif
@@ -773,7 +775,6 @@ static gpointer fillin_thread_func(gpointer data)
 	struct connect_params *params = data;
 	struct fillin_result *res = calloc(1, sizeof(*res));
 	struct iio_context *osc_ctx = get_context_from_osc();
-	char text[256];
 	unsigned int i;
 
 	if (!res) {
@@ -1162,7 +1163,7 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 			break;
 		default:
 			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
-			fallthrough;
+			OSC_FALLTHROUGH;
 		case GTK_RESPONSE_CANCEL:
 		case GTK_RESPONSE_DELETE_EVENT:
 			break;

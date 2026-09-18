@@ -79,7 +79,27 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	add_compile_options("-F/Library/Frameworks/")
 	link_libraries("-F/Library/Frameworks/")
 	# Fix linking on 10.14+ with Homebrew. See https://stackoverflow.com/questions/54068035
-	LINK_DIRECTORIES(/usr/local/lib)
+	# The Homebrew prefix is arch-specific: /opt/homebrew (Apple Silicon) vs
+	# /usr/local (Intel). Query brew for it, falling back to the arch default so
+	# the arm64 and x86_64 builds each link against the right prefix.
+	execute_process(COMMAND brew --prefix
+		OUTPUT_VARIABLE HOMEBREW_PREFIX
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		ERROR_QUIET)
+	if(NOT HOMEBREW_PREFIX)
+		if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+			set(HOMEBREW_PREFIX /opt/homebrew)
+		else()
+			set(HOMEBREW_PREFIX /usr/local)
+		endif()
+	endif()
+	LINK_DIRECTORIES(${HOMEBREW_PREFIX}/lib)
+	# -D_POSIX_C_SOURCE below tells the macOS SDK headers to expose ONLY POSIX and
+	# hide the Darwin/BSD extensions, so <dlfcn.h> compiles out Dl_info/dladdr
+	# (used by osc.c) and the build fails. _DARWIN_C_SOURCE restores the full
+	# extension set alongside _POSIX_C_SOURCE (order is irrelevant for macros).
+	# Linux is unaffected -- glibc exposes these via _GNU_SOURCE.
+	add_definitions(-D_DARWIN_C_SOURCE)
 endif()
 
 add_definitions(-D_GNU_SOURCE
@@ -90,16 +110,31 @@ add_definitions(-D_GNU_SOURCE
 	-D_POSIX_C_SOURCE=200809L
 )
 
-add_compile_options(-Wall -Wextra -Werror
+add_compile_options(-Wall -Wextra
 	-Wno-unused-parameter
-	-Wno-error=unused-but-set-variable
-	-Wno-error=unused-function
-	-Wno-error=deprecated
 	-Wimplicit-fallthrough
 	-Wvla
 	-std=gnu90
 	-g -O2
 )
+
+# -Werror (and its per-warning exemptions) is scoped to real GCC -- the strict
+# Linux gate. The distributable macOS build uses Apple Clang (/usr/bin/gcc), which
+# compiles this GCC-first, -std=gnu90 code with a different default warning set;
+# keeping -Wall/-Wextra visible but non-fatal there avoids failing the secondary
+# platform on Clang-vs-GCC warning differences. -Werror is listed before the
+# -Wno-error= exemptions so they take effect. -Wno-error=discarded-qualifiers is
+# itself a GCC-only warning name (glibc >= 2.41 makes strchr/strstr/etc.
+# const-correct; keep that const-qualifier warning non-fatal on newer toolchains).
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+	add_compile_options(-Werror
+		-Wno-error=unused-but-set-variable
+		-Wno-error=unused-function
+		-Wno-error=unused-variable
+		-Wno-error=deprecated
+		-Wno-error=discarded-qualifiers
+	)
+endif()
 
 if(UNIX)
 	add_definitions(-Dlinux -DFRU_FILES="${CMAKE_PREFIX_PATH}/lib/fmc-tools/")

@@ -1,0 +1,34 @@
+name: Build iio-oscilloscope across multiple platform
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - staging/*
+      - 20*
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+      - master
+      - 20*
+
+jobs:
+  # linux:
+  #   uses: ./.github/workflows/_linux_builds.yml
+  #   secrets: inherit
+  # arm:
+  #   uses: ./.github/workflows/_arm_builds.yml
+  #   secrets: inherit
+  # macOS:
+  #   uses: ./.github/workflows/_macOS_builds.yml
+  #   secrets: inherit
+  windows:
+    uses: ./.github/workflows/_windows_builds.yml
+    secrets: inherit

@@ -2,10 +2,13 @@
 set -xe
 
 export WORKDIR=/home/docker
+export SRCDIR="${SRCDIR:-$SRCDIR}"
 export STAGING_DIR="/mingw64"
 export STAGING_BIN="$STAGING_DIR/bin"
 export DLLS="$STAGING_BIN/libad9166.dll \
 $STAGING_BIN/libad9361.dll \
+$STAGING_BIN/msvcp140.dll \
+$STAGING_BIN/vcruntime140.dll \
 $STAGING_BIN/libatk-1.0-0.dll \
 $STAGING_BIN/libbrotlicommon.dll \
 $STAGING_BIN/libbrotlidec.dll \
@@ -73,46 +76,46 @@ $STAGING_BIN/iio_readdev.exe
 "
 
 bin_dir() {
-	pushd $WORKDIR
-	mkdir $WORKDIR/iio-oscilloscope/build/bin
-	cp  $WORKDIR/iio-oscilloscope/build/osc.exe $WORKDIR/iio-oscilloscope/build/bin/
-	cp  $WORKDIR/iio-oscilloscope/build/styles.css $WORKDIR/iio-oscilloscope/build/bin/
-	cp  $WORKDIR/iio-oscilloscope/build/libosc.dll $WORKDIR/iio-oscilloscope/build/bin/
+	pushd "$SRCDIR"
+	mkdir $SRCDIR/build/bin
+	cp  $SRCDIR/build/osc.exe $SRCDIR/build/bin/
+	cp  $SRCDIR/build/styles.css $SRCDIR/build/bin/
+	cp  $SRCDIR/build/libosc.dll $SRCDIR/build/bin/
 
-	cp $DLLS $WORKDIR/iio-oscilloscope/build/bin/
-	cp -r $EXES $WORKDIR/iio-oscilloscope/build/bin/
+	cp $DLLS $SRCDIR/build/bin/
+	cp -r $EXES $SRCDIR/build/bin/
 
-	cp -r $WORKDIR/iio-oscilloscope/build/plugins $WORKDIR/iio-oscilloscope/build/bin/
-	cp -r $WORKDIR/iio-oscilloscope/glade $WORKDIR/iio-oscilloscope/build/bin/
-	cp -r $WORKDIR/iio-oscilloscope/block_diagrams $WORKDIR/iio-oscilloscope/build/bin/
-	cp -r $WORKDIR/iio-oscilloscope/icons $WORKDIR/iio-oscilloscope/build/bin/
-	cp -r $WORKDIR/iio-oscilloscope/xmls $WORKDIR/iio-oscilloscope/build/bin/
+	cp -r $SRCDIR/build/plugins $SRCDIR/build/bin/
+	cp -r $SRCDIR/glade $SRCDIR/build/bin/
+	cp -r $SRCDIR/block_diagrams $SRCDIR/build/bin/
+	cp -r $SRCDIR/icons $SRCDIR/build/bin/
+	cp -r $SRCDIR/xmls $SRCDIR/build/bin/
 	popd
 }
 
 lib_dir() {
-	pushd $WORKDIR
-	mkdir $WORKDIR/iio-oscilloscope/build/lib
-	cp -r $STAGING_DIR/lib/gdk-pixbuf-2.0 $WORKDIR/iio-oscilloscope/build/lib
-	cp -r $STAGING_DIR/lib/gtk-3.0 $WORKDIR/iio-oscilloscope/build/lib
-	mkdir $WORKDIR/iio-oscilloscope/build/lib/osc
-	cp -r $WORKDIR/iio-oscilloscope/filters $WORKDIR/iio-oscilloscope/build/lib/osc
-	cp -r $WORKDIR/iio-oscilloscope/build/profiles $WORKDIR/iio-oscilloscope/build/lib/osc
-	cp -r $WORKDIR/iio-oscilloscope/waveforms $WORKDIR/iio-oscilloscope/build/lib/osc
-	cp $WORKDIR/iio-oscilloscope/build/plugins/*.dll $WORKDIR/iio-oscilloscope/build/lib/osc
+	pushd "$SRCDIR"
+	mkdir $SRCDIR/build/lib
+	cp -r $STAGING_DIR/lib/gdk-pixbuf-2.0 $SRCDIR/build/lib
+	cp -r $STAGING_DIR/lib/gtk-3.0 $SRCDIR/build/lib
+	mkdir $SRCDIR/build/lib/osc
+	cp -r $SRCDIR/filters $SRCDIR/build/lib/osc
+	cp -r $SRCDIR/build/profiles $SRCDIR/build/lib/osc
+	cp -r $SRCDIR/waveforms $SRCDIR/build/lib/osc
+	cp $SRCDIR/build/plugins/*.dll $SRCDIR/build/lib/osc
 	popd
 }
 
 share_dir() {
-	pushd $WORKDIR
-	mkdir $WORKDIR/iio-oscilloscope/build/share
-	cp -r $STAGING_DIR/share/locale $WORKDIR/iio-oscilloscope/build/share
-	cp -r $STAGING_DIR/share/themes $WORKDIR/iio-oscilloscope/build/share
-	mkdir $WORKDIR/iio-oscilloscope/build/share/icons
-	cp -r $STAGING_DIR/share/icons/Adwaita $WORKDIR/iio-oscilloscope/build/share/icons
-	cp -r $STAGING_DIR/share/icons/hicolor $WORKDIR/iio-oscilloscope/build/share/icons
-	mkdir $WORKDIR/iio-oscilloscope/build/share/glib-2.0
-	cp -r $STAGING_DIR/share/glib-2.0/schemas $WORKDIR/iio-oscilloscope/build/share/glib-2.0
+	pushd "$SRCDIR"
+	mkdir $SRCDIR/build/share
+	cp -r $STAGING_DIR/share/locale $SRCDIR/build/share
+	cp -r $STAGING_DIR/share/themes $SRCDIR/build/share
+	mkdir $SRCDIR/build/share/icons
+	cp -r $STAGING_DIR/share/icons/Adwaita $SRCDIR/build/share/icons
+	cp -r $STAGING_DIR/share/icons/hicolor $SRCDIR/build/share/icons
+	mkdir $SRCDIR/build/share/glib-2.0
+	cp -r $STAGING_DIR/share/glib-2.0/schemas $SRCDIR/build/share/glib-2.0
 	popd
 
 }

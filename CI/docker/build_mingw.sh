@@ -1,7 +1,7 @@
 #/bin/bash
 set -xe
 
-export WORKDIR=/home/$USER/
+export WORKDIR="${WORKDIR:-/home/$USER/}"
 
 init_env() {
 
@@ -126,12 +126,11 @@ build_deps() {
 }
 
 build_osc() {
-	pushd /home/docker/
-	cd iio-oscilloscope
-	mkdir build
+	pushd "${SRCDIR:-/home/docker/iio-oscilloscope}"
+	mkdir -p build
 	cd build
 	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
-	$MAKE
+	$MAKE || $MAKE_BIN -j1 VERBOSE=1
 	popd
 }
 
