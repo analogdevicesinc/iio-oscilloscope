@@ -95,6 +95,9 @@ add_compile_options(-Wall -Wextra -Werror
 	-Wno-error=unused-but-set-variable
 	-Wno-error=unused-function
 	-Wno-error=deprecated
+	# glibc >= 2.41 (e.g. Ubuntu 26.04) makes strchr/strstr/etc. const-correct;
+	# keep the resulting const-qualifier warning non-fatal so newer toolchains build.
+	-Wno-error=discarded-qualifiers
 	-Wimplicit-fallthrough
 	-Wvla
 	-std=gnu90
