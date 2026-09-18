@@ -2,6 +2,9 @@ name: windows-mingw build
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
 
   make-exe-64:
