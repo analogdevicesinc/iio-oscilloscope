@@ -2349,7 +2349,7 @@ static char *profile_gen_cli_get_api(void)
 static char *strip_leading_and_trailing_nonnumeric_chars(char *string)
 {
 	int i;
-	char *str = (char *)malloc(strlen(string) * sizeof(char));
+	char *str = (char *)malloc((strlen(string) + 1) * sizeof(char));
 	sprintf(str, "%s", string);
 
 	while((str[0] < '0' || str[0] > '9') && str[0] != '\0') {
