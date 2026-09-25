@@ -130,7 +130,30 @@ build_osc() {
 	mkdir -p build
 	cd build
 	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
-	$MAKE || $MAKE_BIN -j1 VERBOSE=1
+
+	# --- CI diagnostics (temporary) -------------------------------------
+	# osc fails with every .c file reporting "Error 1" but NO gcc diagnostic
+	# in the log. A source-level -Werror would always print "file:line:
+	# error:" before exiting, so the silent, instant, non-zero failure points
+	# at the compiler subprocess (cc1) failing to *launch* -- not the osc
+	# source. This block pins that down in a single run:
+	#   1. list cc1's DLL dependencies and flag any unresolved ones,
+	#   2. compile a trivial file to see whether the toolchain works here,
+	#   3. make the fallback genuinely serial. The old "-j1 VERBOSE=1"
+	#      silently re-forced -j9 because MAKE is exported as "$MAKE_BIN -j9"
+	#      and CMake's recursive $(MAKE) inherits it ("-j9 forced in
+	#      submake"), so parallel output masked the real per-file error.
+	echo "=== toolchain probe ==="
+	"$CC" --version
+	CC1=$("$CC" -print-prog-name=cc1 || true); echo "cc1: $CC1"
+	ldd "$CC1" 2>&1 | grep -i "not found" && echo "cc1: UNRESOLVED DLLS ^^" || echo "cc1 deps: all resolved"
+	printf 'int main(void){return 0;}\n' > _probe.c
+	"$CC" -v -c _probe.c -o _probe.o && echo "probe: OK" || echo "probe: FAILED (exit $?)"
+	rm -f _probe.c _probe.o
+	echo "=== osc build ==="
+	# --------------------------------------------------------------------
+
+	$MAKE || env -u MAKE $MAKE_BIN -j1 VERBOSE=1
 	popd
 }
 

@@ -7,8 +7,6 @@ export STAGING_DIR="/mingw64"
 export STAGING_BIN="$STAGING_DIR/bin"
 export DLLS="$STAGING_BIN/libad9166.dll \
 $STAGING_BIN/libad9361.dll \
-$STAGING_BIN/msvcp140.dll \
-$STAGING_BIN/vcruntime140.dll \
 $STAGING_BIN/libatk-1.0-0.dll \
 $STAGING_BIN/libbrotlicommon.dll \
 $STAGING_BIN/libbrotlidec.dll \
