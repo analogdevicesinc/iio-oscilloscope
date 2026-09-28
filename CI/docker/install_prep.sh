@@ -5,70 +5,11 @@ export WORKDIR=/home/docker
 export SRCDIR="${SRCDIR:-$SRCDIR}"
 export STAGING_DIR="/mingw64"
 export STAGING_BIN="$STAGING_DIR/bin"
-export DLLS="$STAGING_BIN/libad9166.dll \
-$STAGING_BIN/libad9361.dll \
-$STAGING_BIN/msvcp140.dll \
-$STAGING_BIN/vcruntime140.dll \
-$STAGING_BIN/libatk-1.0-0.dll \
-$STAGING_BIN/libbrotlicommon.dll \
-$STAGING_BIN/libbrotlidec.dll \
-$STAGING_BIN/libbz2-1.dll \
-$STAGING_BIN/libcairo-2.dll \
-$STAGING_BIN/libcairo-gobject-2.dll \
-$STAGING_BIN/libcrypto-3-x64.dll \
-$STAGING_BIN/libcurl-4.dll \
-$STAGING_BIN/libdatrie-1.dll \
-$STAGING_BIN/libepoxy-0.dll \
-$STAGING_BIN/libexpat-1.dll \
-$STAGING_BIN/libffi-8.dll \
-$STAGING_BIN/libfftw3-3.dll \
-$STAGING_BIN/libfontconfig-1.dll \
-$STAGING_BIN/libfreetype-6.dll \
-$STAGING_BIN/libfribidi-0.dll \
-$STAGING_BIN/libgcc_s_seh-1.dll \
-$STAGING_BIN/libgdk_pixbuf-2.0-0.dll \
-$STAGING_BIN/libgdk-3-0.dll \
-$STAGING_BIN/libgio-2.0-0.dll \
-$STAGING_BIN/libglib-2.0-0.dll \
-$STAGING_BIN/libgmodule-2.0-0.dll \
-$STAGING_BIN/libgobject-2.0-0.dll \
-$STAGING_BIN/libgraphite2.dll \
-$STAGING_BIN/libgthread-2.0-0.dll \
-$STAGING_BIN/libgtk-3-0.dll \
-$STAGING_BIN/libgtkdatabox-1.dll \
-$STAGING_BIN/libharfbuzz-0.dll \
-$STAGING_BIN/libhdf5-310.dll \
-$STAGING_BIN/libiconv-2.dll \
-$STAGING_BIN/libidn2-0.dll \
-$STAGING_BIN/libiio.dll \
-$STAGING_BIN/libintl-8.dll \
-$STAGING_BIN/libjansson-4.dll \
-$STAGING_BIN/liblzma-5.dll \
-$STAGING_BIN/libmatio-11.dll \
-$STAGING_BIN/libnghttp2-14.dll \
-$STAGING_BIN/libpango-1.0-0.dll \
-$STAGING_BIN/libpangocairo-1.0-0.dll \
-$STAGING_BIN/libpangoft2-1.0-0.dll \
-$STAGING_BIN/libpangowin32-1.0-0.dll \
-$STAGING_BIN/libpcre2-8-0.dll \
-$STAGING_BIN/libpcre2-32-0.dll \
-$STAGING_BIN/libpixman-1-0.dll \
-$STAGING_BIN/libpng16-16.dll \
-$STAGING_BIN/libpsl-5.dll \
-$STAGING_BIN/librsvg-2-2.dll \
-$STAGING_BIN/libserialport-0.dll \
-$STAGING_BIN/libssh2-1.dll \
-$STAGING_BIN/libssl-3-x64.dll \
-$STAGING_BIN/libstdc++-6.dll \
-$STAGING_BIN/libsz.dll \
-$STAGING_BIN/libthai-0.dll \
-$STAGING_BIN/libunistring-5.dll \
-$STAGING_BIN/libusb-1.0.dll \
-$STAGING_BIN/libwinpthread-1.dll \
-$STAGING_BIN/libxml2-2.dll \
-$STAGING_BIN/libzstd.dll \
-$STAGING_BIN/zlib1.dll
-"
+# The runtime DLL closure is resolved dynamically from /mingw64 in bin_dir()
+# via ldd, instead of hardcoding a soname list here. The old static list broke
+# whenever the MSYS2 packages updated (version-suffixed names like libhdf5-310
+# / libmatio-11 drift) and carried MSVC-only leftovers (msvcp140/vcruntime140)
+# from the era when the ADI libs were prebuilt with VS instead of MinGW.
 export EXES="$STAGING_BIN/curl.exe \
 $STAGING_BIN/iio_genxml.exe \
 $STAGING_BIN/iio_info.exe \
@@ -77,15 +18,42 @@ $STAGING_BIN/iio_readdev.exe
 
 bin_dir() {
 	pushd "$SRCDIR"
-	mkdir $SRCDIR/build/bin
+	mkdir -p $SRCDIR/build/bin
 	cp  $SRCDIR/build/osc.exe $SRCDIR/build/bin/
 	cp  $SRCDIR/build/styles.css $SRCDIR/build/bin/
 	cp  $SRCDIR/build/libosc.dll $SRCDIR/build/bin/
 
-	cp $DLLS $SRCDIR/build/bin/
 	cp -r $EXES $SRCDIR/build/bin/
-
 	cp -r $SRCDIR/build/plugins $SRCDIR/build/bin/
+
+	# Copy the runtime DLL closure from /mingw64 instead of a hardcoded soname
+	# list (which drifts every time the MSYS2 packages update). Seed ldd with
+	# everything we ship that has imports -- osc + the bundled EXEs, libosc,
+	# every plugin, and the gdk-pixbuf / gtk loader modules staged by lib_dir()
+	# (their deps, e.g. librsvg for SVG icons, are dlopened at runtime so they
+	# never show up under osc.exe itself) -- plus the ADI libs explicitly in
+	# case a plugin only dlopens them. Keep only deps under /mingw64/bin;
+	# Windows system DLLs resolve elsewhere and are skipped. ldd walks deps
+	# transitively, so one pass yields the full closure.
+	local seeds
+	seeds=$(find "$SRCDIR/build/bin" "$SRCDIR/build/lib" -type f \
+		\( -name '*.exe' -o -name '*.dll' \))
+	ldd $seeds $STAGING_BIN/libad9361.dll $STAGING_BIN/libad9166.dll 2>/dev/null \
+		| awk '/=> \/mingw64\/bin\// {print $3}' \
+		| sort -u \
+		| xargs -r -I{} cp -u {} $SRCDIR/build/bin/
+
+	# Guard against a silent empty closure (e.g. if ldd's output format ever
+	# changes and the filter above stops matching): a healthy osc/GTK3 closure
+	# is ~60 DLLs, so if far fewer landed, fail the build now instead of
+	# shipping an installer that crashes on launch. Name-agnostic on purpose --
+	# no soname to keep in sync.
+	dll_count=$(find "$SRCDIR/build/bin" -maxdepth 1 -name '*.dll' | wc -l)
+	if [ "$dll_count" -lt 20 ]; then
+		echo "install_prep: only $dll_count DLLs resolved from /mingw64 -- ldd dependency resolution likely failed" >&2
+		exit 1
+	fi
+
 	cp -r $SRCDIR/glade $SRCDIR/build/bin/
 	cp -r $SRCDIR/block_diagrams $SRCDIR/build/bin/
 	cp -r $SRCDIR/icons $SRCDIR/build/bin/
