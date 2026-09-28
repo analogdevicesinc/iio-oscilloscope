@@ -71,7 +71,7 @@ build_libiio() {
 	git checkout $LIBIIO_BRANCH
 	mkdir build
 	cd build
-	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" -DWITH_SERIAL_BACKEND=ON ../
+	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" -DWITH_SERIAL_BACKEND=ON -DWITH_DOC=OFF ../
 	$MAKE install
 	popd
 }
@@ -87,7 +87,7 @@ build_libad9361() {
 	git checkout $LIBAD9361_BRANCH
 	mkdir build
 	cd build
-	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
+	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" -DWITH_DOC=OFF ../
 	$MAKE install
 	popd
 	}
@@ -103,7 +103,7 @@ build_libad9166 () {
 	git checkout $LIBAD9166_BRANCH
 	mkdir build
 	cd build
-	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
+	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" -DWITH_DOC=OFF ../
 	$MAKE install
 	popd
 }

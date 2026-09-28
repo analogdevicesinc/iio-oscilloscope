@@ -17,9 +17,6 @@ jobs:
     name: ${{ matrix.artifact-name }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
-    # Native (no-Docker) mirror of the working Docker build (buildmingw.yml /
-    # inside_docker.sh): the ADI deps are built from source with MinGW instead
-    # of fetched prebuilt from Cloudsmith. Branches match the Docker build.
     env:
       LIBIIO_BRANCH: ${{ inputs.libiio-branch || 'libiio-v0' }}
       LIBAD9361_BRANCH: ${{ inputs.libad9361-branch || 'main' }}
@@ -42,10 +39,6 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          # update:true runs `pacman -Syuu` first (like the Docker image's
-          # Dockerfile), so the freshly installed gcc and its runtime DLLs
-          # (gcc-libs/isl/mpfr/zstd/...) are self-consistent. update:false left
-          # them version-skewed, which made cc1.exe fail to launch silently.
           update: true
           install: >-
             git wget base-devel
