@@ -2,13 +2,68 @@ name: ARM Builds
 
 on:
   workflow_dispatch:
+    inputs:
+      build-type:
+        required: false
+        type: string
+        default: RelWithDebInfo
   workflow_call:
+    inputs:
+      build-type:
+        required: true
+        type: string
 
 env:
-  DOCKER_IMAGE: tfcollins/libiio_ubuntu_18_04-ci-arm-ppc:latest
+  APP_NAME: iio-oscilloscope
 
 jobs:
-  arm:
+  arm-native:
+    name: ${{ matrix.architecture }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - docker_image: arm64v8/debian:trixie
+            architecture: aarch64
+            platform_flag: ''
+          - docker_image: arm32v7/debian:trixie
+            architecture: armhf
+            platform_flag: '--platform linux/arm/v7'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: ${{ env.APP_NAME }}
+
+      - name: Start persistent container
+        run: |
+          docker run -d ${{ matrix.platform_flag }} \
+            --name osc-${{ matrix.architecture }} \
+            -v "$GITHUB_WORKSPACE/${{ env.APP_NAME }}:/workspace/${{ env.APP_NAME }}" \
+            -w /workspace/${{ env.APP_NAME }} \
+            ${{ matrix.docker_image }} tail -f /dev/null
+
+      - name: Build AppImage + deb
+        run: docker exec osc-${{ matrix.architecture }} sh -c "./CI/setup_and_build.sh ${{ matrix.architecture }}" 2>&1
+
+      - name: Copy artifacts from container
+        run: |
+          docker cp osc-${{ matrix.architecture }}:/workspace/iio-oscilloscope-${{ matrix.architecture }}.AppImage ${{ github.workspace }}/
+          docker exec osc-${{ matrix.architecture }} sh -c "mkdir -p /tmp/deb && cp /workspace/iio-oscilloscope_* /tmp/deb/"
+          docker cp osc-${{ matrix.architecture }}:/tmp/deb/. ${{ github.workspace }}/
+
+      - name: Upload artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: osc-linux-${{ matrix.architecture }}
+          path: |
+            ${{ github.workspace }}/iio-oscilloscope-${{ matrix.architecture }}.AppImage
+            ${{ github.workspace }}/iio-oscilloscope_*
+          if-no-files-found: error
+
+  cross-arch:
     name: ${{ matrix.artifact-name }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -17,67 +72,68 @@ jobs:
       matrix:
         include:
           - arch: s390x
-            artifact-name: Ubuntu-s390x
-          - arch: arm
-            artifact-name: Ubuntu-arm32v7
-          - arch: aarch64
-            artifact-name: Ubuntu-arm64v8
+            artifact-name: Ubuntu-22.04-s390x
+          - arch: ppc64le
+            artifact-name: Ubuntu-22.04-ppc64le
+    env:
+      CMAKE_BUILD_TYPE: ${{ inputs.build-type }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
-
       - run: pip install requests
 
       - name: Get ADI dependencies from Cloudsmith
         env:
+          # TODO(production): switch secret to CLOUDSMITH_API_KEY
           CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
         run: |
           set -e
           wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
             -O /tmp/cloudsmith_helper.py
           mkdir -p download && cd download
-          for dep in libiio-v0 libad9361-iio-v0 libad9166-iio-v0; do
+          for ver in libiio-v0~latest libad9361-iio-v0~latest libad9166-iio-v0~latest; do
             python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo external \
-              --package_version "${dep}~latest" \
-              --package_name "${{ matrix.artifact-name }}.deb"
+              --package_version "$ver" \
+              --package_name "${{ matrix.artifact-name }}".deb
           done
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
-      - name: Install dependencies + build
+      - name: Build (QEMU)
         run: |
           set -e
-          docker run --rm -m=4g \
-            --platform "linux/${{ matrix.arch }}" \
+          docker run --rm -m=4g --platform "linux/${{ matrix.arch }}" \
             -e ARTIFACTNAME=${{ matrix.artifact-name }} \
+            -e CMAKE_BUILD_TYPE=${{ inputs.build-type }} \
             -v "${{ github.workspace }}":/ci \
-            "${DOCKER_IMAGE}" \
+            ubuntu:22.04 \
             /bin/bash -c "
               set -e
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update
+              apt-get install -y sudo build-essential git cmake wget curl ca-certificates autoconf automake libtool
               cd /ci
               chmod +x ./CI/build_osc_arm.sh
               ./CI/build_osc_arm.sh install_apt_pkgs
-              ./CI/build_osc_arm.sh install_gtkdatabox
               ./CI/build_osc_arm.sh install_adi_debs
+              ./CI/build_osc_arm.sh install_gtkdatabox
               ./CI/build_osc_arm.sh build_osc
             "
 
       - name: Fix artifact permissions
         run: sudo chown -R "$(id -u):$(id -g)" build
 
-      - name: Upload build artifacts
+      - name: Upload artifacts
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact-name }}
           path: build/
