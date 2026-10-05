@@ -1,0 +1,19 @@
+name: Scheduled Build
+
+on:
+  schedule:
+    - cron: '7 3 1 * *'   # Monthly, 1st at ~03:07 UTC
+
+permissions:
+  actions: write
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Dispatch build
+        # O2: nightly / "v0" publish branch is main for this repo.
+        run: gh workflow run build.yml --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
