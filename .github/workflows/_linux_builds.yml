@@ -2,44 +2,65 @@ name: Linux Builds
 
 on:
   workflow_dispatch:
+    inputs:
+      build-type:
+        required: false
+        type: string
+        default: RelWithDebInfo
   workflow_call:
+    inputs:
+      build-type:
+        required: true
+        type: string
 
 jobs:
   linux:
     name: ${{ matrix.artifact-name }}
-    runs-on: ${{ matrix.image }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         include:
-          - image: ubuntu-22.04
+          - image: ubuntu:22.04
             artifact-name: Linux-Ubuntu-22.04
-          - image: ubuntu-24.04
+          - image: ubuntu:24.04
             artifact-name: Linux-Ubuntu-24.04
-          - image: ubuntu-26.04
+          - image: ubuntu:26.04
             artifact-name: Linux-Ubuntu-26.04
+          - image: debian:bookworm
+            artifact-name: Linux-Debian-12
+          - image: debian:trixie
+            artifact-name: Linux-Debian-13
+    container:
+      image: ${{ matrix.image }}
+    env:
+      CMAKE_BUILD_TYPE: ${{ inputs.build-type }}
     steps:
+      - name: Install base packages
+        run: |
+          set -e
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y sudo build-essential git cmake wget curl ca-certificates \
+            python3 python3-requests autoconf automake libtool
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - run: pip install requests
-
       - name: Get ADI dependencies from Cloudsmith
         env:
+          # TODO(production): switch secret to CLOUDSMITH_API_KEY
           CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
         run: |
           set -e
           wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
             -O /tmp/cloudsmith_helper.py
           mkdir -p download && cd download
+          # libiio from external; libad9361/libad9166 from the test repo.
+          # TODO(production): --repo adi/external and *-v0~latest versions
           python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo external \
@@ -56,7 +77,6 @@ jobs:
               --package_version "test-v0" \
               --package_name "${{ matrix.artifact-name }}".deb
 
-
       - name: Install dependencies
         run: |
           ./CI/build_osc_ubuntu.sh install_apt_pkgs
@@ -68,8 +88,41 @@ jobs:
 
       - name: Upload build artifacts
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact-name }}
           path: build/
+          if-no-files-found: error
+
+  appimage-x86_64:
+    name: osc-linux-x86_64
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies (built from source)
+        run: |
+          ./CI/appimage_x86_64/install_deps.sh \
+            install_apt_pkgs install_gtkdatabox install_libiio \
+            install_libad9361 install_libad9166 install_libserialport
+
+      - name: Build osc
+        run: ./CI/appimage_x86_64/build_osc.sh
+
+      - name: Create AppImage
+        run: |
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          ./CI/appimage_x86_64/create_appimage.sh \
+            get_tools create_appdir create_appimage move_appimage
+
+      - name: Upload AppImage
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: osc-linux-x86_64
+          path: ADI_IIO_Oscilloscope-x86_64.AppImage
           if-no-files-found: error
