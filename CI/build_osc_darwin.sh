@@ -96,7 +96,8 @@ build_osc() {
 	echo "CPATH=${CPATH}"
 
 	mkdir -p build && cd build
-	cmake -DCMAKE_C_COMPILER="/usr/bin/gcc" ..
+	cmake -DCMAKE_C_COMPILER="/usr/bin/gcc" \
+		-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE:-RelWithDebInfo}" ..
 	make -j9
 
 	# Assert the artifact matches the runner arch, so a stray universal/cross
