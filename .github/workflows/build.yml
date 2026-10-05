@@ -1,0 +1,78 @@
+name: Build and Deploy iio-oscilloscope
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - 'staging/*'
+      - '20*'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+      - '20*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      build-type: ${{ steps.set.outputs.build-type }}
+      is-v0: ${{ steps.set.outputs.is-v0 }}
+      is-release: ${{ steps.set.outputs.is-release }}
+      cloudsmith-version: ${{ steps.set.outputs.cloudsmith-version }}
+    steps:
+      - id: set
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "build-type=Release" >> "${GITHUB_OUTPUT}"
+            echo "is-release=true" >> "${GITHUB_OUTPUT}"
+            echo "cloudsmith-version=iio-oscilloscope-${GITHUB_REF#refs/tags/}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "build-type=RelWithDebInfo" >> "${GITHUB_OUTPUT}"
+            echo "is-release=false" >> "${GITHUB_OUTPUT}"
+          fi
+          # O2: nightly / "v0" publish branch is main for this repo.
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "is-v0=true" >> "${GITHUB_OUTPUT}"
+            echo "cloudsmith-version=iio-oscilloscope-v0~latest" >> "${GITHUB_OUTPUT}"
+          else
+            echo "is-v0=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+  linux:
+    needs: setup
+    uses: ./.github/workflows/_linux_builds.yml
+    with:
+      build-type: ${{ needs.setup.outputs.build-type }}
+    secrets: inherit
+
+  arm:
+    needs: setup
+    uses: ./.github/workflows/_arm_builds.yml
+    with:
+      build-type: ${{ needs.setup.outputs.build-type }}
+    secrets: inherit
+
+  macos:
+    needs: setup
+    uses: ./.github/workflows/_macOS_builds.yml
+    with:
+      build-type: ${{ needs.setup.outputs.build-type }}
+    secrets: inherit
+
+  windows:
+    needs: setup
+    uses: ./.github/workflows/_windows_builds.yml
+    secrets: inherit
