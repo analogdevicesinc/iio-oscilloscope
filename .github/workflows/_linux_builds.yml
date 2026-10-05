@@ -86,13 +86,16 @@ jobs:
       - name: Build
         run: ./CI/build_osc_ubuntu.sh build_osc
 
-      - name: Upload build artifacts
-        if: github.event_name != 'pull_request'
+      # Distro-matrix builds are compat smoke tests; keep the raw tree only on
+      # failure for debugging (not published). The x86_64 AppImage is the
+      # publishable Linux deliverable (separate job below).
+      - name: Upload build tree (on failure, for debugging)
+        if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact-name }}
           path: build/
-          if-no-files-found: error
+          if-no-files-found: ignore
 
   appimage-x86_64:
     name: osc-linux-x86_64

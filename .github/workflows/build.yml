@@ -154,7 +154,7 @@ jobs:
               filename=$(basename "${file}")
               # Strip the git hash (.g<hex>) so the name is stable across commits.
               stable=$(echo "${filename}" | sed 's/\.g[0-9a-f]\+//')
-              cloudsmith push raw --republish --tags "${tag}" --version "${VERSION}" \
+              cloudsmith push raw --republish --name "${stable}" --tags "${tag}" --version "${VERSION}" \
                 adi/test-alin-repo "${file}"
             done
           done
@@ -179,5 +179,8 @@ jobs:
         with:
           draft: true
           name: "iio-oscilloscope ${{ github.ref_name }}"
-          files: ${{ github.workspace }}/artifacts/*
+          # download-artifact nests each artifact under artifacts/<name>/, so match
+          # files one level down (artifacts/* would match directories, which the
+          # release action drops).
+          files: ${{ github.workspace }}/artifacts/**
           generate_release_notes: true

@@ -42,7 +42,7 @@ install_adi_debs() {
 
 build_osc() {
 	mkdir build && cd build
-	cmake ../
+	cmake -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE:-RelWithDebInfo}" ../
 	make -j9
 }
 
