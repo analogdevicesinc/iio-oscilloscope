@@ -63,11 +63,11 @@ jobs:
           set -e
           mkdir -p download
           find download -name "*.tar" -exec tar xf {} -C download \;
-          ./CI/azure/build_osc_darwin.sh install_deps
-          ./CI/azure/build_osc_darwin.sh install_adi_pkgs
+          ./CI/build_osc_darwin.sh install_deps
+          ./CI/build_osc_darwin.sh install_adi_pkgs
 
       - name: Build
-        run: ./CI/azure/build_osc_darwin.sh build_osc
+        run: ./CI/build_osc_darwin.sh build_osc
 
       - name: Upload build artifacts
         if: github.event_name != 'pull_request'

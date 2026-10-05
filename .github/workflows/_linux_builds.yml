@@ -1,7 +1,3 @@
-# Reusable Linux build. Replaces the Azure "LinuxBuilds" job.
-# Dependencies (libiio / libad9361-iio / libad9166-iio) come from Cloudsmith
-# instead of Azure Pipeline artifacts. The build itself reuses the existing
-# CI/azure/build_osc_ubuntu.sh script, exactly as Azure did.
 name: Linux Builds
 
 on:
@@ -63,12 +59,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          ./CI/azure/build_osc_ubuntu.sh install_apt_pkgs
-          ./CI/azure/build_osc_ubuntu.sh install_adi_debs
-          ./CI/azure/build_osc_ubuntu.sh install_gtkdatabox
+          ./CI/build_osc_ubuntu.sh install_apt_pkgs
+          ./CI/build_osc_ubuntu.sh install_adi_debs
+          ./CI/build_osc_ubuntu.sh install_gtkdatabox
 
       - name: Build
-        run: ./CI/azure/build_osc_ubuntu.sh build_osc
+        run: ./CI/build_osc_ubuntu.sh build_osc
 
       - name: Upload build artifacts
         if: github.event_name != 'pull_request'

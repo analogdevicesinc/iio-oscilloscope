@@ -1,7 +1,3 @@
-# Reusable ARM build. Replaces the Azure "ARMBuilds" job.
-# Each architecture is emulated with QEMU and built inside the same ADI CI
-# container Azure used, running the existing CI/azure/build_osc_arm.sh script.
-# Dependencies come from Cloudsmith instead of Azure Pipeline artifacts.
 name: ARM Builds
 
 on:
@@ -69,11 +65,11 @@ jobs:
             /bin/bash -c "
               set -e
               cd /ci
-              chmod +x ./CI/azure/build_osc_arm.sh
-              ./CI/azure/build_osc_arm.sh install_apt_pkgs
-              ./CI/azure/build_osc_arm.sh install_gtkdatabox
-              ./CI/azure/build_osc_arm.sh install_adi_debs
-              ./CI/azure/build_osc_arm.sh build_osc
+              chmod +x ./CI/build_osc_arm.sh
+              ./CI/build_osc_arm.sh install_apt_pkgs
+              ./CI/build_osc_arm.sh install_gtkdatabox
+              ./CI/build_osc_arm.sh install_adi_debs
+              ./CI/build_osc_arm.sh build_osc
             "
 
       - name: Fix artifact permissions
