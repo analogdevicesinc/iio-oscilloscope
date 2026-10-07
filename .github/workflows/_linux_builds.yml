@@ -85,10 +85,6 @@ jobs:
 
       - name: Build
         run: ./CI/build_osc_ubuntu.sh build_osc
-
-      # Distro-matrix builds are compat smoke tests; keep the raw tree only on
-      # failure for debugging (not published). The x86_64 AppImage is the
-      # publishable Linux deliverable (separate job below).
       - name: Upload build tree (on failure, for debugging)
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -97,35 +93,35 @@ jobs:
           path: build/
           if-no-files-found: ignore
 
-  appimage-x86_64:
-    name: osc-linux-x86_64
-    runs-on: ubuntu-22.04
-    timeout-minutes: 45
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
+  # appimage-x86_64:
+  #   name: osc-linux-x86_64
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 45
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+  #       with:
+  #         fetch-depth: 0
 
-      - name: Install dependencies (built from source)
-        run: |
-          ./CI/appimage_x86_64/install_deps.sh \
-            install_apt_pkgs install_gtkdatabox install_libserialport \
-            install_libiio install_libad9361 install_libad9166
+  #     - name: Install dependencies (built from source)
+  #       run: |
+  #         ./CI/appimage_x86_64/install_deps.sh \
+  #           install_apt_pkgs install_gtkdatabox install_libserialport \
+  #           install_libiio instal
 
-      - name: Build osc
-        run: ./CI/appimage_x86_64/build_osc.sh
+  #     - name: Build osc
+  #       run: ./CI/appimage_x86_64/build_osc.sh
 
-      - name: Create AppImage
-        run: |
-          export APPIMAGE_EXTRACT_AND_RUN=1
-          ./CI/appimage_x86_64/create_appimage.sh \
-            get_tools create_appdir create_appimage move_appimage
+  #     - name: Create AppImage
+  #       run: |
+  #         export APPIMAGE_EXTRACT_AND_RUN=1
+  #         ./CI/appimage_x86_64/create_appimage.sh \
+  #           get_tools create_appdir create_appimage move_appimage
 
-      - name: Upload AppImage
-        if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: osc-linux-x86_64
-          path: ADI_IIO_Oscilloscope-x86_64.AppImage
-          if-no-files-found: error
+  #     - name: Upload AppImage
+  #       if: github.event_name != 'pull_request'
+  #       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  #       with:
+  #         name: osc-linux-x86_64
+  #         path: ADI_IIO_Oscilloscope-x86_64.AppImage
+  #         if-no-files-found: error
