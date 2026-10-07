@@ -110,8 +110,8 @@ jobs:
       - name: Install dependencies (built from source)
         run: |
           ./CI/appimage_x86_64/install_deps.sh \
-            install_apt_pkgs install_gtkdatabox install_libiio \
-            install_libad9361 install_libad9166 install_libserialport
+            install_apt_pkgs install_gtkdatabox install_libserialport \
+            install_libiio install_libad9361 install_libad9166
 
       - name: Build osc
         run: ./CI/appimage_x86_64/build_osc.sh
