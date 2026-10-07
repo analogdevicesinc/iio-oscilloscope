@@ -46,7 +46,7 @@ create_appdir()
 	# inside a docker image you can't run an appimage executable without privileges
 	# so the solution is to extract the appimage first and only then to run it
 	export APPIMAGE_EXTRACT_AND_RUN=1
-	$STAGING_AREA/linuxdeploy-x86_64.AppImage --appimage-extract\
+	$STAGING_AREA/linuxdeploy-x86_64.AppImage \
 		--appdir $APP_DIR \
 		--executable $SRC_DIR/build/osc \
 		--custom-apprun $SRC_DIR/CI/appimage_x86_64/AppRun \
