@@ -36,7 +36,6 @@ install_apt_pkgs() {
         	wget \
         	git \
         	libtool \
-        	libfuse2 \
         	dpkg-dev
         "
         sudo apt-get update
