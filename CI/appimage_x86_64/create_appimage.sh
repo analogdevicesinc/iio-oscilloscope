@@ -41,7 +41,7 @@ create_appdir()
 	pushd $STAGING_AREA
 	rm -rf $APP_DIR
 
-	ldconfig
+	sudo ldconfig
 
 	# inside a docker image you can't run an appimage executable without privileges
 	# so the solution is to extract the appimage first and only then to run it
