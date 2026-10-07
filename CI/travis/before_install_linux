@@ -3,54 +3,37 @@
 . CI/travis/lib.sh
 . CI/travis/before_install_lib.sh
 
-handle_centos() {
+# handle_centos() {
 
-	# First EPEL stuff
-	yum install -y epel-release yum-utils
-	yum config-manager --set-enabled powertools
+# 	# First EPEL stuff
+# 	yum install -y epel-release yum-utils
+# 	yum config-manager --set-enabled powertools
 
-	# FIXME: see about adding `libserialport-dev` from EPEL ; maybe libusb-1.0.0-devel...
-	yum -y groupinstall 'Development Tools'
+# 	# FIXME: see about adding `libserialport-dev` from EPEL ; maybe libusb-1.0.0-devel...
+# 	yum -y groupinstall 'Development Tools'
 	
-	yum -y install wget
-	wget https://github.com/Kitware/CMake/releases/download/v3.15.2/cmake-3.15.2.tar.gz
-	tar -zxvf cmake-3.15.2.tar.gz
-	cd cmake-3.15.2
-	./bootstrap
-	make
-	make install
-	cd ..
-	yum -y install epel-release
-	yum -y install libzstd
+# 	yum -y install wget
+# 	wget https://github.com/Kitware/CMake/releases/download/v3.15.2/cmake-3.15.2.tar.gz
+# 	tar -zxvf cmake-3.15.2.tar.gz
+# 	cd cmake-3.15.2
+# 	./bootstrap
+# 	make
+# 	make install
+# 	cd ..
+# 	yum -y install epel-release
+# 	yum -y install libzstd
 
-	yum -y install dnf
-	dnf -y --enablerepo=powertools install doxygen
+# 	yum -y install dnf
+# 	dnf -y --enablerepo=powertools install doxygen
 	
-	yum -y install  libxml2-devel libcurl-devel glib2-devel \
-               fftw-devel libusb1-devel jansson-devel cmake gtk2-devel \
-               bison flex matio-devel libaio-devel libtool avahi-devel
+# 	yum -y install  libxml2-devel libcurl-devel glib2-devel \
+#                fftw-devel libusb1-devel jansson-devel cmake gtk2-devel \
+#                bison flex matio-devel libaio-devel libtool avahi-devel
 
-	if [ -n "$PACKAGE_TO_INSTALL" ] ; then
-		sudo yum localinstall -y $PACKAGE_TO_INSTALL
-		STAGINGDIR=/usr
-	elif [ "$INSTALL_FROM_SW_DOWNLOADS" = "1" ] ; then
-		for pkg in libiio libad9361-iio libad9166-iio; do
-			wget http://swdownloads.analog.com/cse/travis_builds/${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.rpm
-			sudo yum localinstall -y ./${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.rpm
-		done
-	else
-		cmake_build_git "libiio" "https://github.com/analogdevicesinc/libiio" "" "-DINSTALL_UDEV_RULE:BOOL=OFF"
-		cmake_build_git "libad9361-iio" "https://github.com/analogdevicesinc/libad9361-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
-		cmake_build_git "libad9166-iio" "https://github.com/analogdevicesinc/libad9166-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
-	fi
 
-	# XXX: There is no gtkdatabox available in CentOS or EPEL....
-	make_build_wget "gtkdatabox-0.9.3.0" "https://sourceforge.net/projects/gtkdatabox/files/gtkdatabox/0.9.3.0/gtkdatabox-0.9.3.0.tar.gz/download"
-}
-
-handle_generic_docker() {
-	prepare_docker_image
-}
+# 	# XXX: There is no gtkdatabox available in CentOS or EPEL....
+# 	make_build_wget "gtkdatabox-0.9.3.0" "https://sourceforge.net/projects/gtkdatabox/files/gtkdatabox/0.9.3.0/gtkdatabox-0.9.3.0.tar.gz/download"
+# }
 
 handle_default() {
 	sudo apt-get -qq update
@@ -58,19 +41,6 @@ handle_default() {
 		libcurl4-openssl-dev libmatio-dev libglib2.0-dev libfftw3-dev libusb-1.0-0-dev \
 		libjansson-dev cmake libgtk2.0-dev libgtkdatabox-dev bison flex doxygen \
 		libaio-dev libavahi-client-dev libserialport-dev
-
-	if [ -n "$PACKAGE_TO_INSTALL" ] ; then
-		sudo dpkg -i $PACKAGE_TO_INSTALL
-	elif [ "$INSTALL_FROM_SW_DOWNLOADS" = "1" ] ; then
-		for pkg in libiio libad9361-iio libad9166-iio ; do
-			wget http://swdownloads.analog.com/cse/travis_builds/${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.deb
-			sudo dpkg -i ./${LIBIIO_BRANCH}_latest_${pkg}${LDIST}.deb
-		done
-	else
-		cmake_build_git "libiio" "https://github.com/analogdevicesinc/libiio" "" "-DINSTALL_UDEV_RULE:BOOL=OFF"
-		cmake_build_git "libad9361-iio" "https://github.com/analogdevicesinc/libad9361-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
-		cmake_build_git "libad9166-iio" "https://github.com/analogdevicesinc/libad9166-iio" "" "-DLIBIIO_INCLUDEDIR:PATH=$STAGINGDIR/include -DLIBIIO_LIBRARIES:FILEPATH=$STAGINGDIR/lib/libiio.so"
-	fi
 }
 
 handle_ubuntu() {
