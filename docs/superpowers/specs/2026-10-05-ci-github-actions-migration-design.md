@@ -11,8 +11,8 @@ Finish migrating this repo's CI from Azure Pipelines to GitHub Actions, replicat
 architecture introduced for the sibling library in
 [`analogdevicesinc/libad9166-iio` PR #51](https://github.com/analogdevicesinc/libad9166-iio/pull/51),
 adapted to the fact that **iio-oscilloscope is a GTK application** (produces AppImage / `.deb` /
-Windows Inno-Setup installer), **not a library** (no Python bindings, no PyPI, no MSVC build, no
-`.rpm`).
+Windows Inno-Setup installer), **not a library** (no Python bindings, no PyPI, no MSVC build). RPM
+distros (Fedora/openSUSE) are built and packaged as compile-proof CI artifacts only — see S4.
 
 The structure mirrors PR #51 (orchestrator + `setup` job + reusable per-platform workflows +
 `check-artifacts` + `push-cloudsmith` + draft `push-github-release` + scheduled dispatch +
@@ -22,7 +22,7 @@ The structure mirrors PR #51 (orchestrator + `setup` job + reusable per-platform
 
 | # | Decision | Choice |
 |---|----------|--------|
-| 1 | Linux matrix | **Deb distros only**: Ubuntu 22.04/24.04/26.04 + Debian 12/13. No RPM, no Fedora/openSUSE. |
+| 1 | Linux matrix | Ubuntu 22.04/24.04/26.04 + Debian 12/13 (apt), **plus Fedora 42/44 + openSUSE Leap 15.6/16.0 (RPM)**. See S4. |
 | 2 | Windows | **Keep MinGW/MSYS2 + Inno Setup** (existing, working `adi-osc-setup.exe`). No MSVC rewrite. |
 | 3 | Publishing | **Add** `check-artifacts` + `push-cloudsmith` + draft `push-github-release`. |
 | 4 | Cloudsmith refs | **Keep test refs** (`adi/test-alin-repo`, `test9361-v0`/`test-v0`, `TEST_REPO_CLOUDSMITH_TOKEN`) with a labeled `# TODO(production)` swap. |
@@ -34,10 +34,20 @@ Sub-decisions (approved):
   of scope). So: x86_64 → AppImage; arm64/armhf → AppImage + `.deb`.
 - **S2 — ppc64le:** include it in the QEMU `cross-arch` job alongside s390x (`fail-fast: false`).
 - **S3 — `scheduled.yml` branch:** dispatch `build.yml` on `main` (this repo has no `-v0` branch).
+- **S4 — Fedora/openSUSE RPM (added after initial design):** the Linux matrix adds Fedora 42/44
+  and openSUSE Leap 15.6/16.0 jobs, built via `CI/build_osc_rpm.sh` (dnf/zypper deps; gtkdatabox +
+  the ADI libs built from source since they are not in these distros' repos). These distros had
+  **no prior support** anywhere in the project's history (only CentOS existed in the Travis era, now
+  commented out; the Azure pipeline built neither). Packaging mirrors libiio: `make package` emits a
+  `.rpm` (+ `.tar.gz`) as a **CI build artifact only** via `cmake/LinuxPackaging.cmake`
+  (`ENABLE_PACKAGING=ON`, default OFF). The package carries osc's files only; the source-built deps
+  are **not** declared or bundled, so it is a build-proof artifact, not a redistributable package.
 
 ## 3. Non-goals
 
-- No RPM packaging; no Fedora/openSUSE jobs.
+- No *redistributable* RPM/DEB packages. Fedora/openSUSE jobs and `make package` produce `.rpm`/
+  `.tar.gz` **CI build artifacts** (compile-proof, deps neither declared nor bundled) — not
+  installable distro packages. See S4.
 - No MSVC/Visual Studio Windows build.
 - No Python wheel / PyPI build or publish.
 - No x86_64 `.deb`.

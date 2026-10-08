@@ -34,6 +34,12 @@ endif()
 
 include(GNUInstallDirs)
 
+# Optional: build .deb/.rpm/.tar.gz packages via `make package`. Default OFF so
+# ordinary builds (apt, AppImage, local, Windows) never pull in Linux CPack.
+# Used by the Fedora/openSUSE CI jobs (CI/build_osc_rpm.sh). See
+# cmake/LinuxPackaging.cmake, included at the end of this file.
+option(ENABLE_PACKAGING "Create .deb/.rpm or .tar.gz packages via 'make package'" OFF)
+
 # Get the GIT hash of the latest commit
 include(FindGit OPTIONAL)
 if (GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
@@ -364,4 +370,11 @@ if(NOT TARGET uninstall)
 
 	add_custom_target(uninstall
 		COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+endif()
+
+# Linux packaging (.deb/.rpm/.tar.gz) via CPack, opt-in through ENABLE_PACKAGING.
+# Placed after all install() rules so they are captured in the package. The
+# Windows installer keeps its own CPack block above; this is Linux-only.
+if(ENABLE_PACKAGING AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+	include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/LinuxPackaging.cmake)
 endif()

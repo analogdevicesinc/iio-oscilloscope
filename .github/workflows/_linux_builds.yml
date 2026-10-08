@@ -17,21 +17,38 @@ jobs:
   linux:
     name: ${{ matrix.artifact-name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
           - image: ubuntu:22.04
             artifact-name: Linux-Ubuntu-22.04
+            pm: apt
           - image: ubuntu:24.04
             artifact-name: Linux-Ubuntu-24.04
+            pm: apt
           - image: ubuntu:26.04
             artifact-name: Linux-Ubuntu-26.04
+            pm: apt
           - image: debian:bookworm
             artifact-name: Linux-Debian-12
+            pm: apt
           - image: debian:trixie
             artifact-name: Linux-Debian-13
+            pm: apt
+          - image: fedora:42
+            artifact-name: Linux-Fedora-42
+            pm: fedora
+          - image: fedora:44
+            artifact-name: Linux-Fedora-44
+            pm: fedora
+          - image: opensuse/leap:15.6
+            artifact-name: Linux-openSUSE-15.6
+            pm: opensuse
+          - image: opensuse/leap:16.0
+            artifact-name: Linux-openSUSE-16.0
+            pm: opensuse
     container:
       image: ${{ matrix.image }}
     env:
@@ -40,19 +57,24 @@ jobs:
       - name: Install base packages
         run: |
           set -e
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update
-          apt-get install -y sudo build-essential git cmake wget curl ca-certificates \
-            python3 python3-requests autoconf automake libtool
-
+          if command -v apt-get >/dev/null; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y sudo build-essential git cmake wget curl ca-certificates \
+              python3 python3-requests autoconf automake libtool
+          elif command -v dnf >/dev/null; then
+            dnf install -y git tar
+          elif command -v zypper >/dev/null; then
+            zypper in -y git tar
+          fi
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
-
       - name: Get ADI dependencies from Cloudsmith
+        if: matrix.pm == 'apt'
         env:
-          # TODO(production): switch secret to CLOUDSMITH_API_KEY
+          # TODO switch secret to CLOUDSMITH_API_KEY
           CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
         run: |
           set -e
@@ -77,14 +99,34 @@ jobs:
               --package_version "test-v0" \
               --package_name "${{ matrix.artifact-name }}".deb
 
-      - name: Install dependencies
+      - name: Install dependencies and build
         run: |
-          ./CI/build_osc_ubuntu.sh install_apt_pkgs
-          ./CI/build_osc_ubuntu.sh install_adi_debs
-          ./CI/build_osc_ubuntu.sh install_gtkdatabox
+          set -e
+          if [ "${{ matrix.pm }}" = "apt" ]; then
+            ./CI/build_osc_ubuntu.sh install_apt_pkgs
+            ./CI/build_osc_ubuntu.sh install_adi_debs
+            ./CI/build_osc_ubuntu.sh install_gtkdatabox
+            ./CI/build_osc_ubuntu.sh build_osc
+          else
+            # Carried into the package filename by cmake/LinuxPackaging.cmake.
+            export CPACK_SYSTEM_NAME="${{ matrix.artifact-name }}"
+            chmod +x ./CI/build_osc_rpm.sh
+            ./CI/build_osc_rpm.sh install_${{ matrix.pm }}_pkgs
+            ./CI/build_osc_rpm.sh install_gtkdatabox
+            ./CI/build_osc_rpm.sh install_adi_from_source
+            ./CI/build_osc_rpm.sh build_osc
+          fi
 
-      - name: Build
-        run: ./CI/build_osc_ubuntu.sh build_osc
+      - name: Upload packages (Fedora/openSUSE)
+        if: matrix.pm != 'apt'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact-name }}-pkg
+          path: |
+            build/*.rpm
+            build/*.tar.gz
+          if-no-files-found: error
+
       - name: Upload build tree (on failure, for debugging)
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
