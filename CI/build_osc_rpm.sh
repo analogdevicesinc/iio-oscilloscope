@@ -5,6 +5,7 @@
 # ADI libraries (libiio, libad9361, libad9166) are not in Fedora/openSUSE repos,
 # so they are built from source here -- mirroring the apt paths
 # (build_osc_ubuntu.sh) and the x86 AppImage path (appimage_x86_64/install_deps.sh).
+# matio is additionally built from source on openSUSE (not in the Leap repos).
 #
 # Invoke one or more functions, e.g.:
 #   ./CI/build_osc_rpm.sh install_fedora_pkgs
@@ -32,13 +33,17 @@ install_fedora_pkgs() {
 
 install_opensuse_pkgs() {
 	# rpm-build provides rpmbuild, required by CPack's RPM generator (make package).
+	# Note: matio-devel is NOT in the openSUSE Leap repos (it lives only in the
+	# science OBS add-on), so matio is built from source below instead. zlib-devel
+	# gives matio its compression support.
 	zypper --gpg-auto-import-keys ref
 	zypper in -y --allow-downgrade \
 		gcc gcc-c++ make cmake git flex bison rpm-build \
 		autoconf automake libtool pkg-config patch wget tar \
 		glib2-devel gtk3-devel fftw3-devel libxml2-devel libcurl-devel \
-		libjansson-devel matio-devel libserialport-devel libusb-1_0-devel \
+		libjansson-devel zlib-devel libserialport-devel libusb-1_0-devel \
 		libaio-devel libavahi-devel cdk-devel
+	install_matio
 }
 
 install_gtkdatabox() {
@@ -49,6 +54,22 @@ install_gtkdatabox() {
 	tar xf gtkdatabox-1.0.0.tar.gz
 	cd gtkdatabox-1.0.0
 	./configure
+	make $JOBS
+	make install
+	ldconfig
+}
+
+# matio (MAT-file I/O) -- osc links -lmatio. Fedora ships matio-devel, but
+# openSUSE Leap does not (science OBS add-on only), so build it from source
+# there. --enable-mat73=no drops the HDF5 dependency (osc doesn't need MAT 7.3).
+install_matio() {
+	mkdir -p "$STAGING_AREA"
+	cd "$STAGING_AREA"
+	[ -f matio-1.5.28.tar.gz ] || \
+		wget https://github.com/tbeu/matio/releases/download/v1.5.28/matio-1.5.28.tar.gz
+	tar xf matio-1.5.28.tar.gz
+	cd matio-1.5.28
+	./configure --enable-mat73=no
 	make $JOBS
 	make install
 	ldconfig
@@ -83,10 +104,10 @@ build_osc() {
 	cpack_name_arg=""
 	[ -n "${CPACK_SYSTEM_NAME:-}" ] && cpack_name_arg="-DCPACK_SYSTEM_NAME=${CPACK_SYSTEM_NAME}"
 	cmake -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE:-RelWithDebInfo}" \
-		-DENABLE_PACKAGING=ON $cpack_name_arg ../
+		-DENABLE_PACKAGING=ON -DCPACK_GENERATOR="TGZ;RPM" $cpack_name_arg ../
 	make $JOBS
-	# Build the .rpm (+ .tar.gz) artifact. The generator is chosen per-distro
-	# in cmake/LinuxPackaging.cmake.
+	# Build the .rpm (+ .tar.gz) artifact (RPM distros only; this script never
+	# runs on apt distros).
 	make package
 }
 

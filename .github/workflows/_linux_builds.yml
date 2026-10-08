@@ -108,7 +108,7 @@ jobs:
             ./CI/build_osc_ubuntu.sh install_gtkdatabox
             ./CI/build_osc_ubuntu.sh build_osc
           else
-            # Carried into the package filename by cmake/LinuxPackaging.cmake.
+            # Carried into the package filename via CPack (see CI/build_osc_rpm.sh).
             export CPACK_SYSTEM_NAME="${{ matrix.artifact-name }}"
             chmod +x ./CI/build_osc_rpm.sh
             ./CI/build_osc_rpm.sh install_${{ matrix.pm }}_pkgs
