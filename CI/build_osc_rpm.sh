@@ -1,15 +1,15 @@
 #!/bin/bash
-# Compile-smoke build of iio-oscilloscope on RPM distros (Fedora, openSUSE).
+# Compile + package build of iio-oscilloscope on RPM distros (Fedora, openSUSE).
 #
-# Runs as root inside a vanilla distro container (no sudo). gtkdatabox and the
-# ADI libraries (libiio, libad9361, libad9166) are not in Fedora/openSUSE repos,
-# so they are built from source here -- mirroring the apt paths
-# (build_osc_ubuntu.sh) and the x86 AppImage path (appimage_x86_64/install_deps.sh).
-# matio is additionally built from source on openSUSE (not in the Leap repos).
+# Runs as root inside a distro container (no sudo). Build dependencies are
+# installed by the workflow ("Install base packages"); the ADI libraries
+# (libiio, libad9361, libad9166) are downloaded from Cloudsmith as .rpm and
+# installed by install_adi_rpms. gtkdatabox is not packaged for these distros,
+# and matio is missing on openSUSE Leap, so those are built from source here.
 #
 # Invoke one or more functions, e.g.:
-#   ./CI/build_osc_rpm.sh install_fedora_pkgs
-#   ./CI/build_osc_rpm.sh install_gtkdatabox install_adi_from_source build_osc
+#   ./CI/build_osc_rpm.sh install_adi_rpms
+#   ./CI/build_osc_rpm.sh install_gtkdatabox build_osc
 
 set -xe
 
@@ -20,31 +20,6 @@ JOBS="-j$(nproc)"
 # autotools (gtkdatabox) uses lib -- cover both for pkg-config and the linker.
 export PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH}"
 export LD_LIBRARY_PATH="/usr/local/lib64:/usr/local/lib:${LD_LIBRARY_PATH}"
-
-install_fedora_pkgs() {
-	# rpm-build provides rpmbuild, required by CPack's RPM generator (make package).
-	dnf install -y \
-		gcc gcc-c++ make cmake git flex bison rpm-build \
-		autoconf automake libtool pkgconf-pkg-config patch wget tar \
-		glib2-devel gtk3-devel fftw-devel libxml2-devel libcurl-devel \
-		jansson-devel matio-devel libserialport-devel libusbx-devel \
-		libaio-devel avahi-devel cdk-devel
-}
-
-install_opensuse_pkgs() {
-	# rpm-build provides rpmbuild, required by CPack's RPM generator (make package).
-	# Note: matio-devel is NOT in the openSUSE Leap repos (it lives only in the
-	# science OBS add-on), so matio is built from source below instead. zlib-devel
-	# gives matio its compression support.
-	zypper --gpg-auto-import-keys ref
-	zypper in -y --allow-downgrade \
-		gcc gcc-c++ make cmake git flex bison rpm-build \
-		autoconf automake libtool pkg-config patch wget tar \
-		glib2-devel gtk3-devel fftw3-devel libxml2-devel libcurl-devel \
-		libjansson-devel zlib-devel libserialport-devel libusb-1_0-devel \
-		libaio-devel libavahi-devel cdk-devel
-	install_matio
-}
 
 install_gtkdatabox() {
 	mkdir -p "$STAGING_AREA"
@@ -75,25 +50,16 @@ install_matio() {
 	ldconfig
 }
 
-# clone (shallow) + cmake + install one ADI library from GitHub.
-_build_adi_lib() {
-	local repo="$1" branch="$2"
-	[ -d "$repo" ] || git clone --depth 1 -b "$branch" \
-		"https://github.com/analogdevicesinc/$repo.git" "$repo"
-	cmake -S "$repo" -B "$repo/build"
-	make -C "$repo/build" $JOBS
-	make -C "$repo/build" install
+# Install the ADI libraries (libiio, libad9361, libad9166) that the workflow
+# downloaded from Cloudsmith into download/. Runtime deps resolve from the distro
+# repos; gpg checks are off because the Cloudsmith artifacts are unsigned.
+install_adi_rpms() {
+	if command -v dnf >/dev/null; then
+		dnf install -y --nogpgcheck ./download/*.rpm
+	else
+		zypper --no-gpg-checks install -y ./download/*.rpm
+	fi
 	ldconfig
-}
-
-install_adi_from_source() {
-	mkdir -p "$STAGING_AREA"
-	cd "$STAGING_AREA"
-	# libiio is required by osc; libad9361/libad9166 are optional (they only
-	# gate a few plugins) but built too for parity with the apt/AppImage paths.
-	_build_adi_lib libiio libiio-v0
-	_build_adi_lib libad9361-iio main
-	_build_adi_lib libad9166-iio main
 }
 
 build_osc() {

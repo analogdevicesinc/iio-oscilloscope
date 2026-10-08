@@ -57,27 +57,50 @@ jobs:
       - name: Install base packages
         run: |
           set -e
+          # Full per-distro build dependency set (single source of truth). Also
+          # includes git (checkout) and wget/python3/python3-requests/ca-certificates
+          # (used by the Cloudsmith step). gtkdatabox is built from source in every
+          # case; matio is built from source on openSUSE (no matio-devel in Leap).
           if command -v apt-get >/dev/null; then
             export DEBIAN_FRONTEND=noninteractive
             apt-get update
-            apt-get install -y sudo build-essential git cmake wget curl ca-certificates \
-              python3 python3-requests autoconf automake libtool
+            apt-get install -y \
+              sudo build-essential git cmake wget curl ca-certificates \
+              python3 python3-requests autoconf automake libtool autotools-dev \
+              bison flex libglib2.0-dev libgtk-3-dev libmatio-dev libfftw3-dev \
+              libxml2-dev libavahi-common-dev libavahi-client-dev \
+              libcurl4-openssl-dev libjansson-dev libaio-dev libserialport-dev \
+              libcdk5-dev libusb-1.0-0-dev
           elif command -v dnf >/dev/null; then
-            dnf install -y git tar
+            dnf install -y \
+              gcc gcc-c++ make cmake git flex bison rpm-build \
+              autoconf automake libtool pkgconf-pkg-config patch wget tar \
+              ca-certificates python3 python3-requests \
+              glib2-devel gtk3-devel fftw-devel libxml2-devel libcurl-devel \
+              jansson-devel matio-devel libserialport-devel libusbx-devel \
+              libaio-devel avahi-devel cdk-devel
           elif command -v zypper >/dev/null; then
-            zypper in -y git tar
+            zypper --gpg-auto-import-keys ref
+            zypper in -y --allow-downgrade \
+              gcc gcc-c++ make cmake git flex bison rpm-build \
+              autoconf automake libtool pkg-config patch wget tar \
+              ca-certificates python3 python3-requests \
+              glib2-devel gtk3-devel fftw3-devel libxml2-devel libcurl-devel \
+              libjansson-devel zlib-devel libserialport-devel libusb-1_0-devel \
+              libaio-devel libavahi-devel cdk-devel
           fi
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
       - name: Get ADI dependencies from Cloudsmith
-        if: matrix.pm == 'apt'
         env:
           # TODO switch secret to CLOUDSMITH_API_KEY
           CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
         run: |
           set -e
+          # apt distros pull .deb; RPM distros (Fedora/openSUSE) pull .rpm.
+          if [ "${{ matrix.pm }}" = "apt" ]; then EXT=deb; else EXT=rpm; fi
           wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
             -O /tmp/cloudsmith_helper.py
           mkdir -p download && cd download
@@ -87,23 +110,24 @@ jobs:
               --method get_artifacts_from_location \
               --repo external \
               --package_version "libiio-v0~latest" \
-              --package_name "${{ matrix.artifact-name }}".deb
+              --package_name "${{ matrix.artifact-name }}.$EXT"
           python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test9361-v0" \
-              --package_name "${{ matrix.artifact-name }}".deb
+              --package_name "${{ matrix.artifact-name }}.$EXT"
           python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test-v0" \
-              --package_name "${{ matrix.artifact-name }}".deb
+              --package_name "${{ matrix.artifact-name }}.$EXT"
 
       - name: Install dependencies and build
         run: |
           set -e
+          # Build deps are already installed (Install base packages); the ADI libs
+          # were downloaded to download/ (Get ADI dependencies from Cloudsmith).
           if [ "${{ matrix.pm }}" = "apt" ]; then
-            ./CI/build_osc_ubuntu.sh install_apt_pkgs
             ./CI/build_osc_ubuntu.sh install_adi_debs
             ./CI/build_osc_ubuntu.sh install_gtkdatabox
             ./CI/build_osc_ubuntu.sh build_osc
@@ -111,9 +135,11 @@ jobs:
             # Carried into the package filename via CPack (see CI/build_osc_rpm.sh).
             export CPACK_SYSTEM_NAME="${{ matrix.artifact-name }}"
             chmod +x ./CI/build_osc_rpm.sh
-            ./CI/build_osc_rpm.sh install_${{ matrix.pm }}_pkgs
+            ./CI/build_osc_rpm.sh install_adi_rpms
+            if [ "${{ matrix.pm }}" = "opensuse" ]; then
+              ./CI/build_osc_rpm.sh install_matio
+            fi
             ./CI/build_osc_rpm.sh install_gtkdatabox
-            ./CI/build_osc_rpm.sh install_adi_from_source
             ./CI/build_osc_rpm.sh build_osc
           fi
 
