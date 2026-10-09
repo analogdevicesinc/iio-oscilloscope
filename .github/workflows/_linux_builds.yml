@@ -57,10 +57,6 @@ jobs:
       - name: Install base packages
         run: |
           set -e
-          # Full per-distro build dependency set (single source of truth). Also
-          # includes git (checkout) and wget/python3/python3-requests/ca-certificates
-          # (used by the Cloudsmith step). gtkdatabox is built from source in every
-          # case; matio is built from source on openSUSE (no matio-devel in Leap).
           if command -v apt-get >/dev/null; then
             export DEBIAN_FRONTEND=noninteractive
             apt-get update
@@ -81,17 +77,14 @@ jobs:
               libaio-devel avahi-devel cdk-devel
           elif command -v zypper >/dev/null; then
             zypper --gpg-auto-import-keys ref
-            # Leap 15.6's base python3 is 3.6, too old to parse
-            # cloudsmith_helper.py (walrus operator -> needs 3.8+). Pull
-            # python3.11 (python311) on both Leap images and run the helper
-            # with it; see the Cloudsmith step.
             zypper in -y --allow-downgrade \
               gcc gcc-c++ make cmake git flex bison rpm-build \
               autoconf automake libtool pkg-config patch wget tar \
-              ca-certificates python3 python3-requests python311 python311-requests \
+              ca-certificates python3 python3-requests \
               glib2-devel gtk3-devel fftw3-devel libxml2-devel libcurl-devel \
               libjansson-devel zlib-devel libserialport-devel libusb-1_0-devel \
               libaio-devel libavahi-devel cdk-devel
+            fi
           fi
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -103,30 +96,21 @@ jobs:
           CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
         run: |
           set -e
-          # apt distros pull .deb; RPM distros (Fedora/openSUSE) pull .rpm.
           if [ "${{ matrix.pm }}" = "apt" ]; then EXT=deb; else EXT=rpm; fi
           wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
             -O /tmp/cloudsmith_helper.py
           mkdir -p download && cd download
-          # cloudsmith_helper.py uses the walrus operator (needs Python 3.8+);
-          # openSUSE Leap 15.6's default python3 is 3.6. Prefer python3.11 when
-          # present (installed via python311 on the Leap images); python3
-          # everywhere else is already >= 3.8.
-          PY=python3
-          if command -v python3.11 >/dev/null 2>&1; then PY=python3.11; fi
-          # libiio from external; libad9361/libad9166 from the test repo.
-          # TODO(production): --repo adi/external and *-v0~latest versions
-          "$PY" /tmp/cloudsmith_helper.py \
+          python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo external \
               --package_version "libiio-v0~latest" \
               --package_name "${{ matrix.artifact-name }}.$EXT"
-          "$PY" /tmp/cloudsmith_helper.py \
+          python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test9361-v0" \
               --package_name "${{ matrix.artifact-name }}.$EXT"
-          "$PY" /tmp/cloudsmith_helper.py \
+          python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test-v0" \
@@ -135,8 +119,6 @@ jobs:
       - name: Install dependencies and build
         run: |
           set -e
-          # Build deps are already installed (Install base packages); the ADI libs
-          # were downloaded to download/ (Get ADI dependencies from Cloudsmith).
           if [ "${{ matrix.pm }}" = "apt" ]; then
             ./CI/build_osc_ubuntu.sh install_adi_debs
             ./CI/build_osc_ubuntu.sh install_gtkdatabox
