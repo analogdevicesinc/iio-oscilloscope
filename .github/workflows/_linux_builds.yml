@@ -51,8 +51,12 @@ jobs:
             package-type: rpm
     container:
       image: ${{ matrix.image }}
+      # Predictable PATH so uv (installed below) resolves the same on every image.
+      env:
+        PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     env:
       CMAKE_BUILD_TYPE: ${{ inputs.build-type }}
+      PYTHON: ${{ github.workspace }}/.venv/bin/python3
     steps:
       - name: Install base packages
         run: |
@@ -62,7 +66,7 @@ jobs:
             apt-get update
             apt-get install -y \
               sudo build-essential git cmake wget curl ca-certificates \
-              python3 python3-requests autoconf automake libtool autotools-dev \
+              autoconf automake libtool autotools-dev \
               bison flex libglib2.0-dev libgtk-3-dev libmatio-dev libfftw3-dev \
               libxml2-dev libavahi-common-dev libavahi-client-dev \
               libcurl4-openssl-dev libjansson-dev libaio-dev libserialport-dev \
@@ -71,7 +75,7 @@ jobs:
             dnf install -y \
               gcc gcc-c++ make cmake git flex bison rpm-build \
               autoconf automake libtool pkgconf-pkg-config patch wget tar \
-              ca-certificates python3 python3-requests \
+              ca-certificates \
               glib2-devel gtk3-devel fftw-devel libxml2-devel libcurl-devel \
               jansson-devel matio-devel libserialport-devel libusbx-devel \
               libaio-devel avahi-devel cdk-devel
@@ -80,17 +84,24 @@ jobs:
             zypper in -y --allow-downgrade \
               gcc gcc-c++ make cmake git flex bison rpm-build \
               autoconf automake libtool pkg-config patch wget tar \
-              ca-certificates python3 python3-requests \
+              ca-certificates \
               glib2-devel gtk3-devel fftw3-devel libxml2-devel libcurl-devel \
               libjansson-devel zlib-devel libserialport-devel libusb-1_0-devel \
               libaio-devel libavahi-devel cdk-devel
-            zypper in -y python313 python313-requests
-            ln -sf /usr/bin/python3.13 /usr/bin/python3
           fi
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Set up Python venv for the Cloudsmith helper
+        run: |
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          uv python install 3.11
+          uv venv --python 3.11 --seed
+          uv pip install requests
       - name: Get ADI dependencies from Cloudsmith
         env:
           # TODO switch secret to CLOUDSMITH_API_KEY
@@ -100,17 +111,17 @@ jobs:
           wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
             -O /tmp/cloudsmith_helper.py
           mkdir -p download && cd download
-          python3 /tmp/cloudsmith_helper.py \
+          "$PYTHON" /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo external \
               --package_version "libiio-v0~latest" \
               --package_name "${{ matrix.artifact-name }}.${{ matrix.package-type }}"
-          python3 /tmp/cloudsmith_helper.py \
+          "$PYTHON" /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test9361-v0" \
               --package_name "${{ matrix.artifact-name }}.${{ matrix.package-type }}"
-          python3 /tmp/cloudsmith_helper.py \
+          "$PYTHON" /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test-v0" \
