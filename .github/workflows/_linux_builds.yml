@@ -81,10 +81,14 @@ jobs:
               libaio-devel avahi-devel cdk-devel
           elif command -v zypper >/dev/null; then
             zypper --gpg-auto-import-keys ref
+            # Leap 15.6's base python3 is 3.6, too old to parse
+            # cloudsmith_helper.py (walrus operator -> needs 3.8+). Pull
+            # python3.11 (python311) on both Leap images and run the helper
+            # with it; see the Cloudsmith step.
             zypper in -y --allow-downgrade \
               gcc gcc-c++ make cmake git flex bison rpm-build \
               autoconf automake libtool pkg-config patch wget tar \
-              ca-certificates python3 python3-requests \
+              ca-certificates python3 python3-requests python311 python311-requests \
               glib2-devel gtk3-devel fftw3-devel libxml2-devel libcurl-devel \
               libjansson-devel zlib-devel libserialport-devel libusb-1_0-devel \
               libaio-devel libavahi-devel cdk-devel
@@ -104,19 +108,25 @@ jobs:
           wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
             -O /tmp/cloudsmith_helper.py
           mkdir -p download && cd download
+          # cloudsmith_helper.py uses the walrus operator (needs Python 3.8+);
+          # openSUSE Leap 15.6's default python3 is 3.6. Prefer python3.11 when
+          # present (installed via python311 on the Leap images); python3
+          # everywhere else is already >= 3.8.
+          PY=python3
+          if command -v python3.11 >/dev/null 2>&1; then PY=python3.11; fi
           # libiio from external; libad9361/libad9166 from the test repo.
           # TODO(production): --repo adi/external and *-v0~latest versions
-          python3 /tmp/cloudsmith_helper.py \
+          "$PY" /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo external \
               --package_version "libiio-v0~latest" \
               --package_name "${{ matrix.artifact-name }}.$EXT"
-          python3 /tmp/cloudsmith_helper.py \
+          "$PY" /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test9361-v0" \
               --package_name "${{ matrix.artifact-name }}.$EXT"
-          python3 /tmp/cloudsmith_helper.py \
+          "$PY" /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test-v0" \
