@@ -102,22 +102,22 @@ jobs:
               --method get_artifacts_from_location \
               --repo external \
               --package_version "libiio-v0~latest" \
-              --package_name "${{ matrix.artifact-name }}.${{package-type}}"
+              --package_name "${{ matrix.artifact-name }}.${{ matrix.package-type }}"
           python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test9361-v0" \
-              --package_name "${{ matrix.artifact-name }}.${{package-type}}"
+              --package_name "${{ matrix.artifact-name }}.${{ matrix.package-type }}"
           python3 /tmp/cloudsmith_helper.py \
               --method get_artifacts_from_location \
               --repo adi/test-alin-repo \
               --package_version "test-v0" \
-              --package_name "${{ matrix.artifact-name }}.${{package-type}}"
+              --package_name "${{ matrix.artifact-name }}.${{ matrix.package-type }}"
 
       - name: Install dependencies and build
         run: |
           set -e
-          if [ "${{ matrix.pm }}" = "apt" ]; then
+          if [ "${{ matrix.package-type }}" = "deb" ]; then
             ./CI/build_osc_ubuntu.sh install_adi_debs
             ./CI/build_osc_ubuntu.sh install_gtkdatabox
             ./CI/build_osc_ubuntu.sh build_osc
@@ -126,7 +126,7 @@ jobs:
             export CPACK_SYSTEM_NAME="${{ matrix.artifact-name }}"
             chmod +x ./CI/build_osc_rpm.sh
             ./CI/build_osc_rpm.sh install_adi_rpms
-            if [ "${{ matrix.pm }}" = "opensuse" ]; then
+            if command -v zypper >/dev/null; then
               ./CI/build_osc_rpm.sh install_matio
             fi
             ./CI/build_osc_rpm.sh install_gtkdatabox
@@ -134,7 +134,7 @@ jobs:
           fi
 
       - name: Upload packages (Fedora/openSUSE)
-        if: matrix.pm != 'apt'
+        if: matrix.package-type != 'deb'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact-name }}-pkg
