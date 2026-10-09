@@ -775,6 +775,7 @@ static gpointer fillin_thread_func(gpointer data)
 	struct connect_params *params = data;
 	struct fillin_result *res = calloc(1, sizeof(*res));
 	struct iio_context *osc_ctx = get_context_from_osc();
+	char text[256];
 	unsigned int i;
 
 	if (!res) {
