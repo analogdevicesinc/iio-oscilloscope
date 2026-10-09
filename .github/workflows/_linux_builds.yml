@@ -84,7 +84,6 @@ jobs:
               glib2-devel gtk3-devel fftw3-devel libxml2-devel libcurl-devel \
               libjansson-devel zlib-devel libserialport-devel libusb-1_0-devel \
               libaio-devel libavahi-devel cdk-devel
-            fi
           fi
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
