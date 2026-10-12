@@ -1,0 +1,236 @@
+name: Build
+
+# Azure Pipelines -> GitHub Actions migration (faithful port).
+#
+# Mirrors the jobs that lived in azure-pipelines.yml, with OS images bumped to
+# current and the macOS job (which Azure kept commented out "until fixes added
+# on development side") enabled:
+#   LinuxBuilds (ubuntu-22.04)               -> linux  (ubuntu-latest)
+#   ARMBuilds   (old ubuntu_18_04 arm image) -> arm    (debian:trixie under QEMU)
+#   macOSBuilds (was disabled)               -> macos  (macos-15 / macos-26, like libiio)
+# Windows keeps its own workflow (buildmingw.yml, image bumped to windows-2022).
+#
+# No packaging is produced and no CI scripts are moved: the existing
+# CI/azure/build_osc_*.sh helpers are called where they already live. macOS
+# needs minimal source build-fixes to compile (osc.h OSC_FALLTHROUGH + the
+# CMakeLists Homebrew/-Werror lines) - those are the "development-side fixes"
+# Azure's note referred to. The only functional difference from Azure is that
+# the ADI dependency packages are fetched from Cloudsmith (GitHub has no
+# equivalent of Azure pipeline artifacts).
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - 'staging/*'
+      - '20*'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+      - '20*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact-name: Linux-Ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+
+      # Azure fetched libiio/libad9361/libad9166 from sibling Azure pipeline
+      # artifacts; GitHub has no equivalent, so pull the prebuilt .debs from
+      # Cloudsmith. build_osc_ubuntu.sh install_adi_debs reads ./download/*.deb.
+      - name: Fetch ADI dependency packages
+        env:
+          # TODO(production): switch secret to CLOUDSMITH_API_KEY
+          CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
+        run: |
+          set -e
+          wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
+            -O /tmp/cloudsmith_helper.py
+          mkdir -p download && cd download
+          for ver in libiio-v0~latest libad9361-iio-v0~latest libad9166-iio-v0~latest; do
+            python3 /tmp/cloudsmith_helper.py \
+              --method get_artifacts_from_location \
+              --repo external \
+              --package_version "$ver" \
+              --package_name "${{ matrix.artifact-name }}.deb"
+          done
+
+      - name: Install dependencies and build
+        run: |
+          set -e
+          ./CI/azure/build_osc_ubuntu.sh install_apt_pkgs
+          ./CI/azure/build_osc_ubuntu.sh install_adi_debs
+          ./CI/azure/build_osc_ubuntu.sh install_gtkdatabox
+          ./CI/azure/build_osc_ubuntu.sh build_osc
+
+      - name: Upload build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: error
+
+  arm:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+            artifact-name: Debian-13-arm64v8
+          - arch: arm
+            artifact-name: Debian-13-arm32v7
+          - arch: s390x
+            artifact-name: Debian-13-s390x
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+
+      - name: Fetch ADI dependency packages
+        env:
+          # TODO(production): switch secret to CLOUDSMITH_API_KEY
+          CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
+        run: |
+          set -e
+          wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
+            -O /tmp/cloudsmith_helper.py
+          mkdir -p download && cd download
+          for ver in libiio-v0~latest libad9361-iio-v0~latest libad9166-iio-v0~latest; do
+            python3 /tmp/cloudsmith_helper.py \
+              --method get_artifacts_from_location \
+              --repo external \
+              --package_version "$ver" \
+              --package_name "${{ matrix.artifact-name }}.deb"
+          done
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      # Same approach as the Azure ARM job: emulate the target arch under QEMU
+      # and run the existing CI/azure/build_osc_arm.sh steps inside the container.
+      # Image bumped from the old ubuntu_18_04 arm image to current Debian.
+      - name: Build (QEMU)
+        run: |
+          set -e
+          docker run --rm -m=4g --platform "linux/${{ matrix.arch }}" \
+            -v "${{ github.workspace }}":/ci \
+            debian:trixie \
+            /bin/bash -c "
+              set -e
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update
+              apt-get install -y sudo build-essential git cmake wget curl ca-certificates autoconf automake libtool
+              cd /ci
+              chmod +x ./CI/azure/build_osc_arm.sh
+              ./CI/azure/build_osc_arm.sh install_apt_pkgs
+              ./CI/azure/build_osc_arm.sh install_adi_debs
+              ./CI/azure/build_osc_arm.sh install_gtkdatabox
+              ./CI/azure/build_osc_arm.sh build_osc
+            "
+
+      - name: Fix artifact permissions
+        run: sudo chown -R "$(id -u):$(id -g)" build
+
+      - name: Upload build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: error
+
+  macos:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            artifact-name: macOS-15-arm64
+          - os: macos-15-large
+            artifact-name: macOS-15-x64
+          - os: macos-26
+            artifact-name: macOS-26-arm64
+          - os: macos-26-large
+            artifact-name: macOS-26-x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+
+      # build_osc_darwin.sh install_adi_pkgs installs ./download/lib*-*.pkg, so
+      # fetch the macOS .pkg builds (filenames must match the lib{iio,ad9361,ad9166}-*
+      # globs that script expects).
+      - name: Fetch ADI dependency packages
+        env:
+          # TODO(production): switch secret to CLOUDSMITH_API_KEY
+          CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
+        run: |
+          set -e
+          wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
+            -O /tmp/cloudsmith_helper.py
+          mkdir -p download && cd download
+          for ver in libiio-v0~latest libad9361-iio-v0~latest libad9166-iio-v0~latest; do
+            python3 /tmp/cloudsmith_helper.py \
+              --method get_artifacts_from_location \
+              --repo external \
+              --package_version "$ver" \
+              --package_name "${{ matrix.artifact-name }}.pkg"
+          done
+
+      - name: Install dependencies and build
+        run: |
+          set -e
+          ./CI/azure/build_osc_darwin.sh install_deps
+          ./CI/azure/build_osc_darwin.sh install_adi_pkgs
+          ./CI/azure/build_osc_darwin.sh build_osc
+
+      - name: Upload build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: error
