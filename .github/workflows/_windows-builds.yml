@@ -1,9 +1,13 @@
 name: Windows builds
 
 # Reusable: msys2/MINGW64 build on the runner (replaces the prebuilt
-# shooteu/iio-oscilloscope Windows image). Reuses the existing CI/docker
-# scripts, which expect the source under /home/docker/iio-oscilloscope.
-# ADI libs are built from source in msys2 (mingw ABI). Output: adi-osc-setup.exe.
+# shooteu/iio-oscilloscope image). Reuses CI/docker/build_mingw.sh to build osc,
+# which expects the source under /home/docker/iio-oscilloscope. Produces a
+# build/ tree.
+#
+# TODO: libiio/libad9361/libad9166 are not built yet (build_libiio/libad9361/
+# libad9166 skipped) - the osc build will fail to link until dependency handling
+# is added; InnoSetup packaging (adi-osc-setup.exe) is deferred until then.
 
 on:
   workflow_call:
@@ -28,41 +32,27 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: base-devel git
+          install: base-devel git wget
 
-      - name: Install Inno Setup
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          Invoke-WebRequest -UseBasicParsing -Uri 'https://jrsoftware.org/download.php/is.exe' -OutFile "$env:RUNNER_TEMP\is.exe"
-          Start-Process -FilePath "$env:RUNNER_TEMP\is.exe" -ArgumentList '/VERYSILENT','/SP-','/SUPPRESSMSGBOXES','/NORESTART','/DIR=C:\innosetup' -Wait
-
-      - name: Build + package
+      - name: Build osc
         shell: msys2 {0}
-        env:
-          LIBIIO_BRANCH: libiio-v0
-          LIBAD9361_BRANCH: main
-          LIBAD9166_BRANCH: main
         run: |
           set -e
           export USER=docker
           src="$(cygpath "$GITHUB_WORKSPACE")"
-          mkdir -p /home/docker/artifact
+          mkdir -p /home/docker
           cp -r "$src" /home/docker/iio-oscilloscope
           cd /home/docker/iio-oscilloscope
           git config --global --add safe.directory /home/docker/iio-oscilloscope
-          export OSC_BUILD_VER="$(git describe --tags --always HEAD 2>/dev/null || echo dev)"
-          # Deps the prebuilt image used to bake in:
-          ./CI/docker/build_mingw.sh install_pacman_deps
-          ./CI/docker/build_mingw.sh build_gtkdatabox
-          # Build libiio/libad9361/libad9166 + osc, stage files, run Inno Setup:
-          ./CI/docker/inside_docker.sh
-          cp /home/docker/artifact/adi-osc-setup.exe "$src/"
+          bash ./CI/docker/build_mingw.sh install_pacman_deps
+          bash ./CI/docker/build_mingw.sh build_gtkdatabox
+          bash ./CI/docker/build_mingw.sh build_osc
+          cp -r build "$src/"
 
-      - name: Upload setup exe
+      - name: Upload build
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: Windows-mingw-x64
-          path: adi-osc-setup.exe
+          path: build/
           if-no-files-found: error
