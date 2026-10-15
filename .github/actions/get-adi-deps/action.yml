@@ -1,0 +1,46 @@
+name: Get ADI dependencies from Cloudsmith
+description: >-
+  Download the pinned cloudsmith_helper.py and fetch the prebuilt libiio,
+  libad9361-iio and libad9166-iio packages for a target into a directory.
+  Centralises the helper revision and the dependency list.
+
+inputs:
+  cloudsmith-api-key:
+    description: Cloudsmith API key, exported to the helper as CLOUDSMITH_API_KEY.
+    required: true
+  package-name:
+    description: Target package file name, e.g. "Linux-Ubuntu-24.04.deb".
+    required: true
+  repo:
+    description: Cloudsmith repository to pull from.
+    required: false
+    default: external
+  python:
+    description: Python interpreter (must have the requests module).
+    required: false
+    default: python3
+  output-dir:
+    description: Directory the packages are downloaded into.
+    required: false
+    default: download
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch ADI packages
+      shell: bash
+      env:
+        CLOUDSMITH_API_KEY: ${{ inputs.cloudsmith-api-key }}
+      run: |
+        set -e
+        curl -fsSL https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/8d7a96779dd034005279ed1c7d052514df695d8c/utils/cloudsmith_utils/cloudsmith_helper.py \
+          -o /tmp/cloudsmith_helper.py
+        mkdir -p "${{ inputs.output-dir }}"
+        cd "${{ inputs.output-dir }}"
+        for ver in libiio-v0~latest libad9361-iio-v0~latest libad9166-iio-v0~latest; do
+          "${{ inputs.python }}" /tmp/cloudsmith_helper.py \
+            --method get_artifacts_from_location \
+            --repo "${{ inputs.repo }}" \
+            --package_version "$ver" \
+            --package_name "${{ inputs.package-name }}"
+        done
