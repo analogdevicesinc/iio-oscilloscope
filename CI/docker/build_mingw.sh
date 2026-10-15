@@ -126,13 +126,21 @@ build_deps() {
 }
 
 build_osc() {
-	pushd /home/docker/
-	cd iio-oscilloscope
-	mkdir build
+	mkdir -p build
 	cd build
 	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
 	$MAKE
-	popd
+}
+
+build_osc_github() {
+	src="$(cygpath "$GITHUB_WORKSPACE")"
+	cd "$src"
+	git config --global --add safe.directory "$src"
+	WORKDIR="$src"
+	for z in download/*.zip; do unzip -o "$z" -d /mingw64; done
+	install_pacman_deps
+	build_gtkdatabox
+	build_osc
 }
 
 init_env

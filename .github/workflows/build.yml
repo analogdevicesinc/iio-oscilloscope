@@ -87,6 +87,8 @@ jobs:
     uses: ./.github/workflows/_windows-builds.yml
     with:
       build-type: ${{ needs.setup.outputs.build-type }}
+    secrets:
+      CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
 
   appimage:
     needs: setup

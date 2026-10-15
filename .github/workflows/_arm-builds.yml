@@ -1,10 +1,11 @@
 name: ARM builds
 
-# Reusable: emulate the target arch under QEMU and reuse CI/azure/build_osc_arm.sh
-# for deps + build (cmake+make), same as the old Azure ARMBuilds job. ADI deps
-# are fetched from Cloudsmith on the host and mounted in. Produces a build/ tree
-# (no .deb). No ppc64le (dropped). The bootstrap installs the base toolchain the
-# old prebuilt ARM image had but debian:trixie lacks.
+# Reusable: modelled on libad9166-iio's _arm-builds.yml.
+#   arm-native: arm64 / arm32v7 on a native ARM runner (arm32 via docker --platform)
+#   cross-arch: s390x under QEMU (no ppc64le - dropped)
+# ADI deps (libiio/libad9361/libad9166) come from Cloudsmith via the get-adi-deps
+# action and are installed inside the target container; osc is built with
+# CI/azure/build_osc_arm.sh. Produces a build/ tree.
 
 on:
   workflow_call:
@@ -17,48 +18,57 @@ on:
         required: true
 
 jobs:
-  arm:
+  arm-native:
     name: ${{ matrix.artifact-name }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
-          - arch: aarch64
-            artifact-name: Debian-13-arm64v8
-          - arch: arm
-            artifact-name: Debian-13-arm32v7
-          - arch: s390x
-            artifact-name: Debian-13-s390x
+          - image: ubuntu:22.04
+            platform-flag: ''
+            artifact-name: Ubuntu-22.04-arm64v8
+          - image: arm32v7/ubuntu:22.04
+            platform-flag: '--platform linux/arm/v7'
+            artifact-name: Ubuntu-22.04-arm32v7
+          - image: debian:trixie
+            platform-flag: ''
+            artifact-name: Debian-13-arm64
+          - image: arm32v7/debian:trixie
+            platform-flag: '--platform linux/arm/v7'
+            artifact-name: Debian-13-armhf
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.11'
-      - run: pip install requests
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+
+      - name: Setup Python venv and install requests
+        run: |
+          set -e
+          uv python install 3.11
+          uv venv --python 3.11 /tmp/cloudsmith-venv --seed
+          uv pip install --python /tmp/cloudsmith-venv/bin/python3 requests
 
       - name: Get ADI dependencies from Cloudsmith
         uses: ./.github/actions/get-adi-deps
         with:
           cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
           package-name: ${{ matrix.artifact-name }}.deb
+          python: /tmp/cloudsmith-venv/bin/python3
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-
-      - name: Build (QEMU)
+      - name: Build
         run: |
           set -e
-          docker run --rm -m=4g --platform "linux/${{ matrix.arch }}" \
+          docker run ${{ matrix.platform-flag }} --rm -t --privileged \
             -e DEBIAN_FRONTEND=noninteractive \
             -e CMAKE_BUILD_TYPE=${{ inputs.build-type }} \
             -v "${{ github.workspace }}":/ci \
-            debian:trixie /bin/bash -c '
+            "${{ matrix.image }}" \
+            /bin/bash -c '
               set -e
               apt-get update
               apt-get install -y sudo build-essential git wget curl ca-certificates
@@ -69,8 +79,68 @@ jobs:
               bash ./CI/azure/build_osc_arm.sh build_osc
             '
 
-      - name: Fix artifact permissions
-        run: sudo chown -R "$(id -u):$(id -g)" build
+      - name: Upload build
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: error
+
+  cross-arch:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:22.04
+            arch: s390x
+            artifact-name: Ubuntu-22.04-s390x
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+
+      - name: Setup Python venv and install requests
+        run: |
+          set -e
+          uv python install 3.11
+          uv venv --python 3.11 /tmp/cloudsmith-venv --seed
+          uv pip install --python /tmp/cloudsmith-venv/bin/python3 requests
+
+      - name: Get ADI dependencies from Cloudsmith
+        uses: ./.github/actions/get-adi-deps
+        with:
+          cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
+          package-name: ${{ matrix.artifact-name }}.deb
+          python: /tmp/cloudsmith-venv/bin/python3
+
+      - name: Build
+        run: |
+          set -e
+          docker run --platform "linux/${{ matrix.arch }}" --rm -t --privileged \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -e CMAKE_BUILD_TYPE=${{ inputs.build-type }} \
+            -v "${{ github.workspace }}":/ci \
+            "${{ matrix.image }}" \
+            /bin/bash -c '
+              set -e
+              apt-get update
+              apt-get install -y sudo build-essential git wget curl ca-certificates
+              cd /ci
+              bash ./CI/azure/build_osc_arm.sh install_apt_pkgs
+              bash ./CI/azure/build_osc_arm.sh install_gtkdatabox
+              bash ./CI/azure/build_osc_arm.sh install_adi_debs
+              bash ./CI/azure/build_osc_arm.sh build_osc
+            '
 
       - name: Upload build
         if: github.event_name != 'pull_request'

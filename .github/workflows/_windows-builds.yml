@@ -1,13 +1,12 @@
 name: Windows builds
 
-# Reusable: msys2/MINGW64 build on the runner (replaces the prebuilt
-# shooteu/iio-oscilloscope image). Reuses CI/docker/build_mingw.sh to build osc,
-# which expects the source under /home/docker/iio-oscilloscope. Produces a
-# build/ tree.
+# Reusable: msys2/MINGW64 build on the runner. libiio/libad9361/libad9166 are
+# fetched from Cloudsmith via the get-adi-deps action (not source-built).
+# gtkdatabox is still built from source (not on Cloudsmith). Produces a build/ tree.
 #
-# TODO: libiio/libad9361/libad9166 are not built yet (build_libiio/libad9361/
-# libad9166 skipped) - the osc build will fail to link until dependency handling
-# is added; InnoSetup packaging (adi-osc-setup.exe) is deferred until then.
+# NOTE: Cloudsmith currently publishes MSVC Windows builds, while this is a mingw
+# build - linking may fail until a mingw-compatible package is used. Wired to run
+# and surface that on the first run.
 
 on:
   workflow_call:
@@ -15,6 +14,9 @@ on:
       build-type:
         required: true
         type: string
+    secrets:
+      CLOUDSMITH_API_KEY:
+        required: true
 
 jobs:
   windows:
@@ -27,12 +29,26 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+
+      - name: Get ADI dependencies from Cloudsmith
+        uses: ./.github/actions/get-adi-deps
+        with:
+          cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
+          # MSVC Windows package name (from the example); swap for a mingw
+          # package name if/when one is published.
+          package-name: Windows-VS-2022-x64.zip
+          python: python
+
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2 # TODO: pin to a commit SHA
         with:
           msystem: MINGW64
           update: true
-          install: base-devel git wget
+          install: base-devel git wget unzip
 
       - name: Build osc
         shell: msys2 {0}
@@ -44,6 +60,9 @@ jobs:
           cp -r "$src" /home/docker/iio-oscilloscope
           cd /home/docker/iio-oscilloscope
           git config --global --add safe.directory /home/docker/iio-oscilloscope
+          # Install the Cloudsmith ADI packages into the mingw prefix
+          # (layout is a first pass - adjust once the zip contents are known).
+          for z in download/*.zip; do unzip -o "$z" -d /mingw64; done
           bash ./CI/docker/build_mingw.sh install_pacman_deps
           bash ./CI/docker/build_mingw.sh build_gtkdatabox
           bash ./CI/docker/build_mingw.sh build_osc

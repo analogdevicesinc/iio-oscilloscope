@@ -1,8 +1,12 @@
 name: macOS builds
 
-# Reusable: compile-verify only (no packaging/publishing yet). Deps via brew;
-# ADI deps fetched from Cloudsmith as .pkg. continue-on-error because macOS
-# needs source build-fixes that are not on this CI-only branch.
+# Reusable: reuses CI/azure/build_osc_darwin.sh for deps + build (same pattern as
+# the Linux/ARM jobs). ADI deps (libiio/libad9361/libad9166) come from Cloudsmith
+# via the get-adi-deps action, like the libad9166-iio example. Produces a build/
+# tree.
+#
+# continue-on-error: macOS still needs the OSC_FALLTHROUGH / CMakeLists source
+# fixes (removed from this CI-only branch) to compile under Apple's toolchain.
 
 on:
   workflow_call:
@@ -33,6 +37,7 @@ jobs:
           - os: macos-26-large
             artifact-name: macOS-26-x64
     env:
+      ARTIFACTNAME: ${{ matrix.artifact-name }}
       CMAKE_BUILD_TYPE: ${{ inputs.build-type }}
     steps:
       - name: Checkout
@@ -45,32 +50,20 @@ jobs:
           python-version: '3.11'
       - run: pip install requests
 
-      - name: Install dependencies
-        run: |
-          set -e
-          brew install \
-            cmake gcc fftw libmatio libxml2 pkg-config libusb gtk+3 gtkdatabox \
-            jansson glib curl gettext libserialport
-
       - name: Get ADI dependencies from Cloudsmith
         uses: ./.github/actions/get-adi-deps
         with:
           cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
           package-name: ${{ matrix.artifact-name }}.pkg
+          python: python3
 
-      - name: Install ADI dependencies
+      - name: Install dependencies
         run: |
-          set -e
-          for pkg in ./download/*.pkg; do
-            sudo installer -pkg "$pkg" -target /
-          done
+          bash ./CI/azure/build_osc_darwin.sh install_deps
+          bash ./CI/azure/build_osc_darwin.sh install_adi_pkgs
 
-      - name: Build
-        run: |
-          set -e
-          mkdir -p build && cd build
-          cmake -DCMAKE_C_COMPILER=/usr/bin/gcc ..
-          make -j"$(sysctl -n hw.ncpu)"
+      - name: Build osc
+        run: bash ./CI/azure/build_osc_darwin.sh build_osc
 
       - name: Upload build
         if: github.event_name != 'pull_request'
