@@ -1,0 +1,81 @@
+name: macOS builds
+
+# Reusable: compile-verify only (no packaging/publishing yet). Deps via brew;
+# ADI deps fetched from Cloudsmith as .pkg. continue-on-error because macOS
+# needs source build-fixes that are not on this CI-only branch.
+
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        required: true
+        type: string
+    secrets:
+      CLOUDSMITH_API_KEY:
+        required: true
+
+jobs:
+  macos:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            artifact-name: macOS-15-arm64
+          - os: macos-15-large
+            artifact-name: macOS-15-x64
+          - os: macos-26
+            artifact-name: macOS-26-arm64
+          - os: macos-26-large
+            artifact-name: macOS-26-x64
+    env:
+      CMAKE_BUILD_TYPE: ${{ inputs.build-type }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+
+      - name: Install dependencies
+        run: |
+          set -e
+          brew install \
+            cmake gcc fftw libmatio libxml2 pkg-config libusb gtk+3 gtkdatabox \
+            jansson glib curl gettext libserialport
+
+      - name: Get ADI dependencies from Cloudsmith
+        uses: ./.github/actions/get-adi-deps
+        with:
+          cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
+          package-name: ${{ matrix.artifact-name }}.pkg
+
+      - name: Install ADI dependencies
+        run: |
+          set -e
+          for pkg in ./download/*.pkg; do
+            sudo installer -pkg "$pkg" -target /
+          done
+
+      - name: Build
+        run: |
+          set -e
+          mkdir -p build && cd build
+          cmake -DCMAKE_C_COMPILER=/usr/bin/gcc ..
+          make -j"$(sysctl -n hw.ncpu)"
+
+      - name: Upload build
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: warn

@@ -1,0 +1,81 @@
+name: ARM builds
+
+# Reusable: emulate the target arch under QEMU and reuse CI/azure/build_osc_arm.sh
+# for deps + build (cmake+make), same as the old Azure ARMBuilds job. ADI deps
+# are fetched from Cloudsmith on the host and mounted in. Produces a build/ tree
+# (no .deb). No ppc64le (dropped). The bootstrap installs the base toolchain the
+# old prebuilt ARM image had but debian:trixie lacks.
+
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        required: true
+        type: string
+    secrets:
+      CLOUDSMITH_API_KEY:
+        required: true
+
+jobs:
+  arm:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+            artifact-name: Debian-13-arm64v8
+          - arch: arm
+            artifact-name: Debian-13-arm32v7
+          - arch: s390x
+            artifact-name: Debian-13-s390x
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+
+      - name: Get ADI dependencies from Cloudsmith
+        uses: ./.github/actions/get-adi-deps
+        with:
+          cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
+          package-name: ${{ matrix.artifact-name }}.deb
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Build (QEMU)
+        run: |
+          set -e
+          docker run --rm -m=4g --platform "linux/${{ matrix.arch }}" \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -e CMAKE_BUILD_TYPE=${{ inputs.build-type }} \
+            -v "${{ github.workspace }}":/ci \
+            debian:trixie /bin/bash -c '
+              set -e
+              apt-get update
+              apt-get install -y sudo build-essential git wget curl ca-certificates
+              cd /ci
+              bash ./CI/azure/build_osc_arm.sh install_apt_pkgs
+              bash ./CI/azure/build_osc_arm.sh install_gtkdatabox
+              bash ./CI/azure/build_osc_arm.sh install_adi_debs
+              bash ./CI/azure/build_osc_arm.sh build_osc
+            '
+
+      - name: Fix artifact permissions
+        run: sudo chown -R "$(id -u):$(id -g)" build
+
+      - name: Upload build
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: error

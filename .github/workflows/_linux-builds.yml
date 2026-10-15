@@ -1,0 +1,78 @@
+name: Linux builds
+
+# Reusable: Ubuntu + Debian builds. Reuses CI/azure/build_osc_ubuntu.sh for the
+# apt deps, gtkdatabox, ADI-deb install and the build (cmake+make) - same as the
+# old Azure LinuxBuilds job. ADI deps come prebuilt from Cloudsmith. Produces a
+# build/ tree (no .deb), like Azure. The bootstrap step installs the base
+# toolchain the Azure VM had preinstalled but the official containers lack.
+
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        required: true
+        type: string
+    secrets:
+      CLOUDSMITH_API_KEY:
+        required: true
+
+jobs:
+  linux:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:22.04
+            artifact-name: Linux-Ubuntu-22.04
+          - image: ubuntu:24.04
+            artifact-name: Linux-Ubuntu-24.04
+          - image: debian:bookworm
+            artifact-name: Linux-Debian-12
+          - image: debian:trixie
+            artifact-name: Linux-Debian-13
+    container:
+      image: ${{ matrix.image }}
+    env:
+      CMAKE_BUILD_TYPE: ${{ inputs.build-type }}
+    steps:
+      - name: Bootstrap (toolchain + sudo + python for Cloudsmith helper)
+        run: |
+          set -e
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y sudo build-essential git wget curl ca-certificates \
+            python3 python3-requests
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Install apt dependencies
+        run: bash ./CI/azure/build_osc_ubuntu.sh install_apt_pkgs
+
+      - name: Get ADI dependencies from Cloudsmith
+        uses: ./.github/actions/get-adi-deps
+        with:
+          cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
+          package-name: ${{ matrix.artifact-name }}.deb
+
+      - name: Install ADI dependencies
+        run: bash ./CI/azure/build_osc_ubuntu.sh install_adi_debs
+
+      - name: Build gtkdatabox
+        run: bash ./CI/azure/build_osc_ubuntu.sh install_gtkdatabox
+
+      - name: Build osc
+        run: bash ./CI/azure/build_osc_ubuntu.sh build_osc
+
+      - name: Upload build
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: error

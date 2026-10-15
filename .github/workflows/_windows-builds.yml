@@ -1,0 +1,68 @@
+name: Windows builds
+
+# Reusable: msys2/MINGW64 build on the runner (replaces the prebuilt
+# shooteu/iio-oscilloscope Windows image). Reuses the existing CI/docker
+# scripts, which expect the source under /home/docker/iio-oscilloscope.
+# ADI libs are built from source in msys2 (mingw ABI). Output: adi-osc-setup.exe.
+
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        required: true
+        type: string
+
+jobs:
+  windows:
+    name: Windows-mingw-x64
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2 # TODO: pin to a commit SHA
+        with:
+          msystem: MINGW64
+          update: true
+          install: base-devel git
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest -UseBasicParsing -Uri 'https://jrsoftware.org/download.php/is.exe' -OutFile "$env:RUNNER_TEMP\is.exe"
+          Start-Process -FilePath "$env:RUNNER_TEMP\is.exe" -ArgumentList '/VERYSILENT','/SP-','/SUPPRESSMSGBOXES','/NORESTART','/DIR=C:\innosetup' -Wait
+
+      - name: Build + package
+        shell: msys2 {0}
+        env:
+          LIBIIO_BRANCH: libiio-v0
+          LIBAD9361_BRANCH: main
+          LIBAD9166_BRANCH: main
+        run: |
+          set -e
+          export USER=docker
+          src="$(cygpath "$GITHUB_WORKSPACE")"
+          mkdir -p /home/docker/artifact
+          cp -r "$src" /home/docker/iio-oscilloscope
+          cd /home/docker/iio-oscilloscope
+          git config --global --add safe.directory /home/docker/iio-oscilloscope
+          export OSC_BUILD_VER="$(git describe --tags --always HEAD 2>/dev/null || echo dev)"
+          # Deps the prebuilt image used to bake in:
+          ./CI/docker/build_mingw.sh install_pacman_deps
+          ./CI/docker/build_mingw.sh build_gtkdatabox
+          # Build libiio/libad9361/libad9166 + osc, stage files, run Inno Setup:
+          ./CI/docker/inside_docker.sh
+          cp /home/docker/artifact/adi-osc-setup.exe "$src/"
+
+      - name: Upload setup exe
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Windows-mingw-x64
+          path: adi-osc-setup.exe
+          if-no-files-found: error
