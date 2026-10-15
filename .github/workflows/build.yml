@@ -1,22 +1,9 @@
 name: Build
 
-# Azure Pipelines -> GitHub Actions migration (faithful port).
-#
-# Mirrors the jobs that lived in azure-pipelines.yml, with OS images bumped to
-# current and the macOS job (which Azure kept commented out "until fixes added
-# on development side") enabled:
-#   LinuxBuilds (ubuntu-22.04)               -> linux  (ubuntu-latest)
-#   ARMBuilds   (old ubuntu_18_04 arm image) -> arm    (debian:trixie under QEMU)
-#   macOSBuilds (was disabled)               -> macos  (macos-15 / macos-26, like libiio)
-# Windows keeps its own workflow (buildmingw.yml, image bumped to windows-2022).
-#
-# No packaging is produced and no CI scripts are moved: the existing
-# CI/azure/build_osc_*.sh helpers are called where they already live. macOS
-# needs minimal source build-fixes to compile (osc.h OSC_FALLTHROUGH + the
-# CMakeLists Homebrew/-Werror lines) - those are the "development-side fixes"
-# Azure's note referred to. The only functional difference from Azure is that
-# the ADI dependency packages are fetched from Cloudsmith (GitHub has no
-# equivalent of Azure pipeline artifacts).
+# Azure Pipelines -> GitHub Actions migration (modular).
+# setup computes build flags, fans out to the per-platform reusable workflows,
+# then (on main / release tags) checks artifacts, pushes to Cloudsmith and cuts
+# a draft GitHub Release. macOS is compile-verify only and never gates publish.
 
 permissions:
   contents: read
@@ -29,6 +16,7 @@ on:
       - master
       - 'staging/*'
       - '20*'
+      - 'test/*'          # TODO: remove before merging (lets this branch run)
     tags:
       - 'v*'
   pull_request:
@@ -42,195 +30,145 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  linux:
-    name: ${{ matrix.artifact-name }}
+  setup:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - artifact-name: Linux-Ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      build-type: ${{ steps.set.outputs.build-type }}
+      is-release: ${{ steps.set.outputs.is-release }}
+      is-main: ${{ steps.set.outputs.is-main }}
+      cloudsmith-version: ${{ steps.set.outputs.cloudsmith-version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 1
-
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.11'
-      - run: pip install requests
-
-      # Azure fetched libiio/libad9361/libad9166 from sibling Azure pipeline
-      # artifacts; GitHub has no equivalent, so pull the prebuilt .debs from
-      # Cloudsmith. build_osc_ubuntu.sh install_adi_debs reads ./download/*.deb.
-      - name: Fetch ADI dependency packages
-        env:
-          # TODO(production): switch secret to CLOUDSMITH_API_KEY
-          CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
+      - id: set
+        shell: bash
         run: |
-          set -e
-          wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
-            -O /tmp/cloudsmith_helper.py
-          mkdir -p download && cd download
-          for ver in libiio-v0~latest libad9361-iio-v0~latest libad9166-iio-v0~latest; do
-            python3 /tmp/cloudsmith_helper.py \
-              --method get_artifacts_from_location \
-              --repo external \
-              --package_version "$ver" \
-              --package_name "${{ matrix.artifact-name }}.deb"
-          done
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "build-type=Release" >> "$GITHUB_OUTPUT"
+            echo "is-release=true" >> "$GITHUB_OUTPUT"
+            echo "cloudsmith-version=iio-oscilloscope-${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "build-type=RelWithDebInfo" >> "$GITHUB_OUTPUT"
+            echo "is-release=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            echo "is-main=true" >> "$GITHUB_OUTPUT"
+            echo "cloudsmith-version=iio-oscilloscope-main~latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "is-main=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Install dependencies and build
-        run: |
-          set -e
-          ./CI/azure/build_osc_ubuntu.sh install_apt_pkgs
-          ./CI/azure/build_osc_ubuntu.sh install_adi_debs
-          ./CI/azure/build_osc_ubuntu.sh install_gtkdatabox
-          ./CI/azure/build_osc_ubuntu.sh build_osc
-
-      - name: Upload build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ matrix.artifact-name }}
-          path: build/
-          if-no-files-found: error
+  linux:
+    needs: setup
+    uses: ./.github/workflows/_linux-builds.yml
+    with:
+      build-type: ${{ needs.setup.outputs.build-type }}
+    secrets:
+      # TODO(production): switch to CLOUDSMITH_API_KEY
+      CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
 
   arm:
-    name: ${{ matrix.artifact-name }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: aarch64
-            artifact-name: Debian-13-arm64v8
-          - arch: arm
-            artifact-name: Debian-13-arm32v7
-          - arch: s390x
-            artifact-name: Debian-13-s390x
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 1
-
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.11'
-      - run: pip install requests
-
-      - name: Fetch ADI dependency packages
-        env:
-          # TODO(production): switch secret to CLOUDSMITH_API_KEY
-          CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
-        run: |
-          set -e
-          wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
-            -O /tmp/cloudsmith_helper.py
-          mkdir -p download && cd download
-          for ver in libiio-v0~latest libad9361-iio-v0~latest libad9166-iio-v0~latest; do
-            python3 /tmp/cloudsmith_helper.py \
-              --method get_artifacts_from_location \
-              --repo external \
-              --package_version "$ver" \
-              --package_name "${{ matrix.artifact-name }}.deb"
-          done
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-
-      # Same approach as the Azure ARM job: emulate the target arch under QEMU
-      # and run the existing CI/azure/build_osc_arm.sh steps inside the container.
-      # Image bumped from the old ubuntu_18_04 arm image to current Debian.
-      - name: Build (QEMU)
-        run: |
-          set -e
-          docker run --rm -m=4g --platform "linux/${{ matrix.arch }}" \
-            -v "${{ github.workspace }}":/ci \
-            debian:trixie \
-            /bin/bash -c "
-              set -e
-              export DEBIAN_FRONTEND=noninteractive
-              apt-get update
-              apt-get install -y sudo build-essential git cmake wget curl ca-certificates autoconf automake libtool
-              cd /ci
-              chmod +x ./CI/azure/build_osc_arm.sh
-              ./CI/azure/build_osc_arm.sh install_apt_pkgs
-              ./CI/azure/build_osc_arm.sh install_adi_debs
-              ./CI/azure/build_osc_arm.sh install_gtkdatabox
-              ./CI/azure/build_osc_arm.sh build_osc
-            "
-
-      - name: Fix artifact permissions
-        run: sudo chown -R "$(id -u):$(id -g)" build
-
-      - name: Upload build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ matrix.artifact-name }}
-          path: build/
-          if-no-files-found: error
+    needs: setup
+    uses: ./.github/workflows/_arm-builds.yml
+    with:
+      build-type: ${{ needs.setup.outputs.build-type }}
+    secrets:
+      CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
 
   macos:
-    name: ${{ matrix.artifact-name }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-15
-            artifact-name: macOS-15-arm64
-          - os: macos-15-large
-            artifact-name: macOS-15-x64
-          - os: macos-26
-            artifact-name: macOS-26-arm64
-          - os: macos-26-large
-            artifact-name: macOS-26-x64
+    needs: setup
+    uses: ./.github/workflows/_macos-builds.yml
+    with:
+      build-type: ${{ needs.setup.outputs.build-type }}
+    secrets:
+      CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
+
+  windows:
+    needs: setup
+    uses: ./.github/workflows/_windows-builds.yml
+    with:
+      build-type: ${{ needs.setup.outputs.build-type }}
+
+  appimage:
+    needs: setup
+    uses: ./.github/workflows/_appimage-builds.yml
+
+  # macOS deliberately excluded: compile-verify only, must not block publish.
+  check-artifacts:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      (needs.setup.outputs.is-main == 'true' || needs.setup.outputs.is-release == 'true')
+    needs: [setup, linux, arm, windows, appimage]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download all artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          fetch-depth: 1
+          path: artifacts/
+      - name: Check artifacts are non-empty
+        run: |
+          set -e
+          missing=0
+          for dir in artifacts/*/; do
+            name=$(basename "$dir")
+            count=$(find "$dir" -type f | wc -l)
+            if [ "$count" -eq 0 ]; then
+              echo "EMPTY: $name"; missing=$((missing + 1))
+            else
+              echo "OK: $name ($count file(s))"
+            fi
+          done
+          [ "$missing" -eq 0 ] || { echo "ERROR: $missing artifact(s) empty"; exit 1; }
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+  push-cloudsmith:
+    if: needs.setup.outputs.is-main == 'true' || needs.setup.outputs.is-release == 'true'
+    needs: [setup, check-artifacts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          python-version: '3.11'
-      - run: pip install requests
-
-      # build_osc_darwin.sh install_adi_pkgs installs ./download/lib*-*.pkg, so
-      # fetch the macOS .pkg builds (filenames must match the lib{iio,ad9361,ad9166}-*
-      # globs that script expects).
-      - name: Fetch ADI dependency packages
+          path: artifacts/
+      - name: Install Cloudsmith CLI
+        run: pip install cloudsmith-cli
+      - name: Upload to Cloudsmith
         env:
-          # TODO(production): switch secret to CLOUDSMITH_API_KEY
           CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
         run: |
           set -e
-          wget -q https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/refs/heads/main/utils/cloudsmith_utils/cloudsmith_helper.py \
-            -O /tmp/cloudsmith_helper.py
-          mkdir -p download && cd download
-          for ver in libiio-v0~latest libad9361-iio-v0~latest libad9166-iio-v0~latest; do
-            python3 /tmp/cloudsmith_helper.py \
-              --method get_artifacts_from_location \
-              --repo external \
-              --package_version "$ver" \
-              --package_name "${{ matrix.artifact-name }}.pkg"
+          VERSION="${{ needs.setup.outputs.cloudsmith-version }}"
+          for dir in artifacts/*/; do
+            tag=$(basename "$dir")
+            for file in "$dir"*; do
+              [ -f "$file" ] || continue
+              cloudsmith push raw --republish \
+                --tags "$tag" --version "$VERSION" \
+                adi/external "$file"
+            done
           done
 
-      - name: Install dependencies and build
-        run: |
-          set -e
-          ./CI/azure/build_osc_darwin.sh install_deps
-          ./CI/azure/build_osc_darwin.sh install_adi_pkgs
-          ./CI/azure/build_osc_darwin.sh build_osc
-
-      - name: Upload build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  push-github-release:
+    if: needs.setup.outputs.is-release == 'true'
+    needs: [setup, check-artifacts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: ${{ matrix.artifact-name }}
-          path: build/
-          if-no-files-found: error
+          path: artifacts/
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f -exec cp {} release/ \;
+      - name: Create draft GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          draft: true
+          name: "iio-oscilloscope ${{ github.ref_name }}"
+          files: release/*
+          generate_release_notes: true
