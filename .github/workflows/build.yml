@@ -1,10 +1,4 @@
 name: Build
-
-# Azure Pipelines -> GitHub Actions migration (modular).
-# setup computes build flags, fans out to the per-platform reusable workflows,
-# then (on main / release tags) checks artifacts, pushes to Cloudsmith and cuts
-# a draft GitHub Release. macOS is compile-verify only and never gates publish.
-
 permissions:
   contents: read
 
@@ -19,12 +13,29 @@ on:
       - '20*'
     tags:
       - 'v*'
-  # pull_request:
-  #   branches:
-  #     - main
-  #     - master
-  #     - '20*'
+    paths-ignore:
+      - '**/*.md'
+      - 'doc/**'
+      - '.gitignore'
+      - 'LICENSE*'
+      - 'COPYING*'
+      - 'CODE_OF_CONDUCT*'
+      - 'CONTRIBUTING*'
+  pull_request:
+    branches:
+      - main
+      - next_stable
+      - libad9166-iio-v0
+      - '20*'
 
+    paths-ignore:
+      - '**/*.md'
+      - 'doc/**'
+      - '.gitignore'
+      - 'LICENSE*'
+      - 'COPYING*'
+      - 'CODE_OF_CONDUCT*'
+      - 'CONTRIBUTING*'    
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -63,7 +74,6 @@ jobs:
     with:
       build-type: ${{ needs.setup.outputs.build-type }}
     secrets:
-      # TODO(production): switch to CLOUDSMITH_API_KEY
       CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
 
   arm:
@@ -73,7 +83,7 @@ jobs:
       build-type: ${{ needs.setup.outputs.build-type }}
     secrets:
       CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
-
+      
   macos:
     needs: setup
     uses: ./.github/workflows/_macos-builds.yml
@@ -89,12 +99,13 @@ jobs:
       build-type: ${{ needs.setup.outputs.build-type }}
     secrets:
       CLOUDSMITH_API_KEY: ${{ secrets.TEST_REPO_CLOUDSMITH_TOKEN }}
-
   appimage:
     needs: setup
     uses: ./.github/workflows/_appimage-builds.yml
 
-  # macOS deliberately excluded: compile-verify only, must not block publish.
+  #############################################
+  # Check Artifacts
+  #############################################
   check-artifacts:
     if: |
       always() && !cancelled() &&
@@ -123,6 +134,9 @@ jobs:
           done
           [ "$missing" -eq 0 ] || { echo "ERROR: $missing artifact(s) empty"; exit 1; }
 
+#############################################
+# Push to Cloudsmith
+#############################################
   push-cloudsmith:
     if: needs.setup.outputs.is-main == 'true' || needs.setup.outputs.is-release == 'true'
     needs: [setup, check-artifacts]
@@ -151,6 +165,9 @@ jobs:
             done
           done
 
+  #############################################
+  # Push to GitHub Release
+  #############################################
   push-github-release:
     if: needs.setup.outputs.is-release == 'true'
     needs: [setup, check-artifacts]

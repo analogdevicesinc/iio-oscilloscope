@@ -6,12 +6,12 @@ export WORKDIR=/home/$USER/
 init_env() {
 
 export ARCH=x86_64
-export MINGW_VERSION=mingw64
+export MINGW_VERSION=ucrt64
 export CC=/${MINGW_VERSION}/bin/${ARCH}-w64-mingw32-gcc.exe
 export CXX=/${MINGW_VERSION}/bin/${ARCH}-w64-mingw32-g++.exe
 
 export JOBS=-j9
-export STAGING_DIR="/mingw64"
+export STAGING_DIR="/ucrt64"
 export MAKE_BIN="/bin/make"
 export MAKE="$MAKE_BIN $JOBS"
 export CMAKE_OPTS="-DCMAKE_C_COMPILER:FILEPATH=${CC} \
@@ -26,29 +26,31 @@ export CMAKE_OPTS="-DCMAKE_C_COMPILER:FILEPATH=${CC} \
 
 export CMAKE="/$MINGW_VERSION/bin/cmake"
 export HOST=${MINGW_VERSION}-w64-mingw32
-export AUTOCONF_OPTS="--prefix=/mingw64 \
+export AUTOCONF_OPTS="--prefix=/ucrt64 \
         --host=${ARCH}-w64-mingw32 \
         --enable-shared \
         --disable-static"
 }
 
 install_pacman_deps() {
-WINDEPS="mingw-w64-x86_64-gdb \
-mingw-w64-x86_64-dlfcn \
-mingw-w64-x86_64-libserialport \
-mingw-w64-x86_64-libusb \
-mingw-w64-x86_64-matio \
-mingw-w64-x86_64-fftw \
-mingw-w64-x86_64-autotools \
-mingw-w64-x86_64-gtk3 \
-mingw-w64-x86_64-glib2 \
-mingw-w64-x86_64-cmake \
-mingw-w64-x86_64-gcc \
-mingw-w64-x86_64-python3 \
-mingw-w64-x86_64-autotools \
-mingw-w64-x86_64-make \
-mingw-w64-x86_64-doxygen \
-mingw-w64-x86_64-jansson \
+WINDEPS="mingw-w64-ucrt-x86_64-gdb \
+mingw-w64-ucrt-x86_64-dlfcn \
+mingw-w64-ucrt-x86_64-libserialport \
+mingw-w64-ucrt-x86_64-libusb \
+mingw-w64-ucrt-x86_64-matio \
+mingw-w64-ucrt-x86_64-fftw \
+mingw-w64-ucrt-x86_64-autotools \
+mingw-w64-ucrt-x86_64-gtk3 \
+mingw-w64-ucrt-x86_64-glib2 \
+mingw-w64-ucrt-x86_64-libxml2 \
+mingw-w64-ucrt-x86_64-curl \
+mingw-w64-ucrt-x86_64-cmake \
+mingw-w64-ucrt-x86_64-gcc \
+mingw-w64-ucrt-x86_64-python3 \
+mingw-w64-ucrt-x86_64-autotools \
+mingw-w64-ucrt-x86_64-make \
+mingw-w64-ucrt-x86_64-doxygen \
+mingw-w64-ucrt-x86_64-jansson \
 cmake 
 "
 pacman -S --noconfirm --needed $WINDEPS
@@ -136,9 +138,6 @@ build_osc_github() {
 	src="$(cygpath "$GITHUB_WORKSPACE")"
 	cd "$src"
 	git config --global --add safe.directory "$src"
-	# osc finds libiio via pkg-config (pkg_check_modules LIBIIO REQUIRED); the
-	# Cloudsmith Windows zip is an MSVC bundle with no .pc, so a mingw build can't
-	# use it. Build the deps from source into /mingw64 (installs the .pc files).
 	export WORKDIR="$src" LIBIIO_BRANCH=libiio-v0 LIBAD9361_BRANCH=main LIBAD9166_BRANCH=main
 	install_pacman_deps
 	build_deps

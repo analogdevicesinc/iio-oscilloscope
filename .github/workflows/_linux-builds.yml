@@ -27,12 +27,49 @@ jobs:
         include:
           - image: ubuntu:22.04
             artifact-name: Linux-Ubuntu-22.04
+            build-script: ci-linux.sh
+            os-type: default
+            package-type: deb
           - image: ubuntu:24.04
             artifact-name: Linux-Ubuntu-24.04
+            build-script: ci-linux.sh
+            os-type: default
+            package-type: deb
+          - image: ubuntu:26.04
+            artifact-name: Linux-Ubuntu-26.04
+            build-script: ci-linux.sh
+            os-type: default
+            package-type: deb
           - image: debian:bookworm
             artifact-name: Linux-Debian-12
+            build-script: ci-linux.sh
+            os-type: default
+            package-type: deb
           - image: debian:trixie
             artifact-name: Linux-Debian-13
+            build-script: ci-linux.sh
+            os-type: default
+            package-type: deb
+          - image: fedora:42
+            artifact-name: Linux-Fedora-42
+            build-script: ci-linux.sh
+            os-type: fedora
+            package-type: rpm
+          - image: fedora:44
+            artifact-name: Linux-Fedora-44
+            build-script: ci-linux.sh
+            os-type: fedora
+            package-type: rpm
+          - image: opensuse/leap:15.6
+            artifact-name: Linux-openSUSE-15.6
+            build-script: ci-linux.sh
+            os-type: opensuse
+            package-type: rpm
+          - image: opensuse/leap:16.0
+            artifact-name: Linux-openSUSE-16.0
+            build-script: ci-linux.sh
+            os-type: opensuse
+            package-type: rpm
     container:
       image: ${{ matrix.image }}
     env:
@@ -41,36 +78,45 @@ jobs:
       - name: Bootstrap (toolchain + sudo + python for Cloudsmith helper)
         run: |
           set -e
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update
-          apt-get install -y sudo build-essential git wget curl ca-certificates \
-            python3 python3-requests
+          if command -v apt-get >/dev/null 2>&1; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y sudo build-essential git wget curl ca-certificates \
+              python3 python3-requests
+          elif command -v dnf >/dev/null 2>&1; then
+            dnf install -y sudo gcc gcc-c++ make git wget curl ca-certificates \
+              python3 python3-requests
+          elif command -v zypper >/dev/null 2>&1; then
+            zypper --gpg-auto-import-keys ref
+            zypper in -y sudo tar gzip gcc gcc-c++ make git wget curl python3 python3-requests
+          fi
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
-
-      - name: Install apt dependencies
-        run: bash ./CI/azure/build_osc_ubuntu.sh install_apt_pkgs
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Install py11, create venv and install dependencies
+        run: |
+          set -e
+          cd $GITHUB_WORKSPACE
+          uv python install 3.11
+          uv venv --python 3.11 --seed
+          uv pip install requests
+      - name: Install dependencies
+        run: bash ./CI/azure/build_osc_ubuntu.sh install_deps
 
       - name: Get libiio from Cloudsmith
         uses: ./.github/actions/get-adi-deps
         with:
           cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
-          package-versions: libiio-v0~latest
-          package-name: ${{ matrix.artifact-name }}.deb
-
-      - name: Get libads from Cloudsmith
-        uses: ./.github/actions/get-adi-deps
-        with:
-          cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
-          repo: test-alin-repo
-          package-versions: test9361-v0 test-v0
-          package-name: ${{ matrix.artifact-name }}.deb
-
+          package-versions: "libiio-v0~latest test-alin-repo:test9361-v0 test-alin-repo:test-v0"
+          package-name: ${{ matrix.artifact-name }}.${{ matrix.package-type }}
+          python: $GITHUB_WORKSPACE/.venv/bin/python3
+    
       - name: Install ADI dependencies
-        run: bash ./CI/azure/build_osc_ubuntu.sh install_adi_debs
+        run: bash ./CI/azure/build_osc_ubuntu.sh install_adi_pkgs
 
       - name: Build gtkdatabox
         run: bash ./CI/azure/build_osc_ubuntu.sh install_gtkdatabox

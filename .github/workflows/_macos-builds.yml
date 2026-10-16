@@ -1,13 +1,4 @@
 name: macOS builds
-
-# Reusable: reuses CI/azure/build_osc_darwin.sh for deps + build (same pattern as
-# the Linux/ARM jobs). ADI deps (libiio/libad9361/libad9166) come from Cloudsmith
-# via the get-adi-deps action, like the libad9166-iio example. Produces a build/
-# tree.
-#
-# continue-on-error: macOS still needs the OSC_FALLTHROUGH / CMakeLists source
-# fixes (removed from this CI-only branch) to compile under Apple's toolchain.
-
 on:
   workflow_call:
     inputs:

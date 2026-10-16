@@ -1,11 +1,9 @@
 name: Windows builds
 
-# Reusable: msys2/MINGW64 build on the runner. libiio is fetched prebuilt from
-# Cloudsmith (same approach as the libad9166-iio example); libad9361/libad9166 are
-# added separately. gtkdatabox is built from source. Produces a build/ tree.
-#
-# NOTE: the Cloudsmith package must be a mingw-compatible build; the layout it
-# unzips into /mingw64 is verified on the first real run.
+# Reusable: msys2/UCRT64 build on the runner. libiio, libad9361, libad9166 and
+# gtkdatabox are all built from source into /ucrt64 by build_mingw.sh, so Windows
+# needs no Cloudsmith fetch (the MSVC Cloudsmith zip ships no pkg-config .pc that
+# a mingw build could use). Produces a build/ tree.
 
 on:
   workflow_call:
@@ -15,7 +13,7 @@ on:
         type: string
     secrets:
       CLOUDSMITH_API_KEY:
-        required: true
+        required: false
 
 jobs:
   windows:
@@ -27,34 +25,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.11'
-      - run: pip install requests
-
-      - name: Get libiio from Cloudsmith
-        env:
-          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/8d7a96779dd034005279ed1c7d052514df695d8c/utils/cloudsmith_utils/cloudsmith_helper.py" `
-            -OutFile "$env:TEMP\cloudsmith_helper.py"
-          if (!(Test-Path build)) { mkdir build }
-          cd build
-          foreach ($dep in @(
-            @{ repo = 'test-alin-repo'; version = 'test9361-v0';                 package = 'Windows-VS-2022-x64.zip' }
-            @{ repo = 'test-alin-repo'; version = 'test-v0';                     package = 'Windows-VS-2022-x64.zip' }
-            @{ repo = 'external';       version = 'libiio-v0~latest';            package = 'Windows-VS-2022-x64.zip' }
-          )) {
-            python "$env:TEMP\cloudsmith_helper.py" `
-              --method get_artifacts_from_location `
-              --repo $dep.repo `
-              --package_version $dep.version `
-              --package_name $dep.package
-            7z e $dep.package -o"." -y
-          }
 
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2 # TODO: pin to a commit SHA

@@ -55,7 +55,10 @@ build_osc() {
 	# not search /usr/local by default).
 	export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
 	mkdir -p build && cd build
-	cmake -DCMAKE_C_COMPILER="/usr/bin/gcc" ../
+	# _DARWIN_C_SOURCE re-exposes dladdr/Dl_info (hidden by the project's strict
+	# _POSIX_C_SOURCE on macOS); -include strings.h declares strncasecmp.
+	cmake -DCMAKE_C_COMPILER="/usr/bin/gcc" \
+		-DCMAKE_C_FLAGS="-D_DARWIN_C_SOURCE -include strings.h" ../
 	make -j9
 }
 
