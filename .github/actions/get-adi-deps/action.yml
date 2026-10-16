@@ -15,6 +15,10 @@ inputs:
     description: Cloudsmith repository to pull from.
     required: false
     default: external
+  package-versions:
+    description: Space-separated Cloudsmith package versions to fetch.
+    required: false
+    default: libiio-v0~latest libad9361-iio-v0~latest libad9166-iio-v0~latest
   python:
     description: Python interpreter (must have the requests module).
     required: false
@@ -37,7 +41,7 @@ runs:
           -o /tmp/cloudsmith_helper.py
         mkdir -p "${{ inputs.output-dir }}"
         cd "${{ inputs.output-dir }}"
-        for ver in libiio-v0~latest libad9361-iio-v0~latest libad9166-iio-v0~latest; do
+        for ver in ${{ inputs.package-versions }}; do
           "${{ inputs.python }}" /tmp/cloudsmith_helper.py \
             --method get_artifacts_from_location \
             --repo "${{ inputs.repo }}" \

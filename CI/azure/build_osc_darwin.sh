@@ -38,12 +38,22 @@ install_deps() {
 }
 
 install_adi_pkgs() {
-	sudo installer -pkg ./download/libad9166-*.pkg -target /
-	sudo installer -pkg ./download/libad9361-*.pkg -target /
-	sudo installer -pkg ./download/libiio-*.pkg -target /
+	for p in ./download/*.pkg; do
+		[ -e "$p" ] || continue
+		sudo installer -pkg "$p" -target /
+	done
+	# ADI libiio installs as an iio.framework (no libiio.pc) at the same path on
+	# both arches; bridge it to a plain lib + .pc for pkg_check_modules(libiio).
+	fw=/Library/Frameworks/iio.framework
+	sudo mkdir -p /usr/local/lib/pkgconfig
+	sudo ln -sf "$fw/iio" /usr/local/lib/libiio.dylib
+	printf 'Name: libiio\nVersion: 0.26\nDescription: libiio\nCflags: -I%s/Headers\nLibs: -L/usr/local/lib -liio\n' "$fw" | sudo tee /usr/local/lib/pkgconfig/libiio.pc >/dev/null
 }
 
 build_osc() {
+	# find the shim libiio.pc from install_adi_pkgs (arm64 brew pkg-config does
+	# not search /usr/local by default).
+	export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
 	mkdir -p build && cd build
 	cmake -DCMAKE_C_COMPILER="/usr/bin/gcc" ../
 	make -j9

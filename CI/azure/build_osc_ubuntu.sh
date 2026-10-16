@@ -40,6 +40,7 @@ install_adi_debs() {
 }
 
 build_osc() {
+	git config --global --add safe.directory '*'
 	mkdir build && cd build
 	cmake ../
 	make -j9

@@ -136,10 +136,12 @@ build_osc_github() {
 	src="$(cygpath "$GITHUB_WORKSPACE")"
 	cd "$src"
 	git config --global --add safe.directory "$src"
-	WORKDIR="$src"
-	for z in download/*.zip; do unzip -o "$z" -d /mingw64; done
+	# osc finds libiio via pkg-config (pkg_check_modules LIBIIO REQUIRED); the
+	# Cloudsmith Windows zip is an MSVC bundle with no .pc, so a mingw build can't
+	# use it. Build the deps from source into /mingw64 (installs the .pc files).
+	export WORKDIR="$src" LIBIIO_BRANCH=libiio-v0 LIBAD9361_BRANCH=main LIBAD9166_BRANCH=main
 	install_pacman_deps
-	build_gtkdatabox
+	build_deps
 	build_osc
 }
 

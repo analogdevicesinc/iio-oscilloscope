@@ -14,16 +14,16 @@ on:
     branches:
       - main
       - master
+      - 'ci/*'
       - 'staging/*'
       - '20*'
-      - 'test/*'          # TODO: remove before merging (lets this branch run)
     tags:
       - 'v*'
-  pull_request:
-    branches:
-      - main
-      - master
-      - '20*'
+  # pull_request:
+  #   branches:
+  #     - main
+  #     - master
+  #     - '20*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
