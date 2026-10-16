@@ -1,12 +1,5 @@
 name: ARM builds
 
-# Reusable: modelled on libad9166-iio's _arm-builds.yml.
-#   arm-native: arm64 / arm32v7 on a native ARM runner (arm32 via docker --platform)
-#   cross-arch: s390x under QEMU (no ppc64le - dropped)
-# ADI deps (libiio/libad9361/libad9166) come from Cloudsmith via the get-adi-deps
-# action and are installed inside the target container; osc is built with
-# CI/azure/build_osc_arm.sh. Produces a build/ tree.
-
 on:
   workflow_call:
     inputs:

@@ -35,11 +35,6 @@ jobs:
             build-script: ci-linux.sh
             os-type: default
             package-type: deb
-          - image: ubuntu:26.04
-            artifact-name: Linux-Ubuntu-26.04
-            build-script: ci-linux.sh
-            os-type: default
-            package-type: deb
           - image: debian:bookworm
             artifact-name: Linux-Debian-12
             build-script: ci-linux.sh
@@ -50,32 +45,17 @@ jobs:
             build-script: ci-linux.sh
             os-type: default
             package-type: deb
-          - image: fedora:42
-            artifact-name: Linux-Fedora-42
-            build-script: ci-linux.sh
-            os-type: fedora
-            package-type: rpm
-          - image: fedora:44
-            artifact-name: Linux-Fedora-44
-            build-script: ci-linux.sh
-            os-type: fedora
-            package-type: rpm
-          - image: opensuse/leap:15.6
-            artifact-name: Linux-openSUSE-15.6
-            build-script: ci-linux.sh
-            os-type: opensuse
-            package-type: rpm
-          - image: opensuse/leap:16.0
-            artifact-name: Linux-openSUSE-16.0
-            build-script: ci-linux.sh
-            os-type: opensuse
-            package-type: rpm
+    defaults:
+      run:
+        shell: /bin/bash -e {0}
     container:
       image: ${{ matrix.image }}
     env:
       CMAKE_BUILD_TYPE: ${{ inputs.build-type }}
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
-      - name: Bootstrap (toolchain + sudo + python for Cloudsmith helper)
+      - name: Installing dependencies
+        shell: sh {0}
         run: |
           set -e
           if command -v apt-get >/dev/null 2>&1; then
@@ -88,9 +68,8 @@ jobs:
               python3 python3-requests
           elif command -v zypper >/dev/null 2>&1; then
             zypper --gpg-auto-import-keys ref
-            zypper in -y sudo tar gzip gcc gcc-c++ make git wget curl python3 python3-requests
+            zypper in -y bash sudo tar gzip gcc gcc-c++ make git wget curl python3 python3-requests
           fi
-
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -105,9 +84,9 @@ jobs:
           uv venv --python 3.11 --seed
           uv pip install requests
       - name: Install dependencies
-        run: bash ./CI/azure/build_osc_ubuntu.sh install_deps
+        run: ./CI/azure/build_osc_ubuntu.sh install_deps
 
-      - name: Get libiio from Cloudsmith
+      - name: Get libiio and libads from Cloudsmith
         uses: ./.github/actions/get-adi-deps
         with:
           cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
@@ -116,13 +95,13 @@ jobs:
           python: $GITHUB_WORKSPACE/.venv/bin/python3
     
       - name: Install ADI dependencies
-        run: bash ./CI/azure/build_osc_ubuntu.sh install_adi_pkgs
+        run: ./CI/azure/build_osc_ubuntu.sh install_adi_pkgs
 
       - name: Build gtkdatabox
-        run: bash ./CI/azure/build_osc_ubuntu.sh install_gtkdatabox
+        run: ./CI/azure/build_osc_ubuntu.sh install_gtkdatabox
 
       - name: Build osc
-        run: bash ./CI/azure/build_osc_ubuntu.sh build_osc
+        run: ./CI/azure/build_osc_ubuntu.sh build_osc
 
       - name: Upload build
         if: github.event_name != 'pull_request'

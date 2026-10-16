@@ -41,20 +41,13 @@ jobs:
           python-version: '3.11'
       - run: pip install requests
 
-      - name: Get libiio from Cloudsmith
+      - name: Get artifacts from Cloudsmith
         uses: ./.github/actions/get-adi-deps
         with:
           cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
-          package-versions: libiio-v0~latest
-          package-name: ${{ matrix.artifact-name }}.pkg
-
-      - name: Get libads from Cloudsmith
-        uses: ./.github/actions/get-adi-deps
-        with:
-          cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
-          repo: test-alin-repo
-          package-versions: test9361-v0 test-v0
-          package-name: ${{ matrix.artifact-name }}.pkg
+          package-versions: "libiio-v0~latest test-alin-repo:test9361-v0 test-alin-repo:test-v0"
+          package-name: ${{ matrix.artifact-name }}.${{ matrix.package-type }}
+          python: $GITHUB_WORKSPACE/.venv/bin/python3
 
       - name: Install dependencies
         run: |

@@ -1,10 +1,5 @@
 name: Windows builds
 
-# Reusable: msys2/UCRT64 build on the runner. libiio, libad9361, libad9166 and
-# gtkdatabox are all built from source into /ucrt64 by build_mingw.sh, so Windows
-# needs no Cloudsmith fetch (the MSVC Cloudsmith zip ships no pkg-config .pc that
-# a mingw build could use). Produces a build/ tree.
-
 on:
   workflow_call:
     inputs:
@@ -13,7 +8,7 @@ on:
         type: string
     secrets:
       CLOUDSMITH_API_KEY:
-        required: false
+        required: true
 
 jobs:
   windows:
@@ -25,16 +20,17 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2 # TODO: pin to a commit SHA
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
           install: base-devel git wget unzip
 
       - name: Build osc
         shell: msys2 {0}
+        env:
+          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
         run: bash ./CI/docker/build_mingw.sh build_osc_github
 
       - name: Upload build
@@ -42,5 +38,5 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: Windows-mingw-x64
-          path: build/
+          path: artifact/adi-osc-setup.exe
           if-no-files-found: error

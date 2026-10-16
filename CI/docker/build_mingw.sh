@@ -47,7 +47,6 @@ mingw-w64-ucrt-x86_64-curl \
 mingw-w64-ucrt-x86_64-cmake \
 mingw-w64-ucrt-x86_64-gcc \
 mingw-w64-ucrt-x86_64-python3 \
-mingw-w64-ucrt-x86_64-autotools \
 mingw-w64-ucrt-x86_64-make \
 mingw-w64-ucrt-x86_64-doxygen \
 mingw-w64-ucrt-x86_64-jansson \
@@ -62,53 +61,6 @@ get_innosetup() {
 	popd
 }
 
-build_libiio() {
-	pushd $WORKDIR
-	export DIR="$WORKDIR/libiio"
-	if [ -d "$DIR" ]; then
-  		rm -rf $DIR
-	fi
-	git clone https://github.com/analogdevicesinc/libiio
-	cd libiio
-	git checkout $LIBIIO_BRANCH
-	mkdir build
-	cd build
-	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" -DWITH_SERIAL_BACKEND=ON ../
-	$MAKE install
-	popd
-}
-
-build_libad9361() {
-	pushd $WORKDIR
-	export DIR="$WORKDIR/libad9361-iio"
-	if [ -d "$DIR" ]; then
-  		rm -rf $DIR
-	fi
-	git clone https://github.com/analogdevicesinc/libad9361-iio
-	cd libad9361-iio
-	git checkout $LIBAD9361_BRANCH
-	mkdir build
-	cd build
-	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
-	$MAKE install
-	popd
-	}
-
-build_libad9166 () {
-	pushd $WORKDIR
-	export DIR="$WORKDIR/libad9166-iio"
-	if [ -d "$DIR" ]; then
-  		rm -rf $DIR
-	fi
-	git clone https://github.com/analogdevicesinc/libad9166-iio
-	cd libad9166-iio
-	git checkout $LIBAD9166_BRANCH
-	mkdir build
-	cd build
-	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
-	$MAKE install
-	popd
-}
 
 build_gtkdatabox () {
 	pushd $WORKDIR
@@ -121,28 +73,93 @@ build_gtkdatabox () {
 }
 
 build_deps() {
-	build_libiio
-	build_libad9361
-	build_libad9166
 	build_gtkdatabox
 }
 
 build_osc() {
 	mkdir -p build
-	cd build
+	pushd build
 	$CMAKE $CMAKE_OPTS -G"Unix Makefiles" ../
 	$MAKE
+	popd
 }
 
-build_osc_github() {
-	src="$(cygpath "$GITHUB_WORKSPACE")"
-	cd "$src"
-	git config --global --add safe.directory "$src"
-	export WORKDIR="$src" LIBIIO_BRANCH=libiio-v0 LIBAD9361_BRANCH=main LIBAD9166_BRANCH=main
-	install_pacman_deps
-	build_deps
-	build_osc
+package_osc() {
+	pushd build
+	cmake --install . --prefix .
+	popd
+
+	REPODIR="$(pwd)" STAGING_DIR="/$MINGW_VERSION" ./CI/docker/install_prep.sh
+
+	local version
+	version=$(git describe --tags --always HEAD | sed 's/^v//')
+	MSYS_NO_PATHCONV=1 "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "/DMyAppVersion=${version}" osc.iss
 }
+
+CLOUDSMITH_HELPER_URL="https://raw.githubusercontent.com/analogdevicesinc/wiki-scripts/8d7a96779dd034005279ed1c7d052514df695d8c/utils/cloudsmith_utils/cloudsmith_helper.py"
+
+get_adi_deps() {
+	local artifact="Windows-MinGW-W64.zip"
+	pushd "$WORKDIR"
+	pacman -S --noconfirm --needed mingw-w64-ucrt-x86_64-python-requests
+	wget -O cloudsmith_helper.py "$CLOUDSMITH_HELPER_URL"
+	mkdir -p "$STAGING_DIR"/bin "$STAGING_DIR"/include "$STAGING_DIR"/lib/pkgconfig
+	for spec in \
+		external:libiio-v0~latest:libiio:iio:1 \
+		test-alin-repo:test9361-v0:libad9361:ad9361:0 \
+		test-alin-repo:test-v0:libad9166:ad9166:0; do
+		IFS=: read -r repo version pcname linkname required <<<"$spec"
+		rm -f "$artifact"
+		python cloudsmith_helper.py \
+			--method get_artifacts_from_location \
+			--repo "$repo" \
+			--package_version "$version" \
+			--package_name "$artifact"
+		# The helper exits 0 even when it matches nothing, so verify the download.
+		if [ ! -f "$artifact" ]; then
+			if [ "$required" = 1 ]; then
+				echo "ERROR: Cloudsmith returned no '$artifact' for '$repo' version '$version'" >&2
+				exit 1
+			fi
+			echo "WARNING: no '$artifact' in '$repo' ($version); skipping optional $pcname" >&2
+			continue
+		fi
+
+		rm -rf unpack && mkdir unpack && unzip -oq "$artifact" -d unpack
+		find unpack -name '*.h'                  -exec cp {} "$STAGING_DIR"/include/ \;
+		find unpack -name "lib${linkname}.dll.a" -exec cp {} "$STAGING_DIR"/lib/ \;
+		find unpack -name "lib${linkname}.dll"   -exec cp {} "$STAGING_DIR"/bin/ \;
+
+		if [ -f "$STAGING_DIR/lib/lib${linkname}.dll.a" ]; then
+			cat > "$STAGING_DIR/lib/pkgconfig/${pcname}.pc" <<EOF
+prefix=$STAGING_DIR
+exec_prefix=$STAGING_DIR
+libdir=$STAGING_DIR/lib
+includedir=$STAGING_DIR/include
+
+Name: $pcname
+Description: $pcname (prebuilt, from Cloudsmith)
+Version: 0
+Libs: -L$STAGING_DIR/lib -l$linkname
+Cflags: -I$STAGING_DIR/include
+EOF
+		elif [ "$required" = 1 ]; then
+			echo "ERROR: lib${linkname}.dll.a missing after extracting '$artifact' from '$repo'" >&2
+			exit 1
+		else
+			echo "WARNING: lib${linkname}.dll.a not in '$artifact' ($repo); skipping optional $pcname" >&2
+		fi
+	done
+	popd
+}
+build_osc_github() {
+	install_pacman_deps
+	get_adi_deps
+	build_gtkdatabox
+	build_osc
+	package_osc
+}
+
 
 init_env
 $@
