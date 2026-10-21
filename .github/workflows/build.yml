@@ -34,7 +34,7 @@ on:
       - 'LICENSE*'
       - 'COPYING*'
       - 'CODE_OF_CONDUCT*'
-      - 'CONTRIBUTING*'    
+      - 'CONTRIBUTING*'
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -82,7 +82,7 @@ jobs:
       build-type: ${{ needs.setup.outputs.build-type }}
     secrets:
       CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_TOKEN }}
-      
+
   macos:
     needs: setup
     uses: ./.github/workflows/_macos-builds.yml
@@ -110,7 +110,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       (needs.setup.outputs.is-main == 'true' || needs.setup.outputs.is-release == 'true')
-    needs: [setup, linux, arm, windows, appimage]
+    needs: [setup, linux, arm, macos, windows, appimage]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
