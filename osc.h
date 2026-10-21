@@ -68,7 +68,7 @@ extern void math_expression_objects_clean(void);
 #define DBG(D...)
 #endif
 
-#define fallthrough	__attribute__((__fallthrough__))
+#define OSC_FALLTHROUGH	__attribute__((__fallthrough__))
 
 struct osc_plugin;
 

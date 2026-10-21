@@ -88,6 +88,7 @@ add_definitions(-D_GNU_SOURCE
 	${GIT_COMMIT_TIMESTAMP}
 	-DGTK_DISABLE_DEPRECATED
 	-D_POSIX_C_SOURCE=200809L
+	-D_DARWIN_C_SOURCE
 )
 
 add_compile_options(-Wall -Wextra -Werror

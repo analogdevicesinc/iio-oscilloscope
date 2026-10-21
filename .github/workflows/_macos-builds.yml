@@ -46,13 +46,16 @@ jobs:
         with:
           cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
           package-versions: "libiio-v0~latest test-alin-repo:test9361-v0 test-alin-repo:test-v0"
-          package-name: ${{ matrix.artifact-name }}.${{ matrix.package-type }}
-          python: $GITHUB_WORKSPACE/.venv/bin/python3
+          package-name: ${{ matrix.artifact-name }}.pkg
+          python: python3
 
       - name: Install dependencies
         run: |
-          bash ./CI/azure/build_osc_darwin.sh install_deps
-          bash ./CI/azure/build_osc_darwin.sh install_adi_pkgs
+          set -e
+          mkdir -p download
+          find download -name "*.tar" -exec tar xf {} -C download \;
+          ./CI/azure/build_osc_darwin.sh install_deps
+          ./CI/azure/build_osc_darwin.sh install_adi_pkgs
 
       - name: Build osc
         run: bash ./CI/azure/build_osc_darwin.sh build_osc

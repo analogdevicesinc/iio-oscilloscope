@@ -1,11 +1,5 @@
 name: Linux builds
 
-# Reusable: Ubuntu + Debian builds. Reuses CI/azure/build_osc_ubuntu.sh for the
-# apt deps, gtkdatabox, ADI-deb install and the build (cmake+make) - same as the
-# old Azure LinuxBuilds job. ADI deps come prebuilt from Cloudsmith. Produces a
-# build/ tree (no .deb), like Azure. The bootstrap step installs the base
-# toolchain the Azure VM had preinstalled but the official containers lack.
-
 on:
   workflow_call:
     inputs:

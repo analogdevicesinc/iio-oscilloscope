@@ -15,10 +15,10 @@ install_deps() {
 		jansson \
 		glib \
 		curl \
-		openssl@3 \
+		openssl@3.0 \
 		gettext \
 		libserialport \
-		python
+		python 
         "
 
 	__brew_install_if_not_exists() {
@@ -38,28 +38,74 @@ install_deps() {
 }
 
 install_adi_pkgs() {
-	for p in ./download/*.pkg; do
-		[ -e "$p" ] || continue
-		sudo installer -pkg "$p" -target /
-	done
-	# ADI libiio installs as an iio.framework (no libiio.pc) at the same path on
-	# both arches; bridge it to a plain lib + .pc for pkg_check_modules(libiio).
-	fw=/Library/Frameworks/iio.framework
-	sudo mkdir -p /usr/local/lib/pkgconfig
-	sudo ln -sf "$fw/iio" /usr/local/lib/libiio.dylib
-	printf 'Name: libiio\nVersion: 0.26\nDescription: libiio\nCflags: -I%s/Headers\nLibs: -L/usr/local/lib -liio\n' "$fw" | sudo tee /usr/local/lib/pkgconfig/libiio.pc >/dev/null
+	mkdir -p build download
+	# Some artifacts are tarred; unpack any .tar into download/ first.
+	find build download -name "*.tar" -exec tar xf {} -C download \;
+	find build download -name "*.pkg" -exec sudo installer -pkg {} -target / \;
+}
+
+bridge_framework() {
+	local module="$1" fw="$2"
+	local fwdir="/Library/Frameworks/${fw}.framework/Versions/Current"
+	local libdir="${BREW_PREFIX}/lib"
+
+	if [ ! -d "${fwdir}" ]; then
+		echo "  ${fw}.framework not installed; skipping ${module}"
+		return 0
+	fi
+
+	sudo mkdir -p "${libdir}/pkgconfig"
+	sudo ln -sf "${fwdir}/${fw}" "${libdir}/lib${fw}.dylib"
+	sudo tee "${libdir}/pkgconfig/${module}.pc" >/dev/null <<EOF
+Name: ${module}
+Description: ${module} (macOS framework bridge)
+Version: 0
+Cflags: -I${fwdir}/Headers
+Libs: -L${libdir} -l${fw}
+EOF
+
+	echo "  bridged ${module} -> ${fwdir}/${fw}"
 }
 
 build_osc() {
-	# find the shim libiio.pc from install_adi_pkgs (arm64 brew pkg-config does
-	# not search /usr/local by default).
-	export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+	# Homebrew prefix is arch-specific: /opt/homebrew (Apple Silicon) vs
+	# /usr/local (Intel). Resolve it once, before bridging, and thread it
+	# through so the arm64 and x86_64 artifacts each build against the right
+	# prefix. Fall back to the arch default if brew is not on PATH.
+	export BREW_PREFIX="$(brew --prefix 2>/dev/null \
+		|| { [ "$(uname -m)" = arm64 ] && echo /opt/homebrew || echo /usr/local; })"
+
+	bridge_framework libiio    iio
+	bridge_framework libad9361 ad9361
+	bridge_framework libad9166 ad9166
+
+	export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
+	export CMAKE_PREFIX_PATH="${BREW_PREFIX}:${CMAKE_PREFIX_PATH}"
+	echo "BREW_PREFIX=${BREW_PREFIX}"
+	echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}"
+
+	pc_modules="glib-2.0 gtk+-3.0 gthread-2.0 gtkdatabox fftw3 libxml-2.0 \
+		libcurl jansson matio libiio"
+	pc_dirs() {  # $1 = --libs-only-L | --cflags-only-I; strip flag, dedupe, colon-join
+		pkg-config "$1" $pc_modules 2>/dev/null \
+			| tr ' ' '\n' | sed -n 's/^-.//p' | sort -u | tr '\n' ':'
+	}
+	export LIBRARY_PATH="$(pc_dirs --libs-only-L)${BREW_PREFIX}/lib:${LIBRARY_PATH}"
+	export CPATH="$(pc_dirs --cflags-only-I)${BREW_PREFIX}/include:${CPATH}"
+	echo "LIBRARY_PATH=${LIBRARY_PATH}"
+	echo "CPATH=${CPATH}"
+
 	mkdir -p build && cd build
-	# _DARWIN_C_SOURCE re-exposes dladdr/Dl_info (hidden by the project's strict
-	# _POSIX_C_SOURCE on macOS); -include strings.h declares strncasecmp.
 	cmake -DCMAKE_C_COMPILER="/usr/bin/gcc" \
-		-DCMAKE_C_FLAGS="-D_DARWIN_C_SOURCE -include strings.h" ../
+		-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE:-RelWithDebInfo}" ..
 	make -j9
+
+	# Assert the artifact matches the runner arch, so a stray universal/cross
+	# dep or wrong-arch .pkg fails loudly instead of shipping a broken binary.
+	expected="$(uname -m)"           # arm64 | x86_64
+	got="$(lipo -archs osc)"         # e.g. "arm64" or "x86_64"
+	echo "built osc arch: ${got} (expected ${expected})"
+	[ "${got}" = "${expected}" ] || { echo "arch mismatch"; exit 1; }
 }
 
 $@

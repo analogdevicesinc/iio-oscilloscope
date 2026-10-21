@@ -83,13 +83,13 @@ jobs:
     secrets:
       CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_TOKEN }}
       
-  # macos:
-  #   needs: setup
-  #   uses: ./.github/workflows/_macos-builds.yml
-  #   with:
-  #     build-type: ${{ needs.setup.outputs.build-type }}
-  #   secrets:
-  #     CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_TOKEN }}
+  macos:
+    needs: setup
+    uses: ./.github/workflows/_macos-builds.yml
+    with:
+      build-type: ${{ needs.setup.outputs.build-type }}
+    secrets:
+      CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_TOKEN }}
 
   windows:
     needs: setup
