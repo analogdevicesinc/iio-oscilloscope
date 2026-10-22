@@ -1,0 +1,108 @@
+name: Linux builds
+
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        required: true
+        type: string
+    secrets:
+      CLOUDSMITH_API_KEY:
+        required: true
+
+jobs:
+  linux:
+    name: ${{ matrix.artifact-name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:22.04
+            artifact-name: Linux-Ubuntu-22.04
+            build-script: ci-linux.sh
+            os-type: default
+            package-type: deb
+          - image: ubuntu:24.04
+            artifact-name: Linux-Ubuntu-24.04
+            build-script: ci-linux.sh
+            os-type: default
+            package-type: deb
+          - image: debian:bookworm
+            artifact-name: Linux-Debian-12
+            build-script: ci-linux.sh
+            os-type: default
+            package-type: deb
+          - image: debian:trixie
+            artifact-name: Linux-Debian-13
+            build-script: ci-linux.sh
+            os-type: default
+            package-type: deb
+    defaults:
+      run:
+        shell: /bin/bash -e {0}
+    container:
+      image: ${{ matrix.image }}
+    env:
+      CMAKE_BUILD_TYPE: ${{ inputs.build-type }}
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - name: Installing dependencies
+        shell: sh {0}
+        run: |
+          set -e
+          if command -v apt-get >/dev/null 2>&1; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y sudo build-essential git wget curl ca-certificates \
+              python3 python3-requests
+          elif command -v dnf >/dev/null 2>&1; then
+            dnf install -y sudo gcc gcc-c++ make git wget curl ca-certificates \
+              python3 python3-requests
+          elif command -v zypper >/dev/null 2>&1; then
+            zypper --gpg-auto-import-keys ref
+            zypper in -y bash sudo tar gzip gcc gcc-c++ make git wget curl python3 python3-requests
+          fi
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+      - name: Install py11, create venv and install dependencies
+        run: |
+          set -e
+          cd $GITHUB_WORKSPACE
+          uv python install 3.11
+          uv venv --python 3.11 --seed
+          uv pip install requests
+      - name: Install dependencies
+        run: ./CI/azure/build_osc_ubuntu.sh install_deps
+
+      - name: Get libiio and libads from Cloudsmith
+        uses: ./.github/actions/get-adi-deps
+        with:
+          cloudsmith-api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
+          package-versions: "libiio-v0~latest test-alin-repo:test9361-v0 test-alin-repo:test-v0"
+          package-name: ${{ matrix.artifact-name }}.${{ matrix.package-type }}
+          python: $GITHUB_WORKSPACE/.venv/bin/python3
+
+      - name: Install ADI dependencies
+        run: ./CI/azure/build_osc_ubuntu.sh install_adi_pkgs
+
+      - name: Build gtkdatabox
+        run: ./CI/azure/build_osc_ubuntu.sh install_gtkdatabox
+
+      - name: Build osc
+        run: ./CI/azure/build_osc_ubuntu.sh build_osc
+
+      - name: Upload build
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/
+          if-no-files-found: error
