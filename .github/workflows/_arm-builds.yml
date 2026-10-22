@@ -108,6 +108,9 @@ jobs:
       matrix:
         include:
           - image: ubuntu:22.04
+            arch: ppc64le
+            artifact-name: Ubuntu-22.04-ppc64le
+          - image: ubuntu:22.04
             arch: s390x
             artifact-name: Ubuntu-22.04-s390x
     steps:
