@@ -1,6 +1,0 @@
-#!/bin/bash
-set -e
-
-if type cppcheck &> /dev/null ; then
-	cppcheck --error-exitcode=1 --quiet *.h *.c plugins/ libini/
-fi
