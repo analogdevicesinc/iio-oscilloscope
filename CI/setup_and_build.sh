@@ -27,16 +27,12 @@ apt-get install -y \
         libavahi-common-dev \
         libpcre2-dev \
         libmatio-dev \
-        libiio-dev \
         file \
         fuse \
         apt-transport-https \
         fuse3 \
         gnupg \
         gettext-base debhelper jq
-curl -1sLf 'https://dl.cloudsmith.io/public/adi/kuiper/setup.deb.sh' | bash
-apt-get update
-apt-get install -y libad9361-dev libad9166-dev
 REPO_ROOT=$(realpath "${SCRIPT_DIR}/..")
 git config --global --add safe.directory "${REPO_ROOT}"
 ARCH="$1"
