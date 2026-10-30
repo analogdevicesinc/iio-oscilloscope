@@ -21,6 +21,8 @@
 #include <sys/types.h>
 #include <dirent.h>
 
+#include <strings.h>
+
 #include <complex.h>
 #include <fftw3.h>
 #include <iio.h>
@@ -4378,7 +4380,7 @@ static void transform_csv_print(OscPlotPrivate *priv, FILE *fp, Transform *tr)
 	case 2:
 		node = g_slist_nth(tr->plot_channels, 1);
 		id2 = PLOT_CHN(node->data)->name;
-		fallthrough;
+		OSC_FALLTHROUGH;
 	case 1:
 		node = g_slist_nth(tr->plot_channels, 0);
 		id1 = PLOT_CHN(node->data)->name;
@@ -6626,7 +6628,7 @@ static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 		break;
 	case GTK_RESPONSE_OK:
 		plot_trigger_save_settings(priv, dev);
-		fallthrough;
+		OSC_FALLTHROUGH;
 	default:
 		break;
 	}
