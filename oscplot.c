@@ -7100,8 +7100,8 @@ static void create_plot(OscPlot *plot)
 					G_TYPE_BOOLEAN,   /* EXPANDED */
 					G_TYPE_POINTER,   /* CHANNEL_SETTINGS */
 					GDK_TYPE_PIXBUF,  /* CHANNEL_COLOR_ICON */
-					G_TYPE_INT ,      /* PLOT_TYPE */
-					G_TYPE_BOOLEAN);  /* SENSITIVE */
+					G_TYPE_BOOLEAN,   /* SENSITIVE */
+					G_TYPE_INT);      /* PLOT_TYPE */
 	gtk_tree_view_set_model((GtkTreeView *)priv->channel_list_view, (GtkTreeModel *)tree_store);
 
 	/* Create Device Settings Menu */
