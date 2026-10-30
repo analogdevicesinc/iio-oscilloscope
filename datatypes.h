@@ -61,6 +61,7 @@ struct extra_info {
 struct extra_dev_info {
 	bool input_device;
 	struct iio_buffer *buffer;
+	unsigned int selected_buffer_idx;
 	unsigned int sample_count;
 	unsigned int buffer_size;
 	unsigned int channel_trigger;

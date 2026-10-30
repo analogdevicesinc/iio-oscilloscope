@@ -1331,7 +1331,7 @@ static gboolean capture_process(void *data)
 
 		if (dev_info->buffer == NULL || device_is_oneshot(dev)) {
 			dev_info->buffer_size = sample_count;
-			dev_info->buffer = iio_device_get_buffer(dev, 0);
+			dev_info->buffer = iio_device_get_buffer(dev, dev_info->selected_buffer_idx);
 			if (!dev_info->buffer) {
 				fprintf(stderr, "Error: Unable to get buffer: %s\n", strerror(errno));
 				goto capture_stop_check;
@@ -1606,7 +1606,7 @@ static int capture_setup(void)
 		dev_info->buffer = NULL;
 		dev_info->sample_count = sample_count;
 		dev_info->buffer_size = sample_count;
-		dev_info->buffer = iio_device_get_buffer(dev, 0);
+		dev_info->buffer = iio_device_get_buffer(dev, dev_info->selected_buffer_idx);
 		if (!dev_info->buffer) {
 		        fprintf(stderr, "Error: Unable to get buffer: %s\n", strerror(errno));
 			return -ENODEV;
