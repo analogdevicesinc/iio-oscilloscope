@@ -41,12 +41,12 @@ create_appdir()
 	pushd $STAGING_AREA
 	rm -rf $APP_DIR
 
-	ldconfig
+	sudo ldconfig
 
 	# inside a docker image you can't run an appimage executable without privileges
 	# so the solution is to extract the appimage first and only then to run it
 	export APPIMAGE_EXTRACT_AND_RUN=1
-	$STAGING_AREA/linuxdeploy-x86_64.AppImage --appimage-extract\
+	$STAGING_AREA/linuxdeploy-x86_64.AppImage \
 		--appdir $APP_DIR \
 		--executable $SRC_DIR/build/osc \
 		--custom-apprun $SRC_DIR/CI/appimage_x86_64/AppRun \
@@ -65,8 +65,10 @@ create_appdir()
 	cp -R $APP_DIR/usr/share/icons $APP_DIR/usr/bin
 	cp $SRC_DIR/build/styles.css $APP_DIR/usr/bin
 
-	cp /usr/local/lib/libad9361.so $APP_DIR/usr/lib
-	cp /usr/local/lib/libad9166.so $APP_DIR/usr/lib
+	# libad9361/libad9166 are dlopen'd by plugins, so linuxdeploy's ldd scan of
+	# osc misses them; copy them from wherever the Cloudsmith .deb installed them.
+	find /usr/lib -name 'libad9361.so*' -exec cp -av {} $APP_DIR/usr/lib \;
+	find /usr/lib -name 'libad9166.so*' -exec cp -av {} $APP_DIR/usr/lib \;
 
 	popd
 }
