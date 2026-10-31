@@ -112,6 +112,7 @@ struct dac_buffer {
 	char *dac_buf_filename;
 	int scan_elements_count;
 	struct iio_device *dac_with_scanelems;
+	struct iio_buffer *active_buf;
 
 	GtkWidget *frame;
 	GtkWidget *buffer_fchooser_btn;
@@ -712,13 +713,13 @@ static int process_dac_buffer_file (struct dac_data_manager *manager, const char
 		return -EINVAL;
 	}
 
-	manager->dac_buffer = iio_device_get_buffer(dac, 0);
+	manager->dac_buffer = manager->dac_buffer_module.active_buf;
 	if (!manager->dac_buffer) {
-		fprintf(stderr, "Unable to get buffer: %s\n", strerror(errno));
+		fprintf(stderr, "No output buffer available\n");
 		if (stat_msg)
-			*stat_msg = g_strdup_printf("Unable to get iio buffer: %s", strerror(errno));
+			*stat_msg = g_strdup_printf("No output buffer available");
 		free(buf);
-		return -errno;
+		return -ENODEV;
 	}
 
 	manager->dac_buf_stream = iio_buffer_open(manager->dac_buffer, manager->dac_mask);
@@ -2068,6 +2069,20 @@ int device_scan_elements_count(struct iio_device *dev)
 	return count;
 }
 
+static struct iio_buffer *dac_first_output_buffer(struct iio_device *dev)
+{
+	unsigned int i;
+
+	for (i = 0; i < iio_device_get_buffers_count(dev); i++) {
+		struct iio_buffer *buf = iio_device_get_buffer(dev, i);
+
+		if (buf && iio_buffer_is_output(buf))
+			return buf;
+	}
+
+	return NULL;
+}
+
 static void dac_buffer_init(struct dac_data_manager *manager, struct dac_buffer *d_buffer)
 {
 	int count;
@@ -2083,6 +2098,7 @@ static void dac_buffer_init(struct dac_data_manager *manager, struct dac_buffer 
 	d_buffer->parent = manager;
 	d_buffer->scan_elements_count = count;
 	d_buffer->dac_with_scanelems = dac_with_scanelems;
+	d_buffer->active_buf = dac_first_output_buffer(dac_with_scanelems);
 }
 
 static int dac_manager_init(struct dac_data_manager *manager,
