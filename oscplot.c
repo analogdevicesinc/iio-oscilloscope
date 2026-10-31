@@ -112,9 +112,12 @@ enum {
 	ELEMENT_NAME,
 	IS_DEVICE,
 	IS_CHANNEL,
+	IS_BUFFER,
 	CHANNEL_TYPE,
 	DEVICE_SELECTABLE,
+	BUFFER_SELECTABLE,
 	DEVICE_ACTIVE,
+	BUFFER_ACTIVE,
 	CHANNEL_ACTIVE,
 	ELEMENT_REFERENCE,
 	EXPANDED,
@@ -2088,7 +2091,22 @@ static void foreach_channel_iter_of_device(GtkTreeView *treeview, const char *na
 
 	next_child_iter = gtk_tree_model_iter_children(model, &child_iter, &iter);
 	while (next_child_iter) {
-		tree_iter_func(model, &child_iter, user_data);
+		gboolean is_buf;
+
+		gtk_tree_model_get(model, &child_iter, IS_BUFFER, &is_buf, -1);
+		if (is_buf) {
+			/* Iterate channel children of this buffer */
+			GtkTreeIter gc_iter;
+			gboolean next_gc;
+
+			next_gc = gtk_tree_model_iter_children(model, &gc_iter, &child_iter);
+			while (next_gc) {
+				tree_iter_func(model, &gc_iter, user_data);
+				next_gc = gtk_tree_model_iter_next(model, &gc_iter);
+			}
+		} else {
+			tree_iter_func(model, &child_iter, user_data);
+		}
 		next_child_iter = gtk_tree_model_iter_next(model, &child_iter);
 	}
 }
@@ -3066,13 +3084,39 @@ static bool call_all_transform_functions(OscPlotPrivate *priv)
 	return valid;
 }
 
+static void count_enabled_channels_recursive(GtkTreeModel *model, GtkTreeIter *parent,
+					      int *num_enabled, int *ch_pos, unsigned *enabled_mask)
+{
+	GtkTreeIter child_iter;
+	gboolean next_child_iter;
+
+	next_child_iter = gtk_tree_model_iter_children(model, &child_iter, parent);
+	while (next_child_iter) {
+		gboolean is_buf;
+
+		gtk_tree_model_get(model, &child_iter, IS_BUFFER, &is_buf, -1);
+		if (is_buf) {
+			count_enabled_channels_recursive(model, &child_iter,
+							 num_enabled, ch_pos, enabled_mask);
+		} else {
+			gboolean enabled;
+
+			gtk_tree_model_get(model, &child_iter, CHANNEL_ACTIVE, &enabled, -1);
+			if (enabled) {
+				(*num_enabled)++;
+				if (enabled_mask)
+					*enabled_mask |= 1 << (*ch_pos);
+			}
+			(*ch_pos)++;
+		}
+		next_child_iter = gtk_tree_model_iter_next(model, &child_iter);
+	}
+}
+
 static int enabled_channels_of_device(GtkTreeView *treeview, const char *name, unsigned *enabled_mask)
 {
 	GtkTreeIter iter;
-	GtkTreeIter child_iter;
-	gboolean next_child_iter;
 	char *str_device;
-	gboolean enabled;
 	int num_enabled = 0;
 	int ch_pos = 0;
 
@@ -3083,28 +3127,38 @@ static int enabled_channels_of_device(GtkTreeView *treeview, const char *name, u
 		*enabled_mask = 0;
 
 	while (next_iter) {
-		if (!gtk_tree_model_iter_children(model, &child_iter, &iter)) {
-			next_iter = gtk_tree_model_iter_next(model, &iter);
-			continue;
-		}
 		gtk_tree_model_get(model, &iter, ELEMENT_NAME, &str_device, -1);
 		if (!strcmp(name, str_device)) {
-			next_child_iter = true;
-			while (next_child_iter) {
-				gtk_tree_model_get(model, &child_iter, CHANNEL_ACTIVE, &enabled, -1);
-				if (enabled) {
-					num_enabled++;
-					if (enabled_mask)
-						*enabled_mask |= 1 << ch_pos;
-				}
-				ch_pos++;
-				next_child_iter = gtk_tree_model_iter_next(model, &child_iter);
-			}
+			g_free(str_device);
+			count_enabled_channels_recursive(model, &iter,
+							 &num_enabled, &ch_pos, enabled_mask);
+			break;
 		}
+		g_free(str_device);
 		next_iter = gtk_tree_model_iter_next(model, &iter);
 	}
 
 	return num_enabled;
+}
+
+static int count_channels_recursive(GtkTreeModel *model, GtkTreeIter *parent)
+{
+	GtkTreeIter child;
+	gboolean next;
+	int count = 0;
+
+	next = gtk_tree_model_iter_children(model, &child, parent);
+	while (next) {
+		gboolean is_buf;
+
+		gtk_tree_model_get(model, &child, IS_BUFFER, &is_buf, -1);
+		if (is_buf)
+			count += count_channels_recursive(model, &child);
+		else
+			count++;
+		next = gtk_tree_model_iter_next(model, &child);
+	}
+	return count;
 }
 
 static int num_of_channels_of_device(GtkTreeView *treeview, const char *name)
@@ -3118,7 +3172,7 @@ static int num_of_channels_of_device(GtkTreeView *treeview, const char *name)
 	if (!dev_exists)
 		return 0;
 
-	return gtk_tree_model_iter_n_children(model, &iter);
+	return count_channels_recursive(model, &iter);
 }
 
 static int enabled_channels_count(OscPlot *plot)
@@ -3554,6 +3608,34 @@ static void new_plot_button_clicked_cb(GtkToolButton *btn, OscPlot *plot)
 	g_signal_emit(plot, oscplot_signals[NEWPLOT_EVENT_SIGNAL], 0, new_plot);
 }
 
+static void buffer_children_sensitivity_update(GtkTreeModel *model, GtkTreeIter *buf_iter, gboolean state)
+{
+	GtkTreeIter child;
+	gboolean next_iter;
+
+	if (!gtk_tree_model_iter_children(model, &child, buf_iter))
+		return;
+
+	next_iter = true;
+	while (next_iter) {
+		struct iio_channel *chn;
+
+		gtk_tree_model_get(model, &child, ELEMENT_REFERENCE, &chn, -1);
+		if (chn) {
+			struct extra_info *info = iio_channel_get_data(chn);
+
+			if (info && (info->constraints & CONSTR_CHN_UNTOGGLEABLE)) {
+				next_iter = gtk_tree_model_iter_next(model, &child);
+				continue;
+			}
+		}
+		gtk_tree_store_set(GTK_TREE_STORE(model), &child, SENSITIVE, state, -1);
+		if (state == false)
+			gtk_tree_store_set(GTK_TREE_STORE(model), &child, CHANNEL_ACTIVE, state, -1);
+		next_iter = gtk_tree_model_iter_next(model, &child);
+	}
+}
+
 static void iter_children_sensitivity_update(GtkTreeModel *model, GtkTreeIter *iter, void *data)
 {
 	GtkTreeIter child;
@@ -3570,19 +3652,37 @@ static void iter_children_sensitivity_update(GtkTreeModel *model, GtkTreeIter *i
 
 	next_iter = true;
 	while (next_iter) {
-		struct iio_channel *chn;
-		gtk_tree_model_get(model, &child, ELEMENT_REFERENCE, &chn, -1);
-		struct extra_info *info = iio_channel_get_data(chn);
-		if (info) {
-			if (info->constraints & CONSTR_CHN_UNTOGGLEABLE) {
-				next_iter = gtk_tree_model_iter_next(model, &child);
-				continue;
-			}
-		}
+		gboolean is_buf, buf_active;
+		struct iio_channel *chn = NULL;
 
-		gtk_tree_store_set(GTK_TREE_STORE(model), &child, SENSITIVE, state, -1);
-		if (state == false)
-			gtk_tree_store_set(GTK_TREE_STORE(model), &child, CHANNEL_ACTIVE, state, -1);
+		gtk_tree_model_get(model, &child, IS_BUFFER, &is_buf, -1);
+		if (is_buf) {
+			/* Buffer row: set sensitivity to device state */
+			gtk_tree_store_set(GTK_TREE_STORE(model), &child, SENSITIVE, state, -1);
+			if (state == false)
+				gtk_tree_store_set(GTK_TREE_STORE(model), &child, BUFFER_ACTIVE, false, -1);
+
+			/* Channels are only toggleable under an active buffer */
+			gtk_tree_model_get(model, &child, BUFFER_ACTIVE, &buf_active, -1);
+			buffer_children_sensitivity_update(model, &child, state && buf_active);
+		} else {
+			/* Direct channel child (no buffer layer) */
+			gtk_tree_model_get(model, &child, ELEMENT_REFERENCE, &chn, -1);
+			if (chn) {
+				struct extra_info *info = iio_channel_get_data(chn);
+
+				if (info) {
+					if (info->constraints & CONSTR_CHN_UNTOGGLEABLE) {
+						next_iter = gtk_tree_model_iter_next(model, &child);
+						continue;
+					}
+				}
+			}
+
+			gtk_tree_store_set(GTK_TREE_STORE(model), &child, SENSITIVE, state, -1);
+			if (state == false)
+				gtk_tree_store_set(GTK_TREE_STORE(model), &child, CHANNEL_ACTIVE, state, -1);
+		}
 		next_iter = gtk_tree_model_iter_next(model, &child);
 	}
 }
@@ -3593,36 +3693,66 @@ static void iter_children_plot_type_update(GtkTreeModel *model, GtkTreeIter *ite
 	OscPlotPrivate *priv = plot->priv;
 	GtkTreeIter child;
 	gboolean next_iter;
+	int plot_type = gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain));
 
 	if (!gtk_tree_model_iter_children(model, &child, iter))
 		return;
 
 	next_iter = true;
 	while (next_iter) {
-		gtk_tree_store_set(GTK_TREE_STORE(model), &child,
-			PLOT_TYPE, gtk_combo_box_get_active(GTK_COMBO_BOX(priv->plot_domain)), -1);
+		gboolean is_buf;
+
+		gtk_tree_model_get(model, &child, IS_BUFFER, &is_buf, -1);
+		if (is_buf) {
+			/* Recurse into buffer's channel children */
+			GtkTreeIter grandchild;
+			gboolean next_gc;
+
+			next_gc = gtk_tree_model_iter_children(model, &grandchild, &child);
+			while (next_gc) {
+				gtk_tree_store_set(GTK_TREE_STORE(model), &grandchild,
+					PLOT_TYPE, plot_type, -1);
+				next_gc = gtk_tree_model_iter_next(model, &grandchild);
+			}
+		} else {
+			gtk_tree_store_set(GTK_TREE_STORE(model), &child,
+				PLOT_TYPE, plot_type, -1);
+		}
+		next_iter = gtk_tree_model_iter_next(model, &child);
+	}
+}
+
+static void update_icon_color_for_channels(GtkTreeModel *model, GtkTreeIter *parent)
+{
+	GtkTreeIter child;
+	gboolean next_iter;
+
+	if (!gtk_tree_model_iter_children(model, &child, parent))
+		return;
+
+	next_iter = true;
+	while (next_iter) {
+		gboolean is_buf, is_chn;
+
+		gtk_tree_model_get(model, &child, IS_BUFFER, &is_buf, IS_CHANNEL, &is_chn, -1);
+		if (is_buf) {
+			update_icon_color_for_channels(model, &child);
+		} else if (is_chn) {
+			GdkPixbuf *icon;
+			PlotChn *settings;
+
+			gtk_tree_model_get(model, &child, CHANNEL_SETTINGS, &settings,
+					CHANNEL_COLOR_ICON, &icon, -1);
+			if (settings && icon)
+				channel_color_icon_set_color(icon, &settings->graph_color);
+		}
 		next_iter = gtk_tree_model_iter_next(model, &child);
 	}
 }
 
 static void iter_children_icon_color_update(GtkTreeModel *model, GtkTreeIter *iter, void *data)
 {
-	GtkTreeIter child;
-	gboolean next_iter;
-	GdkPixbuf *icon;
-	PlotChn *settings;
-
-	if (!gtk_tree_model_iter_children(model, &child, iter))
-		return;
-
-	next_iter = true;
-	while (next_iter) {
-		gtk_tree_model_get(model, &child, CHANNEL_SETTINGS, &settings,
-				CHANNEL_COLOR_ICON, &icon, -1);
-		channel_color_icon_set_color(icon, &settings->graph_color);
-
-		next_iter = gtk_tree_model_iter_next(model, &child);
-	}
+	update_icon_color_for_channels(model, iter);
 }
 
 static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer plot)
@@ -3658,6 +3788,60 @@ static void device_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpoi
 	}
 
 	foreach_device_iter(treeview, *iter_children_sensitivity_update, NULL);
+	check_valid_setup(plot);
+}
+
+static void buffer_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, gpointer plot)
+{
+	OscPlotPrivate *priv = ((OscPlot *)plot)->priv;
+	GtkTreePath* path = gtk_tree_path_new_from_string(pathStr);
+	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	GtkTreeModel *model;
+	GtkTreeIter iter, dev_iter, sibling;
+	struct iio_buffer *sel_buf, *buf;
+	struct iio_device *dev;
+	struct extra_dev_info *dev_info;
+	gboolean active, is_buf, next_iter;
+	unsigned int i;
+
+	model = gtk_tree_view_get_model(treeview);
+	gtk_tree_model_get_iter(model, &iter, path);
+	gtk_tree_path_free(path);
+
+	gtk_tree_model_get(model, &iter, BUFFER_ACTIVE, &active,
+			   ELEMENT_REFERENCE, &sel_buf, -1);
+	if (active)
+		return;
+
+	if (!gtk_tree_model_iter_parent(model, &dev_iter, &iter))
+		return;
+	gtk_tree_model_get(model, &dev_iter, ELEMENT_REFERENCE, &dev, -1);
+
+	/*
+	 * Radio behaviour: activate the toggled buffer and deactivate its
+	 * siblings, enabling/disabling the channels under each accordingly.
+	 */
+	next_iter = gtk_tree_model_iter_children(model, &sibling, &dev_iter);
+	while (next_iter) {
+		gtk_tree_model_get(model, &sibling, IS_BUFFER, &is_buf,
+				   ELEMENT_REFERENCE, &buf, -1);
+		if (is_buf) {
+			active = (buf == sel_buf);
+			gtk_tree_store_set(GTK_TREE_STORE(model), &sibling,
+					   BUFFER_ACTIVE, active, -1);
+			buffer_children_sensitivity_update(model, &sibling, active);
+		}
+		next_iter = gtk_tree_model_iter_next(model, &sibling);
+	}
+
+	dev_info = iio_device_get_data(dev);
+	for (i = 0; i < iio_device_get_buffers_count(dev); i++) {
+		if (iio_device_get_buffer(dev, i) == sel_buf) {
+			dev_info->selected_buffer_idx = i;
+			break;
+		}
+	}
+
 	check_valid_setup(plot);
 }
 
@@ -3705,6 +3889,7 @@ static void create_channel_list_view(OscPlot *plot)
 	GtkCellRenderer *renderer_name;
 	GtkCellRenderer *renderer_ch_toggle;
 	GtkCellRenderer *renderer_dev_toggle;
+	GtkCellRenderer *renderer_buf_toggle;
 	GtkCellRenderer *renderer_ch_color;
 
 	col = gtk_tree_view_column_new();
@@ -3714,14 +3899,17 @@ static void create_channel_list_view(OscPlot *plot)
 	renderer_name = gtk_cell_renderer_text_new();
 	renderer_ch_toggle = gtk_cell_renderer_toggle_new();
 	renderer_dev_toggle = gtk_cell_renderer_toggle_new();
+	renderer_buf_toggle = gtk_cell_renderer_toggle_new();
 	renderer_ch_color = gtk_cell_renderer_pixbuf_new();
 
 	gtk_tree_view_column_pack_end(col, renderer_ch_color, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_name, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_ch_toggle, FALSE);
+	gtk_tree_view_column_pack_end(col, renderer_buf_toggle, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_dev_toggle, FALSE);
 
 	gtk_cell_renderer_toggle_set_radio(GTK_CELL_RENDERER_TOGGLE(renderer_dev_toggle), TRUE);
+	gtk_cell_renderer_toggle_set_radio(GTK_CELL_RENDERER_TOGGLE(renderer_buf_toggle), TRUE);
 
 	gtk_tree_view_column_set_attributes(col, renderer_name,
 					"text", ELEMENT_NAME,
@@ -3737,6 +3925,11 @@ static void create_channel_list_view(OscPlot *plot)
 					"active", DEVICE_ACTIVE,
 					"sensitive", SENSITIVE,
 					NULL);
+	gtk_tree_view_column_set_attributes(col, renderer_buf_toggle,
+					"visible", BUFFER_SELECTABLE,
+					"active", BUFFER_ACTIVE,
+					"sensitive", SENSITIVE,
+					NULL);
 	gtk_tree_view_column_set_attributes(col, renderer_ch_color,
 					"pixbuf", CHANNEL_COLOR_ICON,
 					"sensitive", SENSITIVE,
@@ -3749,6 +3942,7 @@ static void create_channel_list_view(OscPlot *plot)
 	g_object_set(renderer_ch_color, "follow-state", FALSE, NULL);
 	g_signal_connect(G_OBJECT(renderer_ch_toggle), "toggled", G_CALLBACK(channel_toggled), plot);
 	g_signal_connect(G_OBJECT(renderer_dev_toggle), "toggled", G_CALLBACK(device_toggled), plot);
+	g_signal_connect(G_OBJECT(renderer_buf_toggle), "toggled", G_CALLBACK(buffer_toggled), plot);
 }
 
 static void plot_channel_add_to_plot(OscPlot *plot, PlotChn *settings)
@@ -3856,7 +4050,13 @@ static void plot_channels_add_device(OscPlot *plot, const char *dev_name)
 		-1);
 }
 
-static void plot_channels_add_channel(OscPlot *plot, PlotChn *pchn)
+/*
+ * Add a channel row to the tree. If @parent is NULL, the row is added
+ * under the device named by pchn->parent_name; otherwise it is added
+ * under @parent (e.g. a buffer row of that device).
+ */
+static void plot_channels_add_channel(OscPlot *plot, PlotChn *pchn,
+				      GtkTreeIter *parent)
 {
 	OscPlotPrivate *priv = plot->priv;
 	struct iio_context *ctx = priv->ctx;
@@ -3869,17 +4069,20 @@ static void plot_channels_add_channel(OscPlot *plot, PlotChn *pchn)
 
 	treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
 
+	if (!parent) {
+		ret = get_iter_by_name(treeview, &parent_iter, pchn->parent_name, NULL);
+		if (!ret) {
+			fprintf(stderr,
+				"Could not add %s channel to device %s. Device not found\n",
+				pchn->name, pchn->parent_name);
+			return;
+		}
+		parent = &parent_iter;
+	}
+
 	new_icon = channel_color_icon_new(plot);
 	icon_color = &pchn->graph_color;
 	channel_color_icon_set_color(new_icon, icon_color);
-
-	ret = get_iter_by_name(treeview, &parent_iter, pchn->parent_name, NULL);
-	if (!ret) {
-		fprintf(stderr,
-			"Could not add %s channel to device %s. Device not found\n",
-			pchn->name, pchn->parent_name);
-		return;
-	}
 
 	struct iio_device *iio_dev = NULL;
 	struct iio_channel *iio_chn = NULL;
@@ -3897,7 +4100,7 @@ static void plot_channels_add_channel(OscPlot *plot, PlotChn *pchn)
 		}
 	}
 
-	gtk_tree_store_append(treestore, &child_iter, &parent_iter);
+	gtk_tree_store_append(treestore, &child_iter, parent);
 	gtk_tree_store_set(treestore, &child_iter,
 			ELEMENT_NAME, pchn->name,
 			IS_CHANNEL, TRUE,
@@ -3924,6 +4127,103 @@ static void plot_channels_remove_channel(OscPlot *plot, GtkTreeIter *iter)
 	gtk_tree_store_remove(GTK_TREE_STORE(model), iter);
 }
 
+static void plot_channels_add_iio_channel(OscPlot *plot, struct iio_device *dev,
+					  struct iio_channel *ch, GtkTreeIter *parent)
+{
+	const char *dev_name = get_iio_device_label_or_name(dev);
+	const char *chn_name = iio_channel_get_name(ch) ?: iio_channel_get_id(ch);
+	PlotIioChn *pic;
+
+	pic = plot_iio_channel_new(plot->priv->ctx, dev);
+	if (!pic) {
+		fprintf(stderr, "Could not create an iio plot"
+			"channel with name %s in function %s\n",
+			chn_name, __func__);
+		return;
+	}
+	plot_channel_add_to_plot(plot, PLOT_CHN(pic));
+	pic->iio_chn = ch;
+	pic->base.type = PLOT_IIO_CHANNEL;
+	pic->base.name = g_strdup(chn_name);
+	pic->base.parent_name = g_strdup(dev_name);
+	plot_channels_add_channel(plot, PLOT_CHN(pic), parent);
+}
+
+static unsigned int device_input_buffers_count(struct iio_device *dev)
+{
+	unsigned int i, count = 0;
+
+	for (i = 0; i < iio_device_get_buffers_count(dev); i++) {
+		struct iio_buffer *buf = iio_device_get_buffer(dev, i);
+
+		if (buf && !iio_buffer_is_output(buf))
+			count++;
+	}
+
+	return count;
+}
+
+/*
+ * Devices with a single input buffer keep the channels directly under the
+ * device row. Devices with several input buffers get one radio-selectable
+ * row per buffer, holding the buffer's scan elements; only the channels of
+ * the active buffer can be toggled.
+ */
+static void plot_channels_add_device_buffers(OscPlot *plot, struct iio_device *dev)
+{
+	OscPlotPrivate *priv = plot->priv;
+	struct extra_dev_info *dev_info = iio_device_get_data(dev);
+	GtkTreeView *treeview = GTK_TREE_VIEW(priv->channel_list_view);
+	GtkTreeStore *treestore = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
+	GtkTreeIter dev_iter;
+	bool first = true;
+	unsigned int i, j;
+
+	if (!get_iter_by_name(treeview, &dev_iter,
+			      get_iio_device_label_or_name(dev), NULL))
+		return;
+
+	for (i = 0; i < iio_device_get_buffers_count(dev); i++) {
+		struct iio_buffer *buf = iio_device_get_buffer(dev, i);
+		GtkTreeIter buf_iter;
+		char buf_name[32];
+
+		if (!buf || iio_buffer_is_output(buf))
+			continue;
+		if (!iio_buffer_get_scan_elements_count(buf))
+			continue;
+
+		snprintf(buf_name, sizeof(buf_name), "buffer%u", i);
+		gtk_tree_store_append(treestore, &buf_iter, &dev_iter);
+		gtk_tree_store_set(treestore, &buf_iter,
+				ELEMENT_NAME, buf_name,
+				IS_BUFFER, TRUE,
+				BUFFER_SELECTABLE, TRUE,
+				BUFFER_ACTIVE, first,
+				ELEMENT_REFERENCE, buf,
+				SENSITIVE, TRUE,
+				EXPANDED, TRUE,
+				-1);
+
+		for (j = 0; j < iio_buffer_get_scan_elements_count(buf); j++) {
+			struct iio_channel *ch =
+				(struct iio_channel *)iio_buffer_get_scan_element(buf, j);
+
+			if (!ch || !show_channel(ch))
+				continue;
+
+			plot_channels_add_iio_channel(plot, dev, ch, &buf_iter);
+		}
+
+		if (first)
+			dev_info->selected_buffer_idx = i;
+		else
+			buffer_children_sensitivity_update(GTK_TREE_MODEL(treestore),
+							   &buf_iter, false);
+		first = false;
+	}
+}
+
 static void device_list_treeview_init(OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -3937,6 +4237,7 @@ static void device_list_treeview_init(OscPlot *plot)
 		struct iio_device *dev = iio_context_get_device(ctx, i);
 		struct extra_dev_info *dev_info = iio_device_get_data(dev);
 		const char *dev_name = get_iio_device_label_or_name(dev);
+		GArray *channels;
 
 		if (dev_info->input_device == false)
 			continue;
@@ -3947,31 +4248,20 @@ static void device_list_treeview_init(OscPlot *plot)
 		plot_channels_add_device(plot, dev_name);
 		priv->nb_input_devices++;
 
-		GArray *channels = get_iio_channels_naturally_sorted(dev);
+		if (device_input_buffers_count(dev) > 1) {
+			plot_channels_add_device_buffers(plot, dev);
+			continue;
+		}
 
+		channels = get_iio_channels_naturally_sorted(dev);
 		for (j = 0; j < channels->len; ++j) {
 			struct iio_channel *ch = g_array_index(channels,
 				struct iio_channel *, j);
+
 			if (!show_channel(ch))
 				continue;
 
-			const char *chn_name = iio_channel_get_name(ch) ?:
-				iio_channel_get_id(ch);
-			PlotIioChn *pic;
-
-			pic = plot_iio_channel_new(priv->ctx, dev);
-			if (!pic) {
-				fprintf(stderr, "Could not create an iio plot"
-					"channel with name %s in function %s\n",
-					chn_name, __func__);
-				break;
-			}
-			plot_channel_add_to_plot(plot, PLOT_CHN(pic));
-			pic->iio_chn = ch;
-			pic->base.type = PLOT_IIO_CHANNEL;
-			pic->base.name = g_strdup(chn_name);
-			pic->base.parent_name = g_strdup(dev_name);
-			plot_channels_add_channel(plot, PLOT_CHN(pic));
+			plot_channels_add_iio_channel(plot, dev, ch, NULL);
 		}
 		g_array_free(channels, FALSE);
 	}
@@ -4949,16 +5239,43 @@ static void units_changed_cb(GtkComboBoxText *box, OscPlot *plot)
 	g_signal_handlers_unblock_by_func(priv->sample_count_widget, G_CALLBACK(count_changed_cb), plot);
 }
 
+static gboolean find_channel_in_children(GtkTreeModel *model, GtkTreeIter *parent,
+					  const char *ch_name, GtkTreeIter *result)
+{
+	GtkTreeIter child;
+	gboolean next;
+	char *name;
+
+	next = gtk_tree_model_iter_children(model, &child, parent);
+	while (next) {
+		gboolean is_buf;
+
+		gtk_tree_model_get(model, &child, IS_BUFFER, &is_buf, -1);
+		if (is_buf) {
+			/* Recurse into buffer children */
+			if (find_channel_in_children(model, &child, ch_name, result))
+				return TRUE;
+		} else {
+			gtk_tree_model_get(model, &child, ELEMENT_NAME, &name, -1);
+			if (!strcmp(ch_name, name)) {
+				g_free(name);
+				*result = child;
+				return TRUE;
+			}
+			g_free(name);
+		}
+		next = gtk_tree_model_iter_next(model, &child);
+	}
+	return FALSE;
+}
+
 static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter,
 		const char *dev_name, const char *ch_name)
 {
 	GtkTreeModel *model;
 	GtkTreeIter dev_iter;
-	GtkTreeIter ch_iter;
 	gboolean next_dev_iter;
-	gboolean next_ch_iter;
 	char *device;
-	char *channel;
 
 	model = gtk_tree_view_get_model(tree);
 	if (!gtk_tree_model_get_iter_first(model, &dev_iter))
@@ -4968,7 +5285,6 @@ static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter,
 
 	next_dev_iter = true;
 	while (next_dev_iter) {
-		gtk_tree_model_iter_children(model, &ch_iter, &dev_iter);
 		gtk_tree_model_get(model, &dev_iter, ELEMENT_NAME, &device, -1);
 		if (!strcmp(dev_name, device)) {
 			g_free(device);
@@ -4976,21 +5292,47 @@ static gboolean get_iter_by_name(GtkTreeView *tree, GtkTreeIter *iter,
 				*iter = dev_iter;
 				return TRUE;
 			}
-			next_ch_iter = true;
-			while (next_ch_iter) {
-				gtk_tree_model_get(model, &ch_iter, ELEMENT_NAME, &channel, -1);
-				if (!strcmp(ch_name, channel)) {
-					g_free(channel);
-					*iter = ch_iter;
-					return TRUE;
-				}
-				next_ch_iter = gtk_tree_model_iter_next(model, &ch_iter);
-			}
+			return find_channel_in_children(model, &dev_iter, ch_name, iter);
 		}
+		g_free(device);
 		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
 	}
 
 	return FALSE;
+}
+
+static void profile_save_channel_iter(GtkTreeModel *model,
+	GtkTreeIter *iter, void *user_data)
+{
+	FILE *fp = user_data;
+	gboolean ch_enabled;
+	PlotChn *csettings;
+
+	gtk_tree_model_get(model, iter,
+			CHANNEL_ACTIVE, &ch_enabled,
+			CHANNEL_SETTINGS, &csettings,
+			-1);
+	if (!csettings)
+		return;
+
+	const char *name = csettings->parent_name;
+	char *ch_name = csettings->name;
+
+	fprintf(fp, "%s.%s.enabled=%d\n", name, ch_name, (ch_enabled) ? 1 : 0);
+	fprintf(fp, "%s.%s.color_red=%d\n", name, ch_name, (int)(csettings->graph_color.red * 255 + 0.5));
+	fprintf(fp, "%s.%s.color_green=%d\n", name, ch_name, (int)(csettings->graph_color.green * 255 + 0.5));
+	fprintf(fp, "%s.%s.color_blue=%d\n", name, ch_name, (int)(csettings->graph_color.blue * 255 + 0.5));
+	switch (csettings->type) {
+	case PLOT_IIO_CHANNEL:
+		fprintf(fp, "%s.%s.math_apply_inverse_funct=%d\n", name, ch_name, PLOT_IIO_CHN(csettings)->apply_inverse_funct);
+		fprintf(fp, "%s.%s.math_apply_multiply_funct=%d\n", name, ch_name, PLOT_IIO_CHN(csettings)->apply_multiply_funct);
+		fprintf(fp, "%s.%s.math_apply_add_funct=%d\n", name, ch_name, PLOT_IIO_CHN(csettings)->apply_add_funct);
+		fprintf(fp, "%s.%s.math_multiply_value=%f\n", name, ch_name, PLOT_IIO_CHN(csettings)->multiply_value);
+		fprintf(fp, "%s.%s.math_add_value=%f\n", name, ch_name, PLOT_IIO_CHN(csettings)->add_value);
+		break;
+	case PLOT_MATH_CHANNEL:
+		break;
+	}
 }
 
 static void plot_profile_save(OscPlot *plot, char *filename)
@@ -4999,13 +5341,9 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 	GtkTreeView *tree = GTK_TREE_VIEW(priv->channel_list_view);
 	GtkTreeModel *model;
 	GtkTreeIter dev_iter;
-	GtkTreeIter ch_iter;
 	gboolean next_dev_iter;
-	gboolean next_ch_iter;
 	gboolean expanded;
 	gboolean device_active;
-	gboolean ch_enabled;
-	PlotChn *csettings;
 	FILE *fp;
 
 	model = gtk_tree_view_get_model(tree);
@@ -5133,35 +5471,8 @@ static void plot_profile_save(OscPlot *plot, char *filename)
 			}
 		}
 
-		next_ch_iter = gtk_tree_model_iter_children(model, &ch_iter, &dev_iter);
-		while (next_ch_iter) {
-			struct iio_channel *ch;
-			char *ch_name;
-
-			gtk_tree_model_get(model, &ch_iter,
-					ELEMENT_REFERENCE, &ch,
-					CHANNEL_ACTIVE, &ch_enabled,
-					CHANNEL_SETTINGS, &csettings,
-					-1);
-			ch_name = csettings->name;
-
-			fprintf(fp, "%s.%s.enabled=%d\n", name, ch_name, (ch_enabled) ? 1 : 0);
-			fprintf(fp, "%s.%s.color_red=%d\n", name, ch_name, (int)(csettings->graph_color.red * 255 + 0.5));
-			fprintf(fp, "%s.%s.color_green=%d\n", name, ch_name, (int)(csettings->graph_color.green * 255 + 0.5));
-			fprintf(fp, "%s.%s.color_blue=%d\n", name, ch_name, (int)(csettings->graph_color.blue * 255 + 0.5));
-			switch (csettings->type) {
-			case PLOT_IIO_CHANNEL:
-				fprintf(fp, "%s.%s.math_apply_inverse_funct=%d\n", name, ch_name, PLOT_IIO_CHN(csettings)->apply_inverse_funct);
-				fprintf(fp, "%s.%s.math_apply_multiply_funct=%d\n", name, ch_name, PLOT_IIO_CHN(csettings)->apply_multiply_funct);
-				fprintf(fp, "%s.%s.math_apply_add_funct=%d\n", name, ch_name, PLOT_IIO_CHN(csettings)->apply_add_funct);
-				fprintf(fp, "%s.%s.math_multiply_value=%f\n", name, ch_name, PLOT_IIO_CHN(csettings)->multiply_value);
-				fprintf(fp, "%s.%s.math_add_value=%f\n", name, ch_name, PLOT_IIO_CHN(csettings)->add_value);
-				break;
-			case PLOT_MATH_CHANNEL:
-				break;
-			}
-			next_ch_iter = gtk_tree_model_iter_next(model, &ch_iter);
-		}
+		/* Save channel settings - handle both direct children and buffer-nested children */
+		foreach_channel_iter_of_device(tree, name, profile_save_channel_iter, fp);
 		g_free(name);
 		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
 	}
@@ -5665,17 +5976,27 @@ handled:
 
 static void treeview_expand_update(OscPlot *plot)
 {
-	GtkTreeIter dev_iter;
+	GtkTreeIter dev_iter, child;
 	GtkTreeView *tree = GTK_TREE_VIEW(plot->priv->channel_list_view);
 	GtkTreeModel *model;
-	gboolean next_dev_iter;
-	gboolean expanded;
+	gboolean next_dev_iter, next_child;
+	gboolean expanded, is_buf;
 
 	model = gtk_tree_view_get_model(tree);
 	next_dev_iter = gtk_tree_model_get_iter_first(model, &dev_iter);
 	while (next_dev_iter) {
 		gtk_tree_model_get(model, &dev_iter, EXPANDED, &expanded, -1);
 		expand_iter(plot, &dev_iter, expanded);
+
+		/* Also expand buffer children */
+		next_child = gtk_tree_model_iter_children(model, &child, &dev_iter);
+		while (next_child) {
+			gtk_tree_model_get(model, &child, IS_BUFFER, &is_buf, EXPANDED, &expanded, -1);
+			if (is_buf)
+				expand_iter(plot, &child, expanded);
+			next_child = gtk_tree_model_iter_next(model, &child);
+		}
+
 		next_dev_iter = gtk_tree_model_iter_next(model, &dev_iter);
 	}
 }
@@ -6464,7 +6785,7 @@ static void new_math_channel_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	}
 
 	/* Create GUI for the new channel */
-	plot_channels_add_channel(plot, PLOT_CHN(pmc));
+	plot_channels_add_channel(plot, PLOT_CHN(pmc), NULL);
 
 	treeview_expand_update(plot);
 }
@@ -6543,6 +6864,35 @@ static void plot_trigger_save_settings(OscPlotPrivate *priv,
 		g_free(active_channel);
 }
 
+struct trigger_channel_ctx {
+	GtkComboBoxText *box;
+	struct extra_dev_info *dev_info;
+	const char *active_channel;
+	unsigned cpt;
+	bool has_channels;
+};
+
+static void trigger_channel_add(GtkTreeModel *model, GtkTreeIter *iter, void *data)
+{
+	struct trigger_channel_ctx *ctx = data;
+	struct iio_channel *ch;
+	gboolean enabled;
+	const char *name;
+
+	gtk_tree_model_get(model, iter, CHANNEL_ACTIVE, &enabled,
+			   ELEMENT_REFERENCE, &ch, -1);
+	if (!enabled)
+		return;
+
+	name = iio_channel_get_name(ch) ?: iio_channel_get_id(ch);
+	gtk_combo_box_text_append_text(ctx->box, name);
+	ctx->has_channels = true;
+
+	if (ctx->active_channel && !strcmp(name, ctx->active_channel))
+		ctx->dev_info->channel_trigger = ctx->cpt;
+	ctx->cpt++;
+}
+
 static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 {
 	OscPlotPrivate *priv = plot->priv;
@@ -6553,12 +6903,12 @@ static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	GtkTreeModel *model;
 	GtkComboBoxText *box;
 	GtkWidget *item;
-	GtkTreeIter iter, child_iter;
+	GtkTreeIter iter;
 	GtkListStore *store;
 	gboolean selected;
-	bool box_has_channels = false;
+	bool box_has_channels;
 	gchar *active_channel;
-	unsigned cpt = 0;
+	struct trigger_channel_ctx ctx = { 0 };
 
 	treeview = GTK_TREE_VIEW(priv->channel_list_view);
 	model = gtk_tree_view_get_model(treeview);
@@ -6578,32 +6928,17 @@ static void plot_trigger_settings_cb(GtkMenuItem *menuitem, OscPlot *plot)
 	active_channel = gtk_combo_box_text_get_active_text(box);
 
 	/* This code empties the GtkComboBoxText (as it may contain channels
-	 * that have been de-selected); the do-while loop will re-insert only
+	 * that have been de-selected); trigger_channel_add() will re-insert only
 	 * the names of the enabled channels. */
 	store = GTK_LIST_STORE(gtk_combo_box_get_model(GTK_COMBO_BOX(box)));
 	gtk_list_store_clear(store);
 
-	gtk_tree_model_iter_children(model, &child_iter, &iter);
-	do {
-		gboolean enabled;
-		struct iio_channel *ch;
-		const char *name;
-
-		gtk_tree_model_get(model, &child_iter,
-				CHANNEL_ACTIVE, &enabled, -1);
-		if (!enabled)
-			continue;
-
-		gtk_tree_model_get(model, &child_iter,
-				ELEMENT_REFERENCE, &ch, -1);
-		name = iio_channel_get_name(ch) ?: iio_channel_get_id(ch);
-		gtk_combo_box_text_append_text(box, name);
-		box_has_channels = true;
-
-		if (active_channel && !strcmp(name, active_channel))
-			dev_info->channel_trigger = cpt;
-		cpt++;
-	} while (gtk_tree_model_iter_next(model, &child_iter));
+	ctx.box = box;
+	ctx.dev_info = dev_info;
+	ctx.active_channel = active_channel;
+	foreach_channel_iter_of_device(treeview, get_iio_device_label_or_name(dev),
+				       trigger_channel_add, &ctx);
+	box_has_channels = ctx.has_channels;
 
 	gtk_widget_set_sensitive(GTK_WIDGET(box), box_has_channels);
 
@@ -7092,9 +7427,12 @@ static void create_plot(OscPlot *plot)
 					G_TYPE_STRING,    /* ELEMENT_NAME */
 					G_TYPE_BOOLEAN,   /* IS_DEVICE */
 					G_TYPE_BOOLEAN,   /* IS_CHANNEL */
+					G_TYPE_BOOLEAN,   /* IS_BUFFER */
 					G_TYPE_INT,       /* CHANNEL_TYPE */
 					G_TYPE_BOOLEAN,   /* DEVICE_SELECTABLE */
+					G_TYPE_BOOLEAN,   /* BUFFER_SELECTABLE */
 					G_TYPE_BOOLEAN,   /* DEVICE_ACTIVE */
+					G_TYPE_BOOLEAN,   /* BUFFER_ACTIVE */
 					G_TYPE_BOOLEAN,   /* CHANNEL_ACTIVE */
 					G_TYPE_POINTER,   /* ELEMENT_REFERENCE */
 					G_TYPE_BOOLEAN,   /* EXPANDED */
