@@ -36,9 +36,17 @@
 #define IIO_SPIN_SIGNAL "value-changed"
 #define IIO_COMBO_SIGNAL "changed"
 
-#define TX_CHANNEL_NAME 0
-#define TX_CHANNEL_ACTIVE 1
-#define TX_CHANNEL_REF_INDEX 2
+/* Columns of the TX channels treestore */
+enum {
+	TX_CHANNEL_NAME,
+	TX_CHANNEL_ACTIVE,
+	TX_CHANNEL_REF_INDEX,	/* channel index, or buffer index for buffer rows */
+	TX_IS_CHANNEL,
+	TX_IS_BUFFER,
+	TX_BUFFER_ACTIVE,
+	TX_SENSITIVE,
+	TX_NUM_COL
+};
 
 #define WAVEFORM_TXT_INVALID_FORMAT 1
 #define WAVEFORM_MAT_INVALID_FORMAT 2
@@ -536,6 +544,30 @@ static gboolean scale_spin_button_output_cb(GtkSpinButton *spin, gpointer data)
 	return TRUE;
 }
 
+static gboolean tx_channel_iter_first(GtkTreeModel *model, GtkTreeIter *iter)
+{
+	gboolean is_buf, active, next;
+	GtkTreeIter buf_iter;
+
+	if (!gtk_tree_model_get_iter_first(model, iter))
+		return FALSE;
+
+	gtk_tree_model_get(model, iter, TX_IS_BUFFER, &is_buf, -1);
+	if (!is_buf)
+		return TRUE;
+
+	buf_iter = *iter;
+	next = TRUE;
+	while (next) {
+		gtk_tree_model_get(model, &buf_iter, TX_BUFFER_ACTIVE, &active, -1);
+		if (active)
+			return gtk_tree_model_iter_children(model, iter, &buf_iter);
+		next = gtk_tree_model_iter_next(model, &buf_iter);
+	}
+
+	return FALSE;
+}
+
 static int tx_enabled_channels_count(GtkTreeView *treeview, unsigned *enabled_mask)
 {
 	GtkTreeIter iter;
@@ -544,7 +576,7 @@ static int tx_enabled_channels_count(GtkTreeView *treeview, unsigned *enabled_ma
 	int ch_pos = 0;
 
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
-	gboolean next_iter = gtk_tree_model_get_iter_first(model, &iter);
+	gboolean next_iter = tx_channel_iter_first(model, &iter);
 
 
 	if (enabled_mask)
@@ -572,7 +604,7 @@ static int enable_dds_channels(struct dac_buffer *db)
 	gint ch_index = 0;
 
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
-	gboolean next_iter = gtk_tree_model_get_iter_first(model, &iter);
+	gboolean next_iter = tx_channel_iter_first(model, &iter);
 
 	if (!db->parent->dac_mask) {
 		fprintf(stderr, "No existing iio_channels_mask! It should have has been created by now!\n");
@@ -864,6 +896,59 @@ static void tx_channel_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, 
 	gtk_tree_path_free(path);
 }
 
+/* Make the channels under a buffer row toggleable or not; untick them when not */
+static void tx_buffer_children_set_sensitive(GtkTreeModel *model, GtkTreeIter *buf_iter,
+					     gboolean sensitive)
+{
+	gboolean next_child;
+	GtkTreeIter child;
+
+	next_child = gtk_tree_model_iter_children(model, &child, buf_iter);
+	while (next_child) {
+		gtk_tree_store_set(GTK_TREE_STORE(model), &child, TX_SENSITIVE, sensitive, -1);
+		if (!sensitive)
+			gtk_tree_store_set(GTK_TREE_STORE(model), &child, TX_CHANNEL_ACTIVE, FALSE, -1);
+		next_child = gtk_tree_model_iter_next(model, &child);
+	}
+}
+
+static void tx_buffer_toggled(GtkCellRendererToggle* renderer, gchar* pathStr, struct dac_buffer *dbuf)
+{
+	GtkTreePath* path = gtk_tree_path_new_from_string(pathStr);
+	struct iio_device *dac = dbuf->dac_with_scanelems;
+	gboolean active, next_iter;
+	GtkTreeModel *model;
+	gint sel_idx, idx;
+	GtkTreeIter iter;
+	unsigned int i;
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(dbuf->tx_channels_view));
+	gtk_tree_model_get_iter(model, &iter, path);
+	gtk_tree_path_free(path);
+
+	gtk_tree_model_get(model, &iter, TX_BUFFER_ACTIVE, &active,
+			   TX_CHANNEL_REF_INDEX, &sel_idx, -1);
+	if (active)
+		return;
+
+	/* Radio behaviour: only the toggled buffer stays active */
+	next_iter = gtk_tree_model_get_iter_first(model, &iter);
+	while (next_iter) {
+		gtk_tree_model_get(model, &iter, TX_CHANNEL_REF_INDEX, &idx, -1);
+		active = (idx == sel_idx);
+		gtk_tree_store_set(GTK_TREE_STORE(model), &iter, TX_BUFFER_ACTIVE, active, -1);
+		tx_buffer_children_set_sensitive(model, &iter, active);
+		next_iter = gtk_tree_model_iter_next(model, &iter);
+	}
+
+	/* The mask is device wide: drop the channels of the previous buffer */
+	for (i = 0; i < iio_device_get_channels_count(dac); i++)
+		iio_channel_disable(iio_device_get_channel(dac, i), dbuf->parent->dac_mask);
+
+	dbuf->active_buf = iio_device_get_buffer(dac, sel_idx);
+	dbuf->scan_elements_count = iio_buffer_get_scan_elements_count(dbuf->active_buf);
+}
+
 static void dac_buffer_config_file_set_cb (GtkFileChooser *chooser, struct dac_buffer *dbuf)
 {
 	dbuf->dac_buf_filename = gtk_file_chooser_get_filename(chooser);
@@ -1120,13 +1205,60 @@ static GtkWidget *gui_dac_create(struct dds_dac *ddac)
 	return dac_frm;
 }
 
+static unsigned int dac_output_buffers_count(struct iio_device *dev)
+{
+	unsigned int i, count = 0;
+
+	for (i = 0; i < iio_device_get_buffers_count(dev); i++) {
+		struct iio_buffer *buf = iio_device_get_buffer(dev, i);
+
+		if (iio_buffer_is_output(buf))
+			count++;
+	}
+
+	return count;
+}
+
+static int dac_channel_index(struct iio_device *dev, const struct iio_channel *ch)
+{
+	unsigned int i;
+
+	for (i = 0; i < iio_device_get_channels_count(dev); i++)
+		if (iio_device_get_channel(dev, i) == ch)
+			return i;
+
+	return -1;
+}
+
+static void tx_channel_row_add(struct dac_buffer *d_buffer, GtkTreeStore *treestore,
+			       GtkTreeIter *parent, const struct iio_channel *ch,
+			       gboolean sensitive)
+{
+	GtkTreeIter iter;
+
+	gtk_tree_store_append(treestore, &iter, parent);
+	gtk_tree_store_set(treestore, &iter,
+			TX_CHANNEL_NAME, iio_channel_get_id(ch),
+			TX_CHANNEL_ACTIVE, iio_channel_is_enabled(ch, d_buffer->parent->dac_mask),
+			TX_CHANNEL_REF_INDEX, dac_channel_index(d_buffer->dac_with_scanelems, ch),
+			TX_IS_CHANNEL, TRUE,
+			TX_SENSITIVE, sensitive, -1);
+}
+
 static GtkWidget *gui_dac_channels_tree_create(struct dac_buffer *d_buffer)
 {
 	GtkTreeStore *treestore;
 	GtkWidget *treeview;
 	GtkWidget *scrolled_window;
 
-	treestore = gtk_tree_store_new(3, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_INT);
+	treestore = gtk_tree_store_new(TX_NUM_COL,
+				       G_TYPE_STRING,	/* TX_CHANNEL_NAME */
+				       G_TYPE_BOOLEAN,	/* TX_CHANNEL_ACTIVE */
+				       G_TYPE_INT,	/* TX_CHANNEL_REF_INDEX */
+				       G_TYPE_BOOLEAN,	/* TX_IS_CHANNEL */
+				       G_TYPE_BOOLEAN,	/* TX_IS_BUFFER */
+				       G_TYPE_BOOLEAN,	/* TX_BUFFER_ACTIVE */
+				       G_TYPE_BOOLEAN);	/* TX_SENSITIVE */
 	treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(treestore));
 	scrolled_window = gtk_scrolled_window_new(FALSE, FALSE);
 
@@ -1137,45 +1269,89 @@ static GtkWidget *gui_dac_channels_tree_create(struct dac_buffer *d_buffer)
 	GtkTreeViewColumn *col;
 	GtkCellRenderer *renderer_name;
 	GtkCellRenderer *renderer_ch_toggle;
+	GtkCellRenderer *renderer_buf_toggle;
 
 	col = gtk_tree_view_column_new();
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), col);
 	renderer_name = gtk_cell_renderer_text_new();
 	renderer_ch_toggle = gtk_cell_renderer_toggle_new();
+	renderer_buf_toggle = gtk_cell_renderer_toggle_new();
+	gtk_cell_renderer_toggle_set_radio(GTK_CELL_RENDERER_TOGGLE(renderer_buf_toggle), TRUE);
 
 	gtk_tree_view_column_pack_end(col, renderer_name, FALSE);
 	gtk_tree_view_column_pack_end(col, renderer_ch_toggle, FALSE);
+	gtk_tree_view_column_pack_end(col, renderer_buf_toggle, FALSE);
 
 	gtk_tree_view_column_set_attributes(col, renderer_name,
 					"text", TX_CHANNEL_NAME,
+					"sensitive", TX_SENSITIVE,
 					NULL);
 	gtk_tree_view_column_set_attributes(col, renderer_ch_toggle,
 					"active", TX_CHANNEL_ACTIVE,
+					"visible", TX_IS_CHANNEL,
+					"sensitive", TX_SENSITIVE,
+					NULL);
+	gtk_tree_view_column_set_attributes(col, renderer_buf_toggle,
+					"active", TX_BUFFER_ACTIVE,
+					"visible", TX_IS_BUFFER,
 					NULL);
 
 	struct iio_device *dac = d_buffer->dac_with_scanelems;
-	GtkTreeIter iter;
 	unsigned int i;
+
 	if (!d_buffer->parent->dac_mask)
 	         d_buffer->parent->dac_mask = iio_create_channels_mask(iio_device_get_channels_count(dac));
 
-	for (i = 0; i < iio_device_get_channels_count(dac); i++) {
-		struct iio_channel *ch = iio_device_get_channel(dac, i);
+	if (dac_output_buffers_count(dac) > 1) {
+		d_buffer->scan_elements_count = iio_buffer_get_scan_elements_count(d_buffer->active_buf);
 
-		if (!iio_channel_is_scan_element(ch))
-			continue;
+		/* One radio-selectable row per output buffer, holding its scan elements */
+		for (i = 0; i < iio_device_get_buffers_count(dac); i++) {
+			struct iio_buffer *buf = iio_device_get_buffer(dac, i);
+			unsigned int j, nb_scan;
+			GtkTreeIter buf_iter;
+			char buf_name[32];
+			gboolean active;
 
-		gtk_tree_store_append(treestore, &iter, NULL);
-		gtk_tree_store_set(treestore, &iter,
-				TX_CHANNEL_NAME, iio_channel_get_id(ch),
-				TX_CHANNEL_ACTIVE, iio_channel_is_enabled(ch, d_buffer->parent->dac_mask),
-				TX_CHANNEL_REF_INDEX, i, -1);
+			if (!iio_buffer_is_output(buf))
+				continue;
+
+			nb_scan = iio_buffer_get_scan_elements_count(buf);
+			if (!nb_scan)
+				continue;
+
+			active = (buf == d_buffer->active_buf);
+			snprintf(buf_name, sizeof(buf_name), "buffer%u", i);
+			gtk_tree_store_append(treestore, &buf_iter, NULL);
+			gtk_tree_store_set(treestore, &buf_iter,
+					TX_CHANNEL_NAME, buf_name,
+					TX_CHANNEL_REF_INDEX, i,
+					TX_IS_BUFFER, TRUE,
+					TX_BUFFER_ACTIVE, active,
+					TX_SENSITIVE, TRUE, -1);
+
+			for (j = 0; j < nb_scan; j++) {
+				const struct iio_channel *ch = iio_buffer_get_scan_element(buf, j);
+
+				tx_channel_row_add(d_buffer, treestore, &buf_iter, ch, active);
+			}
+		}
+	} else {
+		for (i = 0; i < iio_device_get_channels_count(dac); i++) {
+			struct iio_channel *ch = iio_device_get_channel(dac, i);
+
+			if (iio_channel_is_scan_element(ch))
+				tx_channel_row_add(d_buffer, treestore, NULL, ch, TRUE);
+		}
 	}
 
+	gtk_tree_view_expand_all(GTK_TREE_VIEW(treeview));
 	gtk_widget_show(scrolled_window);
 
 	g_signal_connect(renderer_ch_toggle, "toggled",
 			G_CALLBACK(tx_channel_toggled), d_buffer);
+	g_signal_connect(renderer_buf_toggle, "toggled",
+			G_CALLBACK(tx_buffer_toggled), d_buffer);
 
 	return scrolled_window;
 }
@@ -2339,7 +2515,7 @@ void dac_data_manager_set_tx_channel_state(struct dac_data_manager *manager,
 	unsigned int index;
 
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(manager->dac_buffer_module.tx_channels_view));
-	if (!gtk_tree_model_get_iter_first(model, &iter))
+	if (!tx_channel_iter_first(model, &iter))
 		return;
 
 	next_iter = true;
@@ -2365,7 +2541,7 @@ bool dac_data_manager_get_tx_channel_state(struct dac_data_manager *manager, uns
 	gboolean state;
 
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(manager->dac_buffer_module.tx_channels_view));
-	if (!gtk_tree_model_get_iter_first(model, &iter))
+	if (!tx_channel_iter_first(model, &iter))
 		return false;
 
 	next_iter = true;
