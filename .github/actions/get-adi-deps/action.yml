@@ -44,9 +44,15 @@ runs:
         for spec in ${{ inputs.package-versions }}; do
           repo="${{ inputs.repo }}"; version="$spec"
           case "$spec" in *:*) repo="${spec%%:*}"; version="${spec#*:}" ;; esac
+          before=$(ls -1 | wc -l)
           "${{ inputs.python }}" /tmp/cloudsmith_helper.py \
             --method get_artifacts_from_location \
             --repo "$repo" \
             --package_version "$version" \
             --package_name "${{ inputs.package-name }}"
+          after=$(ls -1 | wc -l)
+          if [ "$after" -le "$before" ]; then
+            echo "ERROR: no package downloaded for '$repo:$version' (${{ inputs.package-name }})" >&2
+            exit 1
+          fi
         done
