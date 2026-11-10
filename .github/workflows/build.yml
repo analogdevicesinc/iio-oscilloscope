@@ -33,7 +33,7 @@ on:
       - 'CONTRIBUTING*'
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   setup:
@@ -78,14 +78,14 @@ jobs:
       build-type: ${{ needs.setup.outputs.build-type }}
     secrets:
       CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_TOKEN }}
-
-  macos:
-    needs: setup
-    uses: ./.github/workflows/_macos-builds.yml
-    with:
-      build-type: ${{ needs.setup.outputs.build-type }}
-    secrets:
-      CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_TOKEN }}
+    
+  # macos:
+  #   needs: setup
+  #   uses: ./.github/workflows/_macos-builds.yml
+  #   with:
+  #     build-type: ${{ needs.setup.outputs.build-type }}
+  #   secrets:
+  #     CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_TOKEN }}
 
   windows:
     needs: setup
@@ -108,7 +108,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       (needs.setup.outputs.is-v0 == 'true' || needs.setup.outputs.is-release == 'true')
-    needs: [setup, linux, arm, macos, windows, appimage]
+    needs: [setup, linux, arm, windows, appimage]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
