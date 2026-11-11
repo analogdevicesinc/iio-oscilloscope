@@ -19,6 +19,8 @@
 
 #include <iio.h>
 
+#include <strings.h>
+
 #include "compat.h"
 #include "fru.h"
 #include "osc.h"
