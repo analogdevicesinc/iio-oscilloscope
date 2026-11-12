@@ -110,6 +110,8 @@ struct dds_dac {
 	struct dds_tx *txs;
 	int dds_mode;
 	unsigned tones_count;
+	/* DDS controlled through the axi-dac IIO backend ABI */
+	bool backend_abi;
 
 	GtkWidget *frame;
 };
@@ -158,6 +160,8 @@ static bool tx_channels_check_valid_setup(struct dac_buffer *dbuf);
 
 static const gdouble abs_mhz_scale = -1000000.0;
 static const gdouble khz_scale = 1000.0;
+/* Radians in sysfs, degrees in the GUI */
+static const gdouble rad_scale = G_PI / 180.0;
 
 static int compare_gain(const char *a, const char *b)
 {
@@ -647,6 +651,31 @@ static void buffer_cleanup(struct dac_data_manager *manager)
 	manager->dac_buffer = NULL;
 }
 
+/*
+ * The backend ABI has no DDS enable: zero the tone scales to turn it off and
+ * write back the GUI scales to turn it on.
+ */
+static void backend_dds_enable(const struct dac_data_manager *manager, bool enable)
+{
+	GSList *node;
+	int ret;
+
+	for (node = manager->dds_tones; node; node = g_slist_next(node)) {
+		struct dds_tone *tone = node->data;
+		const struct iio_attr *attr;
+
+		if (enable) {
+			tone->iio_scale.save(&tone->iio_scale);
+			continue;
+		}
+
+		attr = iio_channel_find_attr(tone->iio_ch, tone->iio_scale.attr_name);
+		ret = iio_attr_write_double(attr, 0);
+		if (ret < 0)
+			fprintf(stderr, "Failed to disable DDS tone: %d\n", ret);
+	}
+}
+
 static void enable_dds(struct dac_data_manager *manager, bool on_off)
 {
 	struct iio_device *dac1 = NULL;
@@ -659,6 +688,11 @@ static void enable_dds(struct dac_data_manager *manager, bool on_off)
 	manager->dds_activated = on_off;
 
 	buffer_cleanup(manager);
+
+	if (manager->dac1.backend_abi) {
+		backend_dds_enable(manager, on_off);
+		return;
+	}
 
 	dac1 = manager->dac1.iio_dac;
 	if (manager->dacs_count == 2)
@@ -1559,7 +1593,8 @@ static int dac_channels_assign(struct dds_dac *ddac)
 	char *ch_name;
 	unsigned int i, processed_ch = 0;
 
-	if (!dac)
+	/* Backend ABI tones are assigned by dds_dac_backend_init() */
+	if (!dac || ddac->backend_abi)
 		return 0;
 
 	manager = ddac->parent;
@@ -2048,13 +2083,25 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 	}
 }
 
+static struct dds_dac *dds_tone_to_dac(const struct dds_tone *tone)
+{
+	/* tone -> channel -> TX -> DAC */
+	return tone->parent->parent->parent;
+}
+
 static void tone_setup(struct dds_tone *tone)
 {
-	bool combobox_scales = tone->parent->parent->parent->parent->scale_available_mode;
+	/* [0]: legacy ABI, [1]/[2]: tone 1/2 of the backend ABI */
+	static const char * const freq_attrs[] = { "frequency", "frequency0", "frequency1" };
+	static const char * const scale_attrs[] = { "scale", "scale0", "scale1" };
+	static const char * const phase_attrs[] = { "phase", "phase0", "phase1" };
+	struct dds_dac *ddac = dds_tone_to_dac(tone);
+	bool combobox_scales = ddac->parent->scale_available_mode;
+	unsigned int idx = ddac->backend_abi ? tone->number : 0;
 
 	/* Bind the IIO Channel attributes to the GUI widgets */
 	iio_spin_button_s64_init(&tone->iio_freq,
-			tone->iio_dac, tone->iio_ch, "frequency", tone->freq, &abs_mhz_scale);
+			tone->iio_dac, tone->iio_ch, freq_attrs[idx], tone->freq, &abs_mhz_scale);
 	iio_spin_button_add_progress(&tone->iio_freq);
 	if (tone->parent->type == I_CHANNEL) {
 		iio_spin_button_set_on_complete_function(&tone->iio_freq, save_freq_i_widget_value,
@@ -2068,11 +2115,11 @@ static void tone_setup(struct dds_tone *tone)
 	}
 
 	if (combobox_scales) {
-		iio_combo_box_init(&tone->iio_scale, tone->iio_dac, tone->iio_ch, "scale",
+		iio_combo_box_init(&tone->iio_scale, tone->iio_dac, tone->iio_ch, scale_attrs[idx],
 			"scale_available", tone->scale, compare_gain);
 	} else {
 		iio_spin_button_init(&tone->iio_scale,
-			tone->iio_dac, tone->iio_ch, "scale", tone->scale, NULL);
+			tone->iio_dac, tone->iio_ch, scale_attrs[idx], tone->scale, NULL);
 		iio_spin_button_set_convert_function(&tone->iio_scale, db_full_scale_convert);
 		iio_spin_button_add_progress(&tone->iio_scale);
 		iio_spin_button_set_on_complete_function(&tone->iio_scale,
@@ -2080,8 +2127,8 @@ static void tone_setup(struct dds_tone *tone)
 		iio_spin_button_skip_save_on_complete(&tone->iio_scale, TRUE);
 	}
 
-	iio_spin_button_init(&tone->iio_phase,
-			tone->iio_dac, tone->iio_ch, "phase", tone->phase, &khz_scale);
+	iio_spin_button_init(&tone->iio_phase, tone->iio_dac, tone->iio_ch, phase_attrs[idx],
+			tone->phase, ddac->backend_abi ? &rad_scale : &khz_scale);
 	iio_spin_button_add_progress(&tone->iio_phase);
 
 	/* Signals connect */
@@ -2195,15 +2242,156 @@ static void dds_non_iq_tx_init(struct dds_dac *ddac, struct dds_tx *tx, unsigned
 	ddac->tx_count++;
 }
 
+/* An output altvoltage channel with the two tones of the backend ABI */
+static bool is_backend_dds_channel(const struct iio_channel *chn)
+{
+	static const char * const attrs[] = {
+		"frequency0", "frequency1", "scale0", "scale1", "phase0", "phase1",
+	};
+	unsigned int i;
+
+	if (!iio_channel_is_output(chn) || iio_channel_get_type(chn) != IIO_ALTVOLTAGE)
+		return false;
+
+	for (i = 0; i < G_N_ELEMENTS(attrs); i++) {
+		if (!iio_channel_find_attr(chn, attrs[i]))
+			return false;
+	}
+
+	return true;
+}
+
+/* The I/Q pair of altvoltageX_i is altvoltageX_q and the other way around */
+static struct iio_channel *backend_dds_iq_pair(struct iio_device *dev, const struct iio_channel *chn)
+{
+	struct iio_channel *pair;
+	char *id;
+
+	id = g_strdup(iio_channel_get_id(chn));
+	id[strlen(id) - 1] = iio_channel_get_modifier(chn) == IIO_MOD_I ? 'q' : 'i';
+	pair = iio_device_find_channel(dev, id, true);
+	g_free(id);
+
+	if (!pair || !is_backend_dds_channel(pair))
+		return NULL;
+
+	return pair;
+}
+
+/* Both tones of a DAC channel live in the same IIO channel */
+static void backend_dds_channel_assign(struct dds_dac *ddac, struct dds_channel *ch, struct iio_channel *chn)
+{
+	struct dac_data_manager *manager = ddac->parent;
+
+	ch->t1.iio_dac = ddac->iio_dac;
+	ch->t1.iio_ch = chn;
+	ch->t2.iio_dac = ddac->iio_dac;
+	ch->t2.iio_ch = chn;
+	manager->dds_tones = g_slist_prepend(manager->dds_tones, &ch->t1);
+	manager->dds_tones = g_slist_prepend(manager->dds_tones, &ch->t2);
+	ddac->tones_count += CHANNEL_NB_TONES;
+}
+
+struct backend_dds_tx {
+	struct iio_channel *i_chn;
+	struct iio_channel *q_chn;	/* NULL without I/Q */
+};
+
+/*
+ * A channel without modifier is a TX without I/Q. A channel with the I
+ * modifier and its Q pair make an I/Q TX. Sets ddac->backend_abi if the
+ * DAC uses the backend ABI.
+ */
+static int dds_dac_backend_init(struct dds_dac *ddac)
+{
+	GArray *txs = g_array_new(FALSE, FALSE, sizeof(struct backend_dds_tx));
+	struct iio_device *dac = ddac->iio_dac;
+	unsigned int i;
+	int ret = 0;
+
+	for (i = 0; i < iio_device_get_channels_count(dac); i++) {
+		struct iio_channel *chn = iio_device_get_channel(dac, i);
+		struct backend_dds_tx btx = { chn, NULL };
+		enum iio_modifier mod;
+
+		if (!is_backend_dds_channel(chn))
+			continue;
+
+		mod = iio_channel_get_modifier(chn);
+		if (mod == IIO_MOD_I || mod == IIO_MOD_Q) {
+			btx.q_chn = backend_dds_iq_pair(dac, chn);
+			if (!btx.q_chn) {
+				fprintf(stderr, "%s: %s has no I/Q pair\n", ddac->name,
+					iio_channel_get_id(chn));
+				ret = -EINVAL;
+				goto out;
+			}
+
+			/* Q channels are added together with their I pair */
+			if (mod == IIO_MOD_Q)
+				continue;
+		} else if (mod != IIO_NO_MOD) {
+			fprintf(stderr, "%s: %s: unsupported channel modifier\n", ddac->name,
+				iio_channel_get_id(chn));
+			ret = -EINVAL;
+			goto out;
+		}
+
+		g_array_append_val(txs, btx);
+	}
+
+	/* Not a backend DAC */
+	if (!txs->len)
+		goto out;
+
+	ddac->txs = calloc(txs->len, sizeof(*ddac->txs));
+	if (!ddac->txs) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	for (i = 0; i < txs->len; i++) {
+		struct backend_dds_tx *btx = &g_array_index(txs, struct backend_dds_tx, i);
+		struct dds_tx *tx = &ddac->txs[ddac->tx_count];
+
+		if (btx->q_chn) {
+			dds_tx_init(ddac, tx, ddac->tx_count + 1);
+			backend_dds_channel_assign(ddac, &tx->ch_q, btx->q_chn);
+		} else {
+			dds_non_iq_tx_init(ddac, tx, ddac->tx_count + 1);
+		}
+
+		backend_dds_channel_assign(ddac, &tx->ch_i, btx->i_chn);
+	}
+
+	ddac->backend_abi = true;
+out:
+	g_array_free(txs, TRUE);
+	return ret;
+}
+
 static int dds_dac_init(struct dac_data_manager *manager,
 	struct dds_dac *ddac, struct iio_device *iio_dac)
 {
+	int ret;
+
 	if (!iio_dac)
 		return 0;
 
 	ddac->parent = manager;
 	ddac->iio_dac = iio_dac;
 	ddac->name = iio_device_get_name(iio_dac);
+
+	ret = dds_dac_backend_init(ddac);
+	if (ret < 0)
+		return ret;
+
+	if (ddac->backend_abi) {
+		manager->dacs_count++;
+		ddac->index = manager->dacs_count;
+		return 0;
+	}
+
 	ddac->tones_count = get_iio_tones_count(iio_dac);
 
 	if(!ddac->tones_count)
