@@ -1134,6 +1134,11 @@ static GtkWidget *gui_channel_create(struct dds_channel *ch)
 	return channel_frm;
 }
 
+static bool tx_has_iq(const struct dds_tx *tx)
+{
+	return tx->ch_q.type == Q_CHANNEL;
+}
+
 static GtkWidget *gui_tx_create(struct dds_tx *tx)
 {
 	GtkWidget *txmodule_frm;
@@ -1155,7 +1160,7 @@ static GtkWidget *gui_tx_create(struct dds_tx *tx)
 	gtk_grid_attach(GTK_GRID(txmodule_table),
 			gui_channel_create(&tx->ch_i),
 			0, 1, 1, 1);
-	if (tx->ch_q.type != CHAR_MAX)
+	if (tx_has_iq(tx))
 		gtk_grid_attach(GTK_GRID(txmodule_table),
 				gui_channel_create(&tx->ch_q),
 				0, 2, 1, 1);
@@ -1690,7 +1695,7 @@ static void dds_locked_phase_cb(GtkToggleButton *btn, struct dds_tx *tx)
 {
 	struct dds_tone **tones = tx->dds_tones;
 
-	if (tx->parent->tones_count == 2) /* No I-Q available */
+	if (!tx_has_iq(tx))
 		return;
 
 	gdouble phase1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(tones[TX_T1_I]->phase));
@@ -1734,8 +1739,8 @@ static void dds_locked_freq_cb(GtkToggleButton *btn, struct dds_tx *tx)
 {
 	struct dds_tone **tones = tx->dds_tones;
 
-		if (tx->parent->tones_count == 2) /* No I-Q available */
-			return;
+	if (!tx_has_iq(tx))
+		return;
 
 	gdouble freq1 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(tones[TX_T1_I]->freq));
 	gdouble freq2 = gtk_spin_button_get_value(GTK_SPIN_BUTTON(tones[TX_T2_I]->freq));
@@ -1789,7 +1794,7 @@ static void dds_locked_scale_cb(GtkWidget *scale, struct dds_tx *tx)
 {
 	struct dds_tone **tones = tx->dds_tones;
 
-	if (tx->parent->tones_count == 2) /* No I-Q available */
+	if (!tx_has_iq(tx))
 		return;
 
 	gdouble scale1 = dds_scale_get_value(tones[TX_T1_I]->scale);
@@ -1822,8 +1827,8 @@ static void manage_dds_mode (GtkComboBox *box, struct dds_tx *tx)
 		return;
 
 	manager = tx->parent->parent;
-	tones_count = manager->dac1.tones_count;
-	q_tone_exists = (tones_count > 2);
+	q_tone_exists = tx_has_iq(tx);
+	tones_count = q_tone_exists ? TX_NB_TONES : CHANNEL_NB_TONES;
 	min_scale = manager->lowest_scale_point;
 	scale_available_mode = manager->scale_available_mode;
 
