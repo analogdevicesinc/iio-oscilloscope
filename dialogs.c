@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <limits.h>
+#include <strings.h>
 
 #include <iio.h>
 
