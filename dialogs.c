@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <limits.h>
+#include <strings.h>
 
 #include <iio.h>
 
@@ -1162,7 +1163,7 @@ static gint fru_connect_dialog(Dialogs *data, bool load_profile)
 			break;
 		default:
 			printf("unknown response (%i) in %s(%s)\n", ret, __FILE__, __func__);
-			fallthrough;
+			OSC_FALLTHROUGH;
 		case GTK_RESPONSE_CANCEL:
 		case GTK_RESPONSE_DELETE_EVENT:
 			break;

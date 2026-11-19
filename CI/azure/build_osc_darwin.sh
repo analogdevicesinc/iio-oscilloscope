@@ -15,7 +15,7 @@ install_deps() {
 		jansson \
 		glib \
 		curl \
-		openssl@1.1 \
+		openssl@3 \
 		gettext \
 		libserialport \
 		python
